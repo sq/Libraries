@@ -113,7 +113,7 @@ namespace PRGUI.Demo {
             //  the japanese glyphs no longer need an offset
             // NotoSans.VerticalOffset = 0f * fontScale;
             Kenney.SizePoints = 17f * fontScale;
-            TitleFont.SizePoints = 14f * fontScale;
+            TitleFont.SizePoints = 16f * fontScale;
             TooltipFont.SizePoints = 14f * fontScale;
         }
 

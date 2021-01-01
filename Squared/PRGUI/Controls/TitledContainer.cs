@@ -44,6 +44,8 @@ namespace Squared.PRGUI.Controls {
                 );
             } else
                 DisclosureLevel = new Tween<float>(targetValue);
+
+            FireEvent(UIEvents.ValueChanged);
         }
 
         public bool Collapsible;
@@ -85,8 +87,6 @@ namespace Squared.PRGUI.Controls {
                 return true;
             }
         }
-
-        AbstractString IReadingTarget.Text => Title;
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.TitledContainer ?? base.GetDefaultDecorator(provider);
@@ -326,8 +326,10 @@ namespace Squared.PRGUI.Controls {
             );
         }
 
+        AbstractString IReadingTarget.Text => Title ?? (Collapsed ? "Collapsed Group" : "Expanded Group");
+
         void IReadingTarget.FormatValueInto (StringBuilder sb) {
-            throw new NotImplementedException();
+            sb.Append(Collapsed ? "Collapsed" : "Expanded");
         }
     }
 }

@@ -190,8 +190,8 @@ namespace Squared.PRGUI.Accessibility {
             if (
                 !target.AcceptsFocus &&
                 Context.ReadAloudOnClickIfNotFocusable &&
-                // Containers will transfer focus elsewhere when clicked so don't read them
-                !(target is IControlContainer) &&
+                // Top-level containers will transfer focus elsewhere when clicked so don't read them
+                !((target is IControlContainer) && Context.Controls.Contains(target)) &&
                 // Controls that transfer focus elsewhere shouldn't be read when clicked,
                 //  we want to read the new focus target instead
                 (target.FocusBeneficiary == null) &&
