@@ -326,10 +326,16 @@ namespace Squared.PRGUI.Controls {
             );
         }
 
-        AbstractString IReadingTarget.Text => Title ?? (Collapsed ? "Collapsed Group" : "Expanded Group");
+        protected virtual string DescriptionPrefix => (Collapsed ? "Collapsed Group" : "Group");
+
+        AbstractString IReadingTarget.Text => $"{DescriptionPrefix} {Title}" ?? DescriptionPrefix;
 
         void IReadingTarget.FormatValueInto (StringBuilder sb) {
             sb.Append(Collapsed ? "Collapsed" : "Expanded");
+        }
+
+        public override string ToString () {
+            return $"{GetType().Name} #{GetHashCode():X8} '{Title}'";
         }
     }
 }

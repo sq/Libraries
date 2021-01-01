@@ -184,8 +184,6 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        public override string ToString () {
-            return $"{GetType().Name} #{GetHashCode():X8} '{Title}'";
-        }
+        protected override string DescriptionPrefix => (Collapsed ? "Collapsed Window" : "Window");
     }
 }

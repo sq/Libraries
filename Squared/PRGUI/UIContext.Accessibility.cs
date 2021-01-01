@@ -34,6 +34,7 @@ namespace Squared.PRGUI.Accessibility {
         private readonly List<Prompt> SpeechQueue = new List<Prompt>();
         private SpeechSynthesizer _SpeechSynthesizer;
         public Control CurrentlyReading { get; private set; }
+        private Control CurrentlyReadingTopLevel;
 
         private long StartedReadingControlWhen;
 
@@ -88,13 +89,11 @@ namespace Squared.PRGUI.Accessibility {
         }
 
         public void BeginReading (Control control, string prefix = null) {
-            if (CurrentlyReading == control)
-                return;
+            var topLevel = Context.FindTopLevelAncestor(control);
+            BeginReading(topLevel, control, prefix);
+        }
 
-            StartedReadingControlWhen = Context.NowL;
-            ShouldStopBeforeReadingValue = false;
-            Stop();
-            CurrentlyReading = control;
+        private void SpeakControl (Control control, string prefix = null) {
             var customTarget = control as IReadingTarget;
             var text = customTarget?.Text.ToString();
             if ((text == null) && control.TooltipContent)
@@ -104,6 +103,23 @@ namespace Squared.PRGUI.Accessibility {
 
             if (text != null)
                 Speak((prefix ?? "") + text.ToString(), Context.TTSDescriptionReadingSpeed);
+        }
+
+        private void BeginReading (Control topLevel, Control control, string prefix = null) {
+            if (CurrentlyReading == control)
+                return;
+
+            var prefixed = (topLevel != CurrentlyReadingTopLevel) && (topLevel != control);
+
+            CurrentlyReadingTopLevel = topLevel;
+            CurrentlyReading = control;
+            StartedReadingControlWhen = Context.NowL;
+            ShouldStopBeforeReadingValue = false;
+
+            Stop();
+            if (prefixed)
+                SpeakControl(topLevel, "Inside");
+            SpeakControl(control, prefixed ? ", " : null);
         }
 
         private void Control_OnSelectionChanged (IEventInfo e) {
@@ -171,16 +187,18 @@ namespace Squared.PRGUI.Accessibility {
         }
 
         internal void NotifyModalShown (IModal modal) {
+            return;
+            // FIXME
             if (Context.ReadAloudOnFocus)
                 BeginReading(modal as Control, "Shown: ");
         }
 
-        internal void FocusedControlChanged (Control current) {
+        internal void FocusedControlChanged (Control currentTopLevel, Control current) {
             if (Context.ReadAloudOnFocus) {
                 if (current == null)
                     Stop();
                 else
-                    BeginReading(current);
+                    BeginReading(currentTopLevel, current);
             }
         }
 

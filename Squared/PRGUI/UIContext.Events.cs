@@ -113,7 +113,10 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        private void HandleNewFocusTarget (Control previous, Control target, bool isUserInitiated) {
+        private void HandleNewFocusTarget (
+            Control previousTopLevel, Control newTopLevel,
+            Control previous, Control target, bool isUserInitiated
+        ) {
             var topLevelParent = FindTopLevelAncestor(target);
             if (topLevelParent != null) {
                 TopLevelFocusMemory.Remove(topLevelParent);
@@ -145,7 +148,7 @@ namespace Squared.PRGUI {
                     }
                 }
 
-                TTS.FocusedControlChanged(target);
+                TTS.FocusedControlChanged(newTopLevel, target);
             }
         }
 
@@ -554,7 +557,10 @@ namespace Squared.PRGUI {
 
             // HACK: Handle cases where focus changes re-entrantly so we don't go completely bonkers
             if (_Focused == newFocusTarget)
-                HandleNewFocusTarget(previous, newFocusTarget, isUserInitiated);
+                HandleNewFocusTarget(
+                    previousTopLevel, newTopLevelAncestor,
+                    previous, newFocusTarget, isUserInitiated
+                );
 
             if ((_Focused != null) && (previous != newFocusTarget) && (_Focused == newFocusTarget))
                 FireEvent(UIEvents.GotFocus, newFocusTarget, previous);

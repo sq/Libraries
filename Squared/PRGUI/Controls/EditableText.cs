@@ -149,6 +149,7 @@ namespace Squared.PRGUI.Controls {
                 DynamicLayout.ReplacementCharacter = value ? '*' : (char?)null;
                 AllowCopy = !value;
             }
+            get => !AllowCopy && (DynamicLayout.ReplacementCharacter == '*');
         }
 
         protected override bool ShouldClipContent {
@@ -1243,15 +1244,6 @@ namespace Squared.PRGUI.Controls {
             );
         }
 
-        AbstractString Accessibility.IReadingTarget.Text {
-            get {
-                if (Description != null)
-                    return $"Edit \"{Description}\". {Text}";
-                else
-                    return $"Edit. {Text}";
-            }
-        }
-
         Vector2 IScrollableControl.ScrollOffset => ScrollOffset;
         bool IScrollableControl.Scrollable {
             get => true;
@@ -1282,8 +1274,22 @@ namespace Squared.PRGUI.Controls {
         RectF? ISelectionBearer.SelectionRect => LastSelectionRect;
         Control ISelectionBearer.SelectedControl => null;
 
-        void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {
-            sb.Append(Text);
+        AbstractString Accessibility.IReadingTarget.Text {
+            get {
+                var text = Password ? "Masked password" : Text;
+                if (Description != null)
+                    return $"Edit \"{Description}\". {text}";
+                else
+                    return $"Edit. {text}";
+            }
+        }
+
+        void IReadingTarget.FormatValueInto (StringBuilder sb) {
+            // FIXME: Should value reading be disabled when the value is masked?
+            if (Password)
+                ;
+            else
+                sb.Append(Text);
         }
 
         bool IScrollableControl.TrySetScrollOffset (Vector2 value, bool forUser) {
