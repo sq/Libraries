@@ -11,6 +11,16 @@ using Squared.Game;
 using Squared.Util.Text;
 
 namespace Squared.Render.Text {
+    public static class RichText {
+        private static readonly Regex RichCommandRegex = new Regex(@"\$\[[^\]]*\]", RegexOptions.Compiled);
+
+        public static string ToPlainText (AbstractString richText) {
+            if (richText.IsNull)
+                return null;
+            return RichCommandRegex.Replace(richText.ToString(), "");
+        }
+    }
+
     public struct RichStyle {
         public IGlyphSource GlyphSource;
         public Color? Color;

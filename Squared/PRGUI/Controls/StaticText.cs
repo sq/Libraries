@@ -394,6 +394,12 @@ namespace Squared.PRGUI.Controls {
                 material = TextMaterial;
         }
 
+        protected string GetPlainText () {
+            return RichText
+                ? Squared.Render.Text.RichText.ToPlainText(Text)
+                : Text.ToString();
+        }
+
         protected string GetTrimmedText (string text) {
             if (text == null)
                 return null;
@@ -406,10 +412,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         public override string ToString () {
-            return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText(Text.ToString())}'";
+            return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText(GetPlainText())}'";
         }
 
-        protected virtual AbstractString GetReadingText () => Text;
+        protected virtual AbstractString GetReadingText () => GetPlainText();
 
         protected virtual void FormatValueInto (StringBuilder sb) {
             sb.Append(Text);

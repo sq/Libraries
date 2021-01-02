@@ -109,7 +109,10 @@ namespace Squared.PRGUI.Accessibility {
             if (CurrentlyReading == control)
                 return;
 
-            var prefixed = (topLevel != CurrentlyReadingTopLevel) && (topLevel != control);
+            var prefixed = (topLevel != CurrentlyReadingTopLevel) && (topLevel != control) && 
+                // If the control isn't a reading target its ToString probably isn't very helpful
+                //  either, so informing the user that it's active is counterproductive
+                (topLevel is IReadingTarget);
 
             CurrentlyReadingTopLevel = topLevel;
             CurrentlyReading = control;

@@ -112,6 +112,10 @@ namespace Squared.PRGUI.Controls {
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.Button;
         }
+
+        protected override AbstractString GetReadingText () {
+            return $"Button {base.GetReadingText()}";
+        }
     }
 
     public class Checkbox : StaticTextBase, IValueControl<bool> {

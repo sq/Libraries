@@ -348,7 +348,7 @@ namespace PRGUI.Demo {
             const int itemCount = 5000;
 
             var dropdown = new Dropdown<StaticText> {
-                Description = "Big Menu",
+                Label = "Dropdown: {0}",
                 TooltipContent = "Click me for a big dropdown menu"
             };
             for (var i = 0; i < menuItemCount; i++)
@@ -606,7 +606,7 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(increaseGaugeButton, UIEvents.Click, (ei) => {
-                if (gauge.Value >= 1)
+                if (gauge.Value >= 0.999)
                     gauge.Value = 0;
                 else
                     gauge.Value += 0.025f;

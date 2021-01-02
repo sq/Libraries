@@ -353,8 +353,7 @@ namespace Squared.PRGUI.Input {
                 wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Right, mods, PreviousState.DPad.Right, gs.DPad.Right);
                 var focusChanged = DispatchKeyEventsForButton(ref current, Keys.Tab, shift, PreviousState.Buttons.LeftShoulder, gs.Buttons.LeftShoulder);
                 focusChanged |= DispatchKeyEventsForButton(ref current, Keys.Tab, mods, PreviousState.Buttons.RightShoulder, gs.Buttons.RightShoulder);
-                if (gs.Buttons.Y == ButtonState.Pressed)
-                    current.Buttons |= MouseButtons.Right;
+                DispatchKeyEventsForButton(ref current, Keys.Apps, mods, PreviousState.Buttons.Y, gs.Buttons.Y);
 
                 if (focusChanged)
                     SnapToControl = Context.Focused;

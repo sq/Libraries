@@ -12,6 +12,7 @@ using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
+using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Text;
 
@@ -637,9 +638,16 @@ namespace Squared.PRGUI.Controls {
             ContextMenu.Child<StaticText>(st => st.Text == "Select All").Enabled =
                 Text.Length > 0;
 
-            var menuResult = forMouseEvent
-                    ? ContextMenu.Show(Context)
-                    : ContextMenu.Show(Context, this);
+            Future<Control> menuResult;
+            if (!forMouseEvent) {
+                if (LastSelectionRect.HasValue) {
+                    var myRect = GetRect(Context.Layout);
+                    LastSelectionRect.Value.Intersection(ref myRect, out RectF intersected);
+                    menuResult = ContextMenu.Show(Context, intersected);
+                } else
+                    menuResult = ContextMenu.Show(Context, this);
+            } else
+                menuResult = ContextMenu.Show(Context);
 
             menuResult.RegisterOnComplete((_) => {
                 if (menuResult.Result == null)

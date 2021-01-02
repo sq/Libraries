@@ -22,7 +22,7 @@ namespace Squared.PRGUI.Controls {
 
         public string Description;
 
-        public AbstractString Label;
+        public string Label;
         public CreateControlForValueDelegate<T> CreateControlForValue = null;
         public Func<T, AbstractString> FormatValue = null;
         private CreateControlForValueDelegate<T> DefaultCreateControlForValue;
@@ -51,7 +51,10 @@ namespace Squared.PRGUI.Controls {
 
         AbstractString Accessibility.IReadingTarget.Text {
             get {
-                if (Description != null)
+                // FIXME: Reverse this order?
+                if (!string.IsNullOrWhiteSpace(Label) && Label.Contains('{'))
+                    return string.Format(Label, GetValueText());
+                else if (Description != null)
                     return $"{Description}: {GetValueText()}";
                 else if (TooltipContent)
                     return TooltipContent.Get(this);
@@ -123,9 +126,13 @@ namespace Squared.PRGUI.Controls {
             if (Comparer.Equals(SelectedItem, default(T)) && (Items.Count > 0))
                 SelectedItem = Items[0];
 
-            if (Label != default(AbstractString))
-                Text = Label;
-            else
+            if (!string.IsNullOrWhiteSpace(Label)) {
+                // HACK
+                if (Label.Contains('{'))
+                    Text = string.Format(Label.ToString(), GetValueText());
+                else
+                    Text = Label;
+            } else
                 Text = GetValueText();
         }
 

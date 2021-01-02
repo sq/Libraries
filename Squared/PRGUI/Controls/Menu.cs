@@ -505,6 +505,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public Future<Control> Show (UIContext context, RectF anchorBox, Control selectedItem = null) {
+            ShowInternalPrologue(context);
             var adjustedPosition = AdjustPosition(
                 context, new Vector2(anchorBox.Left, anchorBox.Top + anchorBox.Height)
             );
