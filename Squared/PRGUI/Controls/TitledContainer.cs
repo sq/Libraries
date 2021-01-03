@@ -49,6 +49,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public bool Collapsible;
+        protected bool CollapsingEnabled = true;
 
         public string Title;
 
@@ -153,9 +154,16 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected virtual bool OnMouseEvent (string name, MouseEventArgs args) {
-            if (name == UIEvents.Click) {
-                if (Collapsed || DisclosureArrowHitTest(args.RelativeGlobalPosition - args.Box.Position))
-                    return ToggleCollapsed();
+            if (
+                (name == UIEvents.Click) &&
+                (
+                    (Collapsed && CollapsingEnabled) ||
+                    DisclosureArrowHitTest(args.RelativeGlobalPosition - args.Box.Position) ||
+                    (CollapsingEnabled && (args.SequentialClickCount == 2) && !Collapsed)
+                )
+            ) {
+                ToggleCollapsed();
+                return true;
             }
 
             return false;

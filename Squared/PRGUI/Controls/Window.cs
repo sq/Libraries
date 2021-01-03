@@ -52,8 +52,6 @@ namespace Squared.PRGUI.Controls {
         private Vector2 DragStartMousePosition, DragStartWindowPosition;
         private RectF MostRecentUnmaximizedRect;
 
-        private bool CollapsingEnabled;
-
         public bool Maximized {
             get => LayoutFlags.IsFlagged(ControlFlags.Layout_Fill);
             set {
