@@ -80,7 +80,7 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
-            var rect = GetRect(context.Layout, includeOffset: false);
+            var rect = GetRect(includeOffset: false);
 
             // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
             if (!Maximized && MostRecentFullSize.HasValue)

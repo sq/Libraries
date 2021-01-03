@@ -261,7 +261,7 @@ namespace Squared.PRGUI {
 
             RasterizedOverlayBoxes.Clear();
             if (Focused != null)
-                RasterizedOverlayBoxes.Add(Focused.GetRect(context.Layout, contentRect: true));
+                RasterizedOverlayBoxes.Add(Focused.GetRect(contentRect: true));
 
             // FIXME: This looks confusing
             // RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, Focused, null);
@@ -323,7 +323,7 @@ namespace Squared.PRGUI {
             if (!showFocused && (control == Focused) && !string.IsNullOrWhiteSpace(label))
                 return;
 
-            var box = control.GetRect(Layout);
+            var box = control.GetRect();
             var decorator = Decorations.AcceleratorTarget;
             var settings = new Decorations.DecorationSettings {
                 Box = box,

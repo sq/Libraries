@@ -152,13 +152,12 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected bool ProcessMouseEventForScrollbar (string name, MouseEventArgs args) {
-            var context = Context;
-            var scroll = context.Decorations?.Scrollbar;
+            var scroll = Context.Decorations?.Scrollbar;
             if (scroll == null)
                 return false;
 
-            var box = GetRect(context.Layout, contentRect: false);
-            var contentBox = GetRect(context.Layout, contentRect: true);
+            var box = GetRect();
+            var contentBox = GetRect(contentRect: true);
             var settings = MakeDecorationSettings(ref box, ref contentBox, default(ControlStates));
 
             // Ensure the scrollbar state is up-to-date if someone modified our offset
@@ -295,7 +294,7 @@ namespace Squared.PRGUI.Controls {
 
             RectF childRect =
                 (selectedItem != null)
-                    ? selectedItem.GetRect(context.Layout)
+                    ? selectedItem.GetRect()
                     : default(RectF);
 
             int count = children.Count, 
@@ -436,8 +435,8 @@ namespace Squared.PRGUI.Controls {
             box.Height -= MostRecentHeaderHeight;
         }
 
-        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            if (!base.OnHitTest(context, box, position, false, false, ref result))
+        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+            if (!base.OnHitTest(box, position, false, false, ref result))
                 return false;
 
             bool success = AcceptsMouseInput || !acceptsMouseInputOnly;
@@ -450,7 +449,7 @@ namespace Squared.PRGUI.Controls {
             var sorted = Children.InDisplayOrder(Context.FrameIndex);
             for (int i = sorted.Count - 1; i >= 0; i--) {
                 var item = sorted[i];
-                var newResult = item.HitTest(context, position, acceptsMouseInputOnly, acceptsFocusOnly);
+                var newResult = item.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly);
                 if (newResult != null) {
                     result = newResult;
                     success = true;

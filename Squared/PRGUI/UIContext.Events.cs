@@ -447,13 +447,13 @@ namespace Squared.PRGUI {
                 return null;
 
             var _ = control;
-            controlRect = control.GetRect(Layout);
+            controlRect = control.GetRect();
             while (control.TryGetParent(out control)) {
                 var result = control as IScrollableControl;
                 if (result == null)
                     continue;
 
-                parentRect = control.GetRect(Layout, contentRect: true);
+                parentRect = control.GetRect(contentRect: true);
                 controlRect.Intersection(ref parentRect, out intersectedRect);
                 if (!intersectedRect.Equals(controlRect))
                     return result;
@@ -683,8 +683,8 @@ namespace Squared.PRGUI {
             // Walk top-to-bottom, transforming coordinates if necessary
             for (int i = TemporaryParentChain.Count - 1; i >= 0; i--) {
                 var ctl = TemporaryParentChain[i];
-                var box = ctl.GetRect(Layout);
-                transformedGlobalPosition = ctl.ApplyLocalTransformToGlobalPosition(Layout, transformedGlobalPosition, ref box, foundMouseCapture);
+                var box = ctl.GetRect();
+                transformedGlobalPosition = ctl.ApplyLocalTransformToGlobalPosition(transformedGlobalPosition, ref box, foundMouseCapture);
             }
 
             return transformedGlobalPosition;
@@ -697,8 +697,8 @@ namespace Squared.PRGUI {
             var transformedGlobalPosition = CalculateRelativeGlobalPosition(target, globalPosition);
 
             {
-                var box = target.GetRect(Layout, contentRect: false);
-                var contentBox = target.GetRect(Layout, contentRect: true);
+                var box = target.GetRect(contentRect: false);
+                var contentBox = target.GetRect(contentRect: true);
                 var mdp = MouseDownPosition ?? mouseDownPosition ?? globalPosition;
                 var travelDistance = (globalPosition - mdp).Length();
                 return new MouseEventArgs {

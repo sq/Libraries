@@ -140,8 +140,8 @@ namespace Squared.PRGUI.Controls {
         // HACK
         private bool _OverrideHitTestResults = true;
 
-        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            var ok = base.OnHitTest(context, box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+            var ok = base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
             // HACK: Ensure that hit-test does not pass through to our individual items. We want to handle all events for them
             if (ok && _OverrideHitTestResults && (result?.AcceptsMouseInput == false))
                 result = this;
@@ -174,19 +174,19 @@ namespace Squared.PRGUI.Controls {
             return null;
         }
 
-        private Control ChildFromGlobalPosition (LayoutContext context, Vector2 globalPosition) {
+        private Control ChildFromGlobalPosition (Vector2 globalPosition) {
             try {
-                var rect = this.GetRect(context, contentRect: true);
+                var rect = this.GetRect(contentRect: true);
                 if (!rect.Contains(globalPosition))
                     return null;
 
                 globalPosition.X = rect.Left + 6;
                 _OverrideHitTestResults = false;
 
-                var child = HitTest(context, globalPosition, false, false);
+                var child = HitTest(globalPosition, false, false);
                 if ((child ?? this) == this) {
                     globalPosition.X = rect.Center.X;
-                    child = HitTest(context, globalPosition, false, false);
+                    child = HitTest(globalPosition, false, false);
                 }
 
                 if (child == this)
@@ -209,7 +209,7 @@ namespace Squared.PRGUI.Controls {
 
             // Console.WriteLine($"menu.{name}");
 
-            var item = ChildFromGlobalPosition(Context.Layout, args.RelativeGlobalPosition);
+            var item = ChildFromGlobalPosition(args.RelativeGlobalPosition);
 
             if (name == UIEvents.MouseDown) {
                 if (!args.Box.Contains(args.RelativeGlobalPosition))
@@ -339,7 +339,7 @@ namespace Squared.PRGUI.Controls {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
             if (!MouseInsideWhenShown.HasValue)
-                MouseInsideWhenShown = GetRect(context.Layout).Contains(MousePositionWhenShown);
+                MouseInsideWhenShown = GetRect().Contains(MousePositionWhenShown);
 
             // Remove ourselves from the top-level context if we've just finished fading out.
             // While this isn't strictly necessary, it's worth doing for many reasons
@@ -350,7 +350,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             if (SelectedItem != null) {
-                var selectionBox = SelectedItem.GetRect(context.Layout, true, false);
+                var selectionBox = SelectedItem.GetRect();
                 selectionBox.Left = settings.ContentBox.Left;
                 selectionBox.Width = settings.ContentBox.Width;
 
@@ -382,7 +382,7 @@ namespace Squared.PRGUI.Controls {
         ) {
             RasterizeChildrenFromCenter(
                 ref context, ref passSet, 
-                GetRect(context.Layout), Children, _SelectedItem,
+                GetRect(), Children, _SelectedItem,
                 layer1, layer2, layer3, 
                 ref maxLayer1, ref maxLayer2, ref maxLayer3,
                 ref lastOffset1, ref lastOffset2
@@ -426,7 +426,7 @@ namespace Squared.PRGUI.Controls {
             if (!IsActive) {
                 var fadeIn = context.Animations?.ShowMenu;
                 if (fadeIn != null)
-                    PlayAnimation(fadeIn);
+                    StartAnimation(fadeIn);
                 else
                     Appearance.Opacity = 1f;
             }
@@ -479,7 +479,7 @@ namespace Squared.PRGUI.Controls {
 
         private Vector2 AdjustPosition (UIContext context, Vector2 desiredPosition) {
             var margin = context.Decorations.Menu.Margins;
-            var box = GetRect(context.Layout);
+            var box = GetRect(context: context);
             // HACK: We'd want to use margin.Right/Bottom here normally, but compensation has already
             //  been applied somewhere in the layout engine for the top/left margins so we need to
             //  cancel them out again
@@ -520,7 +520,7 @@ namespace Squared.PRGUI.Controls {
         public Future<Control> Show (UIContext context, Control anchor, Control selectedItem = null) {
             ShowInternalPrologue(context);
 
-            var anchorBox = anchor.GetRect(context.Layout);
+            var anchorBox = anchor.GetRect(context: context);
             return Show(context, anchorBox, selectedItem);
         }
 
@@ -529,7 +529,7 @@ namespace Squared.PRGUI.Controls {
                 return;
             IsActive = false;
             Intangible = true;
-            PlayAnimation(Context.Animations?.HideMenu);
+            StartAnimation(Context.Animations?.HideMenu);
             Listener?.Closed(this);
             Context.NotifyModalClosed(this);
             if (NextResultFuture?.Completed == false)
@@ -600,7 +600,7 @@ namespace Squared.PRGUI.Controls {
 
         bool ISelectionBearer.HasSelection => _SelectedItem != null;
         // FIXME: We should expand the width here
-        RectF? ISelectionBearer.SelectionRect => SelectedItem?.GetRect(Context.Layout);
+        RectF? ISelectionBearer.SelectionRect => SelectedItem?.GetRect();
         Control ISelectionBearer.SelectedControl => SelectedItem;
 
         public Control this [int index] {

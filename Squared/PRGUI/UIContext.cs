@@ -1003,7 +1003,8 @@ namespace Squared.PRGUI {
                     CurrentTooltipContentVersion = version;
                 }
             } else {
-                var shouldDismissInstantly = (target != null) && IsTooltipActive && GetTooltipInstance().GetRect(Layout).Contains(LastMousePosition);
+                var shouldDismissInstantly = (target != null) && IsTooltipActive && 
+                    GetTooltipInstance().GetRect(context: this).Contains(LastMousePosition);
                 // TODO: Instead of instantly hiding, maybe just fade the tooltip out partially?
                 HideTooltip(shouldDismissInstantly);
 
@@ -1111,12 +1112,12 @@ namespace Squared.PRGUI {
 
             var textChanged = !instance.Text.Equals(text) || textIsInvalidated;
 
-            var rect = anchor.GetRect(Layout);
+            var rect = anchor.GetRect(context: this);
             // HACK: Clip the anchor's rect to its parent's rect to ensure that
             //  in the event that a container is scrolling, the tooltip doesn't shift outside
             //  of the container too far
             if (anchor.TryGetParent(out Control anchorParent)) {
-                var parentRect = anchorParent.GetRect(Layout, contentRect: true);
+                var parentRect = anchorParent.GetRect(context: this, contentRect: true);
 
                 // If the anchor is entirely invisible, hide the tooltip to prevent visible glitches
                 if (!rect.Intersection(ref parentRect, out rect)) {
@@ -1138,7 +1139,7 @@ namespace Squared.PRGUI {
                 UpdateSubtreeLayout(instance);
             }
 
-            var instanceBox = instance.GetRect(Layout);
+            var instanceBox = instance.GetRect();
             var newX = rect.Left + (rect.Width / 2f) - (instanceBox.Width / 2f);
             /*
             // We want to make sure the tooltip is at least roughly aligned with the mouse horizontally
@@ -1176,7 +1177,7 @@ namespace Squared.PRGUI {
                 var control = sorted[i];
                 if (areHitTestsBlocked && !ModalStack.Contains(control as IModal))
                     continue;
-                var result = control.HitTest(Layout, position, acceptsMouseInputOnly, acceptsFocusOnly);
+                var result = control.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly);
                 if (result != null)
                     return result;
             }

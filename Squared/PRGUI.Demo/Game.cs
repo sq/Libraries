@@ -620,7 +620,7 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(toppleButton, UIEvents.Click, (ei) => {
-                var wbox = FloatingWindow.GetRect(Context.Layout);
+                var wbox = FloatingWindow.GetRect();
                 var sz = wbox.Size;
                 float o = wbox.Width / 2f;
                 Weird2DTransform(

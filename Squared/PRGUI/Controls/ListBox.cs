@@ -72,7 +72,7 @@ namespace Squared.PRGUI.Controls {
 
         bool ISelectionBearer.HasSelection => Manager.SelectedIndex >= 0;
         // FIXME: We should expand the width here
-        RectF? ISelectionBearer.SelectionRect => Manager.SelectedControl?.GetRect(Context.Layout);
+        RectF? ISelectionBearer.SelectionRect => Manager.SelectedControl?.GetRect();
         Control ISelectionBearer.SelectedControl => Manager.SelectedControl;
 
         public ListBox ()
@@ -219,13 +219,13 @@ namespace Squared.PRGUI.Controls {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
             if (Children.Count > 0) {
-                VirtualItemHeight = Children[0].GetRect(context.Layout, false, false).Height;
+                VirtualItemHeight = Children[0].GetRect(includeOffset: false).Height;
                 // HACK: Traditional listboxes on windows scroll multiple item(s) at a time on mousewheel
                 //  instead of scrolling on a per-pixel basis
                 ScrollSpeedMultiplier = (VirtualItemHeight / 14);
             }
 
-            var box = GetRect(context.Layout, includeOffset: false, contentRect: true);
+            var box = GetRect(includeOffset: false, contentRect: true);
             var newViewportSize = Math.Max((int)(box.Height / VirtualItemHeight) + 4, 8);
             if (newViewportSize != VirtualViewportSize) {
                 VirtualViewportSize = newViewportSize;
@@ -242,8 +242,8 @@ namespace Squared.PRGUI.Controls {
         // HACK
         private bool _OverrideHitTestResults = true;
 
-        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            var ok = base.OnHitTest(context, box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+            var ok = base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
             // HACK: Ensure that hit-test does not pass through to our individual items. We want to handle all events for them
             if (ok && _OverrideHitTestResults)
                 result = this;
@@ -284,17 +284,17 @@ namespace Squared.PRGUI.Controls {
 
         private Control ChildFromGlobalPosition (LayoutContext context, Vector2 globalPosition) {
             try {
-                var rect = this.GetRect(context, contentRect: true);
+                var rect = this.GetRect(contentRect: true);
                 if (!rect.Contains(globalPosition))
                     return null;
 
                 globalPosition.X = rect.Left + 6;
                 _OverrideHitTestResults = false;
 
-                var child = HitTest(context, globalPosition, false, false);
+                var child = HitTest(globalPosition, false, false);
                 if ((child ?? this) == this) {
                     globalPosition.X = rect.Center.X;
-                    child = HitTest(context, globalPosition, false, false);
+                    child = HitTest(globalPosition, false, false);
                 }
 
                 if (child == this)
@@ -386,7 +386,7 @@ namespace Squared.PRGUI.Controls {
             if (
                 (selectionDecorator != null) && (selectedControl != null)
             ) {
-                var selectionBox = selectedControl.GetRect(context.Layout, true, false);
+                var selectionBox = selectedControl.GetRect();
                 selectionBox.Top += selectionDecorator.Margins.Top;
                 selectionBox.Left = settings.ContentBox.Left + selectionDecorator.Margins.Left;
                 selectionBox.Height -= selectionDecorator.Margins.Y;
@@ -429,7 +429,7 @@ namespace Squared.PRGUI.Controls {
                 var selectedControl = Manager.SelectedControl;
                 var displayPageSize = RasterizeChildrenFromCenter(
                     ref context, ref passSet, 
-                    GetRect(context.Layout), Children, selectedControl,
+                    GetRect(), Children, selectedControl,
                     layer1, layer2, layer3, 
                     ref maxLayer1, ref maxLayer2, ref maxLayer3,
                     ref lastOffset1, ref lastOffset2

@@ -221,8 +221,6 @@ namespace Squared.PRGUI {
         protected WeakReference<UIContext> WeakContext = null;
         protected WeakReference<Control> WeakParent = null;
 
-        private RectF LastParentRect;
-
         protected IControlAnimation ActiveAnimation { get; private set; }
         protected long ActiveAnimationEndWhen;
 
@@ -239,7 +237,12 @@ namespace Squared.PRGUI {
             ActiveAnimation = null;
         }
 
-        public void PlayAnimation (IControlAnimation animation, float? duration = null, long? now = null) {
+        /// <summary>
+        /// Starts an animation on the control. Any animation currently playing will be cancelled.
+        /// </summary>
+        /// <param name="animation">An animation to apply. If null, this method will return after canceling any existing animation.</param>
+        /// <param name="duration">A custom duration for the animation. If unset, the animation's default length will be used.</param>
+        public void StartAnimation (IControlAnimation animation, float? duration = null, long? now = null) {
             var _now = now ?? Context.NowL;
             UpdateAnimation(_now);
             ActiveAnimation?.End(this, true);
@@ -327,6 +330,9 @@ namespace Squared.PRGUI {
             return tween.Get(now);
         }
 
+        /// <summary>
+        /// The total display offset of the control (taking into account scrolling of any parent controls).
+        /// </summary>
         public Vector2 AbsoluteDisplayOffset {
             get {
                 return _AbsoluteDisplayOffset;
@@ -368,7 +374,7 @@ namespace Squared.PRGUI {
             return LayoutKey;
         }
 
-        protected virtual bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+        protected virtual bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
             if (Intangible)
                 return false;
             if (!AcceptsMouseInput && acceptsMouseInputOnly)
@@ -386,10 +392,11 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        public RectF GetRect (LayoutContext context, bool includeOffset = true, bool contentRect = false) {
+        public RectF GetRect (bool includeOffset = true, bool contentRect = false, UIContext context = null) {
+            context = context ?? Context;
             var result = contentRect 
-                ? context.GetContentRect(LayoutKey) 
-                : context.GetRect(LayoutKey);
+                ? context.Layout.GetContentRect(LayoutKey) 
+                : context.Layout.GetRect(LayoutKey);
 
             if (includeOffset) {
                 result.Left += _AbsoluteDisplayOffset.X;
@@ -420,7 +427,7 @@ namespace Squared.PRGUI {
             return pSRGBColor.FromPLinear(v4.Value);
         }
 
-        internal Vector2 ApplyLocalTransformToGlobalPosition (LayoutContext context, Vector2 globalPosition, ref RectF box, bool force) {
+        internal Vector2 ApplyLocalTransformToGlobalPosition (Vector2 globalPosition, ref RectF box, bool force) {
             if (!Appearance.HasTransformMatrix)
                 return globalPosition;
 
@@ -439,7 +446,7 @@ namespace Squared.PRGUI {
                 return result;
         }
 
-        public Control HitTest (LayoutContext context, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly) {
+        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly) {
             if (!Visible)
                 return null;
             if (LayoutKey.IsInvalid)
@@ -448,10 +455,10 @@ namespace Squared.PRGUI {
                 return null;
 
             var result = this;
-            var box = GetRect(context);
-            position = ApplyLocalTransformToGlobalPosition(context, position, ref box, true);
+            var box = GetRect();
+            position = ApplyLocalTransformToGlobalPosition(position, ref box, true);
 
-            if (OnHitTest(context, box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result))
+            if (OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result))
                 return result;
 
             return null;
@@ -615,7 +622,7 @@ namespace Squared.PRGUI {
         }
 
         private void RasterizePass (ref UIOperationContext context, RectF box, bool compositing, ref RasterizePassSet passSet, ref ImperativeRenderer renderer, RasterizePasses pass) {
-            var contentBox = GetRect(context.Layout, contentRect: true);
+            var contentBox = GetRect(contentRect: true);
             var decorations = GetDecorator(context.DecorationProvider);
             var state = GetCurrentState(context);
 
@@ -720,7 +727,7 @@ namespace Squared.PRGUI {
             if (LayoutKey.IsInvalid)
                 return false;
 
-            var box = GetRect(context.Layout);
+            var box = GetRect();
             var isInvisible = (box.Extent.X < context.VisibleRegion.Left) ||
                 (box.Extent.Y < context.VisibleRegion.Top) ||
                 (box.Left > context.VisibleRegion.Extent.X) ||

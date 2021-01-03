@@ -157,7 +157,7 @@ namespace Squared.PRGUI.Controls {
             get {
                 // HACK: If our content is smaller than our content box, disable clipping
                 if (OptimizedClipping && (DynamicLayout.GlyphSource != null)) {
-                    var contentBox = GetRect(Context.Layout, contentRect: true);
+                    var contentBox = GetRect(contentRect: true);
                     UpdateLayoutSettings();
                     var layout = DynamicLayout.Get();
                     // Extra padding for things like shadows/outlines on selection decorators
@@ -641,7 +641,7 @@ namespace Squared.PRGUI.Controls {
             Future<Control> menuResult;
             if (!forMouseEvent) {
                 if (LastSelectionRect.HasValue) {
-                    var myRect = GetRect(Context.Layout);
+                    var myRect = GetRect();
                     LastSelectionRect.Value.Intersection(ref myRect, out RectF intersected);
                     menuResult = ContextMenu.Show(Context, intersected);
                 } else

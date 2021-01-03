@@ -275,7 +275,7 @@ namespace Squared.PRGUI.Input {
                 AllowMagnetize(hovering) && 
                 (gs.Buttons.A == ButtonState.Released)
             ) {
-                var box = hovering.GetRect(Context.Layout);
+                var box = hovering.GetRect();
                 var distanceX = Math.Min(
                     Math.Abs(box.Left - current.CursorPosition.X),
                     Math.Abs(box.Extent.X - current.CursorPosition.X)
@@ -329,7 +329,7 @@ namespace Squared.PRGUI.Input {
 
             if (EnableButtons) {
                 if (Context.Focused != null) {
-                    if (Context.Focused.GetRect(Context.Layout).Contains(current.CursorPosition))
+                    if (Context.Focused.GetRect().Contains(current.CursorPosition))
                         current.ActivateKeyHeld |= (gs.Buttons.A == ButtonState.Pressed);
                 }
 
@@ -369,7 +369,7 @@ namespace Squared.PRGUI.Input {
                 //  of the new snap target
                 var sb = effectiveSnapTarget as ISelectionBearer;
                 var sc = sb?.SelectionRect;
-                var targetRect = effectiveSnapTarget.GetRect(Context.Layout, contentRect: true);
+                var targetRect = effectiveSnapTarget.GetRect(contentRect: true);
                 if (sc.HasValue && sc.Value.Intersection(ref targetRect, out RectF union)) {
                     newPosition = union.Center;
                 } else

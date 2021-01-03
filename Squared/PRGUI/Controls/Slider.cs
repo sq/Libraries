@@ -280,7 +280,7 @@ namespace Squared.PRGUI.Controls {
                     if ((args.Buttons != MouseButtons.Left) && (args.PreviousButtons != MouseButtons.Left))
                         return true;
 
-                    var newValue = ValueFromPoint(GetRect(Context.Layout, contentRect: true), args.RelativeGlobalPosition);
+                    var newValue = ValueFromPoint(GetRect(contentRect: true), args.RelativeGlobalPosition);
                     Value = newValue;
 
                     return true;

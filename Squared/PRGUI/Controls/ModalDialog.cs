@@ -58,7 +58,7 @@ namespace Squared.PRGUI.Controls {
             var f = NextResultFuture = new Future<object>();
             var fadeIn = context.Animations?.ShowModalDialog;
             if (fadeIn != null)
-                PlayAnimation(fadeIn);
+                StartAnimation(fadeIn);
             else
                 Appearance.Opacity = 1f;
             GenerateDynamicContent(true);
@@ -86,7 +86,7 @@ namespace Squared.PRGUI.Controls {
             NextResultFuture?.SetResult(result, null);
             Intangible = true;
             IsFadingOut = (Context.TopLevelFocused == this);
-            PlayAnimation(Context.Animations?.HideModalDialog);
+            StartAnimation(Context.Animations?.HideModalDialog);
             Context.NotifyModalClosed(this);
             AcceptsFocus = false;
             _FocusDonor = null;

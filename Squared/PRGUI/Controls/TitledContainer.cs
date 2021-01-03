@@ -239,7 +239,7 @@ namespace Squared.PRGUI.Controls {
             if (Collapsible && !Collapsed && 
                 (DisclosureLevel.Get(Context.NowL) >= 1)
             ) {
-                var box = GetRect(context.Layout);
+                var box = GetRect();
                 MostRecentFullSize = box;
             }
         }
@@ -299,8 +299,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            var ok = base.OnHitTest(context, box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+            var ok = base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
             if (ok && Collapsed)
                 result = this;
             return ok;

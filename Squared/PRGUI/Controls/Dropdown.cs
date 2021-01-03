@@ -165,7 +165,7 @@ namespace Squared.PRGUI.Controls {
             if (ItemsMenu.IsActive)
                 return;
 
-            var box = GetRect(Context.Layout, contentRect: false);
+            var box = GetRect(contentRect: false);
             ItemsMenu.Width.Minimum = box.Width;
             var selectedControl = Manager.SelectedControl;
             ItemsMenu.Show(Context, this, selectedControl);

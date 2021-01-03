@@ -36,7 +36,7 @@ namespace Squared.PRGUI.Controls {
             Intangible = true;
         }
 
-        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) => false;
+        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) => false;
         protected override bool OnEvent<T> (string name, T args) => false;
         protected override bool OnEvent (string name) => false;
 
@@ -88,7 +88,7 @@ namespace Squared.PRGUI.Controls {
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
             if ((name == UIEvents.MouseDown) && (Menu != null)) {
-                var box = GetRect(Context.Layout, contentRect: true);
+                var box = GetRect(contentRect: true);
                 Menu.Width.Minimum = box.Width;
                 Menu.Show(Context, this);
                 return true;
@@ -290,7 +290,7 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
             return false;
         }
 
