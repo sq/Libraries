@@ -415,6 +415,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void ShowInternalPrologue (UIContext context) {
+            SetContext(context);
             // Ensure we have run a generate pass for our dynamic content before doing anything
             GenerateDynamicContent(true);
 
@@ -425,7 +426,7 @@ namespace Squared.PRGUI.Controls {
             if (!IsActive) {
                 var fadeIn = context.Animations?.ShowMenu;
                 if (fadeIn != null)
-                    PlayAnimation(fadeIn, now: context.NowL);
+                    PlayAnimation(fadeIn);
                 else
                     Appearance.Opacity = 1f;
             }

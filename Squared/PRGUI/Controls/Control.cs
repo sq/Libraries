@@ -212,7 +212,8 @@ namespace Squared.PRGUI {
             ActiveAnimation = null;
             if (animation == null)
                 return;
-            var _duration = duration ?? animation.DefaultDuration;
+            var multiplier = (Context?.Animations?.AnimationDurationMultiplier ?? 1f);
+            var _duration = (duration ?? animation.DefaultDuration) * multiplier;
             ActiveAnimationEndWhen = _now + (long)((double)_duration * Time.SecondInTicks);
             ActiveAnimation = animation;
             animation.Start(this, _now, _duration);

@@ -26,6 +26,11 @@ namespace Squared.PRGUI.Controls {
 
         private Future<object> NextResultFuture = null;
 
+        public ModalDialog ()
+            : base () {
+            Appearance.Opacity = 0f;
+        }
+
         public static Future<object> ShowNew (UIContext context) {
             var modal = new ModalDialog {
             };
@@ -47,7 +52,11 @@ namespace Squared.PRGUI.Controls {
             if (IsActive)
                 return NextResultFuture;
             var f = NextResultFuture = new Future<object>();
-            PlayAnimation(context.Animations?.ShowModalDialog);
+            var fadeIn = context.Animations?.ShowModalDialog;
+            if (fadeIn != null)
+                PlayAnimation(fadeIn);
+            else
+                Appearance.Opacity = 1f;
             GenerateDynamicContent(true);
             _FocusDonor = focusDonor ?? context.TopLevelFocused;
             context.ShowModal(this);

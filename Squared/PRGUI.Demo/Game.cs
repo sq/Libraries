@@ -160,7 +160,7 @@ namespace PRGUI.Demo {
                 DefaultFont = Font,
                 TitleFont = TitleFont,
                 TooltipFont = tooltipFont,
-                AcceleratorFont = TitleFont
+                AcceleratorFont = TitleFont                
             };
 
             Context = new UIContext(Materials, Decorations) {
@@ -460,16 +460,20 @@ namespace PRGUI.Demo {
             };
 
             var largeText = new Checkbox {
-                Text = "Large Text",
+                Text = "Big Text",
                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_ForceBreak,
             };
 
+            var fastAnimations = new Checkbox {
+                Text = "Fast Fades"
+            };
+
             var readAloud = new Checkbox {
-                Text = "Read Aloud",
+                Text = "Narrate",
             };
 
             var readingSpeed = new Slider {
-                TooltipContent = "Reading Speed",
+                TooltipContent = "Speed",
                 Minimum = -2,
                 Maximum = 5,
                 Value = 0,
@@ -498,6 +502,7 @@ namespace PRGUI.Demo {
                     },
                     changePaintOrder,
                     largeText,
+                    fastAnimations,
                     readAloud,
                     readingSpeed,
                     new Spacer (),
@@ -575,6 +580,10 @@ namespace PRGUI.Demo {
                     largeText.Checked ? 1.045f : 1.0f
                 );
                 SetFontScale(largeText.Checked ? 1.75f : 1.1f);
+            });
+
+            Context.EventBus.Subscribe(fastAnimations, UIEvents.CheckedChanged, (ei) => {
+                Decorations.AnimationDurationMultiplier = fastAnimations.Checked ? 0.25f : 1f;
             });
 
             Context.EventBus.Subscribe(readAloud, UIEvents.CheckedChanged, (ei) => {
@@ -684,7 +693,7 @@ namespace PRGUI.Demo {
                     BackgroundColor = new Color(70, 86, 90),
                     Transform = Tween<Matrix>.StartNow(
                         Matrix.CreateScale(0f),
-                        Matrix.Identity, seconds: 0.1f, now: Context.NowL
+                        Matrix.Identity, seconds: 0.15f * Decorations.AnimationDurationMultiplier, now: Context.NowL
                     )
                 },
                 DynamicContents = BuildLoginWindow,

@@ -49,6 +49,8 @@ namespace Squared.PRGUI {
         public IDecorator Gauge { get; set; }
         public IDecorator VirtualCursor { get; set; }
 
+        public float AnimationDurationMultiplier { get; set; }
+
         public IControlAnimation ShowModalDialog { get; set; }
         public IControlAnimation HideModalDialog { get; set; }
         public IControlAnimation ShowMenu { get; set; }
@@ -72,6 +74,7 @@ namespace Squared.PRGUI {
             GlobalDefaultMargin = defaultMargin;
             GlobalDefaultMarginCollapsed = defaultMarginCollapsed;
 
+            AnimationDurationMultiplier = 1f;
             SizeScaleRatio = Vector2.One;
             SpacingScaleRatio = Vector2.One;
 

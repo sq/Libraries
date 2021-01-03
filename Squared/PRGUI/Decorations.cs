@@ -80,6 +80,8 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public interface IAnimationProvider {
+        float AnimationDurationMultiplier { get; }
+
         IControlAnimation ShowModalDialog { get; }
         IControlAnimation HideModalDialog { get; }
         IControlAnimation ShowMenu { get; }
