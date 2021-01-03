@@ -678,14 +678,19 @@ namespace PRGUI.Demo {
         }
 
         private void ShowLoginWindow () {
-            var fUsername = (new ModalDialog {
+            var dialog = new ModalDialog {
                 Title = "Login",
                 Appearance = {
                     BackgroundColor = new Color(70, 86, 90),
+                    Transform = Tween<Matrix>.StartNow(
+                        Matrix.CreateScale(0f),
+                        Matrix.Identity, seconds: 0.1f, now: Context.NowL
+                    )
                 },
                 DynamicContents = BuildLoginWindow,
-                ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap | ControlFlags.Container_Row
-            }).Show(Context, LoginButton);
+                ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap | ControlFlags.Container_Row,
+            };
+            var fUsername = (dialog).Show(Context, LoginButton);
             LoginButton.Appearance.Overlay = true;
             fUsername.RegisterOnComplete((f) => {
                 LoginButton.Appearance.Overlay = false;
@@ -948,9 +953,9 @@ namespace PRGUI.Demo {
         public void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall) {
             var opacity = drawCall.MultiplyColor.A / 255.0f;
             if ((opacity >= 1) && (control.Context.TopLevelFocused == control))
-                renderer.Draw(ref drawCall, blendState: BlendState.AlphaBlend);
+                renderer.Draw(ref drawCall, blendState: BlendState.NonPremultiplied);
             else
-                renderer.Draw(ref drawCall, material: Material);
+                renderer.Draw(ref drawCall, material: Material, blendState: BlendState.NonPremultiplied);
         }
 
         public bool WillComposite (Control control, float opacity) {

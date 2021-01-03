@@ -12,7 +12,7 @@ using Squared.Util;
 namespace Squared.PRGUI.Controls {
     public class ModalDialog : Window, IModal, IAcceleratorSource {
         public const float ModalShowSpeed = 0.1f;
-        public const float ModalHideSpeed = 0.25f;
+        public const float ModalHideSpeed = 0.2f;
 
         protected Control _FocusDonor;
         public Control FocusDonor => _FocusDonor;

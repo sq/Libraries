@@ -356,7 +356,7 @@ namespace Squared.PRGUI {
         }
 
         internal Vector2 ApplyLocalTransformToGlobalPosition (LayoutContext context, Vector2 globalPosition, ref RectF box, bool force) {
-            if (!Appearance.HasTransformMatrix || !Appearance.HasInverseTransformMatrix)
+            if (!Appearance.HasTransformMatrix)
                 return globalPosition;
 
             var localPosition = globalPosition - box.Center;
@@ -753,7 +753,7 @@ namespace Squared.PRGUI {
                 // FIXME
                 rt.Instance.Get(), pos,
                 GameExtensionMethods.BoundsFromRectangle((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y, ref sourceRect),
-                Color.White * opacity, scale: 1.0f / Context.ScratchScaleFactor
+                new Color(1f, 1f, 1f, opacity), scale: 1.0f / Context.ScratchScaleFactor
             );
 
             if (Appearance.HasTransformMatrix || enableCompositor) {
@@ -768,11 +768,11 @@ namespace Squared.PRGUI {
                 if (enableCompositor)
                     Appearance.Compositor.Composite(this, ref subgroup, ref dc);
                 else
-                    subgroup.Draw(ref dc, blendState: BlendState.AlphaBlend);
+                    subgroup.Draw(ref dc, blendState: BlendState.NonPremultiplied);
             } else if (Appearance.Overlay) {
                 passSet.OverlayQueue.Add(ref dc);
             } else {
-                passSet.Above.Draw(ref dc, blendState: BlendState.AlphaBlend);
+                passSet.Above.Draw(ref dc, blendState: BlendState.NonPremultiplied);
                 passSet.Above.Layer += 1;
             }
         }
@@ -905,7 +905,6 @@ namespace Squared.PRGUI {
 
         internal bool HasOpacity { get; private set; }
         internal bool HasTransformMatrix { get; private set; }
-        internal bool HasInverseTransformMatrix { get; private set; }
 
         internal bool _DoNotAutoScaleMetrics;
 
@@ -932,24 +931,18 @@ namespace Squared.PRGUI {
                 result = centering * placement;
         }
 
-        internal Tween<Matrix> _TransformMatrix, _InverseTransformMatrix;
+        internal Tween<Matrix> _TransformMatrix;
 
         public Tween<Matrix>? Transform {
             set {
                 if (value == null) {
-                    _TransformMatrix = _InverseTransformMatrix = Matrix.Identity;
-                    HasInverseTransformMatrix = HasTransformMatrix = false;
+                    _TransformMatrix = Matrix.Identity;
+                    HasTransformMatrix = false;
                     return;
                 }
 
                 HasTransformMatrix = true;
                 _TransformMatrix = value.Value;
-                var a = Matrix.Invert(_TransformMatrix.From);
-                var b = Matrix.Invert(_TransformMatrix.To);
-
-                float det1 = a.Determinant(), det2 = b.Determinant();
-                HasInverseTransformMatrix = !float.IsNaN(det1) && !float.IsInfinity(det1) &&
-                    !float.IsNaN(det2) && !float.IsInfinity(det2);
             }
         }
 
@@ -964,14 +957,15 @@ namespace Squared.PRGUI {
         }
 
         public bool GetInverseTransform (out Matrix matrix, long now) {
-            if (!HasInverseTransformMatrix) {
+            if (!HasTransformMatrix) {
                 matrix = default(Matrix);
                 return false;
             }
 
             var temp = _TransformMatrix.Get(now);
             Matrix.Invert(ref temp, out matrix);
-            return true;
+            var det = matrix.Determinant();
+            return !float.IsNaN(det) && !float.IsInfinity(det);
         }
     }
 }
