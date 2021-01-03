@@ -474,8 +474,8 @@ namespace PRGUI.Demo {
 
             var readingSpeed = new Slider {
                 TooltipContent = "Speed",
-                Minimum = -2,
-                Maximum = 5,
+                Minimum = 0,
+                Maximum = 7,
                 Value = 0,
                 Integral = true,
                 Width = { Maximum = 150 },
@@ -609,7 +609,7 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
                 FloatingWindow.Intangible = true;
-                FloatingWindow.Appearance.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.NowL);
+                FloatingWindow.Appearance.Opacity = Tween.StartNow(1f, 0f, seconds: 1, now: Context.NowL);
             });
 
             Context.EventBus.Subscribe(increaseGaugeButton, UIEvents.Click, (ei) => {
@@ -627,10 +627,10 @@ namespace PRGUI.Demo {
                     sz, new Vector2(0, 0), new Vector2(sz.X - o, 0), new Vector2(0, sz.Y), sz, out Matrix temp
                 );
 
-                FloatingWindow.Appearance.Transform = 
-                    Tween<Matrix>.StartNow(
-                        Matrix.Identity, temp, 
-                        seconds: 5f, now: Context.NowL, 
+                FloatingWindow.Appearance.Transform =
+                    Tween.StartNow(
+                        Matrix.Identity, temp,
+                        seconds: 5f, now: Context.NowL,
                         repeatCount: 1, repeatMode: TweenRepeatMode.PulseSine
                     );
             });
@@ -648,7 +648,7 @@ namespace PRGUI.Demo {
                 var f = Scheduler.Start(new Sleep(1f));
 
                 f.RegisterOnComplete((_) => {
-                    FloatingWindow.Appearance.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, delay: 1f, now: Context.NowL);
+                    FloatingWindow.Appearance.Opacity = Tween.StartNow(0f, 1f, seconds: 0.25f, delay: 1f, now: Context.NowL);
                     FloatingWindow.Intangible = false;
                     Context.Controls.Add(FloatingWindow);
                 });
@@ -691,8 +691,7 @@ namespace PRGUI.Demo {
                 Title = "Login",
                 Appearance = {
                     BackgroundColor = new Color(70, 86, 90),
-                    TransformOrigin = Vector2.One,
-                    Transform = Tween<Matrix>.StartNow(
+                    Transform = Tween.StartNow(
                         Matrix.CreateScale(0f),
                         Matrix.Identity, seconds: 0.15f * Decorations.AnimationDurationMultiplier, now: Context.NowL
                     )

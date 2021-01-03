@@ -1042,6 +1042,7 @@ namespace Squared.PRGUI {
         ///  moved into its normal position afterwards.
         /// </summary>
         public Tween<Matrix>? Transform {
+            get => _TransformMatrix;
             set {
                 if (
                     (value == null) ||

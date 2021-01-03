@@ -190,6 +190,23 @@ namespace Squared.Util {
             return unclamped >= (1f + RepeatCount);
         }
 
+        public Tween<T> ChangeDirection (T to, long now, float? seconds = null) {
+            if (RepeatCount > 0)
+                throw new InvalidOperationException("Changing direction is not possible for a repeating tween");
+
+            var endWhen = 
+                seconds.HasValue
+                    ? now + (seconds.Value * Time.SecondInTicks)
+                    : EndWhen;
+            return new Tween<T>(
+                Get(now), to, 
+                startWhen: now, endWhen: EndWhen,
+                interpolator: Interpolator,
+                repeatCount: 0,
+                repeatMode: RepeatMode
+            );
+        }
+
         public Tween<U> CloneWithNewValues<U> (U from, U to, BoundInterpolator<U, Tween<U>> interpolator = null)
             where U : struct {
 

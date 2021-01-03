@@ -228,6 +228,15 @@ namespace Squared.PRGUI.Accessibility {
                 (CurrentlyReading?.AcceptsFocus == false)
             )
                 BeginReading(target);
+            // HACK: The user might want narration for a control that transfers focus to a beneficiary
+            //  and the default behavior will be to simply read whatever it transferred focus to.
+            // However if focus has already been transferred there is nothing to read so we might as well
+            //  read the thing they just clicked on instead.
+            else if (
+                (target.FocusBeneficiary == Context.Focused) &&
+                Context.ReadAloudOnClickIfNotFocusable
+            )
+                SpeakControl(target);
         }
     }
 }
