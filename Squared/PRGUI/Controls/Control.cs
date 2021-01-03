@@ -24,9 +24,21 @@ namespace Squared.PRGUI {
         ///  be returned when this control goes away. Used for menus and modal dialogs
         /// </summary>
         Control FocusDonor { get; }
+        /// <summary>
+        /// While this modal is active, any tests that would normally hit a control below it will hit nothing.
+        /// </summary>
         bool BlockHitTests { get; }
+        /// <summary>
+        /// While this modal is active, controls below it cannot receive input.
+        /// </summary>
         bool BlockInput { get; }
+        /// <summary>
+        /// Focus will not be allowed to leave this modal while it is active.
+        /// </summary>
         bool RetainFocus { get; }
+        /// <summary>
+        /// While this modal is active, any controls beneath it will fade out.
+        /// </summary>
         bool FadeBackground { get; }
         void Show (UIContext context);
         void Close ();
@@ -35,16 +47,35 @@ namespace Squared.PRGUI {
     }
 
     public interface IControlCompositor {
+        /// <summary>
+        /// Decides whether the control needs to be composited given its current state at the specified opacity.
+        /// </summary>
         bool WillComposite (Control control, float opacity);
-        void BeforeComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall);
+        /// <summary>
+        /// Invoked immediately before the compositor draw operation is issued to the GPU. This is the appropriate
+        ///  time to update material uniforms for the composite operation.
+        /// </summary>
+        void BeforeIssueComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall);
+        /// <summary>
+        /// Composites the control into the scene using the provided renderer and draw call data.
+        /// </summary>
         void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall);
-        void AfterComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall);
+        /// <summary>
+        /// Invoked immediately after the compositor draw operation is issued to the GPU.
+        /// If you made any state changes in BeforeIssueComposite, you should undo them here.
+        /// </summary>
+        void AfterIssueComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall);
     }
 
     public interface IControlContainer {
         bool ClipChildren { get; set; }
         ControlFlags ContainerFlags { get; set; }
         ControlCollection Children { get; }
+        /// <summary>
+        /// Invoked to notify a container that one of its descendants (either a direct child or
+        ///  indirect child) has received focus either as a result of user input or some other
+        ///  automatic state change.
+        /// </summary>
         void DescendantReceivedFocus (Control descendant, bool isUserInitiated);
     }
 
@@ -137,9 +168,9 @@ namespace Squared.PRGUI {
         /// </summary>
         public virtual bool AcceptsMouseInput { get; protected set; }
         /// <summary>
-        /// Controls whether textual input (IME composition, etc) should be enabled
-        ///  while this control is focused. You will still get key events even if this
-        ///  is false, so things like arrow key navigation will work.
+        /// Controls whether textual input (IME composition, on-screen keyboard, etc) should 
+        ///  be enabled while this control is focused. You will still get key events even if 
+        ///  this is false, so things like arrow key navigation will work.
         /// </summary>
         public virtual bool AcceptsTextInput { get; protected set; }
         /// <summary>
@@ -150,8 +181,8 @@ namespace Squared.PRGUI {
         private Control _FocusBeneficiary;
 
         /// <summary>
-        /// This control cannot receive focus, but input events that would give it focus will
-        ///  direct focus to its beneficiary instead of being ignored
+        /// Any input events that would deliver focus to this control will instead deliver focus
+        ///  to its beneficiary, if set
         /// </summary>
         public Control FocusBeneficiary {
             get => _FocusBeneficiary;
@@ -172,11 +203,14 @@ namespace Squared.PRGUI {
         internal bool IsValidMouseInputTarget =>
             AcceptsMouseInput && Visible && !Intangible && Enabled;
 
-        // HACK
-        const int CompositePadding = 16;
-
+        /// <summary>
+        /// Shifts the control forward or backward in the natural tab order. Lower orders come first.
+        /// </summary>
         public int TabOrder { get; set; } = 0;
-        public int PaintOrder { get; set; } = 0;
+        /// <summary>
+        /// Shifts the control forward or backward in the natural painting and hit test orders. Lower orders come first.
+        /// </summary>
+        public int DisplayOrder { get; set; } = 0;
 
         public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
         internal int TooltipContentVersion = 0;
@@ -713,7 +747,7 @@ namespace Squared.PRGUI {
                 RasterizeAllPasses(ref context, ref box, ref passSet, false);
             } else {
                 // HACK: Create padding around the element for drop shadows
-                box.SnapAndInset(out Vector2 tl, out Vector2 br, -CompositePadding);
+                box.SnapAndInset(out Vector2 tl, out Vector2 br, -Context.CompositorPaddingPx);
                 // Don't overflow the edges of the canvas with padding, it'd produce garbage pixels
                 tl.X = Math.Max(tl.X, 0);
                 tl.Y = Math.Max(tl.Y, 0);
@@ -735,26 +769,26 @@ namespace Squared.PRGUI {
         }
 
         private static readonly Func<ViewTransform, object, ViewTransform> ApplyLocalTransformMatrix = _ApplyLocalTransformMatrix;
-        private static readonly Action<DeviceManager, object> BeforeComposite = _BeforeComposite,
-            AfterComposite = _AfterComposite;
+        private static readonly Action<DeviceManager, object> BeforeComposite = _BeforeIssueComposite,
+            AfterComposite = _AfterIssueComposite;
         // HACK
         private RectF MostRecentCompositeBox;
         private BitmapDrawCall MostRecentCompositeDrawCall;
 
-        private static void _BeforeComposite (DeviceManager dm, object _control) {
+        private static void _BeforeIssueComposite (DeviceManager dm, object _control) {
             var control = (Control)_control;
-            control.Appearance.Compositor?.BeforeComposite(control, dm, ref control.MostRecentCompositeDrawCall);
+            control.Appearance.Compositor?.BeforeIssueComposite(control, dm, ref control.MostRecentCompositeDrawCall);
         }
 
-        private static void _AfterComposite (DeviceManager dm, object _control) {
+        private static void _AfterIssueComposite (DeviceManager dm, object _control) {
             var control = (Control)_control;
-            control.Appearance.Compositor?.AfterComposite(control, dm, ref control.MostRecentCompositeDrawCall);
+            control.Appearance.Compositor?.AfterIssueComposite(control, dm, ref control.MostRecentCompositeDrawCall);
         }
 
         private static ViewTransform _ApplyLocalTransformMatrix (ViewTransform vt, object _control) {
             var control = (Control)_control;
-            control.Appearance.ComputeCenteredTransformMatrix(
-                control.MostRecentCompositeBox.Size * -0.5f, control.MostRecentCompositeBox.Center, control.Context.NowL, out Matrix transform
+            control.Appearance.GetFinalTransformMatrix(
+                control.MostRecentCompositeBox, control.Context.NowL, out Matrix transform
             );
             vt.ModelView *= transform;
             return vt;
@@ -923,6 +957,10 @@ namespace Squared.PRGUI {
     }
     
     public struct ControlAppearance {
+        /// <summary>
+        /// Responsible for deciding whether a control needs to be composited and performing the final
+        ///  step of compositing the rendered control from its scratch texture into the scene.
+        /// </summary>
         public IControlCompositor Compositor;
         public IDecorator Decorator, TextDecorator;
         public IGlyphSource Font;
@@ -931,21 +969,44 @@ namespace Squared.PRGUI {
         public BackgroundImageSettings BackgroundImage;
         /// <summary>
         /// Suppresses clipping of the control and causes it to be rendered above everything
-        ///  up to the next modal
+        ///  up until the next modal. You can use this to highlight the control responsible for
+        ///  summoning a modal.
         /// </summary>
         public bool Overlay;
 
         internal bool HasOpacity { get; private set; }
-        internal bool HasTransformMatrix { get; private set; }
 
-        internal bool _DoNotAutoScaleMetrics;
+        /// <summary>
+        /// If set, the control has a non-identity transform matrix (which may be animated).
+        /// </summary>
+        public bool HasTransformMatrix { get; private set; }
 
+        private bool _DoNotAutoScaleMetrics;
+        private Vector2 _TransformOriginMinusOneHalf;
+
+        /// <summary>
+        /// Sets the alignment of the transform matrix to allow rotating or scaling the control
+        ///  relative to one of its corners instead of the default, its center (0.5)
+        /// </summary>
+        public Vector2 TransformOrigin {
+            get => _TransformOriginMinusOneHalf + new Vector2(0.5f);
+            set => _TransformOriginMinusOneHalf = value - new Vector2(0.5f);
+        }
+
+        /// <summary>
+        /// If set, the control's fixed size and size constraints will be affected by the
+        ///  context's global decoration size scale ratio.
+        /// </summary>
         public bool AutoScaleMetrics {
             get => !_DoNotAutoScaleMetrics;
             set => _DoNotAutoScaleMetrics = !value;
         }
 
         internal Tween<float> _Opacity;
+        /// <summary>
+        /// Adjusts the opacity of the control [0.0 - 1.0]. Any control configured to be
+        ///  semiopaque will automatically become composited.
+        /// </summary>
         public Tween<float> Opacity {
             get => HasOpacity ? _Opacity : 1f;
             set {
@@ -954,20 +1015,31 @@ namespace Squared.PRGUI {
             }
         }
 
-        public void ComputeCenteredTransformMatrix (Vector2 origin, Vector2 finalPosition, long now, out Matrix result) {
+        public void GetFinalTransformMatrix (RectF sourceRect, long now, out Matrix result) {
+            var origin = sourceRect.Size * -TransformOrigin;
+            var finalPosition = sourceRect.Position + (sourceRect.Size * TransformOrigin);
             Matrix.CreateTranslation(origin.X, origin.Y, 0, out Matrix centering);
             Matrix.CreateTranslation(finalPosition.X, finalPosition.Y, 0, out Matrix placement);
             if (GetTransform(out Matrix xform, now))
                 result = centering * xform * placement;
             else
-                result = centering * placement;
+                result = Matrix.Identity;
         }
 
         internal Tween<Matrix> _TransformMatrix;
 
+        /// <summary>
+        /// Applies a custom transformation matrix to the control. Any control with a transform matrix
+        ///  will automatically become composited. The matrix is applied once the control has been aligned
+        ///  around the transform origin (the center of the control, by default) and then the control is
+        ///  moved into its normal position afterwards.
+        /// </summary>
         public Tween<Matrix>? Transform {
             set {
-                if (value == null) {
+                if (
+                    (value == null) ||
+                    ((value.Value.From == Matrix.Identity) && (value.Value.To == Matrix.Identity))
+                ) {
                     _TransformMatrix = Matrix.Identity;
                     HasTransformMatrix = false;
                     return;

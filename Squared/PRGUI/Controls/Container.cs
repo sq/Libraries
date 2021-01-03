@@ -270,7 +270,7 @@ namespace Squared.PRGUI.Controls {
             int layer1, int layer2, int layer3, 
             ref int maxLayer1, ref int maxLayer2, ref int maxLayer3
         ) {
-            var sequence = Children.InPaintOrder(Context.FrameIndex);
+            var sequence = Children.InDisplayOrder(Context.FrameIndex);
             foreach (var item in sequence)
                 RasterizeChild(ref context, item, ref passSet, layer1, layer2, layer3, ref maxLayer1, ref maxLayer2, ref maxLayer3);
         }
@@ -447,7 +447,7 @@ namespace Squared.PRGUI.Controls {
 
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
-            var sorted = Children.InPaintOrder(Context.FrameIndex);
+            var sorted = Children.InDisplayOrder(Context.FrameIndex);
             for (int i = sorted.Count - 1; i >= 0; i--) {
                 var item = sorted[i];
                 var newResult = item.HitTest(context, position, acceptsMouseInputOnly, acceptsFocusOnly);

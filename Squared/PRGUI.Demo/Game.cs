@@ -299,7 +299,7 @@ namespace PRGUI.Demo {
                     Compositor = new WindowCompositor(Materials)
                 },
                 Title = "Floating Panel",
-                PaintOrder = 1,
+                DisplayOrder = 1,
                 Collapsible = true,
             });
 
@@ -604,7 +604,7 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(changePaintOrder, UIEvents.Click, (ei) => {
-                FloatingWindow.PaintOrder = -FloatingWindow.PaintOrder;
+                FloatingWindow.DisplayOrder = -FloatingWindow.DisplayOrder;
             });
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
@@ -691,6 +691,7 @@ namespace PRGUI.Demo {
                 Title = "Login",
                 Appearance = {
                     BackgroundColor = new Color(70, 86, 90),
+                    TransformOrigin = Vector2.One,
                     Transform = Tween<Matrix>.StartNow(
                         Matrix.CreateScale(0f),
                         Matrix.Identity, seconds: 0.15f * Decorations.AnimationDurationMultiplier, now: Context.NowL
@@ -950,10 +951,10 @@ namespace PRGUI.Demo {
             Material = Materials.Get(Materials.WorldSpaceRadialGaussianBlur, blendState: BlendState.AlphaBlend);
         }
 
-        public void AfterComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall) {
+        public void AfterIssueComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall) {
         }
 
-        public void BeforeComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall) {
+        public void BeforeIssueComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall) {
             var opacity = drawCall.MultiplyColor.A / 255.0f;
             var sigma = Arithmetic.Lerp(0f, 4f, 1.0f - opacity) + 1 + ((control.Context.TopLevelFocused != control) ? 1 : 0);
             Materials.SetGaussianBlurParameters(Material, sigma, 7, 0);

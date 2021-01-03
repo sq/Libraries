@@ -184,7 +184,7 @@ namespace Squared.PRGUI {
             return TabOrderedItemsResult;
         }
 
-        internal List<Control> InPaintOrder (int frameIndex) {
+        internal List<Control> InDisplayOrder (int frameIndex) {
             if (PrepareToUpdateSortedList(ref PaintOrderLastValidFrame, frameIndex, PaintOrderedItems)) {
                 foreach (var item in Items)
                     PaintOrderedItems.Add(item);
@@ -222,7 +222,7 @@ namespace Squared.PRGUI {
         public static readonly PaintOrderComparer Instance = new PaintOrderComparer();
 
         public int Compare (Control x, Control y) {
-            var result = x.PaintOrder.CompareTo(y.PaintOrder);
+            var result = x.DisplayOrder.CompareTo(y.DisplayOrder);
             if (result == 0) {
                 result = x.TypeID.CompareTo(y.TypeID);
             }

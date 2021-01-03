@@ -109,6 +109,12 @@ namespace Squared.PRGUI {
             Keys.Insert
         };
 
+        /// <summary>
+        /// Reserves empty space around composited controls on all sides to create room for drop shadows and
+        ///  any other decorations that may extend outside the control's rectangle.
+        /// </summary>
+        public int CompositorPaddingPx = 16;
+
         public float BackgroundFadeOpacity = 0.2f;
         public float BackgroundFadeDuration = 0.2f;
 
@@ -497,7 +503,7 @@ namespace Squared.PRGUI {
         private Controls.StaticText GetCompositionPreviewInstance () {
             if (CachedCompositionPreview == null) {
                 CachedCompositionPreview = new Controls.StaticText {
-                    PaintOrder = 9999,
+                    DisplayOrder = 9999,
                     Wrap = false,
                     Multiline = false,
                     Intangible = true,
@@ -699,7 +705,7 @@ namespace Squared.PRGUI {
             if (ModalStack.Contains(modal))
                 throw new InvalidOperationException("Modal already visible");
             var ctl = (Control)modal;
-            ctl.PaintOrder = Controls.Max(c => c.PaintOrder) + 1;
+            ctl.DisplayOrder = Controls.Max(c => c.DisplayOrder) + 1;
             Controls.Add(ctl);
             NotifyModalShown(modal);
         }
@@ -1165,7 +1171,7 @@ namespace Squared.PRGUI {
                 if (m.BlockHitTests)
                     areHitTestsBlocked = true;
 
-            var sorted = Controls.InPaintOrder(FrameIndex);
+            var sorted = Controls.InDisplayOrder(FrameIndex);
             for (var i = sorted.Count - 1; i >= 0; i--) {
                 var control = sorted[i];
                 if (areHitTestsBlocked && !ModalStack.Contains(control as IModal))
@@ -1247,7 +1253,7 @@ namespace Squared.PRGUI {
                 srt.Reset();
             }
 
-            var seq = Controls.InPaintOrder(FrameIndex);
+            var seq = Controls.InDisplayOrder(FrameIndex);
 
             var activeModal = ActiveModal;
             int fadeBackgroundAtIndex = -1;

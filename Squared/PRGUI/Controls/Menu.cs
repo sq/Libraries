@@ -110,7 +110,7 @@ namespace Squared.PRGUI.Controls {
             AcceptsFocus = true;
             ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start;
             LayoutFlags = ControlFlags.Layout_Floating;
-            PaintOrder = 9900;
+            DisplayOrder = 9900;
             ClipChildren = true;
             ShowHorizontalScrollbar = false;
             base.TooltipContent = SelectedItemTooltip;
@@ -433,7 +433,7 @@ namespace Squared.PRGUI.Controls {
             IsActive = true;
 
             AcceptsFocus = true;
-            PaintOrder = context.Controls.Max(c => c.PaintOrder) + 1;
+            DisplayOrder = context.Controls.Max(c => c.DisplayOrder) + 1;
             if (!context.Controls.Contains(this))
                 context.Controls.Add(this);
 
