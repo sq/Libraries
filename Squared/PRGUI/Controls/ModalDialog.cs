@@ -5,7 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Accessibility;
+using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.Render.Convenience;
 using Squared.Threading;
 using Squared.Util;
 
@@ -23,6 +25,7 @@ namespace Squared.PRGUI.Controls {
         bool IModal.RetainFocus => true;
 
         public bool IsActive { get; private set; }
+        private bool IsFadingOut;
 
         private Future<object> NextResultFuture = null;
 
@@ -47,6 +50,7 @@ namespace Squared.PRGUI.Controls {
             InvalidateLayout();
             // Force realignment
             ScreenAlignment = ScreenAlignment;
+            IsFadingOut = false;
             Visible = true;
             Intangible = false;
             if (IsActive)
@@ -81,10 +85,20 @@ namespace Squared.PRGUI.Controls {
             IsActive = false;
             NextResultFuture?.SetResult(result, null);
             Intangible = true;
+            IsFadingOut = (Context.TopLevelFocused == this);
             PlayAnimation(Context.Animations?.HideModalDialog);
             Context.NotifyModalClosed(this);
             AcceptsFocus = false;
             _FocusDonor = null;
+        }
+
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            // HACK: Normally closing the modal will cause it to lose focus, which creates a 
+            //  distracting title bar flicker. We want to suppress that during the close animation
+            if (IsFadingOut)
+                settings.State |= ControlStates.ContainsFocus;
+
+            base.OnRasterize(context, ref renderer, settings, decorations);
         }
 
         bool IModal.OnUnhandledEvent (string name, Util.Event.IEventInfo args) {
