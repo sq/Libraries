@@ -216,7 +216,12 @@ namespace Squared.PRGUI {
             var _duration = (duration ?? animation.DefaultDuration) * multiplier;
             ActiveAnimationEndWhen = _now + (long)((double)_duration * Time.SecondInTicks);
             ActiveAnimation = animation;
-            animation.Start(this, _now, _duration);
+            // If the duration is zero end the animation immediately and bias the current time forward
+            //  to ensure that the endpoint (end of fade, etc) is applied. Likewise make sure the duration
+            //  is never zero since that could produce divide-by-zero effects
+            animation.Start(this, _now, Math.Max(_duration, 1f / 1000f));
+            if (_duration <= 0)
+                UpdateAnimation(_now + Time.MillisecondInTicks);
         }
 
         protected void InvalidateTooltip () {
