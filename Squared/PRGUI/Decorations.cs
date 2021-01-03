@@ -56,6 +56,12 @@ namespace Squared.PRGUI.Decorations {
         }
     }
 
+    public interface IControlAnimation {
+        float DefaultDuration { get; }
+        void Start (Control control, long now, float duration);
+        void End (Control control, bool cancelled);
+    }
+
     public interface IMetricsProvider {
         Margins Margins { get; }
         Margins Padding { get; }
@@ -71,6 +77,13 @@ namespace Squared.PRGUI.Decorations {
 
     public interface IDecorator : IMetricsProvider {
         void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
+    }
+
+    public interface IAnimationProvider {
+        IControlAnimation ShowModalDialog { get; }
+        IControlAnimation HideModalDialog { get; }
+        IControlAnimation ShowMenu { get; }
+        IControlAnimation HideMenu { get; }
     }
 
     public interface IDecorationProvider {

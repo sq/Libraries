@@ -189,8 +189,33 @@ namespace Squared.PRGUI {
 
         private RectF LastParentRect;
 
+        protected IControlAnimation ActiveAnimation { get; private set; }
+        protected long ActiveAnimationEndWhen;
+
         public Control () {
             TypeID = GetType().GetHashCode();
+        }
+
+        private void UpdateAnimation (long now) {
+            if (ActiveAnimation == null)
+                return;
+            if (now < ActiveAnimationEndWhen)
+                return;
+            ActiveAnimation.End(this, false);
+            ActiveAnimation = null;
+        }
+
+        public void PlayAnimation (IControlAnimation animation, float? duration = null, long? now = null) {
+            var _now = now ?? Context.NowL;
+            UpdateAnimation(_now);
+            ActiveAnimation?.End(this, true);
+            ActiveAnimation = null;
+            if (animation == null)
+                return;
+            var _duration = duration ?? animation.DefaultDuration;
+            ActiveAnimationEndWhen = _now + (long)((double)_duration * Time.SecondInTicks);
+            ActiveAnimation = animation;
+            animation.Start(this, _now, _duration);
         }
 
         protected void InvalidateTooltip () {
@@ -518,6 +543,7 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            UpdateAnimation(context.NowL);
             decorations?.Rasterize(context, ref renderer, settings);
         }
 

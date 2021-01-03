@@ -26,9 +26,6 @@ namespace Squared.PRGUI.Controls {
 
         public const float AutoscrollMarginSize = 24f;
 
-        public const float MenuShowSpeed = 0.1f;
-        public const float MenuHideSpeed = 0.25f;
-
         Vector2 MousePositionWhenShown;
         bool? MouseInsideWhenShown;
 
@@ -107,6 +104,7 @@ namespace Squared.PRGUI.Controls {
 
         public Menu ()
             : base () {
+            Appearance.Opacity = 0f;
             Visible = false;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
@@ -424,8 +422,13 @@ namespace Squared.PRGUI.Controls {
             //  we do not want to re-use it for calculations, it might be wrong
             InvalidateLayout();
 
-            if (!IsActive)
-                Appearance.Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: context.NowL);
+            if (!IsActive) {
+                var fadeIn = context.Animations?.ShowMenu;
+                if (fadeIn != null)
+                    PlayAnimation(fadeIn, now: context.NowL);
+                else
+                    Appearance.Opacity = 1f;
+            }
             IsActive = true;
 
             AcceptsFocus = true;
@@ -525,8 +528,7 @@ namespace Squared.PRGUI.Controls {
                 return;
             IsActive = false;
             Intangible = true;
-            var now = Context.NowL;
-            Appearance.Opacity = Tween<float>.StartNow(Appearance.Opacity.Get(now), 0, MenuHideSpeed, now: now);
+            PlayAnimation(Context.Animations?.HideMenu);
             Listener?.Closed(this);
             Context.NotifyModalClosed(this);
             if (NextResultFuture?.Completed == false)

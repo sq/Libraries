@@ -11,9 +11,6 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public class ModalDialog : Window, IModal, IAcceleratorSource {
-        public const float ModalShowSpeed = 0.1f;
-        public const float ModalHideSpeed = 0.2f;
-
         protected Control _FocusDonor;
         public Control FocusDonor => _FocusDonor;
 
@@ -41,7 +38,6 @@ namespace Squared.PRGUI.Controls {
 
         public Future<object> Show (UIContext context, Control focusDonor = null) {
             SetContext(context);
-            var now = context.NowL;
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
             InvalidateLayout();
             // Force realignment
@@ -51,7 +47,7 @@ namespace Squared.PRGUI.Controls {
             if (IsActive)
                 return NextResultFuture;
             var f = NextResultFuture = new Future<object>();
-            Appearance.Opacity = Tween<float>.StartNow(0f, 1f, ModalShowSpeed, now: now);
+            PlayAnimation(context.Animations?.ShowModalDialog);
             GenerateDynamicContent(true);
             _FocusDonor = focusDonor ?? context.TopLevelFocused;
             context.ShowModal(this);
@@ -76,8 +72,7 @@ namespace Squared.PRGUI.Controls {
             IsActive = false;
             NextResultFuture?.SetResult(result, null);
             Intangible = true;
-            var now = Context.NowL;
-            Appearance.Opacity = Tween<float>.StartNow(Appearance.Opacity.Get(now), 0f, ModalHideSpeed, now: now);
+            PlayAnimation(Context.Animations?.HideModalDialog);
             Context.NotifyModalClosed(this);
             AcceptsFocus = false;
             _FocusDonor = null;

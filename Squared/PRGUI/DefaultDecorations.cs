@@ -15,7 +15,7 @@ using Squared.Render.Text;
 using Squared.Util;
 
 namespace Squared.PRGUI {
-    public class DefaultDecorations : IDecorationProvider {
+    public class DefaultDecorations : IDecorationProvider, IAnimationProvider {
         public readonly DefaultMaterialSet Materials;
         public readonly float GlobalDefaultMargin,
             GlobalDefaultMarginCollapsed;
@@ -48,6 +48,11 @@ namespace Squared.PRGUI {
         public IDecorator ParameterGauge { get; set; }
         public IDecorator Gauge { get; set; }
         public IDecorator VirtualCursor { get; set; }
+
+        public IControlAnimation ShowModalDialog { get; set; }
+        public IControlAnimation HideModalDialog { get; set; }
+        public IControlAnimation ShowMenu { get; set; }
+        public IControlAnimation HideMenu { get; set; }
 
         public IMetricsProvider Description { get; set; }
 
@@ -305,6 +310,26 @@ namespace Squared.PRGUI {
                 OnMouseEvent = Scrollbar_OnMouseEvent
             };
 
+            ShowMenu = new FadeAnimation {
+                To = 1f,
+                DefaultDuration = MenuShowDuration
+            };
+
+            HideMenu = new FadeAnimation {
+                To = 0f,
+                DefaultDuration = MenuHideDuration
+            };
+
+            ShowModalDialog = new FadeAnimation {
+                To = 1f,
+                DefaultDuration = ModalDialogShowDuration
+            };
+
+            HideModalDialog = new FadeAnimation {
+                To = 0f,
+                DefaultDuration = ModalDialogHideDuration
+            };
+
             GaugeValueFillColor = SelectionFillColor;
         }
 
@@ -313,6 +338,11 @@ namespace Squared.PRGUI {
             TitleFont,
             TooltipFont,
             AcceleratorFont;
+
+        public const float MenuShowDuration = 0.1f,
+            MenuHideDuration = 0.25f,
+            ModalDialogShowDuration = 0.1f,
+            ModalDialogHideDuration = 0.25f;
 
         public float InteractableCornerRadius = 6f, 
             InertCornerRadius = 3f, 
@@ -1197,6 +1227,22 @@ namespace Squared.PRGUI {
             GetTextSettings(context, state, out material, out font, ref color, selected: true);
             color = SelectedTextColor;
             return true;
+        }
+    }
+
+    public class FadeAnimation : IControlAnimation {
+        public float DefaultDuration { get; set; }
+        public float? From;
+        public float To;
+
+        void IControlAnimation.End (Control control, bool cancelled) {
+        }
+
+        void IControlAnimation.Start (Control control, long now, float duration) {
+            control.Appearance.Opacity = Tween.StartNow(
+                From ?? control.Appearance.Opacity.Get(now), To,
+                seconds: duration, now: now
+            );
         }
     }
 }

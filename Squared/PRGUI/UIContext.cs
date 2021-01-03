@@ -225,6 +225,7 @@ namespace Squared.PRGUI {
         /// Configures the appearance and size of controls
         /// </summary>
         public IDecorationProvider Decorations;
+        public IAnimationProvider Animations;
 
         internal int FrameIndex;
 
@@ -451,11 +452,12 @@ namespace Squared.PRGUI {
             ) {
         }
 
-        public UIContext (DefaultMaterialSet materials, IDecorationProvider decorations, ITimeProvider timeProvider = null) {
+        public UIContext (DefaultMaterialSet materials, IDecorationProvider decorations, IAnimationProvider animations = null, ITimeProvider timeProvider = null) {
             EventBus = new EventBus();
             EventBus.AfterBroadcast += EventBus_AfterBroadcast;
             Controls = new ControlCollection(this);
             Decorations = decorations;
+            Animations = animations ?? (decorations as IAnimationProvider);
             TimeProvider = TimeProvider ?? new DotNetTimeProvider();
             Materials = materials;
             TTS = new Accessibility.TTS(this);
