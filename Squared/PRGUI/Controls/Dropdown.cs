@@ -35,7 +35,7 @@ namespace Squared.PRGUI.Controls {
         }
         public ItemList<T> Items => Manager.Items;
 
-        // private bool NeedsUpdate = true;
+        private bool NeedsUpdate = true;
         private bool MenuJustClosed = false;
 
         public int SelectedIndex => Manager.SelectedIndex;
@@ -45,6 +45,7 @@ namespace Squared.PRGUI.Controls {
                 if (!Manager.TrySetSelectedItem(ref value))
                     return;
                 Invalidate();
+                NeedsUpdate = true;
                 FireEvent(UIEvents.ValueChanged, SelectedItem);
             }
         }
@@ -115,14 +116,15 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            // if (NeedsUpdate)
+            if (NeedsUpdate || !Items.IsValid)
                 Update();
 
             return base.OnGenerateLayoutTree(context, parent, existingKey);
         }
 
         protected void Update () {
-            // NeedsUpdate = false;
+            Items.IsValid = true;
+            NeedsUpdate = false;
             if (Comparer.Equals(SelectedItem, default(T)) && (Items.Count > 0))
                 SelectedItem = Items[0];
 
@@ -231,6 +233,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         void IMenuListener.Closed (Menu menu) {
+            NeedsUpdate = true;
             MenuJustClosed = true;
         }
 

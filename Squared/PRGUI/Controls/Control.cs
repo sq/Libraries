@@ -362,7 +362,9 @@ namespace Squared.PRGUI {
             var localPosition = globalPosition - box.Center;
             // Detect non-invertible transform or other messed up math
 
-            Vector4.Transform(ref localPosition, ref Appearance._InverseTransformMatrix, out Vector4 transformedLocalPosition);
+            Appearance.GetInverseTransform(out Matrix matrix, Context.NowL);
+
+            Vector4.Transform(ref localPosition, ref matrix, out Vector4 transformedLocalPosition);
             var transformedLocal2 = new Vector2(transformedLocalPosition.X / transformedLocalPosition.W, transformedLocalPosition.Y / transformedLocalPosition.W);
             var result = transformedLocal2 + box.Center;
 
@@ -720,7 +722,7 @@ namespace Squared.PRGUI {
         private static ViewTransform _ApplyLocalTransformMatrix (ViewTransform vt, object _control) {
             var control = (Control)_control;
             control.Appearance.ComputeCenteredTransformMatrix(
-                control.MostRecentCompositeBox.Size * -0.5f, control.MostRecentCompositeBox.Center, out Matrix transform
+                control.MostRecentCompositeBox.Size * -0.5f, control.MostRecentCompositeBox.Center, control.Context.NowL, out Matrix transform
             );
             vt.ModelView *= transform;
             return vt;
@@ -921,18 +923,18 @@ namespace Squared.PRGUI {
             }
         }
 
-        public void ComputeCenteredTransformMatrix (Vector2 origin, Vector2 finalPosition, out Matrix result) {
+        public void ComputeCenteredTransformMatrix (Vector2 origin, Vector2 finalPosition, long now, out Matrix result) {
             Matrix.CreateTranslation(origin.X, origin.Y, 0, out Matrix centering);
             Matrix.CreateTranslation(finalPosition.X, finalPosition.Y, 0, out Matrix placement);
-            if (HasTransformMatrix)
-                result = centering * _TransformMatrix * placement;
+            if (GetTransform(out Matrix xform, now))
+                result = centering * xform * placement;
             else
                 result = centering * placement;
         }
 
-        internal Matrix _TransformMatrix, _InverseTransformMatrix;
-        public Matrix? Transform {
-            get => HasTransformMatrix ? _TransformMatrix : (Matrix?)null;
+        internal Tween<Matrix> _TransformMatrix, _InverseTransformMatrix;
+
+        public Tween<Matrix>? Transform {
             set {
                 if (value == null) {
                     _TransformMatrix = _InverseTransformMatrix = Matrix.Identity;
@@ -942,20 +944,34 @@ namespace Squared.PRGUI {
 
                 HasTransformMatrix = true;
                 _TransformMatrix = value.Value;
-                Matrix.Invert(ref _TransformMatrix, out _InverseTransformMatrix);
-                var det = _InverseTransformMatrix.Determinant();
-                HasInverseTransformMatrix = !float.IsNaN(det) && !float.IsInfinity(det);
+                var a = Matrix.Invert(_TransformMatrix.From);
+                var b = Matrix.Invert(_TransformMatrix.To);
+
+                float det1 = a.Determinant(), det2 = b.Determinant();
+                HasInverseTransformMatrix = !float.IsNaN(det1) && !float.IsInfinity(det1) &&
+                    !float.IsNaN(det2) && !float.IsInfinity(det2);
             }
         }
 
-        public Matrix? InverseTransform {
-            get {
-                if (!HasTransformMatrix)
-                    return null;
-                if (!HasInverseTransformMatrix)
-                    return null;
-                return _InverseTransformMatrix;
+        public bool GetTransform (out Matrix matrix, long now) {
+            if (!HasTransformMatrix) {
+                matrix = default(Matrix);
+                return false;
             }
+
+            matrix = _TransformMatrix.Get(now);
+            return true;
+        }
+
+        public bool GetInverseTransform (out Matrix matrix, long now) {
+            if (!HasInverseTransformMatrix) {
+                matrix = default(Matrix);
+                return false;
+            }
+
+            var temp = _TransformMatrix.Get(now);
+            Matrix.Invert(ref temp, out matrix);
+            return true;
         }
     }
 }

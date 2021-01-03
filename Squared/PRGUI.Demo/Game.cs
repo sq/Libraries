@@ -59,8 +59,6 @@ namespace PRGUI.Demo {
 
         public DefaultDecorations Decorations;
 
-        Tween<float> Topple = new Tween<float>(0);
-
         // public ControlKey MasterList, ContentView;
 
         public DemoGame () {
@@ -613,7 +611,19 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(toppleButton, UIEvents.Click, (ei) => {
-                Topple = Tween<float>.StartNow(0f, 2f, 5f, now: Context.NowL, repeatCount: 1, repeatMode: TweenRepeatMode.PulseSine);
+                var wbox = FloatingWindow.GetRect(Context.Layout);
+                var sz = wbox.Size;
+                float o = wbox.Width / 2f;
+                Weird2DTransform(
+                    sz, new Vector2(0, 0), new Vector2(sz.X - o, 0), new Vector2(0, sz.Y), sz, out Matrix temp
+                );
+
+                FloatingWindow.Appearance.Transform = 
+                    Tween<Matrix>.StartNow(
+                        Matrix.Identity, temp, 
+                        seconds: 5f, now: Context.NowL, 
+                        repeatCount: 1, repeatMode: TweenRepeatMode.PulseSine
+                    );
             });
 
             Context.EventBus.Subscribe(LoginButton, UIEvents.Click, (ei) => {
@@ -782,20 +792,6 @@ namespace PRGUI.Demo {
                     UniformBinding.ForceCompatibilityMode = !UniformBinding.ForceCompatibilityMode;
                 }
             }
-
-            float t = Topple.Get(Context.NowL);
-            if (t > 0) {
-                if (t > 1)
-                    t = 1;
-                var wbox = FloatingWindow.GetRect(Context.Layout);
-                var sz = wbox.Size;
-                float o = t * wbox.Width / 2f;
-                Weird2DTransform(
-                    sz, new Vector2(0, 0), new Vector2(sz.X - o, 0), new Vector2(0, sz.Y), sz, out Matrix temp
-                );
-                FloatingWindow.Appearance.Transform = temp;
-            } else
-                FloatingWindow.Appearance.Transform = null;
 
             base.Update(gameTime);
 
