@@ -68,6 +68,7 @@ namespace Squared.PRGUI.Controls {
 
                 _Value = value;
                 InvalidateTooltip();
+                ScrollInputValue = null;
                 FireEvent(UIEvents.ValueChanged);
             }
         }
@@ -374,9 +375,13 @@ namespace Squared.PRGUI.Controls {
         RectF? ISelectionBearer.SelectionRect => _LastThumbBox;
         Control ISelectionBearer.SelectedControl => null;
 
+        float? ScrollInputValue;
         const float ScrollScale = 1000f;
 
-        Vector2 IScrollableControl.ScrollOffset => new Vector2((_Value - _Minimum) / (_Maximum - _Minimum) * ScrollScale, 0f);
+        Vector2 IScrollableControl.ScrollOffset => new Vector2(
+            ScrollInputValue ?? ((_Value - _Minimum) / (_Maximum - _Minimum) * ScrollScale), 
+            0f
+        );
         bool IScrollableControl.Scrollable {
             get => true;
             set {
@@ -390,6 +395,7 @@ namespace Squared.PRGUI.Controls {
         bool IScrollableControl.TrySetScrollOffset (Vector2 value, bool forUser) {
             var newValue = _Minimum + ((value.X / ScrollScale) * (_Maximum - _Minimum));
             Value = newValue;
+            ScrollInputValue = value.X;
             return true;
         }
     }

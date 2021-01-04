@@ -1129,9 +1129,11 @@ namespace Squared.PRGUI {
             );
         }
 
+        // FIXME: Why this offset?
+        static Vector2 WeirdVirtualCursorOffset = new Vector2(0.9f);
+
         private void VirtualCursor_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            // FIXME: Why this offset?
-            var center = settings.Box.Center + new Vector2(0.9f);
+            var center = settings.Box.Center + WeirdVirtualCursorOffset;
             var radius = settings.Box.Size / 2f;
             var showCenter = !settings.State.IsFlagged(ControlStates.Disabled);
             var alpha = settings.State.IsFlagged(ControlStates.Disabled) ? 0.5f : 0.9f;
@@ -1146,10 +1148,13 @@ namespace Squared.PRGUI {
         }
 
         private void VirtualCursorAnchor_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            var unsnapped = settings.Box.Position;
-            var snapped = settings.Box.Extent;
+            if (settings.State.IsFlagged(ControlStates.Disabled))
+                return;
+
+            var unsnapped = settings.Box.Position + WeirdVirtualCursorOffset;
+            var snapped = settings.Box.Extent + WeirdVirtualCursorOffset;
             var distance = (snapped - unsnapped).Length();
-            var alpha = settings.State.IsFlagged(ControlStates.Disabled) ? 0.5f : 0.9f;
+            var alpha = 0.9f;
             var outlineRadius = 1.75f;
 
             if (distance >= 0.5f) {

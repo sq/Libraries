@@ -1319,7 +1319,12 @@ namespace Squared.PRGUI {
                     // When the accelerator overlay is visible, fade out any top-level controls
                     //  that cover the currently focused top-level control so that the user can see
                     //  any controls that might be active
-                    var opacityModifier = (AcceleratorOverlayVisible && (topLevelFocusIndex >= 0))
+                    var fadeForKeyboardFocusVisibility = AcceleratorOverlayVisible ||
+                    // HACK: Also do this if gamepad input is active so that it's easier to tell what's going on
+                    //  when the dpad is used to move focus around
+                        ((InputSources[0] is GamepadVirtualKeyboardAndCursor) && (KeyboardSelection != null));
+
+                    var opacityModifier = (fadeForKeyboardFocusVisibility && (topLevelFocusIndex >= 0))
                         ? (
                             (i == topLevelFocusIndex) || (i < topLevelFocusIndex)
                                 ? 1.0f
@@ -1327,8 +1332,16 @@ namespace Squared.PRGUI {
                                 //  so that you can see what it is
                                 : (
                                     (topLevelHovering == control)
-                                        ? 0.9f
-                                        : 0.6f
+                                        // FIXME: oh my god
+                                        // HACK: When the accelerator overlay is visible we want to make any top-level control
+                                        //  that the mouse is currently over more opaque, so you can see what you're about to
+                                        //  focus by clicking on it
+                                        // If it's not visible and we're using a virtual cursor, we want to make top-level controls
+                                        //  that are currently covering the keyboard selection *less visible* since the user is
+                                        //  currently interacting with something underneath it
+                                        // he;lp
+                                        ? (AcceleratorOverlayVisible ? 0.9f : 0.33f)
+                                        : (AcceleratorOverlayVisible ? 0.65f : 0.95f)
                                 )
                         )
                         : 1.0f;

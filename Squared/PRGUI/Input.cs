@@ -219,8 +219,8 @@ namespace Squared.PRGUI.Input {
     public class GamepadVirtualKeyboardAndCursor : IInputSource {
         public float FuzzyHitTestDistance = 24f;
         public float SlowPxPerSecond = 96f,
-            FastPxPerSecond = 1024f;
-        public float AccelerationExponent = 2.1f,
+            FastPxPerSecond = 1280f;
+        public float AccelerationExponent = 2.2f,
             Deadzone = 0.05f;
 
         private Vector2 PreviousUnsnappedPosition, CurrentUnsnappedPosition;
@@ -366,8 +366,10 @@ namespace Squared.PRGUI.Input {
                 if (focusChanged)
                     SnapToControl = Context.Focused;
 
-                if (focusChanged || wasArrowPressed)
+                if (focusChanged || wasArrowPressed) {
                     GenerateKeyPressForActivation = true;
+                    shouldPromote = true;
+                }
             }
 
             if (effectiveSnapTarget != null) {
