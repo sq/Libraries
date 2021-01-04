@@ -13,7 +13,7 @@ using Squared.Render.Text;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public class Window : TitledContainer {
+    public class Window : TitledContainer, IPartiallyIntangibleControl {
         private Vector2 _ScreenAlignment = Vector2.One * 0.5f;
         public Vector2 ScreenAlignment {
             get => _ScreenAlignment;
@@ -183,5 +183,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override string DescriptionPrefix => (Collapsed ? "Collapsed Window" : "Window");
+
+        bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) => false;
     }
 }

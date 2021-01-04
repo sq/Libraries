@@ -314,6 +314,12 @@ namespace Squared.PRGUI {
         public Control MouseOver { get; private set; }
 
         /// <summary>
+        /// The control currently underneath the mouse cursor, even if it is intangible.
+        /// Used as a scroll target
+        /// </summary>
+        public Control MouseOverLoose { get; private set; }
+
+        /// <summary>
         /// The control that currently has keyboard input focus
         /// </summary>
         public Control Focused {
@@ -329,7 +335,7 @@ namespace Squared.PRGUI {
         /// </summary>
         public bool IsActive {
             get =>
-                (MouseOver != null) ||
+                (MouseOverLoose != null) ||
                     _LastInput.AreAnyKeysHeld ||
                     (KeyboardSelection != null) ||
                     (MouseCaptured != null) ||
@@ -677,7 +683,9 @@ namespace Squared.PRGUI {
         }
 
         private void UpdateCaptureAndHovering (Vector2 mousePosition, Control exclude = null) {
-            MouseOver = HitTest(mousePosition);
+            MouseOver = HitTest(mousePosition, ignoreIntangible: true);
+            MouseOverLoose = HitTest(mousePosition, ignoreIntangible: false);
+
             if ((MouseOver != MouseCaptured) && (MouseCaptured != null))
                 Hovering = null;
             else
@@ -923,7 +931,7 @@ namespace Squared.PRGUI {
             var mouseWheelDelta = _CurrentInput.WheelValue - _LastInput.WheelValue;
 
             if (mouseWheelDelta != 0)
-                HandleScroll(previouslyCaptured ?? Hovering, mouseWheelDelta);
+                HandleScroll(previouslyCaptured ?? MouseOverLoose, mouseWheelDelta);
 
             TickControl(KeyboardSelection, mousePosition, mouseDownPosition);
             if (Hovering != KeyboardSelection)
@@ -1166,7 +1174,7 @@ namespace Squared.PRGUI {
         }
 
         // Position is relative to the top-left corner of the canvas
-        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly = false, bool acceptsFocusOnly = false) {
+        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly = false, bool acceptsFocusOnly = false, bool ignoreIntangible = false) {
             var areHitTestsBlocked = false;
             foreach (var m in ModalStack)
                 if (m.BlockHitTests)
@@ -1177,7 +1185,7 @@ namespace Squared.PRGUI {
                 var control = sorted[i];
                 if (areHitTestsBlocked && !ModalStack.Contains(control as IModal))
                     continue;
-                var result = control.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly);
+                var result = control.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, ignoreIntangible);
                 if (result != null)
                     return result;
             }

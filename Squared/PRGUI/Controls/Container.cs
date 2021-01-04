@@ -12,7 +12,7 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public class Container : Control, IControlContainer, IScrollableControl, IPostLayoutListener {
+    public class Container : Control, IControlContainer, IScrollableControl, IPostLayoutListener, IPartiallyIntangibleControl {
         public ControlCollection Children { get; private set; }
 
         /// <summary>
@@ -151,18 +151,37 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected bool ProcessMouseEventForScrollbar (string name, MouseEventArgs args) {
-            var scroll = Context.Decorations?.Scrollbar;
+        private bool HitTestScrollbars (Vector2 position) {
+            if (!PrepareScrollbarsForMethodCall(out IWidgetDecorator<ScrollbarState> scroll, out DecorationSettings settings))
+                return false;
+
+            return scroll.HitTest(settings, ref HScrollbar, position) ||
+                scroll.HitTest(settings, ref VScrollbar, position);
+        }
+
+        private bool PrepareScrollbarsForMethodCall (out IWidgetDecorator<ScrollbarState> scroll, out DecorationSettings settings) {
+            scroll = Context.Decorations?.Scrollbar;
+            settings = default(DecorationSettings);
             if (scroll == null)
+                return false;
+
+            if (!ShowHorizontalScrollbar && !ShowVerticalScrollbar)
                 return false;
 
             var box = GetRect();
             var contentBox = GetRect(contentRect: true);
-            var settings = MakeDecorationSettings(ref box, ref contentBox, default(ControlStates));
+            settings = MakeDecorationSettings(ref box, ref contentBox, default(ControlStates));
 
             // Ensure the scrollbar state is up-to-date if someone modified our offset
             HScrollbar.Position = ScrollOffset.X;
             VScrollbar.Position = ScrollOffset.Y;
+
+            return true;
+        }
+
+        protected bool ProcessMouseEventForScrollbar (string name, MouseEventArgs args) {
+            if (!PrepareScrollbarsForMethodCall(out IWidgetDecorator<ScrollbarState> scroll, out DecorationSettings settings))
+                return false;
 
             var hScrollProcessed = ShowHorizontalScrollbar && scroll.OnMouseEvent(settings, ref HScrollbar, name, args);
             var vScrollProcessed = ShowVerticalScrollbar && scroll.OnMouseEvent(settings, ref VScrollbar, name, args);
@@ -439,7 +458,8 @@ namespace Squared.PRGUI.Controls {
             if (!base.OnHitTest(box, position, false, false, ref result))
                 return false;
 
-            bool success = AcceptsMouseInput || !acceptsMouseInputOnly;
+            var ipic = this as IPartiallyIntangibleControl;
+            bool success = (AcceptsMouseInput && !ipic.IsIntangibleAtPosition(position)) || !acceptsMouseInputOnly;
             // Don't perform child hit-tests if the mouse is over the header
             if (position.Y <= (box.Top + MostRecentHeaderHeight))
                 return success;
@@ -527,6 +547,19 @@ namespace Squared.PRGUI.Controls {
 
         void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             OnLayoutComplete(context, ref relayoutRequested);
+        }
+
+        bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) {
+            // FIXME: Should this always be false if we are a top level control?
+
+            var rect = GetRect();
+
+            if (position.Y <= (rect.Top + MostRecentHeaderHeight))
+                return false;
+            else if (HitTestScrollbars(position))
+                return false;
+
+            return true;
         }
     }
 }

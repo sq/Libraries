@@ -558,6 +558,10 @@ namespace PRGUI.Demo {
                 hoveringCtl.Text = "Hovering: " + ei.Source;
             });
 
+            Context.EventBus.Subscribe(null, UIEvents.MouseLeave, (ei) => {
+                hoveringCtl.Text = "Hovering: " + ei.Arguments;
+            });
+
             Context.EventBus.Subscribe(null, UIEvents.MouseCaptureChanged, (ei) => {
                 if (ei.Source != Control.None)
                     capturedCtl.Text = "Captured: " + ei.Source;

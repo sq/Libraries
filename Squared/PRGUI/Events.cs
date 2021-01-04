@@ -45,7 +45,7 @@ namespace Squared.PRGUI {
         public long NowL;
 
         public KeyboardModifiers Modifiers;
-        public Control MouseOver, MouseCaptured, Hovering, Focused;
+        public Control MouseOver, MouseOverLoose, MouseCaptured, Hovering, Focused;
         /// <summary>
         /// The global mouse location.
         /// </summary>

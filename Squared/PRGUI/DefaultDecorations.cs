@@ -310,7 +310,8 @@ namespace Squared.PRGUI {
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
                 MinimumSize = new Vector2(ScrollbarSize, ScrollbarSize),
                 Above = Scrollbar_Above,
-                OnMouseEvent = Scrollbar_OnMouseEvent
+                OnMouseEvent = Scrollbar_OnMouseEvent,
+                OnHitTest = Scrollbar_OnHitTest
             };
 
             ShowMenu = new FadeAnimation {
@@ -884,6 +885,17 @@ namespace Squared.PRGUI {
             var dragDeltaScaled = dragDeltaUnit * data.ContentSize;
             data.Position = data.DragInitialPosition + dragDeltaScaled;
             return true;
+        }
+
+        private bool Scrollbar_OnHitTest (DecorationSettings settings, ref ScrollbarState data, Vector2 position) {
+            Scrollbar_ComputeBoxes(
+                settings, ref data, out float sizePx,
+                out Vector2 trackA, out Vector2 trackB,
+                out Vector2 thumbA, out Vector2 thumbB
+            );
+
+            RectF box1 = new RectF(trackA, trackB - trackA);
+            return box1.Contains(position);
         }
 
         private bool Scrollbar_OnMouseEvent (

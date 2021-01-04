@@ -13,7 +13,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class ListBox<T> : Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IValueControl<T>, ISelectionBearer {
+    public class ListBox<T> : Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IValueControl<T>, ISelectionBearer, IPartiallyIntangibleControl {
         public static bool SelectOnMouseDown = false;
 
         public const int ControlMinimumHeight = 75, ControlMinimumWidth = 150;
@@ -529,5 +529,7 @@ namespace Squared.PRGUI.Controls {
             Items.Add(value);
             Invalidate();
         }
+
+        bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) => false;
     }
 }

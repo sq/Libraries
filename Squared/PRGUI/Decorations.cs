@@ -72,6 +72,7 @@ namespace Squared.PRGUI.Decorations {
     public interface IWidgetDecorator<TData> : IMetricsProvider {
         Vector2 MinimumSize { get; }
         bool OnMouseEvent (DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args);
+        bool HitTest (DecorationSettings settings, ref TData data, Vector2 position);
         void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data);
     }
 
@@ -195,10 +196,13 @@ namespace Squared.PRGUI.Decorations {
 
     public delegate void WidgetDecoratorRasterizer<TData> (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data);
     public delegate bool WidgetDecoratorMouseEventHandler<TData> (DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args);
+    public delegate bool WidgetDecoratorHitTestHandler<TData> (DecorationSettings settings, ref TData data, Vector2 position);
 
     public sealed class DelegateWidgetDecorator<TData> : DelegateBaseDecorator, IWidgetDecorator<TData> {
         public Vector2 MinimumSize { get; set; }
+
         public WidgetDecoratorRasterizer<TData> Below, Content, Above, ContentClip;
+        public WidgetDecoratorHitTestHandler<TData> OnHitTest;
         public WidgetDecoratorMouseEventHandler<TData> OnMouseEvent;
 
         public void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data) {
@@ -225,6 +229,13 @@ namespace Squared.PRGUI.Decorations {
         bool IWidgetDecorator<TData>.OnMouseEvent (DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args) {
             if (OnMouseEvent != null)
                 return OnMouseEvent(settings, ref data, eventName, args);
+            else
+                return false;
+        }
+
+        public bool HitTest (DecorationSettings settings, ref TData data, Vector2 position) {
+            if (OnHitTest != null)
+                return OnHitTest(settings, ref data, position);
             else
                 return false;
         }

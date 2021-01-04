@@ -20,7 +20,7 @@ namespace Squared.PRGUI.Controls {
         void ItemChosen (Menu menu, Control item);
     }
 
-    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IModal, ISelectionBearer {
+    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IModal, ISelectionBearer, IPartiallyIntangibleControl {
         // Yuck
         public const int PageSize = 8;
 
@@ -594,10 +594,6 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        bool IModal.BlockHitTests => false;
-        bool IModal.BlockInput => false;
-        bool IModal.RetainFocus => false;
-
         bool ISelectionBearer.HasSelection => _SelectedItem != null;
         // FIXME: We should expand the width here
         RectF? ISelectionBearer.SelectionRect => SelectedItem?.GetRect();
@@ -611,12 +607,12 @@ namespace Squared.PRGUI.Controls {
         public void Clear () => Children.Clear();
         public void Add (Control child) => Children.Add(child);
 
-        bool IModal.OnUnhandledEvent (string name, Util.Event.IEventInfo args) {
-            return false;
-        }
+        bool IModal.BlockHitTests => false;
+        bool IModal.BlockInput => false;
+        bool IModal.RetainFocus => false;
+        bool IModal.OnUnhandledEvent (string name, Util.Event.IEventInfo args) => false;
+        bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) => false;
 
-        bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) {
-            return false;
-        }
+        bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) => false;
     }
 }

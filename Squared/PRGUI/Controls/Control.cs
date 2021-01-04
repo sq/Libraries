@@ -88,6 +88,10 @@ namespace Squared.PRGUI {
         bool TrySetScrollOffset (Vector2 value, bool forUser);
     }
 
+    public interface IPartiallyIntangibleControl {
+        bool IsIntangibleAtPosition (Vector2 position);
+    }
+
     public interface IPostLayoutListener {
         /// <summary>
         /// This method will be invoked after the full layout pass has been completed, so this control,
@@ -383,13 +387,11 @@ namespace Squared.PRGUI {
                 return false;
             if ((acceptsFocusOnly || acceptsMouseInputOnly) && !Enabled)
                 return false;
+            if (!box.Contains(position))
+                return false;
 
-            if (box.Contains(position)) {
-                result = this;
-                return true;
-            }
-
-            return false;
+            result = this;
+            return true;
         }
 
         public RectF GetRect (bool includeOffset = true, bool contentRect = false, UIContext context = null) {
@@ -446,7 +448,7 @@ namespace Squared.PRGUI {
                 return result;
         }
 
-        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly) {
+        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool ignoreIntangible = false) {
             if (!Visible)
                 return null;
             if (LayoutKey.IsInvalid)
@@ -458,8 +460,13 @@ namespace Squared.PRGUI {
             var box = GetRect();
             position = ApplyLocalTransformToGlobalPosition(position, ref box, true);
 
-            if (OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result))
+            if (OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result)) {
+                var ipic = result as IPartiallyIntangibleControl;
+                if (ignoreIntangible && (ipic?.IsIntangibleAtPosition(position) == true))
+                    return null;
+
                 return result;
+            }
 
             return null;
         }
@@ -1078,6 +1085,33 @@ namespace Squared.PRGUI {
             Matrix.Invert(ref temp, out matrix);
             var det = matrix.Determinant();
             return !float.IsNaN(det) && !float.IsInfinity(det);
+        }
+    }
+
+    public class FuzzyHitTest {
+        public struct Result {
+            public float Distance;
+            public Control Control;
+            public RectF Rect;
+        }
+
+        private readonly List<Result> Results = new List<Result>();
+
+        public void Run (UIContext context, Vector2 position, Func<Control, bool> predicate = null, float maxDistance = 64) {
+            Results.Clear();
+            var hitTestResult = context.HitTest(position, true, false);
+            if ((hitTestResult != null) && (predicate != null) && !predicate(hitTestResult))
+                hitTestResult = null;
+
+            if (hitTestResult != null) {
+                Results.Add(new Result {
+                    Distance = 0,
+                    Control = hitTestResult,
+                    Rect = hitTestResult.GetRect(context: context)
+                });
+            }
+
+
         }
     }
 }

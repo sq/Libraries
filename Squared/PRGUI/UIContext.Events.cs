@@ -708,6 +708,7 @@ namespace Squared.PRGUI {
                     Modifiers = CurrentModifiers,
                     Focused = Focused,
                     MouseOver = MouseOver,
+                    MouseOverLoose = MouseOverLoose,
                     Hovering = Hovering,
                     MouseCaptured = MouseCaptured,
                     GlobalPosition = globalPosition,
