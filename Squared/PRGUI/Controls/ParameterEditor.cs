@@ -19,7 +19,7 @@ namespace Squared.PRGUI.Controls {
         bool DoubleOnly { get; set; }
     }
 
-    public class ParameterEditor<T> : EditableText, IParameterEditor, IValueControl<T>
+    public class ParameterEditor<T> : EditableText, IScrollableControl, IParameterEditor, IValueControl<T>
         where T : struct, IComparable<T> {
 
         public const double NormalAccelerationMultiplier = 1.0,
@@ -382,6 +382,13 @@ namespace Squared.PRGUI.Controls {
                 Adjust(rightHeld, fast);
         }
 
+        private void SetNewFractionalValue (double fraction) {
+            var fractionT = (T)Convert.ChangeType(fraction * FractionScaleD, typeof(T));
+            var scaledNewValue = Arithmetic.FractionToValue(fractionT, _Minimum.Value, _Maximum.Value, FractionScale);
+            Value = scaledNewValue;
+            SelectNone();
+        }
+
         protected override bool OnMouseEvent (string name, MouseEventArgs args) {
             var gauge = Context.Decorations.ParameterGauge;
             if (gauge != null) {
@@ -391,12 +398,8 @@ namespace Squared.PRGUI.Controls {
                     double fraction = Arithmetic.Saturate((args.RelativeGlobalPosition.X - args.Box.Left) / args.Box.Width);
                     if (Exponential)
                         fraction = 1 - Math.Sqrt(1 - fraction);
-                    var fractionT = (T)Convert.ChangeType(fraction * FractionScaleD, typeof(T));
-                    var scaledNewValue = Arithmetic.FractionToValue(fractionT, _Minimum.Value, _Maximum.Value, FractionScale);
-                    if ((args.Buttons == MouseButtons.Left) || (args.PreviousButtons == MouseButtons.Left)) {
-                        Value = scaledNewValue;
-                        SelectNone();
-                    }
+                    if ((args.Buttons == MouseButtons.Left) || (args.PreviousButtons == MouseButtons.Left))
+                        SetNewFractionalValue(fraction);
                     return true;
                 } else {
                     IsDraggingGauge = false;
@@ -418,6 +421,24 @@ namespace Squared.PRGUI.Controls {
                 return true;
 
             return base.OnMouseEvent(name, args);
+        }
+
+        const float VirtualScrollScale = 1000f;
+
+        Vector2 IScrollableControl.ScrollOffset => new Vector2((float)FractionD * VirtualScrollScale, 0f);
+        bool IScrollableControl.Scrollable {
+            get => true;
+            set {
+            }
+        }
+
+        bool IScrollableControl.AllowDragToScroll => false;
+        Vector2? IScrollableControl.MinScrollOffset => Vector2.Zero;
+        Vector2? IScrollableControl.MaxScrollOffset => new Vector2(VirtualScrollScale);
+
+        bool IScrollableControl.TrySetScrollOffset (Vector2 value, bool forUser) {
+            SetNewFractionalValue(value.X / VirtualScrollScale);
+            return false;
         }
     }
 }

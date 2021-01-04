@@ -366,7 +366,7 @@ namespace Squared.PRGUI {
             EditableFocusedOutlineThickness = 1.2f;
         public float EdgeGleamOpacity = 0.4f,
             EdgeGleamThickness = 1.2f;
-        public float ScrollbarSize = 14f, 
+        public float ScrollbarSize = 16f, 
             ScrollbarRadius = 3f;
 
         public RasterShadowSettings? InteractableShadow, 
@@ -855,7 +855,7 @@ namespace Squared.PRGUI {
             trackB = box.Extent;
 
             var thumbSize = sizePx * (max - min);
-            const float minSize = 10;
+            const float minSize = 20f;
             if (thumbSize < minSize) {
                 var gap = minSize - thumbSize;
                 sizePx -= gap;

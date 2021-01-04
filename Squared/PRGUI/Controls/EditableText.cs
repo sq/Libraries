@@ -109,10 +109,6 @@ namespace Squared.PRGUI.Controls {
         protected Vector2 MinScrollOffset;
         protected Vector2? MaxScrollOffset;
 
-        bool IScrollableControl.AllowDragToScroll => false;
-        Vector2? IScrollableControl.MinScrollOffset => MinScrollOffset;
-        Vector2? IScrollableControl.MaxScrollOffset => MaxScrollOffset;
-
         protected DynamicStringLayout DescriptionLayout = new DynamicStringLayout();
         protected DynamicStringLayout DynamicLayout = new DynamicStringLayout();
         protected StringBuilder Builder = new StringBuilder();
@@ -1252,13 +1248,6 @@ namespace Squared.PRGUI.Controls {
             );
         }
 
-        Vector2 IScrollableControl.ScrollOffset => ScrollOffset;
-        bool IScrollableControl.Scrollable {
-            get => true;
-            set {
-            }
-        }
-
         string IValueControl<string>.Value {
             get => Text;
             set => Text = value;
@@ -1299,6 +1288,17 @@ namespace Squared.PRGUI.Controls {
             else
                 sb.Append(Text);
         }
+
+        Vector2 IScrollableControl.ScrollOffset => ScrollOffset;
+        bool IScrollableControl.Scrollable {
+            get => true;
+            set {
+            }
+        }
+
+        bool IScrollableControl.AllowDragToScroll => false;
+        Vector2? IScrollableControl.MinScrollOffset => MinScrollOffset;
+        Vector2? IScrollableControl.MaxScrollOffset => MaxScrollOffset;
 
         bool IScrollableControl.TrySetScrollOffset (Vector2 value, bool forUser) {
             if (forUser)

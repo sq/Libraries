@@ -13,7 +13,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class Slider : Control, ICustomTooltipTarget, Accessibility.IReadingTarget, IValueControl<float> {
+    public class Slider : Control, ICustomTooltipTarget, Accessibility.IReadingTarget, IValueControl<float>, ISelectionBearer {
         public const int ControlMinimumHeight = 28, ControlMinimumWidth = 100,
             ThumbMinimumWidth = 13, MaxNotchCount = 128;
         public const float NotchThickness = 0.75f;
@@ -24,6 +24,9 @@ namespace Squared.PRGUI.Controls {
         private bool _HasValue;
         private float _Minimum = 0, _Maximum = 100;
         private float _Value = 0;
+
+        private RectF? _LastThumbBox;
+        bool _WasMouseOverThumb = false;
 
         public float? NotchInterval;
         public float KeyboardSpeed = 1;
@@ -101,8 +104,6 @@ namespace Squared.PRGUI.Controls {
                 InvalidateTooltip();
             }
         }
-
-        bool _WasMouseOverThumb = false;
 
         public Slider () : base () {
             AcceptsFocus = true;
@@ -235,10 +236,10 @@ namespace Squared.PRGUI.Controls {
                     float oldValue = Value, newValue;
                     switch (args.Key) {
                         case Keys.Up:
-                            newValue = Minimum;
+                            newValue = Maximum;
                             break;
                         case Keys.Down:
-                            newValue = Maximum;
+                            newValue = Minimum;
                             break;
                         case Keys.Left:
                             newValue = oldValue - speed;
@@ -321,7 +322,7 @@ namespace Squared.PRGUI.Controls {
             var thumb = Context.Decorations.SliderThumb;
             var thumbSettings = settings;
             // FIXME: Apply padding
-            thumbSettings.Box = ComputeThumbBox(settings.ContentBox, Value);
+            _LastThumbBox = thumbSettings.Box = ComputeThumbBox(settings.ContentBox, Value);
             thumbSettings.ContentBox = thumbSettings.Box;
             var hoveringThumb = 
                 (settings.State.IsFlagged(ControlStates.Hovering))
@@ -368,5 +369,9 @@ namespace Squared.PRGUI.Controls {
                 NotchThickness, CenterMarkColor
             );
         }
+
+        bool ISelectionBearer.HasSelection => true;
+        RectF? ISelectionBearer.SelectionRect => _LastThumbBox;
+        Control ISelectionBearer.SelectedControl => null;
     }
 }
