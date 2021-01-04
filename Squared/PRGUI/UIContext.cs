@@ -942,7 +942,7 @@ namespace Squared.PRGUI {
             UpdateTooltip((CurrentMouseButtons != MouseButtons.None));
 
             if (CurrentInputState.ScrollDistance.Length() >= 0.5f)
-                AttemptTargetedScroll(KeyboardSelection ?? Hovering ?? Focused, CurrentInputState.ScrollDistance);
+                AttemptTargetedScroll(KeyboardSelection ?? Hovering ?? MouseOverLoose ?? Focused, CurrentInputState.ScrollDistance);
 
             if (FixatedControl != previouslyFixated)
                 HandleFixationChange(previouslyFixated, FixatedControl);

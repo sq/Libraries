@@ -550,7 +550,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) {
-            // FIXME: Should this always be false if we are a top level control?
+            // HACK: Top-level containers should never be partially intangible,
+            //  otherwise weird things happen when they cover another control
+            if (!HasParent)
+                return false;
 
             var rect = GetRect();
 

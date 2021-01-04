@@ -199,6 +199,8 @@ namespace Squared.PRGUI {
             }
         }
 
+        public bool HasParent => (WeakParent != null) && WeakParent.TryGetTarget(out Control temp);
+
         internal bool IsValidFocusTarget => 
             (
                 AcceptsFocus || (FocusBeneficiary != null)
@@ -1088,30 +1090,103 @@ namespace Squared.PRGUI {
         }
     }
 
-    public class FuzzyHitTest {
+    public class FuzzyHitTest : IEnumerable<FuzzyHitTest.Result> {
         public struct Result {
+            public int Depth;
             public float Distance;
             public Control Control;
             public RectF Rect;
+            public Vector2 ClosestPoint;
         }
 
+        public readonly UIContext Context;
+        public Vector2 Position { get; private set; }
         private readonly List<Result> Results = new List<Result>();
 
-        public void Run (UIContext context, Vector2 position, Func<Control, bool> predicate = null, float maxDistance = 64) {
-            Results.Clear();
-            var hitTestResult = context.HitTest(position, true, false);
-            if ((hitTestResult != null) && (predicate != null) && !predicate(hitTestResult))
-                hitTestResult = null;
+        public FuzzyHitTest (UIContext context) {
+            Context = context;
+        }
 
-            if (hitTestResult != null) {
-                Results.Add(new Result {
-                    Distance = 0,
-                    Control = hitTestResult,
-                    Rect = hitTestResult.GetRect(context: context)
-                });
+        public void Run (Vector2 position, Func<Control, bool> predicate = null, float maxDistance = 64) {
+            Results.Clear();
+            Position = position;
+
+            WalkTree(Context.Controls, position, 0, predicate, maxDistance * maxDistance);
+
+            if (Results.Count > 1) {
+                Results.Sort(ResultComparer);
+                ;
+            }
+        }
+
+        // Sort lowest distance first, then if the distances are similar, highest depth first
+        private static int ResultComparer (Result lhs, Result rhs) {
+            var result = rhs.Depth.CompareTo(lhs.Depth);
+            if (result == 0) {
+                double d1 = Math.Round(lhs.Distance, 1, MidpointRounding.AwayFromZero),
+                    d2 = Math.Round(rhs.Distance, 1, MidpointRounding.AwayFromZero);
+                result = d1.CompareTo(d2);
+            }
+                
+            return result;
+        }
+
+        private int WalkTree (ControlCollection controls, Vector2 position, int depth, Func<Control, bool> predicate, float maxDistanceSquared) {
+            var totalMatches = 0;
+
+            var ordered = controls.InDisplayOrder(Context.FrameIndex);
+            var stop = false;
+            for (int i = ordered.Count - 1; (i >= 0) && !stop; i--) {
+                var control = ordered[i];
+                var result = new Result {
+                    Depth = depth,
+                    Control = control,
+                    Rect = control.GetRect(context: Context)
+                };
+
+                var inside = result.Rect.Contains(position);
+                stop = stop || inside;
+
+                int localMatches = 0;
+                var icc = control as IControlContainer;
+                if (icc != null) {
+                    localMatches = WalkTree(icc.Children, position, depth + 1, predicate, maxDistanceSquared);
+                    totalMatches += localMatches;
+                }
+
+                if (localMatches > 0)
+                    continue;
+
+                if ((predicate != null) && !predicate(control))
+                    continue;
+
+                float distanceSquared;
+                if (inside) {
+                    result.Distance = distanceSquared = 0f;
+                    result.ClosestPoint = position;
+                } else {
+                    result.ClosestPoint = new Vector2(
+                        Arithmetic.Clamp(position.X, result.Rect.Left, result.Rect.Extent.X),
+                        Arithmetic.Clamp(position.Y, result.Rect.Top,  result.Rect.Extent.Y)
+                    );
+                    distanceSquared = (position - result.ClosestPoint).LengthSquared();
+                    if (distanceSquared > maxDistanceSquared)
+                        continue;
+                    result.Distance = (float)Math.Sqrt(distanceSquared);
+                }
+
+                Results.Add(result);
+                totalMatches += 1;
             }
 
-
+            return totalMatches;
         }
+
+        public int Count => Results.Count;
+        public Result this[int index] => Results[index];
+
+        IEnumerator<Result> IEnumerable<Result>.GetEnumerator () => ((IEnumerable<Result>)Results).GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator () => ((IEnumerable<Result>)Results).GetEnumerator();
+        public List<Result>.Enumerator GetEnumerator => Results.GetEnumerator();
     }
 }

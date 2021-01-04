@@ -48,6 +48,7 @@ namespace Squared.PRGUI {
         public IDecorator ParameterGauge { get; set; }
         public IDecorator Gauge { get; set; }
         public IDecorator VirtualCursor { get; set; }
+        public IDecorator VirtualCursorAnchor { get; set; }
 
         public float AnimationDurationMultiplier { get; set; }
 
@@ -305,6 +306,10 @@ namespace Squared.PRGUI {
             VirtualCursor = new DelegateDecorator {
                 Padding = new Margins(24),
                 Above = VirtualCursor_Above
+            };
+
+            VirtualCursorAnchor = new DelegateDecorator {
+                Above = VirtualCursorAnchor_Above
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
@@ -1138,13 +1143,30 @@ namespace Squared.PRGUI {
                 innerColor: Color.White * fillAlpha, outerColor: Color.White * fillAlpha,
                 outlineRadius: outlineRadius, outlineColor: Color.Black * alpha
             );
+        }
 
-            if (showCenter)
+        private void VirtualCursorAnchor_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            var unsnapped = settings.Box.Position;
+            var snapped = settings.Box.Extent;
+            var distance = (snapped - unsnapped).Length();
+            var alpha = settings.State.IsFlagged(ControlStates.Disabled) ? 0.5f : 0.9f;
+            var outlineRadius = 1.75f;
+
+            if (distance >= 0.5f) {
+                renderer.RasterizeLineSegment(
+                    a: unsnapped, b: snapped,
+                    startRadius: 1.55f, endRadius: 2.5f,
+                    innerColor: Color.White * (alpha * 0.75f), outerColor: Color.White,
+                    outlineRadius: outlineRadius, outlineColor: Color.Black * alpha
+                );
+            } else {
+            var fillAlpha = alpha * 0.85f;
                 renderer.RasterizeEllipse(
-                    center, new Vector2(1.7f),
+                    snapped, new Vector2(1.7f),
                     innerColor: Color.White * fillAlpha, outerColor: Color.White * fillAlpha,
                     outlineRadius: outlineRadius, outlineColor: Color.Black * alpha
                 );
+            }
         }
 
         public bool GetTextSettings (
