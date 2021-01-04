@@ -423,7 +423,9 @@ namespace Squared.PRGUI.Controls {
             return base.OnMouseEvent(name, args);
         }
 
-        const float VirtualScrollScale = 1000f;
+        // HACK: Attach scrolling to our value instead of our text viewport so that the user can
+        //  adjust our value the way they would normally scroll the view (with mousewheel, etc)
+        const float VirtualScrollScale = 1500f;
 
         Vector2 IScrollableControl.ScrollOffset => new Vector2((float)FractionD * VirtualScrollScale, 0f);
         bool IScrollableControl.Scrollable {
@@ -433,12 +435,13 @@ namespace Squared.PRGUI.Controls {
         }
 
         bool IScrollableControl.AllowDragToScroll => false;
-        Vector2? IScrollableControl.MinScrollOffset => Vector2.Zero;
-        Vector2? IScrollableControl.MaxScrollOffset => new Vector2(VirtualScrollScale);
+        Vector2? IScrollableControl.MinScrollOffset => new Vector2(0f, -VirtualScrollScale / 2f);
+        Vector2? IScrollableControl.MaxScrollOffset => new Vector2(VirtualScrollScale, VirtualScrollScale / 2f);
 
         bool IScrollableControl.TrySetScrollOffset (Vector2 value, bool forUser) {
-            SetNewFractionalValue(value.X / VirtualScrollScale);
-            return false;
+            value /= VirtualScrollScale;
+            SetNewFractionalValue(Arithmetic.Saturate(value.X - value.Y));
+            return true;
         }
     }
 }

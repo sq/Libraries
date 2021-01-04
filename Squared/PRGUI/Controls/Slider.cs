@@ -13,7 +13,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class Slider : Control, ICustomTooltipTarget, Accessibility.IReadingTarget, IValueControl<float>, ISelectionBearer {
+    public class Slider : Control, ICustomTooltipTarget, Accessibility.IReadingTarget, IValueControl<float>, ISelectionBearer, IScrollableControl {
         public const int ControlMinimumHeight = 28, ControlMinimumWidth = 100,
             ThumbMinimumWidth = 13, MaxNotchCount = 128;
         public const float NotchThickness = 0.75f;
@@ -373,5 +373,24 @@ namespace Squared.PRGUI.Controls {
         bool ISelectionBearer.HasSelection => true;
         RectF? ISelectionBearer.SelectionRect => _LastThumbBox;
         Control ISelectionBearer.SelectedControl => null;
+
+        const float ScrollScale = 1000f;
+
+        Vector2 IScrollableControl.ScrollOffset => new Vector2((_Value - _Minimum) / (_Maximum - _Minimum) * ScrollScale, 0f);
+        bool IScrollableControl.Scrollable {
+            get => true;
+            set {
+            }
+        }
+
+        bool IScrollableControl.AllowDragToScroll => false;
+        Vector2? IScrollableControl.MinScrollOffset => new Vector2(0f, 0f);
+        Vector2? IScrollableControl.MaxScrollOffset => new Vector2(ScrollScale, 0f);
+
+        bool IScrollableControl.TrySetScrollOffset (Vector2 value, bool forUser) {
+            var newValue = _Minimum + ((value.X / ScrollScale) * (_Maximum - _Minimum));
+            Value = newValue;
+            return true;
+        }
     }
 }
