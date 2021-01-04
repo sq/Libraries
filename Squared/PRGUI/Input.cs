@@ -33,7 +33,7 @@ namespace Squared.PRGUI.Input {
         public MouseButtons Buttons;
         public KeyboardModifiers Modifiers;
         public float WheelValue;
-        public bool AreAnyKeysHeld, ActivateKeyHeld, KeyboardNavigationEnded;
+        public bool AreAnyKeysHeld, ActivateKeyHeld, KeyboardNavigationEnded, VirtualInputActive;
     }
 
     public class KeyboardInputSource : IInputSource {
@@ -113,7 +113,7 @@ namespace Squared.PRGUI.Input {
                         !shouldFilterKeyPress &&
                         Context.UpdateRepeat(now, LastKeyEventFirstTime, ref LastKeyEventTime)
                     ) {
-                        Context.HandleKeyEvent(UIEvents.KeyPress, key, null);
+                        Context.HandleKeyEvent(UIEvents.KeyPress, key, null, isRepeat: true);
                     }
                 }
             }
@@ -197,14 +197,15 @@ namespace Squared.PRGUI.Input {
                 return;
             }
 
-            var insideWindow = (newPosition.X >= 0) && (newPosition.Y >= 0) &&
-                (newPosition.X <= Context.CanvasSize.X) && (newPosition.Y <= Context.CanvasSize.Y);
+            var isPriority = Context.IsPriorityInputSource(this);
+            var insideWindow = Context.CanvasRect.Contains(newPosition);
 
             if ((CurrentState.X != PreviousState.X) || (CurrentState.Y != PreviousState.Y)) {
-                if (insideWindow || Context.InputSources.IndexOf(this) == 0) {
+                if (insideWindow || isPriority) {
                     current.CursorPosition = newPosition;
                     current.KeyboardNavigationEnded = true;
-                    Context.PromoteInputSource(this);
+                    if (!isPriority)
+                        Context.PromoteInputSource(this);
                 }
             }
         }
@@ -218,12 +219,13 @@ namespace Squared.PRGUI.Input {
 
     public class GamepadVirtualKeyboardAndCursor : IInputSource {
         public float FuzzyHitTestDistance = 24f;
-        public float SlowPxPerSecond = 96f,
+        public float SlowPxPerSecond = 64f,
             FastPxPerSecond = 1280f;
-        public float AccelerationExponent = 2.2f,
-            Deadzone = 0.05f;
+        public float AccelerationExponent = 2.75f,
+            Deadzone = 0.1f;
+        public float? FixedTimeStep = null;
 
-        private Vector2 PreviousUnsnappedPosition, CurrentUnsnappedPosition;
+        private Vector2? PreviousUnsnappedPosition, CurrentUnsnappedPosition;
         public GamePadState PreviousState, CurrentState;
         public PlayerIndex PlayerIndex;
         public bool EnableButtons = true,
@@ -253,7 +255,7 @@ namespace Squared.PRGUI.Input {
         private void ProcessStick (Vector2 stick, out float speed, out Vector2 direction) {
             var length = stick.Length();
             if ((length >= Deadzone) && EnableStick) {
-                var ramp = Arithmetic.Saturate((float)Math.Pow(length - Deadzone, AccelerationExponent));
+                var ramp = Arithmetic.Saturate((float)Math.Pow((length - Deadzone) / (1f - Deadzone), AccelerationExponent));
                 speed = Arithmetic.Lerp(
                     SlowPxPerSecond, FastPxPerSecond, ramp
                 );
@@ -270,19 +272,21 @@ namespace Squared.PRGUI.Input {
                 return false;
 
             // FIXME: Does focus beneficiary work if mouse input is disabled?
-            return hovering.AcceptsMouseInput || (hovering.FocusBeneficiary != null) || !hovering.HasParent;
+            return hovering.IsValidMouseInputTarget || (hovering.FocusBeneficiary != null) || !hovering.HasParent;
         }
 
         public void Update (ref InputState previous, ref InputState current) {
             PreviousState = CurrentState;
 
             // If we're not the priority input source, we should just sync our unsnapped position with the cursor
-            var isPriority = Context.InputSources.IndexOf(this) == 0;
+            var isPriority = Context.IsPriorityInputSource(this);
+            if (isPriority)
+                current.VirtualInputActive = true;
 
             if (isPriority)
                 PreviousUnsnappedPosition = CurrentUnsnappedPosition;
             else
-                PreviousUnsnappedPosition = CurrentUnsnappedPosition = previous.CursorPosition;
+                PreviousUnsnappedPosition = CurrentUnsnappedPosition = null;
 
             var gs = CurrentState = GamePad.GetState(PlayerIndex);
             var now = Context.NowL;
@@ -296,7 +300,7 @@ namespace Squared.PRGUI.Input {
             if (current.KeyboardNavigationEnded)
                 SnapToControl = null;
 
-            var elapsed = (float)((now - PreviousUpdateTime) / (double)Time.SecondInTicks);
+            var elapsed = FixedTimeStep ?? (float)((now - PreviousUpdateTime) / (double)Time.SecondInTicks);
 
             ProcessStick(PreviousState.ThumbSticks.Left, out float cursorSpeed, out Vector2 cursorDirection);
             ProcessStick(PreviousState.ThumbSticks.Right, out float scrollSpeed, out Vector2 scrollDirection);
@@ -308,7 +312,10 @@ namespace Squared.PRGUI.Input {
                     current.CursorPosition.X + motion.X,
                     current.CursorPosition.Y + motion.Y
                 );
-                CurrentUnsnappedPosition = PreviousUnsnappedPosition + motion;
+                if (PreviousUnsnappedPosition.HasValue)
+                    CurrentUnsnappedPosition = Context.CanvasRect.Clamp(PreviousUnsnappedPosition.Value + motion);
+                else
+                    CurrentUnsnappedPosition = null;
                 current.KeyboardNavigationEnded = true;
                 GenerateKeyPressForActivation = false;
                 SnapToControl = null;
@@ -354,6 +361,9 @@ namespace Squared.PRGUI.Input {
                         current.Buttons |= MouseButtons.Left;
                 }
 
+                var currentSelectedControl = (Context.FixatedControl as ISelectionBearer)?.SelectedControl;
+                var currentSelectionRect = (Context.FixatedControl as ISelectionBearer)?.SelectionRect;
+
                 DispatchKeyEventsForButton(ref current, Keys.Escape, mods, PreviousState.Buttons.B, gs.Buttons.B);
                 var wasArrowPressed = DispatchKeyEventsForButton(ref current, Keys.Up, mods, PreviousState.DPad.Up, gs.DPad.Up);
                 wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Down, mods, PreviousState.DPad.Down, gs.DPad.Down);
@@ -363,10 +373,16 @@ namespace Squared.PRGUI.Input {
                 focusChanged |= DispatchKeyEventsForButton(ref current, Keys.Tab, mods, PreviousState.Buttons.RightShoulder, gs.Buttons.RightShoulder);
                 DispatchKeyEventsForButton(ref current, Keys.Apps, mods, PreviousState.Buttons.Y, gs.Buttons.Y);
 
-                if (focusChanged)
-                    SnapToControl = Context.Focused;
-
                 if (focusChanged || wasArrowPressed) {
+                    var newSelectedControl = (Context.FixatedControl as ISelectionBearer)?.SelectedControl;
+                    var newSelectionRect = (Context.FixatedControl as ISelectionBearer)?.SelectionRect;
+                    if (
+                        focusChanged || 
+                        (newSelectedControl != currentSelectedControl) ||
+                        (newSelectionRect != currentSelectionRect)
+                    )
+                        SnapToControl = Context.Focused;
+
                     GenerateKeyPressForActivation = true;
                     shouldPromote = true;
                 }
@@ -386,7 +402,10 @@ namespace Squared.PRGUI.Input {
                     newPosition = targetRect.Center;
                 CurrentUnsnappedPosition = newPosition.Value;
             } else if (!suppressSnapDueToHeldButton) {
-                FuzzyHitTest.Run(CurrentUnsnappedPosition, IsValidHoverTarget, maxDistance: FuzzyHitTestDistance);
+                var testPosition = CurrentUnsnappedPosition ?? newPosition ?? current.CursorPosition;
+
+                // FIXME: We get garbage snap positions sometimes when the cursor is over a control
+                FuzzyHitTest.Run(testPosition, IsValidHoverTarget, maxDistance: FuzzyHitTestDistance);
                 if (FuzzyHitTest.Count > 0) {
                     /*
                     if (FuzzyHitTest.Count > 1) {
@@ -397,21 +416,22 @@ namespace Squared.PRGUI.Input {
                     */
 
                     var result = FuzzyHitTest[0];
-                    if (result.Distance > 0) {
+                    CurrentUnsnappedPosition = CurrentUnsnappedPosition ?? testPosition;
+                    if (result.Distance > 0)
                         newPosition = result.ClosestPoint;
-                    } else {
-                        newPosition = CurrentUnsnappedPosition;
-                    }
+                    else
+                        newPosition = testPosition;
                 } else {
                     ;
                 }
             }
 
             if (newPosition != null) {
-                var x = Arithmetic.Clamp(newPosition.Value.X, 0, Context.CanvasSize.X);
-                var y = Arithmetic.Clamp(newPosition.Value.Y, 0, Context.CanvasSize.Y);
+                var xy = Context.CanvasRect.Clamp(newPosition.Value);
                 if (shouldPromote || isPriority) {
-                    current.CursorPosition = new Vector2(x, y);
+                    current.CursorPosition = xy;
+                    if (!CurrentUnsnappedPosition.HasValue)
+                        CurrentUnsnappedPosition = xy;
                     Context.PromoteInputSource(this);
                 }
             } else if (suppressSnapDueToHeldButton) {
@@ -440,7 +460,7 @@ namespace Squared.PRGUI.Input {
                     Context.UpdateRepeat(Context.Now, LastKeyEventFirstTime, ref LastKeyEventTime)
                 ) {
                     LastKeyEventTime = Context.Now;
-                    return Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers);
+                    return Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers, isVirtual: true, isRepeat: true);
                 } else
                     return false;
             } else if (held) {
@@ -452,9 +472,9 @@ namespace Squared.PRGUI.Input {
                 : UIEvents.KeyUp;
 
             LastKeyEvent = key;
-            var ok = Context.HandleKeyEvent(transition, key, null, modifiers);
+            var ok = Context.HandleKeyEvent(transition, key, null, modifiers, true);
             if (current == ButtonState.Released)
-                ok |= Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers);
+                ok |= Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers, true);
 
             return ok;
         }
@@ -471,7 +491,7 @@ namespace Squared.PRGUI.Input {
         }
 
         public void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer) {
-            if (Context.InputSources.IndexOf(this) != 0)
+            if (!Context.IsPriorityInputSource(this))
                 return;
 
             var decorator = context.DecorationProvider.VirtualCursor;
@@ -481,13 +501,13 @@ namespace Squared.PRGUI.Input {
             var padding = decorator.Padding;
             var total = padding + decorator.Margins;
 
-            MakeSettingsForPosition(CurrentUnsnappedPosition, total, padding, out DecorationSettings settings);
+            var unsnapped = CurrentUnsnappedPosition ?? pos;
+            MakeSettingsForPosition(unsnapped, total, padding, out DecorationSettings settings);
             decorator.Rasterize(context, ref renderer, settings);
 
-            settings.Box = new RectF(CurrentUnsnappedPosition, Context.CurrentInputState.CursorPosition - CurrentUnsnappedPosition);
+            settings.Box = new RectF(unsnapped, pos - unsnapped);
             context.DecorationProvider.VirtualCursorAnchor?.Rasterize(context, ref renderer, settings);
 
-            if (false)
             foreach (var result in FuzzyHitTest) {
                 var box = result.Rect;
                 var alpha = (1f - Arithmetic.Saturate(result.Distance / FuzzyHitTestDistance)) * 0.8f;

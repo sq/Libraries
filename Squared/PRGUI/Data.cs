@@ -546,11 +546,29 @@ namespace Squared.PRGUI {
                 (Height == rhs.Height);
         }
 
+        public void Clamp (ref Vector2 position) {
+            position.X = Arithmetic.Clamp(position.X, Left, Left + Width);
+            position.Y = Arithmetic.Clamp(position.Y, Top, Top + Height);
+        }
+
+        public Vector2 Clamp (Vector2 position) {
+            Clamp(ref position);
+            return position;
+        }
+
         public override bool Equals (object obj) {
             if (!(obj is RectF))
                 return false;
 
             return Equals((RectF)obj);
+        }
+
+        public static bool operator == (RectF lhs, RectF rhs) {
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator != (RectF lhs, RectF rhs) {
+            return !lhs.Equals(rhs);
         }
 
         public override int GetHashCode () {

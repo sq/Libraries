@@ -78,8 +78,10 @@ namespace PRGUI.Demo {
 
             IsFixedTimeStep = false;
 
-            if (IsFixedTimeStep)
+            if (IsFixedTimeStep) {
                 TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 2f);
+                GamePad.FixedTimeStep = 1.0f / 60f;
+            }
 
             Scheduler = new TaskScheduler(JobQueue.WindowsMessageBased);
         }

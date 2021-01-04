@@ -765,10 +765,8 @@ namespace Squared.PRGUI {
                 // HACK: Create padding around the element for drop shadows
                 box.SnapAndInset(out Vector2 tl, out Vector2 br, -Context.CompositorPaddingPx);
                 // Don't overflow the edges of the canvas with padding, it'd produce garbage pixels
-                tl.X = Math.Max(tl.X, 0);
-                tl.Y = Math.Max(tl.Y, 0);
-                br.X = Math.Min(br.X, context.UIContext.CanvasSize.X);
-                br.Y = Math.Min(br.Y, context.UIContext.CanvasSize.Y);
+                context.UIContext.CanvasRect.Clamp(ref tl);
+                context.UIContext.CanvasRect.Clamp(ref br);
 
                 var compositeBox = new RectF(tl, br - tl);
                 var srt = context.UIContext.GetScratchRenderTarget(ref passSet.Prepass, ref compositeBox);
@@ -1095,7 +1093,7 @@ namespace Squared.PRGUI {
             public int Depth;
             public float Distance;
             public Control Control;
-            public RectF Rect;
+            public RectF Rect, ClippedRect;
             public Vector2 ClosestPoint;
             public bool IsIntangibleAtClosestPoint;
         }
@@ -1112,12 +1110,13 @@ namespace Squared.PRGUI {
             Results.Clear();
             Position = position;
 
-            WalkTree(Context.Controls, position, 0, predicate, maxDistance * maxDistance);
+            WalkTree(
+                Context.Controls, Context.CanvasRect, 
+                position, 0, predicate, maxDistance * maxDistance
+            );
 
-            if (Results.Count > 1) {
+            if (Results.Count > 1)
                 Results.Sort(ResultComparer);
-                ;
-            }
         }
 
         private static int ResultComparer (Result lhs, Result rhs) {
@@ -1126,9 +1125,7 @@ namespace Squared.PRGUI {
                 d2 = Math.Round(rhs.Distance, 1, MidpointRounding.AwayFromZero);
             var distanceResult = d1.CompareTo(d2);
 
-            var threshold = 0.1f;
-            var ipic1 = lhs.Control as IPartiallyIntangibleControl;
-            var ipic2 = rhs.Control as IPartiallyIntangibleControl;
+            var threshold = 0.05f;
             var isOver1 = (lhs.Distance <= threshold) && !lhs.IsIntangibleAtClosestPoint;
             var isOver2 = (rhs.Distance <= threshold) && !rhs.IsIntangibleAtClosestPoint;
 
@@ -1143,26 +1140,32 @@ namespace Squared.PRGUI {
                 return distanceResult;
         }
 
-        private int WalkTree (ControlCollection controls, Vector2 position, int depth, Func<Control, bool> predicate, float maxDistanceSquared) {
+        private int WalkTree (ControlCollection controls, RectF clip, Vector2 position, int depth, Func<Control, bool> predicate, float maxDistanceSquared) {
             var totalMatches = 0;
 
             var ordered = controls.InDisplayOrder(Context.FrameIndex);
             var stop = false;
             for (int i = ordered.Count - 1; (i >= 0) && !stop; i--) {
                 var control = ordered[i];
+                if (!control.Visible || control.Intangible)
+                    continue;
+
                 var result = new Result {
                     Depth = depth,
                     Control = control,
                     Rect = control.GetRect(context: Context)
                 };
 
-                var inside = result.Rect.Contains(position);
+                if (!result.Rect.Intersection(ref clip, out result.ClippedRect))
+                    continue;
+
+                var inside = result.ClippedRect.Contains(position);
                 stop = stop || inside;
 
                 int localMatches = 0;
                 var icc = control as IControlContainer;
                 if (icc != null) {
-                    localMatches = WalkTree(icc.Children, position, depth + 1, predicate, maxDistanceSquared);
+                    localMatches = WalkTree(icc.Children, result.ClippedRect, position, depth + 1, predicate, maxDistanceSquared);
                     totalMatches += localMatches;
                 }
 
@@ -1177,10 +1180,7 @@ namespace Squared.PRGUI {
                     result.Distance = distanceSquared = 0f;
                     result.ClosestPoint = position;
                 } else {
-                    result.ClosestPoint = new Vector2(
-                        Arithmetic.Clamp(position.X, result.Rect.Left, result.Rect.Extent.X),
-                        Arithmetic.Clamp(position.Y, result.Rect.Top,  result.Rect.Extent.Y)
-                    );
+                    result.ClosestPoint = result.ClippedRect.Clamp(position);
                     distanceSquared = (position - result.ClosestPoint).LengthSquared();
                     if (distanceSquared > maxDistanceSquared)
                         continue;

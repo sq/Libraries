@@ -318,9 +318,23 @@ namespace Squared.PRGUI.Controls {
                     FinalizeValue();
                     return true;
                 case Keys.Up:
-                    return Adjust(true, evt.Modifiers.Control);
+                    if (evt.IsVirtualInput)
+                        return false;
+                    else
+                        return Adjust(true, evt.Modifiers.Control);
                 case Keys.Down:
-                    return Adjust(false, evt.Modifiers.Control);
+                    if (evt.IsVirtualInput)
+                        return false;
+                    else
+                        return Adjust(false, evt.Modifiers.Control);
+                case Keys.Left:
+                    if (evt.IsVirtualInput)
+                        return Adjust(false, evt.Modifiers.Control);
+                    break;
+                case Keys.Right:
+                    if (evt.IsVirtualInput)
+                        return Adjust(true, evt.Modifiers.Control);
+                    break;
                 case Keys.PageUp:
                     return Adjust(true, true);
                 case Keys.PageDown:

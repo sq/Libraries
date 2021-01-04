@@ -206,7 +206,7 @@ namespace Squared.PRGUI {
 
         private bool HasPressedKeySincePressingAlt = false;
 
-        public bool HandleKeyEvent (string name, Keys? key, char? ch, KeyboardModifiers? modifiers = null) {
+        public bool HandleKeyEvent (string name, Keys? key, char? ch, KeyboardModifiers? modifiers = null, bool isVirtual = false, bool isRepeat = false) {
             // HACK to simplify writing input sources
             if (name == null)
                 return false;
@@ -215,7 +215,9 @@ namespace Squared.PRGUI {
                 Context = this,
                 Modifiers = modifiers ?? CurrentModifiers,
                 Key = key,
-                Char = ch
+                Char = ch,
+                IsVirtualInput = isVirtual,
+                IsRepeat = isRepeat
             };
 
             if (name == UIEvents.KeyDown) {

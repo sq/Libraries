@@ -207,6 +207,8 @@ namespace Squared.PRGUI {
         /// </summary>
         public Vector2 CanvasSize;
 
+        public RectF CanvasRect => new RectF(0, 0, CanvasSize.X, CanvasSize.Y);
+
         /// <summary>
         /// Control events are broadcast on this bus
         /// </summary>
@@ -777,6 +779,13 @@ namespace Squared.PRGUI {
             NotifyModalClosed(control as IModal);
         }
 
+        public bool IsPriorityInputSource (IInputSource source) {
+            if (ScratchInputSources.Count > 0)
+                return ScratchInputSources.IndexOf(source) == 0;
+            else
+                return InputSources.IndexOf(source) == 0;
+        }
+
         public void PromoteInputSource (IInputSource source) {
             var existingIndex = InputSources.IndexOf(source);
             if (existingIndex == 0)
@@ -815,6 +824,8 @@ namespace Squared.PRGUI {
                 src.SetContext(this);
                 src.Update(ref _LastInput, ref _CurrentInput);
             }
+
+            ScratchInputSources.Clear();
 
             _CurrentInput.AreAnyKeysHeld = _CurrentInput.HeldKeys.Count > 0;
 
