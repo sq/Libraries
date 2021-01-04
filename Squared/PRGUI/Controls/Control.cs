@@ -1097,6 +1097,7 @@ namespace Squared.PRGUI {
             public Control Control;
             public RectF Rect;
             public Vector2 ClosestPoint;
+            public bool IsIntangibleAtClosestPoint;
         }
 
         public readonly UIContext Context;
@@ -1119,16 +1120,27 @@ namespace Squared.PRGUI {
             }
         }
 
-        // Sort lowest distance first, then if the distances are similar, highest depth first
         private static int ResultComparer (Result lhs, Result rhs) {
-            var result = rhs.Depth.CompareTo(lhs.Depth);
-            if (result == 0) {
-                double d1 = Math.Round(lhs.Distance, 1, MidpointRounding.AwayFromZero),
-                    d2 = Math.Round(rhs.Distance, 1, MidpointRounding.AwayFromZero);
-                result = d1.CompareTo(d2);
-            }
-                
-            return result;
+            var depthResult = rhs.Depth.CompareTo(lhs.Depth);
+            double d1 = Math.Round(lhs.Distance, 1, MidpointRounding.AwayFromZero),
+                d2 = Math.Round(rhs.Distance, 1, MidpointRounding.AwayFromZero);
+            var distanceResult = d1.CompareTo(d2);
+
+            var threshold = 0.1f;
+            var ipic1 = lhs.Control as IPartiallyIntangibleControl;
+            var ipic2 = rhs.Control as IPartiallyIntangibleControl;
+            var isOver1 = (lhs.Distance <= threshold) && !lhs.IsIntangibleAtClosestPoint;
+            var isOver2 = (rhs.Distance <= threshold) && !rhs.IsIntangibleAtClosestPoint;
+
+            // If the cursor is directly over a control, pick it over any alternatives
+            if (isOver1 || isOver2)
+                return distanceResult;
+            // Otherwise, sort by depth so that highest depth takes priority (i.e. children over parents)
+            else if (depthResult != 0)
+                return depthResult;
+            // Otherwise, sort closest first
+            else
+                return distanceResult;
         }
 
         private int WalkTree (ControlCollection controls, Vector2 position, int depth, Func<Control, bool> predicate, float maxDistanceSquared) {
@@ -1175,6 +1187,8 @@ namespace Squared.PRGUI {
                     result.Distance = (float)Math.Sqrt(distanceSquared);
                 }
 
+                var ipic = result.Control as IPartiallyIntangibleControl;
+                result.IsIntangibleAtClosestPoint = (ipic?.IsIntangibleAtPosition(result.ClosestPoint) == true);
                 Results.Add(result);
                 totalMatches += 1;
             }

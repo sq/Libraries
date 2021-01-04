@@ -415,6 +415,7 @@ namespace Squared.PRGUI.Input {
                     Context.PromoteInputSource(this);
                 }
             } else if (suppressSnapDueToHeldButton) {
+                PreviousUnsnappedPosition = previous.CursorPosition;
                 CurrentUnsnappedPosition = current.CursorPosition;
             } else if (!isPriority) {
                 CurrentUnsnappedPosition = current.CursorPosition;
