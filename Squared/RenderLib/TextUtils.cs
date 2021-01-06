@@ -175,6 +175,9 @@ namespace Squared.Render.Text {
                     return null;
             }
             set {
+                if (value == null)
+                    throw new ArgumentNullException("value");
+
                 InvalidatingReferenceAssignment(
                     ref _GlyphSource, 
                     new SpriteFontGlyphSource(value)
@@ -187,6 +190,8 @@ namespace Squared.Render.Text {
                 return _GlyphSource;
             }
             set {
+                if (value == null)
+                    throw new ArgumentNullException("value");
                 InvalidatingReferenceAssignment(ref _GlyphSource, value);
             }
         }

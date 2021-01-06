@@ -20,7 +20,7 @@ namespace Squared.PRGUI.Controls {
         void ItemChosen (Menu menu, Control item);
     }
 
-    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IModal, ISelectionBearer, IPartiallyIntangibleControl {
+    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IModal, ISelectionBearer, IPartiallyIntangibleControl, IFuzzyHitTestTarget {
         // Yuck
         public const int PageSize = 8;
 
@@ -614,5 +614,10 @@ namespace Squared.PRGUI.Controls {
         bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) => false;
 
         bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) => false;
+
+        int IFuzzyHitTestTarget.WalkTree (
+            List<FuzzyHitTest.Result> output, ref FuzzyHitTest.Result thisControl, Vector2 position, Func<Control, bool> predicate, float maxDistanceSquared
+        ) => 0;
+        bool IFuzzyHitTestTarget.WalkChildren => false;
     }
 }

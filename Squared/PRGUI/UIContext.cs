@@ -120,7 +120,7 @@ namespace Squared.PRGUI {
 
         // Allocate scratch rendering buffers (for composited controls) at a higher or lower resolution
         //  than the canvas, to improve the quality of transformed imagery
-        public readonly float ScratchScaleFactor = 4.0f;
+        public readonly float ScratchScaleFactor = 1.0f;
 
         // Full occlusion tests are performed with this padding region (in pixels) to account for things like
         //  drop shadows being visible even if the control itself is not

@@ -104,9 +104,9 @@ namespace Squared.PRGUI.Controls {
                 material = null;
                 return null;
             }
-            decorations.GetTextSettings(context, settings.State, out material, out IGlyphSource font, ref color);
+            decorations.GetTextSettings(context, settings.State, out material, ref color);
             TitleLayout.Text = Title;
-            TitleLayout.GlyphSource = font;
+            TitleLayout.GlyphSource = decorations.GlyphSource;
             TitleLayout.DefaultColor = color ?? Color.White;
             TitleLayout.LineBreakAtX = settings.ContentBox.Width;
             return decorations;
@@ -178,11 +178,11 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             Color? color = null;
-            titleDecorations.GetTextSettings(context, default(ControlStates), out Material temp, out IGlyphSource font, ref color);
+            titleDecorations.GetTextSettings(context, default(ControlStates), out Material temp, ref color);
             result.Top += titleDecorations.Margins.Bottom;
             result.Top += titleDecorations.Padding.Top;
             result.Top += titleDecorations.Padding.Bottom;
-            result.Top += font.LineSpacing;
+            result.Top += titleDecorations.GlyphSource.LineSpacing;
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -345,6 +345,8 @@ namespace Squared.PRGUI.Controls {
         public override string ToString () {
             return $"{GetType().Name} #{GetHashCode():X8} '{Title}'";
         }
+
+        bool IFuzzyHitTestTarget.WalkChildren => true;
 
         int IFuzzyHitTestTarget.WalkTree (List<FuzzyHitTest.Result> output, ref FuzzyHitTest.Result thisControl, Vector2 position, Func<Control, bool> predicate, float maxDistanceSquared) {
             const float shrink = 2;

@@ -13,7 +13,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class ListBox<T> : Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IValueControl<T>, ISelectionBearer, IPartiallyIntangibleControl {
+    public class ListBox<T> : Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IValueControl<T>, ISelectionBearer, IPartiallyIntangibleControl, IFuzzyHitTestTarget {
         public static bool SelectOnMouseDown = false;
 
         public const int ControlMinimumHeight = 75, ControlMinimumWidth = 150;
@@ -531,5 +531,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) => false;
+
+        int IFuzzyHitTestTarget.WalkTree (
+            List<FuzzyHitTest.Result> output, ref FuzzyHitTest.Result thisControl, Vector2 position, Func<Control, bool> predicate, float maxDistanceSquared
+        ) => 0;
+        bool IFuzzyHitTestTarget.WalkChildren => false;
     }
 }

@@ -60,6 +60,7 @@ namespace Squared.PRGUI {
     }
 
     public interface IFuzzyHitTestTarget {
+        bool WalkChildren { get; }
         int WalkTree (List<FuzzyHitTest.Result> output, ref FuzzyHitTest.Result thisControl, Vector2 position, Func<Control, bool> predicate, float maxDistanceSquared);
     }
 
@@ -138,12 +139,15 @@ namespace Squared.PRGUI {
                 stop = stop || inside;
 
                 int localMatches = 0;
-                var icc = control as IControlContainer;
-                if (icc != null)
-                    localMatches += WalkTree(icc.Children, result.ClippedRect, position, depth + 1, predicate, maxDistanceSquared);
                 var ifht = control as IFuzzyHitTestTarget;
                 if (ifht != null)
                     localMatches += ifht.WalkTree(Results, ref result, position, predicate, maxDistanceSquared);
+
+                if (ifht?.WalkChildren != false) {
+                    var icc = control as IControlContainer;
+                    if (icc != null)
+                        localMatches += WalkTree(icc.Children, result.ClippedRect, position, depth + 1, predicate, maxDistanceSquared);
+                }
 
                 totalMatches += localMatches;
                 if (localMatches > 0)

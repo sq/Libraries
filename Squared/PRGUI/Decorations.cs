@@ -65,8 +65,9 @@ namespace Squared.PRGUI.Decorations {
     public interface IMetricsProvider {
         Margins Margins { get; }
         Margins Padding { get; }
+        IGlyphSource GlyphSource { get; }
         void GetContentAdjustment (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
-        bool GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color);
+        bool GetTextSettings (UIOperationContext context, ControlStates state, out Material material, ref Color? color);
     }
 
     public interface IWidgetDecorator<TData> : IMetricsProvider {
@@ -125,7 +126,7 @@ namespace Squared.PRGUI.Decorations {
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
-    public delegate bool TextSettingsGetter (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color);
+    public delegate bool TextSettingsGetter (UIOperationContext context, ControlStates state, out Material material, ref Color? color);
     public delegate void DecoratorDelegate (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
     public delegate void ContentAdjustmentGetter (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
 
@@ -134,15 +135,18 @@ namespace Squared.PRGUI.Decorations {
         public Margins Padding { get; set; }
 
         public IGlyphSource Font;
+        public Func<IGlyphSource> GetFont;
         public TextSettingsGetter GetTextSettings;
         public ContentAdjustmentGetter GetContentAdjustment;
 
-        bool IMetricsProvider.GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color) {
-            if (GetTextSettings != null)
-                return GetTextSettings(context, state, out material, out font, ref color);
-            else {
+        IGlyphSource IMetricsProvider.GlyphSource => 
+            (GetFont != null) ? GetFont() : Font;
+
+        bool IMetricsProvider.GetTextSettings (UIOperationContext context, ControlStates state, out Material material, ref Color? color) {
+            if (GetTextSettings != null) {
+                return GetTextSettings(context, state, out material, ref color);
+            } else {
                 material = default(Material);
-                font = Font;
                 return false;
             }
         }

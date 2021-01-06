@@ -159,6 +159,8 @@ namespace Squared.PRGUI.Controls {
         private void ConfigureMeasurement () {
             if (ContentMeasurement == null)
                 ContentMeasurement = new DynamicStringLayout();
+            if (Content.GlyphSource == null)
+                throw new NullReferenceException();
             ContentMeasurement.Copy(Content);
             ContentMeasurement.MeasureOnly = true;
             // HACK: If we never get painted (to validate our main content layout), then
@@ -196,6 +198,7 @@ namespace Squared.PRGUI.Controls {
         private IDecorator _CachedTextDecorations,
             _CachedDecorations;
         private Margins _CachedPadding;
+        private bool? _CachedContentIsSingleLine;
 
         protected void ComputeAutoSize (UIOperationContext context) {
             // FIXME: If we start out constrained (by our parent size, etc) we will compute
@@ -208,14 +211,15 @@ namespace Squared.PRGUI.Controls {
             }
 
             var textDecorations = GetTextDecorator(context.DecorationProvider);
-            UpdateFont(context, textDecorations);
+            var decorations = GetDecorator(context.DecorationProvider);
+            var fontChanged = UpdateFont(context, textDecorations, decorations);
             if (ScaleToFit)
                 return;
 
-            var decorations = GetDecorator(context.DecorationProvider);
             ComputePadding(context, decorations, out Margins computedPadding);
 
-            if ((ContentMeasurement?.IsValid != true) || !Content.IsValid)
+            var contentChanged = (ContentMeasurement?.IsValid == false) || !Content.IsValid;
+            if (contentChanged)
                 AutoSizeComputedWidth = AutoSizeComputedHeight = null;
 
             if (
@@ -236,17 +240,21 @@ namespace Squared.PRGUI.Controls {
             _CachedDecorations = decorations;
             _CachedPadding = computedPadding;
 
-            // HACK: If we're pretty certain the text will be exactly one line long and we don't
-            //  care how wide it is, just return the line spacing without performing layout
-            if (
-                (AutoSizeHeight && !AutoSizeWidth) &&
-                (!Content.CharacterWrap && !Content.WordWrap) &&
-                (
-                    (Content.LineLimit == 1) ||
-                    Content.Text.Length < 1 ||
-                    ((Content.Text.Length < 512) && !Content.Text.Contains('\n'))
-                )
-            ) {
+            if (contentChanged || fontChanged || (_CachedContentIsSingleLine == null)) {
+                // HACK: If we're pretty certain the text will be exactly one line long and we don't
+                //  care how wide it is, just return the line spacing without performing layout
+                _CachedContentIsSingleLine = (AutoSizeHeight && !AutoSizeWidth) &&
+                    (!Content.CharacterWrap && !Content.WordWrap) &&
+                    (
+                        (Content.LineLimit == 1) ||
+                        Content.Text.Length < 1 ||
+                        ((Content.Text.Length < 512) && !Content.Text.Contains('\n'))
+                    );
+            }
+
+            if (_CachedContentIsSingleLine == true) {
+                if (contentChanged)
+                    GetCurrentLayout(true);
                 AutoSizeComputedHeight = (float)Math.Ceiling(Content.GlyphSource.LineSpacing + computedPadding.Size.Y);
                 return;
             }
@@ -331,7 +339,7 @@ namespace Squared.PRGUI.Controls {
             Color? defaultColor = null;
             Material material;
             var textDecorations = GetTextDecorator(context.DecorationProvider);
-            GetTextSettings(context, textDecorations, settings.State, out material, ref defaultColor);
+            GetTextSettings(context, textDecorations, decorations, settings.State, out material, ref defaultColor);
 
             Content.DefaultColor = defaultColor ?? Color.White;
 
@@ -381,17 +389,34 @@ namespace Squared.PRGUI.Controls {
                 Content.LineBreakAtX = null;
         }
 
-        protected void UpdateFont (UIOperationContext context, IDecorator decorations) {
-            Color? temp2 = null;
-            GetTextSettings(context, decorations, default(ControlStates), out Material temp, ref temp2);
+        private IGlyphSource _MostRecentFontFromDecorations;
+
+        private bool SyncWithCurrentFontFromDecorations (IGlyphSource font) {
+            var result = false;
+            if (font != _MostRecentFontFromDecorations) {
+                if (Content.GlyphSource == _MostRecentFontFromDecorations) {
+                    Content.GlyphSource = font;
+                    result = true;
+                }
+                _MostRecentFontFromDecorations = font;
+            }
+
+            return result;
         }
 
-        protected void GetTextSettings (UIOperationContext context, IDecorator decorations, ControlStates state, out Material material, ref Color? color) {
-            decorations.GetTextSettings(context, state, out material, out IGlyphSource font, ref color);
-            if (Content.GlyphSource == null)
-                Content.GlyphSource = font;
+        protected bool UpdateFont (UIOperationContext context, IDecorator textDecorations, IDecorator decorations) {
+            var font = textDecorations?.GlyphSource ?? decorations.GlyphSource;
+            if (font == null)
+                throw new NullReferenceException($"Decorators provided no font for control {this} ({textDecorations}, {decorations})");
+            return SyncWithCurrentFontFromDecorations(font);
+        }
+
+        protected bool GetTextSettings (UIOperationContext context, IDecorator textDecorations, IDecorator decorations, ControlStates state, out Material material, ref Color? color) {
+            (textDecorations ?? decorations).GetTextSettings(context, state, out material, ref color);
+            SyncWithCurrentFontFromDecorations(textDecorations?.GlyphSource ?? decorations.GlyphSource);
             if (TextMaterial != null)
                 material = TextMaterial;
+            return false;
         }
 
         protected string GetPlainText () {

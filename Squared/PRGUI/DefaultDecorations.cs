@@ -131,6 +131,7 @@ namespace Squared.PRGUI {
                 Padding = new Margins(16, 8),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
+                GetFont = () => ButtonFont ?? DefaultFont,
                 Below = Button_Below,
                 Above = Button_Above
             };
@@ -139,6 +140,7 @@ namespace Squared.PRGUI {
                 Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
                 Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
                 GetTextSettings = GetTextSettings_Button,
+                GetFont = () => DefaultFont,
                 Below = Checkbox_Below,
                 Above = Checkbox_Above
             };
@@ -147,6 +149,7 @@ namespace Squared.PRGUI {
                 Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
                 Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
                 GetTextSettings = GetTextSettings_Button,
+                GetFont = () => DefaultFont,
                 Below = RadioButton_Below,
                 Above = RadioButton_Above
             };
@@ -170,6 +173,7 @@ namespace Squared.PRGUI {
                 Padding = new Margins(6, 3, 6, 4),
                 Margins = new Margins(0, 0, 0, 2),
                 GetTextSettings = GetTextSettings_Title,
+                GetFont = () => TitleFont ?? DefaultFont,
                 Below = ContainerTitle_Below
             };
 
@@ -185,6 +189,7 @@ namespace Squared.PRGUI {
                 Padding = new Margins(6, 3, 6, 4),
                 Margins = new Margins(0, 0, 0, 2),
                 GetTextSettings = GetTextSettings_Title,
+                GetFont = () => TitleFont ?? DefaultFont,
                 Below = WindowTitle_Below
             };
 
@@ -192,12 +197,14 @@ namespace Squared.PRGUI {
                 Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
                 Padding = new Margins(6),
                 GetTextSettings = GetTextSettings,
+                GetFont = () => DefaultFont,
                 Below = StaticText_Below,
             };
 
             Tooltip = new DelegateDecorator {
                 Padding = new Margins(12, 8, 12, 8),
                 GetTextSettings = GetTextSettings_Tooltip,
+                GetFont = () => TooltipFont ?? DefaultFont,
                 Below = Tooltip_Below,
             };
 
@@ -206,6 +213,7 @@ namespace Squared.PRGUI {
                 Margins = new Margins(4),
                 Padding = new Margins(6),
                 GetTextSettings = GetTextSettings_Tooltip,
+                GetFont = () => DefaultFont,
                 Below = Tooltip_Below,
                 // FIXME: Separate routine?
                 ContentClip = Container_ContentClip,
@@ -216,6 +224,7 @@ namespace Squared.PRGUI {
                 Margins = new Margins(GlobalDefaultMargin),
                 Padding = new Margins(2),
                 GetTextSettings = GetTextSettings,
+                GetFont = () => DefaultFont,
                 Below = Container_Below,
                 ContentClip = Container_ContentClip,
             };
@@ -224,6 +233,7 @@ namespace Squared.PRGUI {
                 Margins = new Margins(GlobalDefaultMargin),
                 Padding = new Margins(6),
                 GetTextSettings = GetTextSettings,
+                GetFont = () => DefaultFont,
                 // FIXME
                 Below = EditableText_Below,
                 ContentClip = EditableText_ContentClip
@@ -251,7 +261,8 @@ namespace Squared.PRGUI {
             };
 
             Description = new DelegateDecorator {
-                GetTextSettings = GetTextSettings_Description
+                GetTextSettings = GetTextSettings_Description,
+                GetFont = () => DefaultFont,
             };
 
             Slider = new DelegateDecorator {
@@ -281,6 +292,7 @@ namespace Squared.PRGUI {
                 Padding = new Margins(16, 8, 16 + DropdownArrowWidth + 6, 8),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
+                GetFont = () => ButtonFont ?? DefaultFont,
                 Below = Button_Below,
                 Above = Dropdown_Above
             };
@@ -288,6 +300,7 @@ namespace Squared.PRGUI {
             AcceleratorLabel = new DelegateDecorator {
                 Padding = new Margins(6, 4, 6, 4),
                 GetTextSettings = GetTextSettings_AcceleratorLabel,
+                GetFont = () => AcceleratorFont ?? TooltipFont ?? DefaultFont,
                 Below = AcceleratorLabel_Below
             };
 
@@ -1176,23 +1189,20 @@ namespace Squared.PRGUI {
 
         public bool GetTextSettings (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref Color? color
+            out Material material, ref Color? color
         ) {
-            return GetTextSettings(context, state, out material, out font, ref color, false);
+            return GetTextSettings(context, state, out material, ref color, false);
         }
 
         public bool GetTextSettings (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref Color? color,
-            bool selected
+            out Material material, ref Color? color, bool selected
         ) {
             if (!color.HasValue)
                 color = TextColor;
 
             if (state.IsFlagged(ControlStates.Disabled))
                 color = color?.ToGrayscale(DisabledTextAlpha);
-
-            font = DefaultFont;
 
             material = selected
                 ? SelectedTextMaterial
@@ -1202,10 +1212,10 @@ namespace Squared.PRGUI {
 
         public bool GetTextSettings_Description (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref Color? color
+            out Material material, ref Color? color
         ) {
             // HACK: Pass selected=true to get the unshadowed material
-            var result = GetTextSettings(context, state, out material, out font, ref color, true);
+            var result = GetTextSettings(context, state, out material, ref color, true);
             if (color.HasValue)
                 color = color.Value * 0.5f;
             return result;
@@ -1213,10 +1223,9 @@ namespace Squared.PRGUI {
 
         private bool GetTextSettings_Button (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref Color? color
+            out Material material, ref Color? color
         ) {
-            GetTextSettings(context, state, out material, out font, ref color);
-            font = ButtonFont ?? font;
+            GetTextSettings(context, state, out material, ref color);
             return true;
         }
 
@@ -1231,42 +1240,39 @@ namespace Squared.PRGUI {
 
         private bool GetTextSettings_Title (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref Color? color
+            out Material material, ref Color? color
         ) {
             if (color == null)
                 color = TitleTextColor;
-            GetTextSettings(context, state, out material, out font, ref color);
-            font = TitleFont ?? font;
+            GetTextSettings(context, state, out material, ref color);
             return true;
         }
 
         private bool GetTextSettings_AcceleratorLabel (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref Color? color
+            out Material material, ref Color? color
         ) {
             if (color == null)
                 color = AcceleratorTextColor;
-            GetTextSettings(context, state, out material, out font, ref color);
-            font = AcceleratorFont ?? TitleFont ?? font;
+            GetTextSettings(context, state, out material, ref color);
             return true;
         }
 
         private bool GetTextSettings_Tooltip (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref Color? color
+            out Material material, ref Color? color
         ) {
             if (color == null)
                 color = TooltipTextColor;
-            GetTextSettings(context, state, out material, out font, ref color);
-            font = TooltipFont ?? font;
+            GetTextSettings(context, state, out material, ref color);
             return true;
         }
 
         private bool GetTextSettings_Selection (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref Color? color
+            out Material material, ref Color? color
         ) {
-            GetTextSettings(context, state, out material, out font, ref color, selected: true);
+            GetTextSettings(context, state, out material, ref color, selected: true);
             color = SelectedTextColor;
             return true;
         }
