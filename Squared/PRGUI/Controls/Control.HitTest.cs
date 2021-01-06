@@ -35,7 +35,7 @@ namespace Squared.PRGUI {
             return true;
         }
 
-        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool ignoreIntangible = false) {
+        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible = false) {
             if (!Visible)
                 return null;
             if (LayoutKey.IsInvalid)
@@ -49,7 +49,7 @@ namespace Squared.PRGUI {
 
             if (OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result)) {
                 var ipic = result as IPartiallyIntangibleControl;
-                if (ignoreIntangible && (ipic?.IsIntangibleAtPosition(position) == true))
+                if (rejectIntangible && (ipic?.IsIntangibleAtPosition(position) == true))
                     return null;
 
                 return result;
@@ -57,6 +57,10 @@ namespace Squared.PRGUI {
 
             return null;
         }
+    }
+
+    public interface IFuzzyHitTestTarget {
+        int WalkTree (List<FuzzyHitTest.Result> output, ref FuzzyHitTest.Result thisControl, Vector2 position, Func<Control, bool> predicate, float maxDistanceSquared);
     }
 
     public class FuzzyHitTest : IEnumerable<FuzzyHitTest.Result> {
@@ -135,11 +139,13 @@ namespace Squared.PRGUI {
 
                 int localMatches = 0;
                 var icc = control as IControlContainer;
-                if (icc != null) {
-                    localMatches = WalkTree(icc.Children, result.ClippedRect, position, depth + 1, predicate, maxDistanceSquared);
-                    totalMatches += localMatches;
-                }
+                if (icc != null)
+                    localMatches += WalkTree(icc.Children, result.ClippedRect, position, depth + 1, predicate, maxDistanceSquared);
+                var ifht = control as IFuzzyHitTestTarget;
+                if (ifht != null)
+                    localMatches += ifht.WalkTree(Results, ref result, position, predicate, maxDistanceSquared);
 
+                totalMatches += localMatches;
                 if (localMatches > 0)
                     continue;
 

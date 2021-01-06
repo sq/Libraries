@@ -15,7 +15,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class TitledContainer : Container, IReadingTarget {
+    public class TitledContainer : Container, IReadingTarget, IFuzzyHitTestTarget {
         public const float MinDisclosureArrowSize = 10,
             DisclosureArrowMargin = 16,
             DisclosureAnimationDuration = 0.175f,
@@ -344,6 +344,33 @@ namespace Squared.PRGUI.Controls {
 
         public override string ToString () {
             return $"{GetType().Name} #{GetHashCode():X8} '{Title}'";
+        }
+
+        int IFuzzyHitTestTarget.WalkTree (List<FuzzyHitTest.Result> output, ref FuzzyHitTest.Result thisControl, Vector2 position, Func<Control, bool> predicate, float maxDistanceSquared) {
+            const float shrink = 2;
+            var disclosureArrowBox = new RectF(
+                thisControl.Rect.Left + shrink, thisControl.Rect.Top + shrink,
+                DisclosureArrowPadding - (shrink * 2), MostRecentTitleBox.Height - (shrink * 2)
+            );
+            if (!thisControl.ClippedRect.Intersection(ref disclosureArrowBox, out RectF clippedArrowBox))
+                return 0;
+            var closestPoint = disclosureArrowBox.Center;
+            var distanceSquared = (closestPoint - position).LengthSquared();
+            if (distanceSquared > maxDistanceSquared)
+                return 0;
+
+            var result = new FuzzyHitTest.Result {
+                Control = this,
+                Depth = thisControl.Depth + 1,
+                // HACK
+                ClosestPoint = closestPoint,
+                ClippedRect = clippedArrowBox,
+                Rect = disclosureArrowBox,
+                IsIntangibleAtClosestPoint = false,
+                Distance = (float)Math.Sqrt(distanceSquared)
+            };
+            output.Add(result);
+            return 1;
         }
     }
 }

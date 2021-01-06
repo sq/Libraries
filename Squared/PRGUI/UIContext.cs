@@ -120,7 +120,7 @@ namespace Squared.PRGUI {
 
         // Allocate scratch rendering buffers (for composited controls) at a higher or lower resolution
         //  than the canvas, to improve the quality of transformed imagery
-        public readonly float ScratchScaleFactor = 1.0f;
+        public readonly float ScratchScaleFactor = 4.0f;
 
         // Full occlusion tests are performed with this padding region (in pixels) to account for things like
         //  drop shadows being visible even if the control itself is not
@@ -705,8 +705,8 @@ namespace Squared.PRGUI {
         }
 
         private void UpdateCaptureAndHovering (Vector2 mousePosition, Control exclude = null) {
-            MouseOver = HitTest(mousePosition, ignoreIntangible: true);
-            MouseOverLoose = HitTest(mousePosition, ignoreIntangible: false);
+            MouseOver = HitTest(mousePosition, rejectIntangible: true);
+            MouseOverLoose = HitTest(mousePosition, rejectIntangible: false);
 
             if ((MouseOver != MouseCaptured) && (MouseCaptured != null))
                 Hovering = null;
@@ -1205,7 +1205,7 @@ namespace Squared.PRGUI {
         }
 
         // Position is relative to the top-left corner of the canvas
-        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly = false, bool acceptsFocusOnly = false, bool ignoreIntangible = false) {
+        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly = false, bool acceptsFocusOnly = false, bool rejectIntangible = false) {
             var areHitTestsBlocked = false;
             foreach (var m in ModalStack)
                 if (m.BlockHitTests)
@@ -1216,7 +1216,7 @@ namespace Squared.PRGUI {
                 var control = sorted[i];
                 if (areHitTestsBlocked && !ModalStack.Contains(control as IModal))
                     continue;
-                var result = control.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, ignoreIntangible);
+                var result = control.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible);
                 if (result != null)
                     return result;
             }
