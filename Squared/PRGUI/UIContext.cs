@@ -62,7 +62,7 @@ namespace Squared.PRGUI {
                     height = (int)(context.CanvasSize.Y * context.ScratchScaleFactor);
                 Instance = new AutoRenderTarget(
                     coordinator, width, height,
-                    false, SurfaceFormat.Color, DepthFormat.Depth24Stencil8
+                    false, Context.SurfaceFormat, DepthFormat.Depth24Stencil8
                 );
             }
 
@@ -390,6 +390,11 @@ namespace Squared.PRGUI {
 
         internal bool IsCompositionActive = false;
 
+        /// <summary>
+        /// The surface format used for scratch compositor textures. Update this if you want to use sRGB.
+        /// </summary>
+        public SurfaceFormat SurfaceFormat = SurfaceFormat.Color;
+
         public float Now { get; private set; }
         public long NowL { get; private set; }
 
@@ -466,7 +471,10 @@ namespace Squared.PRGUI {
             ) {
         }
 
-        public UIContext (DefaultMaterialSet materials, IDecorationProvider decorations, IAnimationProvider animations = null, ITimeProvider timeProvider = null) {
+        public UIContext (
+            DefaultMaterialSet materials, IDecorationProvider decorations, 
+            IAnimationProvider animations = null, ITimeProvider timeProvider = null
+        ) {
             EventBus = new EventBus();
             EventBus.AfterBroadcast += EventBus_AfterBroadcast;
             Controls = new ControlCollection(this);

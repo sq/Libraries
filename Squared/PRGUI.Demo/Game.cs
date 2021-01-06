@@ -57,6 +57,8 @@ namespace PRGUI.Demo {
         private bool IsFirstUpdate = true, IsFirstDraw = true;
         private int UpdatesToSkip = 0, DrawsToSkip = 0;
 
+        public const SurfaceFormat RenderTargetFormat = SurfaceFormat.ColorSrgbEXT;
+
         public DefaultDecorations Decorations;
 
         // public ControlKey MasterList, ContentView;
@@ -66,7 +68,7 @@ namespace PRGUI.Demo {
 
             Graphics = new GraphicsDeviceManager(this);
             Graphics.GraphicsProfile = GraphicsProfile.HiDef;
-            Graphics.PreferredBackBufferFormat = SurfaceFormat.Color;
+            Graphics.PreferredBackBufferFormat = RenderTargetFormat;
             Graphics.PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8;
             Graphics.PreferredBackBufferWidth = 1920;
             Graphics.PreferredBackBufferHeight = 1080;
@@ -88,6 +90,7 @@ namespace PRGUI.Demo {
 
         private FreeTypeFont LoadFont (string name) {
             var result = FontLoader.Load(name);
+            result.sRGB = true;
             // High-DPI offscreen surface so the text is sharp even at subpixel positions
             result.DPIPercent = (int)(100f / DPIFactor);
             // Big margin on glyphs so shadows aren't clipped
@@ -162,8 +165,14 @@ namespace PRGUI.Demo {
                 DefaultFont = Font,
                 TitleFont = TitleFont,
                 TooltipFont = tooltipFont,
-                AcceleratorFont = TitleFont                
+                AcceleratorFont = TitleFont
             };
+
+            UIRenderTarget = new AutoRenderTarget(
+                RenderCoordinator,
+                Graphics.PreferredBackBufferWidth, Graphics.PreferredBackBufferHeight, 
+                false, RenderTargetFormat, DepthFormat.Depth24Stencil8, 1
+            );
 
             Context = new UIContext(Materials, Decorations) {
                 InputSources = {
@@ -180,13 +189,8 @@ namespace PRGUI.Demo {
                         }
                     }
                 },
+                SurfaceFormat = RenderTargetFormat
             };
-
-            UIRenderTarget = new AutoRenderTarget(
-                RenderCoordinator,
-                Graphics.PreferredBackBufferWidth, Graphics.PreferredBackBufferHeight, 
-                false, SurfaceFormat.Color, DepthFormat.Depth24Stencil8, 1
-            );
 
             LastTimeOverUI = Time.Ticks;
 

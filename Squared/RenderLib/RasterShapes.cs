@@ -269,6 +269,10 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         public bool BlendInLinearSpace;
         /// <summary>
+        /// If set, final output is in linear space instead of sRGB.
+        /// </summary>
+        public bool OutputInLinearSpace;
+        /// <summary>
         /// The fill gradient weight is calculated as 1 - pow(1 - pow(w, FillGradientPowerMinusOne.x + 1), FillGradientPowerMinusOne.y + 1)
         /// Adjusting x and y away from 1 allows you to adjust the shape of the curve
         /// </summary>
@@ -395,6 +399,7 @@ namespace Squared.Render.RasterShape {
     public struct RasterShader {
         public Material Material;
         public EffectParameter BlendInLinearSpace,
+            OutputInLinearSpace,
             RasterTexture,
             RampTexture,
             ShadowOptions,
@@ -407,6 +412,7 @@ namespace Squared.Render.RasterShape {
             Material = material;
             var p = material.Effect.Parameters;
             BlendInLinearSpace = p["BlendInLinearSpace"];
+            OutputInLinearSpace = p["OutputInLinearSpace"];
             RasterTexture = p["RasterTexture"];
             RampTexture = p["RampTexture"];
             ShadowOptions = p["ShadowOptions"];
@@ -433,7 +439,7 @@ namespace Squared.Render.RasterShape {
 
         private struct SubBatch {
             public RasterShapeType Type;
-            public bool BlendInLinearSpace;
+            public bool BlendInLinearSpace, OutputInLinearSpace;
             public RasterShadowSettings Shadow;
             public bool Shadowed, Simple;
             public int InstanceOffset, InstanceCount;
@@ -522,6 +528,7 @@ namespace Squared.Render.RasterShape {
                 var dc = _DrawCalls[0];
                 var lastType = dc.Type;
                 var lastBlend = dc.BlendInLinearSpace;
+                var lastOutput = dc.OutputInLinearSpace;
                 var lastShadow = dc.Shadow;
                 var lastOffset = 0;
                 var lastIsSimple = dc.IsSimple;
@@ -533,6 +540,7 @@ namespace Squared.Render.RasterShape {
                     if (
                         ((dc.Type != lastType) && !UseUbershader) ||
                         (dc.BlendInLinearSpace != lastBlend) ||
+                        (dc.OutputInLinearSpace != lastOutput) ||
                         !dc.Shadow.Equals(ref lastShadow) ||
                         (dc.IsSimple != lastIsSimple) ||
                         !dc.TextureSettings.Equals(lastTextureSettings)
@@ -541,6 +549,7 @@ namespace Squared.Render.RasterShape {
                             InstanceOffset = lastOffset,
                             InstanceCount = (i - lastOffset),
                             BlendInLinearSpace = lastBlend,
+                            OutputInLinearSpace = lastOutput,
                             Type = lastType,
                             Shadow = lastShadow,
                             Shadowed = ShouldBeShadowed(ref lastShadow),
@@ -574,6 +583,7 @@ namespace Squared.Render.RasterShape {
                     InstanceOffset = lastOffset,
                     InstanceCount = (count - lastOffset),
                     BlendInLinearSpace = lastBlend,
+                    OutputInLinearSpace = lastOutput,
                     Type = lastType,
                     Shadow = lastShadow,
                     Shadowed = ShouldBeShadowed(ref lastShadow),
@@ -643,10 +653,16 @@ namespace Squared.Render.RasterShape {
                 scratchBindings[0] = cornerVb;
                 // scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
 
+                // if the render target/backbuffer is sRGB, we need to generate output in the correct color space
+                var isSrgbRenderTarget = 
+                    (manager.CurrentRenderTarget?.Format ?? manager.Device.PresentationParameters.BackBufferFormat) 
+                    == SurfaceFormat.ColorSrgbEXT;
+
                 foreach (var sb in _SubBatches) {
                     var rasterShader = UseUbershader ? PickMaterial(null, sb.Shadowed, sb.Simple) : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
 
                     rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
+                    rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget || sb.OutputInLinearSpace);
                     rasterShader.RasterTexture?.SetValue(Texture);
                     rasterShader.RampTexture?.SetValue(RampTexture);
 
@@ -818,6 +834,12 @@ namespace Squared.Render {
                 Vector4 = v4;
             }
             Color = default(Color);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Color ToLinearColor () {
+            var v = ToPLinear();
+            return new Color(v.X, v.Y, v.Z, v.W);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

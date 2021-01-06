@@ -93,9 +93,7 @@ namespace Squared.Render.Text {
 
                 if (!foundRoom) {
                     var isFirstAtlas = (Atlases.Count == 0) && (_SizePoints < SmallFirstAtlasThreshold);
-                    // FIXME: SRGB
-                    // var surfaceFormat = Font.sRGB ? SurfaceFormat.ColorSRgbEXT : SurfaceFormat.Color;
-                    var surfaceFormat = SurfaceFormat.Color;
+                    var surfaceFormat = Font.sRGB ? SurfaceFormat.ColorSrgbEXT : SurfaceFormat.Color;
                     var newAtlas = new DynamicAtlas<Color>(
                         Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight, 
                         surfaceFormat, 4, Font.MipMapping ? PickMipGenerator(Font) : null

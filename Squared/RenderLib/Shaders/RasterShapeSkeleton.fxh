@@ -78,7 +78,7 @@ uniform float4 TexturePlacement;
         outlineColor = pSRGBToPLinear_Accurate(outlineColor); \
     }
 
-uniform bool BlendInLinearSpace;
+uniform bool BlendInLinearSpace, OutputInLinearSpace;
 uniform float HalfPixelOffset;
 
 // offsetx, offsety, softness, fillSuppression
@@ -809,7 +809,7 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return top + (bottom * (1 - top.a));
 }
 
-float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool convertToSRGB, bool isSimple, bool enableShadow, float2 vpos) {
+float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool isFinalComposite, bool isSimple, bool enableShadow, float2 vpos) {
     float4 result = fillColor * fillAlpha;
     if (enableShadow) {
         // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
@@ -824,8 +824,14 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
     // It's also important to do dithering and sRGB conversion on a result that is not premultiplied
     result.rgb = float4(result.rgb / max(result.a, 0.0001), result.a);
 
-    if (convertToSRGB)
-        result.rgb = LinearToSRGB(result.rgb);
+    if (isFinalComposite) {
+        if (BlendInLinearSpace != OutputInLinearSpace) {
+            if (OutputInLinearSpace)
+                result.rgb = SRGBToLinear(result).rgb;
+            else
+                result.rgb = LinearToSRGB(result.rgb);
+        }
+    }
 
     if (isSimple)
         return result;
@@ -874,6 +880,6 @@ float4 texturedShapeCommon (
     } else
         fill *= texColor;
 
-    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, false, enableShadow, vpos);
+    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, true, false, enableShadow, vpos);
     return result;
 }
