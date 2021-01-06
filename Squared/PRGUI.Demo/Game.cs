@@ -85,6 +85,23 @@ namespace PRGUI.Demo {
                 GamePad.FixedTimeStep = 1.0f / 60f;
             }
 
+            InputID.GamePadButtonLabels = new Dictionary<Buttons, string> {
+                { Buttons.A, "" },
+                { Buttons.B, "" },
+                { Buttons.X, "" },
+                { Buttons.Y, "" },
+                { Buttons.LeftShoulder, "" },
+                { Buttons.RightShoulder, "" },
+                { Buttons.DPadLeft, "" },
+                { Buttons.DPadRight, "" },
+                { Buttons.DPadUp, "" },
+                { Buttons.DPadDown, "" },
+                { Buttons.Back, "" },
+                { Buttons.Start, "" },
+                { Buttons.LeftStick, "" },
+                { Buttons.RightStick, "" },
+            };
+
             Scheduler = new TaskScheduler(JobQueue.WindowsMessageBased);
         }
 
@@ -117,6 +134,8 @@ namespace PRGUI.Demo {
             //  the japanese glyphs no longer need an offset
             // NotoSans.VerticalOffset = 0f * fontScale;
             Kenney.SizePoints = 17f * fontScale;
+            Kenney.VerticalOffset = 2 * fontScale;
+            Kenney.ExtraLineSpacing = 3 * fontScale;
             TitleFont.SizePoints = 16f * fontScale;
             TooltipFont.SizePoints = 14f * fontScale;
         }
@@ -143,7 +162,6 @@ namespace PRGUI.Demo {
                 TooltipFont, Kenney
             );
 
-            Kenney.VerticalOffset = 6;
             Kenney.DefaultGlyphColors = new Dictionary<uint, Color> {
                 { ButtonChars[0], FilterButtonColor(Color.Green) },
                 { ButtonChars[1], FilterButtonColor(Color.DarkRed) },
@@ -166,7 +184,7 @@ namespace PRGUI.Demo {
                 DefaultFont = Font,
                 TitleFont = TitleFont,
                 TooltipFont = tooltipFont,
-                AcceleratorFont = TitleFont
+                AcceleratorFont = tooltipFont
             };
 
             UIRenderTarget = new AutoRenderTarget(

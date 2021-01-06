@@ -242,9 +242,6 @@ namespace Squared.PRGUI {
         /// </summary>
         public ControlCollection Controls { get; private set; }
 
-        private readonly List<IInputSource> ScratchInputSources = new List<IInputSource>();
-        public readonly List<IInputSource> InputSources = new List<IInputSource>();
-
         private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection;
 
         private ConditionalWeakTable<Control, Control> TopLevelFocusMemory = new ConditionalWeakTable<Control, Control>();
@@ -357,6 +354,10 @@ namespace Squared.PRGUI {
         public RichTextConfiguration RichTextConfiguration;
         public DefaultMaterialSet Materials { get; private set; }
         private ITimeProvider TimeProvider;
+
+        private readonly List<IInputSource> ScratchInputSources = new List<IInputSource>();
+        public readonly List<IInputSource> InputSources = new List<IInputSource>();
+        private readonly List<InputID> InputIDs = new List<InputID>();
 
         private InputState _CurrentInput, _LastInput;
         private List<Keys> _LastHeldKeys = new List<Keys>(), 
@@ -488,6 +489,17 @@ namespace Squared.PRGUI {
             };
             _LastInput.HeldKeys = _LastHeldKeys;
             _CurrentInput.HeldKeys = _CurrentHeldKeys;
+            CreateInputIDs();
+        }
+
+        public InputID GetInputID (Keys key, KeyboardModifiers modifiers) {
+            foreach (var iid in InputIDs) {
+                if ((iid.Key == key) && iid.Modifiers.Equals(modifiers))
+                    return iid;
+            }
+            var result = new InputID { Key = key, Modifiers = modifiers };
+            InputIDs.Add(result);
+            return result;
         }
 
         private Vector2 LastMousePosition => _LastInput.CursorPosition;

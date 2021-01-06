@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
@@ -11,6 +12,74 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Input {
+    public class InputID {
+        // FIXME: Move this
+        public static Dictionary<Buttons, string> GamePadButtonLabels = new Dictionary<Buttons, string>();
+
+        public string Label;
+        public Keys Key;
+        public KeyboardModifiers Modifiers;
+        public string GamePadLabel;
+        public Buttons? GamePadButton;
+
+        private static StringBuilder CachedStringBuilder = new StringBuilder();
+
+        public string ToString (bool gamePad) {
+            var sb = Interlocked.Exchange(ref CachedStringBuilder, null);
+            if (sb == null)
+                sb = new StringBuilder();
+            Format(sb, gamePad);
+            var result = sb.ToString();
+            Interlocked.CompareExchange(ref CachedStringBuilder, sb, null);
+            return result;
+        }
+
+        public void Format (StringBuilder output, bool gamePad) {
+            var length = output.Length;
+            var splitPosition = Label?.IndexOf("{0}");
+            if (splitPosition.GetValueOrDefault(-1) >= 0) {
+                output.Append(Label, 0, splitPosition.Value);
+            } else if (Label != null) {
+                output.Append(Label);
+                return;
+            }
+
+            if (gamePad && GamePadButton.HasValue) {
+                if (GamePadButtonLabels.TryGetValue(GamePadButton.Value, out string buttonLabel))
+                    output.Append(buttonLabel);
+                else
+                    output.Append(GamePadButton.Value.ToString());
+            } else {
+                Modifiers.Format(output);
+                if (output.Length > length)
+                    output.Append("+");
+                output.Append(Key.ToString());
+            }
+
+            if (splitPosition.HasValue)
+                output.Append(Label, splitPosition.Value + 3, Label.Length - splitPosition.Value - 3);
+        }
+
+        public bool Equals (InputID obj) {
+            return (obj.Key == Key);
+        }
+
+        public override bool Equals (object obj) {
+            var iid = obj as InputID;
+            if (iid == null)
+                return false;
+            return Equals(iid);
+        }
+
+        public override int GetHashCode () {
+            return Key.GetHashCode();
+        }
+
+        public override string ToString () {
+            return ToString(false);
+        }
+    }
+
     public interface IInputSource {
         void SetContext (UIContext context);
         void Update (ref InputState previous, ref InputState current);
@@ -19,11 +88,45 @@ namespace Squared.PRGUI.Input {
     }
 
     public struct KeyboardModifiers {
+        public bool Any => (Control || Shift || Alt);
         public bool Control => LeftControl || RightControl;
         public bool Shift => LeftShift || RightShift;
         public bool Alt => LeftAlt || RightAlt;
 
         public bool LeftControl, RightControl, LeftShift, RightShift, LeftAlt, RightAlt;
+
+        private static StringBuilder CachedStringBuilder = new StringBuilder();
+
+        public override string ToString () {
+            if (!Any)
+                return "";
+
+            var sb = Interlocked.Exchange(ref CachedStringBuilder, null);
+            if (sb == null)
+                sb = new StringBuilder();
+            Format(sb);
+            var result = sb.ToString();
+            Interlocked.CompareExchange(ref CachedStringBuilder, sb, null);
+            return result;
+        }
+
+        public void Format (StringBuilder output) {
+            if (!Any)
+                return;
+
+            if (Control)
+                output.Append("Ctrl");
+
+            if (Alt && Control)
+                output.Append("+Alt");
+            else if (Alt)
+                output.Append("Alt");
+
+            if (Shift && (Control || Alt))
+                output.Append("+Shift");
+            else if (Shift)
+                output.Append("Shift");
+        }
     }
 
     public struct InputState {
@@ -226,6 +329,7 @@ namespace Squared.PRGUI.Input {
                 Control = new [] { Buttons.Back },
                 Activate = new [] { Buttons.A },
                 Spacebar = new [] { Buttons.A },
+                Enter = new[] { Buttons.X },
                 Escape = new [] { Buttons.B },
                 Menu = new [] { Buttons.Y },
                 UpArrow = new[] { Buttons.DPadUp },
@@ -238,7 +342,7 @@ namespace Squared.PRGUI.Input {
             public Buttons[] FocusBack, FocusForward,
                 WindowFocusBack, WindowFocusForward,
                 Alt, Control, Shift,
-                Activate, Spacebar, Escape, Menu,
+                Activate, Spacebar, Enter, Escape, Menu,
                 UpArrow, LeftArrow, RightArrow, DownArrow;
         }
 
@@ -251,8 +355,16 @@ namespace Squared.PRGUI.Input {
             Deadzone = 0.1f;
         public float? FixedTimeStep = null;
 
+        private InputBindings _Bindings = InputBindings.Default;
+        public InputBindings Bindings {
+            get => _Bindings;
+            set {
+                _Bindings = value;
+                OnBindingsChanged();
+            }
+        }
+
         private Vector2? PreviousUnsnappedPosition, CurrentUnsnappedPosition;
-        public InputBindings Bindings = InputBindings.Default;
         public GamePadState PreviousState, CurrentState;
         public PlayerIndex PlayerIndex;
         public bool EnableButtons = true,
@@ -273,11 +385,52 @@ namespace Squared.PRGUI.Input {
             PreviousState = CurrentState = GamePad.GetState(PlayerIndex);
         }
 
+        // FIXME: Duplication
+        private void UpdateBinding (Buttons[] buttons, Keys key, bool ctrl = false, bool alt = false, bool shift = false) {
+            var mods = new KeyboardModifiers {
+                LeftControl = ctrl, LeftAlt = alt, LeftShift = shift
+            };
+            var id = Context.GetInputID(key, mods);
+
+            if ((buttons == null) || (buttons.Length == 0)) {
+                id.GamePadButton = null;
+                id.GamePadLabel = null;
+                return;
+            }
+
+            var button = buttons[0];
+            id.GamePadButton = button;
+            InputID.GamePadButtonLabels.TryGetValue(button, out id.GamePadLabel);
+        }
+
+        private void OnBindingsChanged () {
+            if (Context == null)
+                return;
+
+            Context.ClearInputIDButtons();
+            UpdateBinding(Bindings.FocusBack, Keys.Tab, shift: true);
+            UpdateBinding(Bindings.FocusForward, Keys.Tab);
+            UpdateBinding(Bindings.WindowFocusBack, Keys.Tab, ctrl: true, shift: true);
+            UpdateBinding(Bindings.WindowFocusForward, Keys.Tab, ctrl: true);
+            UpdateBinding(Bindings.Alt, Keys.LeftAlt, alt: true);
+            UpdateBinding(Bindings.Shift, Keys.LeftShift, shift: true);
+            UpdateBinding(Bindings.Control, Keys.LeftControl, ctrl: true);
+            UpdateBinding(Bindings.Activate, Keys.Space);
+            UpdateBinding(Bindings.Enter, Keys.Enter);
+            UpdateBinding(Bindings.Escape, Keys.Escape);
+            UpdateBinding(Bindings.Menu, Keys.Apps);
+            UpdateBinding(Bindings.UpArrow, Keys.Up);
+            UpdateBinding(Bindings.LeftArrow, Keys.Left);
+            UpdateBinding(Bindings.RightArrow, Keys.Right);
+            UpdateBinding(Bindings.DownArrow, Keys.Down);
+        }
+
         public void SetContext (UIContext context) {
             if ((context != Context) && (Context != null))
                 throw new InvalidOperationException("This source has already been used with another context");
             Context = context;
             FuzzyHitTest = new FuzzyHitTest(context);
+            OnBindingsChanged();
         }
 
         private void ProcessStick (Vector2 stick, out float speed, out Vector2 direction) {
@@ -411,6 +564,7 @@ namespace Squared.PRGUI.Input {
                 var currentSelectedControl = (Context.FixatedControl as ISelectionBearer)?.SelectedControl;
                 var currentSelectionRect = (Context.FixatedControl as ISelectionBearer)?.SelectionRect;
 
+                DispatchKeyEventsForButton(ref current, Keys.Enter, mods, Bindings.Enter);
                 DispatchKeyEventsForButton(ref current, Keys.Escape, mods, Bindings.Escape);
                 var wasUpPressed = DispatchKeyEventsForButton(ref current, Keys.Up, mods, Bindings.UpArrow);
                 var wasDownPressed = DispatchKeyEventsForButton(ref current, Keys.Down, mods, Bindings.DownArrow);

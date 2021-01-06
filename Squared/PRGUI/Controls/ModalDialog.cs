@@ -117,12 +117,12 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        IEnumerable<KeyValuePair<Control, string>> IAcceleratorSource.Accelerators {
+        IEnumerable<AcceleratorInfo> IAcceleratorSource.Accelerators {
             get {
                 if (AcceptControl != null)
-                    yield return new KeyValuePair<Control, string>(AcceptControl, "Enter");
+                    yield return new AcceleratorInfo(AcceptControl, Keys.Enter);
                 if (CancelControl != null)
-                    yield return new KeyValuePair<Control, string>(CancelControl, "Escape");
+                    yield return new AcceleratorInfo(CancelControl, Keys.Escape);
             }
         }
     }

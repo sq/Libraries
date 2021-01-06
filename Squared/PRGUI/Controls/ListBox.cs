@@ -486,16 +486,16 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        IEnumerable<KeyValuePair<Control, string>> Accessibility.IAcceleratorSource.Accelerators {
+        IEnumerable<Accessibility.AcceleratorInfo> Accessibility.IAcceleratorSource.Accelerators {
             get {
                 var si = SelectedIndex;
                 if (si > 0) {
                     Items.GetControlForValue(Items[si - 1], out Control prev);
-                    yield return new KeyValuePair<Control, string>(prev, "Up");
+                    yield return new Accessibility.AcceleratorInfo(prev, Keys.Up);
                 }
                 if (si < (Items.Count - 1)) {
                     Items.GetControlForValue(Items[si + 1], out Control next);
-                    yield return new KeyValuePair<Control, string>(next, "Down");
+                    yield return new Accessibility.AcceleratorInfo(next, Keys.Down);
                 }
             }
         }

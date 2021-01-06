@@ -155,6 +155,9 @@ namespace Squared.Render.Text {
                 return result;
             }
 
+            // FIXME: We need to invalidate cached glyphs when this changes
+            public float ExtraLineSpacing = 0;
+
             private float? _LineSpacing = null;
 
             public float LineSpacing {
@@ -168,7 +171,7 @@ namespace Squared.Render.Text {
                         _LineSpacing = Font.Face.Size.Metrics.Height.ToSingle();
                     }
 
-                    return _LineSpacing.Value;
+                    return _LineSpacing.Value + ExtraLineSpacing;
                 }
             }
 
@@ -261,7 +264,9 @@ namespace Squared.Render.Text {
                     XOffset = ftgs.BitmapLeft - bearingXMetric - Font.GlyphMargin,
                     YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin + Font.VerticalOffset + VerticalOffset,
                     RectInTexture = rect,
-                    LineSpacing = Font.Face.Size.Metrics.Height.ToSingle(),
+                    // FIXME: This will become invalid if the extra spacing changes
+                    // FIXME: Scale the spacing appropriately based on ratios
+                    LineSpacing = Font.Face.Size.Metrics.Height.ToSingle() + ExtraLineSpacing,
                     DefaultColor = nullableDefaultColor,
                     Baseline = Font.Face.Size.Metrics.Ascender.ToSingle()
                 };
@@ -444,6 +449,15 @@ namespace Squared.Render.Text {
             }
             set {
                 DefaultSize.SizePoints = value;
+            }
+        }
+
+        public float ExtraLineSpacing {
+            get {
+                return DefaultSize.ExtraLineSpacing;
+            }
+            set {
+                DefaultSize.ExtraLineSpacing = value;
             }
         }
 

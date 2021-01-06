@@ -15,10 +15,33 @@ using Squared.Render.Text;
 using Squared.Render;
 using Microsoft.Xna.Framework;
 using Squared.Game;
+using Microsoft.Xna.Framework.Input;
+using Squared.PRGUI.Input;
 
 namespace Squared.PRGUI.Accessibility {
+    public struct AcceleratorInfo {
+        public Control Target;
+        public string Text;
+        public Keys Key;
+        public KeyboardModifiers Modifiers;
+
+        public AcceleratorInfo (Control target, string text) {
+            Target = target;
+            Text = text;
+            Key = default(Keys);
+            Modifiers = default(KeyboardModifiers);
+        }
+
+        public AcceleratorInfo (Control target, Keys key, bool ctrl = false, bool alt = false, bool shift = false) {
+            Target = target;
+            Text = null;
+            Key = key;
+            Modifiers = new KeyboardModifiers { LeftControl = ctrl, LeftAlt = alt, LeftShift = shift };
+        }
+    }
+
     public interface IAcceleratorSource {
-        IEnumerable<KeyValuePair<Control, string>> Accelerators { get; }
+        IEnumerable<AcceleratorInfo> Accelerators { get; }
     }
 
     public interface IReadingTarget {
@@ -256,7 +279,34 @@ namespace Squared.PRGUI {
         ArraySegment<BitmapDrawCall> AcceleratorOverlayBuffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[256]);
 
         // HACK
-        List<RectF> RasterizedOverlayBoxes = new List<RectF>();
+        List<(RectF, RectF)> RasterizedOverlayBoxes = new List<(RectF, RectF)>();
+
+        internal InputID FocusForward, FocusBackward, WindowFocusForward, WindowFocusBackward;
+
+        internal void ClearInputIDButtons () {
+            foreach (var iid in InputIDs) {
+                iid.GamePadButton = null;
+                iid.GamePadLabel = null;
+            }
+        }
+
+        private InputID CreateInputID (Keys key, string label, bool ctrl = false, bool alt = false, bool shift = false) {
+            var mods = new KeyboardModifiers {
+                LeftAlt = alt,
+                LeftShift = shift,
+                LeftControl = ctrl
+            };
+            var result = GetInputID(key, mods);
+            result.Label = label;
+            return result;
+        }
+
+        private void CreateInputIDs () {
+            FocusForward = CreateInputID(Keys.Tab, "{0} →");
+            FocusBackward = CreateInputID(Keys.Tab, "← {0}", shift: true);
+            WindowFocusForward = CreateInputID(Keys.Tab, "{0} →", ctrl: true);
+            WindowFocusBackward = CreateInputID(Keys.Tab, "← {0}", ctrl: true, shift: true);
+        }
 
         private void RasterizeAcceleratorOverlay (UIOperationContext context, ref ImperativeRenderer renderer) {
             var activeModal = ActiveModal;
@@ -270,7 +320,7 @@ namespace Squared.PRGUI {
 
             RasterizedOverlayBoxes.Clear();
             if (Focused != null)
-                RasterizedOverlayBoxes.Add(Focused.GetRect(contentRect: true));
+                RasterizedOverlayBoxes.Add((default(RectF), Focused.GetRect(contentRect: true)));
 
             // FIXME: This looks confusing
             // RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, Focused, null);
@@ -279,32 +329,32 @@ namespace Squared.PRGUI {
             if (topLevelSource != null) {
                 labelGroup = renderer.MakeSubgroup();
 
-                foreach (var kvp in topLevelSource.Accelerators)
-                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, kvp.Key, kvp.Value, true);
+                foreach (var accel in topLevelSource.Accelerators)
+                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, accel, true);
             }
 
-            RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, tab, "Tab →");
+            RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, tab, FocusForward);
             if (shiftTab != tab)
-                RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, shiftTab, "← Shift+Tab");
+                RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, shiftTab, FocusBackward);
 
             if ((ctrlTab != TopLevelFocused) || (ctrlShiftTab != TopLevelFocused)) {
                 if (ctrlTab != tab)
-                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlTab, "Ctrl+Tab →");
+                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlTab, WindowFocusForward);
                 if (ctrlTab != ctrlShiftTab)
-                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlShiftTab, "← Ctrl+Shift+Tab");
+                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlShiftTab, WindowFocusBackward);
             }
 
             var focusedSource = Focused as IAcceleratorSource;
             if ((focusedSource != null) && (focusedSource != topLevelSource)) {
                 labelGroup = renderer.MakeSubgroup();
 
-                foreach (var kvp in focusedSource.Accelerators)
-                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, kvp.Key, kvp.Value, true);
+                foreach (var accel in focusedSource.Accelerators)
+                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, accel, true);
             }
         }
 
         private bool IsObstructedByAnyPreviousBox (ref RectF box) {
-            const float padding = 1;
+            const float padding = 0.5f;
             var padded = box;
             padded.Left -= padding;
             padded.Top -= padding;
@@ -314,22 +364,60 @@ namespace Squared.PRGUI {
             foreach (var previousRect in RasterizedOverlayBoxes) {
                 // Accelerators may point at children of the focused control, in which case
                 //  we want to allow their labels to appear as normal
-                if (previousRect.Contains(ref box))
+                var target = previousRect.Item1;
+                var label = previousRect.Item2;
+                if (target.Contains(ref box))
                     continue;
-                if (previousRect.Intersects(ref padded))
+                if (label.Intersects(ref padded))
                     return true;
             }
 
             return false;
         }
 
+        private StringBuilder OverlayStringBuilder = new StringBuilder();
+
         private void RasterizeAcceleratorOverlay (
             UIOperationContext context, ref ImperativeRenderer labelRenderer, ref ImperativeRenderer targetRenderer, 
-            Control control, string label, bool showFocused = false
+            Control control, InputID id, bool showFocused = false
+        ) {
+            if (id == null)
+                throw new ArgumentNullException("id");
+
+            var gamePadMode = InputSources.FirstOrDefault() is GamepadVirtualKeyboardAndCursor;
+            OverlayStringBuilder.Clear();
+            id.Format(OverlayStringBuilder, gamePadMode);
+            RasterizeAcceleratorOverlay(
+                context, ref labelRenderer, ref targetRenderer, 
+                control, OverlayStringBuilder, showFocused
+            );
+        }
+
+        private void RasterizeAcceleratorOverlay (
+            UIOperationContext context, ref ImperativeRenderer labelRenderer, ref ImperativeRenderer targetRenderer, 
+            AcceleratorInfo accel, bool showFocused = false
+        ) {
+            if (accel.Text != null)
+                RasterizeAcceleratorOverlay(
+                    context, ref labelRenderer, ref targetRenderer,
+                    accel.Target, accel.Text, showFocused
+                );
+            else
+                RasterizeAcceleratorOverlay(
+                    context, ref labelRenderer, ref targetRenderer,
+                    accel.Target, GetInputID(accel.Key, accel.Modifiers), showFocused
+                );
+        }
+
+        private void RasterizeAcceleratorOverlay (
+            UIOperationContext context, ref ImperativeRenderer labelRenderer, ref ImperativeRenderer targetRenderer, 
+            Control control, AbstractString label, bool showFocused = false
         ) {
             if (control == null)
                 return;
-            if (!showFocused && (control == Focused) && !string.IsNullOrWhiteSpace(label))
+            if (!showFocused && (control == Focused) && !label.IsNull && (label.Length > 0))
+                return;
+            if (label.Length <= 0)
                 return;
 
             var box = control.GetRect();
@@ -340,45 +428,48 @@ namespace Squared.PRGUI {
             };
             decorator.Rasterize(context, ref targetRenderer, settings);
 
-            if (!string.IsNullOrWhiteSpace(label)) {
-                var outlinePadding = 1f;
-                decorator = Decorations.AcceleratorLabel;
-                Color? textColor = null;
-                decorator.GetTextSettings(context, default(ControlStates), out Material material, out IGlyphSource font, ref textColor);
-                var layout = font.LayoutString(label, buffer: AcceleratorOverlayBuffer);
+            var outlinePadding = 1f;
+            decorator = Decorations.AcceleratorLabel;
+            Color? textColor = null;
+            decorator.GetTextSettings(context, default(ControlStates), out Material material, out IGlyphSource font, ref textColor);
+            var layout = font.LayoutString(label, buffer: AcceleratorOverlayBuffer);
 
-                var labelPosition = box.Position - new Vector2(0, layout.Size.Y + decorator.Padding.Y + outlinePadding);
-                if (labelPosition.Y <= 0)
-                    labelPosition = box.Position;
-                labelPosition.X = Arithmetic.Clamp(labelPosition.X, 0, CanvasSize.X - layout.Size.X);
-                labelPosition.Y = Math.Max(0, labelPosition.Y);
+            var labelPosition = box.Position - new Vector2(0, layout.Size.Y + decorator.Padding.Y + outlinePadding);
+            if (labelPosition.Y <= 0)
+                labelPosition = box.Position;
+            labelPosition.X = Arithmetic.Clamp(labelPosition.X, 0, CanvasSize.X - layout.Size.X);
+            labelPosition.Y = Math.Max(0, labelPosition.Y);
 
-                var labelBox = new RectF(
-                    labelPosition, 
-                    layout.Size + decorator.Padding.Size
-                );
-                if (IsObstructedByAnyPreviousBox(ref labelBox))
-                    labelBox.Left = box.Extent.X - labelBox.Width;
-                if (IsObstructedByAnyPreviousBox(ref labelBox)) {
-                    labelBox.Left = labelPosition.X;
-                    labelBox.Top = box.Extent.Y + 1; // FIXME: Why the +1?
-                }
-                if (IsObstructedByAnyPreviousBox(ref labelBox))
-                    labelBox.Left = box.Extent.X - labelBox.Width;
-
-                var labelContentBox = new RectF(
-                    labelBox.Position + new Vector2(decorator.Padding.Left, decorator.Padding.Top),
-                    layout.Size
-                );
-                settings = new Decorations.DecorationSettings {
-                    Box = labelBox,
-                    ContentBox = box,
-                };
-                decorator.Rasterize(context, ref labelRenderer, settings);
-                labelRenderer.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), layer: 1);
-
-                RasterizedOverlayBoxes.Add(labelBox);
+            var labelBox = new RectF(
+                labelPosition, 
+                layout.Size + decorator.Padding.Size
+            );
+            if (IsObstructedByAnyPreviousBox(ref labelBox))
+                labelBox.Left = box.Extent.X - labelBox.Width;
+            if (IsObstructedByAnyPreviousBox(ref labelBox)) {
+                labelBox.Left = labelPosition.X;
+                labelBox.Top = box.Extent.Y + 1; // FIXME: Why the +1?
             }
+
+            while (IsObstructedByAnyPreviousBox(ref labelBox)) {
+                labelBox.Left = box.Left;
+                labelBox.Width = box.Width;
+                labelBox.Top = labelBox.Extent.Y + 0.5f;
+            }
+            // HACK
+
+            var labelContentBox = new RectF(
+                labelBox.Position + new Vector2(decorator.Padding.Left, decorator.Padding.Top),
+                layout.Size
+            );
+            settings = new Decorations.DecorationSettings {
+                Box = labelBox,
+                ContentBox = box,
+            };
+            decorator.Rasterize(context, ref labelRenderer, settings);
+            labelRenderer.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), layer: 1);
+
+            RasterizedOverlayBoxes.Add((box, labelBox));
         }
     }
 }

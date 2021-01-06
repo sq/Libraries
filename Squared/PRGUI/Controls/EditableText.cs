@@ -1255,7 +1255,7 @@ namespace Squared.PRGUI.Controls {
             set => Text = value;
         }
 
-        IEnumerable<KeyValuePair<Control, string>> IAcceleratorSource.Accelerators {
+        IEnumerable<AcceleratorInfo> IAcceleratorSource.Accelerators {
             get {
                 var sb = new StringBuilder();
                 if (Builder.Length > 0)
@@ -1265,7 +1265,7 @@ namespace Squared.PRGUI.Controls {
                     sb.AppendLine("Ctrl+C Copy");
                 }
                 sb.AppendLine("Ctrl+V Paste");
-                yield return new KeyValuePair<Control, string>(this, sb.ToString());
+                yield return new AcceleratorInfo(this, sb.ToString());
             }
         }
 

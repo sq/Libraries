@@ -585,12 +585,12 @@ namespace Squared.PRGUI.Controls {
 
         public int Count => Children.Count;
 
-        IEnumerable<KeyValuePair<Control, string>> Accessibility.IAcceleratorSource.Accelerators {
+        IEnumerable<Accessibility.AcceleratorInfo> Accessibility.IAcceleratorSource.Accelerators {
             get {
                 if (SelectedIndex > 0)
-                    yield return new KeyValuePair<Control, string>(this[SelectedIndex - 1], "Up");
+                    yield return new Accessibility.AcceleratorInfo(this[SelectedIndex - 1], "Up");
                 if (SelectedIndex < (Children.Count - 1))
-                    yield return new KeyValuePair<Control, string>(this[SelectedIndex + 1], "Down");
+                    yield return new Accessibility.AcceleratorInfo(this[SelectedIndex + 1], "Down");
             }
         }
 
