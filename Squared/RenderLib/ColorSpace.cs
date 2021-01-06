@@ -57,10 +57,21 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public pSRGBColor (Color c) {
-            IsVector4 = false;
-            Vector4 = default(Vector4);
-            Color = c;
+        public pSRGBColor (Color c, bool issRGB = true) {
+            if (issRGB) {
+                IsVector4 = false;
+                Vector4 = default(Vector4);
+                Color = c;
+            } else {
+                IsVector4 = true;
+                Vector4 = new Vector4(
+                    ColorSpace.sRGBByteToLinearFloatTable[c.R],
+                    ColorSpace.sRGBByteToLinearFloatTable[c.G],
+                    ColorSpace.sRGBByteToLinearFloatTable[c.B],
+                    ColorSpace.sRGBByteToLinearFloatTable[c.A]
+                );
+                Color = default(Color);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -94,6 +105,19 @@ namespace Squared.Render {
         public Color ToLinearColor () {
             var v = ToPLinear();
             return new Color(v.X, v.Y, v.Z, v.W);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Color ToColor (bool sRGB = true) {
+            if (!sRGB) {
+                var linear = ToPLinear();
+                return new Color(linear.X, linear.Y, linear.Z, linear.W);
+            } else if (!IsVector4) {
+                return Color;
+            } else {
+                var v = ToVector4();
+                return new Color(v.X, v.Y, v.Z, v.W);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -19,12 +19,15 @@ namespace Squared.Render {
                 else
                     sRGBByteToLinearTable[i] = Math.Pow((fv + 0.055) / 1.055, 2.4);
 
+                sRGBByteToLinearFloatTable[i] = (float)sRGBByteToLinearTable[i];
+
                 sRGBByteToLinearByteTable[i] = (byte)Arithmetic.Clamp(sRGBByteToLinearTable[i] * 255, 0f, 255f);
                 LinearByteTosRGBByteTable[i] = (byte)(LinearTosRGB(i / 255.0) * 255);
             }
         }
 
         public static readonly double[] sRGBByteToLinearTable = new double[256];
+        public static readonly float[] sRGBByteToLinearFloatTable = new float[256];
         public static readonly byte[] sRGBByteToLinearByteTable = new byte[256];
         public static readonly byte[] LinearByteTosRGBByteTable = new byte[256];
 
