@@ -236,12 +236,6 @@ namespace Squared.PRGUI.Controls {
                         : KeyboardSpeed;
                     float oldValue = Value, newValue;
                     switch (args.Key) {
-                        case Keys.Up:
-                            newValue = Maximum;
-                            break;
-                        case Keys.Down:
-                            newValue = Minimum;
-                            break;
                         case Keys.Left:
                             newValue = oldValue - speed;
                             break;

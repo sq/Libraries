@@ -218,6 +218,32 @@ namespace Squared.PRGUI.Input {
     }
 
     public class GamepadVirtualKeyboardAndCursor : IInputSource {
+        public struct InputBindings {
+            public static readonly InputBindings Default = new InputBindings {
+                FocusBack = new [] { Buttons.LeftShoulder },
+                FocusForward = new [] { Buttons.RightShoulder },
+                Shift = new Buttons[] { },
+                Control = new [] { Buttons.Back },
+                Activate = new [] { Buttons.A },
+                Spacebar = new [] { Buttons.A },
+                Escape = new [] { Buttons.B },
+                Menu = new [] { Buttons.Y },
+                UpArrow = new[] { Buttons.DPadUp },
+                LeftArrow = new[] { Buttons.DPadLeft },
+                RightArrow = new[] { Buttons.DPadRight },
+                DownArrow = new[] { Buttons.DPadDown },
+                Alt = new[] { Buttons.RightStick }
+            };
+
+            public Buttons[] FocusBack, FocusForward,
+                WindowFocusBack, WindowFocusForward,
+                Alt, Control, Shift,
+                Activate, Spacebar, Escape, Menu,
+                UpArrow, LeftArrow, RightArrow, DownArrow;
+        }
+
+        public bool ShowFuzzyRects = false;
+
         public float FuzzyHitTestDistance = 24f;
         public float SlowPxPerSecond = 64f,
             FastPxPerSecond = 1280f;
@@ -226,10 +252,12 @@ namespace Squared.PRGUI.Input {
         public float? FixedTimeStep = null;
 
         private Vector2? PreviousUnsnappedPosition, CurrentUnsnappedPosition;
+        public InputBindings Bindings = InputBindings.Default;
         public GamePadState PreviousState, CurrentState;
         public PlayerIndex PlayerIndex;
         public bool EnableButtons = true,
-            EnableStick = true;
+            EnableStick = true,
+            EnableDpadFocusNavigation = true;
         long PreviousUpdateTime;
         UIContext Context;
         Control SnapToControl;
@@ -275,6 +303,18 @@ namespace Squared.PRGUI.Input {
             return hovering.IsValidMouseInputTarget || (hovering.FocusBeneficiary != null) || !hovering.HasParent;
         }
 
+        private bool IsHeld (ref GamePadState state, Buttons[] buttons) {
+            foreach (var button in buttons)
+                if (state.IsButtonDown(button))
+                    return true;
+
+            return false;
+        }
+
+        private bool IsHeld (Buttons[] buttons) {
+            return IsHeld(ref CurrentState, buttons);
+        }
+
         public void Update (ref InputState previous, ref InputState current) {
             PreviousState = CurrentState;
 
@@ -291,8 +331,9 @@ namespace Squared.PRGUI.Input {
             var gs = CurrentState = GamePad.GetState(PlayerIndex);
             var now = Context.NowL;
 
-            var suppressSnapDueToHeldButton = (gs.Buttons.A != ButtonState.Released) || 
-                (gs.Buttons.B != ButtonState.Released);
+            var suppressSnapDueToHeldButton = IsHeld(Bindings.Activate) || 
+                IsHeld(Bindings.Spacebar) || 
+                IsHeld(Bindings.Escape);
 
             Vector2? newPosition = null;
             var shouldPromote = false;
@@ -345,17 +386,23 @@ namespace Squared.PRGUI.Input {
             if (EnableButtons) {
                 if (Context.Focused != null) {
                     if (Context.Focused.GetRect().Contains(current.CursorPosition))
-                        current.ActivateKeyHeld |= (gs.Buttons.A == ButtonState.Pressed);
+                        current.ActivateKeyHeld |= IsHeld(Bindings.Spacebar);
                 }
 
                 var mods = new KeyboardModifiers {
-                    LeftControl = (gs.Buttons.Back == ButtonState.Pressed)
+                    LeftControl = IsHeld(Bindings.Control),
+                    LeftShift = IsHeld(Bindings.Shift),
+                    LeftAlt = IsHeld(Bindings.Alt)
                 };
                 var shift = mods;
                 shift.LeftShift = true;
 
+                DispatchKeyEventsForButton(ref current, Keys.LeftAlt, mods, Bindings.Alt);
+                DispatchKeyEventsForButton(ref current, Keys.LeftShift, mods, Bindings.Shift);
+                DispatchKeyEventsForButton(ref current, Keys.LeftControl, mods, Bindings.Control);
+
                 if (GenerateKeyPressForActivation) {
-                    DispatchKeyEventsForButton(ref current, Keys.Space, mods, PreviousState.Buttons.A, gs.Buttons.A);
+                    DispatchKeyEventsForButton(ref current, Keys.Space, mods, Bindings.Spacebar);
                 } else {
                     if (gs.Buttons.A == ButtonState.Pressed)
                         current.Buttons |= MouseButtons.Left;
@@ -364,14 +411,21 @@ namespace Squared.PRGUI.Input {
                 var currentSelectedControl = (Context.FixatedControl as ISelectionBearer)?.SelectedControl;
                 var currentSelectionRect = (Context.FixatedControl as ISelectionBearer)?.SelectionRect;
 
-                DispatchKeyEventsForButton(ref current, Keys.Escape, mods, PreviousState.Buttons.B, gs.Buttons.B);
-                var wasArrowPressed = DispatchKeyEventsForButton(ref current, Keys.Up, mods, PreviousState.DPad.Up, gs.DPad.Up);
-                wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Down, mods, PreviousState.DPad.Down, gs.DPad.Down);
-                wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Left, mods, PreviousState.DPad.Left, gs.DPad.Left);
-                wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Right, mods, PreviousState.DPad.Right, gs.DPad.Right);
-                var focusChanged = DispatchKeyEventsForButton(ref current, Keys.Tab, shift, PreviousState.Buttons.LeftShoulder, gs.Buttons.LeftShoulder);
-                focusChanged |= DispatchKeyEventsForButton(ref current, Keys.Tab, mods, PreviousState.Buttons.RightShoulder, gs.Buttons.RightShoulder);
-                DispatchKeyEventsForButton(ref current, Keys.Apps, mods, PreviousState.Buttons.Y, gs.Buttons.Y);
+                DispatchKeyEventsForButton(ref current, Keys.Escape, mods, Bindings.Escape);
+                var wasUpPressed = DispatchKeyEventsForButton(ref current, Keys.Up, mods, Bindings.UpArrow);
+                var wasDownPressed = DispatchKeyEventsForButton(ref current, Keys.Down, mods, Bindings.DownArrow);
+                var wasArrowPressed = (wasUpPressed || wasDownPressed);
+                wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Left, mods, Bindings.LeftArrow);
+                wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Right, mods, Bindings.RightArrow);
+                var focusChanged = DispatchKeyEventsForButton(ref current, Keys.Tab, shift, Bindings.FocusBack);
+                focusChanged |= DispatchKeyEventsForButton(ref current, Keys.Tab, mods, Bindings.FocusForward);
+                // FIXME: Do this arrow fallback with a priority/consume model, make sure to handle weird transitions
+                //  like 'Foo handled the keydown but didn't handle the keyup'
+                if (!wasUpPressed && EnableDpadFocusNavigation)
+                    focusChanged |= DispatchKeyEventsForButton(ref current, Keys.Tab, shift, Bindings.UpArrow);
+                if (!wasDownPressed && EnableDpadFocusNavigation)
+                    focusChanged |= DispatchKeyEventsForButton(ref current, Keys.Tab, mods, Bindings.DownArrow);
+                DispatchKeyEventsForButton(ref current, Keys.Apps, mods, Bindings.Menu);
 
                 if (focusChanged || wasArrowPressed) {
                     var newSelectedControl = (Context.FixatedControl as ISelectionBearer)?.SelectedControl;
@@ -444,18 +498,19 @@ namespace Squared.PRGUI.Input {
             PreviousUpdateTime = now;
         }
 
-        private bool DispatchKeyEventsForButton (ref InputState state, Keys key, ButtonState previous, ButtonState current) {
-            return DispatchKeyEventsForButton(ref state, key, null, previous, current);
+        private bool DispatchKeyEventsForButton (ref InputState state, Keys key, Buttons[] buttons) {
+            return DispatchKeyEventsForButton(ref state, key, null, buttons);
         }
 
-        private bool DispatchKeyEventsForButton (ref InputState state, Keys key, KeyboardModifiers? modifiers, ButtonState previous, ButtonState current) {
-            var held = current == ButtonState.Pressed;
-            if (held)
+        private bool DispatchKeyEventsForButton (ref InputState state, Keys key, KeyboardModifiers? modifiers, Buttons[] buttons) {
+            var wasHeld = IsHeld(ref PreviousState, buttons);
+            var isHeld = IsHeld(ref CurrentState, buttons);
+            if (isHeld)
                 state.HeldKeys.Add(key);
 
-            if (previous == current) {
+            if (wasHeld == isHeld) {
                 if (
-                    held &&
+                    isHeld &&
                     (LastKeyEvent == key) &&
                     Context.UpdateRepeat(Context.Now, LastKeyEventFirstTime, ref LastKeyEventTime)
                 ) {
@@ -463,17 +518,17 @@ namespace Squared.PRGUI.Input {
                     return Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers, isVirtual: true, isRepeat: true);
                 } else
                     return false;
-            } else if (held) {
+            } else if (isHeld) {
                 LastKeyEventTime = LastKeyEventFirstTime = Context.Now;
             }
 
-            var transition = (current == ButtonState.Pressed)
+            var transition = isHeld
                 ? UIEvents.KeyDown
                 : UIEvents.KeyUp;
 
             LastKeyEvent = key;
             var ok = Context.HandleKeyEvent(transition, key, null, modifiers, true);
-            if (current == ButtonState.Released)
+            if (!isHeld)
                 ok |= Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers, true);
 
             return ok;
@@ -508,6 +563,7 @@ namespace Squared.PRGUI.Input {
             settings.Box = new RectF(unsnapped, pos - unsnapped);
             context.DecorationProvider.VirtualCursorAnchor?.Rasterize(context, ref renderer, settings);
 
+            if (ShowFuzzyRects)
             foreach (var result in FuzzyHitTest) {
                 var box = result.Rect;
                 var alpha = (1f - Arithmetic.Saturate(result.Distance / FuzzyHitTestDistance)) * 0.8f;

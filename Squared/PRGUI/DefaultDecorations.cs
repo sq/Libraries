@@ -573,7 +573,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SliderCornerRadius,
-                outlineRadius: InertOutlineThickness, outlineColor: Color.Transparent,
+                outlineRadius: 1f, outlineColor: GaugeValueFillColor * 0.5f,
                 fillMode: RasterFillMode.Horizontal,
                 innerColor: GaugeValueFillColor * alpha1, 
                 outerColor: GaugeValueFillColor * alpha2,
