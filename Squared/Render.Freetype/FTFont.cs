@@ -72,7 +72,7 @@ namespace Squared.Render.Text {
                 // TODO: Add a property that controls whether srgb is used. Or is freetype always srgb?
                 return font.sRGB
                     ? (MipGenerator<Color>)MipGenerator.sRGBPAGray 
-                    : font.GammaRamp.PAGray;
+                    : font.MipGen.PAGray;
             }
 
             private unsafe DynamicAtlas<Color>.Reservation Upload (FTBitmap bitmap) {
@@ -358,7 +358,8 @@ namespace Squared.Render.Text {
         public int TabSize { get; set; }
 
         private double _Gamma;
-        private MipGenerator.WithGammaRamp GammaRamp;
+        private GammaRamp GammaRamp;
+        private MipGenerator.WithGammaRamp MipGen;
         private HashSet<FontSize> Sizes = new HashSet<FontSize>(new ReferenceComparer<FontSize>());
 
         public Dictionary<uint, Color> DefaultGlyphColors = new Dictionary<uint, Color>();
@@ -371,7 +372,8 @@ namespace Squared.Render.Text {
             }
             set {
                 _Gamma = value;
-                GammaRamp = new MipGenerator.WithGammaRamp(value);
+                GammaRamp = new GammaRamp(value);
+                MipGen = new MipGenerator.WithGammaRamp(GammaRamp);
             }
         }
 

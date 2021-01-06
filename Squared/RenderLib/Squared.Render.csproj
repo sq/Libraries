@@ -52,6 +52,7 @@
     <Compile Include="BatchCombiner.cs" />
     <Compile Include="BatchGroup.cs" />
     <Compile Include="ColorLUT.cs" />
+    <Compile Include="ColorSpace.cs" />
     <Compile Include="Convenience.cs" />
     <Compile Include="DefaultMaterialSet.cs" />
     <Compile Include="DynamicAtlas.cs" />

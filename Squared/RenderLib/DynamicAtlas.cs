@@ -23,25 +23,17 @@ namespace Squared.Render {
 
     public static class MipGenerator {
         public class WithGammaRamp {
-            public readonly double Gamma;
-            public readonly byte[] GammaTable, InvGammaTable;
+            public readonly GammaRamp Ramp;
+            private byte[] GammaTable, InvGammaTable;
 
-            public WithGammaRamp (double gamma) {
-                GammaTable = new byte[256];
-                InvGammaTable = new byte[256];
+            public WithGammaRamp (double gamma)
+                : this (new GammaRamp(gamma)) {
+            }
 
-                double g = Gamma = Math.Round(gamma, 3, MidpointRounding.AwayFromZero);
-                double gInv = 1.0 / g;
-                for (int i = 0; i < 256; i++) {
-                    if (g == 1) {
-                        InvGammaTable[i] = GammaTable[i] = (byte)i;
-                    } else {
-                        var gD = i / 255.0;
-                        var inv = (byte)(Math.Pow(gD, gInv) * 255.0);
-                        GammaTable[i] = inv;
-                        InvGammaTable[inv] = (byte)i;
-                    }
-                }
+            public WithGammaRamp (GammaRamp ramp) {
+                Ramp = ramp;
+                GammaTable = Ramp.GammaTable;
+                InvGammaTable = Ramp.InvGammaTable;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
