@@ -72,7 +72,7 @@ namespace Squared.Render.Text {
                 // TODO: Add a property that controls whether srgb is used. Or is freetype always srgb?
                 return font.sRGB
                     ? (MipGenerator<Color>)MipGenerator.sRGBPAGray 
-                    : MipGenerator.PAGray;
+                    : font.GammaRamp.PAGray;
             }
 
             private unsafe DynamicAtlas<Color>.Reservation Upload (FTBitmap bitmap) {
@@ -109,7 +109,7 @@ namespace Squared.Render.Text {
                     var pDest = (byte*)pPixels;
                     switch (bitmap.PixelMode) {
                         case PixelMode.Gray:
-                            var table = Font.GammaTable;
+                            var table = Font.GammaRamp.GammaTable;
                             var srgb = (surfaceFormat != SurfaceFormat.Color);
 
                             for (var y = 0; y < rows; y++) {
@@ -119,7 +119,7 @@ namespace Squared.Render.Text {
 
                                 for (var x = 0; x < width; x++) {
                                     var a = table[pSrc[x + yPitch]];
-                                    var g = srgb ? MipGenerator.LinearByteToSRGBByteTable[a] : a;
+                                    var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
                                     
                                     pDestRow[3] = a;
                                     pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
@@ -358,7 +358,7 @@ namespace Squared.Render.Text {
         public int TabSize { get; set; }
 
         private double _Gamma;
-        private byte[] GammaTable;
+        private MipGenerator.WithGammaRamp GammaRamp;
         private HashSet<FontSize> Sizes = new HashSet<FontSize>(new ReferenceComparer<FontSize>());
 
         public Dictionary<uint, Color> DefaultGlyphColors = new Dictionary<uint, Color>();
@@ -371,17 +371,7 @@ namespace Squared.Render.Text {
             }
             set {
                 _Gamma = value;
-                GammaTable = new byte[256];
-
-                double gInv = 1.0 / value;
-                for (int i = 0; i < 256; i++) {
-                    if (value == 1)
-                        GammaTable[i] = (byte)i;
-                    else {
-                        var gD = i / 255.0;
-                        GammaTable[i] = (byte)(Math.Pow(gD, gInv) * 255.0);
-                    }
-                }
+                GammaRamp = new MipGenerator.WithGammaRamp(value);
             }
         }
 

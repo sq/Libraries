@@ -22,45 +22,63 @@ namespace Squared.Render {
     public unsafe delegate void MipGenerator<T> (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) where T : struct;
 
     public static class MipGenerator {
-        public static readonly double[] ToLinearTable = new double[256];
-        public static readonly byte[] SRGBByteToLinearByteTable = new byte[256];
-        public static readonly byte[] LinearByteToSRGBByteTable = new byte[256];
+        public class WithGammaRamp {
+            public readonly double Gamma;
+            public readonly byte[] GammaTable, InvGammaTable;
 
-        static MipGenerator () {
-            for (int i = 0; i < 256; i++) {
-                double fv = i / 255.0;
-                if (fv < 0.04045)
-                    ToLinearTable[i] = fv / 12.92;
-                else
-                    ToLinearTable[i] = Math.Pow((fv + 0.055) / 1.055, 2.4);
+            public WithGammaRamp (double gamma) {
+                GammaTable = new byte[256];
+                InvGammaTable = new byte[256];
 
-                SRGBByteToLinearByteTable[i] = (byte)Arithmetic.Clamp(ToLinearTable[i] * 255, 0f, 255f);
-                LinearByteToSRGBByteTable[i] = FromLinear(i / 255.0);
+                double g = Gamma = Math.Round(gamma, 3, MidpointRounding.AwayFromZero);
+                double gInv = 1.0 / g;
+                for (int i = 0; i < 256; i++) {
+                    if (g == 1) {
+                        InvGammaTable[i] = GammaTable[i] = (byte)i;
+                    } else {
+                        var gD = i / 255.0;
+                        var inv = (byte)(Math.Pow(gD, gInv) * 255.0);
+                        GammaTable[i] = inv;
+                        InvGammaTable[inv] = (byte)i;
+                    }
+                }
             }
-        }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte FromLinear (double v) {
-            double scaled;
-            if (v <= 0.0031308)
-                scaled = 12.92 * v;
-            else
-                scaled = (Math.Pow(v, 1.0 / 2.4) - 0.055) * 1.055;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public byte Average (byte a, byte b, byte c, byte d) {
+                var sum = InvGammaTable[a] + InvGammaTable[b] + InvGammaTable[c] + InvGammaTable[d];
+                return GammaTable[sum / 4];
+            }
 
-            return (byte)(scaled * 255.0);
+            public unsafe void PAGray (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) {
+                if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
+                    throw new ArgumentOutOfRangeException();
+
+                byte* pSrc = (byte*)src, pDest = (byte*)dest;
+                var srcRowSize = srcWidth * 4;
+            
+                for (var y = 0; y < destHeight; y++) {
+                    byte* srcRow = pSrc + ((y * 2) * srcRowSize);
+                    byte* destRow = pDest + (y * destWidth * 4);
+
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + ((x * 2) * 4);
+                        var b = a + 4;
+                        var c = a + srcRowSize;
+                        var d = b + srcRowSize;
+
+                        var result = destRow + (x * 4);
+                        var gray = Average(a[3], b[3], c[3], d[3]);
+                        result[0] = result[1] = result[2] = result[3] = gray;
+                    }
+                }
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte Average (byte a, byte b, byte c, byte d) {
             var sum = a + b + c + d;
             return (byte)(sum / 4);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte Average_sRGB (byte a, byte b, byte c, byte d) {
-            // FIXME: Do this using the byte tables to be faster?
-            double sum = ToLinearTable[a] + ToLinearTable[b] + ToLinearTable[c] + ToLinearTable[d];
-            return FromLinear(sum / 4);
         }
 
         public static unsafe void Color (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) {
@@ -81,10 +99,10 @@ namespace Squared.Render {
                     var d = b + srcRowSize;
 
                     var result = destRow + (x * 4);
-                    result[0] = (byte)((a[0] + b[0] + c[0] + d[0]) / 4);
-                    result[1] = (byte)((a[1] + b[1] + c[1] + d[1]) / 4);
-                    result[2] = (byte)((a[2] + b[2] + c[2] + d[2]) / 4);
-                    result[3] = (byte)((a[3] + b[3] + c[3] + d[3]) / 4);
+                    result[0] = Average(a[0], b[0], c[0], d[0]);
+                    result[1] = Average(a[1], b[1], c[1], d[1]);
+                    result[2] = Average(a[2], b[2], c[2], d[2]);
+                    result[3] = Average(a[3], b[3], c[3], d[3]);
                 }
             }
         }
@@ -107,9 +125,9 @@ namespace Squared.Render {
                     var d = b + srcRowSize;
 
                     var result = destRow + (x * 4);
-                    result[0] = Average_sRGB(a[0], b[0], c[0], d[0]);
-                    result[1] = Average_sRGB(a[1], b[1], c[1], d[1]);
-                    result[2] = Average_sRGB(a[2], b[2], c[2], d[2]);
+                    result[0] = ColorSpace.AveragesRGB(a[0], b[0], c[0], d[0]);
+                    result[1] = ColorSpace.AveragesRGB(a[1], b[1], c[1], d[1]);
+                    result[2] = ColorSpace.AveragesRGB(a[2], b[2], c[2], d[2]);
                     // The alpha channel is always linear
                     result[3] = Average(a[3], b[3], c[3], d[3]);
                 }
@@ -136,9 +154,7 @@ namespace Squared.Render {
                     var result = destRow + (x * 4);
                     // Average the alpha channel because it is linear
                     var alphaAverage = Average(a[3], b[3], c[3], d[3]);
-                    var gray = LinearByteToSRGBByteTable[alphaAverage];
-                    if (gray != 0)
-                        ;
+                    var gray = ColorSpace.LinearByteTosRGBByteTable[alphaAverage];
                     result[0] = result[1] = result[2] = gray;
                     result[3] = alphaAverage;
                 }

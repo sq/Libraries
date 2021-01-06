@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -9,6 +10,51 @@ using Microsoft.Xna.Framework.Graphics.PackedVector;
 using Squared.Util;
 
 namespace Squared.Render {
+    public static class ColorSpace {
+        static ColorSpace () {
+            for (int i = 0; i < 256; i++) {
+                double fv = i / 255.0;
+                if (fv < 0.04045)
+                    sRGBByteToLinearTable[i] = fv / 12.92;
+                else
+                    sRGBByteToLinearTable[i] = Math.Pow((fv + 0.055) / 1.055, 2.4);
+
+                sRGBByteToLinearByteTable[i] = (byte)Arithmetic.Clamp(sRGBByteToLinearTable[i] * 255, 0f, 255f);
+                LinearByteTosRGBByteTable[i] = (byte)(LinearTosRGB(i / 255.0) * 255);
+            }
+        }
+
+        public static readonly double[] sRGBByteToLinearTable = new double[256];
+        public static readonly byte[] sRGBByteToLinearByteTable = new byte[256];
+        public static readonly byte[] LinearByteTosRGBByteTable = new byte[256];
+
+        public static double sRGBToLinear (double sRGB) {
+            var low = sRGB / 12.92;
+            var high = Math.Pow((sRGB + 0.055) / 1.055, 2.4);
+            if (sRGB >= 0.04045)
+                return high;
+            else
+                return low;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double LinearTosRGB (double linear) {
+            var low = linear * 12.92;
+            var high = 1.055 * Math.Pow(linear, 1.0 / 2.4) - 0.055;
+            if (linear <= 0.0031308)
+                return low;
+            else
+                return high;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static byte AveragesRGB (byte a, byte b, byte c, byte d) {
+            // FIXME: Do this using the byte tables to be faster?
+            double sum = sRGBByteToLinearTable[a] + sRGBByteToLinearTable[b] + sRGBByteToLinearTable[c] + sRGBByteToLinearTable[d];
+            return (byte)(LinearTosRGB(sum / 4) * 255);
+        }
+    }
+
     public class ColorLUT : IDisposable {
         public readonly Texture2D Texture;
         public readonly bool OwnsTexture;
