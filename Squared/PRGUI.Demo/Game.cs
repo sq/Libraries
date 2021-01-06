@@ -90,7 +90,7 @@ namespace PRGUI.Demo {
 
         private FreeTypeFont LoadFont (string name) {
             var result = FontLoader.Load(name);
-            result.sRGB = false;
+            result.sRGB = true;
             // High-DPI offscreen surface so the text is sharp even at subpixel positions
             result.DPIPercent = (int)(100f / DPIFactor);
             // Big margin on glyphs so shadows aren't clipped

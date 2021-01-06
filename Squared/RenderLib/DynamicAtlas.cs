@@ -58,6 +58,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte Average_sRGB (byte a, byte b, byte c, byte d) {
+            // FIXME: Do this using the byte tables to be faster?
             double sum = ToLinearTable[a] + ToLinearTable[b] + ToLinearTable[c] + ToLinearTable[d];
             return FromLinear(sum / 4);
         }
@@ -135,7 +136,9 @@ namespace Squared.Render {
                     var result = destRow + (x * 4);
                     // Average the alpha channel because it is linear
                     var alphaAverage = Average(a[3], b[3], c[3], d[3]);
-                    var gray = FromLinear(alphaAverage / 255.0);
+                    var gray = LinearByteToSRGBByteTable[alphaAverage];
+                    if (gray != 0)
+                        ;
                     result[0] = result[1] = result[2] = gray;
                     result[3] = alphaAverage;
                 }

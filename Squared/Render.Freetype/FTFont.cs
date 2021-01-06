@@ -91,10 +91,9 @@ namespace Squared.Render.Text {
                     }
                 }
 
+                var surfaceFormat = Font.sRGB ? Evil.TextureUtils.ColorSrgbEXT : SurfaceFormat.Color;
                 if (!foundRoom) {
                     var isFirstAtlas = (Atlases.Count == 0) && (_SizePoints < SmallFirstAtlasThreshold);
-                    // var surfaceFormat = Font.sRGB ? SurfaceFormat.ColorSrgbEXT : SurfaceFormat.Color;
-                    var surfaceFormat = SurfaceFormat.Color;
                     var newAtlas = new DynamicAtlas<Color>(
                         Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight, 
                         surfaceFormat, 4, Font.MipMapping ? PickMipGenerator(Font) : null
@@ -111,9 +110,7 @@ namespace Squared.Render.Text {
                     switch (bitmap.PixelMode) {
                         case PixelMode.Gray:
                             var table = Font.GammaTable;
-                            // FIXME: SRGB
-                            // var srgb = Font.sRGB;
-                            var srgb = false;
+                            var srgb = (surfaceFormat != SurfaceFormat.Color);
 
                             for (var y = 0; y < rows; y++) {
                                 var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
@@ -348,7 +345,16 @@ namespace Squared.Render.Text {
         /// <summary>
         /// If set, the texture's r/g/b channels will be sRGB-encoded while the a channel will be linear
         /// </summary>
-        public bool sRGB { get; set; }
+        private bool _sRGB;
+        public bool sRGB {
+            get => _sRGB;
+            set {
+                if (Evil.TextureUtils.ColorSrgbEXT != SurfaceFormat.Color)
+                    _sRGB = value;
+                else
+                    _sRGB = false;
+            }
+        }
         public int TabSize { get; set; }
 
         private double _Gamma;

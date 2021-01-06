@@ -492,6 +492,16 @@ namespace Squared.Render.Evil {
 #endif
 
     public static class TextureUtils {
+        public static readonly SurfaceFormat ColorSrgbEXT;
+
+        static TextureUtils () {
+#if WINDOWS
+            pComPtr = typeof(Texture2D).GetField("pComPtr", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+#endif
+            if (!Enum.TryParse<SurfaceFormat>("ColorSrgbEXT", out ColorSrgbEXT))
+                ColorSrgbEXT = SurfaceFormat.Color;
+        }
+
 #if WINDOWS
         public static class VTables {
             public static class IDirect3DTexture9 {
@@ -523,7 +533,6 @@ namespace Squared.Render.Evil {
         internal static readonly FieldInfo pComPtr;
 
         static TextureUtils () {
-            pComPtr = typeof(Texture2D).GetField("pComPtr", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
         }
 
         /// <summary>

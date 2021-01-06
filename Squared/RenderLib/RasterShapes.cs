@@ -656,7 +656,7 @@ namespace Squared.Render.RasterShape {
                 // if the render target/backbuffer is sRGB, we need to generate output in the correct color space
                 var isSrgbRenderTarget = 
                     (manager.CurrentRenderTarget?.Format ?? manager.Device.PresentationParameters.BackBufferFormat) 
-                    == SurfaceFormat.ColorSrgbEXT;
+                    == Evil.TextureUtils.ColorSrgbEXT;
 
                 foreach (var sb in _SubBatches) {
                     var rasterShader = UseUbershader ? PickMaterial(null, sb.Shadowed, sb.Simple) : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
