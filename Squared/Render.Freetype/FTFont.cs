@@ -93,7 +93,8 @@ namespace Squared.Render.Text {
 
                 if (!foundRoom) {
                     var isFirstAtlas = (Atlases.Count == 0) && (_SizePoints < SmallFirstAtlasThreshold);
-                    var surfaceFormat = Font.sRGB ? SurfaceFormat.ColorSrgbEXT : SurfaceFormat.Color;
+                    // var surfaceFormat = Font.sRGB ? SurfaceFormat.ColorSrgbEXT : SurfaceFormat.Color;
+                    var surfaceFormat = SurfaceFormat.Color;
                     var newAtlas = new DynamicAtlas<Color>(
                         Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight, 
                         surfaceFormat, 4, Font.MipMapping ? PickMipGenerator(Font) : null
@@ -411,7 +412,7 @@ namespace Squared.Render.Text {
             GlyphMargin = 0;
             DefaultSize = new FontSize(this, 12);
             TabSize = 4;
-            sRGB = true;
+            sRGB = false;
 
             if (Face.GlyphCount <= 0)
                 throw new Exception("Loaded font contains no glyphs or is corrupt.");
