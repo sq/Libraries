@@ -11,6 +11,8 @@
 #include "sRGBCommon.fxh"
 #include "SDF2D.fxh"
 
+// #define EVALUATE_TYPE type
+
 Texture2D RasterTexture : register(t0);
 
 sampler TextureSampler : register(s0) {
@@ -26,7 +28,6 @@ uniform float4 TexturePlacement;
 // http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
 // http://iquilezles.org/www/articles/distfunctions/distfunctions.htm
 
-#define EVALUATE_TYPE(u) u
 
 #define RASTERSHAPE_FS_ARGS \
     in float4 worldPositionTypeAndWorldSpace : NORMAL0, \
@@ -104,30 +105,31 @@ void computeTLBR (
     float2 a, float2 b, float2 c,
     out float2 tl, out float2 br
 ) {
-    switch (abs(type)) {
-        case TYPE_Ellipse:
+    type = EVALUATE_TYPE;
+
+    if (type == TYPE_Ellipse) {
             tl = a - b - outlineSize;
             br = a + b + outlineSize;
-            break;
+    }
 
-        case TYPE_LineSegment:
+    else if (type == TYPE_LineSegment) {
             tl = min(a, b);
             br = max(a, b);
-            break;
+    }
 
-        case TYPE_Rectangle:
+    else if (type == TYPE_Rectangle) {
             tl = min(a, b) - outlineSize;
             br = max(a, b) + outlineSize;
-            break;
+    }
 
-        case TYPE_Triangle:
+    else if (type == TYPE_Triangle) {
             outlineSize += 1;
             tl = min(min(a, b), c) - outlineSize;
             br = max(max(a, b), c) + outlineSize;
-            break;
+    }
 
 #ifdef INCLUDE_BEZIER
-        case TYPE_QuadraticBezier:
+    else if (type == TYPE_QuadraticBezier) {
             outlineSize += 1;
             float2 mi = min(a, c);
             float2 ma = max(a, c);
@@ -143,13 +145,12 @@ void computeTLBR (
             
             tl = mi - outlineSize - radius.x;
             br = ma + outlineSize + radius.x;
-            break;
+    }
 #endif
 
-        case TYPE_Arc:
+    else if (type == TYPE_Arc) {
             tl = a - outlineSize - radius.x - radius.y;
             br = a + outlineSize + radius.x + radius.y;
-            break;
     }
 }
 
@@ -257,6 +258,7 @@ void RasterShapeVertexShader (
     out float4 worldPositionTypeAndInteriorFlag : NORMAL0
 ) {
     int type = abs(typeAndWorldSpace.x);
+    type = EVALUATE_TYPE ;
 
     bool isHollow = ((centerColor.a <= 0) && (edgeColor.a <= 0)) && 
         (type == TYPE_Rectangle) && 
@@ -525,80 +527,74 @@ void evaluateRasterShape (
     out float distance, inout float2 tl, inout float2 br,
     inout int gradientType, out float gradientWeight
 ) {
+    type = EVALUATE_TYPE;
     bool needTLBR = false;
 
-PREFER_BRANCH
-    switch (EVALUATE_TYPE(type)) {
-#ifdef INCLUDE_ELLIPSE
-        case TYPE_Ellipse: {
-            evaluateEllipse(
-                worldPosition, a, b, c, simple,
-                distance, tl, br,
-                gradientType, gradientWeight
-            );
+    distance = 0;
+    gradientWeight = 0;
 
-            break;
-        }
+    if (false) {
+    }
+
+#ifdef INCLUDE_ELLIPSE
+    else if (type == TYPE_Ellipse) {
+        evaluateEllipse(
+            worldPosition, a, b, c, simple,
+            distance, tl, br,
+            gradientType, gradientWeight
+        );
+    }
 #endif
 
 #ifdef INCLUDE_LINE
-        case TYPE_LineSegment: {
-            evaluateLineSegment(
-                worldPosition, a, b, c,
-                radius, distance,
-                gradientType, gradientWeight
-            );
-            needTLBR = true;
-            break;
-        }
+    else if (type == TYPE_LineSegment) {
+        evaluateLineSegment(
+            worldPosition, a, b, c,
+            radius, distance,
+            gradientType, gradientWeight
+        );
+        needTLBR = true;
+    }
 #endif
 
 #ifdef INCLUDE_BEZIER
-        case TYPE_QuadraticBezier: {
-            distance = sdBezier(worldPosition, a, b, c) - radius.x;
-            gradientWeight = 1 - saturate(-distance / radius.x);
+    else if (type == TYPE_QuadraticBezier) {
+        distance = sdBezier(worldPosition, a, b, c) - radius.x;
+        gradientWeight = 1 - saturate(-distance / radius.x);
 
-            computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
-
-            break;
-        }
+        computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
+    }
 #endif
 
 #ifdef INCLUDE_RECTANGLE
-        case TYPE_Rectangle: {
-            evaluateRectangle(
-                worldPosition, a, b, radius.x, 
-                distance, gradientType, gradientWeight
-            );
-
-            break;
-        }
+    else if (type == TYPE_Rectangle) {
+        evaluateRectangle(
+            worldPosition, a, b, radius.x, 
+            distance, gradientType, gradientWeight
+        );
+    }
 #endif
 
 #ifdef INCLUDE_TRIANGLE
-        case TYPE_Triangle: {
-            evaluateTriangle(
-                worldPosition, a, b, c,
-                radius, distance,
-                gradientType, gradientWeight, 
-                tl, br
-            );
-
-            break;
-        }
+    else if (type == TYPE_Triangle) {
+        evaluateTriangle(
+            worldPosition, a, b, c,
+            radius, distance,
+            gradientType, gradientWeight, 
+            tl, br
+        );
+    }
 #endif
 
 #ifdef INCLUDE_ARC
-        case TYPE_Arc: {
-            distance = sdArc(worldPosition - a, b, c, radius.x, radius.y);
-            if (gradientType == GRADIENT_TYPE_Natural)
-                gradientWeight = 1 - saturate(-distance / radius.y);
+    else if (type == TYPE_Arc) {
+        distance = sdArc(worldPosition - a, b, c, radius.x, radius.y);
+        if (gradientType == GRADIENT_TYPE_Natural)
+            gradientWeight = 1 - saturate(-distance / radius.y);
 
-            needTLBR = true;
-            break;
-        }
-#endif
+        needTLBR = true;
     }
+#endif
     
     float annularRadius = params.y;
     if (annularRadius > 0.001)
@@ -619,7 +615,7 @@ float computeShadowAlpha (
 
     float distance;
     evaluateRasterShape(
-        abs(type), radius, 0 /* outlineSize, previously totalRadius */, params,
+        type, radius, 0 /* outlineSize, previously totalRadius */, params,
         // Force simple on since we don't use gradient value in shadow calc
         worldPosition, a, b, c, true,
         distance, tl, br,
@@ -654,7 +650,8 @@ void rasterShapeCommon (
     out float outlineAlpha, out float shadowAlpha
 ) {
     float2 worldPosition = worldPositionTypeAndInteriorFlag.xy;
-    int type = EVALUATE_TYPE(abs(worldPositionTypeAndInteriorFlag.z));
+    int type = abs(worldPositionTypeAndInteriorFlag.z);
+    type = EVALUATE_TYPE;
     bool isSimpleInterior = false; // worldPositionTypeAndInteriorFlag.w;
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw;
 
@@ -665,7 +662,7 @@ void rasterShapeCommon (
 
 #ifdef INCLUDE_RECTANGLE
     /*
-    if (EVALUATE_TYPE(type) == TYPE_Rectangle) {
+    if (type == TYPE_Rectangle) {
         [branch]
         if (isSimpleInterior) {
             gradientWeight = 0;

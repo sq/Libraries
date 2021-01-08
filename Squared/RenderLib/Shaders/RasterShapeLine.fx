@@ -21,7 +21,7 @@
 #define SHAPE_TYPE_TECHNIQUE_NAME_RAMP_SHADOWED ShadowedRasterLineRampTechnique
 
 #define INCLUDE_LINE
-#define EVALUATE_TYPE(u) TYPE_LineSegment
+#define EVALUATE_TYPE TYPE_LineSegment
 
 #include "RasterShapeSkeleton.fxh"
 #include "RasterShapeImpl.fxh"

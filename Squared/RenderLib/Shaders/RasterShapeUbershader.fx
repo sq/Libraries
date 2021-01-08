@@ -27,7 +27,7 @@
 #define INCLUDE_TRIANGLE
 #define INCLUDE_ARC
 
-#define EVALUATE_TYPE(u) u
+#define EVALUATE_TYPE type
 
 #include "RasterShapeSkeleton.fxh"
 #include "RasterShapeImpl.fxh"

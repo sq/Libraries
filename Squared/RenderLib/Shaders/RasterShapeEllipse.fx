@@ -21,7 +21,7 @@
 #define SHAPE_TYPE_TECHNIQUE_NAME_RAMP_SHADOWED ShadowedRasterEllipseRampTechnique
 
 #define INCLUDE_ELLIPSE
-#define EVALUATE_TYPE(u) TYPE_Ellipse
+#define EVALUATE_TYPE TYPE_Ellipse
 
 #include "RasterShapeSkeleton.fxh"
 #include "RasterShapeImpl.fxh"

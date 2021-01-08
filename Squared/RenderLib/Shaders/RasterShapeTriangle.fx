@@ -21,7 +21,7 @@
 #define SHAPE_TYPE_TECHNIQUE_NAME_RAMP_SHADOWED ShadowedRasterTriangleRampTechnique
 
 #define INCLUDE_TRIANGLE
-#define EVALUATE_TYPE(u) TYPE_Triangle
+#define EVALUATE_TYPE TYPE_Triangle
 
 #include "RasterShapeSkeleton.fxh"
 #include "RasterShapeImpl.fxh"

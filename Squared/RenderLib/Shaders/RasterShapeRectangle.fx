@@ -21,7 +21,7 @@
 #define SHAPE_TYPE_TECHNIQUE_NAME_RAMP_SHADOWED ShadowedRasterRectangleRampTechnique
 
 #define INCLUDE_RECTANGLE
-#define EVALUATE_TYPE(u) TYPE_Rectangle
+#define EVALUATE_TYPE TYPE_Rectangle
 
 #include "RasterShapeSkeleton.fxh"
 #include "RasterShapeImpl.fxh"
