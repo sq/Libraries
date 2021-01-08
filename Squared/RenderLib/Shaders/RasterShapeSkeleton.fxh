@@ -58,6 +58,8 @@ uniform float4 ShadowOptions;
 uniform float4 ShadowOptions2;
 uniform float4 ShadowColorLinear;
 
+#define OptimizeRectangleInterior true
+
 #define ShadowSoftness ShadowOptions.z
 #define ShadowOffset ShadowOptions.xy
 #define ShadowFillSuppression ShadowOptions.w
@@ -172,7 +174,10 @@ void computeHullCorners (
     float y1 = min(br.y, tl.y + edgeSize + offsetPositive.y);
     float y2 = max(tl.y, br.y - edgeSize + offsetNegative.y);
 
-    if (index < 2) {
+    if (index < 1) {
+        tl += edgeSize + offsetPositive;
+        br -= edgeSize + offsetNegative;
+    } else if (index < 2) {
         // top
         br.y = y1;
     } else if (index < 3) {
@@ -195,7 +200,7 @@ void computePosition (
     int type, float outlineSize, 
     float2 a, float2 b, float2 c, float2 radius,
     float2 tl, float2 br, float4 cornerWeights,
-    float4 params, bool isHollow,
+    float4 params, bool isSimpleRectangle,
     out float2 xy
 ) {
     if (type == TYPE_LineSegment) {
@@ -232,7 +237,7 @@ void computePosition (
         adjustTLBR(tl, br, params);
         // HACK: Padding
         tl -= 1; br += 1;
-        if (isHollow)
+        if (isSimpleRectangle)
             computeHullCorners(type, cornerWeights.w, c, radius, outlineSize, tl, br);
         // FIXME: Fit a better hull around triangles. Oriented bounding box?
         xy = lerp(tl, br, cornerWeights.xy);
@@ -258,11 +263,22 @@ void RasterShapeVertexShader (
     int type = abs(typeAndWorldSpace.x);
     type = EVALUATE_TYPE ;
 
-    bool isHollow = ((centerColor.a <= 0) && (edgeColor.a <= 0)) && 
+    bool isUnshadowed = (ShadowColorLinear.a <= 0) || (ShadowInside <= 0);
+    bool isSimpleRectangle = (centerColor == edgeColor) && 
         (type == TYPE_Rectangle) && 
         (params.y <= 0); /* FIXME: Annular radius */
+    bool isHollow = isSimpleRectangle && 
+        (centerColor.a <= 0);
 
-    bool dead = isHollow ? (cornerWeights.w < 1) : (cornerWeights.w >= 1);
+    bool dead;
+    if (isHollow) {
+        dead = cornerWeights.w < 1;
+    } else if (OptimizeRectangleInterior && isSimpleRectangle) {
+        dead = false;
+    } else {
+        dead = cornerWeights.w >= 1;
+    }
+
     if (dead) {
         result = -9999;
         ab = cd = worldPositionTypeAndInteriorFlag = 0;
@@ -278,7 +294,7 @@ void RasterShapeVertexShader (
     float2 tl, br;
 
     computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
-    computePosition(type, outlineSize, a, b, c, radius, tl, br, cornerWeights, params, isHollow, position.xy);
+    computePosition(type, outlineSize, a, b, c, radius, tl, br, cornerWeights, params, isSimpleRectangle, position.xy);
 
     float2 adjustedPosition = position.xy;
     if (typeAndWorldSpace.y > 0.5) {
@@ -291,7 +307,7 @@ void RasterShapeVertexShader (
     );
     worldPositionTypeAndInteriorFlag = float4(
         position.xy, typeAndWorldSpace.x, 
-        isHollow && (cornerWeights.w < 1)
+        isSimpleRectangle && isUnshadowed && (cornerWeights.w < 1)
     );
 
     // If we're not using an approximate Linear-sRGB conversion here it could add
@@ -647,7 +663,6 @@ void rasterShapeCommon (
     float2 worldPosition = worldPositionTypeAndInteriorFlag.xy;
     int type = abs(worldPositionTypeAndInteriorFlag.z);
     type = EVALUATE_TYPE;
-    bool isSimpleInterior = false; // worldPositionTypeAndInteriorFlag.w;
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw;
 
     const float threshold = (1 / 512.0);
@@ -655,9 +670,9 @@ void rasterShapeCommon (
     tl = min(a, b);
     br = max(a, b);
 
-#ifdef INCLUDE_RECTANGLE
-    /*
+#ifdef OPTIMIZE_RECTANGLE_INTERIOR
     PREFER_BRANCH
+    bool isSimpleInterior = worldPositionTypeAndInteriorFlag.w > 0;
     if ((type == TYPE_Rectangle) && (isSimpleInterior)) {
         gradientWeight = 0;
         fillAlpha = 1;
@@ -665,7 +680,6 @@ void rasterShapeCommon (
         shadowAlpha = 0;
         return;
     }
-    */
 #endif
 
     float distance = 0;
