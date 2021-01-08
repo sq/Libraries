@@ -58,7 +58,9 @@ uniform float4 ShadowOptions;
 uniform float4 ShadowOptions2;
 uniform float4 ShadowColorLinear;
 
-#define OptimizeRectangleInterior true
+// FIXME: This is not currently faster even though it seems like it could be,
+//  and it also breaks gradient fills in a weird way somehow
+#define OptimizeRectangleInterior false
 
 #define ShadowSoftness ShadowOptions.z
 #define ShadowOffset ShadowOptions.xy
@@ -175,8 +177,10 @@ void computeHullCorners (
     float y2 = max(tl.y, br.y - edgeSize + offsetNegative.y);
 
     if (index < 1) {
-        tl += edgeSize + offsetPositive;
-        br -= edgeSize + offsetNegative;
+        if (OptimizeRectangleInterior) {
+            tl += edgeSize + offsetPositive;
+            br -= edgeSize + offsetNegative;
+        }
     } else if (index < 2) {
         // top
         br.y = y1;
@@ -670,10 +674,10 @@ void rasterShapeCommon (
     tl = min(a, b);
     br = max(a, b);
 
-#ifdef OPTIMIZE_RECTANGLE_INTERIOR
-    PREFER_BRANCH
+#ifdef INCLUDE_RECTANGLE
     bool isSimpleInterior = worldPositionTypeAndInteriorFlag.w > 0;
-    if ((type == TYPE_Rectangle) && (isSimpleInterior)) {
+    PREFER_BRANCH
+    if (OptimizeRectangleInterior && (type == TYPE_Rectangle) && (isSimpleInterior)) {
         gradientWeight = 0;
         fillAlpha = 1;
         outlineAlpha = 0;
