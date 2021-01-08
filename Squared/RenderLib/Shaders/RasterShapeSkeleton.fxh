@@ -22,39 +22,11 @@ uniform float4 TextureModeAndSize;
 // Origin, Position
 uniform float4 TexturePlacement;
 
-// HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
-#define OutlineSizeCompensation 2.1
-
-#define PI 3.1415926535897931
-#define DEG_TO_RAD (PI / 180.0)
-
 // A bunch of the distance formulas in here are thanks to inigo quilez
 // http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
 // http://iquilezles.org/www/articles/distfunctions/distfunctions.htm
 
-#define TYPE_Ellipse 0
-#define TYPE_LineSegment 1
-#define TYPE_Rectangle 2
-#define TYPE_Triangle 3
-#define TYPE_QuadraticBezier 4
-#define TYPE_Arc 5
-
-// Generic gradient types that operate on the bounding box or something
-//  similar to it
-#define GRADIENT_TYPE_Natural 0
-#define GRADIENT_TYPE_Linear 1
-#define GRADIENT_TYPE_Linear_Enclosing 2
-#define GRADIENT_TYPE_Linear_Enclosed 3
-#define GRADIENT_TYPE_Radial 4
-#define GRADIENT_TYPE_Radial_Enclosing 5
-#define GRADIENT_TYPE_Radial_Enclosed 6
-// The gradient weight has already been computed by the evaluate function
-#define GRADIENT_TYPE_Other 8
-// Generic gradient that operates on the bounding box, with the angle added
-//  to the base
-#define GRADIENT_TYPE_Angular 512
-
-#define ANGULAR_GRADIENT_BASE 512
+#define EVALUATE_TYPE(u) u
 
 #define RASTERSHAPE_FS_ARGS \
     in float4 worldPositionTypeAndWorldSpace : NORMAL0, \
@@ -168,7 +140,7 @@ void computeTLBR (
                 mi = min(mi, q);
                 ma = max(ma, q);
             }
-
+            
             tl = mi - outlineSize - radius.x;
             br = ma + outlineSize + radius.x;
             break;
@@ -178,10 +150,6 @@ void computeTLBR (
             tl = a - outlineSize - radius.x - radius.y;
             br = a + outlineSize + radius.x + radius.y;
             break;
-
-        default:
-            tl = -1; br = 1;
-            return;
     }
 }
 
@@ -286,7 +254,7 @@ void RasterShapeVertexShader (
     out float4 result : POSITION0,
     out float4 ab : TEXCOORD3,
     out float4 cd : TEXCOORD4,
-    out float4 worldPositionTypeAndWorldSpace : NORMAL0
+    out float4 worldPositionTypeAndInteriorFlag : NORMAL0
 ) {
     int type = abs(typeAndWorldSpace.x);
 
@@ -297,7 +265,7 @@ void RasterShapeVertexShader (
     bool dead = isHollow ? (cornerWeights.w < 1) : (cornerWeights.w >= 1);
     if (dead) {
         result = -9999;
-        ab = cd = worldPositionTypeAndWorldSpace = 0;
+        ab = cd = worldPositionTypeAndInteriorFlag = 0;
         return;
     }
 
@@ -321,7 +289,10 @@ void RasterShapeVertexShader (
     result = TransformPosition(
         float4(adjustedPosition, position.z, 1), true
     );
-    worldPositionTypeAndWorldSpace = float4(position.xy, typeAndWorldSpace.x, typeAndWorldSpace.y);
+    worldPositionTypeAndInteriorFlag = float4(
+        position.xy, typeAndWorldSpace.x, 
+        isHollow && (cornerWeights.w < 1)
+    );
 
     // If we're not using an approximate Linear-sRGB conversion here it could add
     //  measurable overhead to the fragment shader, so why not do it here in the VS instead
@@ -557,7 +528,7 @@ void evaluateRasterShape (
     bool needTLBR = false;
 
 PREFER_BRANCH
-    switch (type) {
+    switch (EVALUATE_TYPE(type)) {
 #ifdef INCLUDE_ELLIPSE
         case TYPE_Ellipse: {
             evaluateEllipse(
@@ -675,29 +646,44 @@ float computeShadowAlpha (
 }
 
 void rasterShapeCommon (
-    in float4 worldPositionTypeAndWorldSpace, in bool enableShadow, in bool simple,
+    in float4 worldPositionTypeAndInteriorFlag, in bool enableShadow, in bool simple,
     in float4 ab, in float4 cd,
     in float4 params, in float4 params2, in float2 vpos,
     out float2 tl, out float2 br,
     out float gradientWeight, out float fillAlpha, 
     out float outlineAlpha, out float shadowAlpha
 ) {
-    float2 worldPosition = worldPositionTypeAndWorldSpace.xy;
-    int type = abs(worldPositionTypeAndWorldSpace.z);
+    float2 worldPosition = worldPositionTypeAndInteriorFlag.xy;
+    int type = EVALUATE_TYPE(abs(worldPositionTypeAndInteriorFlag.z));
+    bool isSimpleInterior = false; // worldPositionTypeAndInteriorFlag.w;
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw;
-    float outlineSize = abs(params.x);
-    bool HardOutline = (params.x >= 0);
-    float OutlineGammaMinusOne = params.w;
-
-    // HACK
-    outlineSize = max(abs(outlineSize), 0.0001);
 
     const float threshold = (1 / 512.0);
 
-    float distance = 0;
-
     tl = min(a, b);
     br = max(a, b);
+
+#ifdef INCLUDE_RECTANGLE
+    /*
+    if (EVALUATE_TYPE(type) == TYPE_Rectangle) {
+        [branch]
+        if (isSimpleInterior) {
+            gradientWeight = 0;
+            fillAlpha = 1;
+            outlineAlpha = 0;
+            shadowAlpha = 0;
+            return;
+        }
+    }
+    */
+#endif
+
+    float distance = 0;
+    float outlineSize = abs(params.x);
+    // HACK
+    outlineSize = max(abs(outlineSize), 0.0001);
+    bool HardOutline = (params.x >= 0);
+    float OutlineGammaMinusOne = params.w;
 
     if (type == TYPE_Rectangle)
         radius = computeLocalRectangleRadius(worldPosition, tl, br, cd.xy, cd.zw);
