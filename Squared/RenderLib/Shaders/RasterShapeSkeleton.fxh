@@ -347,26 +347,22 @@ void evaluateEllipse (
     }
 
     gradientWeight = saturate(distanceF);
-    PREFER_FLATTEN
-    switch (gradientType) {
-        case GRADIENT_TYPE_Natural:
-            gradientType = GRADIENT_TYPE_Radial;
-            break;
-        case GRADIENT_TYPE_Linear:
-            // FIXME
-        case GRADIENT_TYPE_Linear_Enclosing:
-        case GRADIENT_TYPE_Linear_Enclosed:
-            // Options:
-            // * 2 = touches corners of a box enclosing the ellipse
-            // * 2 * sqrt(2) == touches corners of a box enclosed by the ellipse
-            float2 distance2 = abs(worldPosition - a) / (br - tl) * (
-                (gradientType == GRADIENT_TYPE_Linear_Enclosed) 
-                    ? (2 * sqrt(2)) 
-                    : 2
-            );
-            gradientWeight = saturate(max(distance2.x, distance2.y));
-            gradientType = GRADIENT_TYPE_Other;
-            break;
+    if (gradientType == GRADIENT_TYPE_Natural)
+        gradientType = GRADIENT_TYPE_Radial;
+    else if (
+        (gradientType == GRADIENT_TYPE_Linear_Enclosing) ||
+        (gradientType == GRADIENT_TYPE_Linear_Enclosed)
+    ) {
+        // Options:
+        // * 2 = touches corners of a box enclosing the ellipse
+        // * 2 * sqrt(2) == touches corners of a box enclosed by the ellipse
+        float2 distance2 = abs(worldPosition - a) / (br - tl) * (
+            (gradientType == GRADIENT_TYPE_Linear_Enclosed) 
+                ? (2 * sqrt(2)) 
+                : 2
+        );
+        gradientWeight = saturate(max(distance2.x, distance2.y));
+        gradientType = GRADIENT_TYPE_Other;
     }
 }
 
@@ -419,11 +415,8 @@ void evaluateRectangle (
     gradientWeight = 0;
 
     PREFER_FLATTEN
-    switch (gradientType) {
-        case GRADIENT_TYPE_Natural:
-            gradientType = GRADIENT_TYPE_Linear;
-            break;
-    }
+    if (gradientType == GRADIENT_TYPE_Natural)
+        gradientType = GRADIENT_TYPE_Linear;
 }
 
 void evaluateTriangle (
@@ -457,14 +450,11 @@ void evaluateTriangle (
     //  center of our bounding box
 
     PREFER_FLATTEN
-    switch (abs(gradientType)) {
-        case GRADIENT_TYPE_Natural:
-            gradientWeight = 1 - saturate(distance / targetDistance);
-            gradientType = GRADIENT_TYPE_Other;
-            break;
-        default:
-            gradientWeight = 0;
-            break;
+    if (gradientType == GRADIENT_TYPE_Natural) {
+        gradientWeight = 1 - saturate(distance / targetDistance);
+        gradientType = GRADIENT_TYPE_Other;
+    } else {
+        gradientWeight = 0;
     }
 }
 
@@ -478,42 +468,49 @@ float evaluateGradient (
     float2 radialSize2 = (boxSize /* + (radius * 2) */) * 0.5;
 
     PREFER_FLATTEN
-    switch (abs(gradientType)) {
-        case GRADIENT_TYPE_Natural:
-        case GRADIENT_TYPE_Other:
-            return gradientWeight;
-        case GRADIENT_TYPE_Linear:
-        case GRADIENT_TYPE_Linear_Enclosing:
-        case GRADIENT_TYPE_Linear_Enclosed:
-            float2 linearRadialSize2 = (gradientType == GRADIENT_TYPE_Linear_Enclosing)
-                ? max(radialSize2.x, radialSize2.y)
-                : (
-                    (gradientType == GRADIENT_TYPE_Linear_Enclosed)
-                        ? min(radialSize2.x, radialSize2.y)
-                        : radialSize2
-                );
-            float2 linearDist2 = abs(worldPosition - gradientCenter) / linearRadialSize2;
-            return max(linearDist2.x, linearDist2.y);
-        case GRADIENT_TYPE_Radial:
-        case GRADIENT_TYPE_Radial_Enclosing:
-        case GRADIENT_TYPE_Radial_Enclosed:
-            float2 radialSize = (gradientType == GRADIENT_TYPE_Radial_Enclosing)
-                ? max(radialSize2.x, radialSize2.y)
-                : (
-                    (gradientType == GRADIENT_TYPE_Radial_Enclosed)
-                        ? min(radialSize2.x, radialSize2.y)
-                        : radialSize2
-                );
-            return length((worldPosition - gradientCenter) / max(radialSize, 0.0001));
-        case GRADIENT_TYPE_Angular:
-            float2 scaled = (worldPosition - gradientCenter) / (boxSize * 0.5);
-            float scaledLength = length(scaled);
-            if (scaledLength < 0.001) {
-                scaled.x = 0.001;
-                scaledLength = 0.001;
-            }
-            gradientAngle += atan2(scaled.y, scaled.x);
-            return ((sin(gradientAngle) * scaledLength) / 2) + 0.5;
+    if (
+        (gradientType == GRADIENT_TYPE_Natural) ||
+        (gradientType == GRADIENT_TYPE_Other)
+    ) {
+        return gradientWeight;
+    } else if (
+        (gradientType == GRADIENT_TYPE_Linear) ||
+        (gradientType == GRADIENT_TYPE_Linear_Enclosing) ||
+        (gradientType == GRADIENT_TYPE_Linear_Enclosed)
+    ) {
+        float2 linearRadialSize2 = (gradientType == GRADIENT_TYPE_Linear_Enclosing)
+            ? max(radialSize2.x, radialSize2.y)
+            : (
+                (gradientType == GRADIENT_TYPE_Linear_Enclosed)
+                    ? min(radialSize2.x, radialSize2.y)
+                    : radialSize2
+            );
+        float2 linearDist2 = abs(worldPosition - gradientCenter) / linearRadialSize2;
+        return max(linearDist2.x, linearDist2.y);
+    } else if (
+        (gradientType == GRADIENT_TYPE_Radial) ||
+        (gradientType == GRADIENT_TYPE_Radial_Enclosing) ||
+        (gradientType == GRADIENT_TYPE_Radial_Enclosed)
+    ) {
+        float2 radialSize = (gradientType == GRADIENT_TYPE_Radial_Enclosing)
+            ? max(radialSize2.x, radialSize2.y)
+            : (
+                (gradientType == GRADIENT_TYPE_Radial_Enclosed)
+                    ? min(radialSize2.x, radialSize2.y)
+                    : radialSize2
+            );
+        return length((worldPosition - gradientCenter) / max(radialSize, 0.0001));
+    } else if (
+        gradientType == GRADIENT_TYPE_Angular
+    ) {
+        float2 scaled = (worldPosition - gradientCenter) / (boxSize * 0.5);
+        float scaledLength = length(scaled);
+        if (scaledLength < 0.001) {
+            scaled.x = 0.001;
+            scaledLength = 0.001;
+        }
+        gradientAngle += atan2(scaled.y, scaled.x);
+        return ((sin(gradientAngle) * scaledLength) / 2) + 0.5;
     }
 
     return gradientWeight;
@@ -660,15 +657,13 @@ void rasterShapeCommon (
 
 #ifdef INCLUDE_RECTANGLE
     /*
-    if (type == TYPE_Rectangle) {
-        [branch]
-        if (isSimpleInterior) {
-            gradientWeight = 0;
-            fillAlpha = 1;
-            outlineAlpha = 0;
-            shadowAlpha = 0;
-            return;
-        }
+    PREFER_BRANCH
+    if ((type == TYPE_Rectangle) && (isSimpleInterior)) {
+        gradientWeight = 0;
+        fillAlpha = 1;
+        outlineAlpha = 0;
+        shadowAlpha = 0;
+        return;
     }
     */
 #endif
@@ -743,7 +738,7 @@ void rasterShapeCommon (
 
     fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
 
-    PREFER_BRANCH
+    PREFER_FLATTEN
     if (outlineSize > 0.001) {
         if ((outlineSize >= sqrt(2)) && HardOutline) {
             outlineAlpha = (
