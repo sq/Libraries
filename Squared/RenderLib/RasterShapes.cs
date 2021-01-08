@@ -460,7 +460,7 @@ namespace Squared.Render.RasterShape {
         public SamplerState SamplerState;
         public Texture2D RampTexture;
 
-        public bool UseUbershader = true;
+        public bool UseUbershader = false;
 
         private static readonly RasterShapeTypeSorter ShapeTypeSorter = new RasterShapeTypeSorter();
 
@@ -471,7 +471,7 @@ namespace Squared.Render.RasterShape {
 
         const int MaxVertexCount = 65535;
 
-        const bool HollowOptimization = false;
+        const bool HollowOptimization = true;
 
         const int CornerBufferRepeatCount = HollowOptimization ? 5 : 1;
         const int CornerBufferVertexCount = CornerBufferRepeatCount * 4;

@@ -11,8 +11,6 @@
 #include "sRGBCommon.fxh"
 #include "SDF2D.fxh"
 
-// #define EVALUATE_TYPE type
-
 Texture2D RasterTexture : register(t0);
 
 sampler TextureSampler : register(s0) {
