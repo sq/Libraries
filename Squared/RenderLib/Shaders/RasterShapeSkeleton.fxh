@@ -40,15 +40,6 @@ uniform float4 TexturePlacement;
     ACCEPTS_VPOS, \
     out float4 result : COLOR0
 
-// We use the _Accurate conversion function here because the approximation introduces
-//  visible noise for values like (64, 64, 64) when they are dithered
-#define RASTERSHAPE_PREPROCESS_COLORS \
-    if (BlendInLinearSpace) { \
-        centerColor = pSRGBToPLinear_Accurate(centerColor); \
-        edgeColor = pSRGBToPLinear_Accurate(edgeColor); \
-        outlineColor = pSRGBToPLinear_Accurate(outlineColor); \
-    }
-
 uniform bool BlendInLinearSpace, OutputInLinearSpace;
 uniform float HalfPixelOffset;
 
@@ -248,21 +239,22 @@ void computePosition (
     }
 }
 
-void RasterShapeVertexShader (
-    in float4 cornerWeights : NORMAL2,
-    in float4 ab_in : POSITION0,
-    in float4 cd_in : POSITION1,
-    inout float4 params : TEXCOORD0,
-    inout float4 params2 : TEXCOORD1,
-    inout float4 texRgn : TEXCOORD2,
-    inout float4 centerColor : COLOR0,
-    inout float4 edgeColor : COLOR1,
-    inout float4 outlineColor : COLOR2,
-    in  int2 typeAndWorldSpace : BLENDINDICES1,
-    out float4 result : POSITION0,
-    out float4 ab : TEXCOORD3,
-    out float4 cd : TEXCOORD4,
-    out float4 worldPositionTypeAndInteriorFlag : NORMAL0
+void RasterShapeVertexShader_Core (
+    in bool isSimple,
+    in float4 cornerWeights,
+    in float4 ab_in,
+    in float4 cd_in,
+    inout float4 params,
+    inout float4 params2,
+    inout float4 texRgn,
+    inout float4 centerColor,
+    inout float4 edgeColor,
+    inout float4 outlineColor,
+    in  int2 typeAndWorldSpace,
+    out float4 result,
+    out float4 ab,
+    out float4 cd,
+    out float4 worldPositionTypeAndInteriorFlag
 ) {
     int type = abs(typeAndWorldSpace.x);
     type = EVALUATE_TYPE ;
@@ -314,9 +306,89 @@ void RasterShapeVertexShader (
         isSimpleRectangle && isUnshadowed && (cornerWeights.w < 1)
     );
 
-    // If we're not using an approximate Linear-sRGB conversion here it could add
-    //  measurable overhead to the fragment shader, so why not do it here in the VS instead
-    RASTERSHAPE_PREPROCESS_COLORS
+    // We use the _Accurate conversion function here because the approximation introduces
+    //  visible noise for values like (64, 64, 64) when they are dithered.
+    // We do the initial conversion in the VS to avoid paying the cost per-fragment, and also
+    //  take the opportunity to do a final conversion here for 'simple' fragments so that
+    //  it doesn't have to be done per-fragment
+    if (
+        (OutputInLinearSpace && isSimple) || 
+        (BlendInLinearSpace && !isSimple)
+    ) {
+        centerColor = pSRGBToPLinear_Accurate(centerColor);
+        edgeColor = pSRGBToPLinear_Accurate(edgeColor);
+        outlineColor = pSRGBToPLinear_Accurate(outlineColor);
+    }
+}
+
+void RasterShapeVertexShader (
+    in float4 cornerWeights : NORMAL2,
+    in float4 ab_in : POSITION0,
+    in float4 cd_in : POSITION1,
+    inout float4 params : TEXCOORD0,
+    inout float4 params2 : TEXCOORD1,
+    inout float4 texRgn : TEXCOORD2,
+    inout float4 centerColor : COLOR0,
+    inout float4 edgeColor : COLOR1,
+    inout float4 outlineColor : COLOR2,
+    in  int2 typeAndWorldSpace : BLENDINDICES1,
+    out float4 result : POSITION0,
+    out float4 ab : TEXCOORD3,
+    out float4 cd : TEXCOORD4,
+    out float4 worldPositionTypeAndInteriorFlag : NORMAL0
+) {
+    RasterShapeVertexShader_Core (
+        false,
+        cornerWeights,
+        ab_in,
+        cd_in,
+        params,
+        params2,
+        texRgn,
+        centerColor,
+        edgeColor,
+        outlineColor,
+        typeAndWorldSpace,
+        result,
+        ab,
+        cd,
+        worldPositionTypeAndInteriorFlag
+    );
+}
+
+void RasterShapeVertexShader_Simple (
+    in float4 cornerWeights : NORMAL2,
+    in float4 ab_in : POSITION0,
+    in float4 cd_in : POSITION1,
+    inout float4 params : TEXCOORD0,
+    inout float4 params2 : TEXCOORD1,
+    inout float4 texRgn : TEXCOORD2,
+    inout float4 centerColor : COLOR0,
+    inout float4 edgeColor : COLOR1,
+    inout float4 outlineColor : COLOR2,
+    in  int2 typeAndWorldSpace : BLENDINDICES1,
+    out float4 result : POSITION0,
+    out float4 ab : TEXCOORD3,
+    out float4 cd : TEXCOORD4,
+    out float4 worldPositionTypeAndInteriorFlag : NORMAL0
+) {
+    RasterShapeVertexShader_Core (
+        true,
+        cornerWeights,
+        ab_in,
+        cd_in,
+        params,
+        params2,
+        texRgn,
+        centerColor,
+        edgeColor,
+        outlineColor,
+        typeAndWorldSpace,
+        result,
+        ab,
+        cd,
+        worldPositionTypeAndInteriorFlag
+    );
 }
 
 float2 closestPointOnLine2(float2 a, float2 b, float2 pt, out float t) {
@@ -803,7 +875,7 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return top + (bottom * (1 - top.a));
 }
 
-float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool isFinalComposite, bool isSimple, bool enableShadow, float2 vpos) {
+float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool isSimple, bool enableShadow, float2 vpos) {
     float4 result = fillColor * fillAlpha;
     if (enableShadow) {
         // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
@@ -818,19 +890,16 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
     // It's also important to do dithering and sRGB conversion on a result that is not premultiplied
     result.rgb = float4(result.rgb / max(result.a, 0.0001), result.a);
 
-    if (isFinalComposite) {
-        if (BlendInLinearSpace != OutputInLinearSpace) {
-            if (OutputInLinearSpace)
-                result.rgb = SRGBToLinear(result).rgb;
-            else
-                result.rgb = LinearToSRGB(result.rgb);
-        }
+    if (isSimple) {
+        return result;
+    } else if (BlendInLinearSpace != OutputInLinearSpace) {
+        if (OutputInLinearSpace)
+            result.rgb = SRGBToLinear(result).rgb;
+        else
+            result.rgb = LinearToSRGB(result.rgb);
     }
 
-    if (isSimple)
-        return result;
-    else
-        return ApplyDither4(result, vpos);
+    return ApplyDither4(result, vpos);
 }
 
 float4 texturedShapeCommon (
@@ -874,6 +943,6 @@ float4 texturedShapeCommon (
     } else
         fill *= texColor;
 
-    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, true, false, enableShadow, vpos);
+    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, false, enableShadow, vpos);
     return result;
 }
