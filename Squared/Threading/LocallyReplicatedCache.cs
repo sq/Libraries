@@ -5,23 +5,31 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Squared.Util;
 using Id = System.Int32;
 
 namespace Squared.Threading {
     public class LocallyReplicatedCache<TValue> {
         public class Table {
-            // FIXME: Store in an array also for faster lookup
-            private Dictionary<Id, TValue> ValuesById;
+            private UnorderedList<TValue> ValuesById;
             private Dictionary<TValue, Id> IdsByValue;
 
             internal Table (IEqualityComparer<TValue> comparer) {
-                ValuesById = new Dictionary<Id, TValue>();
+                ValuesById = new UnorderedList<TValue>(1024);
+                ValuesById.Add(default(TValue));
                 IdsByValue = new Dictionary<TValue, Id>(comparer);
             }
 
-            public void CopyTo (Table destination) {
-                foreach (var kvp in ValuesById)
-                    destination.Set(kvp.Key, kvp.Value);
+            public void ReplicateFrom (Table source) {
+                var sourceArray = source.ValuesById;
+                var sourceCount = sourceArray.Count;
+                var i = ValuesById.Count;
+                while (i < sourceCount) {
+                    var item = sourceArray.DangerousGetItem(i);
+                    ValuesById.Add(item);
+                    IdsByValue[item] = i;
+                    i++;
+                }
             }
 
             public int Count {
@@ -31,20 +39,25 @@ namespace Squared.Threading {
             }
 
             public void Set (Id id, TValue value) {
-                ValuesById[id] = value;
+                var count = ValuesById.Count;
+                if (count == id) {
+                    ValuesById.Add(value);
+                } else {
+                    throw new InvalidOperationException();
+                }
                 IdsByValue[value] = id;
             }
 
             public TValue GetValue (Id id) {
-                return ValuesById[id];
+                return ValuesById.DangerousGetItem(id);
             }
 
             public bool TryGetValue (Id id, out TValue value) {
-                return ValuesById.TryGetValue(id, out value);
+                return ValuesById.DangerousTryGetItem(id, out value);
             }
 
             public bool TryGetId (TValue value, out Id id) {
-                return IdsByValue.TryGetValue(value, out id);
+                return IdsByValue.TryGetValue(value, out id) && (id > 0);
             }
         }
 
@@ -78,7 +91,7 @@ namespace Squared.Threading {
             var result = LocalCache.Value;
             try {
                 SharedCacheLock.EnterReadLock();
-                SharedCache.CopyTo(result);
+                result.ReplicateFrom(SharedCache);
                 return result;
             } finally {
                 SharedCacheLock.ExitReadLock();
@@ -94,8 +107,7 @@ namespace Squared.Threading {
             try {
                 SharedCacheLock.EnterUpgradeableReadLock();
                 if (SharedCache.TryGetId(value, out id)) {
-                    var storageValue = SharedCache.GetValue(id);
-                    lc.Set(id, value);
+                    lc.ReplicateFrom(SharedCache);
                     return id;
                 }
 
@@ -106,11 +118,11 @@ namespace Squared.Threading {
                         id = NextId++;
                         SharedCache.Set(id, storageValue);
                         Count++;
+                        lc.ReplicateFrom(SharedCache);
                     } finally {
                         SharedCacheLock.ExitWriteLock();
                     }
 
-                    lc.Set(id, storageValue);
                     return id;
                 }
             } finally {
@@ -124,7 +136,7 @@ namespace Squared.Threading {
                 try {
                     SharedCacheLock.EnterReadLock();
                     if (SharedCache.TryGetId(value, out id)) {
-                        lc.Set(id, SharedCache.GetValue(id));
+                        lc.ReplicateFrom(SharedCache);
                         return true;
                     } else {
                         return false;
@@ -142,7 +154,7 @@ namespace Squared.Threading {
                 try {
                     SharedCacheLock.EnterReadLock();
                     if (SharedCache.TryGetValue(id, out value)) {
-                        lc.Set(id, SharedCache.GetValue(id));
+                        lc.ReplicateFrom(SharedCache);
                         return true;
                     } else {
                         return false;

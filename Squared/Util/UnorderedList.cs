@@ -248,6 +248,17 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void DangerousEnsureSize (int size) {
+            if (size <= _Count)
+                return;
+            EnsureCapacity(size);
+
+            var growth = size - _Count;
+            Array.Clear(_Items, _BufferOffset + _Count, growth);
+            _Count = size;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (T item) {
             int newCount = _Count + 1;
             EnsureCapacity(newCount);
