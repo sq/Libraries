@@ -110,6 +110,21 @@ namespace ShaderCompiler {
                         }
                     }
 
+                    {
+                        var arglist = "/nologo " + shader + " " + GetParamsForDefines(defines) + " /P " + destPath.Replace(".bin", ".p");
+                        var psi = new ProcessStartInfo(
+                            fxcPath, arglist
+                        ) {
+                            UseShellExecute = false
+                        };
+
+                        Console.ForegroundColor = ConsoleColor.DarkBlue;
+                        using (var p = Process.Start(psi)) {
+                            p.WaitForExit();
+                            exitCode += p.ExitCode;
+                        }
+                    }
+
                     if (exitCode != 0) {
                         errorCount += 1;
                     } else {
@@ -146,6 +161,13 @@ namespace ShaderCompiler {
 
             if (Debugger.IsAttached)
                 Console.ReadLine();
+        }
+
+        private static string GetParamsForDefines (Dictionary<string, string> defines) {
+            var result = new StringBuilder();
+            foreach (var kvp in defines)
+                result.AppendFormat(" /D {0}={1}", kvp.Key, kvp.Value);
+            return result.ToString();
         }
 
         private static string GetFxcParamsForShader (string path, string defaultParams, Dictionary<string, string> defines) {
@@ -186,8 +208,8 @@ namespace ShaderCompiler {
 
             if (result.Length == 0)
                 result.Append(defaultParams.Trim());
-            else foreach (var kvp in defines)
-                result.AppendFormat(" /D {0}={1}", kvp.Key, kvp.Value);
+            else
+                result.Append(GetParamsForDefines(defines));
 
             return result.ToString().Trim();
         }
