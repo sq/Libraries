@@ -48,11 +48,12 @@ namespace Squared.PRGUI {
         }
 
         public static implicit operator ColorVariable (Color c) {
-            return new ColorVariable { Color = c };
+            var pLinear = new pSRGBColor(c).ToPLinear();
+            return new ColorVariable { pLinear = pLinear };
         }
 
         public static implicit operator ColorVariable (pSRGBColor c) {
-            return new ColorVariable { pSRGB = c };
+            return new ColorVariable { pLinear = c.ToPLinear() };
         }
     }
     

@@ -182,6 +182,6 @@ namespace Squared.PRGUI {
 
         IEnumerator<Result> IEnumerable<Result>.GetEnumerator () => ((IEnumerable<Result>)Results).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator () => ((IEnumerable<Result>)Results).GetEnumerator();
-        public List<Result>.Enumerator GetEnumerator => Results.GetEnumerator();
+        public List<Result>.Enumerator GetEnumerator () => Results.GetEnumerator();
     }
 }

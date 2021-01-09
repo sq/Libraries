@@ -48,11 +48,13 @@ namespace Squared.PRGUI.Input {
                 if (GamePadButtonLabels.TryGetValue(GamePadButton.Value, out string buttonLabel))
                     output.Append(buttonLabel);
                 else
+                    // FIXME: Enum.ToString allocates for some reason
                     output.Append(GamePadButton.Value.ToString());
             } else {
                 Modifiers.Format(output);
                 if (output.Length > length)
                     output.Append("+");
+                // FIXME: Enum.ToString allocates for some reason
                 output.Append(Key.ToString());
             }
 
@@ -430,7 +432,9 @@ namespace Squared.PRGUI.Input {
         }
 
         public void SetContext (UIContext context) {
-            if ((context != Context) && (Context != null))
+            if (context == Context)
+                return;
+            else if ((context != Context) && (Context != null))
                 throw new InvalidOperationException("This source has already been used with another context");
             Context = context;
             FuzzyHitTest = new FuzzyHitTest(context);
