@@ -10,12 +10,24 @@ using Id = System.Int32;
 namespace Squared.Threading {
     public class LocallyReplicatedCache<TValue> {
         public class Table {
-            public Dictionary<Id, TValue> ValuesById;
-            public Dictionary<TValue, Id> IdsByValue;
+            // FIXME: Store in an array also for faster lookup
+            private Dictionary<Id, TValue> ValuesById;
+            private Dictionary<TValue, Id> IdsByValue;
 
             internal Table (IEqualityComparer<TValue> comparer) {
                 ValuesById = new Dictionary<Id, TValue>();
                 IdsByValue = new Dictionary<TValue, Id>(comparer);
+            }
+
+            public void CopyTo (Table destination) {
+                foreach (var kvp in ValuesById)
+                    destination.Set(kvp.Key, kvp.Value);
+            }
+
+            public int Count {
+                get {
+                    return ValuesById.Count;
+                }
             }
 
             public void Set (Id id, TValue value) {
@@ -66,8 +78,7 @@ namespace Squared.Threading {
             var result = LocalCache.Value;
             try {
                 SharedCacheLock.EnterReadLock();
-                foreach (var kvp in SharedCache.ValuesById)
-                    result.Set(kvp.Key, kvp.Value);
+                SharedCache.CopyTo(result);
                 return result;
             } finally {
                 SharedCacheLock.ExitReadLock();
@@ -94,7 +105,7 @@ namespace Squared.Threading {
                         SharedCacheLock.EnterWriteLock();
                         id = NextId++;
                         SharedCache.Set(id, storageValue);
-                        Count = SharedCache.ValuesById.Count;
+                        Count++;
                     } finally {
                         SharedCacheLock.ExitWriteLock();
                     }

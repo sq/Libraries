@@ -1211,6 +1211,24 @@ namespace Squared.Render {
             TextureRegion = newBounds;
         }
 
+        public AbstractTextureReference Texture1 {
+            get {
+                return Textures.Texture1;
+            }
+            set {
+                Textures = new TextureSet(value, Textures.Texture2);
+            }
+        }
+
+        public AbstractTextureReference Texture2 {
+            get {
+                return Textures.Texture2;
+            }
+            set {
+                Textures = new TextureSet(Textures.Texture1, value);
+            }
+        }
+
         public Texture2D Texture {
             get {
                 if (!Textures.Texture2.IsInitialized)
