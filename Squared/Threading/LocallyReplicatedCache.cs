@@ -167,7 +167,7 @@ namespace Squared.Threading {
         }
     }
 
-    public class LocalObjectCache<TObject>
+    public struct LocalObjectCache<TObject>
         where TObject : class
     {
         internal LocallyReplicatedCache<LocallyReplicatedObjectCache<TObject>.Entry>.Table Table;

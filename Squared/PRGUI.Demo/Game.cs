@@ -279,7 +279,7 @@ namespace PRGUI.Demo {
                 Maximum = 1000,
                 Value = 73.50,
                 ValueFilter = (d) => Math.Round(d, 2, MidpointRounding.AwayFromZero),
-                Exponential = true,
+                Exponent = 2,
                 Increment = 5,
                 FastIncrementRate = 5
             };

@@ -47,7 +47,7 @@ namespace Squared.PRGUI.Controls {
         public int FastIncrementRate = 10;
         public T? Increment;
 
-        public bool Exponential;
+        public double? Exponent;
 
         public Func<T, T?> ValueFilter;
         public Func<T, string> ValueEncoder;
@@ -262,8 +262,8 @@ namespace Squared.PRGUI.Controls {
             if ((Minimum.HasValue && Maximum.HasValue) && (gauge != null)) {
                 var gaugeBox = ComputeGaugeBox(gauge, settings.Box);
                 var fraction = FractionD;
-                if (Exponential)
-                    fraction = 1 - Math.Pow(1 - fraction, 2);
+                if (Exponent.HasValue)
+                    fraction = 1 - Math.Pow(1 - fraction, Exponent.Value);
                 var tempSettings = settings;
                 tempSettings.State = settings.State & ~ControlStates.Hovering;
                 if (gaugeBox.Contains(context.MousePosition) || IsDraggingGauge)
@@ -416,8 +416,8 @@ namespace Squared.PRGUI.Controls {
                 if (gaugeBox.Contains(args.MouseDownPosition)) {
                     IsDraggingGauge = (args.Buttons == MouseButtons.Left);
                     double fraction = Arithmetic.Saturate((args.RelativeGlobalPosition.X - args.Box.Left) / args.Box.Width);
-                    if (Exponential)
-                        fraction = 1 - Math.Sqrt(1 - fraction);
+                    if (Exponent.HasValue)
+                        fraction = 1 - Math.Pow(1 - fraction, 1.0 / Exponent.Value);
                     if ((args.Buttons == MouseButtons.Left) || (args.PreviousButtons == MouseButtons.Left))
                         return TrySetNewFractionalValue(fraction);
                     else

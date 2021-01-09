@@ -97,6 +97,10 @@ namespace Squared.PRGUI.Input {
 
         private static StringBuilder CachedStringBuilder = new StringBuilder();
 
+        public bool Equals (KeyboardModifiers rhs) {
+            return (Control == rhs.Control) && (Shift == rhs.Shift) && (Alt == rhs.Alt);
+        }
+
         public override string ToString () {
             if (!Any)
                 return "";
