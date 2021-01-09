@@ -16,6 +16,7 @@ using System.Reflection;
 using Squared.Util.DeclarativeSort;
 using System.Threading;
 using System.Runtime.CompilerServices;
+using Squared.Threading;
 
 namespace Squared.Render {
     public struct MaterialBitmapDrawCall {
@@ -205,7 +206,8 @@ namespace Squared.Render {
         }
 
         void PrepareNativeBatchForRange (
-            MaterialBitmapDrawCall[] drawCalls, int[] indexArray, int first, int count
+            MaterialBitmapDrawCall[] drawCalls, int[] indexArray, int first, int count,
+            LocalObjectCache<object> textureCache
         ) {
             if (count <= 0)
                 return;
@@ -224,7 +226,7 @@ namespace Squared.Render {
                 int drawCallsPrepared = 0;
                 while (!FillOneSoftwareBuffer(
                     indexArray, callSegment, ref drawCallsPrepared, count,
-                    firstDc.Material, ss1, ss2
+                    firstDc.Material, ss1, ss2, textureCache
                 ));
             }
         }
@@ -239,7 +241,8 @@ namespace Squared.Render {
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
             _CornerBuffer = QuadUtils.CreateCornerBuffer(Container);
 
-            int drawCallsPrepared = 0;
+            var textureCache = AbstractTextureReference.Cache.GetCurrentLocalCache();
+
             using (var b = _DrawCalls.GetBuffer(true)) {
                 var drawCalls = b.Data;
 
@@ -278,7 +281,7 @@ namespace Squared.Render {
                     if ((startNewRange) || (currentRangeStart == -1)) {
                         if (currentRangeStart != -1) {
                             int rangeCount = (i - currentRangeStart);
-                            PrepareNativeBatchForRange(drawCalls, null, currentRangeStart + b.Offset, rangeCount);
+                            PrepareNativeBatchForRange(drawCalls, null, currentRangeStart + b.Offset, rangeCount, textureCache);
                         }
 
                         currentRangeStart = i;
@@ -291,7 +294,7 @@ namespace Squared.Render {
 
                 if (currentRangeStart != -1) {
                     int rangeCount = (count - currentRangeStart);
-                    PrepareNativeBatchForRange(drawCalls, null, currentRangeStart + b.Offset, rangeCount);
+                    PrepareNativeBatchForRange(drawCalls, null, currentRangeStart + b.Offset, rangeCount, textureCache);
                 }
             }
         }

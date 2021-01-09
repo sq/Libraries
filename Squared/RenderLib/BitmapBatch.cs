@@ -302,6 +302,8 @@ namespace Squared.Render {
 
             AllocateNativeBatches();
 
+            var textureCache = AbstractTextureReference.Cache.GetCurrentLocalCache();
+
             var count = _DrawCalls.Count;
             int[] indexArray = null;
 
@@ -340,7 +342,7 @@ namespace Squared.Render {
                 while (drawCallsPrepared < count)
                     FillOneSoftwareBuffer(
                         indexArray, callSegment, ref drawCallsPrepared, count,
-                        Material, SamplerState, SamplerState2
+                        Material, SamplerState, SamplerState2, textureCache
                     );
             }
         }

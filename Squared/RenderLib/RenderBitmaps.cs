@@ -273,7 +273,8 @@ namespace Squared.Render {
             public NativeBatch (
                 ISoftwareBuffer softwareBuffer, TextureSet textureSet, 
                 int localVertexOffset, int vertexCount, Material material,
-                SamplerState samplerState, SamplerState samplerState2
+                SamplerState samplerState, SamplerState samplerState2,
+                LocalObjectCache<object> textureCache
             ) {
                 Material = material;
                 SamplerState = samplerState;
@@ -285,8 +286,8 @@ namespace Squared.Render {
                 LocalVertexOffset = localVertexOffset;
                 VertexCount = vertexCount;
 
-                var tex1 = textureSet.Texture1.Instance;
-                var tex2 = textureSet.Texture2.Instance;
+                var tex1 = textureSet.Texture1.GetInstance(textureCache);
+                var tex2 = textureSet.Texture2.GetInstance(textureCache);
 
                 Texture1Size = new Vector2(tex1.Width, tex1.Height);
                 Texture1HalfTexel = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
@@ -406,7 +407,8 @@ namespace Squared.Render {
         protected void CreateNewNativeBatch (
             BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref TextureSet currentTextures,
             ref int vertCount, ref int vertOffset, bool isFinalCall,
-            Material material, SamplerState samplerState1, SamplerState samplerState2
+            Material material, SamplerState samplerState1, SamplerState samplerState2,
+            LocalObjectCache<object> textureCache
         ) {
             if (currentTextures.Texture1.IsDisposedOrNull)
                 throw new InvalidDataException("Invalid draw call(s)");
@@ -414,7 +416,8 @@ namespace Squared.Render {
             _NativeBatches.Add(new NativeBatch(
                 softwareBuffer, currentTextures,
                 vertOffset, vertCount,
-                material, samplerState1, samplerState2
+                material, samplerState1, samplerState2,
+                textureCache
             ));
 
             if (!isFinalCall) {
@@ -425,7 +428,7 @@ namespace Squared.Render {
 
         protected unsafe bool FillOneSoftwareBuffer (
             int[] indices, ArraySegment<BitmapDrawCall> drawCalls, ref int drawCallsPrepared, int count,
-            Material material, SamplerState samplerState1, SamplerState samplerState2
+            Material material, SamplerState samplerState1, SamplerState samplerState2, LocalObjectCache<object> textureCache
         ) {
             int totalVertCount = 0;
             int vertCount = 0, vertOffset = 0;
@@ -469,7 +472,8 @@ namespace Squared.Render {
                         if (vertCount > 0)
                             CreateNewNativeBatch(
                                 softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, false,
-                                material, samplerState1, samplerState2
+                                material, samplerState1, samplerState2,
+                                textureCache
                             );
 
                         currentTextures = callArray[callIndex + drawCalls.Offset].Textures;
@@ -494,7 +498,7 @@ namespace Squared.Render {
             if (vertCount > 0) {
                 CreateNewNativeBatch(
                     softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, true,
-                    material, samplerState1, samplerState2
+                    material, samplerState1, samplerState2, textureCache
                 );
             }
 
@@ -592,7 +596,7 @@ namespace Squared.Render {
         private void PerformNativeBatchTextureTransition (
             DeviceManager manager,
             ref NativeBatch nb, ref CurrentNativeBatchState cnbs,
-            bool force
+            bool force, LocalObjectCache<object> textureCache
         ) {
             if (!nb.TextureSet.Equals(ref cnbs.Textures) || force) {
                 cnbs.Textures = nb.TextureSet;
@@ -601,11 +605,11 @@ namespace Squared.Render {
 
                 cnbs.Texture1?.SetValue((Texture2D)null);
                 if (tex1.IsInitialized)
-                    cnbs.Texture1?.SetValue(tex1.Instance);
+                    cnbs.Texture1?.SetValue(tex1.GetInstance(textureCache));
 
                 cnbs.Texture2?.SetValue((Texture2D)null);
                 if (tex2.IsInitialized)
-                    cnbs.Texture2?.SetValue(tex2.Instance);
+                    cnbs.Texture2?.SetValue(tex2.GetInstance(textureCache));
 
                 cnbs.Parameters.BitmapTextureSize?.SetValue(nb.Texture1Size);
                 cnbs.Parameters.BitmapTextureSize2?.SetValue(nb.Texture2Size);
@@ -686,6 +690,8 @@ namespace Squared.Render {
                 VertexBuffer vb, cornerVb;
                 DynamicIndexBuffer ib, cornerIb;
 
+                var textureCache = AbstractTextureReference.Cache.GetCurrentLocalCache();
+
                 var totalDraws = 0;
 
                 var cornerHwb = _CornerBuffer.HardwareBuffer;
@@ -709,7 +715,7 @@ namespace Squared.Render {
                                 break;
 
                             var forceTextureTransition = PerformNativeBatchTransition(manager, ref nb, ref cnbs);
-                            PerformNativeBatchTextureTransition(manager, ref nb, ref cnbs, forceTextureTransition);
+                            PerformNativeBatchTextureTransition(manager, ref nb, ref cnbs, forceTextureTransition, textureCache);
 
                             var actualUseZBuffer = UseZBuffer;
 
@@ -896,6 +902,15 @@ namespace Squared.Render {
                 else
                     return ((Texture)obj).IsDisposed;
             }
+        }
+
+        public Texture2D GetInstance (LocalObjectCache<object> cache) {
+            var obj = cache.GetValue(Id);
+            var dyn = obj as IDynamicTexture;
+            if (dyn != null)
+                return dyn.Texture;
+            else
+                return (Texture2D)obj;
         }
 
         // FIXME: Make this a method?
@@ -1322,7 +1337,7 @@ namespace Squared.Render {
             return true;
         }
 
-        public bool IsValid {
+        private bool AreFieldsValid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (ValidateFields) {
@@ -1343,6 +1358,24 @@ namespace Squared.Render {
                     if (!Scale.IsFinite())
                         return false;
                 }
+                return true;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool CheckValid (LocalObjectCache<object> textureCache) {
+            if (!AreFieldsValid)
+                return false;
+
+            var instance1 = Textures.Texture1.GetInstance(textureCache);
+            return ((instance1 != null) && !instance1.IsDisposed && !instance1.GraphicsDevice.IsDisposed);
+        }
+
+        public bool IsValid {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                if (!AreFieldsValid)
+                    return false;
 
                 var instance1 = Textures.Texture1.Instance;
 

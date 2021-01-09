@@ -144,6 +144,35 @@ namespace Squared.Threading {
         }
     }
 
+    public class LocalObjectCache<TObject>
+        where TObject : class
+    {
+        internal LocallyReplicatedCache<LocallyReplicatedObjectCache<TObject>.Entry>.Table Table;
+
+        public TObject GetValue (Id id) {
+            if (id <= 0)
+                return null;
+
+            var entry = Table.GetValue(id);
+            return entry.Object ?? (TObject)entry.Handle.Target;
+        }
+
+        public bool TryGetValue (Id id, out TObject result) {
+            if (id <= 0) {
+                result = null;
+                return true;
+            }
+
+            LocallyReplicatedObjectCache<TObject>.Entry entry;
+            if (!Table.TryGetValue(id, out entry)) {
+                result = null;
+                return false;
+            }
+            result = entry.Object ?? (TObject)entry.Handle.Target;
+            return true;
+        }
+    }
+
     public class LocallyReplicatedObjectCache<TObject>
         where TObject : class
     {
@@ -177,6 +206,12 @@ namespace Squared.Threading {
 
         public LocallyReplicatedObjectCache () {
             Cache = new LocallyReplicatedCache<Entry>(new EntryComparer(), PrepareValueForStorage_Impl);
+        }
+
+        public LocalObjectCache<TObject> GetCurrentLocalCache () {
+            return new LocalObjectCache<TObject> {
+                Table = Cache.GetCurrentLocalCache()
+            };
         }
 
         public TObject GetValue (Id id) {
