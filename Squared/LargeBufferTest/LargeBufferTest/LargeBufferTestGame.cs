@@ -130,8 +130,8 @@ namespace LargeBufferTest {
                         frame,
                         // Suppress batch combining
                         Interlocked.Increment(ref layer),
-                        Materials.ScreenSpaceBitmap,
-                        capacity: width * height / 8
+                        Materials.ScreenSpaceBitmap
+                        // capacity: width * height / 8
                     );
                     bb.DisableSortKeys = true;
                     return bb;

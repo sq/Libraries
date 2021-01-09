@@ -311,6 +311,7 @@ void RasterShapeVertexShader_Core (
     // We do the initial conversion in the VS to avoid paying the cost per-fragment, and also
     //  take the opportunity to do a final conversion here for 'simple' fragments so that
     //  it doesn't have to be done per-fragment
+    // FIXME: Is this reasonably correct for simple shapes with outlines? Probably
     if (
         (OutputInLinearSpace && isSimple) || 
         (BlendInLinearSpace && !isSimple)

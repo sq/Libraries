@@ -204,6 +204,9 @@ namespace Squared.Render {
             DepthPrePassOnly = depthPrePass;
             WorldSpace = worldSpace;
 
+            if (capacity.HasValue)
+                _DrawCalls.EnsureCapacity(capacity.Value);
+
             var rm = container.RenderManager;
             var lp = (ListPool<BitmapDrawCall>)_DrawCalls.ListPool;
             lp.ThreadGroup = rm.ThreadGroup;
