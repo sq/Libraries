@@ -309,19 +309,19 @@ namespace Squared.Render.Convenience {
             public bool ZBufferOnlySorting;
             public bool DepthPrePass;
             
-            public bool KeysEqual (ref CachedBatch rhs) {
+            public static bool KeysEqual (ref CachedBatch lhs, ref CachedBatch rhs) {
                 var result = (
-                    (BatchType == rhs.BatchType) &&
-                    (Container == rhs.Container) &&
-                    (Layer == rhs.Layer) &&
-                    (WorldSpace == rhs.WorldSpace) &&
-                    (BlendState == rhs.BlendState) &&
-                    (UseZBuffer == rhs.UseZBuffer) &&
-                    (ZBufferOnlySorting == rhs.ZBufferOnlySorting) &&
-                    (RasterizerState == rhs.RasterizerState) &&
-                    (DepthStencilState == rhs.DepthStencilState) &&
-                    (CustomMaterial == rhs.CustomMaterial) &&
-                    (DepthPrePass == rhs.DepthPrePass)
+                    (lhs.BatchType == rhs.BatchType) &&
+                    (lhs.Container == rhs.Container) &&
+                    (lhs.Layer == rhs.Layer) &&
+                    (lhs.WorldSpace == rhs.WorldSpace) &&
+                    (lhs.BlendState == rhs.BlendState) &&
+                    (lhs.UseZBuffer == rhs.UseZBuffer) &&
+                    (lhs.ZBufferOnlySorting == rhs.ZBufferOnlySorting) &&
+                    (lhs.RasterizerState == rhs.RasterizerState) &&
+                    (lhs.DepthStencilState == rhs.DepthStencilState) &&
+                    (lhs.CustomMaterial == rhs.CustomMaterial) &&
+                    (lhs.DepthPrePass == rhs.DepthPrePass)
                 );
 
                 return result;
@@ -331,7 +331,7 @@ namespace Squared.Render.Convenience {
             public override bool Equals (object obj) {
                 if (obj is CachedBatch) {
                     var cb = (CachedBatch)obj;
-                    return KeysEqual(ref cb);
+                    return KeysEqual(ref this, ref cb);
                 }
 
                 return false;
@@ -390,16 +390,16 @@ namespace Squared.Render.Convenience {
                 }
 
                 int i;
-                if (Batch0.KeysEqual(ref result)) {
+                if (CachedBatch.KeysEqual(ref Batch0, ref result)) {
                     result = Batch0;
                     i = 0;
-                } else if (Batch1.KeysEqual(ref result)) {
+                } else if (CachedBatch.KeysEqual(ref Batch1, ref result)) {
                     result = Batch1;
                     i = 1;
-                } else if (Batch2.KeysEqual(ref result)) {
+                } else if (CachedBatch.KeysEqual(ref Batch2, ref result)) {
                     result = Batch2;
                     i = 2;
-                } else if (Batch3.KeysEqual(ref result)) {
+                } else if (CachedBatch.KeysEqual(ref Batch3, ref result)) {
                     result = Batch3;
                     i = 3;
                 } else {
