@@ -18,6 +18,7 @@ using System.Reflection;
 using Squared.Util.DeclarativeSort;
 using System.Threading;
 using System.Runtime.CompilerServices;
+using Squared.Threading;
 
 namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -290,7 +291,7 @@ namespace Squared.Render {
                 Texture1Size = new Vector2(tex1.Width, tex1.Height);
                 Texture1HalfTexel = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
 
-                if (textureSet.Texture2 != null) {
+                if (textureSet.Texture2.IsInitialized) {
                     Texture2Size = new Vector2(tex2.Width, tex2.Height);
                     Texture2HalfTexel = new Vector2(1.0f / Texture2Size.X, 1.0f / Texture2Size.Y);
                 } else {
@@ -407,7 +408,7 @@ namespace Squared.Render {
             ref int vertCount, ref int vertOffset, bool isFinalCall,
             Material material, SamplerState samplerState1, SamplerState samplerState2
         ) {
-            if ((currentTextures.Texture1 == null) || currentTextures.Texture1.IsDisposed)
+            if (currentTextures.Texture1.IsDisposedOrNull)
                 throw new InvalidDataException("Invalid draw call(s)");
 
             _NativeBatches.Add(new NativeBatch(
@@ -599,11 +600,11 @@ namespace Squared.Render {
                 var tex2 = nb.TextureSet.Texture2;
 
                 cnbs.Texture1?.SetValue((Texture2D)null);
-                if (tex1 != null)
+                if (tex1.IsInitialized)
                     cnbs.Texture1?.SetValue(tex1.Instance);
 
                 cnbs.Texture2?.SetValue((Texture2D)null);
-                if (tex2 != null)
+                if (tex2.IsInitialized)
                     cnbs.Texture2?.SetValue(tex2.Instance);
 
                 cnbs.Parameters.BitmapTextureSize?.SetValue(nb.Texture1Size);
@@ -824,62 +825,99 @@ namespace Squared.Render {
     }
 
     public struct AbstractTextureReference {
-        private readonly object Reference;
+        public static readonly LocallyReplicatedObjectCache<object> Cache = 
+            new LocallyReplicatedObjectCache<object>();
 
-        public IDynamicTexture Dynamic {
+        private int Id;
+        public object Reference {
             get {
-                return Reference as IDynamicTexture;
-            }
-        }
-
-        public Texture2D Static {
-            get {
-                return Reference as Texture2D;
+                return Cache.GetValue(Id);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public AbstractTextureReference (Texture2D tex) {
-            Reference = tex;
+            Id = Cache.GetId(tex);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public AbstractTextureReference (IDynamicTexture tex) {
-            Reference = tex;
+            Id = Cache.GetId(tex);
+        }
+
+        public bool IsInitialized {
+            get {
+                return (Id != 0);
+            }
+        }
+
+        public bool IsNull {
+            get {
+                if (Id == 0)
+                    return true;
+
+                var obj = Reference;
+                if (obj == null)
+                    return true;
+
+                return false;
+            }
+        }
+
+        public bool IsDisposedOrNull {
+            get {
+                if (Id == 0)
+                    return true;
+
+                var obj = Reference;
+                if (obj == null)
+                    return true;
+
+                var dyn = obj as IDynamicTexture;
+                if (dyn != null)
+                    return dyn.IsDisposed;
+                else
+                    return ((Texture)obj).IsDisposed;
+            }
         }
 
         public bool IsDisposed {
             get {
-                if (Dynamic != null)
-                    return Dynamic.IsDisposed;
-                else if (Static != null)
-                    return Static.IsDisposed;
-                else // FIXME: True?
+                if (Id == 0)
                     return false;
+
+                var obj = Reference;
+                if (obj == null)
+                    return false;
+
+                var dyn = obj as IDynamicTexture;
+                if (dyn != null)
+                    return dyn.IsDisposed;
+                else
+                    return ((Texture)obj).IsDisposed;
             }
         }
 
         // FIXME: Make this a method?
         public Texture2D Instance {
             get {
-                var dyn = Reference as IDynamicTexture;
+                var obj = Reference;
+                var dyn = obj as IDynamicTexture;
                 if (dyn != null)
                     return dyn.Texture;
                 else
-                    return (Texture2D)Reference;
+                    return (Texture2D)obj;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
-            if (Reference == null)
-                return 0;
-            return Reference.GetHashCode();
+            return Id.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (AbstractTextureReference rhs) {
-            return Object.ReferenceEquals(Reference, rhs.Reference);
+            return Id == rhs.Id;
         }
 
         public override bool Equals (object obj) {
@@ -887,6 +925,34 @@ namespace Squared.Render {
                 return Equals((AbstractTextureReference)obj);
             else
                 return Object.ReferenceEquals(Reference, obj);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator == (AbstractTextureReference lhs, object rhs) {
+            if (rhs == null)
+                return lhs.IsNull;
+            return lhs.Equals(rhs);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator != (AbstractTextureReference lhs, object rhs) {
+            if (rhs == null)
+                return !lhs.IsNull;
+            return !lhs.Equals(rhs);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator == (object lhs, AbstractTextureReference rhs) {
+            if (lhs == null)
+                return rhs.IsNull;
+            return rhs.Equals(lhs);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator != (object lhs, AbstractTextureReference rhs) {
+            if (lhs == null)
+                return !rhs.IsNull;
+            return !rhs.Equals(lhs);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -921,26 +987,24 @@ namespace Squared.Render {
             Texture1 = texture1;
             Texture2 = texture2;
             HashCode = texture1.GetHashCode();
-            if (Texture2 != default(AbstractTextureReference))
-                HashCode ^= Texture2.GetHashCode();
+            if (texture2 != default(AbstractTextureReference))
+                HashCode ^= texture2.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1) {
             Texture1 = texture1;
             Texture2 = default(AbstractTextureReference);
-            HashCode = Texture1.GetHashCode();
-            if (Texture2 != null)
-                HashCode ^= Texture2.GetHashCode();
+            HashCode = texture1.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1, Texture2D texture2) {
             Texture1 = texture1;
             Texture2 = texture2;
-            HashCode = Texture1.GetHashCode();
-            if (Texture2 != null)
-                HashCode ^= Texture2.GetHashCode();
+            HashCode = texture1.GetHashCode();
+            if (texture2 != null)
+                HashCode ^= texture2.GetHashCode();
         }
 
         public Texture2D this[int index] {
@@ -1096,12 +1160,9 @@ namespace Squared.Render {
         }
 
         public BitmapDrawCall (TextureSet textures, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin, float rotation) {
-            if (textures.Texture1 == null)
-                throw new ArgumentNullException("texture1");
-            else if (textures.Texture1.IsDisposed)
+            if (textures.Texture1.IsDisposedOrNull)
                 throw new ObjectDisposedException("texture1");
-
-            if ((textures.Texture2 != null) && textures.Texture2.IsDisposed)
+            else if (textures.Texture2.IsDisposed)
                 throw new ObjectDisposedException("texture2");
 
             Textures = textures;
@@ -1137,7 +1198,7 @@ namespace Squared.Render {
 
         public Texture2D Texture {
             get {
-                if (Textures.Texture2 == null)
+                if (!Textures.Texture2.IsInitialized)
                     return Textures.Texture1.Instance;
                 else
                     throw new InvalidOperationException("DrawCall has multiple textures");

@@ -182,7 +182,7 @@ namespace Squared.Render.Text {
                 }
 
                 if (ch < LowCacheSize) {
-                    if (LowCache[ch].Texture != null) {
+                    if (LowCache[ch].Texture.IsInitialized) {
                         glyph = LowCache[ch];
                         return true;
                     }

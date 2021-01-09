@@ -180,12 +180,18 @@ namespace Squared.Threading {
         }
 
         public TObject GetValue (Id id) {
+            if (id <= 0)
+                return null;
+
             if (!Cache.TryGetValue(id, out Entry entry))
                 return null;
             return (TObject)(entry.Object ?? entry.Handle.Target);
         }
 
         public Id GetId (TObject obj) {
+            if (obj == null)
+                return 0;
+
             var key = new Entry {
                 HashCode = obj.GetHashCode(),
                 Object = obj
