@@ -574,8 +574,8 @@ namespace Squared.Render.Internal {
             }
 
             lock (hardwareBuffer.InUseLock) {
-                hardwareBuffer.Vertices.SetData(vertices.Array, vertices.Offset, vertices.Count, SetDataOptions.NoOverwrite);
-                hardwareBuffer.Indices.SetData(indices.Array, indices.Offset, indices.Count, SetDataOptions.NoOverwrite);
+                hardwareBuffer.Vertices.SetData(vertices.Array, vertices.Offset, vertices.Count, SetDataOptions.Discard);
+                hardwareBuffer.Indices.SetData(indices.Array, indices.Offset, indices.Count, SetDataOptions.Discard);
             }
         }
     }

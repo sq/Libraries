@@ -410,8 +410,12 @@ namespace Squared.Render {
             Material material, SamplerState samplerState1, SamplerState samplerState2,
             LocalObjectCache<object> textureCache
         ) {
+#if DEBUG
             if (currentTextures.Texture1.IsDisposedOrNull)
-                throw new InvalidDataException("Invalid draw call(s)");
+#else
+            if (!currentTextures.Texture1.IsInitialized)
+#endif
+            throw new InvalidDataException("Invalid draw call(s)");
 
             _NativeBatches.Add(new NativeBatch(
                 softwareBuffer, currentTextures,
@@ -1175,10 +1179,14 @@ namespace Squared.Render {
         }
 
         public BitmapDrawCall (TextureSet textures, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin, float rotation) {
+            if (!textures.Texture1.IsInitialized)
+                throw new NullReferenceException("texture1");
+#if DEBUG
             if (textures.Texture1.IsDisposedOrNull)
                 throw new ObjectDisposedException("texture1");
             else if (textures.Texture2.IsDisposed)
                 throw new ObjectDisposedException("texture2");
+#endif
 
             Textures = textures;
             Position = position;
@@ -1385,8 +1393,12 @@ namespace Squared.Render {
             if (!AreFieldsValid)
                 return false;
 
+#if DEBUG
             var instance1 = Textures.Texture1.GetInstance(textureCache);
             return ((instance1 != null) && !instance1.IsDisposed && !instance1.GraphicsDevice.IsDisposed);
+#else
+            return Textures.Texture1.IsInitialized;
+#endif
         }
 
         public bool IsValid {
@@ -1395,9 +1407,12 @@ namespace Squared.Render {
                 if (!AreFieldsValid)
                     return false;
 
+#if DEBUG
                 var instance1 = Textures.Texture1.Instance;
-
                 return ((instance1 != null) && !instance1.IsDisposed && !instance1.GraphicsDevice.IsDisposed);
+#else
+                return Textures.Texture1.IsInitialized;
+#endif
             }
         }
 
