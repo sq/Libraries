@@ -278,8 +278,13 @@ namespace Squared.PRGUI {
         bool AcceleratorOverlayVisible = false;
         ArraySegment<BitmapDrawCall> AcceleratorOverlayBuffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[256]);
 
+        struct RasterizedOverlayBox {
+            public Control Control;
+            public RectF ControlBox, LabelBox;
+        }
+
         // HACK
-        List<(RectF, RectF)> RasterizedOverlayBoxes = new List<(RectF, RectF)>();
+        List<RasterizedOverlayBox> RasterizedOverlayBoxes = new List<RasterizedOverlayBox>();
 
         internal InputID FocusForward, FocusBackward, WindowFocusForward, WindowFocusBackward;
 
@@ -320,7 +325,10 @@ namespace Squared.PRGUI {
 
             RasterizedOverlayBoxes.Clear();
             if (Focused != null)
-                RasterizedOverlayBoxes.Add((default(RectF), Focused.GetRect(contentRect: true)));
+                RasterizedOverlayBoxes.Add(new RasterizedOverlayBox {
+                    Control = Focused,
+                    ControlBox = Focused.GetRect(contentRect: true)
+                });
 
             // FIXME: This looks confusing
             // RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, Focused, null);
@@ -353,7 +361,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        private bool IsObstructedByAnyPreviousBox (ref RectF box) {
+        private bool IsObstructedByAnyPreviousBox (ref RectF box, Control forControl) {
             const float padding = 0.5f;
             var padded = box;
             padded.Left -= padding;
@@ -364,10 +372,12 @@ namespace Squared.PRGUI {
             foreach (var previousRect in RasterizedOverlayBoxes) {
                 // Accelerators may point at children of the focused control, in which case
                 //  we want to allow their labels to appear as normal
-                var target = previousRect.Item1;
-                var label = previousRect.Item2;
-                if (target.Contains(ref box))
-                    continue;
+                var controlBox = previousRect.ControlBox;
+                var label = previousRect.LabelBox;
+                if (previousRect.Control != forControl) {
+                    if (controlBox.Contains(ref box))
+                        continue;
+                }
                 if (label.Intersects(ref padded))
                     return true;
             }
@@ -379,7 +389,7 @@ namespace Squared.PRGUI {
 
         private void RasterizeAcceleratorOverlay (
             UIOperationContext context, ref ImperativeRenderer labelRenderer, ref ImperativeRenderer targetRenderer, 
-            Control control, InputID id, bool showFocused = false
+            Control control, InputID id, bool showFocused = false, Control forControl = null
         ) {
             if (id == null)
                 throw new ArgumentNullException("id");
@@ -395,23 +405,24 @@ namespace Squared.PRGUI {
 
         private void RasterizeAcceleratorOverlay (
             UIOperationContext context, ref ImperativeRenderer labelRenderer, ref ImperativeRenderer targetRenderer, 
-            AcceleratorInfo accel, bool showFocused = false
+            AcceleratorInfo accel, bool showFocused = false, Control forControl = null
         ) {
             if (accel.Text != null)
                 RasterizeAcceleratorOverlay(
                     context, ref labelRenderer, ref targetRenderer,
-                    accel.Target, accel.Text, showFocused
+                    accel.Target, accel.Text, showFocused, forControl
                 );
             else
                 RasterizeAcceleratorOverlay(
                     context, ref labelRenderer, ref targetRenderer,
-                    accel.Target, GetInputID(accel.Key, accel.Modifiers), showFocused
+                    accel.Target, GetInputID(accel.Key, accel.Modifiers), 
+                    showFocused, forControl
                 );
         }
 
         private void RasterizeAcceleratorOverlay (
             UIOperationContext context, ref ImperativeRenderer labelRenderer, ref ImperativeRenderer targetRenderer, 
-            Control control, AbstractString label, bool showFocused = false
+            Control control, AbstractString label, bool showFocused = false, Control forControl = null
         ) {
             if (control == null)
                 return;
@@ -444,14 +455,14 @@ namespace Squared.PRGUI {
                 labelPosition, 
                 layout.Size + decorator.Padding.Size
             );
-            if (IsObstructedByAnyPreviousBox(ref labelBox))
+            if (IsObstructedByAnyPreviousBox(ref labelBox, forControl))
                 labelBox.Left = box.Extent.X - labelBox.Width;
-            if (IsObstructedByAnyPreviousBox(ref labelBox)) {
+            if (IsObstructedByAnyPreviousBox(ref labelBox, forControl)) {
                 labelBox.Left = labelPosition.X;
                 labelBox.Top = box.Extent.Y + 1; // FIXME: Why the +1?
             }
 
-            while (IsObstructedByAnyPreviousBox(ref labelBox)) {
+            while (IsObstructedByAnyPreviousBox(ref labelBox, forControl)) {
                 labelBox.Left = box.Left;
                 labelBox.Width = box.Width;
                 labelBox.Top = labelBox.Extent.Y + 0.5f;
@@ -469,7 +480,11 @@ namespace Squared.PRGUI {
             decorator.Rasterize(context, ref labelRenderer, settings);
             labelRenderer.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), layer: 1);
 
-            RasterizedOverlayBoxes.Add((box, labelBox));
+            RasterizedOverlayBoxes.Add(new RasterizedOverlayBox {
+                Control = forControl,
+                ControlBox = box,
+                LabelBox = labelBox
+            });
         }
     }
 }
