@@ -27,6 +27,7 @@ namespace Squared.PRGUI.Controls {
         public Func<T, AbstractString> FormatValue = null;
         private CreateControlForValueDelegate<T> DefaultCreateControlForValue;
 
+        private int _Version;
         protected ItemListManager<T> Manager;
 
         public IEqualityComparer<T> Comparer {
@@ -116,14 +117,14 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            if (NeedsUpdate || !Items.IsValid)
+            if (NeedsUpdate || (Items.Version != _Version))
                 Update();
 
             return base.OnGenerateLayoutTree(context, parent, existingKey);
         }
 
         protected void Update () {
-            Items.IsValid = true;
+            _Version = Items.Version;
             NeedsUpdate = false;
             if (Comparer.Equals(SelectedItem, default(T)) && (Items.Count > 0))
                 SelectedItem = Items[0];

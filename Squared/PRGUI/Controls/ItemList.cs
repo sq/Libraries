@@ -12,17 +12,38 @@ namespace Squared.PRGUI.Controls {
         public ItemList<T> Items;
         // FIXME: Handle set
         public IEqualityComparer<T> Comparer;
-        public T SelectedItem;
+
+        private T _SelectedItem;
+        private int _SelectedIndexVersion;
+        private int _SelectedIndex;
 
         public ItemListManager (IEqualityComparer<T> comparer) {
             Comparer = comparer;
             Items = new ItemList<T>(comparer);
         }
 
-        public int SelectedIndex => Items.IndexOf(ref SelectedItem, Comparer);
+        public T SelectedItem {
+            get => _SelectedItem;
+            set {
+                if (Comparer.Equals(_SelectedItem, value))
+                    return;
+                _SelectedItem = value;
+                _SelectedIndex = Items.IndexOf(ref value, Comparer);
+                _SelectedIndexVersion = Items.Version;
+            }
+        }
+
+        public int SelectedIndex {
+            get {
+                if (_SelectedIndexVersion == Items.Version)
+                    return _SelectedIndex;
+                _SelectedIndexVersion = Items.Version;
+                return _SelectedIndex = Items.IndexOf(ref _SelectedItem, Comparer);
+            }
+        }
 
         public Control SelectedControl =>
-            Items.GetControlForValue(ref SelectedItem, out Control result)
+            Items.GetControlForValue(ref _SelectedItem, out Control result)
                 ? result
                 : null;
 
@@ -47,11 +68,14 @@ namespace Squared.PRGUI.Controls {
         }
 
         public bool TrySetSelectedItem (ref T value) {
-            if (Comparer.Equals(value, SelectedItem))
+            if (Comparer.Equals(value, _SelectedItem))
                 return false;
-            if (!Items.Contains(ref value, Comparer))
+            var indexOf = Items.IndexOf(ref value, Comparer);
+            if (indexOf < 0)
                 return false;
-            SelectedItem = value;
+            _SelectedItem = value;
+            _SelectedIndex = indexOf;
+            _SelectedIndexVersion = Items.Version;
             return true;
         }
     }
@@ -67,7 +91,7 @@ namespace Squared.PRGUI.Controls {
             ControlForValue = new Dictionary<T, Control>(comparer);
         }
 
-        public bool IsValid { get; internal set; }
+        public int Version { get; internal set; }
         public int Count => Items.Count;
 
         public T this[int index] {
@@ -79,7 +103,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void Invalidate () {
-            IsValid = false;
+            Version++;
         }
 
         public void Clear () {

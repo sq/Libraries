@@ -66,6 +66,7 @@ namespace Squared.PRGUI.Controls {
         private float VirtualItemHeight = 1; // HACK, will be adjusted each frame
         private int VirtualViewportSize = 2; // HACK, will be adjusted up/down each frame
 
+        private int _Version;
         private bool NeedsUpdate = true;
 
         protected int PageSize { get; private set; }
@@ -126,8 +127,9 @@ namespace Squared.PRGUI.Controls {
             bool scrollOffsetChanged = false;
 
             if (Virtual) {
+                var selectedIndex = SelectedIndex;
+
                 while (true) {
-                    var selectedIndex = SelectedIndex;
                     var newItemOffset = Math.Max((int)(ScrollOffset.Y / VirtualItemHeight) - 1, 0);
                     var newEndItemOffset = Math.Min(newItemOffset + VirtualViewportSize, Items.Count - 1);
 
@@ -173,7 +175,7 @@ namespace Squared.PRGUI.Controls {
                 NeedsUpdate |= (Items.Count != Children.Count);
             }
 
-            if (!Items.IsValid)
+            if (Items.Version != _Version)
                 NeedsUpdate = true;
 
             bool hadKeyboardSelection = false;
@@ -185,7 +187,7 @@ namespace Squared.PRGUI.Controls {
                     Children, CreateControlForValue ?? DefaultCreateControlForValue,
                     offset: Virtual ? VirtualItemOffset : 0, count: Virtual ? VirtualViewportSize : int.MaxValue
                 );
-                Items.IsValid = true;
+                _Version = Items.Version;
                 // HACK: Without doing this, old content bounds can be kept that are too big/too small
                 HasContentBounds = false;
             }
