@@ -654,9 +654,9 @@ namespace Squared.Render.RasterShape {
                 // scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
 
                 // if the render target/backbuffer is sRGB, we need to generate output in the correct color space
+                var format = (manager.CurrentRenderTarget?.Format ?? manager.Device.PresentationParameters.BackBufferFormat);
                 var isSrgbRenderTarget = 
-                    (manager.CurrentRenderTarget?.Format ?? manager.Device.PresentationParameters.BackBufferFormat) 
-                    == Evil.TextureUtils.ColorSrgbEXT;
+                    (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
 
                 foreach (var sb in _SubBatches) {
                     var rasterShader = UseUbershader ? PickMaterial(null, sb.Shadowed, sb.Simple) : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
