@@ -13,18 +13,16 @@ namespace Squared.Render.STB {
         public bool IsDisposed { get; private set; }
         public void* Data { get; private set; }
         public bool IsFloatingPoint { get; private set; }
-        public bool IsPaletted { get; private set; }
-        public UInt32[] Palette { get; private set; }
 
         private static FileStream OpenStream (string path) {
             return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         }
 
-        public Image (string path, bool premultiply = true, bool asFloatingPoint = false, UInt32[] palette = null)
-            : this (OpenStream(path), true, premultiply, asFloatingPoint, palette) {
+        public Image (string path, bool premultiply = true, bool asFloatingPoint = false)
+            : this (OpenStream(path), true, premultiply, asFloatingPoint) {
         }
 
-        public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false, UInt32[] palette = null) {
+        public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false) {
             var length = stream.Length - stream.Position;
 
             if (!stream.CanSeek)
@@ -44,35 +42,25 @@ namespace Squared.Render.STB {
                 stream.Read(buffer, 0, (int)length);
             }
 
-            InitializeFromBuffer(buffer, readOffset, (int)length, premultiply, asFloatingPoint, palette);
+            InitializeFromBuffer(buffer, readOffset, (int)length, premultiply, asFloatingPoint);
 
             if (ownsStream)
                 stream.Dispose();
         }
 
-        public Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, UInt32[] palette = null) {
-            InitializeFromBuffer(buffer.Array, buffer.Offset, buffer.Count, premultiply, asFloatingPoint, palette);
+        public Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false) {
+            InitializeFromBuffer(buffer.Array, buffer.Offset, buffer.Count, premultiply, asFloatingPoint);
         }
 
         private void InitializeFromBuffer (
             byte[] buffer, int offset, int length, 
-            bool premultiply = true, bool asFloatingPoint = false, UInt32[] palette = null
+            bool premultiply = true, bool asFloatingPoint = false
         ) {
             IsFloatingPoint = asFloatingPoint;
 
             // FIXME: Don't request RGBA?
             fixed (byte * pBuffer = buffer) {
-                if (palette != null) {
-                    if (asFloatingPoint)
-                        throw new ArgumentException("Cannot load paletted image as floating point");
-                    else if (premultiply)
-                        throw new ArgumentException("FIXME: Cannot premultiply paletted image");
-                    ChannelCount = 1;
-                    fixed (UInt32 * pPalette = palette)
-                        Data = Native.API.stbi_load_from_memory_with_palette(pBuffer + offset, length, out Width, out Height, pPalette, palette.Length);
-                    Palette = palette;
-                    IsPaletted = true;
-                } else if (asFloatingPoint)
+                if (asFloatingPoint)
                     Data = Native.API.stbi_loadf_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
                 else
                     Data = Native.API.stbi_load_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
@@ -88,7 +76,7 @@ namespace Squared.Render.STB {
 
             if (asFloatingPoint)
                 ConvertFPData(premultiply);
-            else if (palette == null)
+            else
                 ConvertData(premultiply);
         }
 
@@ -165,35 +153,11 @@ namespace Squared.Render.STB {
 
         public SurfaceFormat Format {
             get {
-                if (IsPaletted)
-                    return SurfaceFormat.Alpha8;
-                else if (IsFloatingPoint)
+                if (IsFloatingPoint)
                     return SurfaceFormat.Vector4;
                 else
                     return SurfaceFormat.Color;
             }
-        }
-
-        public Texture2D CreatePaletteTexture (RenderCoordinator coordinator, int height = 1) {
-            if (IsDisposed)
-                throw new ObjectDisposedException("Image is disposed");
-            if (Palette == null)
-                throw new InvalidOperationException("Image has no palette");
-
-            Texture2D result;
-            lock (coordinator.CreateResourceLock)
-                result = new Texture2D(coordinator.Device, Palette.Length, height, false, SurfaceFormat.Color);
-
-            var pin = GCHandle.Alloc(Palette, GCHandleType.Pinned);
-            lock (coordinator.UseResourceLock)
-#if FNA
-                result.SetDataPointerEXT(0, new Rectangle(0, 0, Palette.Length, 1), pin.AddrOfPinnedObject(), Palette.Length * sizeof(UInt32));
-#else
-                Render.Evil.TextureUtils.SetDataFast(result, 0, (void*)pin.AddrOfPinnedObject(), Palette.Length, height, (uint)(Palette.Length * sizeof(UInt32)));
-#endif
-            pin.Free();
-
-            return result;
         }
 
         public Texture2D CreateTexture (RenderCoordinator coordinator, bool generateMips = false, bool padToPowerOfTwo = false) {

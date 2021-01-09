@@ -17,13 +17,6 @@ namespace Squared.Render {
         /// The original width/height are stored in properties of this object.
         /// </summary>
         public bool PadToPowerOfTwo;
-        public UInt32[] Palette;
-        public int PaletteTextureHeight = 1;
-
-        /// <summary>
-        /// Contains the palette of the loaded image.
-        /// </summary>
-        public Texture2D PaletteTexture;
         /// <summary>
         /// Contains the original dimensions of the loaded image.
         /// </summary>
@@ -54,14 +47,8 @@ namespace Squared.Render {
 
         protected override Texture2D CreateInstance (Stream stream, object data) {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
-            if (options.Palette != null && options.GenerateMips)
-                throw new ArgumentException("Cannot generate mips for a paletted image");
-            using (var img = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint, options.Palette)) {
-                if (options.Palette != null)
-                    options.PaletteTexture = img.CreatePaletteTexture(Coordinator, options.PaletteTextureHeight);
-
+            using (var img = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint))
                 return img.CreateTexture(Coordinator, options.GenerateMips, options.PadToPowerOfTwo);
-            }
         }
     }
 }
