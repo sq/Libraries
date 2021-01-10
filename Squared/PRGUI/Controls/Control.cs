@@ -35,16 +35,6 @@ namespace Squared.PRGUI {
     }
     
     public abstract partial class Control {
-        public static readonly BlendState CompositeBlendState = new BlendState {
-            // HACK: This isn't porter-duff Over, but it's better than nothing
-            AlphaBlendFunction = BlendFunction.Add,
-            AlphaDestinationBlend = Blend.One,
-            AlphaSourceBlend = Blend.One,
-            ColorBlendFunction = BlendFunction.Add,
-            ColorDestinationBlend = Blend.InverseSourceAlpha,
-            ColorSourceBlend = Blend.SourceAlpha
-        };
-
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
         internal int TypeID;
@@ -721,7 +711,7 @@ namespace Squared.PRGUI {
                 // FIXME
                 rt.Instance.Get(), pos,
                 GameExtensionMethods.BoundsFromRectangle((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y, ref sourceRect),
-                new Color(1f, 1f, 1f, opacity), scale: 1.0f / Context.ScratchScaleFactor
+                new Color(opacity, opacity, opacity, opacity), scale: 1.0f / Context.ScratchScaleFactor
             );
 
             if (Appearance.HasTransformMatrix || enableCompositor) {
@@ -733,7 +723,7 @@ namespace Squared.PRGUI {
                     viewTransformModifier: Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null, 
                     userData: this
                 );
-                subgroup.BlendState = CompositeBlendState;
+                subgroup.BlendState = RenderStates.PorterDuffOver;
                 if (enableCompositor)
                     Appearance.Compositor.Composite(this, ref subgroup, ref dc);
                 else
@@ -741,7 +731,7 @@ namespace Squared.PRGUI {
             } else if (Appearance.Overlay) {
                 passSet.OverlayQueue.Add(ref dc);
             } else {
-                passSet.Above.Draw(ref dc, blendState: CompositeBlendState);
+                passSet.Above.Draw(ref dc, blendState: RenderStates.PorterDuffOver);
                 passSet.Above.Layer += 1;
             }
         }

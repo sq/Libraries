@@ -11,6 +11,19 @@ using Squared.Util.DeclarativeSort;
 
 namespace Squared.Render.Convenience {
     public static class RenderStates {
+        /// <summary>
+        /// Assumes premultiplied source and premultiplied destination.
+        /// Approximates porter-duff Over and produces premultiplied output.
+        /// </summary>
+        public static readonly BlendState PorterDuffOver = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.InverseSourceAlpha,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.InverseSourceAlpha,
+            ColorSourceBlend = Blend.One
+        };
+
         public static readonly BlendState SubtractiveBlend = new BlendState {
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
@@ -48,10 +61,13 @@ namespace Squared.Render.Convenience {
         };
 
 
+        /// <summary>
+        /// Assumes non-premultiplied source and premultiplied destination.
+        /// Approximates porter-duff Over and produces premultiplied output.
+        /// </summary>
         public static readonly BlendState RasterShapeAlphaBlend = new BlendState {
             AlphaBlendFunction = BlendFunction.Add,
-            // FIXME: Is this right? It's at least better than nothing
-            AlphaDestinationBlend = Blend.One,
+            AlphaDestinationBlend = Blend.InverseSourceAlpha,
             AlphaSourceBlend = Blend.One,
             ColorBlendFunction = BlendFunction.Add,
             ColorDestinationBlend = Blend.InverseSourceAlpha,
