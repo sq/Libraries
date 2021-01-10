@@ -574,6 +574,7 @@ namespace Squared.Render.Internal {
             }
 
             lock (hardwareBuffer.InUseLock) {
+                // FIXME: NoOverwrite should work here, but it causes glitches
                 hardwareBuffer.Vertices.SetData(vertices.Array, vertices.Offset, vertices.Count, SetDataOptions.Discard);
                 hardwareBuffer.Indices.SetData(indices.Array, indices.Offset, indices.Count, SetDataOptions.Discard);
             }

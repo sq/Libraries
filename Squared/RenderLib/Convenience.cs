@@ -1729,7 +1729,11 @@ namespace Squared.Render.Convenience {
             var desiredSamplerState = samplerState ?? SamplerState;
 
             // HACK: Look, alright, it's complicated
-            if ((desiredBlendState == BlendState.AlphaBlend) || (desiredBlendState == null))
+            if (
+                (desiredBlendState == BlendState.AlphaBlend) || 
+                (desiredBlendState == BlendState.NonPremultiplied) ||
+                (desiredBlendState == null)
+            )
                 desiredBlendState = RenderStates.RasterShapeAlphaBlend;
             else if (desiredBlendState == BlendState.Additive)
                 desiredBlendState = RenderStates.RasterShapeAdditiveBlend;

@@ -352,7 +352,7 @@ namespace Squared.PRGUI.Input {
                 UpArrow, LeftArrow, RightArrow, DownArrow;
         }
 
-        public bool ShowFuzzyRects = true;
+        public bool ShowFuzzyRects = false;
 
         public float FuzzyHitTestDistance = 24f;
         public float SlowPxPerSecond = 64f,
@@ -729,6 +729,9 @@ namespace Squared.PRGUI.Input {
 
             settings.Box = new RectF(unsnapped, pos - unsnapped);
             context.DecorationProvider.VirtualCursorAnchor?.Rasterize(context, ref renderer, settings);
+
+            if (SnapToControl != null)
+                return;
 
             if (ShowFuzzyRects)
             foreach (var result in FuzzyHitTest) {

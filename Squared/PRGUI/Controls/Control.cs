@@ -35,6 +35,16 @@ namespace Squared.PRGUI {
     }
     
     public abstract partial class Control {
+        public static readonly BlendState CompositeBlendState = new BlendState {
+            // HACK: This isn't porter-duff Over, but it's better than nothing
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.InverseSourceAlpha,
+            ColorSourceBlend = Blend.SourceAlpha
+        };
+
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
         internal int TypeID;
@@ -723,14 +733,15 @@ namespace Squared.PRGUI {
                     viewTransformModifier: Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null, 
                     userData: this
                 );
+                subgroup.BlendState = CompositeBlendState;
                 if (enableCompositor)
                     Appearance.Compositor.Composite(this, ref subgroup, ref dc);
                 else
-                    subgroup.Draw(ref dc, blendState: BlendState.NonPremultiplied);
+                    subgroup.Draw(ref dc);
             } else if (Appearance.Overlay) {
                 passSet.OverlayQueue.Add(ref dc);
             } else {
-                passSet.Above.Draw(ref dc, blendState: BlendState.NonPremultiplied);
+                passSet.Above.Draw(ref dc, blendState: CompositeBlendState);
                 passSet.Above.Layer += 1;
             }
         }

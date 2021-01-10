@@ -1178,7 +1178,7 @@ namespace Squared.PRGUI {
                     outlineRadius: outlineRadius, outlineColor: Color.Black * alpha
                 );
             } else {
-            var fillAlpha = alpha * 0.85f;
+                var fillAlpha = alpha * 0.85f;
                 renderer.RasterizeEllipse(
                     snapped, new Vector2(1.7f),
                     innerColor: Color.White * fillAlpha, outerColor: Color.White * fillAlpha,
