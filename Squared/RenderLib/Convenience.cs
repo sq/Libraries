@@ -24,6 +24,19 @@ namespace Squared.Render.Convenience {
             ColorSourceBlend = Blend.One
         };
 
+        /// <summary>
+        /// Assumes non-premultiplied source and premultiplied destination.
+        /// Approximates porter-duff Over and produces premultiplied output.
+        /// </summary>
+        public static readonly BlendState PorterDuffNonPremultipliedOver = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.InverseSourceAlpha,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.InverseSourceAlpha,
+            ColorSourceBlend = Blend.SourceAlpha
+        };
+
         public static readonly BlendState SubtractiveBlend = new BlendState {
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
@@ -61,18 +74,7 @@ namespace Squared.Render.Convenience {
         };
 
 
-        /// <summary>
-        /// Assumes non-premultiplied source and premultiplied destination.
-        /// Approximates porter-duff Over and produces premultiplied output.
-        /// </summary>
-        public static readonly BlendState RasterShapeAlphaBlend = new BlendState {
-            AlphaBlendFunction = BlendFunction.Add,
-            AlphaDestinationBlend = Blend.InverseSourceAlpha,
-            AlphaSourceBlend = Blend.One,
-            ColorBlendFunction = BlendFunction.Add,
-            ColorDestinationBlend = Blend.InverseSourceAlpha,
-            ColorSourceBlend = Blend.SourceAlpha
-        };
+        public static readonly BlendState RasterShapeAlphaBlend = PorterDuffNonPremultipliedOver;
 
         public static readonly BlendState RasterShapeAdditiveBlend = new BlendState {
             AlphaBlendFunction = BlendFunction.Add,

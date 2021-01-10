@@ -976,7 +976,7 @@ namespace PRGUI.Demo {
 
         public WindowCompositor (DefaultMaterialSet materials) {
             Materials = materials;
-            Material = Materials.Get(Materials.WorldSpaceRadialGaussianBlur, blendState: BlendState.AlphaBlend);
+            Material = Materials.Get(Materials.WorldSpaceRadialGaussianBlur, blendState: RenderStates.PorterDuffOver);
         }
 
         public void AfterIssueComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall) {
@@ -991,9 +991,9 @@ namespace PRGUI.Demo {
         public void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall) {
             var opacity = drawCall.MultiplyColor.A / 255.0f;
             if ((opacity >= 1) && (control.Context.TopLevelFocused == control))
-                renderer.Draw(ref drawCall, blendState: BlendState.NonPremultiplied);
+                renderer.Draw(ref drawCall, blendState: RenderStates.PorterDuffOver);
             else
-                renderer.Draw(ref drawCall, material: Material, blendState: BlendState.NonPremultiplied);
+                renderer.Draw(ref drawCall, material: Material, blendState: RenderStates.PorterDuffOver);
         }
 
         public bool WillComposite (Control control, float opacity) {
