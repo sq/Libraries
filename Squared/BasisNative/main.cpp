@@ -98,7 +98,7 @@ extern "C" {
     }
 
     uint32_t __declspec(dllexport) GetBytesPerBlock (transcoder_texture_format format) {
-        return basis_get_bytes_per_block(format);
+        return basis_get_bytes_per_block_or_pixel(format);
     }
 
     int __declspec(dllexport) TranscodeImageLevel (

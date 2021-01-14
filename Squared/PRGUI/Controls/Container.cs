@@ -26,6 +26,7 @@ namespace Squared.PRGUI.Controls {
         protected Vector2 AbsoluteDisplayOffsetOfChildren;
 
         protected float MostRecentHeaderHeight = 0;
+        protected RectF MostRecentTitleBox;
         protected RectF? MostRecentFullSize = null;
         protected Vector2 MinScrollOffset;
         protected Vector2? MaxScrollOffset;
@@ -461,7 +462,7 @@ namespace Squared.PRGUI.Controls {
             var ipic = this as IPartiallyIntangibleControl;
             bool success = (AcceptsMouseInput && !ipic.IsIntangibleAtPosition(position)) || !acceptsMouseInputOnly;
             // Don't perform child hit-tests if the mouse is over the header
-            if (position.Y <= (box.Top + MostRecentHeaderHeight))
+            if (MostRecentTitleBox.Contains(position))
                 return success;
 
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
@@ -557,7 +558,7 @@ namespace Squared.PRGUI.Controls {
 
             var rect = GetRect();
 
-            if (position.Y <= (rect.Top + MostRecentHeaderHeight))
+            if (MostRecentTitleBox.Contains(position))
                 return false;
             else if (HitTestScrollbars(position))
                 return false;

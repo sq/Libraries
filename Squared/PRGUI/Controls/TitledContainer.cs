@@ -57,8 +57,6 @@ namespace Squared.PRGUI.Controls {
             LineLimit = 1
         };
 
-        protected RectF MostRecentTitleBox;
-
         private Tween<float> DisclosureLevel = 1f;
 
         public TitledContainer ()
