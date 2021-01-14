@@ -59,6 +59,16 @@ namespace Squared.PRGUI {
             }
         }
 
+        public void Adopt (Control control) {
+            if (Contains(control))
+                return;
+
+            if (control.TryGetParent(out Control parent))
+                (parent as IControlContainer).Children.Remove(control);
+
+            Add(control);
+        }
+
         public void Add (Control control) {
             if (IndexTable.ContainsKey(control))
                 throw new InvalidOperationException("Control already in collection");
