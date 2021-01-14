@@ -21,7 +21,7 @@ namespace Squared.PRGUI.Controls {
             DisclosureAnimationDuration = 0.175f,
             DisclosureArrowSizeMultiplier = 0.375f;
 
-        private bool _Collapsed;
+        private bool _Collapsed, _CollapsePending;
         public bool Collapsed {
             get => _Collapsed;
             set => SetCollapsed(value, false);
@@ -34,6 +34,16 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             _Collapsed = value;
+            if (LayoutKey.IsInvalid) {
+                _CollapsePending = true;
+            } else {
+                HandleCollapsedChanged(value, instant);
+            }
+        }
+
+        private void HandleCollapsedChanged (bool value, bool instant) {
+            _CollapsePending = false;
+
             var targetValue = (float)(value ? 0 : 1);
             if ((Context != null) && !instant) {
                 var nowL = Context.NowL;
@@ -234,9 +244,12 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
-            if (Collapsible && !Collapsed && 
-                (DisclosureLevel.Get(Context.NowL) >= 1)
-            ) {
+            var actuallyCollapsed = !_CollapsePending && _Collapsed && Collapsible;
+
+            if (_CollapsePending && MostRecentFullSize.HasValue)
+                HandleCollapsedChanged(_Collapsed, true);
+
+            if (!actuallyCollapsed && (DisclosureLevel.Get(Context.NowL) >= 1)) {
                 var box = GetRect();
                 MostRecentFullSize = box;
             }
