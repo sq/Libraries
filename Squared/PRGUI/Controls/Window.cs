@@ -23,15 +23,23 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private Vector2? _DesiredPosition;
         public Vector2 Position {
             get {
                 return new Vector2(Margins.Left, Margins.Top);
             }
             set {
-                NeedsAlignment = false;
-                Margins.Left = value.X;
-                Margins.Top = value.Y;
+                SetPosition(value, true);
             }
+        }
+
+        private void SetPosition (Vector2 value, bool updateDesiredPosition) {
+            if (updateDesiredPosition)
+                _DesiredPosition = value;
+
+            NeedsAlignment = false;
+            Margins.Left = value.X;
+            Margins.Top = value.Y;
         }
 
         private bool _DesiredCollapsible;
@@ -89,18 +97,18 @@ namespace Squared.PRGUI.Controls {
             var availableSpace = (context.UIContext.CanvasSize - rect.Size);
 
             if (!NeedsAlignment) {
-                if (UpdatePosition(Position, context.UIContext, rect))
+                if (UpdatePosition(_DesiredPosition ?? Position, context.UIContext, rect, false))
                     relayoutRequested = true;
 
                 _ScreenAlignment = Position / availableSpace;
-            } else {
-                Position = availableSpace * _ScreenAlignment;
+            } else if (!CollapsePending && !relayoutRequested) {
+                SetPosition(availableSpace * _ScreenAlignment, true);
                 NeedsAlignment = false;
                 relayoutRequested = true;
             }
         }
 
-        private bool UpdatePosition (Vector2 newPosition, UIContext context, RectF box) {
+        private bool UpdatePosition (Vector2 newPosition, UIContext context, RectF box, bool updateDesiredPosition) {
             var availableSpaceX = Math.Max(0, context.CanvasSize.X - box.Width);
             var availableSpaceY = Math.Max(0, context.CanvasSize.Y - box.Height);
             newPosition = new Vector2(
@@ -108,12 +116,12 @@ namespace Squared.PRGUI.Controls {
                 Arithmetic.Saturate(newPosition.Y, availableSpaceY)
             ).Floor();
 
-            if (Position == newPosition)
-                return false;
+            var changed = Position != newPosition;
 
             // context.Log($"Window position {Position} -> {newPosition}");
-            Position = newPosition;
-            return true;
+            SetPosition(newPosition, updateDesiredPosition);
+
+            return changed;
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
@@ -157,12 +165,12 @@ namespace Squared.PRGUI.Controls {
                 if (shouldUnmaximize) {
                     // FIXME: Scale the mouse anchor based on the new size vs the old maximized size
                     Maximized = false;
-                    UpdatePosition(newPosition, args.Context, MostRecentUnmaximizedRect);
+                    UpdatePosition(newPosition, args.Context, MostRecentUnmaximizedRect, true);
                 } else if (shouldMaximize || Maximized) {
                     Maximized = true;
                     SetCollapsed(false, instant: true);
                 } else {
-                    UpdatePosition(newPosition, args.Context, args.Box);
+                    UpdatePosition(newPosition, args.Context, args.Box, Dragging && (delta.Length() >= 2));
                 }
 
                 FireEvent(UIEvents.Moved);

@@ -22,6 +22,7 @@ namespace Squared.PRGUI.Controls {
             DisclosureArrowSizeMultiplier = 0.375f;
 
         private bool _Collapsed, _CollapsePending;
+        protected bool CollapsePending => _CollapsePending;
         public bool Collapsed {
             get => _Collapsed;
             set => SetCollapsed(value, false);
