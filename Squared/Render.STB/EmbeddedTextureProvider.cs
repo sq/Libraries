@@ -21,6 +21,10 @@ namespace Squared.Render {
         /// Contains the original dimensions of the loaded image.
         /// </summary>
         public int Width, Height;
+        /// <summary>
+        /// Performs color-space conversion
+        /// </summary>
+        public bool sRGBToLinear, sRGBFromLinear;
     }
 
     public class EmbeddedTexture2DProvider : EmbeddedResourceProvider<Texture2D> {
@@ -45,10 +49,23 @@ namespace Squared.Render {
             return base.Load(name, options, cached, optional);
         }
 
+        private unsafe static void ApplyColorSpaceConversion (STB.Image img, TextureLoadOptions options) {
+            if (img.IsFloatingPoint)
+                throw new NotImplementedException();
+            var pData = (byte*)img.Data;
+            var pEnd = pData + (img.Width * img.Height * img.ChannelCount);
+            var table = options.sRGBFromLinear ? ColorSpace.LinearByteTosRGBByteTable : ColorSpace.sRGBByteToLinearByteTable;
+            for (; pData < pEnd; pData++)
+                *pData = table[*pData];
+        }
+
         protected override Texture2D CreateInstance (Stream stream, object data) {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
-            using (var img = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint))
+            using (var img = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint)) {
+                if (options.sRGBFromLinear || options.sRGBToLinear)
+                    ApplyColorSpaceConversion(img, options);
                 return img.CreateTexture(Coordinator, options.GenerateMips, options.PadToPowerOfTwo);
+            }
         }
     }
 }
