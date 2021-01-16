@@ -326,6 +326,7 @@ namespace PRGUI.Demo {
                 Title = "Floating Panel",
                 DisplayOrder = 1,
                 Collapsible = true,
+                AllowMaximize = true
             });
 
             window.New<StaticText>()

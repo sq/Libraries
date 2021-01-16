@@ -13,10 +13,13 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public class ModalDialog : Window, IModal, IAcceleratorSource {
+        public event Action<IModal> Shown, Closed;
+
         protected Control _FocusDonor;
         public Control FocusDonor => _FocusDonor;
 
         public Control AcceptControl, CancelControl;
+        public object CancelResult;
 
         // FIXME: Customizable?
         bool IModal.FadeBackground => true;
@@ -65,6 +68,8 @@ namespace Squared.PRGUI.Controls {
             _FocusDonor = focusDonor ?? context.TopLevelFocused;
             context.ShowModal(this);
             IsActive = true;
+            if (Shown != null)
+                Shown(this);
             return f;
         }
 
@@ -88,6 +93,9 @@ namespace Squared.PRGUI.Controls {
             IsFadingOut = (Context.TopLevelFocused == this);
             StartAnimation(Context.Animations?.HideModalDialog);
             Context.NotifyModalClosed(this);
+            if (Closed != null)
+                Closed(this);
+            Context.Controls.Remove(this);
             AcceptsFocus = false;
             _FocusDonor = null;
         }
@@ -109,10 +117,16 @@ namespace Squared.PRGUI.Controls {
             if (name != UIEvents.KeyUp)
                 return false;
 
-            if ((args.Key == Keys.Enter) && (AcceptControl != null))
+            if ((args.Key == Keys.Enter) && (AcceptControl != null)) {
                 return Context.FireSyntheticClick(AcceptControl);
-            else if ((args.Key == Keys.Escape) && (CancelControl != null))
-                return Context.FireSyntheticClick(CancelControl);
+            } else if (args.Key == Keys.Escape) {
+                if (CancelControl != null)
+                    return Context.FireSyntheticClick(CancelControl);
+                else if (CancelResult != null) {
+                    Close(CancelResult);
+                    return true;
+                }
+            }
 
             return false;
         }

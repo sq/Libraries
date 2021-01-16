@@ -731,7 +731,8 @@ namespace Squared.PRGUI {
                 throw new InvalidOperationException("Modal already visible");
             var ctl = (Control)modal;
             ctl.DisplayOrder = Controls.Max(c => c.DisplayOrder) + 1;
-            Controls.Add(ctl);
+            if (!Controls.Contains(ctl))
+                Controls.Add(ctl);
             NotifyModalShown(modal);
         }
 

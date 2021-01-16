@@ -277,7 +277,10 @@ namespace Squared.PRGUI.Controls {
                 var titleBox = settings.Box;
                 titleBox.Height = titleDecorator.Padding.Top + titleDecorator.Padding.Bottom + TitleLayout.GlyphSource.LineSpacing;
                 if (string.IsNullOrWhiteSpace(Title)) {
-                    titleBox.Width = DisclosureArrowPadding;
+                    if (Collapsible)
+                        titleBox.Width = DisclosureArrowPadding;
+                    else
+                        titleBox.Width = 0;
                     MostRecentHeaderHeight = 0;
                 } else {
                     MostRecentHeaderHeight = titleBox.Height;
@@ -293,7 +296,8 @@ namespace Squared.PRGUI.Controls {
                 // HACK: We want to center the title normally (it feels weird if we don't), but we
                 //  also want to prevent it from overlapping the arrow
                 var offsetX = (titleContentBox.Width - layout.Size.X) / 2f;
-                offsetX = Math.Max(offsetX, DisclosureArrowPadding);
+                if (Collapsible)
+                    offsetX = Math.Max(offsetX, DisclosureArrowPadding);
 
                 var subSettings = settings;
                 subSettings.Box = titleBox;

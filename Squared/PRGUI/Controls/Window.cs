@@ -53,7 +53,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public bool AllowDrag = true;
-        public bool AllowMaximize = true;
+        public bool AllowMaximize = false;
 
         private bool NeedsAlignment = true;
         private bool Dragging, DragStartedMaximized;

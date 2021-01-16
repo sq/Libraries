@@ -11,6 +11,8 @@ using Squared.Util.Event;
 
 namespace Squared.PRGUI {
     public interface IModal {
+        event Action<IModal> Shown;
+        event Action<IModal> Closed;
         /// <summary>
         /// Focus was transferred to this control from another control, and it will
         ///  be returned when this control goes away. Used for menus and modal dialogs

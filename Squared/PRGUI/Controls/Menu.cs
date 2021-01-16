@@ -21,6 +21,8 @@ namespace Squared.PRGUI.Controls {
     }
 
     public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IModal, ISelectionBearer, IPartiallyIntangibleControl, IFuzzyHitTestTarget {
+        public event Action<IModal> Shown, Closed;
+
         // Yuck
         public const int PageSize = 8;
 
@@ -473,6 +475,8 @@ namespace Squared.PRGUI.Controls {
             context.CaptureMouse(this, out _FocusDonor);
             context.NotifyModalShown(this);
             Listener?.Shown(this);
+            if (Shown != null)
+                Shown(this);
             SelectItemViaKeyboard(selectedItem);
             // FIXME: This doesn't work the first time the menu is shown
             if (selectedItem != null)
@@ -534,6 +538,8 @@ namespace Squared.PRGUI.Controls {
             Intangible = true;
             StartAnimation(Context.Animations?.HideMenu);
             Listener?.Closed(this);
+            if (Closed != null)
+                Closed(this);
             Context.NotifyModalClosed(this);
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
