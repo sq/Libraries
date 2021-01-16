@@ -74,6 +74,14 @@ namespace Squared.PRGUI {
         ///  summoning a modal.
         /// </summary>
         public bool Overlay;
+        /// <summary>
+        /// Forces the Decorator to be None
+        /// </summary>
+        public bool Undecorated;
+        /// <summary>
+        /// Overrides margins and padding to be 0
+        /// </summary>
+        public bool SuppressMargins;
 
         internal bool HasOpacity { get; private set; }
 

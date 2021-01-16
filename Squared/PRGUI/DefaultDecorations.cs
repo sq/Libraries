@@ -461,7 +461,7 @@ namespace Squared.PRGUI {
                     baseColor = ActiveColor;
                 outlineColor = baseColor + (hasColor ? 0.2f : 0.05f);
             } else if (state.IsFlagged(ControlStates.Hovering)) {
-                alpha = hasColor ? 0.75f : 0.55f;
+                alpha = hasColor ? 0.95f : 0.55f;
                 thickness = ActiveOutlineThickness + pulseThickness;
                 pulse = Arithmetic.PulseSine(context.Now / 2.5f, 0f, 0.15f);
                 if (hasColor)
@@ -470,8 +470,8 @@ namespace Squared.PRGUI {
                     outlineColor = baseColor;
             } else {
                 alpha = hasColor
-                    ? (isFocused ? 0.95f : 0.8f)
-                    : (isFocused ? 0.65f : 0.4f);
+                    ? (isFocused ? 0.95f : 0.85f)
+                    : (isFocused ? 0.75f : 0.4f);
                 thickness = isFocused
                     ? ActiveOutlineThickness + pulseThickness
                     : InactiveOutlineThickness;
@@ -490,12 +490,25 @@ namespace Squared.PRGUI {
                 out baseColor, out outlineColor
             );
 
+            var color1 = baseColor;
+            var color2 = baseColor;
+
+            float base1 = 0.85f, base2 = 0.35f;
+            if (settings.BackgroundColor.HasValue) {
+                color1 = color1.AdjustBrightness(1.2f);
+                base1 = 0.95f;
+                base2 = 0.75f;
+            }
+
+            var fillAlpha1 = Math.Min((base1 + pulse) * alpha, 1f);
+            var fillAlpha2 = Math.Min((base2 + pulse) * alpha, 1f);
+
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
                 radius: InteractableCornerRadius,
                 outlineRadius: thickness, outlineColor: outlineColor * alpha,
-                innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
+                innerColor: color1 * fillAlpha1, outerColor: color2 * fillAlpha2,
                 fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
                 shadow: InteractableShadow,
                 texture: settings.GetTexture(),

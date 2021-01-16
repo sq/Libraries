@@ -167,6 +167,14 @@ namespace Squared.Render {
             return result;
         }
 
+        public pSRGBColor AdjustBrightness (float factor) {
+            var result = ToVector4();
+            result.X *= factor;
+            result.Y *= factor;
+            result.Z *= factor;
+            return new pSRGBColor(result, isPremultiplied: true);
+        }
+
         public static pSRGBColor FromPLinear (ref Vector4 pLinear) {
             if (pLinear.W <= 0)
                 return new pSRGBColor(ref pLinear, true);

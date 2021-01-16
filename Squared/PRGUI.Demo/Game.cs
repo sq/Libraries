@@ -431,7 +431,7 @@ namespace PRGUI.Demo {
                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start,
                         Appearance = {
-                            Decorator = Context.Decorations.None,
+                            Undecorated = true
                         },
                         Children = {
                             new Button {

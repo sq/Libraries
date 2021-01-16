@@ -359,14 +359,18 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void ComputeMargins (UIOperationContext context, IDecorator decorations, out Margins result) {
-            if (decorations != null)
+            if (Appearance.SuppressMargins)
+                result = default(Margins);
+            else if (decorations != null)
                 Margins.Add(ref Margins, decorations.Margins, out result);
             else
                 result = Margins;
         }
 
         protected virtual void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            if (decorations != null)
+            if (Appearance.SuppressMargins)
+                result = default(Margins);
+            else if (decorations != null)
                 Margins.Add(ref Padding, decorations.Padding, out result);
             else
                 result = Padding;
@@ -446,6 +450,9 @@ namespace Squared.PRGUI {
         }
 
         protected IDecorator GetDecorator (IDecorationProvider provider) {
+            if (Appearance.Undecorated)
+                return provider.None;
+
             return Appearance.Decorator ?? GetDefaultDecorator(provider);
         }
 
