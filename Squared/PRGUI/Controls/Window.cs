@@ -105,6 +105,8 @@ namespace Squared.PRGUI.Controls {
                 SetPosition(availableSpace * _ScreenAlignment, true);
                 NeedsAlignment = false;
                 relayoutRequested = true;
+            } else {
+                SetPosition(availableSpace * _ScreenAlignment, false);
             }
         }
 
