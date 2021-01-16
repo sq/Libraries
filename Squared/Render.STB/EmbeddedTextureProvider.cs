@@ -11,6 +11,7 @@ namespace Squared.Render {
     public class TextureLoadOptions {
         public bool Premultiply = true;
         public bool FloatingPoint;
+        public bool Enable16Bit;
         public bool GenerateMips;
         /// <summary>
         /// Pads the bottom and right edges of the image so its width and height are a power of two.
@@ -50,7 +51,7 @@ namespace Squared.Render {
         }
 
         private unsafe static void ApplyColorSpaceConversion (STB.Image img, TextureLoadOptions options) {
-            if (img.IsFloatingPoint)
+            if (img.IsFloatingPoint || img.Is16Bit)
                 throw new NotImplementedException();
             var pData = (byte*)img.Data;
             var pEnd = pData + (img.Width * img.Height * img.ChannelCount);
@@ -61,7 +62,7 @@ namespace Squared.Render {
 
         protected override Texture2D CreateInstance (Stream stream, object data) {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
-            using (var img = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint)) {
+            using (var img = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint, options.Enable16Bit)) {
                 if (options.sRGBFromLinear || options.sRGBToLinear)
                     ApplyColorSpaceConversion(img, options);
                 return img.CreateTexture(Coordinator, options.GenerateMips, options.PadToPowerOfTwo);

@@ -13,16 +13,17 @@ namespace Squared.Render.STB {
         public bool IsDisposed { get; private set; }
         public void* Data { get; private set; }
         public bool IsFloatingPoint { get; private set; }
+        public bool Is16Bit { get; private set; }
 
         private static FileStream OpenStream (string path) {
             return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         }
 
-        public Image (string path, bool premultiply = true, bool asFloatingPoint = false)
+        public Image (string path, bool premultiply = true, bool asFloatingPoint = false, bool enable16Bit = false)
             : this (OpenStream(path), true, premultiply, asFloatingPoint) {
         }
 
-        public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false) {
+        public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false, bool enable16Bit = false) {
             var length = stream.Length - stream.Position;
 
             if (!stream.CanSeek)
@@ -54,14 +55,18 @@ namespace Squared.Render.STB {
 
         private void InitializeFromBuffer (
             byte[] buffer, int offset, int length, 
-            bool premultiply = true, bool asFloatingPoint = false
+            bool premultiply = true, bool asFloatingPoint = false, bool enable16Bit = false
         ) {
             IsFloatingPoint = asFloatingPoint;
 
             // FIXME: Don't request RGBA?
             fixed (byte * pBuffer = buffer) {
+                Is16Bit = enable16Bit && Native.API.stbi_is_16_bit_from_memory(pBuffer + offset, length) != 0;
+
                 if (asFloatingPoint)
                     Data = Native.API.stbi_loadf_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
+                else if (Is16Bit)
+                    Data = Native.API.stbi_load_16_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
                 else
                     Data = Native.API.stbi_load_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
             }
@@ -74,8 +79,13 @@ namespace Squared.Render.STB {
                 throw new Exception(message);
             }
 
+            int components;
+            SizeofPixel = STB.ImageWrite.GetBytesPerPixelAndComponents(Format, out components);
+
             if (asFloatingPoint)
                 ConvertFPData(premultiply);
+            else if (Is16Bit)
+                ConvertData16(premultiply);
             else
                 ConvertData(premultiply);
         }
@@ -83,6 +93,11 @@ namespace Squared.Render.STB {
         private unsafe void ConvertFPData (bool premultiply) {
             if (premultiply)
                 PremultiplyFPData();
+        }
+
+        private unsafe void ConvertData16 (bool premultiply) {
+            if (premultiply)
+                throw new NotImplementedException();
         }
 
         private unsafe void ConvertData (bool premultiply) {
@@ -155,6 +170,8 @@ namespace Squared.Render.STB {
             get {
                 if (IsFloatingPoint)
                     return SurfaceFormat.Vector4;
+                else if (Is16Bit)
+                    return SurfaceFormat.Rgba64;
                 else
                     return SurfaceFormat.Color;
             }
@@ -172,8 +189,8 @@ namespace Squared.Render.STB {
             lock (coordinator.CreateResourceLock)
                 result = new Texture2D(coordinator.Device, width, height, generateMips, Format);
 
-            // FIXME: FP mips
-            if (generateMips && !IsFloatingPoint)
+            // FIXME: FP mips, 16bit mips
+            if (generateMips && !IsFloatingPoint && !Is16Bit)
                 UploadWithMips(coordinator, result);
             else
                 UploadDirect(coordinator, result);
@@ -181,12 +198,7 @@ namespace Squared.Render.STB {
             return result;
         }
 
-        internal int SizeofPixel {
-            get {
-                int components;
-                return STB.ImageWrite.GetBytesPerPixelAndComponents(Format, out components);
-            }
-        }
+        public int SizeofPixel { get; private set; }
 
         private void UploadDirect (RenderCoordinator coordinator, Texture2D result) {
             lock (coordinator.UseResourceLock)
@@ -234,19 +246,5 @@ namespace Squared.Render.STB {
                 Data = null;
             }
         }
-    }
-
-    public enum ImagePrecision {
-        Default = 0,
-        Byte = 8,
-        UInt16 = 16
-    }
-
-    public enum ImageChannels {
-        Default = 0,
-        Grey = 1,
-        GreyAlpha = 2,
-        RGB = 3,
-        RGBA = 4
     }
 }
