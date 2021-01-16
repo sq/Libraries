@@ -447,6 +447,9 @@ namespace Squared.PRGUI {
                     : InactiveColor
             );
             var hasColor = settings.BackgroundColor.HasValue;
+            var colorIsGray = hasColor && (baseColor.ColorDelta <= 0.05f);
+            // HACK: If the background color isn't saturated, use the focused color for the outline
+            pSRGBColor? outlineBaseColor = (colorIsGray && isFocused) ? FocusedColor : (pSRGBColor?)null;
             var pulseThickness = Arithmetic.PulseSine(context.Now / 3f, 0, 0.4f);
 
             pulse = 0;
@@ -459,15 +462,15 @@ namespace Squared.PRGUI {
                     baseColor.Vector4.W = 1;
                 } else
                     baseColor = ActiveColor;
-                outlineColor = baseColor + (hasColor ? 0.2f : 0.05f);
+                outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.2f : 0.05f);
             } else if (state.IsFlagged(ControlStates.Hovering)) {
                 alpha = hasColor ? 0.95f : 0.55f;
                 thickness = ActiveOutlineThickness + pulseThickness;
                 pulse = Arithmetic.PulseSine(context.Now / 2.5f, 0f, 0.15f);
                 if (hasColor)
-                    outlineColor = baseColor + (hasColor ? 0.2f : 0f);
+                    outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.2f : 0f);
                 else
-                    outlineColor = baseColor;
+                    outlineColor = (outlineBaseColor ?? baseColor);
             } else {
                 alpha = hasColor
                     ? (isFocused ? 0.95f : 0.85f)
@@ -475,10 +478,10 @@ namespace Squared.PRGUI {
                 thickness = isFocused
                     ? ActiveOutlineThickness + pulseThickness
                     : InactiveOutlineThickness;
-                if (hasColor)
-                    outlineColor = baseColor + (isFocused ? 0.2f : 0.05f);
+                if (hasColor && !colorIsGray)
+                    outlineColor = (outlineBaseColor ?? baseColor) + (isFocused ? 0.2f : 0.05f);
                 else
-                    outlineColor = baseColor;
+                    outlineColor = (outlineBaseColor ?? baseColor);
             }
         }
 

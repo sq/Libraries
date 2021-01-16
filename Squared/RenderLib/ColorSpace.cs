@@ -200,6 +200,13 @@ namespace Squared.Render {
             return result;
         }
 
+        public float ColorDelta {
+            get {
+                var v = ToVector4();
+                return Math.Abs(v.X - v.Y) + Math.Abs(v.Z - v.Y) + Math.Abs(v.Z - v.X);
+            }
+        }
+
         public static pSRGBColor FromPLinear (Vector4 v) {
             return FromPLinear(ref v);
         }
