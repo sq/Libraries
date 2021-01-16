@@ -804,6 +804,8 @@ namespace PRGUI.Demo {
         protected override void Update (GameTime gameTime) {
             var started = Time.Ticks;
 
+            Context.UpdateInput(IsActive);
+
             if (IsFirstUpdate || (UpdatesToSkip <= 0)) {
                 IsFirstUpdate = false;
                 Context.Update();
@@ -811,7 +813,6 @@ namespace PRGUI.Demo {
                 UpdatesToSkip--;
 
             IsMouseVisible = !IsActive || (Context.InputSources.IndexOf(Mouse) == 0);
-            Context.UpdateInput(IsActive);
 
             if (Context.IsActive)
                 LastTimeOverUI = Time.Ticks;

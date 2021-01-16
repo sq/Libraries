@@ -219,7 +219,7 @@ namespace Squared.PRGUI.Controls {
             ComputePadding(context, decorations, out Margins computedPadding);
 
             var contentChanged = (ContentMeasurement?.IsValid == false) || !Content.IsValid;
-            if (contentChanged)
+            if (contentChanged || fontChanged)
                 AutoSizeComputedWidth = AutoSizeComputedHeight = null;
 
             if (

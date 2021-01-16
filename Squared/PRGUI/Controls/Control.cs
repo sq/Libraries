@@ -75,10 +75,20 @@ namespace Squared.PRGUI {
             }
         }
 
+        private bool _Visible = true, _VisibleHasChanged = false;
+
         /// <summary>
         /// If false, the control will not participate in layout or rasterization
         /// </summary>
-        public bool Visible { get; set; } = true;
+        public bool Visible {
+            get => _Visible;
+            set {
+                if (_Visible == value)
+                    return;
+                _Visible = value;
+                _VisibleHasChanged = true;
+            }
+        }
         /// <summary>
         /// If false, the control cannot receive focus or input
         /// </summary>
@@ -296,6 +306,9 @@ namespace Squared.PRGUI {
 
             LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
             if (!LayoutKey.IsInvalid) {
+                if (_VisibleHasChanged)
+                    context.RelayoutRequestedForVisibilityChange = true;
+
                 // TODO: Only register if the control is explicitly interested, to reduce overhead?
                 if ((this is IPostLayoutListener listener) && (existingKey == null))
                     context.PostLayoutListeners?.Add(listener);

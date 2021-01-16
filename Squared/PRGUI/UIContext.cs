@@ -670,7 +670,10 @@ namespace Squared.PRGUI {
         }
 
         private bool NotifyLayoutListeners (UIOperationContext context) {
-            bool relayoutRequested = false;
+            bool relayoutRequested = context.RelayoutRequestedForVisibilityChange;
+            if (relayoutRequested)
+                Log($"Relayout requested due to visibility change");
+
             foreach (var listener in context.PostLayoutListeners) {
                 var wasRequested = relayoutRequested;
                 listener.OnLayoutComplete(context, ref relayoutRequested);
@@ -1466,6 +1469,7 @@ namespace Squared.PRGUI {
         public Vector2 MousePosition { get; internal set; }
         public RectF VisibleRegion { get; internal set; }
         internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
+        internal bool RelayoutRequestedForVisibilityChange;
 
         public UIOperationContext Clone () {
             return new UIOperationContext {
@@ -1477,7 +1481,8 @@ namespace Squared.PRGUI {
                 ActivateKeyHeld = ActivateKeyHeld,
                 MouseButtonHeld = MouseButtonHeld,
                 MousePosition = MousePosition,
-                VisibleRegion = VisibleRegion
+                VisibleRegion = VisibleRegion,
+                RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange
             };
         }
     }
