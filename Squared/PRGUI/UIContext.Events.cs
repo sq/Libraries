@@ -295,7 +295,14 @@ namespace Squared.PRGUI {
                 var target = inTabOrder[newIndex];
                 return target;
             } else {
-                return PickNextFocusTarget(Focused, delta, true);
+                var currentTopLevel = FindTopLevelAncestor(Focused);
+                var newTarget = PickNextFocusTarget(Focused, delta, true);
+                var newTopLevel = FindTopLevelAncestor(newTarget);
+                // HACK: We don't want to change top-level controls during a regular tab
+                if ((newTopLevel != currentTopLevel) && (currentTopLevel != null))
+                    return Focused;
+                else
+                    return newTarget;
             }
         }
 
