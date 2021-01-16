@@ -722,23 +722,6 @@ namespace Squared.PRGUI {
                 Hovering = MouseOver;
         }
 
-        bool IsEqualOrAncestor (Control control, Control expected) {
-            if (expected == control)
-                return true;
-            if (control == null)
-                return false;
-
-            var current = control;
-            while (true) {
-                if (!current.TryGetParent(out Control parent))
-                    return false;
-
-                if (parent == expected)
-                    return true;
-                current = parent;
-            }
-        }
-
         public void ShowModal (IModal modal) {
             if (ModalStack.Contains(modal))
                 throw new InvalidOperationException("Modal already visible");
@@ -779,24 +762,24 @@ namespace Squared.PRGUI {
 
         // Clean up when a control is removed in case it has focus or mouse capture,
         //  and attempt to return focus to the most recent place it occupied (for modals)
-        internal void NotifyControlBeingRemoved (Control control) {
+        public void NotifyControlBecomingInvalidFocusTarget (Control control, bool removed) {
             if (PreviousFocused == control)
                 PreviousFocused = null;
             if (PreviousTopLevelFocused == control)
                 PreviousTopLevelFocused = null;
-            if (IsEqualOrAncestor(_MouseCaptured, control))
+            if (Control.IsEqualOrAncestor(_MouseCaptured, control))
                 MouseCaptured = null;
 
             var fm = Focused as IModal;
-            if (IsEqualOrAncestor(Focused, control)) {
+            if (Control.IsEqualOrAncestor(Focused, control)) {
                 if (fm?.FocusDonor != null) {
                     TrySetFocus(fm?.FocusDonor, false, false);
-                    if (IsEqualOrAncestor(Focused, control))
+                    if (Control.IsEqualOrAncestor(Focused, control))
                         TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false, false);
                 } else
                     TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false, false);
             }
-            if (IsEqualOrAncestor(KeyboardSelection, control))
+            if (Control.IsEqualOrAncestor(KeyboardSelection, control))
                 ClearKeyboardSelection();
 
             if (PreviousFocused == control)
@@ -804,7 +787,8 @@ namespace Squared.PRGUI {
             if (PreviousTopLevelFocused == control)
                 PreviousTopLevelFocused = null;
 
-            NotifyModalClosed(control as IModal);
+            if (removed)
+                NotifyModalClosed(control as IModal);
         }
 
         public bool IsPriorityInputSource (IInputSource source) {

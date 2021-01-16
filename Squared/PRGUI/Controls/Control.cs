@@ -87,6 +87,7 @@ namespace Squared.PRGUI {
                     return;
                 _Visible = value;
                 _VisibleHasChanged = true;
+                OnVisibilityChange(value);
             }
         }
         /// <summary>
@@ -134,10 +135,10 @@ namespace Squared.PRGUI {
         internal bool IsValidFocusTarget => 
             (
                 AcceptsFocus || (FocusBeneficiary != null)
-            ) && Enabled && Visible;
+            ) && Enabled && !IsTransparent;
 
         internal bool IsValidMouseInputTarget =>
-            AcceptsMouseInput && Visible && !Intangible && Enabled;
+            AcceptsMouseInput && Visible && !IsTransparent && Enabled;
 
         /// <summary>
         /// Shifts the control forward or backward in the natural tab order. Lower orders come first.
@@ -223,6 +224,28 @@ namespace Squared.PRGUI {
             }
         }
 
+        public static bool IsEqualOrAncestor (Control control, Control expected) {
+            if (expected == control)
+                return true;
+            if (control == null)
+                return false;
+
+            var current = control;
+            while (true) {
+                if (!current.TryGetParent(out Control parent))
+                    return false;
+
+                if (parent == expected)
+                    return true;
+                current = parent;
+            }
+        }
+
+        protected virtual void OnVisibilityChange (bool newValue) {
+            if (newValue == false)
+                Context?.NotifyControlBecomingInvalidFocusTarget(this, false);
+        }
+
         internal void Tick (MouseEventArgs args) {
             OnTick(args);
         }
@@ -306,8 +329,10 @@ namespace Squared.PRGUI {
 
             LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
             if (!LayoutKey.IsInvalid) {
-                if (_VisibleHasChanged)
+                if (_VisibleHasChanged) {
                     context.RelayoutRequestedForVisibilityChange = true;
+                    _VisibleHasChanged = false;
+                }
 
                 // TODO: Only register if the control is explicitly interested, to reduce overhead?
                 if ((this is IPostLayoutListener listener) && (existingKey == null))

@@ -411,6 +411,20 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
+        protected override void OnVisibilityChange (bool newValue) {
+            base.OnVisibilityChange(newValue);
+
+            if (newValue)
+                return;
+
+            ReleaseChildFocus();
+        }
+
+        private void ReleaseChildFocus () {
+            if (IsEqualOrAncestor(Context?.Focused, this))
+                Context.NotifyControlBecomingInvalidFocusTarget(Context.Focused, false);
+        }
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 

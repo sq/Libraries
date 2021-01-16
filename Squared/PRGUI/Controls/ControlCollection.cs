@@ -95,7 +95,7 @@ namespace Squared.PRGUI {
         }
 
         public void Remove (Control control) {
-            Context?.NotifyControlBeingRemoved(control);
+            Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
             control.UnsetParent(Parent);
 
             if (IndexTable.TryGetValue(control, out int deleteAtIndex)) {
@@ -109,7 +109,7 @@ namespace Squared.PRGUI {
 
         public void RemoveAt (int index) {
             var control = Items[index];
-            Context?.NotifyControlBeingRemoved(control);
+            Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
             Items.RemoveAt(index);
             control.UnsetParent(Parent);
             IndexTable.Remove(control);
@@ -128,7 +128,7 @@ namespace Squared.PRGUI {
             IndexTable.Clear();
 
             foreach (var control in Items) {
-                Context?.NotifyControlBeingRemoved(control);
+                Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
                 control.UnsetParent(Parent);
             }
 

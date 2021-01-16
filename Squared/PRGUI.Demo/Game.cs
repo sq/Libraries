@@ -576,6 +576,10 @@ namespace PRGUI.Demo {
                 }
             };
 
+            Context.EventBus.Subscribe(null, UIEvents.LostFocus, (ei) => {
+                focusedCtl.Text = "Focused: " + ei.Arguments;
+            });
+
             Context.EventBus.Subscribe(null, UIEvents.GotFocus, (ei) => {
                 focusedCtl.Text = "Focused: " + ei.Source;
             });
