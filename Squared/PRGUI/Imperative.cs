@@ -593,6 +593,22 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> InvalidateDynamicContent () {
+            if (Control is Container c)
+                c.InvalidateDynamicContent();
+            return this;
+        }
+        public ControlBuilder<TControl> SetCacheDynamicContent (bool value) {
+            if (Control is Container c)
+                c.CacheDynamicContent = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetDynamicContents (ContainerContentsDelegate value) {
+            if (Control is Container c)
+                c.DynamicContents = value;
+            return this;
+        }
+
         public ControlBuilder<TControl> AddChildren (params Control[] children) {
             var cast = (IControlContainer)Control;
             cast.Children.AddRange(children);

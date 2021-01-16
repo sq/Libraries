@@ -56,11 +56,25 @@ namespace Squared.PRGUI.Controls {
         protected float ScrollSpeedMultiplier = 1;
 
         internal ContainerBuilder DynamicBuilder;
+        internal ContainerContentsDelegate _DynamicContents;
         /// <summary>
         /// If set, every update this delegate will be invoked to reconstruct the container's children
+        /// </summary>        
+        public ContainerContentsDelegate DynamicContents {
+            get => _DynamicContents;
+            set {
+                if (_DynamicContents == value)
+                    return;
+                _DynamicContents = value;
+                DynamicContentIsInvalid = true;
+            }
+        }
+        /// <summary>
+        /// If true, dynamic contents will only be updated when this container is invalidated
         /// </summary>
-        public ContainerContentsDelegate DynamicContents;
+        public bool CacheDynamicContent;
 
+        protected bool DynamicContentIsInvalid = true;
         protected bool FreezeDynamicContent = false;
         protected bool SuppressChildLayout = false;
 
@@ -119,6 +133,10 @@ namespace Squared.PRGUI.Controls {
                 so.Y = Math.Max(MinScrollOffset.Y, so.Y);
             }
             return so;
+        }
+
+        public void InvalidateDynamicContent () {
+            DynamicContentIsInvalid = true;
         }
 
         internal override void InvalidateLayout () {
@@ -208,9 +226,10 @@ namespace Squared.PRGUI.Controls {
             if (DynamicContents == null)
                 return;
 
-            if (FreezeDynamicContent && !force)
+            if ((FreezeDynamicContent || CacheDynamicContent) && !force)
                 return;
 
+            DynamicContentIsInvalid = false;
             if (DynamicBuilder.Container != this)
                 DynamicBuilder = new ContainerBuilder(this);
             DynamicBuilder.Reset();
@@ -238,7 +257,7 @@ namespace Squared.PRGUI.Controls {
 
                 return result;
             } else {
-                GenerateDynamicContent(false);
+                GenerateDynamicContent(false || DynamicContentIsInvalid);
 
                 foreach (var item in Children) {
                     item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
@@ -413,6 +432,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override void OnVisibilityChange (bool newValue) {
             base.OnVisibilityChange(newValue);
+            DynamicContentIsInvalid = true;
 
             if (newValue)
                 return;
