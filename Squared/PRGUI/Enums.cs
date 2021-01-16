@@ -57,6 +57,10 @@ namespace Squared.PRGUI.Layout {
         /// Prevents child elements from growing past the boundaries of this container.
         /// </summary>
         Container_Constrain_Size = 0x400,
+        /// <summary>
+        /// Prevents the container from shrinking below the size required to contain its child elements.
+        /// </summary>
+        Container_Prevent_Crush = 0x800,
 
         /*
         /// <summary>
@@ -118,7 +122,7 @@ namespace Squared.PRGUI.Layout {
 
     public static class ControlFlagMask {
         public const ControlFlags BoxModel = (ControlFlags)0x7,
-            Container = (ControlFlags)0x41f,
+            Container = (ControlFlags)0xC1f,
             Layout = (ControlFlags)0x63e0,
             Fixed = ControlFlags.Internal_FixedWidth | ControlFlags.Internal_FixedHeight;
     }
@@ -132,13 +136,13 @@ namespace Squared.PRGUI.Layout {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsFlagged (this ControlFlags flags, ControlFlags flag) {
             var masked = (uint)(flags & flag);
-            return masked != 0;
+            return masked == (int)flag;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsFlagged (this ControlStates flags, ControlStates flag) {
             var masked = (int)(flags & flag);
-            return masked != 0;
+            return masked == (int)flag;
         }
 
         public static float GetOrigin (this Bounds bounds, Dimensions dimension) {
@@ -175,6 +179,18 @@ namespace Squared.PRGUI.Layout {
             else
                 bounds.BottomRight.Y = value;
             return bounds;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void SetElement (ref Vector2 v, int index, float value) {
+            switch (index) {
+                case 0:
+                    v.X = value;
+                    break;
+                case 1:
+                    v.Y = value;
+                    break;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

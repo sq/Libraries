@@ -94,7 +94,7 @@ namespace Squared.PRGUI.Layout {
         public ControlKey Parent, FirstChild, LastChild;
         public ControlKey PreviousSibling, NextSibling;
         public Margins Margins, Padding;
-        public Vector2 FixedSize, MinimumSize, MaximumSize;
+        public Vector2 FixedSize, MinimumSize, MaximumSize, ComputedContentSize;
 
         public LayoutItem (ControlKey key) {
             Key = key;
@@ -102,6 +102,7 @@ namespace Squared.PRGUI.Layout {
             Parent = FirstChild = LastChild = PreviousSibling = NextSibling = ControlKey.Invalid;
             Margins = Padding = default(Margins);
             FixedSize = MinimumSize = MaximumSize = NoSize;
+            ComputedContentSize = Vector2.Zero;
         }
     }
 

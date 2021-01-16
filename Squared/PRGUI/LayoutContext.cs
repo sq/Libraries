@@ -483,8 +483,15 @@ namespace Squared.PRGUI.Layout {
             return pItem->Margins;
         }
 
+        private unsafe float CalcMinimumSize (LayoutItem * pItem, int idim) {
+            return Math.Max(
+                pItem->MinimumSize.GetElement(idim),
+                pItem->FixedSize.GetElement(idim)
+            );
+        }
+
         private unsafe float CalcOverlaySize (LayoutItem * pItem, Dimensions dim) {
-            float result = 0;
+            float result = 0, minimum = 0;
             int idim = (int)dim, wdim = idim + 2;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
@@ -492,26 +499,44 @@ namespace Squared.PRGUI.Layout {
                     continue;
 
                 var childRect = GetRect(child);
+                var childMargin = pChild->Margins[wdim];
+                var childMinimum = CalcMinimumSize(pChild, idim) + childMargin;
+                if (pItem->Flags.IsFlagged((ControlFlags)((int)ControlFlags.Container_Row + idim)))
+                    minimum += childMinimum;
+                else
+                    minimum = Math.Max(childMinimum, minimum);
                 // FIXME: Is this a bug?
-                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
+                var childSize = childRect[idim] + childRect[wdim] + childMargin;
                 result = Math.Max(result, childSize);
             }
-            result += pItem->Padding[idim] + pItem->Padding[wdim];
+            var outerPadding = pItem->Padding[idim] + pItem->Padding[wdim];
+            minimum += outerPadding;
+            result += outerPadding;
+            PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, minimum);
             return result;
         }
 
         private unsafe float CalcStackedSize (LayoutItem * pItem, Dimensions dim) {
-            float result = 0;
+            float result = 0, minimum = 0;
             int idim = (int)dim, wdim = idim + 2;
+            var outerPadding = pItem->Padding[idim] + pItem->Padding[wdim];
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating))
                     continue;
 
                 var childRect = GetRect(child);
-                result += childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
+                var childMargin = pChild->Margins[wdim];
+                var childMinimum = CalcMinimumSize(pChild, idim) + childMargin;
+                if (pItem->Flags.IsFlagged((ControlFlags)((int)ControlFlags.Container_Row + idim)))
+                    minimum += childMinimum;
+                else
+                    minimum = Math.Max(childMinimum, minimum);
+                result += childRect[idim] + childRect[wdim] + childMargin;
             }
-            result += pItem->Padding[idim] + pItem->Padding[wdim];
+            minimum += outerPadding;
+            result += outerPadding;
+            PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, minimum);
             return result;
         }
 
@@ -568,6 +593,12 @@ namespace Squared.PRGUI.Layout {
                 result.X = pItem->MinimumSize.X;
             if (result.Y < 0)
                 result.Y = pItem->MinimumSize.Y;
+            if (pItem->Flags.IsFlagged(ControlFlags.Container_Prevent_Crush)) {
+                if (pItem->ComputedContentSize.X > 0)
+                    result.X = Math.Max(result.X, pItem->ComputedContentSize.X);
+                if (pItem->ComputedContentSize.Y > 0)
+                    result.Y = Math.Max(result.Y, pItem->ComputedContentSize.Y);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -622,6 +653,8 @@ namespace Squared.PRGUI.Layout {
 
             var pRect = RectPtr(pItem->Key);
             var idim = (int)dim;
+
+            PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, 0);
 
             // Start by setting position to top/left margin
             (*pRect)[idim] = pItem->Margins[idim];
