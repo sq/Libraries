@@ -287,7 +287,7 @@ namespace Squared.PRGUI {
                 var inTabOrder = Controls.InTabOrder(FrameIndex, false)
                     .Where(c => 
                         ((c is IControlContainer) || c.AcceptsFocus) &&
-                        c.Enabled && c.Visible
+                        c.Enabled && !c.IsTransparent
                     )
                     .ToList();
                 var currentIndex = inTabOrder.IndexOf(currentTopLevel);

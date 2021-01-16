@@ -221,6 +221,9 @@ namespace Squared.PRGUI.Controls {
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             HasContentBounds = false;
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+            if (result.IsInvalid)
+                return result;
+
             context.Layout.SetContainerFlags(result, ContainerFlags);
 
             if (SuppressChildLayout) {
@@ -350,7 +353,7 @@ namespace Squared.PRGUI.Controls {
                         layer1, layer2, layer3,
                         ref maxLayer1, ref maxLayer2, ref maxLayer3
                     );
-                    if (!item1.Visible) {
+                    if (item1.IsTransparent) {
                         ;
                     } else if (!ok && hasRenderedAny) {
                         lastOffset1 = i;
@@ -368,7 +371,7 @@ namespace Squared.PRGUI.Controls {
                         layer1, layer2, layer3,
                         ref maxLayer1, ref maxLayer2, ref maxLayer3
                     );
-                    if (!item2.Visible) {
+                    if (item2.IsTransparent) {
                         ;
                     } else if (!ok && hasRenderedAny) {
                         lastOffset2 = j;

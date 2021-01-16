@@ -62,23 +62,26 @@ namespace Squared.PRGUI {
             }
         }
 
-        private bool _Visible = true;
-        public bool Visible {
+        public bool IsTransparent {
             get {
-                if (!_Visible)
-                    return false;
-                // HACK
+                if (!Visible)
+                    return true;
+
                 var ctx = Context;
-                if (ctx != null)
-                    if (GetOpacity(ctx.NowL) <= 0)
-                        return false;
-                return true;
-            }
-            set {
-                _Visible = value;
+                if ((ctx != null) && (GetOpacity(ctx.NowL) <= 0))
+                    return true;
+
+                return false;
             }
         }
 
+        /// <summary>
+        /// If false, the control will not participate in layout or rasterization
+        /// </summary>
+        public bool Visible { get; set; } = true;
+        /// <summary>
+        /// If false, the control cannot receive focus or input
+        /// </summary>
         public bool Enabled { get; set; } = true;
         /// <summary>
         /// Can receive focus via user input
@@ -289,10 +292,11 @@ namespace Squared.PRGUI {
 
         internal ControlKey GenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey = null) {
             LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
-
-            // TODO: Only register if the control is explicitly interested, to reduce overhead?
-            if ((this is IPostLayoutListener listener) && (existingKey == null))
-                context.PostLayoutListeners?.Add(listener);
+            if (!LayoutKey.IsInvalid) {
+                // TODO: Only register if the control is explicitly interested, to reduce overhead?
+                if ((this is IPostLayoutListener listener) && (existingKey == null))
+                    context.PostLayoutListeners?.Add(listener);
+            }
 
             return LayoutKey;
         }
@@ -383,6 +387,9 @@ namespace Squared.PRGUI {
         }
 
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            if (!Visible)
+                return ControlKey.Invalid;
+
             var result = existingKey ?? context.Layout.CreateItem();
 
             var decorations = GetDecorator(context.DecorationProvider);

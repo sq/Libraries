@@ -206,6 +206,9 @@ namespace Squared.PRGUI.Controls {
                 OnDisplayOffsetChanged();
 
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+            if (result.IsInvalid)
+                return result;
+
             foreach (var child in Children) {
                 var lk = child.LayoutKey;
                 var cf = context.Layout.GetLayoutFlags(lk);

@@ -201,6 +201,9 @@ namespace Squared.PRGUI.Controls {
             SuppressChildLayout = false;
 
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+            if (result.IsInvalid)
+                return result;
+
             if (string.IsNullOrEmpty(Title) && !existingKey.HasValue) {
                 var spacer = context.Layout.CreateItem();
                 context.Layout.SetLayoutFlags(spacer, ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak);
