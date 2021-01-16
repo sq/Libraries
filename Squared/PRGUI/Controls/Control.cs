@@ -291,6 +291,9 @@ namespace Squared.PRGUI {
         }
 
         internal ControlKey GenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey = null) {
+            if (existingKey.HasValue && existingKey.Value.IsInvalid)
+                throw new ArgumentOutOfRangeException(nameof(existingKey));
+
             LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
             if (!LayoutKey.IsInvalid) {
                 // TODO: Only register if the control is explicitly interested, to reduce overhead?

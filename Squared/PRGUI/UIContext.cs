@@ -661,7 +661,12 @@ namespace Squared.PRGUI {
             Controls.CopyTo(_TopLevelControls);
 
             foreach (var control in _TopLevelControls)
-                control.GenerateLayoutTree(ref context, Layout.Root, secondTime ? control.LayoutKey : (ControlKey?)null);
+                control.GenerateLayoutTree(
+                    ref context, Layout.Root, 
+                    (secondTime && !control.LayoutKey.IsInvalid) 
+                        ? control.LayoutKey 
+                        : (ControlKey?)null
+                );
         }
 
         private bool NotifyLayoutListeners (UIOperationContext context) {
