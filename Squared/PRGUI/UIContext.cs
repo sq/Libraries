@@ -1097,6 +1097,9 @@ namespace Squared.PRGUI {
             IsTooltipVisible = false;
         }
 
+        // HACK: Suppress the 'if not Visible then don't perform layout' behavior
+        internal bool IsUpdatingSubtreeLayout;
+
         /// <summary>
         /// Use at your own risk! Performs immediate layout of a control and its children.
         /// The results of this are not necessarily accurate, but can be used to infer its ideal size for positioning.
@@ -1111,7 +1114,9 @@ namespace Squared.PRGUI {
                 pll.Clear();
             tempCtx.PostLayoutListeners = pll;
 
+            var wasUpdatingSubtreeLayout = IsUpdatingSubtreeLayout;
             try {
+                IsUpdatingSubtreeLayout = true;
                 UpdateSubtreeLayout(tempCtx, subtreeRoot);
 
                 if (NotifyLayoutListeners(tempCtx)) {
@@ -1120,6 +1125,7 @@ namespace Squared.PRGUI {
                     NotifyLayoutListeners(tempCtx);
                 }
             } finally {
+                IsUpdatingSubtreeLayout = wasUpdatingSubtreeLayout;
                 Interlocked.CompareExchange(ref _PostLayoutListeners, pll, null);
             }
         }

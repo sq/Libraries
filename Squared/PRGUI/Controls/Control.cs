@@ -387,7 +387,7 @@ namespace Squared.PRGUI {
         }
 
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            if (!Visible)
+            if (!Visible && !context.UIContext.IsUpdatingSubtreeLayout)
                 return ControlKey.Invalid;
 
             var result = existingKey ?? context.Layout.CreateItem();
