@@ -221,8 +221,12 @@ namespace Squared.PRGUI.Controls {
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             HasContentBounds = false;
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
-            if (result.IsInvalid)
+            if (result.IsInvalid) {
+                foreach (var item in Children)
+                    item.InvalidateLayout();
+
                 return result;
+            }
 
             context.Layout.SetContainerFlags(result, ContainerFlags);
 

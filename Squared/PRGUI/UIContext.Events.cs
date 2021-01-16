@@ -497,8 +497,13 @@ namespace Squared.PRGUI {
             if (topLevelAncestor == null)
                 value = null;
 
-            if (!AllowNullFocus && (value == null))
-                value = Focused ?? Controls.FirstOrDefault();
+            if (!AllowNullFocus && (value == null)) {
+                // Handle cases where the focused control became disabled or invisible
+                if (Focused?.IsValidFocusTarget == false)
+                    newFocusTarget = value = PickNextFocusTarget(Focused, 1, false);
+                else
+                    newFocusTarget = value = Focused ?? Controls.FirstOrDefault();
+            }
 
             // Top-level controls should pass focus on to their children if possible
             if (Controls.Contains(value)) {
@@ -596,12 +601,14 @@ namespace Squared.PRGUI {
 
                 var control = tabOrdered[idx];
 
-                if (control.Enabled && control.IsValidFocusTarget && (control.FocusBeneficiary == null)) {
-                    return control;
-                } else if (recursive && (control is IControlContainer)) {
-                    var child = FindFocusableSibling(((IControlContainer)control).Children, null, delta, recursive);
-                    if (child != null)
-                        return child;
+                if (control.Visible) {
+                    if (control.Enabled && control.IsValidFocusTarget && (control.FocusBeneficiary == null)) {
+                        return control;
+                    } else if (recursive && (control is IControlContainer)) {
+                        var child = FindFocusableSibling(((IControlContainer)control).Children, null, delta, recursive);
+                        if (child != null)
+                            return child;
+                    }
                 }
 
                 newIndex += delta;
@@ -624,8 +631,6 @@ namespace Squared.PRGUI {
         }
 
         private Control PickNextFocusTarget (Control current, int delta, bool recursive) {
-            ControlCollection collection;
-
             if (current == null)
                 return FindFocusableSibling(Controls, null, delta, recursive);
 
@@ -642,20 +647,38 @@ namespace Squared.PRGUI {
                 }
             }
 
+            Control prior;
+            ControlCollection parentCollection;
+
             while (current != null) {
-                if (current != null) {
-                    if (!current.TryGetParent(out Control parent))
-                        return null;
-                    collection = (parent as IControlContainer)?.Children;
+                if (!current.TryGetParent(out Control parent)) {
+                    return null;
                 } else {
-                    collection = Controls;
+                    parentCollection = (parent as IControlContainer)?.Children;
                 }
 
-                var sibling = FindFocusableSibling(collection, current, delta, recursive);
+                var sibling = FindFocusableSibling(parentCollection, current, delta, recursive);
                 if (sibling != null)
                     return sibling;
 
-                current = collection.Parent;
+                var currentIndex = parentCollection.IndexOf(current);
+                var nextIndex = currentIndex + delta;
+                var nextSibling = (nextIndex >= 0) && (nextIndex < parentCollection.Count)
+                    ? parentCollection[nextIndex]
+                    : null;
+
+                prior = current;
+                if (nextSibling != null) {
+                    var nextContainer = (nextSibling as IControlContainer);
+                    if (nextContainer != null) {
+                        var possibleResult = FindFocusableSibling(nextContainer.Children, null, delta, recursive);
+                        if (possibleResult != null)
+                            return possibleResult;
+                    }
+
+                    current = nextSibling;
+                } else
+                    current = parentCollection.Parent;
             }
 
             return null;
