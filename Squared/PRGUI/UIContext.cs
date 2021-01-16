@@ -735,6 +735,19 @@ namespace Squared.PRGUI {
             NotifyModalShown(modal);
         }
 
+        public bool CloseActiveModal () {
+            if (ModalStack.Count <= 0)
+                return false;
+            return CloseModal(ModalStack[ModalStack.Count - 1]);
+        }
+
+        public bool CloseModal (IModal modal) {
+            if (!ModalStack.Contains(modal))
+                return false;
+            modal.Close();
+            return true;
+        }
+
         public void NotifyModalShown (IModal modal) {
             if (ModalStack.Contains(modal))
                 throw new InvalidOperationException("Modal already visible");
