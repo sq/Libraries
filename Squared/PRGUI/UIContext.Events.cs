@@ -508,12 +508,22 @@ namespace Squared.PRGUI {
             // Top-level controls should pass focus on to their children if possible
             if (Controls.Contains(value)) {
                 Control childTarget;
-                if (!TopLevelFocusMemory.TryGetValue(value, out childTarget) ||
-                    (FindTopLevelAncestor(childTarget) == null)
+                if (
+                    !TopLevelFocusMemory.TryGetValue(value, out childTarget) ||
+                    (FindTopLevelAncestor(childTarget) == null) ||
+                    Control.IsRecursivelyTransparent(childTarget)
                 ) {
                     var container = value as IControlContainer;
                     if (container != null)
                         childTarget = container.Children.InTabOrder(FrameIndex, true).FirstOrDefault();
+                }
+
+                // HACK: If the focus is shifted to an invalid focus target but it's a container,
+                //  attempt to recursively pick a suitable focus target inside it
+                if (childTarget?.IsValidFocusTarget == false) {
+                    var childContainer = (childTarget as IControlContainer);
+                    if (childContainer != null)
+                        childTarget = FindFocusableSibling(childContainer.Children, null, 1, true);
                 }
 
                 if (childTarget != null)
@@ -539,8 +549,8 @@ namespace Squared.PRGUI {
                 return false;
 
             var previous = _Focused;
-            if (previous != _Focused)
-                PreviousFocused = _Focused;
+            if (previous != newFocusTarget)
+                PreviousFocused = previous;
 
             var newTopLevelAncestor = FindTopLevelAncestor(newFocusTarget);
             var activeModal = ActiveModal;
@@ -634,28 +644,31 @@ namespace Squared.PRGUI {
             if (current == null)
                 return FindFocusableSibling(Controls, null, delta, recursive);
 
+            /*
             // HACK: If for some reason a top-level container is set as focused, we want tab to focus one of its children
             var isTopLevel = !current.TryGetParent(out Control _);
             if (isTopLevel) {
                 var container = current as IControlContainer;
                 if (container != null) {
                     var idealTarget = (delta > 0) ? container.Children.FirstOrDefault() : container.Children.LastOrDefault();
-                    if (!idealTarget.IsValidFocusTarget)
-                        return FindFocusableSibling(container.Children, container.Children.FirstOrDefault(), delta, recursive);
-                    else
+                    if (!idealTarget.IsValidFocusTarget) {
+                        var focusableSibling = FindFocusableSibling(container.Children, container.Children.FirstOrDefault(), delta, recursive);
+                        if (focusableSibling != null)
+                            return focusableSibling;
+                    } else
                         return idealTarget;
                 }
             }
+            */
 
             Control prior;
             ControlCollection parentCollection;
 
             while (current != null) {
-                if (!current.TryGetParent(out Control parent)) {
-                    return null;
-                } else {
+                if (!current.TryGetParent(out Control parent))
+                    parentCollection = Controls;
+                else
                     parentCollection = (parent as IControlContainer)?.Children;
-                }
 
                 var sibling = FindFocusableSibling(parentCollection, current, delta, recursive);
                 if (sibling != null)
@@ -677,8 +690,11 @@ namespace Squared.PRGUI {
                     }
 
                     current = nextSibling;
-                } else
-                    current = parentCollection.Parent;
+                } else if (parent == null) {
+                    break;
+                } else {
+                    current = parentCollection?.Parent;
+                }
             }
 
             return null;

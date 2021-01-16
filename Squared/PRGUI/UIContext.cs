@@ -593,6 +593,15 @@ namespace Squared.PRGUI {
             return true;
         }
 
+        private void RemoveFromFocusMemory (Control control) {
+            foreach (var topLevel in Controls) {
+                if (!TopLevelFocusMemory.TryGetValue(topLevel, out Control memory))
+                    continue;
+                if (control == memory)
+                    TopLevelFocusMemory.Remove(topLevel);
+            }
+        }
+
         // FIXME: This operation can shift the focus out of view, should it perform auto-scroll?
         public bool ReleaseDescendantFocus (Control container, bool forward) {
             if (Focused == null)
@@ -609,12 +618,7 @@ namespace Squared.PRGUI {
             var chain = Focused;
             while (chain != null) {
                 // If focus memory points to this control we're defocusing, clear it
-                foreach (var control in Controls) {
-                    if (!TopLevelFocusMemory.TryGetValue(control, out Control memory))
-                        continue;
-                    if (chain == memory)
-                        TopLevelFocusMemory.Remove(control);
-                }
+                RemoveFromFocusMemory(chain);
 
                 if (chain == container) {
                     if (!RotateFocusFrom(container, forward ? 1 : -1, isUserInitiated)) {
@@ -763,6 +767,8 @@ namespace Squared.PRGUI {
         // Clean up when a control is removed in case it has focus or mouse capture,
         //  and attempt to return focus to the most recent place it occupied (for modals)
         public void NotifyControlBecomingInvalidFocusTarget (Control control, bool removed) {
+            RemoveFromFocusMemory(control);
+
             if (PreviousFocused == control)
                 PreviousFocused = null;
             if (PreviousTopLevelFocused == control)
@@ -771,13 +777,20 @@ namespace Squared.PRGUI {
                 MouseCaptured = null;
 
             var fm = Focused as IModal;
+            // FIXME: TopLevelFocused fixes some behaviors here but breaks others :(
             if (Control.IsEqualOrAncestor(Focused, control)) {
                 if (fm?.FocusDonor != null) {
                     TrySetFocus(fm?.FocusDonor, false, false);
                     if (Control.IsEqualOrAncestor(Focused, control))
                         TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false, false);
-                } else
-                    TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false, false);
+                } else {
+                    // Attempt to auto-shift focus as long as our parent chain is focusable
+                    if (RotateFocusFrom(control, 1, false) && !Control.IsRecursivelyTransparent(Focused))
+                        ;
+                    else
+                        // Auto-shifting failed, so try to return to the most recently focused control
+                        TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false, false);
+                }
             }
             if (Control.IsEqualOrAncestor(KeyboardSelection, control))
                 ClearKeyboardSelection();

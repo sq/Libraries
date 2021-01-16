@@ -135,7 +135,7 @@ namespace Squared.PRGUI {
         internal bool IsValidFocusTarget => 
             (
                 AcceptsFocus || (FocusBeneficiary != null)
-            ) && Enabled && !IsTransparent;
+            ) && Enabled && !Control.IsRecursivelyTransparent(this);
 
         internal bool IsValidMouseInputTarget =>
             AcceptsMouseInput && Visible && !IsTransparent && Enabled;
@@ -222,6 +222,20 @@ namespace Squared.PRGUI {
 
                 return null;
             }
+        }
+
+        public static bool IsRecursivelyTransparent (Control control) {
+            var current = control;
+            while (true) {
+                if (current.IsTransparent)
+                    return true;
+
+                if (!current.TryGetParent(out Control parent))
+                    return false;
+
+                current = parent;
+            }
+            return false;
         }
 
         public static bool IsEqualOrAncestor (Control control, Control expected) {
