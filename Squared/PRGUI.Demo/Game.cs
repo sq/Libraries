@@ -406,6 +406,7 @@ namespace PRGUI.Demo {
 
             var gauge = new Gauge {
                 Description = "Test Gauge",
+                LayoutFlags = ControlFlags.Layout_ForceBreak,
                 Width = { Fixed = 450 }
             };
 
