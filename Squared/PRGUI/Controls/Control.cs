@@ -701,10 +701,17 @@ namespace Squared.PRGUI {
                 return false;
 
             var enableCompositor = Appearance.Compositor?.WillComposite(this, opacity) == true;
-            var needsComposition = Appearance.HasTransformMatrix || 
-                (opacity < 1) || 
+            var needsComposition = (opacity < 1) || 
                 enableCompositor ||
-                Appearance.Overlay;
+                Appearance.Overlay ||
+                (
+                    Appearance.HasTransformMatrix && 
+                    // HACK: If the current transform matrix is the identity matrix, suppress composition
+                    //  this allows simple transform animations that end at the identity matrix to work
+                    //  without explicitly clearing the transform after the animation is over.
+                    Appearance.GetTransform(out Matrix temp, context.NowL) &&
+                    (temp != Matrix.Identity)
+                );
 
             if (!needsComposition) {
                 RasterizeAllPasses(ref context, ref box, ref passSet, false);

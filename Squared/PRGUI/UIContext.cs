@@ -887,6 +887,9 @@ namespace Squared.PRGUI {
             PreviousUnhandledEvents.AddRange(UnhandledEvents);
             UnhandledEvents.Clear();
 
+            if ((Focused == null) && !AllowNullFocus)
+                Focused = PickNextFocusTarget(null, 1, true);
+
             var previouslyFixated = FixatedControl;
 
             var previouslyHovering = Hovering;

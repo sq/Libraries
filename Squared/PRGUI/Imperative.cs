@@ -308,6 +308,8 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> OnClick (Action onClick) {
+            if (onClick == null)
+                return this;
             GetEvent(UIEvents.Click, out bool clicked);
             if (clicked)
                 onClick();
@@ -315,6 +317,8 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> OnClick (Action<TControl> onClick) {
+            if (onClick == null)
+                return this;
             GetEvent(UIEvents.Click, out bool clicked);
             if (clicked)
                 onClick(Control);
