@@ -1430,7 +1430,7 @@ namespace Squared.PRGUI {
                         : 1.0f;
                     // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
                     //  overlap each other, at the cost of more draw calls.
-                    var passSet = new RasterizePassSet(ref prepass, ref renderer, 0, 1, OverlayQueue);
+                    var passSet = new RasterizePassSet(ref prepass, ref renderer, 0, OverlayQueue);
                     passSet.Below.DepthStencilState =
                         passSet.Content.DepthStencilState =
                         passSet.Above.DepthStencilState = DepthStencilState.None;
@@ -1480,15 +1480,14 @@ namespace Squared.PRGUI {
     public struct RasterizePassSet {
         public ImperativeRenderer Prepass, Below, Content, Above;
         public UnorderedList<BitmapDrawCall> OverlayQueue;
-        public int ReferenceStencil, NextReferenceStencil;
+        public int StackDepth;
 
-        public RasterizePassSet (ref ImperativeRenderer prepass, ref ImperativeRenderer container, int referenceStencil, int nextReferenceStencil, UnorderedList<BitmapDrawCall> overlayQueue) {
+        public RasterizePassSet (ref ImperativeRenderer prepass, ref ImperativeRenderer container, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue) {
             Prepass = prepass;
             Below = container.MakeSubgroup();
             Content = container.MakeSubgroup();
             Above = container.MakeSubgroup();
-            ReferenceStencil = referenceStencil;
-            NextReferenceStencil = nextReferenceStencil;
+            StackDepth = stackDepth;
             OverlayQueue = overlayQueue;
         }
     }

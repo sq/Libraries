@@ -124,7 +124,9 @@ namespace Squared.PRGUI {
                 Expansion = 1.5f
             };
 
-            None = new DelegateDecorator { };
+            None = new DelegateDecorator {
+                ContentClip = None_ContentClip
+            };
 
             Button = new DelegateDecorator {
                 Margins = new Margins(GlobalDefaultMargin),
@@ -863,6 +865,18 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: ContainerCornerRadius,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: Color.White, outerColor: Color.White,
+                blendState: RenderStates.DrawNone
+            );
+        }
+
+        // HACK: Even if a control is undecorated, it still needs to be able to rasterize its clip region
+        private void None_ContentClip (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            renderer.RasterizeRectangle(
+                a, b,
+                radius: 0,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: Color.White, outerColor: Color.White,
                 blendState: RenderStates.DrawNone

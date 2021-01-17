@@ -35,6 +35,8 @@ namespace Squared.PRGUI {
     }
     
     public abstract partial class Control {
+        public static bool ShowDebugBoxes = false;
+
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
         internal int TypeID;
@@ -585,7 +587,8 @@ namespace Squared.PRGUI {
             var passContext = context.Clone();
             passContext.Pass = pass;
             // passContext.Renderer = context.Renderer.MakeSubgroup();
-            var hasNestedContext = (pass == RasterizePasses.Content) && (ShouldClipContent || HasChildren);
+            var hasNestedContext = (pass == RasterizePasses.Content) && 
+                (ShouldClipContent || HasChildren);
             if (hasNestedContext)
                 UpdateVisibleRegion(ref passContext, ref box);
 
@@ -603,8 +606,7 @@ namespace Squared.PRGUI {
             ImperativeRenderer contentRenderer = default(ImperativeRenderer);
             RasterizePassSet childrenPassSet = default(RasterizePassSet);
 
-            int previousRefStencil = passSet.ReferenceStencil;
-            int nextRefStencil = passSet.NextReferenceStencil;
+            int previousStackDepth = passSet.StackDepth, newStackDepth = previousStackDepth;
 
             // For clipping we need to create a separate batch group that contains all the rasterization work
             //  for our children. At the start of it we'll generate the stencil mask that will be used for our
@@ -614,10 +616,15 @@ namespace Squared.PRGUI {
                 contentContext = passContext.Clone();
                 contentRenderer = renderer.MakeSubgroup();
                 if (ShouldClipContent) {
-                    contentRenderer.DepthStencilState = context.UIContext.GetStencilTest(nextRefStencil);
-                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, nextRefStencil, nextRefStencil + 1, passSet.OverlayQueue);
+                    newStackDepth = previousStackDepth + 1;
+                    contentRenderer.DepthStencilState = context.UIContext.GetStencilTest(newStackDepth);
+                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, newStackDepth, passSet.OverlayQueue);
                 } else {
-                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, previousRefStencil, nextRefStencil, passSet.OverlayQueue);
+                    contentRenderer.DepthStencilState = 
+                        (previousStackDepth <= 0)
+                        ? DepthStencilState.None
+                        : context.UIContext.GetStencilTest(previousStackDepth);
+                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, newStackDepth, passSet.OverlayQueue);
                 }
                 renderer.Layer += 1;
             }
@@ -636,10 +643,10 @@ namespace Squared.PRGUI {
                 //  group and if so, set up the stencil mask so that they will be clipped.
                 if (ShouldClipContent && !contentRenderer.Container.IsEmpty) {
                     // If this is the first stencil pass instead of a nested one, clear the stencil buffer
-                    if (passSet.ReferenceStencil == 0)
+                    if (passSet.StackDepth < 1)
                         contentRenderer.Clear(stencil: 0, layer: -9999);
 
-                    contentRenderer.DepthStencilState = context.UIContext.GetStencilWrite(previousRefStencil);
+                    contentRenderer.DepthStencilState = context.UIContext.GetStencilWrite(previousStackDepth);
 
                     // FIXME: Separate context?
                     contentContext.Pass = RasterizePasses.ContentClip;
@@ -653,9 +660,9 @@ namespace Squared.PRGUI {
                     settings.State = default(ControlStates);
                     decorations.Rasterize(contentContext, ref contentRenderer, settings);
 
-                    if (passSet.ReferenceStencil != 0) {
+                    if (passSet.StackDepth > 1) {
                         // If this is a nested stencil pass, erase our stencil data and restore what was there before
-                        contentRenderer.DepthStencilState = context.UIContext.GetStencilRestore(passSet.ReferenceStencil);
+                        contentRenderer.DepthStencilState = context.UIContext.GetStencilRestore(newStackDepth);
                         contentRenderer.FillRectangle(new Rectangle(-1, -1, 9999, 9999), Color.Transparent, blendState: RenderStates.DrawNone, layer: 9999);
                     }
 
@@ -690,11 +697,9 @@ namespace Squared.PRGUI {
                 (box.Top > context.VisibleRegion.Extent.Y) ||
                 (box.Width <= 0) ||
                 (box.Height <= 0);
-
-            /*
-            if (context.Pass == RasterizePasses.Content)
+            
+            if (ShowDebugBoxes && (context.Pass == RasterizePasses.Content))
                 passSet.Content.RasterizeRectangle(box.Position, box.Extent, 0f, 1f, Color.Transparent, Color.Transparent, Color.Red);
-            */
 
             // Only visibility cull controls that have a parent and aren't overlaid.
             if (isInvisible && TryGetParent(out Control parent) && !Appearance.Overlay)
@@ -773,7 +778,7 @@ namespace Squared.PRGUI {
             // Create nested prepass group before the RT group so that child controls have their prepass operations run before ours
             var nestedPrepass = passSet.Prepass.MakeSubgroup();
 
-            var newPassSet = new RasterizePassSet(ref nestedPrepass, ref rt.Renderer, 0, 1, passSet.OverlayQueue);
+            var newPassSet = new RasterizePassSet(ref nestedPrepass, ref rt.Renderer, 0, passSet.OverlayQueue);
             // newPassSet.Above.RasterizeEllipse(box.Center, Vector2.One * 6f, Color.White * 0.7f);
             RasterizeAllPasses(ref compositionContext, ref box, ref newPassSet, true);
             rt.Renderer.Layer += 1;
