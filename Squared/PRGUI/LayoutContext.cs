@@ -1062,7 +1062,7 @@ namespace Squared.PRGUI.Layout {
             }
         }
 
-        private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, Dimensions dim, bool collapse) {
+        private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, Dimensions dim, bool expandLastRow) {
             // FIXME: Find some way to early-out here if there are no children?
 
             int idim = (int)dim, wdim = idim + 2;
@@ -1091,9 +1091,12 @@ namespace Squared.PRGUI.Layout {
 
             // HACK: If we're not in collapse mode, we want to expand the last row
             //  to fill all available space
-            var space = collapse
-                ? needSize
-                : Math.Max(needSize, contentRect[wdim] - offset);
+            var space = expandLastRow
+                // Offset has been adjusted by previous rows, so we want to subtract
+                //  our initial offset from the current one to compute how much space
+                //  is actually left to expand into
+                ? Math.Max(needSize, contentRect[wdim] - offset + contentRect[idim])
+                : needSize;
 
             ArrangeOverlaySqueezedRange(
                 pItem, dim, startChild, ControlKey.Invalid, offset, space
@@ -1112,16 +1115,19 @@ namespace Squared.PRGUI.Layout {
                 case ControlFlags.Container_Column | ControlFlags.Container_Wrap:
                     if (dim != Dimensions.X) {
                         ArrangeStacked(pItem, Dimensions.Y, true);
-                        var offset = ArrangeWrappedOverlaySqueezed(pItem, Dimensions.X, true);
+                        var offset = ArrangeWrappedOverlaySqueezed(pItem, Dimensions.X, false);
                         // FIXME: Content rect?
                         (*pRect)[0] = offset - (*pRect)[0];
+                    } else {
+                        // FIXME: Should we do something here?
+                        ;
                     }
                     break;
                 case ControlFlags.Container_Row | ControlFlags.Container_Wrap:
                     if (dim == Dimensions.X)
                         ArrangeStacked(pItem, Dimensions.X, true);
                     else
-                        ArrangeWrappedOverlaySqueezed(pItem, Dimensions.Y, false);
+                        ArrangeWrappedOverlaySqueezed(pItem, Dimensions.Y, true);
                     break;
                 case ControlFlags.Container_Column:
                 case ControlFlags.Container_Row:
