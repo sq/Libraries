@@ -79,9 +79,9 @@ namespace Squared.PRGUI {
         /// </summary>
         public bool Undecorated;
         /// <summary>
-        /// Overrides margins and padding to be 0
+        /// Disables margins and padding from the control's decorator
         /// </summary>
-        public bool SuppressMargins;
+        public bool SuppressDecorationMargins;
 
         internal bool HasOpacity { get; private set; }
 
@@ -122,6 +122,10 @@ namespace Squared.PRGUI {
                 HasOpacity = true;
                 _Opacity = value;
             }
+        }
+
+        public bool Transparent {
+            set => Opacity = value ? 0 : 1;
         }
 
         public void GetFinalTransformMatrix (RectF sourceRect, long now, out Matrix result) {

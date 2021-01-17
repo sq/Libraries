@@ -550,9 +550,18 @@ namespace Squared.PRGUI {
 
                 // Attempting to set focus to a top level control is valid even if no child was selected
                 var isTopLevel = Controls.Contains(newFocusTarget);
-                // FIXME: Should we throw here?
-                if (!newFocusTarget.IsValidFocusTarget && !force && !isTopLevel)
-                    return false;
+
+                if (!newFocusTarget.IsValidFocusTarget && !isTopLevel) {
+                    var collection = (newFocusTarget as IControlContainer);
+                    if (collection != null) {
+                        var childTarget = FindFocusableSibling(collection.Children, null, 1, true);
+                        if (childTarget == newFocusTarget)
+                            return false;
+
+                        newFocusTarget = childTarget;
+                    } else if (!force)
+                        return false;
+                }
             }
 
             if (!AllowNullFocus && (newFocusTarget == null))
@@ -566,6 +575,8 @@ namespace Squared.PRGUI {
             var activeModal = ActiveModal;
             if ((activeModal?.RetainFocus == true) && (newTopLevelAncestor != activeModal))
                 return false;
+            if (previous != newFocusTarget)
+                ;
             _Focused = newFocusTarget;
 
             var previousTopLevel = TopLevelFocused;
@@ -671,6 +682,7 @@ namespace Squared.PRGUI {
             }
             */
 
+            var ineligible = current;
             Control prior;
             ControlCollection parentCollection;
 
@@ -681,7 +693,7 @@ namespace Squared.PRGUI {
                     parentCollection = (parent as IControlContainer)?.Children;
 
                 var sibling = FindFocusableSibling(parentCollection, current, delta, recursive);
-                if (sibling != null)
+                if ((sibling != null) && (sibling != ineligible))
                     return sibling;
 
                 var currentIndex = parentCollection.IndexOf(current);
@@ -695,7 +707,7 @@ namespace Squared.PRGUI {
                     var nextContainer = (nextSibling as IControlContainer);
                     if (nextContainer != null) {
                         var possibleResult = FindFocusableSibling(nextContainer.Children, null, delta, recursive);
-                        if (possibleResult != null)
+                        if ((possibleResult != null) && (possibleResult != ineligible))
                             return possibleResult;
                     }
 

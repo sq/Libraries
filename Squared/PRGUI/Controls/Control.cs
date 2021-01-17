@@ -226,18 +226,19 @@ namespace Squared.PRGUI {
             }
         }
 
-        public static bool IsRecursivelyTransparent (Control control) {
+        public static bool IsRecursivelyTransparent (Control control, bool includeSelf = true) {
+            if (control.IsTransparent && includeSelf)
+                return true;
+
             var current = control;
             while (true) {
-                if (current.IsTransparent)
-                    return true;
-
                 if (!current.TryGetParent(out Control parent))
                     return false;
 
                 current = parent;
+                if (current.IsTransparent)
+                    return true;
             }
-            return false;
         }
 
         public static bool IsEqualOrAncestor (Control control, Control expected) {
@@ -358,13 +359,33 @@ namespace Squared.PRGUI {
             return LayoutKey;
         }
 
-        public RectF GetRect (bool includeOffset = true, bool contentRect = false, UIContext context = null) {
+        /// <summary>
+        /// Gets the current computed rectangle of the control.
+        /// </summary>
+        /// <param name="applyOffset">Applies the scroll offset of the control's parent(s).</param>
+        /// <param name="contentRect">Insets the rectangle by the control's padding.</param>
+        /// <param name="exteriorRect">Expands the rectangle to include the control's margin.</param>
+        public RectF GetRect (bool applyOffset = true, bool contentRect = false, bool exteriorRect = false, UIContext context = null) {
+            // FIXME
+            if (!Visible)
+                return default(RectF);
+
             context = context ?? Context;
             var result = contentRect 
                 ? context.Layout.GetContentRect(LayoutKey) 
                 : context.Layout.GetRect(LayoutKey);
 
-            if (includeOffset) {
+            if (exteriorRect) {
+                if (contentRect)
+                    throw new ArgumentException("Cannot set both contentRect and exteriorRect");
+                var margins = MostRecentComputedMargins;
+                result.Left -= margins.Left;
+                result.Top -= margins.Top;
+                result.Width += margins.X;
+                result.Height += margins.Y;
+            }
+
+            if (applyOffset) {
                 result.Left += _AbsoluteDisplayOffset.X;
                 result.Top += _AbsoluteDisplayOffset.Y;
             }
@@ -413,18 +434,14 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void ComputeMargins (UIOperationContext context, IDecorator decorations, out Margins result) {
-            if (Appearance.SuppressMargins)
-                result = default(Margins);
-            else if (decorations != null)
+            if (!Appearance.SuppressDecorationMargins && (decorations != null))
                 Margins.Add(ref Margins, decorations.Margins, out result);
             else
                 result = Margins;
         }
 
         protected virtual void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            if (Appearance.SuppressMargins)
-                result = default(Margins);
-            else if (decorations != null)
+            if (!Appearance.SuppressDecorationMargins && (decorations != null))
                 Margins.Add(ref Padding, decorations.Padding, out result);
             else
                 result = Padding;
@@ -456,6 +473,8 @@ namespace Squared.PRGUI {
             var decorations = GetDecorator(context.DecorationProvider);
             ComputeMargins(context, decorations, out Margins computedMargins);
             ComputePadding(context, decorations, out Margins computedPadding);
+
+            MostRecentComputedMargins = computedMargins;
 
             ComputeFixedSize(out float? fixedWidth, out float? fixedHeight);
             var actualLayoutFlags = ComputeLayoutFlags(fixedWidth.HasValue, fixedHeight.HasValue);
@@ -744,7 +763,9 @@ namespace Squared.PRGUI {
         private static readonly Func<ViewTransform, object, ViewTransform> ApplyLocalTransformMatrix = _ApplyLocalTransformMatrix;
         private static readonly Action<DeviceManager, object> BeforeComposite = _BeforeIssueComposite,
             AfterComposite = _AfterIssueComposite;
+
         // HACK
+        private Margins MostRecentComputedMargins;
         private RectF MostRecentCompositeBox;
         private BitmapDrawCall MostRecentCompositeDrawCall;
 

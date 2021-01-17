@@ -15,7 +15,7 @@ namespace Squared.PRGUI.Controls {
 
         private T _SelectedItem;
         private int _SelectedIndexVersion;
-        private int _SelectedIndex;
+        private int _SelectedIndex = -1;
 
         public ItemListManager (IEqualityComparer<T> comparer) {
             Comparer = comparer;
@@ -39,6 +39,20 @@ namespace Squared.PRGUI.Controls {
                     return _SelectedIndex;
                 _SelectedIndexVersion = Items.Version;
                 return _SelectedIndex = Items.IndexOf(ref _SelectedItem, Comparer);
+            }
+            set {
+                if (_SelectedIndex == value)
+                    return;
+
+                _SelectedIndex = value;
+                if (value == -1) {
+                    _SelectedItem = default(T);
+                } else if ((value < 0) || (value >= Items.Count)) {
+                    throw new ArgumentOutOfRangeException("value");
+                } else {
+                    _SelectedItem = Items[value];
+                }
+                _SelectedIndexVersion = Items.Version;
             }
         }
 

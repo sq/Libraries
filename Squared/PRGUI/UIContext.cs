@@ -788,6 +788,46 @@ namespace Squared.PRGUI {
                 TrySetFocus(newFocusTarget, false, false);
         }
 
+        private readonly Dictionary<Control, Control> InvalidFocusTargets = 
+            new Dictionary<Control, Control>(new ReferenceComparer<Control>());
+
+        private void DefocusInvalidFocusTargets () {
+            while ((Focused != null) && InvalidFocusTargets.TryGetValue(Focused, out Control idealNewTarget)) {
+                var current = Focused;
+                var ok = (idealNewTarget == null) && TrySetFocus(idealNewTarget);
+
+                if (!ok) {
+                    var interim = Focused;
+                    idealNewTarget = PickIdealNewFocusTargetForInvalidFocusTarget(Focused);
+                    if (!TrySetFocus(idealNewTarget)) {
+                        // Log($"Could not move focus from invalid target {current}");
+                        break;
+                    } else
+                        ; // Log($"Moved focus from invalid target {current} to {Focused} through {interim}");
+                } else {
+                    // Log($"Moved focus from invalid target {current} to {Focused}");
+                }
+            }
+            InvalidFocusTargets.Clear();
+        }
+
+        private Control PickIdealNewFocusTargetForInvalidFocusTarget (Control control) {
+            var fm = Focused as IModal;
+            Control idealNewTarget = null;
+            // FIXME: TopLevelFocused fixes some behaviors here but breaks others :(
+            if ((fm?.FocusDonor != null) && Control.IsEqualOrAncestor(Focused, control))
+                idealNewTarget = fm.FocusDonor;
+
+            // Attempt to auto-shift focus as long as our parent chain is focusable
+            if (!Control.IsRecursivelyTransparent(control, includeSelf: false))
+                idealNewTarget = PickNextFocusTarget(control, 1, true);
+            else
+                // Auto-shifting failed, so try to return to the most recently focused control
+                idealNewTarget = PreviousFocused ?? PreviousTopLevelFocused;
+
+            return idealNewTarget;
+        }
+
         // Clean up when a control is removed in case it has focus or mouse capture,
         //  and attempt to return focus to the most recent place it occupied (for modals)
         public void NotifyControlBecomingInvalidFocusTarget (Control control, bool removed) {
@@ -800,22 +840,8 @@ namespace Squared.PRGUI {
             if (Control.IsEqualOrAncestor(_MouseCaptured, control))
                 MouseCaptured = null;
 
-            var fm = Focused as IModal;
-            // FIXME: TopLevelFocused fixes some behaviors here but breaks others :(
-            if (Control.IsEqualOrAncestor(Focused, control)) {
-                if (fm?.FocusDonor != null) {
-                    TrySetFocus(fm?.FocusDonor, false, false);
-                    if (Control.IsEqualOrAncestor(Focused, control))
-                        TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false, false);
-                } else {
-                    // Attempt to auto-shift focus as long as our parent chain is focusable
-                    if (RotateFocusFrom(control, 1, false) && !Control.IsRecursivelyTransparent(Focused))
-                        ;
-                    else
-                        // Auto-shifting failed, so try to return to the most recently focused control
-                        TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false, false);
-                }
-            }
+            InvalidFocusTargets[control] = PickIdealNewFocusTargetForInvalidFocusTarget(control);
+
             if (Control.IsEqualOrAncestor(KeyboardSelection, control))
                 ClearKeyboardSelection();
 
@@ -887,12 +913,6 @@ namespace Squared.PRGUI {
             PreviousUnhandledEvents.AddRange(UnhandledEvents);
             UnhandledEvents.Clear();
 
-            if ((Focused == null) && !AllowNullFocus)
-                Focused = PickNextFocusTarget(null, 1, true);
-
-            var previouslyFixated = FixatedControl;
-
-            var previouslyHovering = Hovering;
             if (
                 (Focused != null) && 
                 (!Focused.IsValidFocusTarget || (FindTopLevelAncestor(Focused) == null))
@@ -902,8 +922,17 @@ namespace Squared.PRGUI {
                 if (Controls.Contains(TopLevelFocused))
                     Focused = TopLevelFocused;
                 else
-                    Focused = null;
+                    NotifyControlBecomingInvalidFocusTarget(Focused, false);
             }
+
+            DefocusInvalidFocusTargets();
+
+            if ((Focused == null) && !AllowNullFocus)
+                Focused = PickNextFocusTarget(null, 1, true);
+
+            var previouslyFixated = FixatedControl;
+
+            var previouslyHovering = Hovering;
 
             UpdateCaptureAndHovering(_CurrentInput.CursorPosition);
             var mouseEventTarget = MouseCaptured ?? Hovering;
@@ -1010,6 +1039,8 @@ namespace Squared.PRGUI {
 
             if (CurrentInputState.ScrollDistance.Length() >= 0.5f)
                 AttemptTargetedScroll(KeyboardSelection ?? Hovering ?? MouseOverLoose ?? Focused, CurrentInputState.ScrollDistance);
+
+            DefocusInvalidFocusTargets();
 
             if (FixatedControl != previouslyFixated)
                 HandleFixationChange(previouslyFixated, FixatedControl);

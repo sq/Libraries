@@ -125,6 +125,7 @@ namespace Squared.PRGUI {
             };
 
             None = new DelegateDecorator {
+                Below = None_Below,
                 ContentClip = None_ContentClip
             };
 
@@ -868,6 +869,20 @@ namespace Squared.PRGUI {
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: Color.White, outerColor: Color.White,
                 blendState: RenderStates.DrawNone
+            );
+        }
+
+        // HACK: Even if a control is undecorated, explicit background colors should work
+        private void None_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            if (!settings.BackgroundColor.HasValue)
+                return;
+
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            renderer.RasterizeRectangle(
+                a, b,
+                radius: 0,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: settings.BackgroundColor.Value, outerColor: settings.BackgroundColor.Value
             );
         }
 

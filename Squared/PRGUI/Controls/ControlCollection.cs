@@ -95,6 +95,9 @@ namespace Squared.PRGUI {
         }
 
         public void Remove (Control control) {
+            if (control == null)
+                return;
+
             Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
             control.UnsetParent(Parent);
 

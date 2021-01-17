@@ -34,7 +34,10 @@ namespace Squared.PRGUI.Controls {
 
         public string Description;
 
-        public int SelectedIndex => Manager.SelectedIndex;
+        public int SelectedIndex {
+            get => Manager.SelectedIndex;
+            set => Manager.SelectedIndex = value;
+        }
 
         private bool SelectedItemHasChangedSinceLastUpdate = true;
 
@@ -224,13 +227,13 @@ namespace Squared.PRGUI.Controls {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
             if (Children.Count > 0) {
-                VirtualItemHeight = Children[0].GetRect(includeOffset: false).Height;
+                VirtualItemHeight = Children[0].GetRect(applyOffset: false).Height;
                 // HACK: Traditional listboxes on windows scroll multiple item(s) at a time on mousewheel
                 //  instead of scrolling on a per-pixel basis
                 ScrollSpeedMultiplier = (VirtualItemHeight / 14);
             }
 
-            var box = GetRect(includeOffset: false, contentRect: true);
+            var box = GetRect(applyOffset: false, contentRect: true);
             var newViewportSize = Math.Max((int)(box.Height / VirtualItemHeight) + 4, 8);
             if (newViewportSize != VirtualViewportSize) {
                 VirtualViewportSize = newViewportSize;

@@ -13,7 +13,14 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public class Container : Control, IControlContainer, IScrollableControl, IPostLayoutListener, IPartiallyIntangibleControl {
-        public ControlCollection Children { get; private set; }
+        private ControlCollection _Children;
+        public ControlCollection Children {
+            get {
+                if (DynamicContentIsInvalid)
+                    GenerateDynamicContent(false || DynamicContentIsInvalid);
+                return _Children;
+            }
+        }
 
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
@@ -80,7 +87,7 @@ namespace Squared.PRGUI.Controls {
 
         public Container () 
             : base () {
-            Children = new ControlCollection(this);
+            _Children = new ControlCollection(this);
             AcceptsMouseInput = true;
 
             HScrollbar = new ScrollbarState {
@@ -141,7 +148,7 @@ namespace Squared.PRGUI.Controls {
 
         internal override void InvalidateLayout () {
             base.InvalidateLayout();
-            foreach (var ch in Children)
+            foreach (var ch in _Children)
                 ch.InvalidateLayout();
         }
 
@@ -218,30 +225,43 @@ namespace Squared.PRGUI.Controls {
         protected override void OnDisplayOffsetChanged () {
             AbsoluteDisplayOffsetOfChildren = AbsoluteDisplayOffset - (_ScrollOffset + VirtualScrollOffset).Floor();
 
-            foreach (var child in Children)
+            foreach (var child in _Children)
                 child.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
         }
 
+        private bool IsGeneratingDynamicContent = false;
+
         protected void GenerateDynamicContent (bool force) {
+            DynamicContentIsInvalid = false;
+
             if (DynamicContents == null)
                 return;
 
             if ((FreezeDynamicContent || CacheDynamicContent) && !force)
                 return;
 
-            DynamicContentIsInvalid = false;
-            if (DynamicBuilder.Container != this)
-                DynamicBuilder = new ContainerBuilder(this);
-            DynamicBuilder.Reset();
-            DynamicContents(ref DynamicBuilder);
-            DynamicBuilder.Finish();
+            if (IsGeneratingDynamicContent)
+                return;
+
+            IsGeneratingDynamicContent = true;
+            try {
+                if (DynamicBuilder.Container != this)
+                    DynamicBuilder = new ContainerBuilder(this);
+                DynamicBuilder.Reset();
+                DynamicContents(ref DynamicBuilder);
+                DynamicBuilder.Finish();
+                // FIXME: Is this right?
+                DynamicContentIsInvalid = false;
+            } finally {
+                IsGeneratingDynamicContent = false;
+            }
         }
         
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             HasContentBounds = false;
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             if (result.IsInvalid) {
-                foreach (var item in Children)
+                foreach (var item in _Children)
                     item.InvalidateLayout();
 
                 return result;
@@ -252,14 +272,14 @@ namespace Squared.PRGUI.Controls {
             if (SuppressChildLayout) {
                 // FIXME: We need to also lock our minimum width in this case
                 // HACK
-                foreach (var item in Children)
+                foreach (var item in _Children)
                     item.InvalidateLayout();
 
                 return result;
             } else {
                 GenerateDynamicContent(false || DynamicContentIsInvalid);
 
-                foreach (var item in Children) {
+                foreach (var item in _Children) {
                     item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
 
                     // If we're performing layout again on an existing layout item, attempt to do the same
@@ -281,7 +301,7 @@ namespace Squared.PRGUI.Controls {
                 return provider?.Container;
         }
 
-        protected override bool ShouldClipContent => ClipChildren && (Children.Count > 0);
+        protected override bool ShouldClipContent => ClipChildren && (_Children.Count > 0);
         // FIXME: Always true?
         protected override bool HasChildren => (Children.Count > 0);
 
@@ -432,8 +452,8 @@ namespace Squared.PRGUI.Controls {
 
         protected override void OnVisibilityChange (bool newValue) {
             base.OnVisibilityChange(newValue);
-            DynamicContentIsInvalid = true;
 
+            DynamicContentIsInvalid = true;
             if (newValue)
                 return;
 

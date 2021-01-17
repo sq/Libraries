@@ -208,7 +208,8 @@ namespace PRGUI.Demo {
                         }
                     }
                 },
-                SurfaceFormat = RenderTargetFormat
+                SurfaceFormat = RenderTargetFormat,
+                AllowNullFocus = false
             };
 
             LastTimeOverUI = Time.Ticks;

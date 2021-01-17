@@ -15,7 +15,8 @@ namespace Squared.PRGUI.Imperative {
     
     public struct ContainerBuilder {
         public UIContext Context { get; internal set; }
-        public IControlContainer Container { get => (IControlContainer)Control; }
+        public IControlContainer Container { get; private set; }
+        public ControlCollection Children { get; private set; }
         public Control Control { get; internal set; }
 
         public ControlFlags? OverrideLayoutFlags;
@@ -35,6 +36,8 @@ namespace Squared.PRGUI.Imperative {
             NextIndex = 0;
             Context = context;
             Control = control;
+            Container = (IControlContainer)control;
+            Children = Container.Children;
             PreviousRemovedControls = new DenseList<Control>();
             CurrentRemovedControls = new DenseList<Control>();
             ExtraLayoutFlags = default(ControlFlags);
@@ -58,9 +61,9 @@ namespace Squared.PRGUI.Imperative {
             CurrentRemovedControls.Clear();
 
             // Trim off any excess controls
-            for (int i = Container.Children.Count - 1; i >= NextIndex; i--) {
-                PreviousRemovedControls.Add(Container.Children[i]);
-                Container.Children.RemoveAt(i);
+            for (int i = Children.Count - 1; i >= NextIndex; i--) {
+                PreviousRemovedControls.Add(Children[i]);
+                Children.RemoveAt(i);
             }
 
             WaitingForFocusBeneficiary = null;
@@ -103,8 +106,8 @@ namespace Squared.PRGUI.Imperative {
 
             TControl instance = null;
             int foundWhere = 0;
-            for (int i = NextIndex, c = Container.Children.Count; i < c; i++) {
-                var tctl = EvaluateMatch<TControl, TData>(Container.Children[i], key, data);
+            for (int i = NextIndex, c = Children.Count; i < c; i++) {
+                var tctl = EvaluateMatch<TControl, TData>(Children[i], key, data);
                 if (tctl == null)
                     continue;
                 instance = tctl;
@@ -117,7 +120,7 @@ namespace Squared.PRGUI.Imperative {
             } else {
                 if (instance != null) {
                     // Found a match in the current list
-                    Container.Children.RemoveAt(foundWhere);
+                    Children.RemoveAt(foundWhere);
                 } else
                     instance = FindRemovedWithData<TControl, TData>(ref CurrentRemovedControls, key, data);
 
@@ -163,8 +166,8 @@ namespace Squared.PRGUI.Imperative {
         public ControlBuilder<TControl> New<TControl> ()
             where TControl : Control, new() {
             TControl instance = null;
-            if (NextIndex < Container.Children.Count)
-                instance = Container.Children[NextIndex] as TControl;
+            if (NextIndex < Children.Count)
+                instance = Children[NextIndex] as TControl;
 
             if (instance == null)
                 instance = new TControl();
@@ -182,8 +185,8 @@ namespace Squared.PRGUI.Imperative {
         public ContainerBuilder NewContainer<TControl> ()
             where TControl : Control, IControlContainer, new() {
             TControl instance = null;
-            if (NextIndex < Container.Children.Count)
-                instance = Container.Children[NextIndex] as TControl;
+            if (NextIndex < Children.Count)
+                instance = Children[NextIndex] as TControl;
 
             ContainerBuilder result;
             Container container;
@@ -229,14 +232,14 @@ namespace Squared.PRGUI.Imperative {
             }
 
             var index = NextIndex++;
-            if (index >= Container.Children.Count)
-                Container.Children.Add(instance);
+            if (index >= Children.Count)
+                Children.Add(instance);
             else {
-                var previous = Container.Children[index];
+                var previous = Children[index];
                 if (previous == instance)
                     return;
 
-                Container.Children[index] = instance;
+                Children[index] = instance;
                 CurrentRemovedControls.Add(previous);
             }
         }
