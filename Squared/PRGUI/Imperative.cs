@@ -301,6 +301,10 @@ namespace Squared.PRGUI.Imperative {
             return new ContainerBuilder(Control);
         }
 
+        public bool GetEvent (string eventName) {
+            return Context.GetUnhandledEvent(Control, eventName);
+        }
+
         public ControlBuilder<TControl> GetEvent (string eventName, out bool result) {
             result = Context.GetUnhandledEvent(Control, eventName);
 

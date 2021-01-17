@@ -464,7 +464,9 @@ namespace Squared.PRGUI {
                     baseColor = ActiveColor;
                 outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.2f : 0.05f);
             } else if (state.IsFlagged(ControlStates.Hovering)) {
-                alpha = hasColor ? 0.95f : 0.55f;
+                alpha = hasColor 
+                    ? 0.95f 
+                    : (isFocused ? 0.8f : 0.55f);
                 thickness = ActiveOutlineThickness + pulseThickness;
                 pulse = Arithmetic.PulseSine(context.Now / 2.5f, 0f, 0.15f);
                 if (hasColor)
