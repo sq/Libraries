@@ -284,6 +284,9 @@ namespace Squared.PRGUI {
         }
 
         private Control PickRotateFocusTarget (bool topLevel, int delta) {
+            if (delta == 0)
+                throw new ArgumentOutOfRangeException("delta");
+
             if (topLevel) {
                 var currentTopLevel = FindTopLevelAncestor(Focused);
                 // HACK
@@ -310,11 +313,17 @@ namespace Squared.PRGUI {
         }
 
         internal bool RotateFocusFrom (Control location, int delta, bool isUserInitiated) {
+            if (delta == 0)
+                throw new ArgumentOutOfRangeException("delta");
+
             var target = PickNextFocusTarget(location, delta, true);
             return TrySetFocus(target, isUserInitiated: isUserInitiated);
         }
 
         public bool RotateFocus (bool topLevel, int delta, bool isUserInitiated) {
+            if (delta == 0)
+                throw new ArgumentOutOfRangeException("delta");
+
             var target = PickRotateFocusTarget(topLevel, delta);
             if (topLevel) {
                 var currentTopLevel = FindTopLevelAncestor(Focused);
@@ -607,6 +616,9 @@ namespace Squared.PRGUI {
         }
 
         public Control FindFocusableSibling (ControlCollection collection, Control current, int delta, bool recursive) {
+            if (delta == 0)
+                throw new ArgumentOutOfRangeException("delta");
+
             var tabOrdered = collection.InTabOrder(FrameIndex, false);
             if (tabOrdered.Count < 1)
                 return null;
@@ -619,6 +631,8 @@ namespace Squared.PRGUI {
                 newIndex = tabIndex + delta;
                 endIndex = Arithmetic.Wrap(tabIndex - delta, 0, tabOrdered.Count - 1);
             }
+
+            var initialIndex = newIndex;
 
             while (newIndex != endIndex) {
                 if (collection.Parent == null)
@@ -645,6 +659,9 @@ namespace Squared.PRGUI {
                 newIndex += delta;
                 if (collection.Parent == null)
                     newIndex = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
+
+                if (newIndex == initialIndex)
+                    break;
             }
 
             foreach (var item in tabOrdered) {
@@ -662,6 +679,9 @@ namespace Squared.PRGUI {
         }
 
         private Control PickNextFocusTarget (Control current, int delta, bool recursive) {
+            if (delta == 0)
+                throw new ArgumentOutOfRangeException("delta");
+
             if (current == null)
                 return FindFocusableSibling(Controls, null, delta, recursive);
 

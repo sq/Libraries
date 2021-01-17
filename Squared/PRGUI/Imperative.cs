@@ -666,6 +666,29 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> SetVirtual (bool value) {
+            if (Control is IListBox lb)
+                lb.Virtual = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetSelectedIndex (int value) {
+            if (Control is IListBox lb)
+                lb.SelectedIndex = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetSelectedItem<T> (T value) {
+            if (Control is ListBox<T> lb)
+                lb.SelectedItem = value;
+            else if (Control is IListBox ilb)
+                ilb.SelectedItem = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetCreateControlForValue<T> (CreateControlForValueDelegate<T> value) {
+            if (Control is ListBox<T> lb)
+                lb.CreateControlForValue = value;
+            return this;
+        }
+
         public ControlBuilder<TControl> InvalidateDynamicContent () {
             if (Control is Container c)
                 c.InvalidateDynamicContent();

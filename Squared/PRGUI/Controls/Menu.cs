@@ -109,7 +109,7 @@ namespace Squared.PRGUI.Controls {
             Visible = false;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
-            ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start;
+            ContainerFlags = ControlFlags.Container_Column | ControlFlags.Container_Align_Start;
             LayoutFlags = ControlFlags.Layout_Floating;
             DisplayOrder = 9900;
             ClipChildren = true;
@@ -129,8 +129,6 @@ namespace Squared.PRGUI.Controls {
 
             foreach (var child in Children) {
                 var lk = child.LayoutKey;
-                var cf = context.Layout.GetLayoutFlags(lk);
-                context.Layout.SetLayoutFlags(lk, cf | ControlFlags.Layout_ForceBreak);
                 var m = context.Layout.GetMargins(lk);
                 m.Top = m.Bottom = 0;
                 context.Layout.SetMargins(lk, m);
@@ -484,6 +482,8 @@ namespace Squared.PRGUI.Controls {
 
         private Vector2 AdjustPosition (UIContext context, Vector2 desiredPosition) {
             var margin = context.Decorations.Menu.Margins;
+            Position = desiredPosition;
+            context.UpdateSubtreeLayout(this);
             var box = GetRect(context: context);
             // HACK: We'd want to use margin.Right/Bottom here normally, but compensation has already
             //  been applied somewhere in the layout engine for the top/left margins so we need to

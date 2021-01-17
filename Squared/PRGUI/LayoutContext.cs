@@ -1062,7 +1062,7 @@ namespace Squared.PRGUI.Layout {
             }
         }
 
-        private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, Dimensions dim) {
+        private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, Dimensions dim, bool collapse) {
             // FIXME: Find some way to early-out here if there are no children?
 
             int idim = (int)dim, wdim = idim + 2;
@@ -1089,7 +1089,15 @@ namespace Squared.PRGUI.Layout {
                 needSize = Math.Max(needSize, childSize);
             }
 
-            ArrangeOverlaySqueezedRange(pItem, dim, startChild, ControlKey.Invalid, offset, needSize);
+            // HACK: If we're not in collapse mode, we want to expand the last row
+            //  to fill all available space
+            var space = collapse
+                ? needSize
+                : Math.Max(needSize, contentRect[wdim] - offset);
+
+            ArrangeOverlaySqueezedRange(
+                pItem, dim, startChild, ControlKey.Invalid, offset, space
+            );
             offset += needSize;
             return offset;
         }
@@ -1104,7 +1112,7 @@ namespace Squared.PRGUI.Layout {
                 case ControlFlags.Container_Column | ControlFlags.Container_Wrap:
                     if (dim != Dimensions.X) {
                         ArrangeStacked(pItem, Dimensions.Y, true);
-                        var offset = ArrangeWrappedOverlaySqueezed(pItem, Dimensions.X);
+                        var offset = ArrangeWrappedOverlaySqueezed(pItem, Dimensions.X, true);
                         // FIXME: Content rect?
                         (*pRect)[0] = offset - (*pRect)[0];
                     }
@@ -1113,7 +1121,7 @@ namespace Squared.PRGUI.Layout {
                     if (dim == Dimensions.X)
                         ArrangeStacked(pItem, Dimensions.X, true);
                     else
-                        ArrangeWrappedOverlaySqueezed(pItem, Dimensions.Y);
+                        ArrangeWrappedOverlaySqueezed(pItem, Dimensions.Y, false);
                     break;
                 case ControlFlags.Container_Column:
                 case ControlFlags.Container_Row:

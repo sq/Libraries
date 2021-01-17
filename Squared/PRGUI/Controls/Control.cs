@@ -375,8 +375,7 @@ namespace Squared.PRGUI {
         /// <param name="contentRect">Insets the rectangle by the control's padding.</param>
         /// <param name="exteriorRect">Expands the rectangle to include the control's margin.</param>
         public RectF GetRect (bool applyOffset = true, bool contentRect = false, bool exteriorRect = false, UIContext context = null) {
-            // FIXME
-            if (!Visible)
+            if (LayoutKey.IsInvalid)
                 return default(RectF);
 
             context = context ?? Context;

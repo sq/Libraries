@@ -13,7 +13,18 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class ListBox<T> : Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IValueControl<T>, ISelectionBearer, IPartiallyIntangibleControl, IFuzzyHitTestTarget {
+    public interface IListBox {
+        int Count { get; }
+        int SelectedIndex { get; set; }
+        object SelectedItem { get; set; }
+        bool Virtual { get; set; }
+    }
+
+    public class ListBox<T> : 
+        Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, 
+        IValueControl<T>, ISelectionBearer, IListBox,
+        IPartiallyIntangibleControl, IFuzzyHitTestTarget 
+    {
         public static bool SelectOnMouseDown = false;
 
         public const int ControlMinimumHeight = 75, ControlMinimumWidth = 150;
@@ -26,9 +37,25 @@ namespace Squared.PRGUI.Controls {
         }
         public ItemList<T> Items => Manager.Items;
 
-        public CreateControlForValueDelegate<T> CreateControlForValue = null;
+        int IListBox.Count => Items.Count;
+        object IListBox.SelectedItem {
+            get => SelectedItem;
+            set => SelectedItem = (T)value;
+        }
+
+        private CreateControlForValueDelegate<T> _CreateControlForValue,
+            DefaultCreateControlForValue;
         public Func<T, AbstractString> FormatValue = null;
-        private CreateControlForValueDelegate<T> DefaultCreateControlForValue;
+
+        public CreateControlForValueDelegate<T> CreateControlForValue {
+            get => _CreateControlForValue;
+            set {
+                if (_CreateControlForValue == value)
+                    return;
+                _CreateControlForValue = value;
+                NeedsUpdate = true;
+            }
+        }
 
         public const float AutoscrollMarginSize = 24f;
 
@@ -88,7 +115,7 @@ namespace Squared.PRGUI.Controls {
             PageSize = 1;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
-            ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start;
+            ContainerFlags = ControlFlags.Container_Column | ControlFlags.Container_Align_Start;
             ClipChildren = true;
             ShowHorizontalScrollbar = false;
             Scrollable = true;
@@ -214,8 +241,6 @@ namespace Squared.PRGUI.Controls {
 
             foreach (var child in Children) {
                 var lk = child.LayoutKey;
-                var cf = context.Layout.GetLayoutFlags(lk);
-                context.Layout.SetLayoutFlags(lk, cf | ControlFlags.Layout_ForceBreak);
                 var m = context.Layout.GetMargins(lk);
                 m.Top = m.Bottom = 0;
                 context.Layout.SetMargins(lk, m);
