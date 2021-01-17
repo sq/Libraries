@@ -77,7 +77,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        private bool _Visible = true, _VisibleHasChanged = false;
+        private bool _Visible = true, _VisibleHasChanged = false, _Enabled = true;
 
         /// <summary>
         /// If false, the control will not participate in layout or rasterization
@@ -95,7 +95,16 @@ namespace Squared.PRGUI {
         /// <summary>
         /// If false, the control cannot receive focus or input
         /// </summary>
-        public bool Enabled { get; set; } = true;
+        public bool Enabled {
+            get => _Enabled;
+            set {
+                if (_Enabled == value)
+                    return;
+                _Enabled = value;
+                if (value == false)
+                    Context?.NotifyControlBecomingInvalidFocusTarget(this, false);
+            }
+        }
         /// <summary>
         /// Can receive focus via user input
         /// </summary>

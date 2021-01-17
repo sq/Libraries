@@ -840,7 +840,8 @@ namespace Squared.PRGUI {
             if (Control.IsEqualOrAncestor(_MouseCaptured, control))
                 MouseCaptured = null;
 
-            InvalidFocusTargets[control] = PickIdealNewFocusTargetForInvalidFocusTarget(control);
+            InvalidFocusTargets[control] = 
+                PickIdealNewFocusTargetForInvalidFocusTarget(control);
 
             if (Control.IsEqualOrAncestor(KeyboardSelection, control))
                 ClearKeyboardSelection();
@@ -868,6 +869,13 @@ namespace Squared.PRGUI {
             else if (existingIndex > 0)
                 InputSources.RemoveAt(existingIndex);
             InputSources.Insert(0, source);
+        }
+
+        private void EnsureValidFocus () {
+            DefocusInvalidFocusTargets();
+
+            if ((Focused == null) && !AllowNullFocus)
+                Focused = PickNextFocusTarget(null, 1, true);
         }
 
         public void UpdateInput (bool processEvents = true) {
@@ -925,10 +933,7 @@ namespace Squared.PRGUI {
                     NotifyControlBecomingInvalidFocusTarget(Focused, false);
             }
 
-            DefocusInvalidFocusTargets();
-
-            if ((Focused == null) && !AllowNullFocus)
-                Focused = PickNextFocusTarget(null, 1, true);
+            EnsureValidFocus();
 
             var previouslyFixated = FixatedControl;
 
@@ -1040,7 +1045,7 @@ namespace Squared.PRGUI {
             if (CurrentInputState.ScrollDistance.Length() >= 0.5f)
                 AttemptTargetedScroll(KeyboardSelection ?? Hovering ?? MouseOverLoose ?? Focused, CurrentInputState.ScrollDistance);
 
-            DefocusInvalidFocusTargets();
+            EnsureValidFocus();
 
             if (FixatedControl != previouslyFixated)
                 HandleFixationChange(previouslyFixated, FixatedControl);
