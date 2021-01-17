@@ -24,6 +24,8 @@ namespace Squared.PRGUI.Imperative {
         private DenseList<Control> PreviousRemovedControls, CurrentRemovedControls;
         private int NextIndex;
 
+        private Control WaitingForFocusBeneficiary;
+
         internal ContainerBuilder (UIContext context, Control control) {
             if (control == null)
                 throw new ArgumentNullException("control");
@@ -37,6 +39,7 @@ namespace Squared.PRGUI.Imperative {
             CurrentRemovedControls = new DenseList<Control>();
             ExtraLayoutFlags = default(ControlFlags);
             OverrideLayoutFlags = null;
+            WaitingForFocusBeneficiary = null;
         }
 
         public ContainerBuilder (Control container)
@@ -44,6 +47,7 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public void Reset () {
+            WaitingForFocusBeneficiary = null;
             NextIndex = 0;
         }
 
@@ -58,6 +62,8 @@ namespace Squared.PRGUI.Imperative {
                 PreviousRemovedControls.Add(Container.Children[i]);
                 Container.Children.RemoveAt(i);
             }
+
+            WaitingForFocusBeneficiary = null;
         }
 
         public ControlBuilder<TControl> Data<TControl, TData> (TData data)
@@ -128,6 +134,12 @@ namespace Squared.PRGUI.Imperative {
             }
 
             return new ControlBuilder<TControl>(instance);
+        }
+
+        public ControlBuilder<StaticText> Label (AbstractString text) {
+            var result = this.Text<StaticText>(text);
+            WaitingForFocusBeneficiary = result.Control;
+            return result;
         }
 
         public ControlBuilder<StaticText> Text (AbstractString text) {
@@ -210,6 +222,11 @@ namespace Squared.PRGUI.Imperative {
         private void AddInternal<TControl> (TControl instance)
             where TControl : Control {
             var t = typeof(TControl);
+
+            if ((WaitingForFocusBeneficiary != null) && (WaitingForFocusBeneficiary != instance)) {
+                WaitingForFocusBeneficiary.FocusBeneficiary = instance;
+                WaitingForFocusBeneficiary = null;
+            }
 
             var index = NextIndex++;
             if (index >= Container.Children.Count)
