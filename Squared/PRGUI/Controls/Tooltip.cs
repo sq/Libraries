@@ -19,7 +19,6 @@ namespace Squared.PRGUI.Controls {
             Appearance.AutoScaleMetrics = false;
             Intangible = true;
             LayoutFlags = ControlFlags.Layout_Floating;
-            DisplayOrder = 9999;
             Wrap = true;
             Multiline = true;
         }

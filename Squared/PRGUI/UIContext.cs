@@ -541,7 +541,7 @@ namespace Squared.PRGUI {
         private Controls.StaticText GetCompositionPreviewInstance () {
             if (CachedCompositionPreview == null) {
                 CachedCompositionPreview = new Controls.StaticText {
-                    DisplayOrder = 9999,
+                    DisplayOrder = int.MaxValue,
                     Wrap = false,
                     Multiline = false,
                     Intangible = true,
@@ -1209,6 +1209,7 @@ namespace Squared.PRGUI {
             }
 
             instance.Visible = true;
+            instance.DisplayOrder = int.MaxValue;
 
             if (textChanged || !IsTooltipVisible) {
                 var idealMaxWidth = CanvasSize.X * 0.35f;
