@@ -30,6 +30,7 @@ namespace Squared.PRGUI.Controls {
             }
             set {
                 SetPosition(value, true);
+                NeedsAlignment = false;
             }
         }
 
@@ -37,7 +38,6 @@ namespace Squared.PRGUI.Controls {
             if (updateDesiredPosition)
                 _DesiredPosition = value;
 
-            NeedsAlignment = false;
             Margins.Left = value.X;
             Margins.Top = value.Y;
         }

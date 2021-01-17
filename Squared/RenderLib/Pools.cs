@@ -114,6 +114,7 @@ namespace Squared.Render {
         public          int LargePoolMaxItemSize;
 
         private ThreadGroup _ThreadGroup;
+        private WorkQueue<ListClearWorkItem> _ClearQueue;
         public ThreadGroup ThreadGroup {
             get {
                 return _ThreadGroup;
@@ -122,8 +123,8 @@ namespace Squared.Render {
                 if (_ThreadGroup == value)
                     return;
                 _ThreadGroup = value;
-                value?.GetQueueForType<ListClearWorkItem>()
-                    ?.RegisterDrainListener(OnClearListDrained);
+                _ClearQueue = value?.GetQueueForType<ListClearWorkItem>();
+                _ClearQueue?.RegisterDrainListener(OnClearListDrained);
             }
         }
 
@@ -208,25 +209,32 @@ namespace Squared.Render {
         }
 
         void IDrainable.WaitForWorkItems () {
-            if (ThreadGroup == null)
-                return;
-
-            ThreadGroup.GetQueueForType<ListClearWorkItem>().WaitUntilDrained();
+            _ClearQueue?.WaitUntilDrained();
         }
 
         private void ClearAndReturn (UnorderedList<T> list, UnorderedList<UnorderedList<T>> pool, int limit) {
-            if (ThreadGroup != null) {
-                ThreadGroup.Enqueue(new ListClearWorkItem {
+            if (_ClearQueue != null) {
+                _ClearQueue.Enqueue(new ListClearWorkItem {
                     List = list
                 });
+                ThreadGroup.NotifyQueuesChanged();
                 return;
             }
 
+            // HACK: Acquiring the lock here would be technically correct but
+            //  unnecessarily slow, since we're just trying to avoid doing a clear
+            //  in cases where the list will be GCd anyway
             if (pool.Count >= limit)
                 return;
 
             list.Clear();
-            pool.Add(list);
+
+            lock (pool) {
+                if (pool.Count >= limit)
+                    return;
+
+                pool.Add(list);
+            }
         }
 
         public void Release (ref UnorderedList<T> _list) {
@@ -243,8 +251,7 @@ namespace Squared.Render {
                             return;
                     }
 
-                    lock (_LargePool)
-                        ClearAndReturn(list, _LargePool, LargePoolCapacity);
+                    ClearAndReturn(list, _LargePool, LargePoolCapacity);
                 }
 
                 return;
@@ -255,8 +262,7 @@ namespace Squared.Render {
                     return;
             }
 
-            lock (_Pool)
-                ClearAndReturn(list, _Pool, SmallPoolCapacity);
+            ClearAndReturn(list, _Pool, SmallPoolCapacity);
         }
     }
 
