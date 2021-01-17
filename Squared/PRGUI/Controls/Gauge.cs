@@ -90,8 +90,8 @@ namespace Squared.PRGUI.Controls {
             Color? color = null;
             decorations.GetTextSettings(default(UIOperationContext), default(ControlStates), out Render.Material temp, ref color);
             base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
-            minimumHeight = Math.Max(Math.Max(minimumHeight ?? 0, ControlMinimumHeight), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
-            minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumWidth);
+            minimumHeight = Math.Max(Math.Max(minimumHeight ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+            minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
         }
         
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

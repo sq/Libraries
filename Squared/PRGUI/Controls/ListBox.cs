@@ -110,13 +110,13 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
             base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
             if (minimumWidth.HasValue)
-                minimumWidth = Math.Max(minimumWidth.Value, ControlMinimumWidth);
+                minimumWidth = Math.Max(minimumWidth.Value, ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
             else
-                minimumWidth = ControlMinimumWidth;
+                minimumWidth = ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X;
             if (minimumHeight.HasValue)
-                minimumHeight = Math.Max(minimumHeight.Value, ControlMinimumHeight);
+                minimumHeight = Math.Max(minimumHeight.Value, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y);
             else
-                minimumHeight = ControlMinimumHeight;
+                minimumHeight = ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y;
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
