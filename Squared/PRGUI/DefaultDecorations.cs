@@ -266,7 +266,7 @@ namespace Squared.PRGUI {
             };
 
             Slider = new DelegateDecorator {
-                Margins = new Margins(4, 0),
+                Margins = new Margins(4, 4),
                 Padding = new Margins(0, 0, 0, 2.75f),
                 Below = Slider_Below,
                 GetTextSettings = GetTextSettings

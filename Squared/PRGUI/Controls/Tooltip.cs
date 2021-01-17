@@ -32,6 +32,7 @@ namespace Squared.PRGUI.Controls {
 
 namespace Squared.PRGUI {
     public interface ICustomTooltipTarget {
+        AbstractTooltipContent GetContent ();
         float? TooltipAppearanceDelay { get; }
         float? TooltipDisappearDelay { get; }
         bool ShowTooltipWhileMouseIsHeld { get; }

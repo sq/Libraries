@@ -342,6 +342,16 @@ namespace Squared.PRGUI {
                     (ModalStack.Count > 0);
         }
 
+        /// <summary>
+        /// Indicates that input is currently in progress (a key or button is held)
+        /// </summary>
+        public bool IsInputInProgress {
+            get =>
+                _LastInput.AreAnyKeysHeld ||
+                    (MouseCaptured != null) ||
+                    AcceleratorOverlayVisible;
+        }
+
         public Control TopLevelFocused { get; private set; }
         public Control TopLevelModalFocusDonor { get; private set; }
 
@@ -1041,8 +1051,12 @@ namespace Squared.PRGUI {
 
             var now = Now;
             var tooltipContent = default(AbstractString);
-            if (target != null)
-                tooltipContent = target.TooltipContent.Get(target);
+            if (target != null) {
+                if (cttt != null)
+                    tooltipContent = cttt.GetContent().Get(target);
+                else
+                    tooltipContent = target.TooltipContent.Get(target);
+            }
 
             var disappearDelay = (cttt?.TooltipDisappearDelay ?? TooltipDisappearDelay);
 

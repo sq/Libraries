@@ -78,21 +78,15 @@ namespace Squared.PRGUI.Controls {
 
         protected bool HasCustomTooltipContent => !TooltipContent.Equals(default(AbstractTooltipContent));
 
+        AbstractTooltipContent _GetDefaultTooltip = new AbstractTooltipContent(GetDefaultTooltip);
+        AbstractTooltipContent ICustomTooltipTarget.GetContent () => _GetDefaultTooltip;
+
         float? ICustomTooltipTarget.TooltipDisappearDelay => null;
         float? ICustomTooltipTarget.TooltipAppearanceDelay => HasCustomTooltipContent ? (float?)null : 0f;
         bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => true;
         bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => HasCustomTooltipContent;
         bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
         bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
-
-        private AbstractTooltipContent _UserTooltipContent = default(AbstractTooltipContent);
-        new public AbstractTooltipContent TooltipContent {
-            get => _UserTooltipContent;
-            set {
-                _UserTooltipContent = value;
-                InvalidateTooltip();
-            }
-        }
 
         private string _TooltipFormat = null;
         /// <summary>
@@ -101,6 +95,8 @@ namespace Squared.PRGUI.Controls {
         public string TooltipFormat {
             get => _TooltipFormat;
             set {
+                if (_TooltipFormat == value)
+                    return;
                 _TooltipFormat = value;
                 InvalidateTooltip();
             }
@@ -109,7 +105,6 @@ namespace Squared.PRGUI.Controls {
         public Slider () : base () {
             AcceptsFocus = true;
             AcceptsMouseInput = true;
-            base.TooltipContent = new AbstractTooltipContent(GetDefaultTooltip);
         }
 
         private readonly StringBuilder TooltipBuilder = new StringBuilder();

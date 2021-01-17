@@ -18,6 +18,9 @@ namespace Squared.PRGUI.Imperative {
         public IControlContainer Container { get => (IControlContainer)Control; }
         public Control Control { get; internal set; }
 
+        public ControlFlags? OverrideLayoutFlags;
+        public ControlFlags ExtraLayoutFlags;
+
         private DenseList<Control> PreviousRemovedControls, CurrentRemovedControls;
         private int NextIndex;
 
@@ -32,6 +35,8 @@ namespace Squared.PRGUI.Imperative {
             Control = control;
             PreviousRemovedControls = new DenseList<Control>();
             CurrentRemovedControls = new DenseList<Control>();
+            ExtraLayoutFlags = default(ControlFlags);
+            OverrideLayoutFlags = null;
         }
 
         public ContainerBuilder (Control container)
@@ -118,6 +123,7 @@ namespace Squared.PRGUI.Imperative {
                     instance = new TControl();
 
                 instance.Data.Set<TData>(key, data);
+                ApplyLayoutFlags(instance);
                 AddInternal(instance);
             }
 
@@ -135,6 +141,13 @@ namespace Squared.PRGUI.Imperative {
             return result;
         }
 
+        private void ApplyLayoutFlags (Control control) {
+            if (OverrideLayoutFlags.HasValue)
+                control.LayoutFlags = OverrideLayoutFlags.Value;
+
+            control.LayoutFlags |= ExtraLayoutFlags;
+        }
+
         public ControlBuilder<TControl> New<TControl> ()
             where TControl : Control, new() {
             TControl instance = null;
@@ -144,6 +157,7 @@ namespace Squared.PRGUI.Imperative {
             if (instance == null)
                 instance = new TControl();
 
+            ApplyLayoutFlags(instance);
             AddInternal(instance);
 
             return new ControlBuilder<TControl>(instance);
@@ -178,6 +192,7 @@ namespace Squared.PRGUI.Imperative {
                 result = new ContainerBuilder(instance);
             }
 
+            ApplyLayoutFlags(instance);
             AddInternal(instance);
 
             // FIXME: The child builder will create a temporary list
@@ -425,7 +440,9 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
-        public ControlBuilder<TControl> SetTooltip (AbstractTooltipContent value) {
+        public ControlBuilder<TControl> SetTooltip (AbstractTooltipContent value, string format = null) {
+            if (Control is Slider cast)
+                cast.TooltipFormat = format;
             Control.TooltipContent = value;
             return this;
         }
@@ -459,6 +476,12 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> SetKeyboardSpeed(float value) {
+            if (Control is Slider cast1)
+                cast1.KeyboardSpeed = value;
+            // FIXME: Parameter editor
+            return this;
+        }
         public ControlBuilder<TControl> SetIntegral (bool value) {
             if (Control is Slider cast1)
                 cast1.Integral = value;
@@ -476,9 +499,9 @@ namespace Squared.PRGUI.Imperative {
 
             if (Control is Slider cast2) {
                 if (min.HasValue)
-                    cast2.Minimum = (float)(object)min;
+                    cast2.Minimum = Convert.ToSingle(min);
                 if (max.HasValue)
-                    cast2.Maximum = (float)(object)max;
+                    cast2.Maximum = Convert.ToSingle(max);
             }
 
             return this;
@@ -489,8 +512,30 @@ namespace Squared.PRGUI.Imperative {
             cast.Value = value;
             return this;
         }
+        public bool Value<TValue> (ref TValue value) {
+            Value(ref value, out bool temp);
+            return temp;
+        }
         public ControlBuilder<TControl> Value<TValue> (ref TValue value, out bool changed) {
             var cast = (Control as IValueControl<TValue>);
+            if (cast == null) {
+                var t = typeof(TValue);
+                // HACK: For sliders, attempt to convert to float
+                if (
+                    t.IsPrimitive &&
+                    (t != typeof(float)) &&
+                    (Control is IValueControl<float>)
+                ) {
+                    var temp = Convert.ToSingle(value);
+                    Value<float>(ref temp, out changed);
+                    if (changed)
+                        value = (TValue)Convert.ChangeType(temp, t);
+                    return this;
+                }
+
+                throw new InvalidCastException("Control is not a compatible value control");
+            }
+
             GetEvent(UIEvents.ValueChanged, out changed);
             if (!changed)
                 GetEvent(UIEvents.CheckedChanged, out changed);

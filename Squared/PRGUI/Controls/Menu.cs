@@ -33,6 +33,7 @@ namespace Squared.PRGUI.Controls {
 
         private Future<Control> NextResultFuture = null;
 
+        AbstractTooltipContent ICustomTooltipTarget.GetContent () => SelectedItemTooltip;
         float? ICustomTooltipTarget.TooltipDisappearDelay => null;
         float? ICustomTooltipTarget.TooltipAppearanceDelay => TooltipContent.Equals(SelectedItemTooltip) && 
             (SelectedItem != null) &&
@@ -99,8 +100,6 @@ namespace Squared.PRGUI.Controls {
             }
         );
 
-        new public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
-
         protected Control _FocusDonor;
         public Control FocusDonor => _FocusDonor;
 
@@ -115,7 +114,6 @@ namespace Squared.PRGUI.Controls {
             DisplayOrder = 9900;
             ClipChildren = true;
             ShowHorizontalScrollbar = false;
-            base.TooltipContent = SelectedItemTooltip;
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
