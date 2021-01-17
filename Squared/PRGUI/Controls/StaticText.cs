@@ -21,6 +21,11 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public bool AutoSizeIsMaximum = true;
 
+        /// <summary>
+        /// If set, accessibility reading will use this control's tooltip instead of its text.
+        /// </summary>
+        public bool UseTooltipForReading = false;
+
         public const float AutoSizePadding = 3f;
         public const bool DiagnosticText = false;
 
@@ -440,7 +445,13 @@ namespace Squared.PRGUI.Controls {
             return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText(GetPlainText())}'";
         }
 
-        protected virtual AbstractString GetReadingText () => GetPlainText();
+        protected virtual AbstractString GetReadingText () {
+            var plainText = GetPlainText();
+            if (UseTooltipForReading || string.IsNullOrWhiteSpace(plainText))
+                return TooltipContent.Get(this);
+
+            return plainText;
+        }
 
         protected virtual void FormatValueInto (StringBuilder sb) {
             sb.Append(Text);

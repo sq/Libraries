@@ -295,6 +295,8 @@ namespace Squared.PRGUI.Input {
             current.Buttons |= ((mouseState.LeftButton == ButtonState.Pressed) ? MouseButtons.Left : MouseButtons.None);
             current.Buttons |= ((mouseState.MiddleButton == ButtonState.Pressed) ? MouseButtons.Middle : MouseButtons.None);
             current.Buttons |= ((mouseState.RightButton == ButtonState.Pressed) ? MouseButtons.Right : MouseButtons.None);
+            current.Buttons |= ((mouseState.XButton1 == ButtonState.Pressed) ? MouseButtons.X1 : MouseButtons.None);
+            current.Buttons |= ((mouseState.XButton2 == ButtonState.Pressed) ? MouseButtons.X2 : MouseButtons.None);
 
             var prevPosition = new Vector2(PreviousState.X, PreviousState.Y) + Offset;
             var newPosition = new Vector2(mouseState.X, mouseState.Y) + Offset;

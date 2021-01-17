@@ -941,16 +941,16 @@ namespace Squared.PRGUI {
 
             if ((LastMouseButtons == MouseButtons.None) && (CurrentMouseButtons != MouseButtons.None)) {
                 // FIXME: This one should probably always be Hovering
-                HandleMouseDown(mouseEventTarget, mousePosition);
+                HandleMouseDown(mouseEventTarget, mousePosition, CurrentMouseButtons);
                 mouseDownPosition = mouseDownPosition ?? mousePosition;
             } else if ((LastMouseButtons != MouseButtons.None) && (CurrentMouseButtons == MouseButtons.None)) {
                 bool scrolled = false;
                 if (Hovering != null)
-                    scrolled = HandleMouseUp(mouseEventTarget, mousePosition, mouseDownPosition);
+                    scrolled = HandleMouseUp(mouseEventTarget, mousePosition, mouseDownPosition, LastMouseButtons);
                 else if (DragToScrollTarget != null)
                     scrolled = TeardownDragToScroll(mouseEventTarget, mousePosition);
-                else if (MouseCaptured != null)
-                    scrolled = HandleMouseUp(mouseEventTarget, mousePosition, mouseDownPosition);
+                else /* if (MouseCaptured != null) */
+                    scrolled = HandleMouseUp(mouseEventTarget, mousePosition, mouseDownPosition, LastMouseButtons);
 
                 // if (MouseCaptured != null) {
                 var movedDistance = mousePosition - mouseDownPosition;

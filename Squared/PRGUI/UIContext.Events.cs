@@ -167,6 +167,9 @@ namespace Squared.PRGUI {
         }
 
         private bool IsInDoubleClickWindow (Control target, Vector2 position) {
+            if (target == null)
+                return false;
+
             var movedDistance = (position - LastClickPosition).Length();
             if (
                 (LastClickTarget == target) &&
@@ -739,14 +742,11 @@ namespace Squared.PRGUI {
         }
 
         internal MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
-            if (target == null)
-                return default(MouseEventArgs);
-
             var transformedGlobalPosition = CalculateRelativeGlobalPosition(target, globalPosition);
 
             {
-                var box = target.GetRect(contentRect: false);
-                var contentBox = target.GetRect(contentRect: true);
+                var box = target?.GetRect(contentRect: false) ?? CanvasRect;
+                var contentBox = target?.GetRect(contentRect: true) ?? CanvasRect;
                 var mdp = MouseDownPosition ?? mouseDownPosition ?? globalPosition;
                 var travelDistance = (globalPosition - mdp).Length();
                 return new MouseEventArgs {
@@ -777,12 +777,14 @@ namespace Squared.PRGUI {
             }
         }
 
-        private bool HandleMouseDown (Control target, Vector2 globalPosition) {
+        private bool HandleMouseDown (Control target, Vector2 globalPosition, MouseButtons newButtons) {
             var relinquishedHandlers = new HashSet<Control>();
 
             AcceleratorOverlayVisible = false;
             ClearKeyboardSelection();
             HideTooltipForMouseInput(true);
+
+            bool result = false;
 
             // HACK: Prevent infinite repeat in corner cases
             int steps = 5;
@@ -800,12 +802,14 @@ namespace Squared.PRGUI {
                 // FIXME: Suppress if disabled?
                 LastMouseDownTime = Now;
                 var previouslyCaptured = MouseCaptured;
-                var ok = FireEvent(UIEvents.MouseDown, target, MakeMouseEventArgs(target, globalPosition, null));
+                var args = MakeMouseEventArgs(target, globalPosition, null);
+                var ok = FireEvent(UIEvents.MouseDown, target, args);
 
                 // HACK: A control can pre-emptively relinquish focus to pass the mouse event on to someone else
                 if (
                     (previouslyCaptured == target) &&
-                    (ReleasedCapture == target)
+                    (ReleasedCapture == target) &&
+                    (target != null)
                 ) {
                     relinquishedHandlers.Add(target);
                     UpdateCaptureAndHovering(globalPosition, target);
@@ -813,26 +817,29 @@ namespace Squared.PRGUI {
                     continue;
                 } else {
                     ReleasedCapture = null;
-                    if (ok)
-                        return true;
+                    result = ok;
+                    break;
                 }
             }
 
             PreviousMouseDownTarget = target;
 
-            if (EnableDragToScroll)
+            if (!result && EnableDragToScroll && (newButtons == MouseButtons.Left))
                 return InitDragToScroll(target, globalPosition);
 
-            return false;
+            return result;
         }
 
-        private bool HandleMouseUp (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
+        private bool HandleMouseUp (Control target, Vector2 globalPosition, Vector2? mouseDownPosition, MouseButtons releasedButtons) {
             ClearKeyboardSelection();
             HideTooltipForMouseInput(false);
             MouseDownPosition = null;
             // FIXME: Suppress if disabled?
-            FireEvent(UIEvents.MouseUp, target, MakeMouseEventArgs(target, globalPosition, mouseDownPosition));
-            return TeardownDragToScroll(MouseCaptured ?? target, globalPosition);
+            var ok = FireEvent(UIEvents.MouseUp, target, MakeMouseEventArgs(target, globalPosition, mouseDownPosition));
+            if (releasedButtons == MouseButtons.Left)
+                return TeardownDragToScroll(MouseCaptured ?? target, globalPosition);
+            else
+                return false;
         }
 
         private void HandleMouseMove (Control target, Vector2 globalPosition) {
