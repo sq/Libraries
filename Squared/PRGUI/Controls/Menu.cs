@@ -438,7 +438,7 @@ namespace Squared.PRGUI.Controls {
             IsActive = true;
 
             AcceptsFocus = true;
-            DisplayOrder = context.Controls.Max(c => c.DisplayOrder) + 1;
+            DisplayOrder = context.Controls.PickNewHighestDisplayOrder(this);
             if (!context.Controls.Contains(this))
                 context.Controls.Add(this);
 

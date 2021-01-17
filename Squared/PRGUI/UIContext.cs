@@ -219,7 +219,7 @@ namespace Squared.PRGUI {
 
         internal List<IModal> ModalStack = new List<IModal>();
 
-        IModal ActiveModal =>
+        public IModal ActiveModal =>
             (ModalStack.Count > 0)
                 ? ModalStack[ModalStack.Count - 1]
                 : null;
@@ -730,7 +730,7 @@ namespace Squared.PRGUI {
             if (ModalStack.Contains(modal))
                 throw new InvalidOperationException("Modal already visible");
             var ctl = (Control)modal;
-            ctl.DisplayOrder = Controls.Max(c => c.DisplayOrder) + 1;
+            ctl.DisplayOrder = Controls.PickNewHighestDisplayOrder(ctl);
             if (!Controls.Contains(ctl))
                 Controls.Add(ctl);
             NotifyModalShown(modal);
@@ -900,7 +900,11 @@ namespace Squared.PRGUI {
 
             var activeModal = ActiveModal;
             var wasInputBlocked = false;
-            if ((activeModal?.BlockInput == true) && (activeModal != topLevelTarget)) {
+            if (
+                (activeModal?.BlockInput == true) && 
+                (activeModal != topLevelTarget) &&
+                (topLevelTarget?.DisplayOrder < int.MaxValue)
+            ) {
                 mouseEventTarget = null;
                 wasInputBlocked = true;
             }
@@ -1239,7 +1243,12 @@ namespace Squared.PRGUI {
             var sorted = Controls.InDisplayOrder(FrameIndex);
             for (var i = sorted.Count - 1; i >= 0; i--) {
                 var control = sorted[i];
-                if (areHitTestsBlocked && !ModalStack.Contains(control as IModal))
+                if (
+                    areHitTestsBlocked && 
+                    !ModalStack.Contains(control as IModal) &&
+                    // HACK to allow floating controls over the modal stack
+                    (control.DisplayOrder != int.MaxValue)
+                )
                     continue;
                 var result = control.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible);
                 if (result != null)

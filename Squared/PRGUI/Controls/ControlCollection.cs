@@ -210,6 +210,21 @@ namespace Squared.PRGUI {
         IEnumerator IEnumerable.GetEnumerator () {
             return ((IEnumerable)Items).GetEnumerator();
         }
+
+        public int PickNewHighestDisplayOrder (Control ctl) {
+            int result = int.MinValue;
+            foreach (var item in Items) {
+                if (item == ctl)
+                    continue;
+                if (item.DisplayOrder >= int.MaxValue)
+                    continue;
+                result = Math.Max(result, item.DisplayOrder + 1);
+            }
+            if (result <= int.MinValue)
+                return Math.Max(ctl.DisplayOrder, 0);
+            else
+                return result;
+        }
     }
 
     internal struct IndexedControl {
