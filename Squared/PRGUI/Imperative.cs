@@ -22,7 +22,7 @@ namespace Squared.PRGUI.Imperative {
         public ControlFlags? OverrideLayoutFlags;
         public ControlFlags ExtraLayoutFlags;
 
-        private DenseList<Control> PreviousRemovedControls, CurrentRemovedControls;
+        internal DenseList<Control> PreviousRemovedControls, CurrentRemovedControls;
         private int NextIndex;
 
         private Control WaitingForFocusBeneficiary;
@@ -189,20 +189,12 @@ namespace Squared.PRGUI.Imperative {
                 instance = Children[NextIndex] as TControl;
 
             ContainerBuilder result;
-            Container container;
+            ContainerBase container;
             if (instance == null) {
                 instance = new TControl();
                 result = new ContainerBuilder(instance);
-            } else if ((container = (instance as Container)) != null) {
-                // HACK: A lot of gross stuff going on here to try and reuse lists
-                if ((container.DynamicContents == null) && (container.DynamicBuilder.Container == container)) {
-                    container.DynamicBuilder.PreviousRemovedControls.EnsureList();
-                    container.DynamicBuilder.CurrentRemovedControls.EnsureList();
-                    result = container.DynamicBuilder;
-                } else {
-                    result = new ContainerBuilder(instance);
-                    container.DynamicBuilder = result;
-                }
+            } else if ((container = (instance as ContainerBase)) != null) {
+                container.EnsureDynamicBuilderInitialized(out result);
             } else {
                 result = new ContainerBuilder(instance);
             }

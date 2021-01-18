@@ -358,10 +358,10 @@ namespace Squared.PRGUI.Controls {
             return base.OnKeyPress(evt);
         }
 
-        protected override bool OnEvent<T> (string name, T args) {
+        protected override bool OnEvent<TArgs> (string name, TArgs args) {
             // Don't respond to focus changes if they involve a context menu
             if (args is Menu)
-                return base.OnEvent<T>(name, args);
+                return base.OnEvent(name, args);
 
             if (name == UIEvents.LostFocus) {
                 FinalizeValue();
@@ -370,7 +370,7 @@ namespace Squared.PRGUI.Controls {
                 SelectAll();
             }
 
-            return base.OnEvent<T>(name, args);
+            return base.OnEvent(name, args);
         }
 
         protected override bool OnClick (int clickCount) {
