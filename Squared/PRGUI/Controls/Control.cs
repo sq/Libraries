@@ -603,6 +603,7 @@ namespace Squared.PRGUI {
                 ContentBox = contentBox,
                 State = state,
                 BackgroundColor = GetBackgroundColor(Context.NowL),
+                TextColor = GetTextColor(Context.NowL),
                 BackgroundImage = Appearance.BackgroundImage
             };
         }

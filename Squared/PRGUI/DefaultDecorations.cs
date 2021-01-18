@@ -618,13 +618,14 @@ namespace Squared.PRGUI {
             var alpha1 = 0.4f;
             // FIXME: Padding will make this slightly wrong
             var alpha2 = Arithmetic.Saturate(alpha1 + (0.7f * (settings.ContentBox.Width / settings.Box.Width)));
+            var fillColor = settings.TextColor ?? GaugeValueFillColor;
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SliderCornerRadius,
-                outlineRadius: 1f, outlineColor: GaugeValueFillColor * 0.5f,
+                outlineRadius: 1f, outlineColor: fillColor * 0.5f,
                 fillMode: RasterFillMode.Horizontal,
-                innerColor: GaugeValueFillColor * alpha1, 
-                outerColor: GaugeValueFillColor * alpha2,
+                innerColor: fillColor * alpha1, 
+                outerColor: fillColor * alpha2,
                 shadow: GaugeValueShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),

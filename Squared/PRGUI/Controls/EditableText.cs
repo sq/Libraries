@@ -1225,6 +1225,7 @@ namespace Squared.PRGUI.Controls {
 
                 var selSettings = new DecorationSettings {
                     BackgroundColor = settings.BackgroundColor,
+                    TextColor = settings.TextColor,
                     State = settings.State,
                     Box = selBox,
                     ContentBox = selBox

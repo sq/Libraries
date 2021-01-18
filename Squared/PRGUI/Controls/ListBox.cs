@@ -27,6 +27,8 @@ namespace Squared.PRGUI.Controls {
     {
         public static bool SelectOnMouseDown = false;
 
+        public float ItemSpacing = 1;
+
         public const int ControlMinimumHeight = 75, ControlMinimumWidth = 150;
 
         protected ItemListManager<T> Manager;
@@ -242,7 +244,9 @@ namespace Squared.PRGUI.Controls {
             foreach (var child in Children) {
                 var lk = child.LayoutKey;
                 var m = context.Layout.GetMargins(lk);
-                m.Top = m.Bottom = 0;
+                // HACK: Override decorator margins
+                m.Top = child.Margins.Top;
+                m.Bottom = child.Margins.Bottom + ItemSpacing;
                 context.Layout.SetMargins(lk, m);
             }
             return result;

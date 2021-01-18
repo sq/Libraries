@@ -40,7 +40,7 @@ namespace Squared.PRGUI.Decorations {
     public struct DecorationSettings {
         public RectF Box, ContentBox;
         public ControlStates State;
-        public pSRGBColor? BackgroundColor;
+        public pSRGBColor? BackgroundColor, TextColor;
         public BackgroundImageSettings BackgroundImage;
 
         public Texture2D GetTexture () {

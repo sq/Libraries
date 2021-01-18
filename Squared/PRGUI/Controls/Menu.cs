@@ -23,6 +23,8 @@ namespace Squared.PRGUI.Controls {
     public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IModal, ISelectionBearer, IPartiallyIntangibleControl, IFuzzyHitTestTarget {
         public event Action<IModal> Shown, Closed;
 
+        public float ItemSpacing = 1;
+
         // Yuck
         public const int PageSize = 8;
 
@@ -130,7 +132,9 @@ namespace Squared.PRGUI.Controls {
             foreach (var child in Children) {
                 var lk = child.LayoutKey;
                 var m = context.Layout.GetMargins(lk);
-                m.Top = m.Bottom = 0;
+                // HACK: Override decorator margins
+                m.Top = child.Margins.Top;
+                m.Bottom = child.Margins.Bottom + ItemSpacing;
                 context.Layout.SetMargins(lk, m);
             }
             return result;
