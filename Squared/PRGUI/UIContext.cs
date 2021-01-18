@@ -1554,8 +1554,37 @@ namespace Squared.PRGUI {
         public bool MouseButtonHeld { get; internal set; }
         public Vector2 MousePosition { get; internal set; }
         public RectF VisibleRegion { get; internal set; }
+        private DenseList<IDecorator> DecoratorStack, TextDecoratorStack;
         internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
         internal bool RelayoutRequestedForVisibilityChange;
+
+        private IDecorator GetStackTop (ref DenseList<IDecorator> stack) {
+            if (stack.Count <= 0)
+                return null;
+            stack.GetItem(stack.Count - 1, out IDecorator result);
+            return result;
+        }
+
+        private static void StackPush (ref DenseList<IDecorator> stack, IDecorator value) {
+            stack.Add(value);
+        }
+
+        private static void StackPop (ref DenseList<IDecorator> stack) {
+            if (stack.Count <= 0)
+                throw new InvalidOperationException("Stack empty");
+            stack.RemoveAt(stack.Count - 1);
+        }
+
+        public IDecorator DefaultDecorator => GetStackTop(ref DecoratorStack);
+        public static void PushDecorator (ref UIOperationContext context, IDecorator value) => 
+            StackPush(ref context.DecoratorStack, value);
+        public static void PopDecorator (ref UIOperationContext context) => 
+            StackPop(ref context.DecoratorStack);
+        public IDecorator DefaultTextDecorator => GetStackTop(ref TextDecoratorStack);
+        public static void PushTextDecorator (ref UIOperationContext context, IDecorator value) => 
+            StackPush(ref context.TextDecoratorStack, value);
+        public static void PopTextDecorator (ref UIOperationContext context) => 
+            StackPop(ref context.TextDecoratorStack);
 
         public UIOperationContext Clone () {
             return new UIOperationContext {
@@ -1568,7 +1597,9 @@ namespace Squared.PRGUI {
                 MouseButtonHeld = MouseButtonHeld,
                 MousePosition = MousePosition,
                 VisibleRegion = VisibleRegion,
-                RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange
+                RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange,
+                DecoratorStack = DecoratorStack.Clone(),
+                TextDecoratorStack = TextDecoratorStack.Clone()
             };
         }
     }

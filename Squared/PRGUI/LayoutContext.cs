@@ -788,9 +788,10 @@ namespace Squared.PRGUI.Layout {
             if (child == endChild)
                 return;
 
-            int constrainedCount = 0;
+            int constrainedCount = 0, numProcessed = 0;
             float extraFromConstraints = 0, originalExtraMargin = extraMargin, originalX = x;
 
+            var attemptLastChanceWrap = wrap && false;
             var startChild = child;
             var parentRect = GetContentRect(pParent);
 
@@ -799,6 +800,7 @@ namespace Squared.PRGUI.Layout {
                 child = startChild;
                 extraMargin = originalExtraMargin;
                 x = originalX;
+                numProcessed = 0;
 
                 while (child != endChild) {
                     float ix0 = 0, ix1 = 0;
@@ -846,25 +848,41 @@ namespace Squared.PRGUI.Layout {
                     ix0 = x;
                     ix1 = x + constrainedSize;
 
-                    if (pass == 1) {
+                    if (
+                        pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size) && 
+                        (pChild->FixedSize.GetElement(idim) < 0)
+                    ) {
+                        float parentExtent = Math.Max((parentRect[idim] + parentRect[wdim]), 0);
+                        ix1 = Constrain(ix1, -1, parentExtent);
+                    }
+
+                    float finalSize = ix1 - ix0;
+
+                    if (attemptLastChanceWrap && (pass == 0)) {
+                        // Identify cases where we need to wrap but only know after the first layout pass
+                        var predictedRect = childRect;
+                        predictedRect[idim] = ix0;
+                        predictedRect[wdim] = finalSize;
+                        var predictedExtent = predictedRect.Extent.GetElement(idim);
+                        if (predictedExtent > max_x2)
+                            pChild->Flags |= ControlFlags.Internal_Break;
+                    } else if (pass == 1) {
                         // FIXME: Is this correct?
-                        if (
-                            pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size) && 
-                            (pChild->FixedSize.GetElement(idim) < 0)
-                        ) {
-                            float parentExtent = Math.Max((parentRect[idim] + parentRect[wdim]), 0);
-                            ix1 = Constrain(ix1, -1, parentExtent);
-                        }
-                        float finalSize = ix1 - ix0;
                         childRect[idim] = ix0;
                         childRect[wdim] = finalSize;
                         SetRect(child, ref childRect);
                         CheckConstraints(child, idim);
                     }
 
+                    if (attemptLastChanceWrap && pChild->Flags.IsBreak()) {
+                        extraMargin = originalExtraMargin;
+                        x = originalX;
+                    }
+
                     x = x + constrainedSize + childMargins[wdim];
                     child = pChild->NextSibling;
                     extraMargin = spacer;
+                    numProcessed++;
                 }
             }
         }
@@ -923,6 +941,10 @@ namespace Squared.PRGUI.Layout {
                 var isFillRow = flags.IsFlagged(ControlFlags.Layout_Fill_Row);
                 var isFixedSize = fFlags.IsFlagged(ControlFlags.Internal_FixedWidth);
 
+                var computedExtend = childRect[idim] + childMargins[wdim];
+                var computedSize = computedExtend + childRect[wdim];
+                var willBeCompressed = false;
+
                 if (
                     childFlags.IsFlagged(ControlFlags.Layout_ForceBreak) &&
                     (child != startChild)
@@ -931,13 +953,13 @@ namespace Squared.PRGUI.Layout {
                     break;
                 } else if (isFixedSize) {
                     fixedCount++;
-                    extend += childRect[idim] + childRect[wdim] + childMargins[wdim];
+                    extend += computedSize;
                 } else if (isFillRow) {
                     ++fillerCount;
-                    extend += childRect[idim] + childMargins[wdim];
+                    extend += computedExtend;
                 } else {
                     ++squeezedCount;
-                    extend += childRect[idim] + childRect[wdim] + childMargins[wdim];
+                    extend += computedSize;
                 }
 
                 if (

@@ -13,6 +13,8 @@ namespace Squared.PRGUI {
     public struct ColorVariable {
         public Tween<Vector4>? pLinear;
 
+        public bool HasValue => pLinear.HasValue;
+
         public Tween<Color>? Color {
             set => Update(ref pLinear, value);
         }
@@ -82,6 +84,9 @@ namespace Squared.PRGUI {
         /// Disables margins and padding from the control's decorator
         /// </summary>
         public bool SuppressDecorationMargins;
+
+        public bool HasBackgroundColor => BackgroundColor.HasValue;
+        public bool HasTextColor => BackgroundColor.HasValue;
 
         internal bool HasOpacity { get; private set; }
 

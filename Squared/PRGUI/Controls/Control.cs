@@ -490,7 +490,7 @@ namespace Squared.PRGUI {
 
             var result = existingKey ?? context.Layout.CreateItem();
 
-            var decorations = GetDecorator(context.DecorationProvider);
+            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             ComputeMargins(context, decorations, out Margins computedMargins);
             ComputePadding(context, decorations, out Margins computedPadding);
 
@@ -542,15 +542,15 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        protected IDecorator GetDecorator (IDecorationProvider provider) {
+        protected IDecorator GetDecorator (IDecorationProvider provider, IDecorator over) {
             if (Appearance.Undecorated)
-                return provider.None;
+                return (over ?? provider.None);
 
-            return Appearance.Decorator ?? GetDefaultDecorator(provider);
+            return Appearance.Decorator ?? (over ?? GetDefaultDecorator(provider));
         }
 
-        protected IDecorator GetTextDecorator (IDecorationProvider provider) {
-            return Appearance.TextDecorator ?? GetDefaultDecorator(provider);
+        protected IDecorator GetTextDecorator (IDecorationProvider provider, IDecorator over) {
+            return Appearance.TextDecorator ?? (over ?? GetDefaultDecorator(provider));
         }
 
         protected ControlStates GetCurrentState (UIOperationContext context) {
@@ -621,7 +621,7 @@ namespace Squared.PRGUI {
 
         private void RasterizePass (ref UIOperationContext context, RectF box, bool compositing, ref RasterizePassSet passSet, ref ImperativeRenderer renderer, RasterizePasses pass) {
             var contentBox = GetRect(contentRect: true);
-            var decorations = GetDecorator(context.DecorationProvider);
+            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             var state = GetCurrentState(context);
 
             var passContext = context.Clone();

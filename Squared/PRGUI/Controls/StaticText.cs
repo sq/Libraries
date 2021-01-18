@@ -215,8 +215,8 @@ namespace Squared.PRGUI.Controls {
                 return;
             }
 
-            var textDecorations = GetTextDecorator(context.DecorationProvider);
-            var decorations = GetDecorator(context.DecorationProvider);
+            var textDecorations = GetTextDecorator(context.DecorationProvider, context.DefaultTextDecorator);
+            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             var fontChanged = UpdateFont(context, textDecorations, decorations);
             if (ScaleToFit)
                 return;
@@ -283,7 +283,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             ComputeAutoSize(context);
-            UpdateLineBreak(context, GetDecorator(context.DecorationProvider));
+            UpdateLineBreak(context, GetDecorator(context.DecorationProvider, context.DefaultDecorator));
             if (!Content.IsValid)
                 ComputeAutoSize(context);
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
@@ -343,7 +343,7 @@ namespace Squared.PRGUI.Controls {
             var overrideColor = GetTextColor(context.NowL);
             Color? defaultColor = null;
             Material material;
-            var textDecorations = GetTextDecorator(context.DecorationProvider);
+            var textDecorations = GetTextDecorator(context.DecorationProvider, context.DefaultTextDecorator);
             GetTextSettings(context, textDecorations, decorations, settings.State, out material, ref defaultColor);
 
             Content.DefaultColor = defaultColor ?? Color.White;

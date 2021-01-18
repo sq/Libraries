@@ -129,15 +129,33 @@ namespace Squared.PRGUI.Controls {
             if (result.IsInvalid)
                 return result;
 
+            var hasPushedDecorator = false;
             foreach (var child in Children) {
                 var lk = child.LayoutKey;
+                SetTextDecorator(ref context, child, ref hasPushedDecorator);
                 var m = context.Layout.GetMargins(lk);
                 // HACK: Override decorator margins
                 m.Top = child.Margins.Top;
                 m.Bottom = child.Margins.Bottom + ItemSpacing;
                 context.Layout.SetMargins(lk, m);
             }
+
+            if (hasPushedDecorator)
+                UIOperationContext.PopTextDecorator(ref context);
+
             return result;
+        }
+
+        private void SetTextDecorator (ref UIOperationContext context, Control child, ref bool hasPushed) {
+            var isSelected = SelectedItem == child;
+            if (hasPushed) {
+                UIOperationContext.PopTextDecorator(ref context);
+                hasPushed = false;
+            }
+            if ((isSelected) && !child.Appearance.HasBackgroundColor) {
+                UIOperationContext.PushTextDecorator(ref context, Context?.Decorations.Selection);
+                hasPushed = true;
+            }
         }
 
         private IMenuListener Listener => FocusDonor as IMenuListener;
@@ -154,20 +172,6 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void OnSelectionChange (Control previous, Control newControl) {
-            // FIXME: Optimize this for large lists
-            foreach (var child in Children) {
-                var newTextDecorator = (
-                    (child == newControl) && 
-                    (child.Appearance.BackgroundColor.pLinear == null)
-                )
-                    ? Context?.Decorations.Selection 
-                    : null;
-                if (child.Appearance.TextDecorator == newTextDecorator)
-                    continue;
-                child.Appearance.TextDecorator = newTextDecorator;
-                child.InvalidateLayout();
-            }
-
             Listener?.ItemSelected(this, newControl);
             FireEvent(UIEvents.SelectionChanged, newControl);
         }
@@ -387,6 +391,23 @@ namespace Squared.PRGUI.Controls {
         private int lastOffset1 = -1,
             lastOffset2 = -1;
 
+        protected override bool RasterizeChild (
+            ref UIOperationContext context, Control item, ref RasterizePassSet passSet, 
+            int layer1, int layer2, int layer3, 
+            ref int maxLayer1, ref int maxLayer2, ref int maxLayer3
+        ) {
+            bool temp = false;
+            SetTextDecorator(ref context, item, ref temp);
+            var result = base.RasterizeChild(
+                ref context, item, ref passSet, 
+                layer1, layer2, layer3, 
+                ref maxLayer1, ref maxLayer2, ref maxLayer3
+            );
+            if (temp)
+                UIOperationContext.PopTextDecorator(ref context);
+            return result;
+        }
+
         protected override void RasterizeChildrenInOrder (
             ref UIOperationContext context, ref RasterizePassSet passSet, 
             int layer1, int layer2, int layer3, 
@@ -394,7 +415,7 @@ namespace Squared.PRGUI.Controls {
         ) {
             RasterizeChildrenFromCenter(
                 ref context, ref passSet, 
-                GetRect(), Children, _SelectedItem,
+                GetRect(), _SelectedItem,
                 layer1, layer2, layer3, 
                 ref maxLayer1, ref maxLayer2, ref maxLayer3,
                 ref lastOffset1, ref lastOffset2

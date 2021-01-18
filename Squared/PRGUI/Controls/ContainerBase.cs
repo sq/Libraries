@@ -40,6 +40,12 @@ namespace Squared.PRGUI.Controls {
             ControlFlags.Container_Align_Start | ControlFlags.Container_Row | 
             ControlFlags.Container_Wrap;
 
+        public bool PreventCrush {
+            get => ContainerFlags.IsFlagged(ControlFlags.Container_Prevent_Crush);
+            set => ContainerFlags = (ContainerFlags & ~ControlFlags.Container_Prevent_Crush) |
+                (value ? ControlFlags.Container_Prevent_Crush : default(ControlFlags));
+        }
+
         protected ContainerBuilder DynamicBuilder;
         protected ContainerContentsDelegate _DynamicContents;
         /// <summary>
@@ -202,13 +208,14 @@ namespace Squared.PRGUI.Controls {
         ///  in view.
         /// </summary>
         /// <returns>The number of child controls rasterization was attempted for</returns>
-        public static int RasterizeChildrenFromCenter (
+        public int RasterizeChildrenFromCenter (
             ref UIOperationContext context, ref RasterizePassSet passSet, 
-            RectF box, ControlCollection children, Control selectedItem,
+            RectF box, Control selectedItem,
             int layer1, int layer2, int layer3, 
             ref int maxLayer1, ref int maxLayer2, ref int maxLayer3,
             ref int lastOffset1, ref int lastOffset2
         ) {
+            var children = Children;
             if (children.Count <= 0)
                 return 0;
 
@@ -286,7 +293,7 @@ namespace Squared.PRGUI.Controls {
         /// Rasterizes a child control and updates the pass layer data
         /// </summary>
         /// <returns>Whether the child was successfully rasterized</returns>
-        public static bool RasterizeChild (
+        protected virtual bool RasterizeChild (
             ref UIOperationContext context, Control item, ref RasterizePassSet passSet, 
             int layer1, int layer2, int layer3, ref int maxLayer1, 
             ref int maxLayer2, ref int maxLayer3
