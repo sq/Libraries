@@ -14,13 +14,15 @@ using Squared.Util;
 namespace Squared.PRGUI.Controls {
     public abstract class ContainerBase : Control, IControlContainer {
         protected ControlCollection _Children;
-        public ControlCollection Children {
+        protected ControlCollection Children {
             get {
                 if (DynamicContentIsInvalid)
                     GenerateDynamicContent(false || DynamicContentIsInvalid);
                 return _Children;
             }
         }
+
+        ControlCollection IControlContainer.Children => Children;
 
         protected Vector2 AbsoluteDisplayOffsetOfChildren;
 
@@ -70,7 +72,7 @@ namespace Squared.PRGUI.Controls {
             DynamicContentIsInvalid = true;
         }
 
-        internal override void InvalidateLayout () {
+        public override void InvalidateLayout () {
             base.InvalidateLayout();
             foreach (var ch in _Children)
                 ch.InvalidateLayout();
@@ -323,7 +325,7 @@ namespace Squared.PRGUI.Controls {
 
         protected bool HitTestInterior (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
             var ipic = this as IPartiallyIntangibleControl;
-            return (AcceptsMouseInput && (ipic?.IsIntangibleAtPosition(position) != true)) || 
+            return (AcceptsMouseInput && (ipic?.IsIntangibleAtPosition(position) != true)) ||
                 !acceptsMouseInputOnly;
         }
 

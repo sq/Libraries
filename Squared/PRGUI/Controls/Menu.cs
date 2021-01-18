@@ -152,9 +152,16 @@ namespace Squared.PRGUI.Controls {
         private void OnSelectionChange (Control previous, Control newControl) {
             // FIXME: Optimize this for large lists
             foreach (var child in Children) {
-                child.Appearance.TextDecorator = ((child == newControl) && (child.Appearance.BackgroundColor.pLinear == null))
+                var newTextDecorator = (
+                    (child == newControl) && 
+                    (child.Appearance.BackgroundColor.pLinear == null)
+                )
                     ? Context?.Decorations.Selection 
                     : null;
+                if (child.Appearance.TextDecorator == newTextDecorator)
+                    continue;
+                child.Appearance.TextDecorator = newTextDecorator;
+                child.InvalidateLayout();
             }
 
             Listener?.ItemSelected(this, newControl);

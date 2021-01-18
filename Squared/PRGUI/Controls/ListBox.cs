@@ -286,9 +286,17 @@ namespace Squared.PRGUI.Controls {
         private void UpdateTextDecorators (Control selectedControl) {
             // FIXME: Optimize this for large lists
             foreach (var child in Children) {
-                child.Appearance.TextDecorator = ((child == selectedControl) && (child.Appearance.BackgroundColor.pLinear == null))
+                var newTextDecorator = (
+                    (child == selectedControl) && 
+                    (child.Appearance.BackgroundColor.pLinear == null)
+                )
                     ? Context?.Decorations.Selection 
                     : null;
+                if (child.Appearance.TextDecorator == newTextDecorator)
+                    continue;
+                child.Appearance.TextDecorator = newTextDecorator;
+                // HACK to signal that we have changed its text decorator
+                child.InvalidateLayout();
             }
         }
 
@@ -304,7 +312,7 @@ namespace Squared.PRGUI.Controls {
         private Control LocateContainingChild (Control control) {
             var current = control;
             while (current != null) {
-                if (!control.TryGetParent(out Control parent))
+                if (!current.TryGetParent(out Control parent))
                     return null;
                 if (parent == this)
                     return current;

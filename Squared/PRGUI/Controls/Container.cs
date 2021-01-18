@@ -13,6 +13,10 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public class Container : ContainerBase, IScrollableControl, IPostLayoutListener, IPartiallyIntangibleControl {
+        new public ControlCollection Children {
+            get => base.Children;
+        }
+
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
         /// </summary>
@@ -136,8 +140,11 @@ namespace Squared.PRGUI.Controls {
             if (!PrepareScrollbarsForMethodCall(out IWidgetDecorator<ScrollbarState> scroll, out DecorationSettings settings))
                 return false;
 
-            return scroll.HitTest(settings, ref HScrollbar, position) ||
+            var result = scroll.HitTest(settings, ref HScrollbar, position) ||
                 scroll.HitTest(settings, ref VScrollbar, position);
+            if (result)
+                ;
+            return result;
         }
 
         private bool PrepareScrollbarsForMethodCall (out IWidgetDecorator<ScrollbarState> scroll, out DecorationSettings settings) {
@@ -251,15 +258,12 @@ namespace Squared.PRGUI.Controls {
             if (!HitTestShell(box, position, false, false, ref result))
                 return false;
 
-            if (!HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result))
-                return false;
+            bool success = HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+            if (MostRecentTitleBox.Contains(position))
+                return success;
 
-            if (MostRecentTitleBox.Contains(position)) {
-                result = this;
-                return true;
-            }
-
-            return HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+            success |= HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+            return success;
         }
 
         protected virtual void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {

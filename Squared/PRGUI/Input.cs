@@ -622,30 +622,32 @@ namespace Squared.PRGUI.Input {
             } else if (!suppressSnapDueToHeldButton) {
                 var testPosition = CurrentUnsnappedPosition ?? newPosition ?? current.CursorPosition;
 
-                // FIXME: We get garbage snap positions sometimes when the cursor is over a control
-                FuzzyHitTest.Run(testPosition, IsValidHoverTarget, maxDistance: FuzzyHitTestDistance);
-                if (FuzzyHitTest.Count > 0) {
-                    /*
-                    if (FuzzyHitTest.Count > 1) {
-                        Console.WriteLine();
-                        foreach (var r in FuzzyHitTest)
-                            Console.WriteLine("{0} {1:000.00} {2}", r.Depth, r.Distance, r.Control);
-                    }
-                    */
+                if (isPriority) {
+                    // FIXME: We get garbage snap positions sometimes when the cursor is over a control
+                    FuzzyHitTest.Run(testPosition, IsValidHoverTarget, maxDistance: FuzzyHitTestDistance);
+                    if (FuzzyHitTest.Count > 0) {
+                        /*
+                        if (FuzzyHitTest.Count > 1) {
+                            Console.WriteLine();
+                            foreach (var r in FuzzyHitTest)
+                                Console.WriteLine("{0} {1:000.00} {2}", r.Depth, r.Distance, r.Control);
+                        }
+                        */
 
-                    var result = FuzzyHitTest[0];
-                    CurrentUnsnappedPosition = CurrentUnsnappedPosition ?? testPosition;
-                    if (result.Distance > 0)
-                        newPosition = result.ClosestPoint;
-                    else
-                        newPosition = testPosition;
-                } else if (CurrentUnsnappedPosition.HasValue) {
-                    // There are no fuzzy hit test candidates nearby, and there's no direct hit test result
-                    //  which means we're not over any UI at all.
-                    if (Context.HitTest(CurrentUnsnappedPosition.Value, false, false, false) == null)
-                        newPosition = CurrentUnsnappedPosition.Value;
-                } else {
-                    ;
+                        var result = FuzzyHitTest[0];
+                        CurrentUnsnappedPosition = CurrentUnsnappedPosition ?? testPosition;
+                        if (result.Distance > 0)
+                            newPosition = result.ClosestPoint;
+                        else
+                            newPosition = testPosition;
+                    } else if (CurrentUnsnappedPosition.HasValue) {
+                        // There are no fuzzy hit test candidates nearby, and there's no direct hit test result
+                        //  which means we're not over any UI at all.
+                        if (Context.HitTest(CurrentUnsnappedPosition.Value, false, false, false) == null)
+                            newPosition = CurrentUnsnappedPosition.Value;
+                    } else {
+                        ;
+                    }
                 }
             }
 

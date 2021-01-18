@@ -870,7 +870,7 @@ namespace Squared.PRGUI {
         protected virtual void InitializeForContext () {
         }
 
-        internal virtual void InvalidateLayout () {
+        public virtual void InvalidateLayout () {
             LayoutKey = ControlKey.Invalid;
         }
 
