@@ -499,6 +499,8 @@ namespace Squared.PRGUI {
             }
         }
 
+        private HashSet<Control> FocusSearchHistory = new HashSet<Control>();
+
         /// <summary>
         /// Transfers focus to a target control (or no control), if possible
         /// </summary>
@@ -523,6 +525,8 @@ namespace Squared.PRGUI {
                 else
                     newFocusTarget = value = Focused ?? Controls.FirstOrDefault();
             }
+
+            FocusSearchHistory.Clear();
 
             // Top-level controls should pass focus on to their children if possible
             if (Controls.Contains(value)) {
@@ -549,28 +553,39 @@ namespace Squared.PRGUI {
                     newFocusTarget = childTarget;
             }
 
-            if (newFocusTarget != null) {
+            while (newFocusTarget != null) {
+                if (FocusSearchHistory.Contains(newFocusTarget))
+                    throw new Exception($"Cycle found when walking focus graph from {value}");
+                FocusSearchHistory.Add(newFocusTarget);
+
                 while (newFocusTarget.FocusBeneficiary != null) {
                     var beneficiary = newFocusTarget.FocusBeneficiary;
                     newFocusTarget = beneficiary;
-                    if (newFocusTarget == value)
-                        throw new Exception("Cycle found in focus beneficiary chain");
                 }
 
                 // Attempting to set focus to a top level control is valid even if no child was selected
                 var isTopLevel = Controls.Contains(newFocusTarget);
 
-                if (!newFocusTarget.IsValidFocusTarget && !isTopLevel) {
+                if (!newFocusTarget.IsValidFocusTarget) {
                     var collection = (newFocusTarget as IControlContainer);
                     if (collection != null) {
                         var childTarget = FindFocusableSibling(collection.Children, null, 1, true);
-                        if (childTarget == newFocusTarget)
-                            return false;
-
-                        newFocusTarget = childTarget;
-                    } else if (!force)
+                        if (childTarget == newFocusTarget) {
+                            if (!force && !isTopLevel)
+                                return false;
+                        } else if (!isTopLevel || (childTarget != null)) {
+                            // The new focus target may currently not have any children that are eligible
+                            //  to receive focus, in which case if it's top-level we want to focus it anyway
+                            newFocusTarget = childTarget;
+                            continue;
+                        } else {
+                            ;
+                        }
+                    } else if (!force && !isTopLevel)
                         return false;
                 }
+
+                break;
             }
 
             if (!AllowNullFocus && (newFocusTarget == null))

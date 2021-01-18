@@ -14,7 +14,7 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class Slider : Control, ICustomTooltipTarget, Accessibility.IReadingTarget, IValueControl<float>, ISelectionBearer, IScrollableControl {
-        public const int ControlMinimumHeight = 28, ControlMinimumWidth = 100,
+        public const int ControlMinimumHeight = 32, ControlMinimumWidth = 100,
             ThumbMinimumWidth = 13, MaxNotchCount = 128;
         public const float NotchThickness = 0.75f;
         public static readonly Color NotchColor = Color.Black * 0.2f,

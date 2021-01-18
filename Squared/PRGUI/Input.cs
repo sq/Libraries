@@ -528,7 +528,10 @@ namespace Squared.PRGUI.Input {
             var focusedModal = Context.Focused as IModal;
             var effectiveSnapTarget = SnapToControl;
 
-            if ((SnapToControl != null) && (Context.Focused != SnapToControl)) {
+            if (
+                (SnapToControl != null) && 
+                (Context.Focused != SnapToControl)
+            ) {
                 if (focusedModal?.FocusDonor == SnapToControl)
                     effectiveSnapTarget = Context.Focused;
                 else if (GenerateKeyPressForActivation)
