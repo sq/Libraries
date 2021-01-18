@@ -452,8 +452,32 @@ namespace Squared.Util {
 
         public void RemoveAt (int index) {
             // FIXME: Slow
-            EnsureList();
-            Items.DangerousRemoveAt(index);
+            if ((index < Storage.Count) && !_HasList) {
+                switch (index) {
+                    case 0:
+                        Storage.Item1 = Storage.Item2;
+                        Storage.Item2 = Storage.Item3;
+                        Storage.Item3 = Storage.Item4;
+                        Storage.Item4 = default(T);
+                        break;
+                    case 1:
+                        Storage.Item2 = Storage.Item3;
+                        Storage.Item3 = Storage.Item4;
+                        Storage.Item4 = default(T);
+                        break;
+                    case 2:
+                        Storage.Item3 = Storage.Item4;
+                        Storage.Item4 = default(T);
+                        break;
+                    case 3:
+                        Storage.Item4 = default(T);
+                        break;
+                }
+                Storage.Count--;
+            } else {
+                EnsureList();
+                Items.DangerousRemoveAt(index);
+            }
         }
 
         public void RemoveRange (int index, int count) {
