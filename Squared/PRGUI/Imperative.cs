@@ -361,10 +361,7 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
         public ControlBuilder<TControl> SetForceBreak (bool value) {
-            var flags = Control.LayoutFlags & ~ControlFlags.Layout_ForceBreak;
-            if (value)
-                flags |= ControlFlags.Layout_ForceBreak;
-            Control.LayoutFlags = flags;
+            Control.ForceBreak = value;
             return this;
         }
 

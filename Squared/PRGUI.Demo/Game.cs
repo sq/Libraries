@@ -339,9 +339,24 @@ namespace PRGUI.Demo {
                 textfield,
                 numberField,
                 volumeSlider,
-                hideButton,
-                toppleButton,
-                LoginButton
+                // FIXME: If we don't group these into a container, the last two get vertically centered.
+                // Is that right? It might be
+                new Container {
+                    ForceBreak = true,
+                    Appearance = {
+                        Undecorated = true
+                    },
+                    Children = {
+                        hideButton,
+                        toppleButton,
+                        LoginButton
+                    }
+                },
+                // FIXME: We need this spacer to fill the empty space at the bottom of the window when it's maximized.
+                // Should it really work this way?
+                new Spacer {
+                    ForceBreak = true
+                }
             );
 
             FloatingWindow = (Window)window.Container;

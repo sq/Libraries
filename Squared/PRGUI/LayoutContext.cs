@@ -807,7 +807,6 @@ namespace Squared.PRGUI.Layout {
                     var pChild = LayoutPtr(child);
                     var childFlags = pChild->Flags;
                     if (childFlags.IsFlagged(ControlFlags.Layout_Floating)) {
-                        // FIXME: Should we need to set a position here?
                         ApplyFloatingPosition(pChild);
                         child = pChild->NextSibling;
                         continue;
@@ -1148,6 +1147,16 @@ namespace Squared.PRGUI.Layout {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);
                 Arrange(pChild, dim);
+            }
+
+            // HACK
+            if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating)) {
+                ApplyFloatingPosition(pItem);
+                var parentRect = GetContentRect(pItem->Parent);
+                if (pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Row) && (dim == Dimensions.X))
+                    pRect->Width = parentRect.Width - pRect->Left;
+                if (pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Column) && (dim == Dimensions.Y))
+                    pRect->Height = parentRect.Height - pRect->Top;
             }
         }
     }

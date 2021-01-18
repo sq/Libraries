@@ -535,6 +535,7 @@ namespace Squared.PRGUI.Controls {
                 if (newResult != null) {
                     result = newResult;
                     success = true;
+                    break;
                 }
             }
 
@@ -616,8 +617,6 @@ namespace Squared.PRGUI.Controls {
             //  otherwise weird things happen when they cover another control
             if (!HasParent)
                 return false;
-
-            var rect = GetRect();
 
             if (MostRecentTitleBox.Contains(position))
                 return false;

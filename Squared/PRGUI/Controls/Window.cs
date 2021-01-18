@@ -60,17 +60,15 @@ namespace Squared.PRGUI.Controls {
         private Vector2 DragStartMousePosition, DragStartWindowPosition;
         private RectF MostRecentUnmaximizedRect;
 
+        private bool _Maximized;
+
         public bool Maximized {
-            get => LayoutFlags.IsFlagged(ControlFlags.Layout_Fill);
+            get => _Maximized;
             set {
                 if (!AllowMaximize)
                     value = false;
-                var flags = LayoutFlags & ~ControlFlags.Layout_Fill;
-                if (value)
-                    flags |= ControlFlags.Layout_Fill;
-                Context.Log($"Window layout flags {LayoutFlags} -> {flags}");
-                LayoutFlags = flags;
                 base.Collapsible = _DesiredCollapsible && !Maximized;
+                _Maximized = value;
             }
         }
 
@@ -79,6 +77,14 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = true;
             ContainerFlags |= ControlFlags.Container_Constrain_Size;
             LayoutFlags = ControlFlags.Layout_Floating;
+        }
+
+        protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
+            base.ComputeFixedSize(out fixedWidth, out fixedHeight);
+            if (_Maximized) {
+                fixedWidth = Context.CanvasSize.X;
+                fixedHeight = Context.CanvasSize.Y;
+            }
         }
 
         protected override IDecorator GetTitleDecorator (UIOperationContext context) {

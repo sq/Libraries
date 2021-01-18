@@ -39,6 +39,8 @@ namespace Squared.PRGUI {
 
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
+        public string DebugLabel = null;
+
         internal int TypeID;
 
         public ControlAppearance Appearance;
@@ -62,6 +64,12 @@ namespace Squared.PRGUI {
                     ;
                 _LayoutKey = value;
             }
+        }
+
+        public bool ForceBreak {
+            get => LayoutFlags.IsFlagged(ControlFlags.Layout_ForceBreak);
+            set => LayoutFlags = (LayoutFlags & ~ControlFlags.Layout_ForceBreak) |
+                (value ? ControlFlags.Layout_ForceBreak : default(ControlFlags));
         }
 
         public bool IsTransparent {
@@ -909,7 +917,7 @@ namespace Squared.PRGUI {
         }
 
         public override string ToString () {
-            return $"{GetType().Name} #{GetHashCode():X8}";
+            return DebugLabel ?? $"{GetType().Name} #{GetHashCode():X8}";
         }
     }
 }
