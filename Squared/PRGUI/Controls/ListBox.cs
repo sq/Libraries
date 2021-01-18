@@ -29,6 +29,7 @@ namespace Squared.PRGUI.Controls {
 
         public float ItemSpacing = 1;
 
+        public const int MaxItemScrollHeight = 40;
         public const int ControlMinimumHeight = 75, ControlMinimumWidth = 150;
 
         protected ItemListManager<T> Manager;
@@ -277,7 +278,7 @@ namespace Squared.PRGUI.Controls {
                 VirtualItemHeight = Children[0].GetRect(applyOffset: false).Height;
                 // HACK: Traditional listboxes on windows scroll multiple item(s) at a time on mousewheel
                 //  instead of scrolling on a per-pixel basis
-                ScrollSpeedMultiplier = (VirtualItemHeight / 14);
+                ScrollSpeedMultiplier = (Math.Min(VirtualItemHeight, MaxItemScrollHeight) / 14);
             }
 
             var box = GetRect(applyOffset: false, contentRect: true);
