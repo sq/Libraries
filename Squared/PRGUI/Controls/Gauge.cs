@@ -30,13 +30,20 @@ namespace Squared.PRGUI.Controls {
         public float Value {
             get => _Value;
             set {
-                if (_Value == value)
-                    return;
-
-                AnimateTo(value);
-                _Value = value;
-                FireEvent(UIEvents.ValueChanged);
+                SetValue(value, true);
             }
+        }
+
+        public void SetValue (float value, bool enableAnimation = true) {
+            if (_Value == value)
+                return;
+
+            if (enableAnimation)
+                AnimateTo(value);
+            else
+                ValueTween = value;
+            _Value = value;
+            FireEvent(UIEvents.ValueChanged);
         }
 
         AbstractString Accessibility.IReadingTarget.Text {

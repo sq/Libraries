@@ -155,6 +155,16 @@ namespace Squared.PRGUI.Controls {
             Invalidate();
         }
 
+        public void Sort (Comparison<T> comparer) {
+            Items.Sort(comparer);
+            Invalidate();
+        }
+
+        public void Sort (IComparer<T> comparer) {
+            Items.Sort(comparer);
+            Invalidate();
+        }
+
         public bool GetControlForValue (T value, out Control result) {
             if (value == null) {
                 result = null;

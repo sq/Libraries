@@ -39,7 +39,11 @@ namespace Squared.PRGUI.Controls {
         private bool NeedsUpdate = true;
         private bool MenuJustClosed = false;
 
-        public int SelectedIndex => Manager.SelectedIndex;
+        public int SelectedIndex {
+            get => Manager.SelectedIndex;
+            set => Manager.SelectedIndex = value;
+        }
+
         public T SelectedItem {
             get => Manager.SelectedItem;
             set {
