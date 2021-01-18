@@ -60,6 +60,7 @@
     <Compile Include="Controls\ParameterEditor.cs" />
     <Compile Include="Controls\Gauge.cs" />
     <Compile Include="Controls\Slider.cs" />
+    <Compile Include="Controls\StaticImage.cs" />
     <Compile Include="Controls\StaticText.cs" />
     <Compile Include="Controls\TitledContainer.cs" />
     <Compile Include="Controls\Tooltip.cs" />

@@ -28,19 +28,30 @@ namespace Squared.Game {
         }
 
         public static Vector2 Round (this Vector2 vector) {
-            return new Vector2((float)Math.Round(vector.X), (float)Math.Round(vector.Y));
+            return new Vector2((float)Math.Round(vector.X, MidpointRounding.AwayFromZero), (float)Math.Round(vector.Y, MidpointRounding.AwayFromZero));
         }
 
         public static Vector2 Round (this Vector2 vector, int decimals) {
-            return new Vector2((float)Math.Round(vector.X, decimals), (float)Math.Round(vector.Y, decimals));
+            return new Vector2(
+                (float)Math.Round(vector.X, decimals, MidpointRounding.AwayFromZero), 
+                (float)Math.Round(vector.Y, decimals, MidpointRounding.AwayFromZero)
+            );
         }
 
         public static Vector3 Round (this Vector3 vector) {
-            return new Vector3((float)Math.Round(vector.X), (float)Math.Round(vector.Y), (float)Math.Round(vector.Z));
+            return new Vector3(
+                (float)Math.Round(vector.X, MidpointRounding.AwayFromZero), 
+                (float)Math.Round(vector.Y, MidpointRounding.AwayFromZero), 
+                (float)Math.Round(vector.Z, MidpointRounding.AwayFromZero)
+            );
         }
 
         public static Vector3 Round (this Vector3 vector, int decimals) {
-            return new Vector3((float)Math.Round(vector.X, decimals), (float)Math.Round(vector.Y, decimals), (float)Math.Round(vector.Z, decimals));
+            return new Vector3(
+                (float)Math.Round(vector.X, decimals, MidpointRounding.AwayFromZero), 
+                (float)Math.Round(vector.Y, decimals, MidpointRounding.AwayFromZero), 
+                (float)Math.Round(vector.Z, decimals, MidpointRounding.AwayFromZero)
+            );
         }
 
         public static Vector2 Rotate (this Vector2 vector, float radians) {
