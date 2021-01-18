@@ -647,7 +647,7 @@ namespace Squared.PRGUI {
                 var control = tabOrdered[idx];
 
                 if (control.Visible) {
-                    if (control.Enabled && control.IsValidFocusTarget && (control.FocusBeneficiary == null)) {
+                    if (control.Enabled && (control.EligibleForFocusRotation || control.IsFocusProxy)) {
                         return control;
                     } else if (recursive && (control is IControlContainer)) {
                         var child = FindFocusableSibling(((IControlContainer)control).Children, null, delta, recursive);
@@ -667,9 +667,11 @@ namespace Squared.PRGUI {
             foreach (var item in tabOrdered) {
                 if (item == current)
                     continue;
-                if (!item.IsValidFocusTarget)
+                else if (item.IsFocusProxy)
+                    return item;
+                else if (!item.EligibleForFocusRotation)
                     continue;
-                if (!item.Enabled)
+                else if (!item.Enabled)
                     continue;
 
                 return item;

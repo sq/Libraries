@@ -35,7 +35,7 @@ namespace Squared.PRGUI {
     }
     
     public abstract partial class Control {
-        public static bool ShowDebugBoxes = true;
+        public static bool ShowDebugBoxes = false;
 
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
@@ -158,6 +158,10 @@ namespace Squared.PRGUI {
 
         internal bool IsValidMouseInputTarget =>
             AcceptsMouseInput && Visible && !IsTransparent && Enabled;
+
+        // HACK
+        internal bool EligibleForFocusRotation => IsValidFocusTarget && (FocusBeneficiary == null);
+        internal bool IsFocusProxy => (this is Controls.FocusProxy);
 
         /// <summary>
         /// Shifts the control forward or backward in the natural tab order. Lower orders come first.

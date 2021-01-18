@@ -442,7 +442,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         public override string ToString () {
-            return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText(GetPlainText())}'";
+            if (DebugLabel != null)
+                return $"{DebugLabel} '{GetTrimmedText(GetPlainText())}'";
+            else
+                return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText(GetPlainText())}'";
         }
 
         protected virtual AbstractString GetReadingText () {

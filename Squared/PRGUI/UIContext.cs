@@ -793,6 +793,7 @@ namespace Squared.PRGUI {
 
         private void DefocusInvalidFocusTargets () {
             while ((Focused != null) && InvalidFocusTargets.TryGetValue(Focused, out Control idealNewTarget)) {
+                InvalidFocusTargets.Remove(Focused);
                 var current = Focused;
                 var ok = (idealNewTarget == null) && TrySetFocus(idealNewTarget);
 

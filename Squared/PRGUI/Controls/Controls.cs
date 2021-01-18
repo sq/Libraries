@@ -34,6 +34,30 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
+    public class FocusProxy : Control {
+        public FocusProxy (Control target)
+            : base () {
+            if (target == null)
+                throw new ArgumentNullException("target");
+            FocusBeneficiary = target;
+            AcceptsFocus = AcceptsMouseInput = AcceptsTextInput = false;
+            Intangible = true;
+            Width.Maximum = 0;
+            Height.Maximum = 0;
+        }
+
+        public override string ToString () {
+            return $"FocusProxy ({FocusBeneficiary})";
+        }
+
+        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) => false;
+        protected override bool OnEvent<T> (string name, T args) => false;
+        protected override bool OnEvent (string name) => false;
+
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        }
+    }
+
     public class Button : StaticTextBase {
         public Menu Menu;
 
