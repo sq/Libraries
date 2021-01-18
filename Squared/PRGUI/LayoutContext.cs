@@ -193,12 +193,8 @@ namespace Squared.PRGUI.Layout {
             if (!pItem->Flags.IsFlagged(ControlFlags.Layout_Floating))
                 return;
             var pRect = RectPtr(pItem->Key);
-            pRect->Left = pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Row)
-                ? 0
-                : pItem->Margins.Left;
-            pRect->Top = pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Column)
-                ? 0
-                : pItem->Margins.Top;
+            pRect->Left = pItem->Margins.Left;
+            pRect->Top = pItem->Margins.Top;
         }
 
         internal unsafe bool UpdateSubtree (ControlKey key) {
@@ -811,7 +807,8 @@ namespace Squared.PRGUI.Layout {
                     var pChild = LayoutPtr(child);
                     var childFlags = pChild->Flags;
                     if (childFlags.IsFlagged(ControlFlags.Layout_Floating)) {
-                        // FIXME: Set position?
+                        // FIXME: Should we need to set a position here?
+                        ApplyFloatingPosition(pChild);
                         child = pChild->NextSibling;
                         continue;
                     }
@@ -913,6 +910,8 @@ namespace Squared.PRGUI.Layout {
                 var pChild = LayoutPtr(child);
                 var childFlags = pChild->Flags;
                 if (childFlags.IsFlagged(ControlFlags.Layout_Floating)) {
+                    // FIXME: Should we need to do this?
+                    ApplyFloatingPosition(pChild);
                     child = pChild->NextSibling;
                     continue;
                 }
