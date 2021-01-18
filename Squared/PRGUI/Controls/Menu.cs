@@ -141,8 +141,8 @@ namespace Squared.PRGUI.Controls {
         // HACK
         private bool _OverrideHitTestResults = true;
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            var ok = base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+            var ok = base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
             // HACK: Ensure that hit-test does not pass through to our individual items. We want to handle all events for them
             if (ok && _OverrideHitTestResults && (result?.AcceptsMouseInput == false))
                 result = this;

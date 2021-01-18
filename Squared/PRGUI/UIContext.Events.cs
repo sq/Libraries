@@ -811,13 +811,24 @@ namespace Squared.PRGUI {
             }
         }
 
-        private bool HandleMouseDown (Control target, Vector2 globalPosition, MouseButtons newButtons) {
-            var relinquishedHandlers = new HashSet<Control>();
-
+        private void HandleMouseDownPrologue () {
             AcceleratorOverlayVisible = false;
             ClearKeyboardSelection();
             HideTooltipForMouseInput(true);
+        }
 
+        private bool HandleMouseDownEpilogue (bool handled, Control target, Vector2 globalPosition, MouseButtons newButtons) {
+            PreviousMouseDownTarget = target;
+
+            if (!handled && EnableDragToScroll && (newButtons == MouseButtons.Left))
+                return InitDragToScroll(target, globalPosition);
+
+            return handled;
+        }
+
+        private bool HandleMouseDown (Control target, Vector2 globalPosition, MouseButtons newButtons) {
+            HandleMouseDownPrologue();
+            var relinquishedHandlers = new HashSet<Control>();
             bool result = false;
 
             // HACK: Prevent infinite repeat in corner cases
@@ -856,12 +867,7 @@ namespace Squared.PRGUI {
                 }
             }
 
-            PreviousMouseDownTarget = target;
-
-            if (!result && EnableDragToScroll && (newButtons == MouseButtons.Left))
-                return InitDragToScroll(target, globalPosition);
-
-            return result;
+            return HandleMouseDownEpilogue(result, target, globalPosition, newButtons);
         }
 
         private bool HandleMouseUp (Control target, Vector2 globalPosition, Vector2? mouseDownPosition, MouseButtons releasedButtons) {
@@ -914,16 +920,24 @@ namespace Squared.PRGUI {
                     break;
             }
 
+            if (
+                (scrollable == null) || 
+                !scrollable.AllowDragToScroll ||
+                ((scrollable.MaxScrollOffset ?? scrollable.MinScrollOffset) == scrollable.MinScrollOffset)
+            ) {
+                if (DragToScrollTarget != null)
+                    TeardownDragToScroll((Control)DragToScrollTarget, globalPosition);
+                DragToScrollTarget = null;
+                return false;
+            }
+
             DragToScrollInitialPosition = globalPosition;
             DragToScrollTarget = scrollable;
 
-            if ((scrollable == null) || !scrollable.AllowDragToScroll) {
-                DragToScrollInitialOffset = null;
-                return false;
-            } else {
-                DragToScrollInitialOffset = scrollable.ScrollOffset;
-                return true;
-            }
+            DragToScrollInitialOffset = scrollable.ScrollOffset;
+            FireEvent(UIEvents.DragToScrollStart, (Control)scrollable);
+
+            return true;
         }
 
         private bool UpdateDragToScroll (Control target, Vector2 globalPosition) {
@@ -977,6 +991,8 @@ namespace Squared.PRGUI {
 
         private bool TeardownDragToScroll (Control target, Vector2 globalPosition) {
             var scrolled = UpdateDragToScroll(target, globalPosition);
+            if (DragToScrollTarget != null)
+                FireEvent(UIEvents.DragToScrollEnd, (Control)DragToScrollTarget);
             DragToScrollTarget = null;
             DragToScrollInitialOffset = null;
             return scrolled;

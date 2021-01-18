@@ -64,6 +64,12 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void AnimateTo (float to) {
+            // HACK
+            if (Context == null) {
+                ValueTween = to;
+                return;
+            }
+
             var from = ValueTween.Get(Context.NowL);
             var distance = Math.Abs(to - from);
             float length;

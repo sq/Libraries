@@ -254,15 +254,15 @@ namespace Squared.PRGUI.Controls {
             box.Height -= MostRecentHeaderHeight;
         }
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            if (!HitTestShell(box, position, false, false, ref result))
+        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+            if (!HitTestShell(box, position, false, false, rejectIntangible, ref result))
                 return false;
 
             bool success = HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
             if (MostRecentTitleBox.Contains(position))
                 return success;
 
-            success |= HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+            success |= HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
             return success;
         }
 

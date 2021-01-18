@@ -19,7 +19,7 @@ using Squared.Util.Event;
 
 namespace Squared.PRGUI {  
     public abstract partial class Control {
-        protected virtual bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+        protected virtual bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
             if (Intangible)
                 return false;
             if (!AcceptsMouseInput && acceptsMouseInputOnly)
@@ -35,6 +35,12 @@ namespace Squared.PRGUI {
             return true;
         }
 
+        /*
+            var ipic = result as IPartiallyIntangibleControl;
+            if (rejectIntangible && (ipic?.IsIntangibleAtPosition(position) == true))
+                return null;
+        */
+
         public Control HitTest (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible = false) {
             if (!Visible)
                 return null;
@@ -47,10 +53,16 @@ namespace Squared.PRGUI {
             var box = GetRect();
             position = ApplyLocalTransformToGlobalPosition(position, ref box, true);
 
-            if (OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result)) {
-                var ipic = result as IPartiallyIntangibleControl;
-                if (rejectIntangible && (ipic?.IsIntangibleAtPosition(position) == true))
-                    return null;
+            var previousResult = result;
+            if (OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result)) {
+                if (result == null)
+                    throw new Exception("OnHitTest produced a null result on success");
+
+                if (rejectIntangible) {
+                    var ipic = result as IPartiallyIntangibleControl;
+                    if (ipic?.IsIntangibleAtPosition(position) == true)
+                        result = null;
+                }
 
                 return result;
             }

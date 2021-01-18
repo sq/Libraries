@@ -247,7 +247,7 @@ namespace Squared.PRGUI {
         private ConditionalWeakTable<Control, Control> TopLevelFocusMemory = new ConditionalWeakTable<Control, Control>();
 
         private Vector2 MousePositionWhenKeyboardSelectionWasLastUpdated;
-        private IScrollableControl DragToScrollTarget;
+        public IScrollableControl DragToScrollTarget { get; private set; }
         private Vector2? DragToScrollInitialOffset;
         private Vector2 DragToScrollInitialPosition;
 
@@ -727,8 +727,9 @@ namespace Squared.PRGUI {
         }
 
         private void UpdateCaptureAndHovering (Vector2 mousePosition, Control exclude = null) {
-            MouseOver = HitTest(mousePosition, rejectIntangible: true);
-            MouseOverLoose = HitTest(mousePosition, rejectIntangible: false);
+            // FIXME: This breaks drag-to-scroll
+            // MouseOver = HitTest(mousePosition, rejectIntangible: true);
+            MouseOver = MouseOverLoose = HitTest(mousePosition, rejectIntangible: false);
 
             if ((MouseOver != MouseCaptured) && (MouseCaptured != null))
                 Hovering = null;
@@ -966,11 +967,15 @@ namespace Squared.PRGUI {
                 }
             }
 
+            var mouseOverLoose = MouseOverLoose;
+
             if (LastMousePosition != mousePosition) {
-                if (CurrentMouseButtons != MouseButtons.None)
+                if (DragToScrollTarget != null)
+                    HandleMouseDrag((Control)DragToScrollTarget, mousePosition);
+                else if (CurrentMouseButtons != MouseButtons.None)
                     HandleMouseDrag(mouseEventTarget, mousePosition);
                 else
-                    HandleMouseMove(mouseEventTarget, mousePosition);
+                    HandleMouseMove(mouseEventTarget ?? mouseOverLoose, mousePosition);
             }
 
             var mouseDownPosition = MouseDownPosition;
@@ -978,8 +983,15 @@ namespace Squared.PRGUI {
             var processClick = false;
 
             if ((LastMouseButtons == MouseButtons.None) && (CurrentMouseButtons != MouseButtons.None)) {
-                // FIXME: This one should probably always be Hovering
-                HandleMouseDown(mouseEventTarget, mousePosition, CurrentMouseButtons);
+                if (
+                    (mouseEventTarget == null) && 
+                    (mouseOverLoose != null)
+                ) {
+                    HandleMouseDownPrologue();
+                    HandleMouseDownEpilogue(false, mouseOverLoose, mousePosition, CurrentMouseButtons);
+                } else {
+                    HandleMouseDown(mouseEventTarget, mousePosition, CurrentMouseButtons);
+                }
                 mouseDownPosition = mouseDownPosition ?? mousePosition;
             } else if ((LastMouseButtons != MouseButtons.None) && (CurrentMouseButtons == MouseButtons.None)) {
                 bool scrolled = false;

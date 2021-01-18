@@ -319,23 +319,21 @@ namespace Squared.PRGUI.Controls {
                 Context.NotifyControlBecomingInvalidFocusTarget(Context.Focused, false);
         }
 
-        protected bool HitTestShell (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            return base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+        protected bool HitTestShell (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+            return base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
         }
 
-        protected bool HitTestInterior (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            var ipic = this as IPartiallyIntangibleControl;
-            return (AcceptsMouseInput && (ipic?.IsIntangibleAtPosition(position) != true)) ||
-                !acceptsMouseInputOnly;
+        protected virtual bool HitTestInterior (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+            return AcceptsMouseInput || !acceptsMouseInputOnly;
         }
 
-        protected bool HitTestChildren (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+        protected bool HitTestChildren (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
             var sorted = Children.InDisplayOrder(Context.FrameIndex);
             for (int i = sorted.Count - 1; i >= 0; i--) {
                 var item = sorted[i];
-                var newResult = item.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly);
+                var newResult = item.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible);
                 if (newResult != null) {
                     result = newResult;
                     return true;
@@ -345,14 +343,13 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            if (!HitTestShell(box, position, false, false, ref result))
+        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+            if (!HitTestShell(box, position, false, false, rejectIntangible, ref result))
                 return false;
 
-            if (!HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result))
-                return false;
-
-            return HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+            bool success = HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+            success |= HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+            return success;
         }
 
         public T Child<T> (Func<T, bool> predicate)

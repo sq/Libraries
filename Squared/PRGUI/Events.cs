@@ -21,6 +21,8 @@ namespace Squared.PRGUI {
             MouseButtonsChanged = "MouseButtonsChanged",
             Click = "Click",
             Scroll = "Scroll",
+            DragToScrollStart = "DragToScrollStart",
+            DragToScrollEnd = "DragToScrollEnd",
             KeyDown = "KeyDown",
             KeyPress = "KeyPress",
             KeyUp = "KeyUp",
