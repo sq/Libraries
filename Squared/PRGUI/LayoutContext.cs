@@ -487,6 +487,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe float CalcOverlaySize (LayoutItem * pItem, Dimensions dim) {
+            var noExpand = pItem->Flags.IsFlagged(ControlFlags.Container_No_Expansion);
             float result = 0, minimum = 0;
             int idim = (int)dim, wdim = idim + 2;
             foreach (var child in Children(pItem)) {
@@ -503,7 +504,11 @@ namespace Squared.PRGUI.Layout {
                     minimum = Math.Max(childMinimum, minimum);
                 // FIXME: Is this a bug?
                 var childSize = childRect[idim] + childRect[wdim] + childMargin;
-                result = Math.Max(result, childSize);
+
+                if (!noExpand)
+                    result = Math.Max(result, childSize);
+                else
+                    result = Math.Max(result, childSize);
             }
             var outerPadding = pItem->Padding[idim] + pItem->Padding[wdim];
             minimum += outerPadding;
@@ -513,6 +518,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe float CalcStackedSize (LayoutItem * pItem, Dimensions dim) {
+            var noExpand = pItem->Flags.IsFlagged(ControlFlags.Container_No_Expansion);
             float result = 0, minimum = 0;
             int idim = (int)dim, wdim = idim + 2;
             var outerPadding = pItem->Padding[idim] + pItem->Padding[wdim];
@@ -528,7 +534,12 @@ namespace Squared.PRGUI.Layout {
                     minimum += childMinimum;
                 else
                     minimum = Math.Max(childMinimum, minimum);
-                result += childRect[idim] + childRect[wdim] + childMargin;
+
+                var totalSize = childRect[idim] + childRect[wdim] + childMargin;
+                if (!noExpand)
+                    result += totalSize;
+                else
+                    result += totalSize;
             }
             minimum += outerPadding;
             result += outerPadding;
@@ -539,6 +550,8 @@ namespace Squared.PRGUI.Layout {
         private unsafe float CalcWrappedSizeImpl (
             LayoutItem * pItem, Dimensions dim, bool overlaid, bool forcedBreakOnly
         ) {
+            var noExpand = pItem->Flags.IsFlagged(ControlFlags.Container_No_Expansion);
+
             int idim = (int)dim, wdim = idim + 2;
             float needSize = 0, needSize2 = 0;
             foreach (var child in Children(pItem)) {
@@ -568,10 +581,15 @@ namespace Squared.PRGUI.Layout {
             }
 
             float result;
-            if (overlaid)
+            if (noExpand)
+                result = 0;
+            else if (overlaid)
                 result = needSize + needSize2;
             else
                 result = Math.Max(needSize, needSize2);
+
+            // FIXME
+            PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, needSize);
 
             result += pItem->Padding[idim] + pItem->Padding[wdim];
 

@@ -161,6 +161,13 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        protected override void OnDisplayOffsetChanged () {
+            AbsoluteDisplayOffsetOfChildren = AbsoluteDisplayOffset.Floor();
+
+            foreach (var child in _Children)
+                child.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
+        }
+
         protected override bool ShouldClipContent => ClipChildren && (_Children.Count > 0);
         // FIXME: Always true?
         protected override bool HasChildren => (Children.Count > 0);

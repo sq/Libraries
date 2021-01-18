@@ -61,6 +61,10 @@ namespace Squared.PRGUI.Layout {
         /// Prevents the container from shrinking below the size required to contain its child elements.
         /// </summary>
         Container_Prevent_Crush = 0x800,
+        /// <summary>
+        /// Does not expand the container to hold its children.
+        /// </summary>
+        Container_No_Expansion = 0x1600,
 
         /*
         /// <summary>
@@ -104,16 +108,16 @@ namespace Squared.PRGUI.Layout {
         /// <summary>
         /// Anchor in all four directions
         /// </summary>
-        Layout_Fill = 0x1e0,
+        Layout_Fill = Layout_Fill_Row | Layout_Fill_Column,
         /// <summary>
         /// When wrapping, place this item on a new line.
         /// This only works if The container has Container_Wrap set.
         /// </summary>
-        Layout_ForceBreak = 0x2000,
+        Layout_ForceBreak = 0x4000,
         /// <summary>
         /// This control does not contribute to its parent's size calculations or its siblings' layout.
         /// </summary>
-        Layout_Floating = 0x4000,
+        Layout_Floating = 0x8000,
 
         Internal_FixedWidth = 0x800,
         Internal_FixedHeight = 0x1000,
@@ -122,8 +126,19 @@ namespace Squared.PRGUI.Layout {
 
     public static class ControlFlagMask {
         public const ControlFlags BoxModel = (ControlFlags)0x7,
-            Container = (ControlFlags)0xC1f,
-            Layout = (ControlFlags)0x63e0,
+            Container = ControlFlags.Container_Row |
+                ControlFlags.Container_Column |
+                ControlFlags.Container_Wrap |
+                ControlFlags.Container_Align_Start |
+                ControlFlags.Container_Align_Middle |
+                ControlFlags.Container_Align_End |
+                ControlFlags.Container_Align_Justify |
+                ControlFlags.Container_Constrain_Size |
+                ControlFlags.Container_Prevent_Crush |
+                ControlFlags.Container_No_Expansion,
+            Layout = ControlFlags.Layout_Fill |
+                ControlFlags.Layout_ForceBreak |
+                ControlFlags.Layout_Floating,
             Fixed = ControlFlags.Internal_FixedWidth | ControlFlags.Internal_FixedHeight;
     }
 
