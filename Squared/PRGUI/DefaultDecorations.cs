@@ -61,7 +61,14 @@ namespace Squared.PRGUI {
 
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
-        public Vector2 SizeScaleRatio { get; set; }
+        private Vector2 _SizeScaleRatio;
+        public Vector2 SizeScaleRatio {
+            get => _SizeScaleRatio;
+            set {
+                _SizeScaleRatio = value;
+                UpdateScaledSizes();
+            }
+        }
         public Vector2 SpacingScaleRatio { get; set; }
 
         private Material TextMaterial, SelectedTextMaterial;
@@ -76,7 +83,7 @@ namespace Squared.PRGUI {
             GlobalDefaultMarginCollapsed = defaultMarginCollapsed;
 
             AnimationDurationMultiplier = 1f;
-            SizeScaleRatio = Vector2.One;
+            _SizeScaleRatio = Vector2.One;
             SpacingScaleRatio = Vector2.One;
 
             InteractableShadow = new RasterShadowSettings {
@@ -141,7 +148,6 @@ namespace Squared.PRGUI {
 
             Checkbox = new DelegateDecorator {
                 Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
-                Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
                 GetTextSettings = GetTextSettings_Button,
                 GetFont = () => DefaultFont,
                 Below = Checkbox_Below,
@@ -150,7 +156,6 @@ namespace Squared.PRGUI {
 
             RadioButton = new DelegateDecorator {
                 Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
-                Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
                 GetTextSettings = GetTextSettings_Button,
                 GetFont = () => DefaultFont,
                 Below = RadioButton_Below,
@@ -356,6 +361,14 @@ namespace Squared.PRGUI {
             };
 
             GaugeValueFillColor = SelectionFillColor;
+
+            UpdateScaledSizes();
+        }
+
+        private void UpdateScaledSizes () {
+            ((DelegateDecorator)Checkbox).Padding =
+                ((DelegateDecorator)RadioButton).Padding =
+                new Margins(6 + ScaledCheckboxSize + (4 * SizeScaleRatio.X), 6, 6, 6);
         }
 
         public IGlyphSource DefaultFont,
@@ -431,7 +444,8 @@ namespace Squared.PRGUI {
             AcceleratorTextColor = Color.White;
 
         public const float DropdownArrowWidth = 16, DropdownArrowHeight = 11, DropdownArrowPadding = 8;
-        public const float CheckboxSize = 32;
+        public float ScaledCheckboxSize => CheckboxSize * (SizeScaleRatio.Length() / 1.41421354f);
+        public float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
 
         public Color? FloatingContainerOutlineColor, 
@@ -665,8 +679,8 @@ namespace Squared.PRGUI {
         private void AdjustRectForCheckbox (ref DecorationSettings settings) {
             var box = settings.Box;
             // FIXME: Scaling this will make the text crowded
-            var size = CheckboxSize * Vector2.One; // * SizeScaleRatio;
-            settings.Box = new RectF(box.Left + 2, box.Top + (box.Height - size.Y) / 2, size.X, size.Y);
+            var size = ScaledCheckboxSize;
+            settings.Box = new RectF(box.Left + 2, box.Top + (box.Height - size) / 2, size, size);
         }
 
         private void Checkbox_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
@@ -712,7 +726,7 @@ namespace Squared.PRGUI {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
-                radius: CheckboxSize * 0.45f,
+                radius: ScaledCheckboxSize * 0.45f,
                 outlineRadius: thickness, outlineColor: outlineColor * alpha,
                 innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
                 fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
@@ -745,7 +759,7 @@ namespace Squared.PRGUI {
 
             renderer.RasterizeRectangle(
                 a, b,
-                radius: CheckboxSize * 0.45f,
+                radius: ScaledCheckboxSize * 0.45f,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
                 fillMode: RasterFillMode.Angular,
