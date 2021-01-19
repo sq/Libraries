@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -579,7 +580,7 @@ namespace Squared.Render.Text {
         }
     }
 
-    public class FallbackGlyphSource : IGlyphSource, IDisposable {
+    public class FallbackGlyphSource : IGlyphSource, IDisposable, IEnumerable<IGlyphSource> {
         private readonly IGlyphSource[] Sources = null;
 
         public FallbackGlyphSource (params IGlyphSource[] sources) {
@@ -631,6 +632,14 @@ namespace Squared.Render.Text {
                 if (item is IDisposable)
                     ((IDisposable)item).Dispose();
             }
+        }
+
+        public IEnumerator<IGlyphSource> GetEnumerator () {
+            return ((IEnumerable<IGlyphSource>)Sources).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return ((IEnumerable<IGlyphSource>)Sources).GetEnumerator();
         }
     }
 

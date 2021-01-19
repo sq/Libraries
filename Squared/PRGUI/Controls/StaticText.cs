@@ -126,6 +126,17 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private IGlyphSource _GlyphSource = null;
+        public IGlyphSource GlyphSource {
+            get => _GlyphSource;
+            protected set {
+                if (_GlyphSource == value)
+                    return;
+                _GlyphSource = value;
+                Invalidate();
+            }
+        }
+
         internal void SetText (AbstractString text) {
             if (Text.TextEquals(text, StringComparison.Ordinal))
                 return;
@@ -392,31 +403,30 @@ namespace Squared.PRGUI.Controls {
                 Content.LineBreakAtX = null;
         }
 
-        private IGlyphSource _MostRecentFontFromDecorations;
-
-        private bool SyncWithCurrentFontFromDecorations (IGlyphSource font) {
+        private IGlyphSource _MostRecentFont;
+        private bool SyncWithCurrentFont (IGlyphSource font) {
             var result = false;
-            if (font != _MostRecentFontFromDecorations) {
-                if (Content.GlyphSource == _MostRecentFontFromDecorations) {
+            if (font != _MostRecentFont) {
+                if (Content.GlyphSource == _MostRecentFont) {
                     Content.GlyphSource = font;
                     result = true;
                 }
-                _MostRecentFontFromDecorations = font;
+                _MostRecentFont = font;
             }
 
             return result;
         }
 
         protected bool UpdateFont (UIOperationContext context, IDecorator textDecorations, IDecorator decorations) {
-            var font = textDecorations?.GlyphSource ?? decorations.GlyphSource;
+            var font = _GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource;
             if (font == null)
                 throw new NullReferenceException($"Decorators provided no font for control {this} ({textDecorations}, {decorations})");
-            return SyncWithCurrentFontFromDecorations(font);
+            return SyncWithCurrentFont(font);
         }
 
         protected bool GetTextSettings (UIOperationContext context, IDecorator textDecorations, IDecorator decorations, ControlStates state, out Material material, ref Color? color) {
             (textDecorations ?? decorations).GetTextSettings(context, state, out material, ref color);
-            SyncWithCurrentFontFromDecorations(textDecorations?.GlyphSource ?? decorations.GlyphSource);
+            SyncWithCurrentFont(_GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource);
             if (TextMaterial != null)
                 material = TextMaterial;
             return false;
@@ -495,6 +505,11 @@ namespace Squared.PRGUI.Controls {
         new public bool ScaleToFit {
             get => base.ScaleToFit;
             set => base.ScaleToFit = value;
+        }
+
+        public IGlyphSource GlyphSource {
+            get => base.GlyphSource;
+            set => base.GlyphSource = value;
         }
 
         new public void Invalidate () => base.Invalidate();

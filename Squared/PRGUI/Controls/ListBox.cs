@@ -565,7 +565,10 @@ namespace Squared.PRGUI.Controls {
                         TextBuilder.Append(ttc);
                 }
 
-                if (SelectedItem is Accessibility.IReadingTarget irt) {
+                var irt = (Manager.SelectedControl as Accessibility.IReadingTarget) ??
+                    (SelectedItem as Accessibility.IReadingTarget);
+
+                if (irt != null) {
                     TextBuilder.Append(": ");
                     var existingLength = TextBuilder.Length;
                     irt.FormatValueInto(TextBuilder);
@@ -583,7 +586,10 @@ namespace Squared.PRGUI.Controls {
             if (SelectedItem == null)
                 return;
 
-            if (SelectedItem is Accessibility.IReadingTarget irt) {
+            var irt = (Manager.SelectedControl as Accessibility.IReadingTarget) ??
+                (SelectedItem as Accessibility.IReadingTarget);
+
+            if (irt != null) {
                 irt.FormatValueInto(sb);
                 if (sb.Length == 0)
                     sb.Append(irt.Text);
