@@ -26,6 +26,8 @@ namespace Squared.PRGUI.Controls {
 
         protected Vector2 AbsoluteDisplayOffsetOfChildren;
 
+        protected int ColumnCount = 1;
+
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
         /// </summary>
@@ -80,6 +82,8 @@ namespace Squared.PRGUI.Controls {
 
         public override void InvalidateLayout () {
             base.InvalidateLayout();
+            for (int i = 0, c = (ColumnKeys?.Length ?? 0); i < c; i++)
+                ColumnKeys[i] = ControlKey.Invalid;
             foreach (var ch in _Children)
                 ch.InvalidateLayout();
         }
@@ -124,6 +128,17 @@ namespace Squared.PRGUI.Controls {
                 IsGeneratingDynamicContent = false;
             }
         }
+
+        protected virtual ControlKey CreateColumn (UIOperationContext context, ControlKey parent, int columnIndex) {
+            var result = context.Layout.CreateItem();
+            context.Layout.InsertAtEnd(parent, result);
+            context.Layout.SetLayoutFlags(result, ControlFlags.Layout_Fill);
+            context.Layout.SetContainerFlags(result, ControlFlags.Container_Column | ControlFlags.Container_Align_Start);
+            // context.Layout.SetContainerFlags(parent, );
+            return result;
+        }
+
+        private ControlKey[] ColumnKeys;
         
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
@@ -134,7 +149,12 @@ namespace Squared.PRGUI.Controls {
                 return result;
             }
 
-            context.Layout.SetContainerFlags(result, ContainerFlags);
+            var containerFlags = ContainerFlags;
+            var multiColumn = (ColumnCount > 1) || false;
+            if (ColumnCount > 1)
+                containerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start;
+
+            context.Layout.SetContainerFlags(result, containerFlags);
 
             if (SuppressChildLayout) {
                 // FIXME: We need to also lock our minimum width in this case
@@ -146,7 +166,20 @@ namespace Squared.PRGUI.Controls {
             } else {
                 GenerateDynamicContent(false || DynamicContentIsInvalid);
 
-                foreach (var item in _Children) {
+                if (ColumnCount != (ColumnKeys?.Length ?? 0))
+                    ColumnKeys = new ControlKey[ColumnCount];
+
+                if (multiColumn) {
+                    if (!existingKey.HasValue)
+                        for (int i = 0; i < ColumnCount; i++)
+                            ColumnKeys[i] = CreateColumn(context, result, i);
+                } else {
+                    ColumnKeys[0] = result;
+                }
+
+                for (int i = 0, c = _Children.Count; i < c; i++) {
+                    var item = _Children[i];
+                    var columnIndex = i % ColumnCount;
                     item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
 
                     // If we're performing layout again on an existing layout item, attempt to do the same
@@ -155,7 +188,9 @@ namespace Squared.PRGUI.Controls {
                     if ((existingKey.HasValue) && !item.LayoutKey.IsInvalid)
                         childExistingKey = item.LayoutKey;
 
-                    item.GenerateLayoutTree(ref context, result, childExistingKey);
+                    var itemKey = item.GenerateLayoutTree(ref context, ColumnKeys[columnIndex], childExistingKey);
+                    if (multiColumn)
+                        context.Layout.SetItemForceBreak(itemKey, true);
                 }
                 return result;
             }

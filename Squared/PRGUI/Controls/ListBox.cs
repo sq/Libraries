@@ -109,6 +109,15 @@ namespace Squared.PRGUI.Controls {
         RectF? ISelectionBearer.SelectionRect => Manager.SelectedControl?.GetRect();
         Control ISelectionBearer.SelectedControl => Manager.SelectedControl;
 
+        new public int ColumnCount {
+            get => base.ColumnCount;
+            set {
+                if (value < 1)
+                    throw new ArgumentOutOfRangeException("value");
+                base.ColumnCount = value;
+            }
+        }
+
         public ListBox ()
             : this (null) {
         }
@@ -243,7 +252,8 @@ namespace Squared.PRGUI.Controls {
                 return result;
 
             var hasPushedDecorator = false;
-            foreach (var child in Children) {
+            for (int i = 0, c = _Children.Count; i < c; i++) {
+                var child = _Children[i];
                 var lk = child.LayoutKey;
                 SetTextDecorator(ref context, child, ref hasPushedDecorator);
                 var m = context.Layout.GetMargins(lk);

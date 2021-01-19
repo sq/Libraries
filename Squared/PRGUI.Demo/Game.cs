@@ -385,7 +385,7 @@ namespace PRGUI.Demo {
             };
 
             const int menuItemCount = 50;
-            const int itemCount = 5000;
+            const int itemCount = 100;
 
             var dropdown = new Dropdown<StaticText> {
                 Label = "Dropdown: {0}",
@@ -396,14 +396,20 @@ namespace PRGUI.Demo {
 
             var virtualCheckbox = new Checkbox {
                 Text = "Virtual List",
-                Checked = true
+                Checked = false
+            };
+            var columnCount = new Dropdown<int> {
+                Label = "Columns: {0}",
+                Items = { 1, 2, 3 },
+                SelectedItem = 2
             };
             var listBox = new ListBox<string> {
-                LayoutFlags = ControlFlags.Layout_ForceBreak,
+                ForceBreak = true,
                 Description = "Big List",
                 Width = { Fixed = 600 },
                 Height = { Fixed = 600 },
-                Virtual = true
+                Virtual = virtualCheckbox.Checked,
+                ColumnCount = columnCount.SelectedItem
             };
             for (var i = 0; i < itemCount; i++)
                 listBox.Items.Add($"Item {i}");
@@ -490,6 +496,7 @@ namespace PRGUI.Demo {
                                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
                                 Children = {
                                     virtualCheckbox,
+                                    columnCount,
                                     listBox
                                 }
                             }
@@ -592,6 +599,10 @@ namespace PRGUI.Demo {
                     bigScrollableContainer
                 }
             };
+
+            Context.EventBus.Subscribe(columnCount, UIEvents.ValueChanged, (ei) => {
+                listBox.ColumnCount = columnCount.SelectedItem;
+            });
 
             Context.EventBus.Subscribe(null, UIEvents.LostFocus, (ei) => {
                 focusedCtl.Text = "Focused: " + ei.Arguments;
