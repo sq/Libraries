@@ -396,12 +396,12 @@ namespace PRGUI.Demo {
 
             var virtualCheckbox = new Checkbox {
                 Text = "Virtual List",
-                Checked = false
+                Checked = true
             };
             var columnCount = new Dropdown<int> {
                 Label = "Columns: {0}",
                 Items = { 1, 2, 3 },
-                SelectedItem = 1
+                SelectedItem = 3
             };
             var listBox = new ListBox<string> {
                 ForceBreak = true,

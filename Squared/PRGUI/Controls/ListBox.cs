@@ -165,6 +165,10 @@ namespace Squared.PRGUI.Controls {
             return provider?.ListBox;
         }
 
+        private int EffectiveCount => ((Items.Count + ColumnCount - 1) / ColumnCount) * ColumnCount;
+        private float VirtualYDivider => VirtualItemHeight / ColumnCount;
+        private float VirtualYMultiplier => VirtualItemHeight / ColumnCount;
+
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             bool scrollOffsetChanged = false;
 
@@ -172,7 +176,7 @@ namespace Squared.PRGUI.Controls {
                 var selectedIndex = SelectedIndex;
 
                 while (true) {
-                    var newItemOffset = Math.Max((int)(ScrollOffset.Y / VirtualItemHeight) - 1, 0);
+                    var newItemOffset = Math.Max((int)(ScrollOffset.Y / VirtualYDivider) - 1, 0);
                     var newEndItemOffset = Math.Min(newItemOffset + VirtualViewportSize, Items.Count - 1);
 
                     int delta = 0;
@@ -187,7 +191,7 @@ namespace Squared.PRGUI.Controls {
                     if (SelectedItemHasChangedSinceLastUpdate && (delta != 0) && !scrollOffsetChanged) {
                         if (delta != 0) {
                             var newOffset = ScrollOffset;
-                            newOffset.Y += (delta * VirtualItemHeight);
+                            newOffset.Y += (delta * VirtualYMultiplier);
                             if (TrySetScrollOffset(newOffset, false)) {
                                 scrollOffsetChanged = true;
                                 continue;
@@ -199,7 +203,7 @@ namespace Squared.PRGUI.Controls {
                         VirtualItemOffset = newItemOffset;
                         NeedsUpdate = true;
                     }
-                    var newScrollOffset = -VirtualItemOffset * VirtualItemHeight;
+                    var newScrollOffset = -VirtualItemOffset * VirtualYMultiplier;
                     if (newScrollOffset != VirtualScrollOffset.Y) {
                         VirtualScrollOffset.Y = newScrollOffset;
                         scrollOffsetChanged = true;
@@ -285,20 +289,24 @@ namespace Squared.PRGUI.Controls {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
             if (Children.Count > 0) {
-                VirtualItemHeight = Children[0].GetRect(applyOffset: false).Height;
+                float h = 0;
+                // HACK: Measure a few items to produce a better height estimate
+                for (int i = 0, c = Math.Min(_Children.Count, 4); i < c; i++)
+                    h = Math.Max(h, _Children[i].GetRect(applyOffset: false).Height);
+                VirtualItemHeight = h;
                 // HACK: Traditional listboxes on windows scroll multiple item(s) at a time on mousewheel
                 //  instead of scrolling on a per-pixel basis
                 ScrollSpeedMultiplier = (Math.Min(VirtualItemHeight, MaxItemScrollHeight) / 14);
             }
 
             var box = GetRect(applyOffset: false, contentRect: true);
-            var newViewportSize = Math.Max((int)(box.Height / VirtualItemHeight) + 4, 8);
+            var newViewportSize = Math.Max((int)Math.Ceiling(box.Height / VirtualYDivider) + 4, 8);
             if (newViewportSize != VirtualViewportSize) {
                 VirtualViewportSize = newViewportSize;
                 NeedsUpdate = true;
                 relayoutRequested = true;
             }
-            VirtualScrollRegion.Y = (Items.Count * VirtualItemHeight) - box.Height;
+            VirtualScrollRegion.Y = (EffectiveCount * VirtualYMultiplier) - box.Height;
         }
 
         public void Invalidate () {
@@ -343,19 +351,29 @@ namespace Squared.PRGUI.Controls {
                 if (!rect.Contains(globalPosition))
                     return null;
 
-                globalPosition.X = rect.Left + 6;
-                _OverrideHitTestResults = false;
+                var columnWidth = rect.Width / ColumnCount;
+                for (int i = 0; i < ColumnCount; i++) {
+                    var columnX = (rect.Left + (i * columnWidth));
+                    if (globalPosition.X < columnX)
+                        continue;
+                    else if (globalPosition.X >= (columnX + columnWidth))
+                        continue;
+                    globalPosition.X = columnX + 6;
+                    _OverrideHitTestResults = false;
 
-                var child = HitTest(globalPosition, false, false);
-                if ((child ?? this) == this) {
-                    globalPosition.X = rect.Center.X;
-                    child = HitTest(globalPosition, false, false);
+                    var child = HitTest(globalPosition, false, false);
+                    if ((child ?? this) == this) {
+                        globalPosition.X = columnX + (columnWidth / 2);
+                        child = HitTest(globalPosition, false, false);
+                    }
+
+                    if (child == this)
+                        continue;
+                    else
+                        return LocateContainingChild(child);
                 }
 
-                if (child == this)
-                    return null;
-                else
-                    return LocateContainingChild(child);
+                return null;
             } finally {
                 _OverrideHitTestResults = true;
             }
@@ -441,11 +459,13 @@ namespace Squared.PRGUI.Controls {
             if (
                 (selectionDecorator != null) && (selectedControl != null)
             ) {
+                var parentColumn = context.Layout.GetParent(selectedControl.LayoutKey);
+                var parentBox = context.Layout.GetContentRect(parentColumn);
                 var selectionBox = selectedControl.GetRect();
                 selectionBox.Top += selectionDecorator.Margins.Top;
-                selectionBox.Left = settings.ContentBox.Left + selectionDecorator.Margins.Left;
+                selectionBox.Left = parentBox.Left + selectionDecorator.Margins.Left;
                 selectionBox.Height -= selectionDecorator.Margins.Y;
-                selectionBox.Width = settings.ContentBox.Width - selectionDecorator.Margins.X;
+                selectionBox.Width = parentBox.Width - selectionDecorator.Margins.X;
 
                 // HACK: Selection boxes are normally rasterized on the content layer, but we want to rasterize
                 //  the selection on the Below layer beneath items' decorations and content.
