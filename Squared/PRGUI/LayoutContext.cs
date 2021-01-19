@@ -607,12 +607,14 @@ namespace Squared.PRGUI.Layout {
                 result.X = pItem->MinimumSize.X;
             if (result.Y < 0)
                 result.Y = pItem->MinimumSize.Y;
-            if (pItem->Flags.IsFlagged(ControlFlags.Container_Prevent_Crush)) {
+
+            if (pItem->Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X))
                 if (pItem->ComputedContentSize.X > 0)
                     result.X = Math.Max(result.X, pItem->ComputedContentSize.X);
+
+            if (pItem->Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y))
                 if (pItem->ComputedContentSize.Y > 0)
                     result.Y = Math.Max(result.Y, pItem->ComputedContentSize.Y);
-            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

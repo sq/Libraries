@@ -401,7 +401,7 @@ namespace PRGUI.Demo {
             var columnCount = new Dropdown<int> {
                 Label = "Columns: {0}",
                 Items = { 1, 2, 3 },
-                SelectedItem = 2
+                SelectedItem = 1
             };
             var listBox = new ListBox<string> {
                 ForceBreak = true,

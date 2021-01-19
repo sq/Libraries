@@ -133,7 +133,7 @@ namespace Squared.PRGUI.Controls {
             var result = context.Layout.CreateItem();
             context.Layout.InsertAtEnd(parent, result);
             context.Layout.SetLayoutFlags(result, ControlFlags.Layout_Fill);
-            context.Layout.SetContainerFlags(result, ControlFlags.Container_Column | ControlFlags.Container_Align_Start);
+            context.Layout.SetContainerFlags(result, ContainerFlags | ControlFlags.Container_Prevent_Crush);
             // context.Layout.SetContainerFlags(parent, );
             return result;
         }
@@ -151,8 +151,12 @@ namespace Squared.PRGUI.Controls {
 
             var containerFlags = ContainerFlags;
             var multiColumn = (ColumnCount > 1) || false;
-            if (ColumnCount > 1)
-                containerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start;
+            if (multiColumn) {
+                containerFlags = ContainerFlags
+                    & ~ControlFlags.Container_Column
+                    & ~ControlFlags.Container_Wrap;
+                containerFlags |= ControlFlags.Container_Row;
+            }
 
             context.Layout.SetContainerFlags(result, containerFlags);
 
@@ -189,8 +193,6 @@ namespace Squared.PRGUI.Controls {
                         childExistingKey = item.LayoutKey;
 
                     var itemKey = item.GenerateLayoutTree(ref context, ColumnKeys[columnIndex], childExistingKey);
-                    if (multiColumn)
-                        context.Layout.SetItemForceBreak(itemKey, true);
                 }
                 return result;
             }

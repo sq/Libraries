@@ -53,18 +53,6 @@ namespace Squared.PRGUI.Layout {
         /// Incompatible with Container_Wrap.
         /// </summary>
         Container_Align_Justify = 0x18,
-        /// <summary>
-        /// Prevents child elements from growing past the boundaries of this container.
-        /// </summary>
-        Container_Constrain_Size = 0x400,
-        /// <summary>
-        /// Prevents the container from shrinking below the size required to contain its child elements.
-        /// </summary>
-        Container_Prevent_Crush = 0x800,
-        /// <summary>
-        /// Does not expand the container to hold its children.
-        /// </summary>
-        Container_No_Expansion = 0x1600,
 
         /*
         /// <summary>
@@ -80,19 +68,19 @@ namespace Squared.PRGUI.Layout {
         /// <summary>
         /// Anchor to left side
         /// </summary>
-        Layout_Anchor_Left = 0x020,
+        Layout_Anchor_Left = (0x020 << 0),
         /// <summary>
         /// Anchor to top side
         /// </summary>
-        Layout_Anchor_Top = 0x040,
+        Layout_Anchor_Top = (0x020 << 1),
         /// <summary>
         /// Anchor to right side
         /// </summary>
-        Layout_Anchor_Right = 0x080,
+        Layout_Anchor_Right = (0x020 << 2),
         /// <summary>
         /// Anchor to bottom side
         /// </summary>
-        Layout_Anchor_Bottom = 0x100,
+        Layout_Anchor_Bottom = (0x020 << 3),
         /// <summary>
         /// Anchor to both left and right
         /// </summary>
@@ -113,15 +101,32 @@ namespace Squared.PRGUI.Layout {
         /// When wrapping, place this item on a new line.
         /// This only works if The container has Container_Wrap set.
         /// </summary>
-        Layout_ForceBreak = 0x4000,
+        Layout_ForceBreak = (0x20 << 4),
         /// <summary>
         /// This control does not contribute to its parent's size calculations or its siblings' layout.
         /// </summary>
-        Layout_Floating = 0x8000,
+        Layout_Floating = (0x20 << 5),
 
-        Internal_FixedWidth = 0x800,
-        Internal_FixedHeight = 0x1000,
-        Internal_Break = 0x200,
+        Internal_Break = (0x20 << 6),
+        Internal_FixedWidth = (0x20 << 7),
+        Internal_FixedHeight = (0x20 << 8),
+        /// <summary>
+        /// Prevents child elements from growing past the boundaries of this container.
+        /// </summary>
+        Container_Constrain_Size = (0x20 << 9),
+        /// <summary>
+        /// Prevents the container from shrinking below the size required to contain its child elements.
+        /// </summary>
+        Container_Prevent_Crush_X = (0x20 << 10),
+        /// <summary>
+        /// Prevents the container from shrinking below the size required to contain its child elements.
+        /// </summary>
+        Container_Prevent_Crush_Y = (0x20 << 11),
+        Container_Prevent_Crush = (Container_Prevent_Crush_X | ControlFlags.Container_Prevent_Crush_Y),
+        /// <summary>
+        /// Does not expand the container to hold its children.
+        /// </summary>
+        Container_No_Expansion = (0x20 << 12),
     }
 
     public static class ControlFlagMask {
@@ -139,7 +144,9 @@ namespace Squared.PRGUI.Layout {
             Layout = ControlFlags.Layout_Fill |
                 ControlFlags.Layout_ForceBreak |
                 ControlFlags.Layout_Floating,
-            Fixed = ControlFlags.Internal_FixedWidth | ControlFlags.Internal_FixedHeight;
+            Fixed = ControlFlags.Internal_FixedWidth | 
+                ControlFlags.Internal_FixedHeight | 
+                ControlFlags.Internal_Break;
     }
 
     public static class PRGUIExtensions {
