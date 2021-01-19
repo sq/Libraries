@@ -177,7 +177,7 @@ namespace Squared.PRGUI.Controls {
                 var selectedIndex = SelectedIndex;
 
                 while (true) {
-                    var newItemOffset = Math.Max((int)(ScrollOffset.Y / VirtualYDivider) - 1, 0);
+                    var newItemOffset = (Math.Max((int)(ScrollOffset.Y / VirtualYDivider) - 1, 0) / ColumnCount) * ColumnCount;
                     var newEndItemOffset = Math.Min(newItemOffset + VirtualViewportItemCount, Items.Count - 1);
 
                     int delta = 0;
