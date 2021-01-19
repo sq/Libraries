@@ -97,7 +97,7 @@ namespace Squared.PRGUI.Controls {
 
         private int VirtualItemOffset = 0;
         private float VirtualItemHeight = 1; // HACK, will be adjusted each frame
-        private int VirtualViewportSize = 2; // HACK, will be adjusted up/down each frame
+        private int VirtualViewportItemCount = 2; // HACK, will be adjusted up/down each frame
 
         private int _Version;
         private bool NeedsUpdate = true;
@@ -177,7 +177,7 @@ namespace Squared.PRGUI.Controls {
 
                 while (true) {
                     var newItemOffset = Math.Max((int)(ScrollOffset.Y / VirtualYDivider) - 1, 0);
-                    var newEndItemOffset = Math.Min(newItemOffset + VirtualViewportSize, Items.Count - 1);
+                    var newEndItemOffset = Math.Min(newItemOffset + VirtualViewportItemCount, Items.Count - 1);
 
                     int delta = 0;
                     if (selectedIndex >= 0) {
@@ -231,7 +231,7 @@ namespace Squared.PRGUI.Controls {
                 // FIXME: Why do virtual list items flicker for a frame before appearing?
                 Items.GenerateControls(
                     Children, CreateControlForValue ?? DefaultCreateControlForValue,
-                    offset: Virtual ? VirtualItemOffset : 0, count: Virtual ? VirtualViewportSize : int.MaxValue
+                    offset: Virtual ? VirtualItemOffset : 0, count: Virtual ? VirtualViewportItemCount : int.MaxValue
                 );
                 _Version = Items.Version;
                 // HACK: Without doing this, old content bounds can be kept that are too big/too small
@@ -300,13 +300,18 @@ namespace Squared.PRGUI.Controls {
             }
 
             var box = GetRect(applyOffset: false, contentRect: true);
-            var newViewportSize = Math.Max((int)Math.Ceiling(box.Height / VirtualYDivider) + 4, 8);
-            if (newViewportSize != VirtualViewportSize) {
-                VirtualViewportSize = newViewportSize;
+            var newViewportItemCount = (int)Math.Ceiling(box.Height / VirtualYDivider) + 4;
+            newViewportItemCount = Math.Max(newViewportItemCount, 8);
+            if (newViewportItemCount != VirtualViewportItemCount) {
+                VirtualViewportItemCount = newViewportItemCount;
                 NeedsUpdate = true;
                 relayoutRequested = true;
             }
-            VirtualScrollRegion.Y = (EffectiveCount * VirtualYMultiplier) - box.Height;
+            var partialItemScrollOffset = Math.Max(
+                (box.Height % VirtualItemHeight), 0
+            );
+            VirtualScrollRegion.Y = (EffectiveCount * VirtualYMultiplier);
+            // VirtualScrollRegion.Y += partialItemScrollOffset;
         }
 
         public void Invalidate () {
@@ -516,7 +521,7 @@ namespace Squared.PRGUI.Controls {
                     ref context, ref passSet, layer1, layer2, layer2,
                     ref maxLayer1, ref maxLayer2, ref maxLayer3
                 );
-                PageSize = Math.Max(VirtualViewportSize - 4, 2);
+                PageSize = Math.Max(VirtualViewportItemCount - 4, 2);
             } else {
                 var selectedControl = Manager.SelectedControl;
                 var displayPageSize = RasterizeChildrenFromCenter(

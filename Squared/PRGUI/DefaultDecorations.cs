@@ -921,10 +921,16 @@ namespace Squared.PRGUI {
             var box = settings.Box;
 
             var vRadius = new Vector2(ScrollbarRadius);
-            var totalOverflow = Math.Max(data.ContentSize - data.ViewportSize, 0.1f);
-            float min = Math.Max(data.Position / data.ContentSize, 0f);
-            float size = data.ViewportSize / Math.Max(data.ContentSize, 0.1f);
-            float max = Math.Min(1.0f, min + size);
+            float min, size, max;
+            if (data.ContentSize > data.ViewportSize) {
+                var divisor = (data.ContentSize + data.ViewportSize);
+                var endPosition = data.Position + data.ViewportSize;
+                size = data.ViewportSize / Math.Max(data.ContentSize, 0.1f);
+                min = Arithmetic.Saturate(data.Position / divisor);
+                max = Arithmetic.Saturate(endPosition / divisor);
+            } else {
+                min = size = max = 0;
+            }
 
             var effectiveScrollbarSize = ScrollbarSize * SizeScaleRatio;
             sizePx = data.Horizontal ? box.Width - 1 : box.Height - 1;
