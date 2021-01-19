@@ -133,7 +133,7 @@ namespace Squared.PRGUI.Controls {
             var result = context.Layout.CreateItem();
             context.Layout.InsertAtEnd(parent, result);
             context.Layout.SetLayoutFlags(result, ControlFlags.Layout_Fill);
-            context.Layout.SetContainerFlags(result, ContainerFlags | ControlFlags.Container_Prevent_Crush);
+            context.Layout.SetContainerFlags(result, ContainerFlags | ControlFlags.Container_Prevent_Crush_Y);
             // context.Layout.SetContainerFlags(parent, );
             return result;
         }
