@@ -125,6 +125,7 @@ namespace Squared.PRGUI.Controls {
         public ListBox (IEqualityComparer<T> comparer = null) 
             : base () {
             PageSize = 1;
+            AllowDynamicContent = false;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
             ContainerFlags = ControlFlags.Container_Column | ControlFlags.Container_Align_Start;

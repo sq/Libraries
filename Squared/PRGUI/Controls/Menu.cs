@@ -56,6 +56,14 @@ namespace Squared.PRGUI.Controls {
         public bool CloseWhenItemChosen = true;
         public bool CloseOnClickOutside = true;
 
+        public override int ColumnCount {
+            get => base.ColumnCount;
+            set {
+                if (value != 1)
+                    throw new ArgumentOutOfRangeException("ColumnCount");
+            }
+        }
+
         public int SelectedIndex => (_SelectedItem != null)
             ? Children.IndexOf(_SelectedItem)
             : -1;
@@ -110,6 +118,7 @@ namespace Squared.PRGUI.Controls {
             Appearance.Opacity = 0f;
             // HACK: If we don't do this, alignment will be broken when a global scale is set
             Appearance.AutoScaleMetrics = false;
+            AllowDynamicContent = false;
             Visible = false;
             AcceptsMouseInput = true;
             AcceptsFocus = true;

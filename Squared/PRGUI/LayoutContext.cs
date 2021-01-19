@@ -588,14 +588,15 @@ namespace Squared.PRGUI.Layout {
             else
                 result = Math.Max(needSize, needSize2);
 
-            // FIXME
-            PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, needSize);
-
-            result += pItem->Padding[idim] + pItem->Padding[wdim];
-
             // FIXME: Is this actually necessary?
             GetComputedMinimumSize(pItem, out Vector2 minimumSize);
             GetComputedMaximumSize(pItem, null, out Vector2 maximumSize);
+            PRGUIExtensions.SetElement(
+                ref pItem->ComputedContentSize, idim, needSize
+            );
+
+            result += pItem->Padding[idim] + pItem->Padding[wdim];
+
             result = Constrain(result, minimumSize.GetElement(idim), maximumSize.GetElement(idim));
             return result;
         }
@@ -879,6 +880,7 @@ namespace Squared.PRGUI.Layout {
                     float finalSize = ix1 - ix0;
 
                     if (attemptLastChanceWrap && (pass == 0)) {
+                        // FIXME: This needs to expand the previous items somehow...
                         // Identify cases where we need to wrap but only know after the first layout pass
                         var predictedRect = childRect;
                         predictedRect[idim] = ix0;
@@ -963,7 +965,6 @@ namespace Squared.PRGUI.Layout {
 
                 var computedExtend = childRect[idim] + childMargins[wdim];
                 var computedSize = computedExtend + childRect[wdim];
-                var willBeCompressed = false;
 
                 if (
                     childFlags.IsFlagged(ControlFlags.Layout_ForceBreak) &&
@@ -982,10 +983,11 @@ namespace Squared.PRGUI.Layout {
                     extend += computedSize;
                 }
 
+                var overflowed = (extend > space);
                 if (
                     wrap &&
                     (total != 0) && (
-                        (extend > space) ||
+                        overflowed ||
                         childFlags.IsBreak()
                     )
                 ) {

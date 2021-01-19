@@ -26,7 +26,11 @@ namespace Squared.PRGUI.Controls {
 
         protected Vector2 AbsoluteDisplayOffsetOfChildren;
 
-        protected int ColumnCount = 1;
+        private int _ColumnCount = 1;
+        public virtual int ColumnCount {
+            get => _ColumnCount;
+            set => _ColumnCount = value;
+        }
 
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
@@ -48,6 +52,8 @@ namespace Squared.PRGUI.Controls {
                 (value ? ControlFlags.Container_Prevent_Crush : default(ControlFlags));
         }
 
+        protected bool AllowDynamicContent = true;
+
         protected ContainerBuilder DynamicBuilder;
         protected ContainerContentsDelegate _DynamicContents;
         /// <summary>
@@ -56,6 +62,8 @@ namespace Squared.PRGUI.Controls {
         public ContainerContentsDelegate DynamicContents {
             get => _DynamicContents;
             set {
+                if (!AllowDynamicContent)
+                    value = null;
                 if (_DynamicContents == value)
                     return;
                 _DynamicContents = value;

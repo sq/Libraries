@@ -35,7 +35,7 @@ namespace Squared.PRGUI {
     }
     
     public abstract partial class Control {
-        public static bool ShowDebugBoxes = false;
+        public static bool ShowDebugBoxes = true;
 
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
