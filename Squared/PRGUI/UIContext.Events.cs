@@ -599,8 +599,15 @@ namespace Squared.PRGUI {
             var activeModal = ActiveModal;
             if ((activeModal?.RetainFocus == true) && (newTopLevelAncestor != activeModal))
                 return false;
-            if (previous != newFocusTarget)
-                ;
+
+            if (previous != newFocusTarget) {
+                FocusChain.Clear();
+                var current = newFocusTarget;
+                while (current != null) {
+                    FocusChain.Add(current);
+                    current.TryGetParent(out current);
+                }
+            }
             _Focused = newFocusTarget;
 
             var previousTopLevel = TopLevelFocused;
@@ -718,6 +725,12 @@ namespace Squared.PRGUI {
                 }
             }
             */
+
+            if (current is IControlContainer icc) {
+                var child = FindFocusableSibling(icc.Children, null, delta, recursive);
+                if (child != null)
+                    return child;
+            }
 
             var ineligible = current;
             Control prior;

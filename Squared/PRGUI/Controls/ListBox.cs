@@ -25,6 +25,9 @@ namespace Squared.PRGUI.Controls {
         IValueControl<T>, ISelectionBearer, IListBox,
         IPartiallyIntangibleControl, IFuzzyHitTestTarget 
     {
+        public bool DisableItemHitTests = true;
+        public bool EnableSelect = true;
+
         public static bool SelectOnMouseDown = false;
 
         public float ItemSpacing = 1;
@@ -331,9 +334,10 @@ namespace Squared.PRGUI.Controls {
         private bool _OverrideHitTestResults = true;
 
         protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
-            var ok = base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+            var ri = rejectIntangible || _OverrideHitTestResults;
+            var ok = base.OnHitTest(box, position, acceptsMouseInputOnly || _OverrideHitTestResults, acceptsFocusOnly || _OverrideHitTestResults, ri, ref result);
             // HACK: Ensure that hit-test does not pass through to our individual items. We want to handle all events for them
-            if (ok && _OverrideHitTestResults)
+            if (ok && _OverrideHitTestResults && DisableItemHitTests)
                 result = this;
             return ok;
         }
@@ -408,7 +412,8 @@ namespace Squared.PRGUI.Controls {
                     args.Box.Contains(args.RelativeGlobalPosition) && 
                     Items.GetValueForControl(control, out T newItem)
                 ) {
-                    SelectedItem = newItem;
+                    if (EnableSelect)
+                        SelectedItem = newItem;
                     return (name == UIEvents.Click);
                 }
             }
@@ -432,6 +437,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void SelectItemViaKeyboard (T item) {
+            if (!EnableSelect)
+                return;
             SelectedItem = item;
             UpdateKeyboardSelection(item, true);
         }

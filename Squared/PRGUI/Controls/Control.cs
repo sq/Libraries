@@ -576,7 +576,7 @@ namespace Squared.PRGUI {
                 }
 
                 if (
-                    (context.UIContext.TopLevelFocused == this) ||
+                    context.UIContext.FocusChain.Contains(this) ||
                     (context.UIContext.ModalFocusDonor == this) ||
                     (context.UIContext.TopLevelModalFocusDonor == this)
                 )

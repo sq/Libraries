@@ -33,6 +33,8 @@ namespace Squared.PRGUI.Controls {
             set => _ColumnCount = value;
         }
 
+        protected bool DisableChildHitTests = false;
+
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
         /// </summary>
@@ -388,6 +390,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected bool HitTestChildren (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+            if (DisableChildHitTests)
+                return false;
+
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
             var sorted = Children.InDisplayOrder(Context.FrameIndex);
@@ -441,6 +446,10 @@ namespace Squared.PRGUI.Controls {
         new public bool ClipChildren {
             get => base.ClipChildren;
             set => base.ClipChildren = value;
+        }
+        new public bool DisableChildHitTests {
+            get => base.DisableChildHitTests;
+            set => base.DisableChildHitTests = value;
         }
 
         public ControlGroup ()

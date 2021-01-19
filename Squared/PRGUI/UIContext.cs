@@ -361,6 +361,8 @@ namespace Squared.PRGUI {
 
         private Control PreviousMouseDownTarget = null;
 
+        internal readonly HashSet<Control> FocusChain = new HashSet<Control>(new ReferenceComparer<Control>());
+
         public RichTextConfiguration RichTextConfiguration;
         public DefaultMaterialSet Materials { get; private set; }
         private ITimeProvider TimeProvider;

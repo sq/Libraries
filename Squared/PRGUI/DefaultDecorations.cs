@@ -479,7 +479,7 @@ namespace Squared.PRGUI {
                     baseColor.Vector4.W = 1;
                 } else
                     baseColor = ActiveColor;
-                outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.2f : 0.05f);
+                outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.4f : 0.05f);
             } else if (state.IsFlagged(ControlStates.Hovering)) {
                 alpha = hasColor 
                     ? 0.95f 
@@ -487,7 +487,7 @@ namespace Squared.PRGUI {
                 thickness = ActiveOutlineThickness + pulseThickness;
                 pulse = Arithmetic.PulseSine(context.Now / 2.5f, 0f, 0.15f);
                 if (hasColor)
-                    outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.2f : 0f);
+                    outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.3f : 0f);
                 else
                     outlineColor = (outlineBaseColor ?? baseColor);
             } else {
@@ -498,7 +498,7 @@ namespace Squared.PRGUI {
                     ? ActiveOutlineThickness + pulseThickness
                     : InactiveOutlineThickness;
                 if (hasColor && !colorIsGray)
-                    outlineColor = (outlineBaseColor ?? baseColor) + (isFocused ? 0.2f : 0.05f);
+                    outlineColor = (outlineBaseColor ?? baseColor) + (isFocused ? 0.3f : 0.05f);
                 else
                     outlineColor = (outlineBaseColor ?? baseColor);
             }
@@ -1090,7 +1090,8 @@ namespace Squared.PRGUI {
         private void Selection_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isCaret = (settings.Box.Width <= 0.5f);
-            var isFocused = settings.State.IsFlagged(ControlStates.Focused);
+            var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
+                settings.State.IsFlagged(ControlStates.ContainsFocus);
             var fillColor = SelectionFillColor *
                 (isFocused
                     ? Arithmetic.Pulse(context.Now / 2f, 0.7f, 0.8f)
@@ -1125,7 +1126,8 @@ namespace Squared.PRGUI {
 
         private void ListSelection_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
-            var isFocused = settings.State.IsFlagged(ControlStates.Focused);
+            var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
+                settings.State.IsFlagged(ControlStates.ContainsFocus);
             var fillColor = (pSRGBColor)(
                  isFocused
                     ? SelectionFillColor
