@@ -914,49 +914,49 @@ namespace Squared.PRGUI {
         }
 
         private void Scrollbar_ComputeBoxes (
-            DecorationSettings settings, ref ScrollbarState data, out float sizePx,
+            DecorationSettings settings, ref ScrollbarState data, out float scrollDivisor,
             out Vector2 trackA, out Vector2 trackB,
             out Vector2 thumbA, out Vector2 thumbB
         ) {
             var box = settings.Box;
 
             var vRadius = new Vector2(ScrollbarRadius);
-            float min, size, max;
+            float min = 0, max = 0;
             if (data.ContentSize > data.ViewportSize) {
-                var divisor = (data.ContentSize + data.ViewportSize);
+                float divisor = Math.Max(0.1f, (data.ContentSize + data.ViewportSize));
                 var endPosition = data.Position + data.ViewportSize;
-                size = data.ViewportSize / Math.Max(data.ContentSize, 0.1f);
                 min = Arithmetic.Saturate(data.Position / divisor);
                 max = Arithmetic.Saturate(endPosition / divisor);
+                var thumbSize = (max - min) * data.ViewportSize;
+                scrollDivisor = data.ViewportSize - thumbSize;
             } else {
-                min = size = max = 0;
+                scrollDivisor = 0;
             }
 
             var effectiveScrollbarSize = ScrollbarSize * SizeScaleRatio;
-            sizePx = data.Horizontal ? box.Width - 1 : box.Height - 1;
-            if (data.HasCounterpart)
-                sizePx -= data.Horizontal ? effectiveScrollbarSize.X : effectiveScrollbarSize.Y;
+            float maxOffset = 0;
+            if (data.HasCounterpart && (data.ContentSize > data.ViewportSize)) {
+                maxOffset = (data.Horizontal ? effectiveScrollbarSize.X : effectiveScrollbarSize.Y);
+                // FIXME
+                // divisor = Math.Max(0.1f, divisor - maxOffset);
+            }
             trackA = data.Horizontal
                 ? new Vector2(box.Left, box.Extent.Y - effectiveScrollbarSize.Y)
                 : new Vector2(box.Extent.X - effectiveScrollbarSize.X, box.Top);
             trackB = box.Extent;
 
-            var thumbSize = sizePx * (max - min);
-            const float minSize = 20f;
-            if (thumbSize < minSize) {
-                var gap = minSize - thumbSize;
-                sizePx -= gap;
-                thumbSize = minSize;
-            }
-
-            thumbA = trackA;
-            thumbB = trackB;
             if (data.Horizontal) {
-                thumbA.X += (sizePx * min);
-                thumbB.X = thumbA.X + thumbSize;
+                var b = trackB.X - maxOffset;
+                thumbA.X = Arithmetic.Lerp(trackA.X, b, min);
+                thumbA.Y = trackA.Y;
+                thumbB.X = Arithmetic.Lerp(trackA.X, b, max);
+                thumbB.Y = trackB.Y;
             } else {
-                thumbA.Y += (sizePx * min);
-                thumbB.Y = thumbA.Y + thumbSize;
+                var b = trackB.Y - maxOffset;
+                thumbA.X = trackA.X;
+                thumbA.Y = Arithmetic.Lerp(trackA.Y, b, min);
+                thumbB.X = trackB.X;
+                thumbB.Y = Arithmetic.Lerp(trackA.Y, b, max);
             }
         }
 
@@ -1027,7 +1027,7 @@ namespace Squared.PRGUI {
 
         private void Scrollbar_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref ScrollbarState data) {
             Scrollbar_ComputeBoxes(
-                settings, ref data, out float sizePx,
+                settings, ref data, out float divisor,
                 out Vector2 trackA, out Vector2 trackB,
                 out Vector2 thumbA, out Vector2 thumbB
             );
