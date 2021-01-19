@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -430,6 +431,40 @@ namespace Squared.PRGUI.Controls {
 
         void IControlContainer.DescendantReceivedFocus (Control descendant, bool isUserInitiated) {
             OnDescendantReceivedFocus(descendant, isUserInitiated);
+        }
+    }
+
+    public sealed class ControlGroup : ContainerBase, IEnumerable<Control> {
+        new public ControlCollection Children {
+            get => base.Children;
+        }
+        new public bool ClipChildren {
+            get => base.ClipChildren;
+            set => base.ClipChildren = value;
+        }
+
+        public ControlGroup ()
+            : this (false, false) {
+        }
+
+        public ControlGroup (bool forceBreak = false, bool preventCrush = false)
+            : base () {
+            Appearance.Undecorated = true;
+            ForceBreak = forceBreak;
+            PreventCrush = preventCrush;
+        }
+
+        // For simple initializers
+        public void Add (Control control) {
+            Children.Add(control);
+        }
+
+        public IEnumerator<Control> GetEnumerator () {
+            return ((IEnumerable<Control>)Children).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return ((IEnumerable<Control>)Children).GetEnumerator();
         }
     }
 }

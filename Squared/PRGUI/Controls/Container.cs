@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,7 +13,9 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public class Container : ContainerBase, IScrollableControl, IPostLayoutListener, IPartiallyIntangibleControl {
+    public class Container 
+        : ContainerBase, IScrollableControl, IPostLayoutListener, 
+            IPartiallyIntangibleControl, IEnumerable<Control> {
         new public ControlCollection Children {
             get => base.Children;
         }
@@ -332,6 +335,19 @@ namespace Squared.PRGUI.Controls {
                 return false;
 
             return true;
+        }
+
+        // For simple initializers
+        public void Add (Control control) {
+            Children.Add(control);
+        }
+
+        public IEnumerator<Control> GetEnumerator () {
+            return ((IEnumerable<Control>)Children).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return ((IEnumerable<Control>)Children).GetEnumerator();
         }
     }
 }

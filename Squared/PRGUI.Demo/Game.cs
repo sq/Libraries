@@ -341,16 +341,10 @@ namespace PRGUI.Demo {
                 volumeSlider,
                 // FIXME: If we don't group these into a container, the last two get vertically centered.
                 // Is that right? It might be
-                new Container {
-                    ForceBreak = true,
-                    Appearance = {
-                        Undecorated = true
-                    },
-                    Children = {
-                        hideButton,
-                        toppleButton,
-                        LoginButton
-                    }
+                new ControlGroup (forceBreak: true) {
+                    hideButton,
+                    toppleButton,
+                    LoginButton
                 },
                 // FIXME: We need this spacer to fill the empty space at the bottom of the window when it's maximized.
                 // Should it really work this way?
@@ -414,7 +408,7 @@ namespace PRGUI.Demo {
             for (var i = 0; i < itemCount; i++)
                 listBox.Items.Add($"Item {i}");
 
-            var supernestedGroup = new Container {
+            var supernestedGroup = new ControlGroup {
                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                 DynamicContents = BuildSupernestedGroup
             };
@@ -450,12 +444,9 @@ namespace PRGUI.Demo {
                             BackgroundColor = new Color(32, 60, 32),
                         }
                     },
-                    new Container {
+                    new ControlGroup {
                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start,
-                        Appearance = {
-                            Undecorated = true
-                        },
                         Children = {
                             new Button {
                                 Text = "Clipped huge button\r\nSecond line\r\n" + ButtonChars,
@@ -492,7 +483,7 @@ namespace PRGUI.Demo {
                                     gauge
                                 }
                             },
-                            new Container {
+                            new ControlGroup {
                                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
                                 Children = {
                                     virtualCheckbox,
@@ -532,7 +523,7 @@ namespace PRGUI.Demo {
                 TooltipFormat = "{0}"
             };
 
-            var topLevelContainer = new Container {
+            var topLevelContainer = new ControlGroup {
                 Appearance = {
                     BackgroundColor = new Color(60, 60, 60) * 0.9f,
                 },

@@ -218,8 +218,6 @@ namespace Squared.PRGUI.Controls {
             var textDecorations = GetTextDecorator(context.DecorationProvider, context.DefaultTextDecorator);
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             var fontChanged = UpdateFont(context, textDecorations, decorations);
-            if (ScaleToFit)
-                return;
 
             ComputePadding(context, decorations, out Margins computedPadding);
 
@@ -295,7 +293,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations) {
-            if (ScaleToFit)
+            if (_ScaleToFit)
                 return null;
 
             ComputePadding(context, decorations, out Margins computedPadding);
@@ -318,7 +316,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float ComputeScaleToFit (ref StringLayout layout, ref RectF box, ref Margins margins) {
-            if (!ScaleToFit)
+            if (!_ScaleToFit)
                 return 1;
 
             float availableWidth = Math.Max(box.Width - margins.X, 0);
@@ -363,7 +361,7 @@ namespace Squared.PRGUI.Controls {
 
             // Recenter the text if it's been scaled by the decorator
             float extraSpaceY = Math.Max(settings.Box.Height - scaledSize.Y - computedPadding.Y, 0);
-            textOffset.Y += Math.Min(extraSpaceY, (layout.Size.Y - scaledSize.Y));
+            textOffset.Y += Math.Min(extraSpaceY, (layout.Size.Y - scaledSize.Y)) * 0.5f;
 
             var xSpace = (b.X - a.X) - scaledSize.X - computedPadding.X;
             switch (Content.Alignment) {
@@ -388,7 +386,7 @@ namespace Squared.PRGUI.Controls {
 
         protected void UpdateLineBreak (UIOperationContext context, IDecorator decorations) {
             var textWidthLimit = ComputeTextWidthLimit(context, decorations);
-            if (textWidthLimit.HasValue && !ScaleToFit)
+            if (textWidthLimit.HasValue && !_ScaleToFit)
                 Content.LineBreakAtX = textWidthLimit;
             else
                 Content.LineBreakAtX = null;

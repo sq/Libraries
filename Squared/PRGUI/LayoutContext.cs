@@ -487,7 +487,6 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe float CalcOverlaySize (LayoutItem * pItem, Dimensions dim) {
-            var noExpand = pItem->Flags.IsFlagged(ControlFlags.Container_No_Expansion);
             float result = 0, minimum = 0;
             int idim = (int)dim, wdim = idim + 2;
             foreach (var child in Children(pItem)) {
@@ -504,11 +503,7 @@ namespace Squared.PRGUI.Layout {
                     minimum = Math.Max(childMinimum, minimum);
                 // FIXME: Is this a bug?
                 var childSize = childRect[idim] + childRect[wdim] + childMargin;
-
-                if (!noExpand)
-                    result = Math.Max(result, childSize);
-                else
-                    result = Math.Max(result, childSize);
+                result = Math.Max(result, childSize);
             }
             var outerPadding = pItem->Padding[idim] + pItem->Padding[wdim];
             minimum += outerPadding;
@@ -518,7 +513,6 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe float CalcStackedSize (LayoutItem * pItem, Dimensions dim) {
-            var noExpand = pItem->Flags.IsFlagged(ControlFlags.Container_No_Expansion);
             float result = 0, minimum = 0;
             int idim = (int)dim, wdim = idim + 2;
             var outerPadding = pItem->Padding[idim] + pItem->Padding[wdim];
@@ -534,12 +528,7 @@ namespace Squared.PRGUI.Layout {
                     minimum += childMinimum;
                 else
                     minimum = Math.Max(childMinimum, minimum);
-
-                var totalSize = childRect[idim] + childRect[wdim] + childMargin;
-                if (!noExpand)
-                    result += totalSize;
-                else
-                    result += totalSize;
+                result += childRect[idim] + childRect[wdim] + childMargin;
             }
             minimum += outerPadding;
             result += outerPadding;
@@ -911,6 +900,9 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe void CheckConstraints (ControlKey control, int dimension) {
 #if DEBUG
+            // FIXME
+            return;
+
             var pItem = LayoutPtr(control);
             var rect = GetRect(control);
             var wdim = dimension + 2;

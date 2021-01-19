@@ -182,6 +182,10 @@ namespace Squared.PRGUI.Imperative {
             return this.NewContainer<Container>();
         }
 
+        public ContainerBuilder NewGroup () {
+            return this.NewContainer<ControlGroup>();
+        }
+
         public ContainerBuilder NewContainer<TControl> ()
             where TControl : Control, IControlContainer, new() {
             TControl instance = null;
