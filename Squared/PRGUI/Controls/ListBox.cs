@@ -169,9 +169,17 @@ namespace Squared.PRGUI.Controls {
         private int EffectiveCount => ((Items.Count + ColumnCount - 1) / ColumnCount) * ColumnCount;
         private float VirtualYDivider => VirtualItemHeight / ColumnCount;
         private float VirtualYMultiplier => VirtualItemHeight / ColumnCount;
+        private int LastColumnCount = 0;
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             bool scrollOffsetChanged = false;
+
+            // HACK: Ensure the scroll region is updated immediately if our column count changes,
+            //  because otherwise the scroll offset can end up beyond the bottom of our view
+            if (LastColumnCount != ColumnCount) {
+                LastColumnCount = ColumnCount;
+                NeedsUpdate = true;
+            }
 
             if (Virtual) {
                 var selectedIndex = SelectedIndex;
@@ -308,11 +316,11 @@ namespace Squared.PRGUI.Controls {
                 NeedsUpdate = true;
                 relayoutRequested = true;
             }
-            var partialItemScrollOffset = Math.Max(
-                (box.Height % VirtualItemHeight), 0
-            );
+            // FIXME: It is beyond me why this is the correct value. What?????
+            var partialItemScrollOffset = GetDecorator(context.DecorationProvider, null)?.Margins.Y ?? 0;
             VirtualScrollRegion.Y = (EffectiveCount * VirtualYMultiplier);
-            // VirtualScrollRegion.Y += partialItemScrollOffset;
+            if (Virtual)
+                VirtualScrollRegion.Y += partialItemScrollOffset;
         }
 
         public void Invalidate () {
