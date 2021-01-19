@@ -490,6 +490,8 @@ namespace Squared.PRGUI {
 
             var result = existingKey ?? context.Layout.CreateItem();
 
+            var isFloating = LayoutFlags.IsFlagged(ControlFlags.Layout_Floating);
+
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             ComputeMargins(context, decorations, out Margins computedMargins);
             ComputePadding(context, decorations, out Margins computedPadding);
@@ -500,7 +502,8 @@ namespace Squared.PRGUI {
             var actualLayoutFlags = ComputeLayoutFlags(fixedWidth.HasValue, fixedHeight.HasValue);
 
             var spacingScale = context.DecorationProvider.SpacingScaleRatio;
-            Margins.Scale(ref computedMargins, ref spacingScale);
+            if (!isFloating)
+                Margins.Scale(ref computedMargins, ref spacingScale);
             Margins.Scale(ref computedPadding, ref spacingScale);
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
@@ -738,8 +741,8 @@ namespace Squared.PRGUI {
                 (box.Width <= 0) ||
                 (box.Height <= 0);
             
-            if (ShowDebugBoxes && (context.Pass == RasterizePasses.Content))
-                passSet.Content.RasterizeRectangle(box.Position, box.Extent, 0f, 1f, Color.Transparent, Color.Transparent, Color.Red);
+            if (ShowDebugBoxes)
+                passSet.Above.RasterizeRectangle(box.Position, box.Extent, 0f, 1f, Color.Transparent, Color.Transparent, Color.Red);
 
             // Only visibility cull controls that have a parent and aren't overlaid.
             if (isInvisible && TryGetParent(out Control parent) && !Appearance.Overlay)

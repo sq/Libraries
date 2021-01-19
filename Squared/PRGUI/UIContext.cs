@@ -1325,7 +1325,7 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        private UIOperationContext MakeOperationContext () {
+        internal UIOperationContext MakeOperationContext () {
             return new UIOperationContext {
                 UIContext = this,
                 Now = Now,

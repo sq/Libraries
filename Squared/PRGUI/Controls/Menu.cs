@@ -108,6 +108,8 @@ namespace Squared.PRGUI.Controls {
         public Menu ()
             : base () {
             Appearance.Opacity = 0f;
+            // HACK: If we don't do this, alignment will be broken when a global scale is set
+            Appearance.AutoScaleMetrics = false;
             Visible = false;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
@@ -513,18 +515,32 @@ namespace Squared.PRGUI.Controls {
         }
 
         private Vector2 AdjustPosition (UIContext context, Vector2 desiredPosition) {
-            var margin = context.Decorations.Menu.Margins;
+            var decorator = GetDecorator(context.Decorations, null);
+
+            // HACK city: Need an operation context to compute margins
+            var tempContext = context.MakeOperationContext();
+            // Also our position is stored in margins top/left so we gotta clear that
+            var m = Margins;
+            Margins = default(Margins);
+            // Now we can get the actual margins of our control for layout purposes
+            ComputeMargins(tempContext, decorator, out Margins computedMargins);
+            // Put back the original margins (even though we'll be changing them potentially)
+            Margins = m;
+            // Shift ourself up/left to compensate for our decoration margins and align perfectly
+            //  with any anchor point
+            desiredPosition -= new Vector2(computedMargins.Left, computedMargins.Top);
+            // Move ourselves into place and perform layout to figure out how big we are, etc
             Position = desiredPosition;
             context.UpdateSubtreeLayout(this);
             var box = GetRect(context: context);
             // HACK: We'd want to use margin.Right/Bottom here normally, but compensation has already
             //  been applied somewhere in the layout engine for the top/left margins so we need to
             //  cancel them out again
-            var maxX = context.CanvasSize.X - box.Width - margin.X;
-            var maxY = context.CanvasSize.Y - box.Height - margin.Y;
+            var maxX = context.CanvasSize.X - box.Width - computedMargins.X;
+            var maxY = context.CanvasSize.Y - box.Height - computedMargins.Y;
             var result = new Vector2(
-                Arithmetic.Clamp(desiredPosition.X, margin.Left, maxX),
-                Arithmetic.Clamp(desiredPosition.Y, margin.Top, maxY)
+                Arithmetic.Clamp(desiredPosition.X, computedMargins.Left, maxX),
+                Arithmetic.Clamp(desiredPosition.Y, computedMargins.Top, maxY)
             );
             return result;
         }
