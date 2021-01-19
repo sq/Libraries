@@ -118,7 +118,6 @@ namespace Squared.PRGUI.Controls {
             Appearance.Opacity = 0f;
             // HACK: If we don't do this, alignment will be broken when a global scale is set
             Appearance.AutoScaleMetrics = false;
-            AllowDynamicContent = false;
             Visible = false;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
