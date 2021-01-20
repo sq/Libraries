@@ -430,7 +430,7 @@ namespace Squared.PRGUI {
             PerformAutoscroll(KeyboardSelection, null);
         }
 
-        private bool AttemptTargetedScroll (Control control, Vector2 displacement) {
+        private bool AttemptTargetedScroll (Control control, Vector2 displacement, bool recursive) {
             if (control == null)
                 return false;
 
@@ -453,6 +453,9 @@ namespace Squared.PRGUI {
                             SuppressAutoscrollDueToInputScroll = true;
                             return true;
                         }
+                    } else if (!recursive) {
+                        if (context.MaxScrollOffset.HasValue && context.MaxScrollOffset.Value.Length() >= 1)
+                            return false;
                     }
                 }
 

@@ -36,7 +36,12 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public virtual int ColumnCount {
             get => _ColumnCount;
-            set => _ColumnCount = value;
+            set {
+                if (value == _ColumnCount)
+                    return;
+                _ColumnCount = value;
+                InvalidateLayout();
+            }
         }
 
         /// <summary>

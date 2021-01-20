@@ -148,6 +148,7 @@ namespace Squared.PRGUI.Controls {
                     : value.ToString();
             st.Text = text;
             st.Wrap = false;
+            st.Multiline = false;
             st.AutoSizeWidth = false;
             st.Data.Set<T>(ref value);
             return st;
@@ -443,9 +444,13 @@ namespace Squared.PRGUI.Controls {
             UpdateKeyboardSelection(item, true);
         }
 
-        public void AdjustSelection (int delta) {
-            if (Manager.TryAdjustSelection(delta, out T newItem))
+        public bool AdjustSelection (int delta, bool clamp = true) {
+            if (Manager.TryAdjustSelection(delta, out T newItem, clamp: clamp)) {
                 SelectItemViaKeyboard(newItem);
+                return true;
+            }
+
+            return false;
         }
 
         private bool OnKeyEvent (string name, KeyEventArgs args) {
@@ -463,12 +468,15 @@ namespace Squared.PRGUI.Controls {
                     return true;
                 case Keys.PageUp:
                 case Keys.PageDown:
-                    AdjustSelection(args.Key == Keys.PageUp ? -PageSize : PageSize);
-                    return true;
+                    return AdjustSelection(args.Key == Keys.PageUp ? -PageSize : PageSize, clamp: true);
+                case Keys.Left:
+                case Keys.Right:
+                    if (ColumnCount <= 1)
+                        return false;
+                    return AdjustSelection(args.Key == Keys.Left ? -1 : 1);
                 case Keys.Up:
                 case Keys.Down:
-                    AdjustSelection(args.Key == Keys.Up ? -1 : 1);
-                    return true;
+                    return AdjustSelection(args.Key == Keys.Up ? -ColumnCount : ColumnCount, clamp: false);
                 default:
                     return false;
             }
@@ -605,16 +613,39 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private Accessibility.AcceleratorInfo? GetInfoForIndex (int index, Keys key) {
+            if ((index < 0) || (index >= Items.Count))
+                return null;
+
+            if (!Items.GetControlForValue(Items[index], out Control control))
+                return null;
+            return new Accessibility.AcceleratorInfo(control, key);
+        }
+
         IEnumerable<Accessibility.AcceleratorInfo> Accessibility.IAcceleratorSource.Accelerators {
             get {
                 var si = SelectedIndex;
-                if (si > 0) {
-                    Items.GetControlForValue(Items[si - 1], out Control prev);
-                    yield return new Accessibility.AcceleratorInfo(prev, Keys.Up);
-                }
-                if (si < (Items.Count - 1)) {
-                    Items.GetControlForValue(Items[si + 1], out Control next);
-                    yield return new Accessibility.AcceleratorInfo(next, Keys.Down);
+                var multiColumn = (ColumnCount > 1);
+                if (multiColumn) {
+                    var a = GetInfoForIndex(si - 1, Keys.Left);
+                    if (a != null)
+                        yield return a.Value;
+                    a = GetInfoForIndex(si + 1, Keys.Right);
+                    if (a != null)
+                        yield return a.Value;
+                    a = GetInfoForIndex(si - ColumnCount, Keys.Up);
+                    if (a != null)
+                        yield return a.Value;
+                    a = GetInfoForIndex(si + ColumnCount, Keys.Down);
+                    if (a != null)
+                        yield return a.Value;
+                } else {
+                    var a = GetInfoForIndex(si - 1, Keys.Up);
+                    if (a != null)
+                        yield return a.Value;
+                    a = GetInfoForIndex(si + 1, Keys.Down);
+                    if (a != null)
+                        yield return a.Value;
                 }
             }
         }

@@ -61,7 +61,7 @@ namespace Squared.PRGUI.Controls {
                 ? result
                 : null;
 
-        public bool TryAdjustSelection (int delta, out T newItem) {
+        public bool TryAdjustSelection (int delta, out T newItem, bool clamp = true) {
             newItem = default(T);
             if (Items.Count == 0)
                 return false;
@@ -71,7 +71,8 @@ namespace Squared.PRGUI.Controls {
                 selectedIndex = delta > 0 ? 0 : Items.Count - 1;
             else
                 selectedIndex += delta;
-            selectedIndex = Arithmetic.Clamp(selectedIndex, 0, Items.Count - 1);
+            if (clamp)
+                selectedIndex = Arithmetic.Clamp(selectedIndex, 0, Items.Count - 1);
 
             if ((selectedIndex >= 0) && (selectedIndex < Items.Count)) {
                 newItem = Items[selectedIndex];

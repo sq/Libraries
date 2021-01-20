@@ -394,7 +394,7 @@ namespace PRGUI.Demo {
             };
             var columnCount = new Dropdown<int> {
                 Label = "Columns: {0}",
-                Items = { 1, 2, 3 },
+                Items = { 1, 2, 3, 4 },
                 SelectedItem = 1
             };
             var listBox = new ListBox<string> {
@@ -406,7 +406,7 @@ namespace PRGUI.Demo {
                 ColumnCount = columnCount.SelectedItem
             };
             for (var i = 0; i < itemCount; i++)
-                listBox.Items.Add($"Item {i}");
+                listBox.Items.Add($"# {i}");
 
             var supernestedGroup = new ControlGroup {
                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,

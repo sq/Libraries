@@ -361,6 +361,11 @@ namespace Squared.PRGUI {
 
         private Control PreviousMouseDownTarget = null;
 
+        /// <summary>
+        /// This control is currently being scrolled via implicit scroll input
+        /// </summary>
+        public Control CurrentImplicitScrollTarget { get; private set; }
+
         internal readonly HashSet<Control> FocusChain = new HashSet<Control>(new ReferenceComparer<Control>());
 
         public RichTextConfiguration RichTextConfiguration;
@@ -1057,8 +1062,18 @@ namespace Squared.PRGUI {
 
             UpdateTooltip((CurrentMouseButtons != MouseButtons.None));
 
-            if (CurrentInputState.ScrollDistance.Length() >= 0.5f)
-                AttemptTargetedScroll(KeyboardSelection ?? Hovering ?? MouseOverLoose ?? Focused, CurrentInputState.ScrollDistance);
+            if (CurrentInputState.ScrollDistance.Length() >= 0.5f) {
+                var implicitScrollTarget = CurrentImplicitScrollTarget;
+                if ((implicitScrollTarget == null) || Control.IsRecursivelyTransparent(implicitScrollTarget, true))
+                    implicitScrollTarget = KeyboardSelection ?? Hovering ?? MouseOverLoose ?? Focused;
+
+                if (implicitScrollTarget != null) {
+                    if (AttemptTargetedScroll(implicitScrollTarget, CurrentInputState.ScrollDistance, recursive: false))
+                        CurrentImplicitScrollTarget = implicitScrollTarget;
+                }
+            } else {
+                CurrentImplicitScrollTarget = null;
+            }
 
             EnsureValidFocus();
 
