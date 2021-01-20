@@ -610,19 +610,21 @@ namespace Squared.PRGUI.Layout {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe void GetComputedMaximumSize (LayoutItem * pItem, Vector2? parentConstraint, out Vector2 result) {
             result = pItem->FixedSize;
-            if (result.X < 0) {
-                if (parentConstraint.HasValue) {
-                    result.X = Math.Min(parentConstraint.Value.X, pItem->MaximumSize.X);
-                } else {
-                    result.X = pItem->MaximumSize.X;
-                }
-            }
-            if (result.Y < 0) {
-                if (parentConstraint.HasValue) {
-                    result.Y = Math.Min(parentConstraint.Value.Y, pItem->MaximumSize.Y);
-                } else {
-                    result.Y = pItem->MaximumSize.Y;
-                }
+            if (result.X < 0)
+                result.X = pItem->MaximumSize.X;
+            if (result.Y < 0)
+                result.Y = pItem->MaximumSize.Y;
+
+            if (parentConstraint.HasValue) {
+                if (result.X < 0)
+                    result.X = parentConstraint.Value.X;
+                else
+                    result.X = Math.Min(parentConstraint.Value.X, result.X);
+
+                if (result.Y < 0)
+                    result.Y = parentConstraint.Value.Y;
+                else
+                    result.Y = Math.Min(parentConstraint.Value.Y, result.Y);
             }
         }
 
@@ -1081,8 +1083,12 @@ namespace Squared.PRGUI.Layout {
                 Vector2? parentConstraint = null;
                 if (pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size)) {
                     // rect[idim] = Constrain(rect[idim], parentRect[idim], parentRect[wdim]);
-                    // FIXME: parent padding?
-                    parentConstraint = parentRect.Extent - rect.Position;
+                    var temp = parentRect.Extent - rect.Position;
+                    var spacing = pItem->Margins + pParent->Padding;
+                    // FIXME: bottom/right padding only?
+                    temp.X = Math.Max(0, temp.X - spacing.Right);
+                    temp.Y = Math.Max(0, temp.Y - spacing.Bottom);
+                    parentConstraint = temp;
                 }
 
                 GetComputedMinimumSize(pItem, out Vector2 minimum);

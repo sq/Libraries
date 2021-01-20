@@ -149,7 +149,7 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        private ControlKey[] ColumnKeys;
+        protected ControlKey[] ColumnKeys;
         
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);

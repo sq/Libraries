@@ -239,12 +239,26 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected bool GetContentBounds (UIContext context, out RectF contentBounds) {
-            if (LayoutKey.IsInvalid) {
-                contentBounds = default(RectF);
+            contentBounds = default(RectF);
+            if (LayoutKey.IsInvalid)
                 return false;
-            }
 
-            var ok = context.Layout.TryMeasureContent(LayoutKey, out contentBounds);
+            bool ok = false;
+            if (ColumnCount > 1) {
+                for (int i = 0; i < ColumnCount; i++) {
+                    var ckey = ColumnKeys[i];
+                    context.Layout.TryMeasureContent(ckey, out RectF columnBounds);
+                    if (i == 0) {
+                        contentBounds = columnBounds;
+                    } else {
+                        contentBounds.Width += columnBounds.Width;
+                        contentBounds.Height = Math.Max(contentBounds.Height, columnBounds.Height);
+                    }
+                    ok = true;
+                }
+            } else {
+                ok = context.Layout.TryMeasureContent(LayoutKey, out contentBounds);
+            }
             if (ok)
                 ContentBounds = contentBounds;
             HasContentBounds = ok;
@@ -279,16 +293,18 @@ namespace Squared.PRGUI.Controls {
 
                 GetContentBounds(context.UIContext, out RectF contentBounds);
 
-                float maxScrollX = 0, maxScrollY = 0;
+                float maxScrollX = 0, maxScrollY = 0, contentSizeX = 0, contentSizeY = 0;
                 if (HasContentBounds) {
                     if (VirtualScrollRegion.X > 0)
-                        maxScrollX = VirtualScrollRegion.X - viewportHeight;
+                        contentSizeX = VirtualScrollRegion.X;
                     else
-                        maxScrollX = ContentBounds.Width - viewportWidth;
+                        contentSizeX = contentBounds.Width;
                     if (VirtualScrollRegion.Y > 0)
-                        maxScrollY = VirtualScrollRegion.Y - viewportHeight;
+                        contentSizeY = VirtualScrollRegion.Y;
                     else
-                        maxScrollY = ContentBounds.Height - viewportHeight;
+                        contentSizeY = contentBounds.Height;
+                    maxScrollX = contentSizeX - viewportWidth;
+                    maxScrollY = contentSizeY - viewportHeight;
                     maxScrollX = Math.Max(0, maxScrollX);
                     maxScrollY = Math.Max(0, maxScrollY);
 
@@ -306,10 +322,10 @@ namespace Squared.PRGUI.Controls {
                     CanScrollVertically = maxScrollY > 0;
                 }
 
-                HScrollbar.ContentSize = maxScrollX + viewportWidth;
+                HScrollbar.ContentSize = contentSizeX;
                 HScrollbar.ViewportSize = viewportWidth;
                 HScrollbar.Position = ScrollOffset.X;
-                VScrollbar.ContentSize = CanScrollVertically ? maxScrollY : contentBox.Height;
+                VScrollbar.ContentSize = CanScrollVertically ? contentSizeY : contentBox.Height;
                 VScrollbar.ViewportSize = viewportHeight;
                 VScrollbar.Position = ScrollOffset.Y;
 

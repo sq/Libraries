@@ -943,7 +943,7 @@ namespace Squared.PRGUI {
             var vRadius = new Vector2(ScrollbarRadius);
             float min = 0, max = 0;
             if (data.ContentSize > data.ViewportSize) {
-                float divisor = Math.Max(0.1f, (data.ContentSize + data.ViewportSize));
+                float divisor = Math.Max(0.1f, data.ContentSize);
                 var endPosition = data.Position + data.ViewportSize;
                 min = Arithmetic.Saturate(data.Position / divisor);
                 max = Arithmetic.Saturate(endPosition / divisor);
