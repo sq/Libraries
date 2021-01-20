@@ -499,6 +499,15 @@ namespace Squared.PRGUI {
             return (br.X > tl.X) && (br.Y > tl.Y);
         }
 
+        public static RectF Lerp (RectF lhs, RectF rhs, float t) {
+            return new RectF(
+                Arithmetic.Lerp(lhs.Left, rhs.Left, t),
+                Arithmetic.Lerp(lhs.Top, rhs.Top, t),
+                Arithmetic.Lerp(lhs.Width, rhs.Width, t),
+                Arithmetic.Lerp(lhs.Height, rhs.Height, t)
+            );
+        }
+
         public bool Contains (ref RectF rhs) {
             return (rhs.Left >= Left) &&
                 (rhs.Extent.X <= (Left + Width)) &&

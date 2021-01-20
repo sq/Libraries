@@ -220,6 +220,15 @@ namespace Squared.Render {
     }
 
     public class DefaultMaterialSet : MaterialSetBase {
+        /// <summary>
+        /// Enables preloading for raster shape shaders. This is pretty expensive.
+        /// </summary>
+        public static bool PreloadAllRasterShapeShaders = false;
+        /// <summary>
+        /// Enables preloading for common raster shape shaders. This is... less expensive.
+        /// </summary>
+        public static bool PreloadCommonRasterShapeShaders = false;
+
         public struct RasterShaderKey {
             public class Comparer : IEqualityComparer<RasterShaderKey> {
                 public bool Equals (RasterShaderKey x, RasterShaderKey y) {
@@ -733,6 +742,18 @@ namespace Squared.Render {
                 HasRamp = ramp
             };
             var material = new Material(shader, techniqueName);
+            var shapeHint = new Material.PipelineHint {
+                HasIndices = true,
+                VertexFormats = new Type[] {
+                    typeof(CornerVertex),
+                    typeof(RasterShape.RasterShapeVertex)
+                }
+            };
+            if (
+                PreloadAllRasterShapeShaders ||
+                (PreloadCommonRasterShapeShaders && !textured && type.HasValue && !ramp)
+            )
+                material.HintPipeline = shapeHint;
             RasterShapeMaterials[key] = new RasterShape.RasterShader(material);
             Add(material);
         }

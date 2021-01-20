@@ -1519,8 +1519,10 @@ namespace Squared.PRGUI {
                     subRenderer.BlendState = BlendState.NonPremultiplied;
                     // HACK
                     context.Pass = RasterizePasses.Below;
-                    foreach (var isrc in InputSources)
+                    foreach (var isrc in InputSources) {
+                        isrc.SetContext(this);
                         isrc.Rasterize(context, ref subRenderer);
+                    }
                     subRenderer.Layer += 1;
                     context.Pass = RasterizePasses.Content;
                     foreach (var isrc in InputSources)

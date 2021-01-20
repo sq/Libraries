@@ -196,11 +196,11 @@ namespace Squared.Util {
 
             var endWhen = 
                 seconds.HasValue
-                    ? now + (seconds.Value * Time.SecondInTicks)
+                    ? now + (long)(seconds.Value * Time.SecondInTicks)
                     : EndWhen;
             return new Tween<T>(
                 Get(now), to, 
-                startWhen: now, endWhen: EndWhen,
+                startWhen: now, endWhen: endWhen,
                 interpolator: Interpolator,
                 repeatCount: 0,
                 repeatMode: RepeatMode

@@ -365,17 +365,19 @@ namespace Squared.Render {
 
             // HACK: Applying a shader does an on-demand compile
             var tempIb = new IndexBuffer(dm.Device, IndexElementSize.SixteenBits, 6, BufferUsage.WriteOnly);
+            var count = 0;
             foreach (var m in AllMaterials) {
                 if (m.HintPipeline == null && m.DelegatedHintPipeline?.HintPipeline == null)
                     continue;
 
+                count++;
                 m.Preload(coordinator, dm, tempIb);
             }
 
             coordinator.DisposeResource(tempIb);
 
             var elapsed = sw.Elapsed.TotalMilliseconds;
-            Debug.WriteLine(string.Format("Shader preload took {0:000.00}ms", elapsed));
+            Debug.WriteLine($"Shader preload took {elapsed:000.00}ms for {count} material(s)");
         }
     }
 }

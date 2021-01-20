@@ -242,6 +242,8 @@ namespace Squared.Render {
                 return;
 
             var bindings = new VertexBufferBinding[hint.VertexFormats.Length];
+            var sw = Stopwatch.StartNew();
+
             for (int i = 0; i < bindings.Length; i++) {
                 VertexBuffer tempVb;
                 lock (coordinator.CreateResourceLock)
@@ -286,6 +288,9 @@ namespace Squared.Render {
                 deviceManager.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, 4, 0, 2);
             else
                 deviceManager.Device.DrawPrimitives(PrimitiveType.TriangleList, 0, 2);
+
+            if (sw.ElapsedMilliseconds > 10)
+                Debug.WriteLine($"Preloading shader {Effect.CurrentTechnique.Name} took {sw.ElapsedMilliseconds}ms");
         }
     }
 }

@@ -47,7 +47,7 @@ namespace Squared.Render {
         }
 
         public Texture2D Load (string name, TextureLoadOptions options, bool cached = true, bool optional = false) {
-            return base.Load(name, options, cached, optional);
+            return base.LoadSync(name, options, cached, optional);
         }
 
         private unsafe static void ApplyColorSpaceConversion (STB.Image img, TextureLoadOptions options) {
