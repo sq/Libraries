@@ -313,12 +313,19 @@ namespace Squared.PRGUI {
             WindowFocusBackward = CreateInputID(Keys.Tab, "← {0}", ctrl: true, shift: true);
         }
 
+        private Control ResolveProxies (Control c) {
+            if (c is FocusProxy fp)
+                return fp.FocusBeneficiary;
+            else
+                return c;
+        }
+
         private void RasterizeAcceleratorOverlay (UIOperationContext context, ref ImperativeRenderer renderer) {
             var activeModal = ActiveModal;
-            Control shiftTab = PickRotateFocusTarget(false, -1),
-                tab = PickRotateFocusTarget(false, 1),
-                ctrlShiftTab = (activeModal?.RetainFocus == true) ? null : PickRotateFocusTarget(true, -1),
-                ctrlTab = (activeModal?.RetainFocus == true) ? null : PickRotateFocusTarget(true, 1);
+            Control shiftTab = ResolveProxies(PickRotateFocusTarget(false, -1)),
+                tab = ResolveProxies(PickRotateFocusTarget(false, 1)),
+                ctrlShiftTab = (activeModal?.RetainFocus == true) ? null : ResolveProxies(PickRotateFocusTarget(true, -1)),
+                ctrlTab = (activeModal?.RetainFocus == true) ? null : ResolveProxies(PickRotateFocusTarget(true, 1));
 
             var targetGroup = renderer.MakeSubgroup();
             var labelGroup = renderer.MakeSubgroup();
@@ -432,6 +439,9 @@ namespace Squared.PRGUI {
                 return;
 
             var box = control.GetRect();
+            if ((box.Width <= 1) || (box.Height <= 1))
+                return;
+
             var decorator = Decorations.AcceleratorTarget;
             var settings = new Decorations.DecorationSettings {
                 Box = box,
@@ -444,19 +454,23 @@ namespace Squared.PRGUI {
             Color? textColor = null;
             decorator.GetTextSettings(context, default(ControlStates), out Material material, ref textColor);
             var layout = decorator.GlyphSource.LayoutString(label, buffer: AcceleratorOverlayBuffer);
+            var textScale = 1f;
+            if (layout.Size.X > (box.Width - decorator.Padding.X))
+                textScale = Math.Max(0.25f, (box.Width - decorator.Padding.X) / layout.Size.X);
+            var scaledSize = layout.Size * textScale;
 
             var labelTraits = new DenseList<string> { "above" };
-            var labelPosition = box.Position - new Vector2(0, layout.Size.Y + decorator.Padding.Y + outlinePadding);
+            var labelPosition = box.Position - new Vector2(0, scaledSize.Y + decorator.Padding.Y + outlinePadding);
             if (labelPosition.Y <= 0) {
                 labelTraits[0] = "inside";
                 labelPosition = box.Position;
             }
-            labelPosition.X = Arithmetic.Clamp(labelPosition.X, 0, CanvasSize.X - layout.Size.X);
+            labelPosition.X = Arithmetic.Clamp(labelPosition.X, 0, CanvasSize.X - scaledSize.X);
             labelPosition.Y = Math.Max(0, labelPosition.Y);
 
             var labelBox = new RectF(
                 labelPosition, 
-                layout.Size + decorator.Padding.Size
+                scaledSize + decorator.Padding.Size
             );
             if (IsObstructedByAnyPreviousBox(ref labelBox, forControl))
                 labelBox.Left = box.Extent.X - labelBox.Width;
@@ -476,7 +490,7 @@ namespace Squared.PRGUI {
 
             var labelContentBox = new RectF(
                 labelBox.Position + new Vector2(decorator.Padding.Left, decorator.Padding.Top),
-                layout.Size
+                scaledSize
             );
             settings = new Decorations.DecorationSettings {
                 Box = labelBox,
@@ -484,7 +498,7 @@ namespace Squared.PRGUI {
                 Traits = labelTraits
             };
             decorator.Rasterize(context, ref labelRenderer, settings);
-            labelRenderer.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), layer: 1);
+            labelRenderer.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), scale: new Vector2(textScale), layer: 1);
 
             RasterizedOverlayBoxes.Add(new RasterizedOverlayBox {
                 Control = forControl,
