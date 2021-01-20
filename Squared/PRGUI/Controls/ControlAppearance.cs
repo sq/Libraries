@@ -81,6 +81,10 @@ namespace Squared.PRGUI {
         /// </summary>
         public bool Undecorated;
         /// <summary>
+        /// Forces the TextDecorator to be None
+        /// </summary>
+        public bool UndecoratedText;
+        /// <summary>
         /// Disables margins and padding from the control's decorator
         /// </summary>
         public bool SuppressDecorationMargins;

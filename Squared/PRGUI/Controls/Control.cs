@@ -562,12 +562,15 @@ namespace Squared.PRGUI {
 
         protected IDecorator GetDecorator (IDecorationProvider provider, IDecorator over) {
             if (Appearance.Undecorated)
-                return (over ?? provider.None);
+                return (provider.None ?? over);
 
             return Appearance.Decorator ?? (over ?? GetDefaultDecorator(provider));
         }
 
         protected IDecorator GetTextDecorator (IDecorationProvider provider, IDecorator over) {
+            if (Appearance.UndecoratedText)
+                return (provider.None ?? over);
+
             return Appearance.TextDecorator ?? (over ?? GetDefaultDecorator(provider));
         }
 

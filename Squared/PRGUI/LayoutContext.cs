@@ -209,13 +209,16 @@ namespace Squared.PRGUI.Layout {
             var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
             var fill = bFlags.IsFlagged(ControlFlags.Layout_Fill_Row);
             if (fill)
-                size = Math.Max(size, parentRect.Width);
+                size = Math.Max(size, parentRect.Width - pItem->Margins[wdim]);
 
             var max = pItem->MaximumSize.GetElement(idim);
             if ((max > 0) && (fs < 0))
                 size = Math.Min(max, size);
 
-            (*pRect)[idim] = parentRect[idim] + pItem->Margins[idim];
+            (*pRect)[idim] = 
+                (!fill && bFlags.IsFlagged(ControlFlags.Layout_Anchor_Right))
+                    ? (parentRect[idim] + parentRect[wdim]) - size - pItem->Margins[wdim]
+                    : parentRect[idim] + pItem->Margins[idim];
             (*pRect)[wdim] = size;
         }
 
@@ -968,7 +971,7 @@ namespace Squared.PRGUI.Layout {
 
             var parentRect = startChild.IsInvalid 
                 ? default(RectF)
-                : GetRect(GetParent(startChild));
+                : GetContentRect(GetParent(startChild));
 
             // first pass: count items that need to be expanded, and the space that is used
             child = startChild;

@@ -133,7 +133,9 @@ namespace Squared.PRGUI {
 
             None = new DelegateDecorator {
                 Below = None_Below,
-                ContentClip = None_ContentClip
+                ContentClip = None_ContentClip,
+                GetTextSettings = GetTextSettings_None,
+                GetFont = () => DefaultFont,
             };
 
             Button = new DelegateDecorator {
@@ -1340,6 +1342,16 @@ namespace Squared.PRGUI {
             if (color.HasValue)
                 color = color.Value * 0.5f;
             return result;
+        }
+
+        private bool GetTextSettings_None (
+            UIOperationContext context, ControlStates state, 
+            out Material material, ref Color? color
+        ) {
+            state &= ~ControlStates.Focused;
+            state &= ~ControlStates.Checked;
+            GetTextSettings(context, state, out material, ref color, false);
+            return true;
         }
 
         private bool GetTextSettings_Button (

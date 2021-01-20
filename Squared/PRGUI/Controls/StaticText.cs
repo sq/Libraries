@@ -99,9 +99,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected bool Wrap {
-            get {
-                return Content.WordWrap || Content.CharacterWrap;
-            }
+            get => Content.WordWrap || Content.CharacterWrap;
             set {
                 Content.CharacterWrap = value;
                 Content.WordWrap = value;
@@ -109,21 +107,18 @@ namespace Squared.PRGUI.Controls {
         }
 
         public HorizontalAlignment TextAlignment {
-            get {
-                return Content.Alignment;
-            }
-            set {
-                Content.Alignment = value;
-            }
+            get => Content.Alignment;
+            set => Content.Alignment = value;
+        }
+
+        public float Scale {
+            get => Content.Scale;
+            set => Content.Scale = value;
         }
 
         public AbstractString Text {
-            get {
-                return Content.Text;
-            }
-            protected set {
-                Content.Text = value;
-            }
+            get => Content.Text;
+            protected set => Content.Text = value;
         }
 
         private IGlyphSource _GlyphSource = null;
@@ -269,7 +264,7 @@ namespace Squared.PRGUI.Controls {
             if (_CachedContentIsSingleLine == true) {
                 if (contentChanged)
                     GetCurrentLayout(true);
-                AutoSizeComputedHeight = (float)Math.Ceiling(Content.GlyphSource.LineSpacing + computedPadding.Size.Y);
+                AutoSizeComputedHeight = (float)Math.Ceiling((Content.GlyphSource.LineSpacing * Scale) + computedPadding.Size.Y);
                 return;
             }
 
