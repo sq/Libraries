@@ -401,8 +401,9 @@ namespace Squared.PRGUI {
             EditableFocusedOutlineThickness = 1.2f;
         public float EdgeGleamOpacity = 0.4f,
             EdgeGleamThickness = 1.2f;
-        public float ScrollbarSize = 16f, 
-            ScrollbarRadius = 3f;
+        public float ScrollbarSize = 18f, 
+            ScrollbarRadius = 3f,
+            ScrollbarMinThumbSize = 24f;
 
         public RasterShadowSettings? InteractableShadow, 
             ContainerShadow,
@@ -944,11 +945,21 @@ namespace Squared.PRGUI {
             float min = 0, max = 0;
             if (data.ContentSize > data.ViewportSize) {
                 float divisor = Math.Max(0.1f, data.ContentSize);
-                var endPosition = data.Position + data.ViewportSize;
+                scrollDivisor = data.ViewportSize;
+                var thumbSize = data.ViewportSize / divisor;
+                var thumbSizePx = thumbSize * data.ViewportSize;
+                if (thumbSizePx < ScrollbarMinThumbSize) {
+                    var expansion = ScrollbarMinThumbSize - thumbSizePx;
+                    var expansionFrac = expansion / data.ViewportSize;
+                    var expansionContentPx = expansionFrac * divisor;
+                    divisor = Math.Max(divisor + expansionContentPx, 0.1f);
+                    // FIXME
+                    scrollDivisor = scrollDivisor;
+                    thumbSizePx = ScrollbarMinThumbSize;
+                }
+                var thumbSizeFrac = thumbSizePx / data.ViewportSize;
                 min = Arithmetic.Saturate(data.Position / divisor);
-                max = Arithmetic.Saturate(endPosition / divisor);
-                var thumbSize = (max - min) * data.ViewportSize;
-                scrollDivisor = data.ViewportSize - thumbSize;
+                max = min + thumbSizeFrac;
             } else {
                 scrollDivisor = 0;
             }

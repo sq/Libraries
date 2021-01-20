@@ -60,7 +60,7 @@ namespace Squared.PRGUI.Controls {
 
         public Container () 
             : base () {
-            AcceptsMouseInput = false;
+            AcceptsMouseInput = true;
 
             HScrollbar = new ScrollbarState {
                 DragInitialMousePosition = null,

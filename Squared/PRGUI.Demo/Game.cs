@@ -379,7 +379,7 @@ namespace PRGUI.Demo {
             };
 
             const int menuItemCount = 50;
-            const int itemCount = 100;
+            const int itemCount = 2000;
 
             var dropdown = new Dropdown<StaticText> {
                 Label = "Dropdown: {0}",
