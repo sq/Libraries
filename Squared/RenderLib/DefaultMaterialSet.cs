@@ -751,7 +751,7 @@ namespace Squared.Render {
             };
             if (
                 PreloadAllRasterShapeShaders ||
-                (PreloadCommonRasterShapeShaders && !textured && type.HasValue && !ramp)
+                (PreloadCommonRasterShapeShaders && !textured && !ramp)
             )
                 material.HintPipeline = shapeHint;
             RasterShapeMaterials[key] = new RasterShape.RasterShader(material);

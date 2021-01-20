@@ -353,7 +353,7 @@ namespace Squared.PRGUI.Controls {
                     }
                 }
 
-                if (j < count) {
+                if ((i != j) && (j < count)) {
                     itemsAttempted++;
                     var item2 = children[j];
                     var ok = RasterizeChild(

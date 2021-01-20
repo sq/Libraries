@@ -484,9 +484,17 @@ namespace Squared.PRGUI {
             maximumHeight = Height.Maximum * sizeScale.Y;
         }
 
+#if DETECT_DOUBLE_RASTERIZE
+        private bool RasterizeIsPending = false;
+#endif
+
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             if (!Visible && !context.UIContext.IsUpdatingSubtreeLayout)
                 return ControlKey.Invalid;
+
+#if DETECT_DOUBLE_RASTERIZE
+            RasterizeIsPending = true;
+#endif
 
             var result = existingKey ?? context.Layout.CreateItem();
 
@@ -732,6 +740,12 @@ namespace Squared.PRGUI {
                 return false;
             if (LayoutKey.IsInvalid)
                 return false;
+
+#if DETECT_DOUBLE_RASTERIZE
+            if (!RasterizeIsPending)
+                throw new Exception();
+            RasterizeIsPending = false;
+#endif
 
             var box = GetRect();
             var isInvisible = (box.Extent.X < context.VisibleRegion.Left) ||
