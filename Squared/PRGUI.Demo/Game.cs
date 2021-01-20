@@ -523,7 +523,7 @@ namespace PRGUI.Demo {
                 TooltipFormat = "{0}"
             };
 
-            var topLevelContainer = new ControlGroup {
+            var topLevelContainer = new Container {
                 Appearance = {
                     BackgroundColor = new Color(60, 60, 60) * 0.9f,
                 },

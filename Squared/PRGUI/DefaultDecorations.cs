@@ -619,19 +619,19 @@ namespace Squared.PRGUI {
             var direction = settings.Traits.FirstOrDefault();
             switch (direction) {
                 default:
-                case "LeftToRight":
-                case "RightToLeft":
+                case "ltr":
+                case "rtl":
                     x0 = settings.Box.Left;
                     x1 = settings.ContentBox.Extent.X;
                     x2 = settings.Box.Extent.X;
-                    fillMode = RasterFillMode.Angular + (direction == "RightToLeft" ? 270 : 90);
+                    fillMode = RasterFillMode.Angular + (direction == "rtl" ? 270 : 90);
                     break;
-                case "TopToBottom":
-                case "BottomToTop":
+                case "ttb":
+                case "btt":
                     x0 = settings.Box.Top;
                     x1 = settings.ContentBox.Extent.Y;
                     x2 = settings.Box.Extent.Y;
-                    fillMode = RasterFillMode.Angular + (direction == "BottomToTop" ? 180 : 0);
+                    fillMode = RasterFillMode.Angular + (direction == "btt" ? 180 : 0);
                     break;
             }
             if (x2 <= x1)

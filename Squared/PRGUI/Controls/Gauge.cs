@@ -128,6 +128,10 @@ namespace Squared.PRGUI.Controls {
                 minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.X);
             }
         }
+
+        private static readonly string[] DirectionNames = new[] {
+            "auto", "ltr", "rtl", "ttb", "btt"
+        };
         
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             var direction = Direction == GaugeDirection.Auto
@@ -137,6 +141,7 @@ namespace Squared.PRGUI.Controls {
             var fillWidth = Arithmetic.Saturate(ValueTween.Get(context.NowL));
             float extent;
             switch (direction) {
+                default:
                 case GaugeDirection.LeftToRight:
                     settings.ContentBox.Width *= fillWidth;
                     break;
@@ -154,12 +159,12 @@ namespace Squared.PRGUI.Controls {
                     settings.ContentBox.Top = extent - settings.ContentBox.Height;
                     break;
             }
-            settings.Traits.Add(direction.ToString());
+            settings.Traits.Add(DirectionNames[(int)direction]);
             base.OnRasterize(context, ref renderer, settings, decorations);
         }
     }
 
-    public enum GaugeDirection {
+    public enum GaugeDirection : int {
         Auto = 0,
         LeftToRight = 1,
         RightToLeft = 2,
