@@ -275,7 +275,7 @@ namespace Squared.PRGUI.Controls {
             if (!HitTestShell(box, position, false, false, rejectIntangible, ref result))
                 return false;
 
-            bool success = HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+            bool success = !DisableSelfHitTests && HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
             if (MostRecentTitleBox.Contains(position))
                 return success;
 

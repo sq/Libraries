@@ -75,7 +75,6 @@ namespace Squared.PRGUI.Controls {
         public Window ()
             : base () {
             AcceptsMouseInput = true;
-            ContainerFlags |= ControlFlags.Container_Constrain_Size;
             LayoutFlags = ControlFlags.Layout_Floating;
         }
 
@@ -85,6 +84,13 @@ namespace Squared.PRGUI.Controls {
                 fixedWidth = Context.CanvasSize.X;
                 fixedHeight = Context.CanvasSize.Y;
             }
+        }
+
+        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            ExtraContainerFlags = Scrollable
+                ? ControlFlags.Container_Prevent_Crush
+                : ControlFlags.Container_Constrain_Size;
+            return base.OnGenerateLayoutTree(context, parent, existingKey);
         }
 
         protected override IDecorator GetTitleDecorator (UIOperationContext context) {

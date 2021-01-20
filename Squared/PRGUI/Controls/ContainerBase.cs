@@ -33,6 +33,14 @@ namespace Squared.PRGUI.Controls {
             set => _ColumnCount = value;
         }
 
+        /// <summary>
+        /// If set, this control will never be a valid result from HitTest, but its
+        ///  children may be
+        /// </summary>
+        protected bool DisableSelfHitTests = false;
+        /// <summary>
+        /// If set, children will not be processed by HitTest
+        /// </summary>
         protected bool DisableChildHitTests = false;
 
         /// <summary>
@@ -48,6 +56,8 @@ namespace Squared.PRGUI.Controls {
         public ControlFlags ContainerFlags { get; set; } =
             ControlFlags.Container_Align_Start | ControlFlags.Container_Row | 
             ControlFlags.Container_Wrap;
+
+        protected ControlFlags ExtraContainerFlags = default(ControlFlags);
 
         public bool PreventCrush {
             get => ContainerFlags.IsFlagged(ControlFlags.Container_Prevent_Crush);
@@ -160,7 +170,7 @@ namespace Squared.PRGUI.Controls {
                 return result;
             }
 
-            var containerFlags = ContainerFlags;
+            var containerFlags = ContainerFlags | ExtraContainerFlags;
             var multiColumn = (ColumnCount > 1) || false;
             if (multiColumn) {
                 containerFlags = ContainerFlags
@@ -412,7 +422,7 @@ namespace Squared.PRGUI.Controls {
             if (!HitTestShell(box, position, false, false, rejectIntangible, ref result))
                 return false;
 
-            bool success = HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+            bool success = !DisableSelfHitTests && HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
             success |= HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
             return success;
         }
@@ -447,6 +457,10 @@ namespace Squared.PRGUI.Controls {
             get => base.ClipChildren;
             set => base.ClipChildren = value;
         }
+        new public bool DisableSelfHitTests {
+            get => base.DisableSelfHitTests;
+            set => base.DisableSelfHitTests = true;
+        }
         new public bool DisableChildHitTests {
             get => base.DisableChildHitTests;
             set => base.DisableChildHitTests = value;
@@ -461,6 +475,7 @@ namespace Squared.PRGUI.Controls {
             Appearance.Undecorated = true;
             ForceBreak = forceBreak;
             PreventCrush = preventCrush;
+            DisableSelfHitTests = true;
         }
 
         // For simple initializers
