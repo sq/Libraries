@@ -468,7 +468,7 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            if (!Appearance.SuppressDecorationMargins && (decorations != null))
+            if (!Appearance.SuppressDecorationPadding && (decorations != null))
                 Margins.Add(ref Padding, decorations.Padding, out result);
             else
                 result = Padding;

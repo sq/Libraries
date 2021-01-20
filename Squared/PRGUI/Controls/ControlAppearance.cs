@@ -85,9 +85,13 @@ namespace Squared.PRGUI {
         /// </summary>
         public bool UndecoratedText;
         /// <summary>
-        /// Disables margins and padding from the control's decorator
+        /// Disables margins from the control's decorator
         /// </summary>
         public bool SuppressDecorationMargins;
+        /// <summary>
+        /// Disables padding from the control's decorator
+        /// </summary>
+        public bool SuppressDecorationPadding;
 
         public bool HasBackgroundColor => BackgroundColor.HasValue;
         public bool HasTextColor => BackgroundColor.HasValue;

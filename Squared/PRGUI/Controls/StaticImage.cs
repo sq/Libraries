@@ -21,6 +21,7 @@ namespace Squared.PRGUI.Controls {
         public Vector2 Alignment = new Vector2(0.5f, 0.5f);
         public Vector2 Origin = new Vector2(0.5f, 0.5f);
         public Vector2 Scale = Vector2.One;
+        public RasterizePasses Pass = RasterizePasses.Content;
         public bool ScaleToFit;
         public AbstractTextureReference Image;
         public bool ShowLoadingSpinner;
@@ -104,7 +105,7 @@ namespace Squared.PRGUI.Controls {
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
-            if (context.Pass == RasterizePasses.Content) {
+            if (context.Pass == Pass) {
                 var instance = Image.Instance;
                 if (instance == null)
                     return;
