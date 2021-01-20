@@ -14,11 +14,16 @@ using Squared.Util;
 namespace Squared.PRGUI.Controls {
     public class StaticImage : Control {
         public bool AutoSizeWidth = true, AutoSizeHeight = true;
+        public bool AutoSize {
+            get => AutoSizeWidth && AutoSizeHeight;
+            set => AutoSizeWidth = AutoSizeHeight = value;
+        }
         public Vector2 Alignment = new Vector2(0.5f, 0.5f);
         public Vector2 Origin = new Vector2(0.5f, 0.5f);
         public Vector2 Scale = Vector2.One;
         public bool ScaleToFit;
         public AbstractTextureReference Image;
+        public bool ShowLoadingSpinner;
 
         protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
             base.ComputeFixedSize(out fixedWidth, out fixedHeight);
@@ -39,17 +44,21 @@ namespace Squared.PRGUI.Controls {
             while (true) {
                 if (AutoSizeWidth && (instance != null)) {
                     var fw = instance.Width * Scale.X * (scaleToFit ?? 1f);
-                    if (maximumWidth.HasValue)
-                        fixedWidth = Math.Min(fw, maximumWidth.Value);
-                    else
-                        fixedWidth = fw;
+                    if (!Width.Fixed.HasValue) {
+                        if (maximumWidth.HasValue)
+                            fixedWidth = Math.Min(fw, maximumWidth.Value);
+                        else
+                            fixedWidth = fw;
+                    }
                 }
                 if (AutoSizeHeight && (instance != null)) {
                     var fh = instance.Height * Scale.Y * (scaleToFit ?? 1f);
-                    if (maximumHeight.HasValue)
-                        fixedHeight = Math.Min(fh, maximumHeight.Value);
-                    else
-                        fixedHeight = fh;
+                    if (!Height.Fixed.HasValue) {
+                        if (maximumHeight.HasValue)
+                            fixedHeight = Math.Min(fh, maximumHeight.Value);
+                        else
+                            fixedHeight = fh;
+                    }
                 }
 
                 if (scaleToFit.HasValue)
@@ -60,8 +69,6 @@ namespace Squared.PRGUI.Controls {
                 if (!scaleToFit.HasValue)
                     break;
             }
-
-            ;
         }
 
         protected float? ComputeScaleToFit (ref RectF box, ref Margins margins) {
@@ -113,6 +120,19 @@ namespace Squared.PRGUI.Controls {
                     Arithmetic.Lerp(settings.Box.Top, settings.Box.Extent.Y, Alignment.Y)
                 );
                 renderer.Draw(instance, position.Round(0), origin: Origin, scale: scale);
+            }
+
+            if (ShowLoadingSpinner && (context.Pass == RasterizePasses.Above)) {
+                // FIXME
+                var center = settings.ContentBox.Center;
+                var radius = Math.Min(settings.ContentBox.Size.Length(), 48);
+                var angle1 = (float)(Time.Seconds * 360 * 1.33f);
+                var color1 = Color.White;
+                var color2 = color1 * 0.8f;
+                renderer.RasterizeArc(
+                    center, angle1, 48, radius, 6,
+                    1f, color1, color2, Color.Black * 0.8f
+                );
             }
         }
     }
