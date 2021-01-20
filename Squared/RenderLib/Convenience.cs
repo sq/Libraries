@@ -373,6 +373,11 @@ namespace Squared.Render.Convenience {
             public int Count;
             private CachedBatch Batch0, Batch1, Batch2, Batch3;
 
+            public void Clear () {
+                Count = 0;
+                Batch0 = Batch1 = Batch2 = Batch3 = default(CachedBatch);
+            }
+
             public bool TryGet<T> (
                 out CachedBatch result,
                 CachedBatchType cbt,
@@ -684,6 +689,8 @@ namespace Squared.Render.Convenience {
                 Container, Layer, before: before, after: after, userData: userData,
                 materialSet: Materials, viewTransform: viewTransform, viewTransformModifier: viewTransformModifier, name: name
             );
+            // FIXME: is this necessary? seems like it might be...
+            // result.Cache.Clear();
             group.Dispose();
             result.Container = group;
             result.Layer = 0;

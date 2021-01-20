@@ -470,7 +470,7 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public sealed class ControlGroup : ContainerBase, IEnumerable<Control> {
+    public class ControlGroup : ContainerBase, IEnumerable<Control> {
         new public ControlCollection Children {
             get => base.Children;
         }
@@ -493,6 +493,7 @@ namespace Squared.PRGUI.Controls {
 
         public ControlGroup (bool forceBreak = false, bool preventCrush = false)
             : base () {
+            CreateNestedContextForChildren = false;
             Appearance.Undecorated = true;
             ForceBreak = forceBreak;
             PreventCrush = preventCrush;

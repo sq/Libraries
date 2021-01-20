@@ -175,6 +175,7 @@ namespace Squared.PRGUI {
         public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
         internal int TooltipContentVersion = 0;
 
+        protected bool CreateNestedContextForChildren = true;
         protected virtual bool HasChildren => false;
         protected virtual bool ShouldClipContent => false;
 
@@ -637,20 +638,10 @@ namespace Squared.PRGUI {
 
             var passContext = context.Clone();
             passContext.Pass = pass;
-            // passContext.Renderer = context.Renderer.MakeSubgroup();
             var hasNestedContext = (pass == RasterizePasses.Content) && 
-                (ShouldClipContent || HasChildren);
+                (ShouldClipContent || (HasChildren && CreateNestedContextForChildren));
             if (hasNestedContext)
                 UpdateVisibleRegion(ref passContext, ref box);
-
-            /*
-            if (pass == RasterizePasses.Above)
-                renderer.RasterizeRectangle(
-                    passContext.VisibleRegion.Position, passContext.VisibleRegion.Extent, 
-                    0f, outlineRadius: 1.1f, innerColor: Color.Transparent, outerColor: Color.Transparent,
-                    outlineColor: Color.Red
-                );
-            */
 
             var contentContext = passContext;
             // FIXME: The memset for these actually burns a measurable amount of time
@@ -686,8 +677,13 @@ namespace Squared.PRGUI {
             else
                 OnRasterize(contentContext, ref renderer, settings, decorations);
 
-            if ((pass == RasterizePasses.Content) && HasChildren)
-                OnRasterizeChildren(contentContext, ref childrenPassSet, settings);
+            if ((pass == RasterizePasses.Content) && HasChildren) {
+                if (hasNestedContext)
+                    OnRasterizeChildren(contentContext, ref childrenPassSet, settings);
+                else
+                    // FIXME: Save/restore layers?
+                    OnRasterizeChildren(contentContext, ref passSet, settings);
+            }
 
             if (hasNestedContext) {
                 // GROSS OPTIMIZATION HACK: Detect that any rendering operation(s) occurred inside the
