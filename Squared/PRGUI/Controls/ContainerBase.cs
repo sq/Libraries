@@ -25,9 +25,15 @@ namespace Squared.PRGUI.Controls {
 
         ControlCollection IControlContainer.Children => Children;
 
-        protected Vector2 AbsoluteDisplayOffsetOfChildren;
+        protected virtual Vector2 AbsoluteDisplayOffsetOfChildren => AbsoluteDisplayOffset;
 
         private int _ColumnCount = 1;
+
+        /// <summary>
+        /// Splits the container into multiple columns arranged left-to-right.
+        /// Children will automatically be distributed across the columns, and
+        ///  each column will inherit this container's ContainerFlags.
+        /// </summary>
         public virtual int ColumnCount {
             get => _ColumnCount;
             set => _ColumnCount = value;
@@ -57,14 +63,24 @@ namespace Squared.PRGUI.Controls {
             ControlFlags.Container_Align_Start | ControlFlags.Container_Row | 
             ControlFlags.Container_Wrap;
 
+        /// <summary>
+        /// Extra container flags that will be or'd in at layout time
+        /// </summary>
         protected ControlFlags ExtraContainerFlags = default(ControlFlags);
 
+        /// <summary>
+        /// Prevents the container's children from ever being crushed below their minimum sizes,
+        ///  which will create overflow you need to clip and/or scroll
+        /// </summary>
         public bool PreventCrush {
             get => ContainerFlags.IsFlagged(ControlFlags.Container_Prevent_Crush);
             set => ContainerFlags = (ContainerFlags & ~ControlFlags.Container_Prevent_Crush) |
                 (value ? ControlFlags.Container_Prevent_Crush : default(ControlFlags));
         }
 
+        /// <summary>
+        /// Enables DynamicContents. Disable this if you plan to generate children yourself in a derived type
+        /// </summary>
         protected bool AllowDynamicContent = true;
 
         protected ContainerBuilder DynamicBuilder;
@@ -202,10 +218,11 @@ namespace Squared.PRGUI.Controls {
                     ColumnKeys[0] = result;
                 }
 
+                var adoc = AbsoluteDisplayOffsetOfChildren;
                 for (int i = 0, c = _Children.Count; i < c; i++) {
                     var item = _Children[i];
                     var columnIndex = i % ColumnCount;
-                    item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
+                    item.AbsoluteDisplayOffset = adoc;
 
                     // If we're performing layout again on an existing layout item, attempt to do the same
                     //  for our children
@@ -220,10 +237,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void OnDisplayOffsetChanged () {
-            AbsoluteDisplayOffsetOfChildren = AbsoluteDisplayOffset.Floor();
-
+            var adoc = AbsoluteDisplayOffsetOfChildren;
             foreach (var child in _Children)
-                child.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
+                child.AbsoluteDisplayOffset = adoc;
         }
 
         protected override bool ShouldClipContent => ClipChildren && (_Children.Count > 0);

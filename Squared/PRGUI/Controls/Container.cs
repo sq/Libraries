@@ -20,6 +20,9 @@ namespace Squared.PRGUI.Controls {
             get => base.Children;
         }
 
+        protected override Vector2 AbsoluteDisplayOffsetOfChildren => 
+            AbsoluteDisplayOffset - (_ScrollOffset + VirtualScrollOffset).Floor();
+
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
         /// </summary>
@@ -185,13 +188,6 @@ namespace Squared.PRGUI.Controls {
                 return true;
             }
             return false;
-        }
-
-        protected override void OnDisplayOffsetChanged () {
-            AbsoluteDisplayOffsetOfChildren = AbsoluteDisplayOffset - (_ScrollOffset + VirtualScrollOffset).Floor();
-
-            foreach (var child in _Children)
-                child.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
         }
         
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
