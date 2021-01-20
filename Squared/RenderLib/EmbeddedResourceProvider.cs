@@ -4,9 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Evil;
+using Squared.Threading;
 
 namespace Squared.Render {
     public abstract class EmbeddedResourceProvider<T> : IDisposable
@@ -15,8 +17,9 @@ namespace Squared.Render {
         public readonly RenderCoordinator Coordinator;
         public string Prefix { get; set; }
         public string Suffix { get; protected set; }
+        public bool IsDisposed { get; private set; }
 
-        protected readonly Dictionary<string, T> Cache = new Dictionary<string, T>();
+        protected readonly Dictionary<string, Future<T>> Cache = new Dictionary<string, Future<T>>();
         protected object DefaultOptions;
 
         public EmbeddedResourceProvider (Assembly assembly, RenderCoordinator coordinator) {
@@ -42,46 +45,107 @@ namespace Squared.Render {
 
         protected abstract T CreateInstance (Stream stream, object data);
 
-        protected T Load (string name, object data, bool cached, bool optional) {
+        public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) {
+            var streamName = (Prefix ?? "") + name + Suffix;
+            exception = null;
+            using (var stream = Assembly.GetManifestResourceStream(streamName)) {
+                if (stream == null) {
+                    if (optional) {
+                        return default(T);
+                    } else {
+                        exception = new FileNotFoundException("No manifest resource stream with this name found", name);
+                        return default(T);
+                    }
+                } else {
+                    var instance = CreateInstance(stream, data);
+                    if (IsDisposed) {
+                        Coordinator.DisposeResource(instance);
+                        return null;
+                    } else {
+                        return instance;
+                    }
+                }
+            }
+        }
+
+        private string FixupName (string name) {
             if (name.Contains("."))
                 name = name.Replace(Path.GetExtension(name), "");
+            return name;
+        }
 
-            T result;
-            if (!cached || !Cache.TryGetValue(name, out result)) {
-                var streamName = (Prefix ?? "") + name + Suffix;
-                using (var stream = Assembly.GetManifestResourceStream(streamName)) {
-                    if (stream == null) {
-                        if (optional)
-                            return null;
-                        else
-                            throw new FileNotFoundException("No manifest resource stream with this name found", name);
+        private Future<T> GetFutureForResource (string name, bool cached, out bool performLoad) {
+            name = FixupName(name);
+            performLoad = false;
+            Future<T> future;
+            if (cached) {
+                lock (Cache) {
+                    if (!Cache.TryGetValue(name, out future)) {
+                        Cache[name] = future = new Future<T>();
+                        performLoad = true;
                     }
-
-                    result = CreateInstance(stream, data);
-                    if (cached)
-                        Cache[name] = result;
                 }
-            } else if ((result == null) && !optional) {
-                throw new FileNotFoundException("No manifest resource stream with this name found", name);
+            } else {
+                future = new Future<T>();
+                performLoad = true;
             }
-            return result;
+
+            return future;
+        }
+
+        public Future<T> LoadAsync (string name, object data, bool cached = true, bool optional = false) {
+            var future = GetFutureForResource(name, cached, out bool performLoad);
+
+            if (performLoad) {
+                ThreadPool.QueueUserWorkItem((_) => {
+                    var instance = LoadSyncUncached(name, data, optional, out Exception exc);
+                    future.SetResult(instance, null);
+                });
+            }
+
+            return future;
+        }
+
+        public T LoadSync (string name, object data, bool cached, bool optional) {
+            var future = GetFutureForResource(name, cached, out bool performLoad);
+
+            if (performLoad) {
+                var instance = LoadSyncUncached(name, data, optional, out Exception exc);
+                future.SetResult(instance, null);
+            } else if (!future.Completed) {
+                using (var evt = future.GetCompletionEvent())
+                    evt.Wait();
+            }
+
+            return future.Result2;
+        }
+
+        public Future<T> LoadAsync (string name, bool cached = true, bool optional = false) {
+            return LoadAsync(name, DefaultOptions, cached, optional);
         }
 
         public T Load (string name) {
-            return Load(name, DefaultOptions, true, false);
+            return LoadSync(name, DefaultOptions, true, false);
         }
 
         public T Load (string name, bool cached) {
-            return Load(name, DefaultOptions, cached, false);
+            return LoadSync(name, DefaultOptions, cached, false);
         }
 
         public T Load (string name, bool cached, bool optional) {
-            return Load(name, DefaultOptions, cached, optional);
+            return LoadSync(name, DefaultOptions, cached, optional);
         }
 
         public virtual void Dispose () {
-            foreach (var value in Cache.Values)
-                Coordinator.DisposeResource(value);
+            IsDisposed = true;
+
+            lock (Cache)
+            foreach (var future in Cache.Values) {
+                if (!future.Completed)
+                    continue;
+                if (!future.Failed)
+                    Coordinator.DisposeResource(future.Result2);
+            }
 
             Cache.Clear();
         }

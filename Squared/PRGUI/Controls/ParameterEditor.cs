@@ -87,7 +87,10 @@ namespace Squared.PRGUI.Controls {
             set {
                 if (
                     (value.HasValue == _Minimum.HasValue) &&
-                    (value.Value.CompareTo(_Minimum.Value) == 0)
+                    (
+                        (value.HasValue && (value.Value.CompareTo(_Minimum.Value) == 0)) ||
+                        !value.HasValue
+                    )
                 )
                     return;
                 CachedFractionD = null;
@@ -101,7 +104,10 @@ namespace Squared.PRGUI.Controls {
             set {
                 if (
                     (value.HasValue == _Maximum.HasValue) &&
-                    (value.Value.CompareTo(_Maximum.Value) == 0)
+                    (
+                        (value.HasValue && (value.Value.CompareTo(_Maximum.Value) == 0)) ||
+                        !value.HasValue
+                    )
                 )
                     return;
                 CachedFractionD = null;
