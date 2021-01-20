@@ -471,7 +471,11 @@ namespace Squared.PRGUI {
             var pulseThickness = Arithmetic.PulseSine(context.Now / 3f, 0, 0.4f);
 
             pulse = 0;
-            if (state.IsFlagged(ControlStates.Pressed)) {
+            if (
+                state.IsFlagged(ControlStates.Pressed) ||
+                // HACK
+                state.IsFlagged(ControlStates.Checked)
+            ) {
                 alpha = hasColor ? 1f : 0.9f;
                 thickness = PressedOutlineThickness;
                 if (hasColor) {
@@ -706,6 +710,8 @@ namespace Squared.PRGUI {
         }
 
         private void Checkbox_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            // HACK
+            settings.State &= ~ControlStates.Checked;
             AdjustRectForCheckbox(ref settings);
             Button_Below(context, ref renderer, settings);
         }
@@ -736,6 +742,8 @@ namespace Squared.PRGUI {
         }
 
         private void RadioButton_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            // HACK
+            settings.State &= ~ControlStates.Checked;
             AdjustRectForCheckbox(ref settings);
 
             float alpha, thickness, pulse;

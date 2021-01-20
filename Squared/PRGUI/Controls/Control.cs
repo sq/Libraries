@@ -66,6 +66,12 @@ namespace Squared.PRGUI {
             }
         }
 
+        public bool Floating {
+            get => LayoutFlags.IsFlagged(ControlFlags.Layout_Floating);
+            set => LayoutFlags = (LayoutFlags & ~ControlFlags.Layout_Floating) |
+                (value ? ControlFlags.Layout_Floating : default(ControlFlags));
+        }
+
         public bool ForceBreak {
             get => LayoutFlags.IsFlagged(ControlFlags.Layout_ForceBreak);
             set => LayoutFlags = (LayoutFlags & ~ControlFlags.Layout_ForceBreak) |
@@ -755,7 +761,7 @@ namespace Squared.PRGUI {
                 passSet.Above.RasterizeRectangle(box.Position, box.Extent, 0f, 1f, Color.Transparent, Color.Transparent, Color.Red);
 
             // Only visibility cull controls that have a parent and aren't overlaid.
-            if (isInvisible && TryGetParent(out Control parent) && !Appearance.Overlay)
+            if (false && isInvisible && TryGetParent(out Control parent) && !Appearance.Overlay)
                 return false;
 
             var enableCompositor = Appearance.Compositor?.WillComposite(this, opacity) == true;
