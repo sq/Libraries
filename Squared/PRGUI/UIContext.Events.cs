@@ -935,9 +935,17 @@ namespace Squared.PRGUI {
         }
 
         private bool InitDragToScroll (Control target, Vector2 globalPosition) {
-            IScrollableControl scrollable = null;
+            IScrollableControl scrollable = target as IScrollableControl;
+
+            // HACK: Don't allow drag-to-scroll when pressing on interactive controls like buttons
+            if ((target?.AcceptsMouseInput == true) && target.Enabled && (scrollable == null)) {
+                if (DragToScrollTarget != null)
+                    TeardownDragToScroll((Control)DragToScrollTarget, globalPosition);
+                DragToScrollTarget = null;
+                return false;
+            }
+
             while (target != null) {
-                scrollable = target as IScrollableControl;
                 if (
                     (scrollable != null) && 
                     // Some controls are scrollable but do not currently have any hidden content, so don't drag them
@@ -946,6 +954,7 @@ namespace Squared.PRGUI {
                     break;
                 if (!target.TryGetParent(out target))
                     break;
+                scrollable = target as IScrollableControl;
             }
 
             if (

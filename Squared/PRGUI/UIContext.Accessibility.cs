@@ -445,9 +445,12 @@ namespace Squared.PRGUI {
             decorator.GetTextSettings(context, default(ControlStates), out Material material, ref textColor);
             var layout = decorator.GlyphSource.LayoutString(label, buffer: AcceleratorOverlayBuffer);
 
+            var labelTraits = new DenseList<string> { "above" };
             var labelPosition = box.Position - new Vector2(0, layout.Size.Y + decorator.Padding.Y + outlinePadding);
-            if (labelPosition.Y <= 0)
+            if (labelPosition.Y <= 0) {
+                labelTraits[0] = "inside";
                 labelPosition = box.Position;
+            }
             labelPosition.X = Arithmetic.Clamp(labelPosition.X, 0, CanvasSize.X - layout.Size.X);
             labelPosition.Y = Math.Max(0, labelPosition.Y);
 
@@ -458,11 +461,13 @@ namespace Squared.PRGUI {
             if (IsObstructedByAnyPreviousBox(ref labelBox, forControl))
                 labelBox.Left = box.Extent.X - labelBox.Width;
             if (IsObstructedByAnyPreviousBox(ref labelBox, forControl)) {
+                labelTraits[0] = "below";
                 labelBox.Left = labelPosition.X;
                 labelBox.Top = box.Extent.Y + 1; // FIXME: Why the +1?
             }
 
             while (IsObstructedByAnyPreviousBox(ref labelBox, forControl)) {
+                labelTraits[0] = "stacked";
                 labelBox.Left = box.Left;
                 labelBox.Width = box.Width;
                 labelBox.Top = labelBox.Extent.Y + 0.5f;
@@ -476,6 +481,7 @@ namespace Squared.PRGUI {
             settings = new Decorations.DecorationSettings {
                 Box = labelBox,
                 ContentBox = box,
+                Traits = labelTraits
             };
             decorator.Rasterize(context, ref labelRenderer, settings);
             labelRenderer.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), layer: 1);

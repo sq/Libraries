@@ -516,7 +516,7 @@ namespace Squared.PRGUI.Controls {
 
         public StaticText ()
             : base () {
-            AcceptsMouseInput = true;
+            AcceptsMouseInput = false;
         }
     }
 }

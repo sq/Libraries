@@ -340,6 +340,52 @@ namespace Squared.Util {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T FirstOrDefault () {
+            if (Count <= 0)
+                return default(T);
+            else if (_HasList)
+                return Items.DangerousGetItem(0);
+            else
+                return Storage.Item1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T FirstOrDefault (T defaultValue) {
+            if (Count <= 0)
+                return defaultValue;
+            else if (_HasList)
+                return Items.DangerousGetItem(0);
+            else
+                return Storage.Item1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int IndexOf (T value) {
+            return IndexOf(ref value, EqualityComparer<T>.Default);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int IndexOf (ref T value) {
+            return IndexOf(ref value, EqualityComparer<T>.Default);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int IndexOf (T value, IEqualityComparer<T> comparer) {
+            return IndexOf(ref value, comparer);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int IndexOf (ref T value, IEqualityComparer<T> comparer) {
+            var c = Count;
+            if (c <= 0)
+                return -1;
+            for (int i = 0; i < c; i++)
+                if (comparer.Equals(this[i], value))
+                    return i;
+            return -1;
+        }
+
         public T this [int index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {

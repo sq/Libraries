@@ -40,8 +40,17 @@ namespace Squared.PRGUI.Decorations {
     public struct DecorationSettings {
         public RectF Box, ContentBox;
         public ControlStates State;
+        public DenseList<string> Traits;
         public pSRGBColor? BackgroundColor, TextColor;
         public BackgroundImageSettings BackgroundImage;
+
+        public bool HasTrait (string trait) {
+            for (int i = 0, c = Traits.Count; i < c; i++)
+                if (Traits[i].Equals(trait, StringComparison.Ordinal))
+                    return true;
+
+            return false;
+        }
 
         public Texture2D GetTexture () {
             return BackgroundImage?.Texture.Instance;

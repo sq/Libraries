@@ -613,17 +613,37 @@ namespace Squared.PRGUI {
 
         private void Gauge_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
-            if (b.X <= a.X)
+            float x0, x1, x2;
+            RasterFillMode fillMode;
+            var direction = settings.Traits.FirstOrDefault();
+            switch (direction) {
+                default:
+                case "LeftToRight":
+                case "RightToLeft":
+                    x0 = settings.Box.Left;
+                    x1 = settings.ContentBox.Extent.X;
+                    x2 = settings.Box.Extent.X;
+                    fillMode = RasterFillMode.Angular + (direction == "RightToLeft" ? 270 : 90);
+                    break;
+                case "TopToBottom":
+                case "BottomToTop":
+                    x0 = settings.Box.Top;
+                    x1 = settings.ContentBox.Extent.Y;
+                    x2 = settings.Box.Extent.Y;
+                    fillMode = RasterFillMode.Angular + (direction == "BottomToTop" ? 180 : 0);
+                    break;
+            }
+            if (x2 <= x1)
                 return;
             var alpha1 = 0.4f;
             // FIXME: Padding will make this slightly wrong
-            var alpha2 = Arithmetic.Saturate(alpha1 + (0.7f * (settings.ContentBox.Width / settings.Box.Width)));
+            var alpha2 = Arithmetic.Saturate(alpha1 + (0.7f * ((x1 - x0) / (x2 - x0))));
             var fillColor = settings.TextColor ?? GaugeValueFillColor;
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SliderCornerRadius,
                 outlineRadius: 1f, outlineColor: fillColor * 0.5f,
-                fillMode: RasterFillMode.Horizontal,
+                fillMode: fillMode,
                 innerColor: fillColor * alpha1, 
                 outerColor: fillColor * alpha2,
                 shadow: GaugeValueShadow,
@@ -1163,10 +1183,22 @@ namespace Squared.PRGUI {
 
         private void AcceleratorLabel_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             // HACK
-            var isInside = settings.ContentBox.Top <= settings.Box.Top;
-            var radius = isInside
-                ? new Vector4(0, 0, 5, 0)
-                : new Vector4(5, 5, 0, 0);
+            Vector4 radius;
+            switch (settings.Traits.FirstOrDefault()) {
+                case "inside":
+                    radius = new Vector4(0, 0, 5, 0);
+                    break;
+                case "below":
+                    radius = new Vector4(0, 0, 5, 5);
+                    break;
+                case "stacked":
+                    radius = new Vector4(5);
+                    break;
+                case "above":
+                default:
+                    radius = new Vector4(5, 5, 0, 0);
+                    break;
+            }
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME
             renderer.RasterizeRectangle(

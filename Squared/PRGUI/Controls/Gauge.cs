@@ -14,8 +14,9 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class Gauge : Control, Accessibility.IReadingTarget, IValueControl<float> {
-        public const int ControlMinimumHeight = 28, ControlMinimumWidth = 100,
-            ThumbMinimumWidth = 13;
+        public GaugeDirection Direction = GaugeDirection.Auto;
+
+        public const int ControlMinimumHeight = 30, ControlMinimumLength = 225;
 
         private float _Value = 0.5f;
         public float FastAnimationThreshold = 0.33f,
@@ -98,20 +99,71 @@ namespace Squared.PRGUI.Controls {
             return provider.Gauge;
         }
 
+        protected bool DetermineIfHorizontal (float? width, float? height) {
+            switch (Direction) {
+                default:
+                case GaugeDirection.Auto:
+                    float w = Math.Max(width ?? 0, Width.Fixed ?? Width.Minimum ?? 0);
+                    float h = Math.Max(height ?? 0, Height.Fixed ?? Height.Minimum ?? 0);
+                    return (w >= h);
+                case GaugeDirection.LeftToRight:
+                case GaugeDirection.RightToLeft:
+                    return true;
+                case GaugeDirection.TopToBottom:
+                case GaugeDirection.BottomToTop:
+                    return false;
+            }
+        }
+
         protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
             var decorations = GetDefaultDecorator(Context.Decorations);
             Color? color = null;
             decorations.GetTextSettings(default(UIOperationContext), default(ControlStates), out Render.Material temp, ref color);
             base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
-            minimumHeight = Math.Max(Math.Max(minimumHeight ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
-            minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
+            if (DetermineIfHorizontal(minimumWidth, minimumHeight)) {
+                minimumHeight = Math.Max(Math.Max(minimumHeight ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumLength * Context.Decorations.SizeScaleRatio.X);
+            } else {
+                minimumHeight = Math.Max(Math.Max(minimumHeight ?? 0, ControlMinimumLength * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.X);
+            }
         }
         
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            var direction = Direction == GaugeDirection.Auto
+                ? (DetermineIfHorizontal(settings.Box.Width, settings.Box.Height) ? GaugeDirection.LeftToRight : GaugeDirection.BottomToTop)
+                : Direction;
             var fill = context.DecorationProvider.Gauge;
             var fillWidth = Arithmetic.Saturate(ValueTween.Get(context.NowL));
-            settings.ContentBox.Width *= fillWidth;
+            float extent;
+            switch (direction) {
+                case GaugeDirection.LeftToRight:
+                    settings.ContentBox.Width *= fillWidth;
+                    break;
+                case GaugeDirection.RightToLeft:
+                    extent = settings.ContentBox.Extent.X;
+                    settings.ContentBox.Width *= fillWidth;
+                    settings.ContentBox.Left = extent - settings.ContentBox.Width;
+                    break;
+                case GaugeDirection.TopToBottom:
+                    settings.ContentBox.Height *= fillWidth;
+                    break;
+                case GaugeDirection.BottomToTop:
+                    extent = settings.ContentBox.Extent.Y;
+                    settings.ContentBox.Height *= fillWidth;
+                    settings.ContentBox.Top = extent - settings.ContentBox.Height;
+                    break;
+            }
+            settings.Traits.Add(direction.ToString());
             base.OnRasterize(context, ref renderer, settings, decorations);
         }
+    }
+
+    public enum GaugeDirection {
+        Auto = 0,
+        LeftToRight = 1,
+        RightToLeft = 2,
+        TopToBottom = 3,
+        BottomToTop = 4
     }
 }
