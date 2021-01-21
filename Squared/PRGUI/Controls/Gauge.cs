@@ -16,7 +16,7 @@ namespace Squared.PRGUI.Controls {
     public class Gauge : Control, Accessibility.IReadingTarget, IValueControl<float> {
         public GaugeDirection Direction = GaugeDirection.Auto;
 
-        public const int ControlMinimumHeight = 30, ControlMinimumLength = 225;
+        public const int ControlMinimumHeight = 30, ControlMinimumLength = 125;
 
         private float _Value = 0.5f;
         public float FastAnimationThreshold = 0.33f,

@@ -209,7 +209,7 @@ namespace Squared.PRGUI.Layout {
             var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
             var fill = bFlags.IsFlagged(ControlFlags.Layout_Fill_Row);
             if (fill)
-                size = Math.Max(size, parentRect.Width - pItem->Margins[wdim]);
+                size = Math.Max(size, parentRect[wdim] - pItem->Margins[wdim]);
 
             var max = pItem->MaximumSize.GetElement(idim);
             if ((max > 0) && (fs < 0))

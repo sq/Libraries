@@ -67,8 +67,8 @@ namespace Squared.PRGUI.Controls {
             set {
                 if (!AllowMaximize)
                     value = false;
-                base.Collapsible = _DesiredCollapsible && !Maximized;
                 _Maximized = value;
+                base.Collapsible = _DesiredCollapsible && !value;
             }
         }
 
