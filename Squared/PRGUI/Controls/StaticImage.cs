@@ -105,6 +105,11 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
+        protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
+            var showSpinner = ShowLoadingSpinner && (pass == RasterizePasses.Above);
+            return decorations.IsPassDisabled(pass) && (pass != Pass) && !showSpinner && !ShouldClipContent;
+        }
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 

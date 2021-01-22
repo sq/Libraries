@@ -87,6 +87,7 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public interface IDecorator : IMetricsProvider {
+        bool IsPassDisabled (RasterizePasses pass);
         void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
     }
 
@@ -185,6 +186,21 @@ namespace Squared.PRGUI.Decorations {
                 GetTextSettings = GetTextSettings,
                 GetContentAdjustment = GetContentAdjustment
             };
+        }
+
+        bool IDecorator.IsPassDisabled (RasterizePasses pass) {
+            switch (pass) {
+                case RasterizePasses.Below:
+                    return (Below == null);
+                case RasterizePasses.Content:
+                    return (Content == null);
+                case RasterizePasses.Above:
+                    return (Above == null);
+                case RasterizePasses.ContentClip:
+                    return (ContentClip == null);
+                default:
+                    return true;
+            }
         }
 
         void IDecorator.Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {

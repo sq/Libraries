@@ -132,6 +132,10 @@ namespace Squared.PRGUI.Controls {
         private static readonly string[] DirectionNames = new[] {
             "auto", "ltr", "rtl", "ttb", "btt"
         };
+
+        protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
+            return decorations.IsPassDisabled(pass);
+        }
         
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             var direction = Direction == GaugeDirection.Auto

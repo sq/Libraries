@@ -1605,8 +1605,8 @@ namespace Squared.PRGUI {
         public static void PopTextDecorator (ref UIOperationContext context) => 
             StackPop(ref context.TextDecoratorStack);
 
-        public UIOperationContext Clone () {
-            return new UIOperationContext {
+        public void Clone (out UIOperationContext result) {
+            result = new UIOperationContext {
                 UIContext = UIContext,
                 Pass = Pass,
                 Now = Now,
@@ -1617,9 +1617,9 @@ namespace Squared.PRGUI {
                 MousePosition = MousePosition,
                 VisibleRegion = VisibleRegion,
                 RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange,
-                DecoratorStack = DecoratorStack.Clone(),
-                TextDecoratorStack = TextDecoratorStack.Clone()
             };
+            DecoratorStack.Clone(out result.DecoratorStack);
+            TextDecoratorStack.Clone(out result.TextDecoratorStack);
         }
     }
 }

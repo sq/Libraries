@@ -646,17 +646,18 @@ namespace Squared.PRGUI {
             bool compositing, ref RasterizePassSet passSet, 
             ref ImperativeRenderer renderer, RasterizePasses pass
         ) {
-            var passContext = context.Clone();
+            UIOperationContext passContext;
+            context.Clone(out passContext);
             passContext.Pass = pass;
             var hasNestedContext = (pass == RasterizePasses.Content) && 
                 (ShouldClipContent || (HasChildren && CreateNestedContextForChildren));
             if (hasNestedContext)
                 UpdateVisibleRegion(ref passContext, ref settings.Box);
 
-            var contentContext = passContext;
             // FIXME: The memset for these actually burns a measurable amount of time
             ImperativeRenderer contentRenderer = default(ImperativeRenderer);
             RasterizePassSet childrenPassSet = default(RasterizePassSet);
+            UIOperationContext contentContext;
 
             int previousStackDepth = passSet.StackDepth, newStackDepth = previousStackDepth;
 
@@ -665,7 +666,7 @@ namespace Squared.PRGUI {
             //  rendering operation(s).
             if (hasNestedContext) {
                 renderer.Layer += 1;
-                contentContext = passContext.Clone();
+                passContext.Clone(out contentContext);
                 contentRenderer = renderer.MakeSubgroup();
                 if (ShouldClipContent) {
                     newStackDepth = previousStackDepth + 1;
@@ -679,6 +680,8 @@ namespace Squared.PRGUI {
                     childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, newStackDepth, passSet.OverlayQueue);
                 }
                 renderer.Layer += 1;
+            } else {
+                contentContext = passContext;
             }
 
             if (hasNestedContext)
@@ -733,9 +736,18 @@ namespace Squared.PRGUI {
             var contentBox = GetRect(contentRect: true);
             var state = GetCurrentState(context);
             var settings = MakeDecorationSettings(ref box, ref contentBox, state);
-            RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
-            RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Content, RasterizePasses.Content);
-            RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
+            if (!IsPassDisabled(RasterizePasses.Below, decorations))
+                RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
+            if (!IsPassDisabled(RasterizePasses.Content, decorations))
+                RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Content, RasterizePasses.Content);
+            if (!IsPassDisabled(RasterizePasses.Above, decorations))
+                RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
+        }
+
+        protected virtual bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
+            // Best not to default this optimization on
+            // return decorations.IsPassDisabled(pass);
+            return false;
         }
 
         public bool Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, float opacity = 1) {
@@ -839,7 +851,8 @@ namespace Squared.PRGUI {
             ref RectF box, ref RectF compositeBox, 
             UIContext.ScratchRenderTarget rt, bool enableCompositor
         ) {
-            var compositionContext = context.Clone();
+            UIOperationContext compositionContext;
+            context.Clone(out compositionContext);
             UpdateVisibleRegion(ref compositionContext, ref box);
 
             // Create nested prepass group before the RT group so that child controls have their prepass operations run before ours

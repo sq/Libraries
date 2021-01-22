@@ -30,6 +30,10 @@ namespace Squared.PRGUI.Controls {
         protected override bool OnEvent<T> (string name, T args) => false;
         protected override bool OnEvent (string name) => false;
 
+        protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
+            return true;
+        }
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
         }
     }
@@ -53,6 +57,10 @@ namespace Squared.PRGUI.Controls {
         protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) => false;
         protected override bool OnEvent<T> (string name, T args) => false;
         protected override bool OnEvent (string name) => false;
+
+        protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
+            return true;
+        }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
         }

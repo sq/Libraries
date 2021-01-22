@@ -336,6 +336,10 @@ namespace Squared.PRGUI.Controls {
             return scaleFactor;
         }
 
+        protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
+            return decorations.IsPassDisabled(pass) && (pass != RasterizePasses.Content) && !ShouldClipContent;
+        }
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
