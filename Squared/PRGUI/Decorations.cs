@@ -111,6 +111,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Window { get; }
         IDecorator WindowTitle { get; }
         IDecorator StaticText { get; }
+        IDecorator StaticImage { get; }
         IDecorator EditableText { get; }
         IDecorator Selection { get; }
         IDecorator Button { get; }

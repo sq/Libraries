@@ -30,6 +30,7 @@ namespace Squared.PRGUI {
         public IDecorator Window { get; set; }
         public IDecorator WindowTitle { get; set; }
         public IDecorator StaticText { get; set; }
+        public IDecorator StaticImage { get; set; }
         public IDecorator EditableText { get; set; }
         public IDecorator Selection { get; set; }
         public IDecorator Tooltip { get; set; }
@@ -210,6 +211,8 @@ namespace Squared.PRGUI {
                 GetFont = () => DefaultFont,
                 Below = StaticText_Below,
             };
+
+            // FIXME: StaticImage
 
             Tooltip = new DelegateDecorator {
                 Padding = new Margins(12, 8, 12, 8),

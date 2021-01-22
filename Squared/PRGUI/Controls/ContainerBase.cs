@@ -491,13 +491,15 @@ namespace Squared.PRGUI.Controls {
             : this (false, false) {
         }
 
-        public ControlGroup (bool forceBreak = false, bool preventCrush = false)
+        public ControlGroup (bool forceBreak = false, bool preventCrush = false, bool fill = false)
             : base () {
             CreateNestedContextForChildren = false;
             Appearance.Undecorated = true;
             ForceBreak = forceBreak;
             PreventCrush = preventCrush;
             DisableSelfHitTests = true;
+            if (fill)
+                LayoutFlags |= ControlFlags.Layout_Fill;
         }
 
         // For simple initializers

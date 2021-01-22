@@ -19,12 +19,15 @@ namespace Squared.PRGUI.Controls {
             set => AutoSizeWidth = AutoSizeHeight = value;
         }
         public Vector2 Alignment = new Vector2(0.5f, 0.5f);
-        public Vector2 Origin = new Vector2(0.5f, 0.5f);
         public Vector2 Scale = Vector2.One;
         public RasterizePasses Pass = RasterizePasses.Content;
         public bool ScaleToFit;
         public AbstractTextureReference Image;
         public bool ShowLoadingSpinner;
+
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
+            return provider?.StaticImage ?? provider?.None;
+        }
 
         protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
             base.ComputeFixedSize(out fixedWidth, out fixedHeight);
@@ -66,13 +69,13 @@ namespace Squared.PRGUI.Controls {
                     break;
 
                 var fakeBox = new RectF(0, 0, fixedWidth ?? 9999, fixedHeight ?? 9999);
-                scaleToFit = ComputeScaleToFit(ref fakeBox, ref computedPadding);
+                scaleToFit = ComputeScaleToFit(ref fakeBox);
                 if (!scaleToFit.HasValue)
                     break;
             }
         }
 
-        protected float? ComputeScaleToFit (ref RectF box, ref Margins margins) {
+        protected float? ComputeScaleToFit (ref RectF box) {
             if (!ScaleToFit)
                 return null;
 
@@ -80,13 +83,13 @@ namespace Squared.PRGUI.Controls {
             if (instance == null)
                 return null;
 
-            float availableWidth = Math.Max(box.Width - margins.X, 0);
-            float availableHeight = Math.Max(box.Height - margins.Y, 0);
+            float availableWidth = Math.Max(box.Width, 0);
+            float availableHeight = Math.Max(box.Height, 0);
 
             float? scaleFactor = null;
             if (instance.Width > availableWidth)
                 scaleFactor = availableWidth / Math.Max(instance.Width, 1);
-            if (instance.Width > availableHeight) {
+            if (instance.Height > availableHeight) {
                 var f = availableHeight / Math.Max(instance.Height, 1);
                 if (scaleFactor.HasValue)
                     scaleFactor = Math.Min(f, scaleFactor.Value);
@@ -110,8 +113,7 @@ namespace Squared.PRGUI.Controls {
                 if (instance == null)
                     return;
 
-                ComputePadding(context, decorations, out Margins computedPadding);
-                var scaleToFit = ComputeScaleToFit(ref settings.Box, ref computedPadding);
+                var scaleToFit = ComputeScaleToFit(ref settings.ContentBox);
                 var scale = 
                     scaleToFit.HasValue 
                         ? new Vector2(scaleToFit.Value)
@@ -120,7 +122,8 @@ namespace Squared.PRGUI.Controls {
                     Arithmetic.Lerp(settings.Box.Left, settings.Box.Extent.X, Alignment.X),
                     Arithmetic.Lerp(settings.Box.Top, settings.Box.Extent.Y, Alignment.Y)
                 );
-                renderer.Draw(instance, position.Round(0), origin: Origin, scale: scale);
+                var origin = Alignment;
+                renderer.Draw(instance, position.Round(0), origin: Alignment, scale: scale);
             }
 
             if (ShowLoadingSpinner && (context.Pass == RasterizePasses.Above)) {

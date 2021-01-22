@@ -124,7 +124,7 @@ namespace Squared.PRGUI.Controls {
         private IGlyphSource _GlyphSource = null;
         public IGlyphSource GlyphSource {
             get => _GlyphSource;
-            protected set {
+            set {
                 if (_GlyphSource == value)
                     return;
                 _GlyphSource = value;
@@ -295,7 +295,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
-            return provider?.StaticText;
+            return provider?.StaticText ?? provider?.None;
         }
 
         protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations) {
@@ -500,11 +500,6 @@ namespace Squared.PRGUI.Controls {
         new public bool ScaleToFit {
             get => base.ScaleToFit;
             set => base.ScaleToFit = value;
-        }
-
-        public IGlyphSource GlyphSource {
-            get => base.GlyphSource;
-            set => base.GlyphSource = value;
         }
 
         new public void Invalidate () => base.Invalidate();

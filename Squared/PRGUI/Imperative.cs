@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.Render;
 using Squared.Render.Text;
 using Squared.Util;
 using Squared.Util.Text;
@@ -147,6 +149,10 @@ namespace Squared.PRGUI.Imperative {
 
         public ControlBuilder<StaticText> Text (AbstractString text) {
             return this.Text<StaticText>(text);
+        }
+
+        public ControlBuilder<Spacer> Spacer () {
+            return this.New<Spacer>();
         }
 
         public ControlBuilder<TControl> Text<TControl> (AbstractString text)
@@ -402,6 +408,19 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> SetImage (AbstractTextureReference value) {
+            if (Control is StaticImage si)
+                si.Image = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetAlignment (Vector2 value) {
+            if (Control is StaticImage si)
+                si.Alignment = value;
+            else if (Control is Window w)
+                w.ScreenAlignment = value;
+            return this;
+        }
+
         public ControlBuilder<TControl> SetVisible (bool value) {
             Control.Visible = value;
             return this;
@@ -621,6 +640,11 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> SetGlyphSource (IGlyphSource value) {
+            if (Control is StaticTextBase stb)
+                stb.GlyphSource = value;
+            return this;
+        }
         public ControlBuilder<TControl> SetRichText (bool value) {
             if (Control is StaticTextBase stb)
                 stb.RichText = value;
@@ -634,11 +658,20 @@ namespace Squared.PRGUI.Imperative {
         public ControlBuilder<TControl> SetScaleToFit (bool value) {
             if (Control is StaticText stb)
                 stb.ScaleToFit = value;
+            else if (Control is StaticImage si)
+                si.ScaleToFit = value;
             return this;
         }
         public ControlBuilder<TControl> SetWrap (bool value) {
             if (Control is StaticText stb)
                 stb.Wrap = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetWrap (bool wordWrap, bool characterWrap) {
+            if (Control is StaticText stb) {
+                stb.Content.WordWrap = wordWrap;
+                stb.Content.CharacterWrap = characterWrap;
+            }
             return this;
         }
         public ControlBuilder<TControl> SetMultiline (bool value) {
@@ -649,12 +682,17 @@ namespace Squared.PRGUI.Imperative {
         public ControlBuilder<TControl> SetAutoSize (bool value) {
             if (Control is StaticTextBase stb)
                 stb.AutoSize = value;
+            else if (Control is StaticImage si)
+                si.AutoSize = value;
             return this;
         }
         public ControlBuilder<TControl> SetAutoSize (bool width, bool height) {
             if (Control is StaticTextBase stb) {
                 stb.AutoSizeWidth = width;
                 stb.AutoSizeHeight = height;
+            } else if (Control is StaticImage si) {
+                si.AutoSizeWidth = width;
+                si.AutoSizeHeight = height;
             }
             return this;
         }
