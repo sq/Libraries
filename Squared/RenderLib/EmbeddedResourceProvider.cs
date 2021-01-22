@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,6 +14,24 @@ using Squared.Threading;
 namespace Squared.Render {
     public abstract class EmbeddedResourceProvider<T> : IDisposable
         where T : class, IDisposable {
+
+        protected class LoadSyncWorkItem : IWorkItem {
+            public Future<T> Future;
+            public EmbeddedResourceProvider<T> Provider;
+            public string Name;
+            public object Data;
+            public bool Optional;
+
+            void IWorkItem.Execute () {
+                try {
+                    var instance = Provider.LoadSyncUncached(Name, Data, Optional, out Exception exc);
+                    Future.SetResult(instance, null);
+                } catch (Exception exc) {
+                    Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
+                }
+            }
+        }
+
         public readonly Assembly Assembly;
         public readonly RenderCoordinator Coordinator;
         public string Prefix { get; set; }
@@ -22,11 +41,14 @@ namespace Squared.Render {
         protected readonly Dictionary<string, Future<T>> Cache = new Dictionary<string, Future<T>>();
         protected object DefaultOptions;
 
+        protected WorkQueue<LoadSyncWorkItem> Queue { get; private set; }
+
         public EmbeddedResourceProvider (Assembly assembly, RenderCoordinator coordinator) {
             if (coordinator == null)
                 throw new ArgumentNullException("A render coordinator is required", "coordinator");
             Assembly = assembly;
             Coordinator = coordinator;
+            Queue = coordinator.ThreadGroup.GetQueueForType<LoadSyncWorkItem>();
             if (Suffix == null)
                 Suffix = "";
         }
@@ -53,7 +75,7 @@ namespace Squared.Render {
                     if (optional) {
                         return default(T);
                     } else {
-                        exception = new FileNotFoundException("No manifest resource stream with this name found", name);
+                        exception = new FileNotFoundException($"No manifest resource stream with this name found: {streamName}", name);
                         return default(T);
                     }
                 } else {
@@ -97,10 +119,14 @@ namespace Squared.Render {
             var future = GetFutureForResource(name, cached, out bool performLoad);
 
             if (performLoad) {
-                ThreadPool.QueueUserWorkItem((_) => {
-                    var instance = LoadSyncUncached(name, data, optional, out Exception exc);
-                    future.SetResult(instance, null);
-                });
+                var workItem = new LoadSyncWorkItem {
+                    Provider = this,
+                    Future = future,
+                    Name = name,
+                    Data = data,
+                    Optional = optional
+                };
+                Queue.Enqueue(workItem);
             }
 
             return future;
