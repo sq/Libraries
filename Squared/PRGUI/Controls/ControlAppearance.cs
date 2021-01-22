@@ -93,6 +93,11 @@ namespace Squared.PRGUI {
         /// </summary>
         public bool SuppressDecorationPadding;
 
+        public bool SuppressDecorationSpacing {
+            get => SuppressDecorationMargins && SuppressDecorationPadding;
+            set => SuppressDecorationMargins = SuppressDecorationPadding = value;
+        }
+
         public bool HasBackgroundColor => BackgroundColor.HasValue;
         public bool HasTextColor => BackgroundColor.HasValue;
 

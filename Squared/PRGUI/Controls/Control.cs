@@ -640,17 +640,18 @@ namespace Squared.PRGUI {
             context.VisibleRegion = vr;
         }
 
-        private void RasterizePass (ref UIOperationContext context, RectF box, bool compositing, ref RasterizePassSet passSet, ref ImperativeRenderer renderer, RasterizePasses pass) {
-            var contentBox = GetRect(contentRect: true);
-            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
-            var state = GetCurrentState(context);
-
+        private void RasterizePass (
+            ref UIOperationContext context, 
+            ref DecorationSettings settings, IDecorator decorations,
+            bool compositing, ref RasterizePassSet passSet, 
+            ref ImperativeRenderer renderer, RasterizePasses pass
+        ) {
             var passContext = context.Clone();
             passContext.Pass = pass;
             var hasNestedContext = (pass == RasterizePasses.Content) && 
                 (ShouldClipContent || (HasChildren && CreateNestedContextForChildren));
             if (hasNestedContext)
-                UpdateVisibleRegion(ref passContext, ref box);
+                UpdateVisibleRegion(ref passContext, ref settings.Box);
 
             var contentContext = passContext;
             // FIXME: The memset for these actually burns a measurable amount of time
@@ -680,7 +681,6 @@ namespace Squared.PRGUI {
                 renderer.Layer += 1;
             }
 
-            var settings = MakeDecorationSettings(ref box, ref contentBox, state);
             if (hasNestedContext)
                 OnRasterize(contentContext, ref contentRenderer, settings, decorations);
             else
@@ -708,13 +708,12 @@ namespace Squared.PRGUI {
                     contentContext.Pass = RasterizePasses.ContentClip;
 
                     // FIXME
-                    box = settings.Box;
-                    ApplyClipMargins(contentContext, ref box);
-                    settings.Box = box;
+                    var temp = settings;
+                    ApplyClipMargins(contentContext, ref temp.Box);
 
                     contentRenderer.Layer = -999;
                     settings.State = default(ControlStates);
-                    decorations.Rasterize(contentContext, ref contentRenderer, settings);
+                    decorations.Rasterize(contentContext, ref contentRenderer, temp);
 
                     if (passSet.StackDepth > 1) {
                         // If this is a nested stencil pass, erase our stencil data and restore what was there before
@@ -730,9 +729,13 @@ namespace Squared.PRGUI {
         }
 
         private void RasterizeAllPasses (ref UIOperationContext context, ref RectF box, ref RasterizePassSet passSet, bool compositing) {
-            RasterizePass(ref context, box, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
-            RasterizePass(ref context, box, compositing, ref passSet, ref passSet.Content, RasterizePasses.Content);
-            RasterizePass(ref context, box, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
+            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
+            var contentBox = GetRect(contentRect: true);
+            var state = GetCurrentState(context);
+            var settings = MakeDecorationSettings(ref box, ref contentBox, state);
+            RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
+            RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Content, RasterizePasses.Content);
+            RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
         }
 
         public bool Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, float opacity = 1) {

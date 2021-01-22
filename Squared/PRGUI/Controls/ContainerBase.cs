@@ -29,6 +29,8 @@ namespace Squared.PRGUI.Controls {
 
         private int _ColumnCount = 1;
 
+        public bool AutoBreakColumnItems = false;
+
         /// <summary>
         /// Splits the container into multiple columns arranged left-to-right.
         /// Children will automatically be distributed across the columns, and
@@ -174,7 +176,7 @@ namespace Squared.PRGUI.Controls {
         protected virtual ControlKey CreateColumn (UIOperationContext context, ControlKey parent, int columnIndex) {
             var result = context.Layout.CreateItem();
             context.Layout.InsertAtEnd(parent, result);
-            context.Layout.SetLayoutFlags(result, ControlFlags.Layout_Fill);
+            context.Layout.SetLayoutFlags(result, ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top);
             context.Layout.SetContainerFlags(result, ContainerFlags | ControlFlags.Container_Prevent_Crush_Y);
             // context.Layout.SetContainerFlags(parent, );
             return result;
@@ -236,6 +238,11 @@ namespace Squared.PRGUI.Controls {
                         childExistingKey = item.LayoutKey;
 
                     var itemKey = item.GenerateLayoutTree(ref context, ColumnKeys[columnIndex], childExistingKey);
+                    if (multiColumn && AutoBreakColumnItems) {
+                        var lf = Context.Layout.GetLayoutFlags(itemKey);
+                        if (!lf.IsBreak())
+                            Context.Layout.SetLayoutFlags(itemKey, lf | ControlFlags.Layout_ForceBreak);
+                    }
                 }
                 return result;
             }
