@@ -382,6 +382,13 @@ namespace Squared.PRGUI.Imperative {
                 cast.Scrollable = value;
             return this;
         }
+        public ControlBuilder<TControl> SetShowScrollbars (bool? horizontal, bool? vertical) {
+            if (Control is Container cast) {
+                cast.ShowHorizontalScrollbar = horizontal;
+                cast.ShowVerticalScrollbar = vertical;
+            }
+            return this;
+        }
 
         public ControlBuilder<TControl> SetAppearance (ref ControlAppearance value) {
             Control.Appearance = value;
@@ -391,8 +398,20 @@ namespace Squared.PRGUI.Imperative {
             Control.Appearance = value;
             return this;
         }
+        public ControlBuilder<TControl> SetUndecorated (bool value) {
+            Control.Appearance.Undecorated = value;
+            return this;
+        }
         public ControlBuilder<TControl> SetDecorator (IDecorator value) {
             Control.Appearance.Decorator = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetUndecoratedText (bool value) {
+            Control.Appearance.UndecoratedText = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetTextDecorator (IDecorator value) {
+            Control.Appearance.TextDecorator = value;
             return this;
         }
         public ControlBuilder<TControl> SetBackgroundColor (ColorVariable value) {

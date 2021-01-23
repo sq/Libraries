@@ -31,7 +31,13 @@ namespace Squared.PRGUI.Controls {
             set => base.ClipChildren = value;
         }
         public bool Scrollable { get; set; } = false;
-        public bool ShowVerticalScrollbar = true, ShowHorizontalScrollbar = true;
+        public bool? ShowVerticalScrollbar = null, 
+            ShowHorizontalScrollbar = null;
+
+        protected bool ShouldShowHorizontalScrollbar =>
+            ShowHorizontalScrollbar ?? (HScrollbar.ContentSize > HScrollbar.ViewportSize);
+        protected bool ShouldShowVerticalScrollbar =>
+            ShowVerticalScrollbar ?? (VScrollbar.ContentSize > VScrollbar.ViewportSize);
 
         private Vector2 _ScrollOffset;
 
@@ -120,7 +126,7 @@ namespace Squared.PRGUI.Controls {
         protected bool OnScroll (float delta) {
             if (!Scrollable)
                 return false;
-            if (!ShowVerticalScrollbar || !CanScrollVertically)
+            if ((ShowVerticalScrollbar == false) || !CanScrollVertically)
                 return false;
             var so = ScrollOffset;
             so.Y = so.Y - delta * ScrollSpeedMultiplier;
@@ -159,7 +165,7 @@ namespace Squared.PRGUI.Controls {
             if (scroll == null)
                 return false;
 
-            if (!ShowHorizontalScrollbar && !ShowVerticalScrollbar)
+            if ((ShowHorizontalScrollbar == false) && (ShowVerticalScrollbar == false))
                 return false;
 
             var box = GetRect();
@@ -177,8 +183,8 @@ namespace Squared.PRGUI.Controls {
             if (!PrepareScrollbarsForMethodCall(out IWidgetDecorator<ScrollbarState> scroll, out DecorationSettings settings))
                 return false;
 
-            var hScrollProcessed = ShowHorizontalScrollbar && scroll.OnMouseEvent(settings, ref HScrollbar, name, args);
-            var vScrollProcessed = ShowVerticalScrollbar && scroll.OnMouseEvent(settings, ref VScrollbar, name, args);
+            var hScrollProcessed = ShouldShowHorizontalScrollbar && scroll.OnMouseEvent(settings, ref HScrollbar, name, args);
+            var vScrollProcessed = ShouldShowVerticalScrollbar && scroll.OnMouseEvent(settings, ref VScrollbar, name, args);
 
             if (hScrollProcessed || vScrollProcessed) {
                 var newOffset = new Vector2(HScrollbar.Position, VScrollbar.Position);
@@ -212,9 +218,9 @@ namespace Squared.PRGUI.Controls {
                 settings.ContentBox.Height -= MostRecentHeaderHeight;
 
                 var scrollbar = context.DecorationProvider?.Scrollbar;
-                if (ShowHorizontalScrollbar)
+                if (ShouldShowHorizontalScrollbar)
                     scrollbar?.Rasterize(context, ref renderer, settings, ref HScrollbar);
-                if (ShowVerticalScrollbar)
+                if (ShouldShowVerticalScrollbar)
                     scrollbar?.Rasterize(context, ref renderer, settings, ref VScrollbar);
             }
         }
@@ -228,9 +234,10 @@ namespace Squared.PRGUI.Controls {
                 return;
             // FIXME: Automate this?
             var scale = context.DecorationProvider.SizeScaleRatio;
-            if (ShowVerticalScrollbar)
+            // FIXME: Conditionally adjust padding when visibility is auto? Possibly introduces jitter
+            if (ShowVerticalScrollbar != false)
                 result.Right += scrollbar.MinimumSize.X * scale.X;
-            if (ShowHorizontalScrollbar)
+            if (ShowHorizontalScrollbar != false)
                 result.Bottom += scrollbar.MinimumSize.Y * scale.Y;
         }
 
@@ -325,7 +332,7 @@ namespace Squared.PRGUI.Controls {
                 VScrollbar.ViewportSize = viewportHeight;
                 VScrollbar.Position = ScrollOffset.Y;
 
-                HScrollbar.HasCounterpart = VScrollbar.HasCounterpart = (ShowHorizontalScrollbar && ShowVerticalScrollbar);
+                HScrollbar.HasCounterpart = VScrollbar.HasCounterpart = (ShouldShowHorizontalScrollbar && ShouldShowVerticalScrollbar);
             } else {
                 TrySetScrollOffset(Vector2.Zero, false);
             }
