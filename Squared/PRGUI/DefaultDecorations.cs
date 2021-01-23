@@ -326,7 +326,7 @@ namespace Squared.PRGUI {
                 Margins = new Margins(1),
                 // Top+bottom padding = height of fill/track
                 // Left+right padding = minimum width of fill
-                Padding = new Margins(4, 0, 0, 7.5f)
+                Padding = new Margins(5.5f, 0, 0, 8.5f)
             };
 
             VirtualCursor = new DelegateDecorator {

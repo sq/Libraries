@@ -184,14 +184,16 @@ namespace Squared.PRGUI.Controls {
                 result.Right += ArrowPadding;
             }
 
-            // If there's a gauge, adjust our content box based on its margins so that it doesn't overlap
+            // If there's a gauge, adjust our content box based on its padding so that it doesn't overlap
             //  our text or selection box
             var gauge = context.DecorationProvider.ParameterGauge;
+            var y1 = gauge.Padding.Top * context.DecorationProvider.SizeScaleRatio.Y;
+            var y2 = gauge.Padding.Bottom * context.DecorationProvider.SizeScaleRatio.Y;
             if ((gauge != null) && Minimum.HasValue && Maximum.HasValue) {
                 if (gauge.Padding.Top > 0)
-                    result.Top += (gauge.Margins.Top * 2f);
+                    result.Top += y1;
                 if (gauge.Padding.Bottom > 0)
-                    result.Bottom += (gauge.Margins.Bottom * 2f);
+                    result.Bottom += y2;
             }
         }
 
@@ -229,7 +231,7 @@ namespace Squared.PRGUI.Controls {
             gaugeBox.Left += decorations.Margins.Left;
             gaugeBox.Width -= decorations.Margins.X;
             gaugeBox.Height -= decorations.Margins.Y;
-            gaugeBox.Top = gaugeBox.Extent.Y - decorations.Padding.Y;
+            gaugeBox.Top = gaugeBox.Extent.Y - (decorations.Padding.Y * Context.Decorations.SizeScaleRatio.Y);
             gaugeBox.Height = box.Extent.Y - gaugeBox.Top - decorations.Margins.Bottom;
             return gaugeBox;
         }

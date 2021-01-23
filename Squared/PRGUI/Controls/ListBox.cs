@@ -180,7 +180,7 @@ namespace Squared.PRGUI.Controls {
 
             // HACK: Ensure the scroll region is updated immediately if our column count changes,
             //  because otherwise the scroll offset can end up beyond the bottom of our view
-            if (LastColumnCount != ColumnCount) {
+            if ((LastColumnCount != ColumnCount) && !existingKey.HasValue) {
                 LastColumnCount = ColumnCount;
                 NeedsUpdate = true;
             }
@@ -258,10 +258,8 @@ namespace Squared.PRGUI.Controls {
                     Context.OverrideKeyboardSelection(newControl, forUser: false);
             }
 
-            if (existingKey.HasValue) {
-                NeedsUpdate = false;
+            if (existingKey.HasValue)
                 SelectedItemHasChangedSinceLastUpdate = false;
-            }
 
             if (scrollOffsetChanged)
                 OnDisplayOffsetChanged();
