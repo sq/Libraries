@@ -631,7 +631,7 @@ namespace Squared.PRGUI.Imperative {
         public ControlBuilder<TControl> SetText (AbstractString value) {
             var cast1 = (Control as StaticTextBase);
             var cast2 = (Control as EditableText);
-            cast1?.SetText(value);
+            cast1?.SetTextInternal(value, true);
             cast2?.SetText(value, false);
             return this;
         }
@@ -642,7 +642,7 @@ namespace Squared.PRGUI.Imperative {
             if (changed) {
                 value = cast2.Text;
             } else {
-                cast1?.SetText(value);
+                cast1?.SetTextInternal(value, true);
                 cast2?.SetText(value, false);
             }
             return this;
@@ -654,7 +654,7 @@ namespace Squared.PRGUI.Imperative {
             if (changed) {
                 value = cast2.Text;
             } else {
-                cast1?.SetText(value);
+                cast1?.SetTextInternal(value);
                 cast2?.SetText(value, false);
             }
             return this;

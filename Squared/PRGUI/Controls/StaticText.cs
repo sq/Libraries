@@ -119,16 +119,26 @@ namespace Squared.PRGUI.Controls {
         public AbstractString Text {
             get => Content.Text;
             protected set {
-                // Don't perform a text compare for long strings
-                if (value.Length < 2048) {
-                    if (
-                        value.TextEquals(Content.Text, StringComparison.Ordinal) &&
-                        !value.IsStringBuilder && !Content.Text.IsStringBuilder
-                    )
-                        return;
-                }
-                Content.Text = value;
+                SetText(value, null);
             }
+        }
+
+        protected bool SetText (AbstractString value, bool? onlyIfTextChanged = null) {
+            // Don't perform a text compare for long strings
+            var checkEquality = onlyIfTextChanged ?? !value.IsStringBuilder;
+            if (value.Length < 4096) {
+                if (
+                    checkEquality &&
+                    value.TextEquals(Content.Text, StringComparison.Ordinal)
+                )
+                    return false;
+            }
+            Content.Text = value;
+            return true;
+        }
+
+        internal bool SetTextInternal (AbstractString value, bool? onlyIfTextChanged = null) {
+            return SetText(value, onlyIfTextChanged);
         }
 
         private IGlyphSource _GlyphSource = null;
@@ -140,13 +150,6 @@ namespace Squared.PRGUI.Controls {
                 _GlyphSource = value;
                 Invalidate();
             }
-        }
-
-        internal void SetText (AbstractString text) {
-            if (Text.TextEquals(text, StringComparison.Ordinal))
-                return;
-
-            Text = text;
         }
 
         protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {

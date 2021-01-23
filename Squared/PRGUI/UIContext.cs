@@ -1261,7 +1261,8 @@ namespace Squared.PRGUI {
         private void ShowTooltip (Control anchor, AbstractString text, bool textIsInvalidated) {
             var instance = GetTooltipInstance();
 
-            var textChanged = !instance.Text.Equals(text) || textIsInvalidated;
+            var textChanged = !instance.Text.TextEquals(text, StringComparison.Ordinal) || 
+                textIsInvalidated;
 
             var rect = anchor.GetRect(context: this);
             // HACK: Clip the anchor's rect to its parent's rect to ensure that

@@ -80,6 +80,8 @@ namespace Squared.PRGUI.Controls {
             set => base.AcceptsFocus = value;
         }
 
+        new public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
+
         /// <summary>
         /// If set, the button will produce additional periodic Click events while pressed
         /// </summary>
@@ -150,6 +152,8 @@ namespace Squared.PRGUI.Controls {
         }
         new public void Invalidate () => base.Invalidate();
 
+        new public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
+
         public Checkbox ()
             : base () {
             Content.Alignment = HorizontalAlignment.Left;
@@ -204,6 +208,8 @@ namespace Squared.PRGUI.Controls {
             set => base.Text = value;
         }
         new public void Invalidate () => base.Invalidate();
+
+        new public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
 
         public RadioButton ()
             : base () {
