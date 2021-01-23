@@ -21,7 +21,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override Vector2 AbsoluteDisplayOffsetOfChildren => 
-            AbsoluteDisplayOffset - (_ScrollOffset + VirtualScrollOffset).Floor();
+            AbsoluteDisplayOffset - (ScrollOffset + VirtualScrollOffset).Floor();
 
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
@@ -102,7 +102,7 @@ namespace Squared.PRGUI.Controls {
 
         public Vector2 ScrollOffset {
             get {
-                return _ScrollOffset;
+                return ConstrainNewScrollOffset(_ScrollOffset);
             }
             set {
                 TrySetScrollOffset(value, false);

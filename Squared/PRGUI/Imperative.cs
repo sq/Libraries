@@ -134,42 +134,56 @@ namespace Squared.PRGUI.Imperative {
                     instance = new TControl();
 
                 instance.Data.Set<TData>(key, data);
-                ApplyLayoutFlags(instance);
+                ApplyLayoutFlags(instance, null);
                 AddInternal(instance);
             }
 
             return new ControlBuilder<TControl>(instance);
         }
 
-        public ControlBuilder<StaticText> Label (AbstractString text) {
-            var result = this.Text<StaticText>(text);
+        public ControlBuilder<StaticText> Label (AbstractString text, ControlFlags? layoutFlags = null) {
+            var result = this.Text<StaticText>(text, layoutFlags);
             WaitingForFocusBeneficiary = result.Control;
             return result;
         }
 
-        public ControlBuilder<StaticText> Text (AbstractString text) {
-            return this.Text<StaticText>(text);
+        public ControlBuilder<StaticText> Text (AbstractString text, ControlFlags? layoutFlags = null) {
+            return this.Text<StaticText>(text, layoutFlags);
         }
 
         public ControlBuilder<Spacer> Spacer () {
             return this.New<Spacer>();
         }
 
-        public ControlBuilder<TControl> Text<TControl> (AbstractString text)
+        public ControlBuilder<TControl> Text<TControl> (AbstractString text, ControlFlags? layoutFlags = null)
             where TControl : Control, new() {
-            var result = New<TControl>();
+            var result = New<TControl>(layoutFlags);
             result.SetText(text);
             return result;
         }
 
-        private void ApplyLayoutFlags (Control control) {
+        private void ApplyLayoutFlags (Control control, ControlFlags? customFlags) {
             if (OverrideLayoutFlags.HasValue)
                 control.LayoutFlags = OverrideLayoutFlags.Value;
 
+            if (customFlags.HasValue)
+                control.LayoutFlags = customFlags.Value;
             control.LayoutFlags |= ExtraLayoutFlags;
         }
 
-        public ControlBuilder<TControl> New<TControl> ()
+        private void ApplyContainerFlags (Control control, ControlFlags? containerFlags) {
+            if (!containerFlags.HasValue)
+                return;
+
+            if (control is Container c)
+                c.ContainerFlags = containerFlags.Value;
+            else if (control is ControlGroup cg)
+                cg.ContainerFlags = containerFlags.Value;
+            else
+                throw new InvalidOperationException("This control does not accept container flags");
+        }
+
+        public ControlBuilder<TControl> New<TControl> (ControlFlags? layoutFlags = null)
             where TControl : Control, new() {
             TControl instance = null;
             if (NextIndex < Children.Count)
@@ -178,21 +192,23 @@ namespace Squared.PRGUI.Imperative {
             if (instance == null)
                 instance = new TControl();
 
-            ApplyLayoutFlags(instance);
+            ApplyLayoutFlags(instance, layoutFlags);
             AddInternal(instance);
 
             return new ControlBuilder<TControl>(instance);
         }
 
-        public ContainerBuilder NewContainer () {
-            return this.NewContainer<Container>();
+        public ContainerBuilder NewContainer (ControlFlags? layoutFlags = null, ControlFlags? containerFlags = null) {
+            return this.NewContainer<Container>(layoutFlags, containerFlags);
         }
 
-        public ContainerBuilder NewGroup () {
-            return this.NewContainer<ControlGroup>();
+        public ContainerBuilder NewGroup (ControlFlags? layoutFlags = null, ControlFlags? containerFlags = null) {
+            return this.NewContainer<ControlGroup>(layoutFlags, containerFlags);
         }
 
-        public ContainerBuilder NewContainer<TControl> ()
+        public ContainerBuilder NewContainer<TControl> (
+            ControlFlags? layoutFlags = null, ControlFlags? containerFlags = null
+        )
             where TControl : Control, IControlContainer, new() {
             TControl instance = null;
             if (NextIndex < Children.Count)
@@ -209,15 +225,17 @@ namespace Squared.PRGUI.Imperative {
                 result = new ContainerBuilder(instance);
             }
 
-            ApplyLayoutFlags(instance);
+            ApplyLayoutFlags(instance, layoutFlags);
+            ApplyContainerFlags(instance, containerFlags);
             AddInternal(instance);
 
             // FIXME: The child builder will create a temporary list
             return result;
         }
 
-        public ContainerBuilder TitledContainer (string title, bool? collapsible = null) {
-            var result = New<TitledContainer>();
+        // FIXME: ContainerFlags
+        public ContainerBuilder TitledContainer (string title, bool? collapsible = null, ControlFlags? layoutFlags = null) {
+            var result = New<TitledContainer>(layoutFlags);
             result.SetTitle(title);
             if (collapsible != null)
                 result.SetCollapsible(collapsible.Value);
@@ -679,6 +697,13 @@ namespace Squared.PRGUI.Imperative {
                 stb.ScaleToFit = value;
             else if (Control is StaticImage si)
                 si.ScaleToFit = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetScale (float value) {
+            if (Control is StaticText stb)
+                stb.Scale = value;
+            else if (Control is StaticImage si)
+                si.Scale = new Vector2(value);
             return this;
         }
         public ControlBuilder<TControl> SetWrap (bool value) {

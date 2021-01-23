@@ -238,7 +238,7 @@ namespace Squared.PRGUI.Controls {
                 NeedsUpdate = true;
 
             bool hadKeyboardSelection = false;
-            if (NeedsUpdate) {
+            if (NeedsUpdate && !existingKey.HasValue) {
                 hadKeyboardSelection = Children.Contains(Context.KeyboardSelection);
                 var priorControl = Manager.SelectedControl;
                 // FIXME: Why do virtual list items flicker for a frame before appearing?
@@ -258,8 +258,10 @@ namespace Squared.PRGUI.Controls {
                     Context.OverrideKeyboardSelection(newControl, forUser: false);
             }
 
-            NeedsUpdate = false;
-            SelectedItemHasChangedSinceLastUpdate = false;
+            if (existingKey.HasValue) {
+                NeedsUpdate = false;
+                SelectedItemHasChangedSinceLastUpdate = false;
+            }
 
             if (scrollOffsetChanged)
                 OnDisplayOffsetChanged();
@@ -318,7 +320,8 @@ namespace Squared.PRGUI.Controls {
             if (newViewportItemCount != VirtualViewportItemCount) {
                 VirtualViewportItemCount = newViewportItemCount;
                 NeedsUpdate = true;
-                relayoutRequested = true;
+                // Doing this can cause nonstop jittering
+                // relayoutRequested = true;
             }
             // FIXME: It is beyond me why this is the correct value. What?????
             var partialItemScrollOffset = GetDecorator(context.DecorationProvider, null)?.Margins.Y ?? 0;

@@ -200,6 +200,7 @@ namespace Squared.PRGUI.Controls {
                     & ~ControlFlags.Container_Column
                     & ~ControlFlags.Container_Wrap;
                 containerFlags |= ControlFlags.Container_Row;
+                ;
             }
 
             context.Layout.SetContainerFlags(result, containerFlags);
