@@ -15,7 +15,28 @@ namespace Squared.Render {
     public abstract class EmbeddedResourceProvider<T> : IDisposable
         where T : class, IDisposable {
 
-        protected class LoadSyncWorkItem : IWorkItem {
+        protected class CreateWorkItem : IWorkItem {
+            public Future<T> Future;
+            public EmbeddedResourceProvider<T> Provider;
+            public Stream Stream;
+            public string Name;
+            public object Data, PreloadedData;
+            public bool Optional;
+
+            void IWorkItem.Execute () {
+                using (Stream) {
+                    try {
+                        // Console.WriteLine($"CreateInstance('{Name}') on thread {Thread.CurrentThread.Name}");
+                        var instance = Provider.CreateInstance(Stream, Data, PreloadedData);
+                        Future.SetResult2(instance, null);
+                    } catch (Exception exc) {
+                        Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
+                    }
+                }
+            }
+        }
+
+        protected class PreloadWorkItem : IWorkItem {
             public Future<T> Future;
             public EmbeddedResourceProvider<T> Provider;
             public string Name;
@@ -23,10 +44,33 @@ namespace Squared.Render {
             public bool Optional;
 
             void IWorkItem.Execute () {
+                Stream stream = null;
                 try {
-                    var instance = Provider.LoadSyncUncached(Name, Data, Optional, out Exception exc);
-                    Future.SetResult(instance, null);
+                    Exception exc = null;
+                    if (!Provider.GetStream(Name, Optional, out stream, out exc)) {
+                        Future.SetResult2(
+                            default(T), (exc != null) 
+                                ? ExceptionDispatchInfo.Capture(exc) 
+                                : null
+                        );
+                        return;
+                    }
+
+                    // Console.WriteLine($"PreloadInstance('{Name}') on thread {Thread.CurrentThread.Name}");
+                    var preloadedData = Provider.PreloadInstance(stream, Data);
+                    var item = new CreateWorkItem {
+                        Future = Future,
+                        Provider = Provider,
+                        Name = Name,
+                        Data = Data,
+                        Optional = Optional,
+                        Stream = stream,
+                        PreloadedData = preloadedData
+                    };
+                    Provider.CreateQueue.Enqueue(ref item);
                 } catch (Exception exc) {
+                    if (stream != null)
+                        stream.Dispose();
                     Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
                 }
             }
@@ -37,20 +81,41 @@ namespace Squared.Render {
         public string Prefix { get; set; }
         public string Suffix { get; protected set; }
         public bool IsDisposed { get; private set; }
+        public readonly bool EnableThreadedPreload = true, 
+            EnableThreadedCreate = false;
 
         protected readonly Dictionary<string, Future<T>> Cache = new Dictionary<string, Future<T>>();
         protected object DefaultOptions;
 
-        protected WorkQueue<LoadSyncWorkItem> Queue { get; private set; }
+        protected WorkQueue<PreloadWorkItem> PreloadQueue { get; private set; }
+        protected WorkQueue<CreateWorkItem> CreateQueue { get; private set; }
 
-        public EmbeddedResourceProvider (Assembly assembly, RenderCoordinator coordinator) {
+        public EmbeddedResourceProvider (
+            Assembly assembly, RenderCoordinator coordinator, 
+            bool enableThreadedPreload = true, bool enableThreadedCreate = false
+        ) {
             if (coordinator == null)
                 throw new ArgumentNullException("A render coordinator is required", "coordinator");
             Assembly = assembly;
             Coordinator = coordinator;
-            Queue = coordinator.ThreadGroup.GetQueueForType<LoadSyncWorkItem>();
             if (Suffix == null)
                 Suffix = "";
+
+            EnableThreadedPreload = enableThreadedPreload;
+
+            switch (coordinator.GraphicsBackendName) {
+                case "D3D9":
+                case "D3D11":
+                case "Vulkan":
+                    EnableThreadedCreate = enableThreadedCreate && true;
+                    break;
+                default:
+                    EnableThreadedCreate = enableThreadedCreate && false;
+                    break;
+            }
+
+            PreloadQueue = coordinator.ThreadGroup.GetQueueForType<PreloadWorkItem>(forMainThread: !EnableThreadedPreload);
+            CreateQueue = coordinator.ThreadGroup.GetQueueForType<CreateWorkItem>(forMainThread: !EnableThreadedCreate);
         }
 
         public List<string> GetNames (string prefix = null) {
@@ -65,28 +130,38 @@ namespace Squared.Render {
             ).ToList();
         }
 
-        protected abstract T CreateInstance (Stream stream, object data);
+        protected virtual object PreloadInstance (Stream stream, object data) => null;
+        protected abstract T CreateInstance (Stream stream, object data, object preloadedData);
 
-        public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) {
+        private bool GetStream (string name, bool optional, out Stream result, out Exception exception) {
             var streamName = (Prefix ?? "") + name + Suffix;
             exception = null;
-            using (var stream = Assembly.GetManifestResourceStream(streamName)) {
-                if (stream == null) {
-                    if (optional) {
-                        return default(T);
-                    } else {
-                        exception = new FileNotFoundException($"No manifest resource stream with this name found: {streamName}", name);
-                        return default(T);
-                    }
+            result = Assembly.GetManifestResourceStream(streamName);
+            if (result == null) {
+                if (optional) {
+                    return false;
                 } else {
-                    var instance = CreateInstance(stream, data);
-                    if (IsDisposed) {
-                        Coordinator.DisposeResource(instance);
-                        return null;
-                    } else {
-                        return instance;
-                    }
+                    exception = new FileNotFoundException($"No manifest resource stream with this name found: {streamName}", name);
+                    return false;
                 }
+            } else {
+                return true;
+            }
+        }
+
+        public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) {
+            Stream stream;
+            if (GetStream(name, optional, out stream, out exception)) {
+                var preloadedData = PreloadInstance(stream, data);
+                var instance = CreateInstance(stream, data, preloadedData);
+                if (IsDisposed) {
+                    Coordinator.DisposeResource(instance);
+                    return default(T);
+                } else {
+                    return instance;
+                }
+            } else {
+                return default(T);
             }
         }
 
@@ -119,14 +194,14 @@ namespace Squared.Render {
             var future = GetFutureForResource(name, cached, out bool performLoad);
 
             if (performLoad) {
-                var workItem = new LoadSyncWorkItem {
+                var workItem = new PreloadWorkItem {
                     Provider = this,
                     Future = future,
                     Name = name,
                     Data = data,
                     Optional = optional
                 };
-                Queue.Enqueue(workItem);
+                PreloadQueue.Enqueue(workItem);
             }
 
             return future;
@@ -179,16 +254,16 @@ namespace Squared.Render {
 
     public class EmbeddedEffectProvider : EmbeddedResourceProvider<Effect> {
         public EmbeddedEffectProvider (Assembly assembly, RenderCoordinator coordinator) 
-            : base(assembly, coordinator) {
+            : base(assembly, coordinator, enableThreadedCreate: false) {
             Suffix = ".fx";
         }
 
         public EmbeddedEffectProvider (RenderCoordinator coordinator) 
-            : base(Assembly.GetCallingAssembly(), coordinator) {
+            : base(Assembly.GetCallingAssembly(), coordinator, enableThreadedCreate: false) {
             Suffix = ".fx";
         }
 
-        protected override Effect CreateInstance (Stream stream, object data) {
+        protected override Effect CreateInstance (Stream stream, object data, object preloadedData) {
             lock (Coordinator.CreateResourceLock)
                 return EffectUtils.EffectFromFxcOutput(Coordinator.Device, stream);
         }

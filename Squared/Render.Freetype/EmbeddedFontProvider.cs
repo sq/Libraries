@@ -17,7 +17,7 @@ namespace Squared.Render {
             : base(Assembly.GetCallingAssembly(), coordinator) {
         }
 
-        protected override FreeTypeFont CreateInstance (Stream stream, object data) {
+        protected override FreeTypeFont CreateInstance (Stream stream, object data, object preloadedData) {
             return new FreeTypeFont(Coordinator, stream);
         }
     }

@@ -159,6 +159,8 @@ namespace Squared.Render {
 
         private int IsDisposingResources = 0;
 
+        public string GraphicsBackendName { get; private set; }
+
         /// <summary>
         /// Constructs a render coordinator.
         /// </summary>
@@ -179,7 +181,7 @@ namespace Squared.Render {
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
-            UpdateIsOpenGL(Device);
+            UpdateGraphicsBackend(Device);
             RegisterForDeviceEvents();
         }
 
@@ -202,15 +204,24 @@ namespace Squared.Render {
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
-            UpdateIsOpenGL(Device);
+            UpdateGraphicsBackend(Device);
             RegisterForDeviceEvents();
 
             deviceService.DeviceCreated += DeviceService_DeviceCreated;
         }
 
-        private void UpdateIsOpenGL (GraphicsDevice device) {
+        private void UpdateGraphicsBackend (GraphicsDevice device) {
             var f = device.GetType().GetField("GLDevice", BindingFlags.Instance | BindingFlags.NonPublic);
             IsOpenGL = (f != null);
+
+            if (IsOpenGL) {
+                var hDevice = (IntPtr)f.GetValue(device);
+                Evil.FNA3D_SysRendererEXT sr;
+                Evil.DeviceUtils.FNA3D_GetSysRendererEXT(hDevice, out sr);
+                GraphicsBackendName = sr.rendererType.ToString();
+            } else {
+                GraphicsBackendName = "D3D9";
+            }
         }
 
         private void SetGraphicsDevice (GraphicsDevice device) {
@@ -218,7 +229,7 @@ namespace Squared.Render {
             if (Manager.DeviceManager.Device != device)
                 Manager.ChangeDevice(device);
 
-            UpdateIsOpenGL(device);
+            UpdateGraphicsBackend(device);
             RegisterForDeviceEvents();
 
             if (DeviceChanged != null)

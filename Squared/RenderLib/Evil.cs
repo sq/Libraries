@@ -279,6 +279,22 @@ namespace Squared.Render.Evil {
     }
 #endif
 
+#if FNA
+    public enum FNA3D_SysRendererTypeEXT
+    {
+	    OpenGL,
+	    Vulkan,
+	    D3D11,
+	    Metal
+    };
+
+    public unsafe struct FNA3D_SysRendererEXT {
+        public UInt32 Version;
+        public FNA3D_SysRendererTypeEXT rendererType;
+        public fixed byte padding[1024];
+    }
+#endif
+
     public static class EffectUtils {
 #if WINDOWS
         [DllImport("d3dx9_41.dll")]
@@ -687,6 +703,16 @@ namespace Squared.Render.Evil {
         ) where T : struct {
             texture.GetData(level, rect, data, startIndex, elementCount);
         }
+#endif
+    }
+
+    public static class DeviceUtils {
+#if FNA
+        [DllImport("FNA3D", CallingConvention = CallingConvention.Cdecl)]
+		public static extern void FNA3D_GetSysRendererEXT(
+			IntPtr device,
+			out FNA3D_SysRendererEXT sysrenderer
+		);
 #endif
     }
 }

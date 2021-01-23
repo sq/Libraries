@@ -39,11 +39,11 @@ namespace Squared.Render {
         }
 
         public EmbeddedTexture2DProvider (Assembly assembly, RenderCoordinator coordinator) 
-            : base(assembly, coordinator) {
+            : base(assembly, coordinator, enableThreadedCreate: true) {
         }
 
         public EmbeddedTexture2DProvider (RenderCoordinator coordinator) 
-            : base(Assembly.GetCallingAssembly(), coordinator) {
+            : base(Assembly.GetCallingAssembly(), coordinator, enableThreadedCreate: true) {
         }
 
         public Texture2D Load (string name, TextureLoadOptions options, bool cached = true, bool optional = false) {
@@ -60,9 +60,15 @@ namespace Squared.Render {
                 *pData = table[*pData];
         }
 
-        protected override Texture2D CreateInstance (Stream stream, object data) {
+        protected override object PreloadInstance (Stream stream, object data) {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
-            using (var img = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint, options.Enable16Bit)) {
+            return new STB.Image(stream, false, options.Premultiply, options.FloatingPoint, options.Enable16Bit);
+        }
+
+        protected override Texture2D CreateInstance (Stream stream, object data, object preloadedData) {
+            var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
+            var img = (STB.Image)preloadedData;
+            using (img) {
                 if (options.sRGBFromLinear || options.sRGBToLinear)
                     ApplyColorSpaceConversion(img, options);
                 return img.CreateTexture(Coordinator, options.GenerateMips, options.PadToPowerOfTwo);
