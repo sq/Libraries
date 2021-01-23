@@ -312,7 +312,7 @@ namespace Squared.PRGUI {
                 var newTarget = PickNextFocusTarget(Focused, delta, true);
                 var newTopLevel = FindTopLevelAncestor(newTarget);
                 // HACK: We don't want to change top-level controls during a regular tab
-                if ((newTopLevel != currentTopLevel) && (currentTopLevel != null))
+                if ((newTopLevel != currentTopLevel) && (currentTopLevel != null) && Focused.IsValidFocusTarget)
                     return Focused;
                 else
                     return newTarget;
