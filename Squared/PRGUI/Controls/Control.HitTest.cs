@@ -46,6 +46,7 @@ namespace Squared.PRGUI {
                 return null;
             if (LayoutKey.IsInvalid)
                 return null;
+            // FIXME: Is this right?
             if (GetOpacity(Context.NowL) <= 0)
                 return null;
 

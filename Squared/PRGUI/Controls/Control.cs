@@ -83,9 +83,12 @@ namespace Squared.PRGUI {
                 if (!Visible)
                     return true;
 
+                // FIXME: This causes problems when setting up focus for a control that is going to animate into visibility
+                /*
                 var ctx = Context;
                 if ((ctx != null) && (GetOpacity(ctx.NowL) <= 0))
                     return true;
+                */
 
                 return false;
             }

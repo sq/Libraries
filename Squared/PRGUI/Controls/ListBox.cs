@@ -386,23 +386,15 @@ namespace Squared.PRGUI.Controls {
                         continue;
                     }
 
-                    Control child = null;
-
-                    int xSpotCount = 10;
-                    for (int xSpot = 0; xSpot < xSpotCount + 1; xSpot++) {
-                        var pos = globalPosition;
-                        pos.Y += 6;
-
-                        // FIXME: This sucks
-                        if (xSpot > 0) {
-                            var w = columnWidth - 12;
-                            pos.X = columnX + 6 + (w * (xSpot - 1) / 10);
+                    Control child = HitTest(globalPosition, false, false);
+                    if ((child == this) || (child == null)) {
+                        foreach (var c in Children) {
+                            var childRect = c.GetRect();
+                            if (childRect.Contains(globalPosition)) {
+                                child = c;
+                                break;
+                            }
                         }
-
-                        child = HitTest(pos, false, false);
-                        // Console.WriteLine($"HitTest for column {i} at {pos.X} returned {child}");
-                        if ((child != this) && (child != null))
-                            break;
                     }
 
                     if ((child == this) || (child == null))
