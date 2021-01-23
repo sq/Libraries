@@ -208,10 +208,15 @@ namespace Squared.PRGUI {
         }
 
         private bool HasPressedKeySincePressingAlt = false;
+        private Control LastNonRepeatKeyPressTarget = null;
 
         public bool HandleKeyEvent (string name, Keys? key, char? ch, KeyboardModifiers? modifiers = null, bool isVirtual = false, bool isRepeat = false) {
             // HACK to simplify writing input sources
             if (name == null)
+                return false;
+
+            // HACK: Ensure that key repeat doesn't continue if the original repeat target becomes defocused
+            if (isRepeat && (LastNonRepeatKeyPressTarget != Focused))
                 return false;
 
             var evt = new KeyEventArgs {
@@ -239,6 +244,8 @@ namespace Squared.PRGUI {
                     if (!HasPressedKeySincePressingAlt)
                         AcceleratorOverlayVisible = !AcceleratorOverlayVisible;
                 }
+            } else if (name == UIEvents.KeyPress) {
+                LastNonRepeatKeyPressTarget = Focused;
             }
 
             // FIXME: Suppress events with a char if the target doesn't accept text input?

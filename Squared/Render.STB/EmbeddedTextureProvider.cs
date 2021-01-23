@@ -39,11 +39,11 @@ namespace Squared.Render {
         }
 
         public EmbeddedTexture2DProvider (Assembly assembly, RenderCoordinator coordinator) 
-            : base(assembly, coordinator, enableThreadedCreate: true) {
+            : base(assembly, coordinator, enableThreadedCreate: false) {
         }
 
         public EmbeddedTexture2DProvider (RenderCoordinator coordinator) 
-            : base(Assembly.GetCallingAssembly(), coordinator, enableThreadedCreate: true) {
+            : base(Assembly.GetCallingAssembly(), coordinator, enableThreadedCreate: false) {
         }
 
         public Texture2D Load (string name, TextureLoadOptions options, bool cached = true, bool optional = false) {
