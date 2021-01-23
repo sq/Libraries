@@ -118,7 +118,17 @@ namespace Squared.PRGUI.Controls {
 
         public AbstractString Text {
             get => Content.Text;
-            protected set => Content.Text = value;
+            protected set {
+                // Don't perform a text compare for long strings
+                if (value.Length < 2048) {
+                    if (
+                        value.TextEquals(Content.Text, StringComparison.Ordinal) &&
+                        !value.IsStringBuilder && !Content.Text.IsStringBuilder
+                    )
+                        return;
+                }
+                Content.Text = value;
+            }
         }
 
         private IGlyphSource _GlyphSource = null;

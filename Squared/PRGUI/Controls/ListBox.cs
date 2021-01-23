@@ -237,7 +237,7 @@ namespace Squared.PRGUI.Controls {
             if (Items.Version != _Version)
                 NeedsUpdate = true;
 
-            bool hadKeyboardSelection = false;
+            bool hadKeyboardSelection = false, clearHasChanged = false;
             if (NeedsUpdate && !existingKey.HasValue) {
                 hadKeyboardSelection = Children.Contains(Context.KeyboardSelection);
                 var priorControl = Manager.SelectedControl;
@@ -249,6 +249,7 @@ namespace Squared.PRGUI.Controls {
                 _Version = Items.Version;
                 // HACK: Without doing this, old content bounds can be kept that are too big/too small
                 HasContentBounds = false;
+                clearHasChanged = true;
             }
 
             if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection) {
@@ -258,7 +259,7 @@ namespace Squared.PRGUI.Controls {
                     Context.OverrideKeyboardSelection(newControl, forUser: false);
             }
 
-            if (existingKey.HasValue)
+            if (clearHasChanged)
                 SelectedItemHasChangedSinceLastUpdate = false;
 
             if (scrollOffsetChanged)

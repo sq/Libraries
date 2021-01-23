@@ -231,6 +231,12 @@ namespace Squared.Util.Text {
         private readonly StringBuilder StringBuilder;
         private readonly ArraySegment<char> ArraySegment;
 
+        public bool IsStringBuilder {
+            get {
+                return (StringBuilder != null);
+            }
+        }
+
         public AbstractString (string text) {
             String = text;
             StringBuilder = null;
