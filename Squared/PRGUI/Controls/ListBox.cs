@@ -369,6 +369,10 @@ namespace Squared.PRGUI.Controls {
 
         private Control ChildFromGlobalPosition (LayoutContext context, Vector2 globalPosition) {
             try {
+                // Console.WriteLine($"Hovering = {Context.Hovering}, MouseOver = {Context.MouseOver}");
+
+                _OverrideHitTestResults = false;
+
                 var rect = this.GetRect(contentRect: true);
                 if (!rect.Contains(globalPosition))
                     return null;
@@ -376,25 +380,43 @@ namespace Squared.PRGUI.Controls {
                 var columnWidth = rect.Width / ColumnCount;
                 for (int i = 0; i < ColumnCount; i++) {
                     var columnX = (rect.Left + (i * columnWidth));
-                    if (globalPosition.X < columnX)
+                    var outOfColumn = (globalPosition.X < columnX) || (globalPosition.X >= (columnX + columnWidth));
+                    if (outOfColumn) {
+                        // Console.WriteLine($"Mouse position outside of column {i}");
                         continue;
-                    else if (globalPosition.X >= (columnX + columnWidth))
-                        continue;
-                    globalPosition.X = columnX + 6;
-                    _OverrideHitTestResults = false;
-
-                    var child = HitTest(globalPosition, false, false);
-                    if ((child ?? this) == this) {
-                        globalPosition.X = columnX + (columnWidth / 2);
-                        child = HitTest(globalPosition, false, false);
                     }
 
-                    if (child == this)
+                    Control child = null;
+
+                    int xSpotCount = 10;
+                    for (int xSpot = 0; xSpot < xSpotCount + 1; xSpot++) {
+                        var pos = globalPosition;
+                        pos.Y += 6;
+
+                        // FIXME: This sucks
+                        if (xSpot > 0) {
+                            var w = columnWidth - 12;
+                            pos.X = columnX + 6 + (w * (xSpot - 1) / 10);
+                        }
+
+                        child = HitTest(pos, false, false);
+                        // Console.WriteLine($"HitTest for column {i} at {pos.X} returned {child}");
+                        if ((child != this) && (child != null))
+                            break;
+                    }
+
+                    if ((child == this) || (child == null))
                         continue;
-                    else
-                        return LocateContainingChild(child);
+                    else {
+                        var result = LocateContainingChild(child);
+                        if (result != null) {
+                            // Console.WriteLine($"LocateContainingChild for {child} returned {result}");
+                            return result;
+                        }
+                    }
                 }
 
+                // Console.WriteLine($"ChildFromGlobalPosition returning null");
                 return null;
             } finally {
                 _OverrideHitTestResults = true;
@@ -406,6 +428,7 @@ namespace Squared.PRGUI.Controls {
                 return true;
 
             var control = ChildFromGlobalPosition(Context.Layout, args.RelativeGlobalPosition);
+            // Console.WriteLine($"ChildFromGlobalPosition == {control}");
             // FIXME: If we handle Click then drag-to-scroll won't select an item,
             //  but having it not select on mousedown feels bad
             if (
@@ -416,16 +439,19 @@ namespace Squared.PRGUI.Controls {
                     args.Box.Contains(args.RelativeGlobalPosition) && 
                     Items.GetValueForControl(control, out T newItem)
                 ) {
+                    // Console.WriteLine($"Selection valid for item {newItem}");
                     var isClick = (name == UIEvents.Click);
-                    if (isClick)
-                        if (Context.FireEvent(name, control, args))
-                            return true;
+                    if (isClick && (!EnableSelect || (control == Manager.SelectedControl)))
+                        Context.FireEvent(name, control, args);
                     if (EnableSelect)
                         SelectedItem = newItem;
                     return isClick;
+                } else {
+                    // Console.WriteLine($"Selection not valid");
                 }
             }
 
+            // Console.WriteLine($"Discarding event");
             return false;
         }
 
