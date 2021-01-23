@@ -814,6 +814,8 @@ namespace Squared.PRGUI {
                 var contentBox = target?.GetRect(contentRect: true) ?? CanvasRect;
                 var mdp = MouseDownPosition ?? mouseDownPosition ?? globalPosition;
                 var travelDistance = (globalPosition - mdp).Length();
+                var doubleClicking = IsInDoubleClickWindow(target, globalPosition);
+                doubleClicking = doubleClicking && (MouseCaptured != null);
                 return new MouseEventArgs {
                     Context = this,
                     Now = Now,
@@ -832,7 +834,7 @@ namespace Squared.PRGUI {
                     MouseDownPosition = mdp,
                     MouseDownTimestamp = LastMouseDownTime,
                     MovedSinceMouseDown = travelDistance >= MinimumMouseMovementDistance,
-                    DoubleClicking = IsInDoubleClickWindow(target, globalPosition) && (MouseCaptured != null),
+                    DoubleClicking = doubleClicking,
                     PreviousButtons = LastMouseButtons,
                     Buttons = CurrentMouseButtons,
                     SequentialClickCount = (target == LastClickTarget)

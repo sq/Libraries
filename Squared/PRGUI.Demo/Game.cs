@@ -778,8 +778,10 @@ namespace PRGUI.Demo {
 
         private void BuildSupernestedGroup (ref ContainerBuilder builder) {
             builder.Text<Checkbox>("Checkbox 3");
-            builder.Text<Checkbox>("Checkbox 4");
-            builder.Text<Checkbox>("Checkbox 5");
+            builder.Text<Checkbox>("Checkbox 4")
+                .SetDecorator(Decorations.Button);
+            builder.Text<Checkbox>("Checkbox 5")
+                .SetDecorator(Decorations.RadioButton);
             builder.Text<Checkbox>("Checkbox 6");
             builder.Text<Checkbox>("Checkbox 7");
 

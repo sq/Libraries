@@ -72,6 +72,10 @@ namespace Squared.PRGUI {
         public MouseButtons PreviousButtons, Buttons;
         public bool MovedSinceMouseDown, DoubleClicking;
         public int SequentialClickCount;
+
+        public override string ToString () {
+            return $"MouseEventArgs {{ NowL={NowL}, Modifiers={Modifiers}, Buttons={Buttons}, GlobalPosition={GlobalPosition}, MovedSinceMouseDown={MovedSinceMouseDown}, DoubleClicking={DoubleClicking}, SequentialClickCount={SequentialClickCount} }}";
+        }
     }
 
     public struct KeyEventArgs {

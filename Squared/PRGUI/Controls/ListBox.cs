@@ -413,9 +413,13 @@ namespace Squared.PRGUI.Controls {
                     args.Box.Contains(args.RelativeGlobalPosition) && 
                     Items.GetValueForControl(control, out T newItem)
                 ) {
+                    var isClick = (name == UIEvents.Click);
+                    if (isClick)
+                        if (Context.FireEvent(name, control, args))
+                            return true;
                     if (EnableSelect)
                         SelectedItem = newItem;
-                    return (name == UIEvents.Click);
+                    return isClick;
                 }
             }
 
