@@ -206,6 +206,7 @@ namespace Squared.PRGUI.Controls {
                 if (!rect.Contains(globalPosition))
                     return null;
 
+                // TODO: Do this the way ListBox does
                 globalPosition.X = rect.Left + 6;
                 _OverrideHitTestResults = false;
 

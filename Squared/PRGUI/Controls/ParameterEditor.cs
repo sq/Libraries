@@ -32,13 +32,10 @@ namespace Squared.PRGUI.Controls {
             ArrowHeight = 18,
             ArrowPadding = ArrowWidth + 4;
 
-        private bool _HasValue;
+        public bool HasValue { get; private set; }
         private T _Value;
         private T? _Minimum, _Maximum;
 
-        // HACK: Used 
-        const double FractionScaleD = 1000;
-        T FractionScale = (T)Convert.ChangeType(FractionScaleD, typeof(T));
         private bool IsDraggingGauge = false;
 
         private double LastRepeatTimestamp;
@@ -64,11 +61,11 @@ namespace Squared.PRGUI.Controls {
                         return;
 
                     value = clamped.Value;
-                    if ((_Value.CompareTo(value) == 0) && _HasValue)
+                    if ((_Value.CompareTo(value) == 0) && HasValue)
                         return;
 
                     CachedFractionD = null;
-                    _HasValue = true;
+                    HasValue = true;
                     _Value = value;
 
                     var newText = ValueEncoder(value);
@@ -95,7 +92,7 @@ namespace Squared.PRGUI.Controls {
                     return;
                 CachedFractionD = null;
                 _Minimum = value;
-                if (_HasValue)
+                if (HasValue)
                     Value = Value;
             }
         }
@@ -112,7 +109,7 @@ namespace Squared.PRGUI.Controls {
                     return;
                 CachedFractionD = null;
                 _Maximum = value;
-                if (_HasValue)
+                if (HasValue)
                     Value = Value;
             }
         }
@@ -166,7 +163,7 @@ namespace Squared.PRGUI.Controls {
                     var converted = ClampValue((T)newValue);
                     if (converted == null)
                         return;
-                    _HasValue = true;
+                    HasValue = true;
                     _Value = converted.Value;
                 }
                 FireEvent(UIEvents.ValueChanged);
@@ -266,7 +263,9 @@ namespace Squared.PRGUI.Controls {
                     return CachedFractionD.Value;
 
                 // FIXME: Handle omitted minimum?
-                var result = Convert.ToDouble(Arithmetic.Fraction(_Value, _Minimum ?? default(T), _Maximum.Value, FractionScale)) / FractionScaleD;
+                var sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract);
+                var range = sub(_Maximum.Value, _Minimum.Value);
+                var result = Convert.ToDouble(sub(_Value, _Minimum.Value)) / Convert.ToDouble(range);
                 CachedFractionValue = _Value;
                 CachedFractionD = result;
                 return result;
@@ -420,9 +419,12 @@ namespace Squared.PRGUI.Controls {
         private bool TrySetNewFractionalValue (double fraction) {
             if (!_Maximum.HasValue || !_Minimum.HasValue)
                 return false;
-            var fractionT = (T)Convert.ChangeType(fraction * FractionScaleD, typeof(T));
-            var scaledNewValue = Arithmetic.FractionToValue(fractionT, _Minimum.Value, _Maximum.Value, FractionScale);
-            Value = scaledNewValue;
+            var sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract);
+            var add = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Add);
+            var range = sub(_Maximum.Value, _Minimum.Value);
+            var offset = Convert.ToDouble(range) * fraction;
+            var result = add(_Minimum.Value, (T)Convert.ChangeType(offset, typeof(T)));
+            Value = result;
             SelectNone();
             return true;
         }
