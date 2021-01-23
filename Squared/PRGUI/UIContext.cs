@@ -800,7 +800,7 @@ namespace Squared.PRGUI {
             new Dictionary<Control, Control>(new ReferenceComparer<Control>());
 
         private void DefocusInvalidFocusTargets () {
-            while ((Focused != null) && InvalidFocusTargets.TryGetValue(Focused, out Control idealNewTarget)) {
+            while ((Focused != null) && !Focused.IsValidFocusTarget && InvalidFocusTargets.TryGetValue(Focused, out Control idealNewTarget)) {
                 InvalidFocusTargets.Remove(Focused);
                 var current = Focused;
                 var ok = (idealNewTarget == null) && TrySetFocus(idealNewTarget);
