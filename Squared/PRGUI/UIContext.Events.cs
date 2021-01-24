@@ -547,7 +547,7 @@ namespace Squared.PRGUI {
                     Control.IsRecursivelyTransparent(childTarget)
                 ) {
                     var container = value as IControlContainer;
-                    if (container != null)
+                    if (IsValidContainerToSearchForFocusableControls(container))
                         childTarget = container.Children.InTabOrder(FrameIndex, true).FirstOrDefault();
                 }
 
@@ -555,7 +555,7 @@ namespace Squared.PRGUI {
                 //  attempt to recursively pick a suitable focus target inside it
                 if (childTarget?.IsValidFocusTarget == false) {
                     var childContainer = (childTarget as IControlContainer);
-                    if (childContainer != null)
+                    if (IsValidContainerToSearchForFocusableControls(childContainer))
                         childTarget = FindFocusableSibling(childContainer.Children, null, 1, true);
                 }
 
@@ -578,7 +578,7 @@ namespace Squared.PRGUI {
 
                 if (!newFocusTarget.IsValidFocusTarget) {
                     var collection = (newFocusTarget as IControlContainer);
-                    if (collection != null) {
+                    if (IsValidContainerToSearchForFocusableControls(collection)) {
                         var childTarget = FindFocusableSibling(collection.Children, null, 1, true);
                         if (childTarget == newFocusTarget) {
                             if (!force && !isTopLevel)
@@ -647,6 +647,20 @@ namespace Squared.PRGUI {
             return true;
         }
 
+        private bool IsValidContainerToSearchForFocusableControls (IControlContainer icc) {
+            return IsValidContainerToSearchForFocusableControls(icc as Control);
+        }
+
+        private bool IsValidContainerToSearchForFocusableControls (Control control) {
+            if (control == null)
+                return false;
+            if (!control.Visible)
+                return false;
+            if (control.Intangible)
+                return false;
+            return (control is IControlContainer);
+        }
+
         public Control FindFocusableSibling (ControlCollection collection, Control current, int delta, bool recursive) {
             if (delta == 0)
                 throw new ArgumentOutOfRangeException("delta");
@@ -681,7 +695,7 @@ namespace Squared.PRGUI {
                 if (control.Visible) {
                     if (control.Enabled && (control.EligibleForFocusRotation || control.IsFocusProxy)) {
                         return control;
-                    } else if (recursive && (control is IControlContainer)) {
+                    } else if (recursive && IsValidContainerToSearchForFocusableControls(control)) {
                         var child = FindFocusableSibling(((IControlContainer)control).Children, null, delta, recursive);
                         if (child != null)
                             return child;
@@ -736,8 +750,8 @@ namespace Squared.PRGUI {
             }
             */
 
-            if (current is IControlContainer icc) {
-                var child = FindFocusableSibling(icc.Children, null, delta, recursive);
+            if (IsValidContainerToSearchForFocusableControls(current)) {
+                var child = FindFocusableSibling(((IControlContainer)current).Children, null, delta, recursive);
                 if (child != null)
                     return child;
             }
