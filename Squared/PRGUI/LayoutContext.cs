@@ -1073,13 +1073,11 @@ namespace Squared.PRGUI.Layout {
             }
         }
 
-        private unsafe void ArrangeOverlaySqueezedRange (LayoutItem *pParent, Dimensions dim, ControlKey startItem, ControlKey endItem, float offset, float space) {
+        private unsafe void ArrangeOverlaySqueezedRange (LayoutItem *pParent, ref RectF parentRect, Dimensions dim, ControlKey startItem, ControlKey endItem, float offset, float space) {
             if (startItem == endItem)
                 return;
 
             Assert(!startItem.IsInvalid);
-
-            var parentRect = GetContentRect(pParent);
 
             int idim = (int)dim, wdim = idim + 2;
 
@@ -1156,7 +1154,7 @@ namespace Squared.PRGUI.Layout {
                 if (
                     pChild->Flags.IsBreak()
                 ) {
-                    ArrangeOverlaySqueezedRange(pItem, dim, startChild, child, offset, needSize);
+                    ArrangeOverlaySqueezedRange(pItem, ref contentRect, dim, startChild, child, offset, needSize);
                     offset += needSize;
                     startChild = child;
                     needSize = 0;
@@ -1177,7 +1175,7 @@ namespace Squared.PRGUI.Layout {
                 : needSize;
 
             ArrangeOverlaySqueezedRange(
-                pItem, dim, startChild, ControlKey.Invalid, offset, space
+                pItem, ref contentRect, dim, startChild, ControlKey.Invalid, offset, space
             );
             offset += needSize;
             return offset;
@@ -1213,7 +1211,7 @@ namespace Squared.PRGUI.Layout {
                         ArrangeStacked(pItem, dim, false);
                     } else {
                         ArrangeOverlaySqueezedRange(
-                            pItem, dim, pItem->FirstChild, ControlKey.Invalid,
+                            pItem, ref contentRect, dim, pItem->FirstChild, ControlKey.Invalid,
                             contentRect[idim], contentRect[idim + 2]
                         );
                     }

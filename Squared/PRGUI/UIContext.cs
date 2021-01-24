@@ -698,8 +698,10 @@ namespace Squared.PRGUI {
             foreach (var listener in context.PostLayoutListeners) {
                 var wasRequested = relayoutRequested;
                 listener.OnLayoutComplete(context, ref relayoutRequested);
-                if (relayoutRequested != wasRequested)
-                    Log($"Relayout requested by {listener}");
+                if (relayoutRequested != wasRequested) {
+                    var ctl = (Control)listener;
+                    Log($"Relayout requested by {ctl.DebugLabel ?? listener.GetType().Name}");
+                }
             }
             return relayoutRequested;
         }

@@ -298,6 +298,8 @@ namespace Squared.PRGUI.Controls {
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
+            renderer.Layer += 1;
+
             if (context.Pass == RasterizePasses.Below) {
                 var rangeSize = Maximum - Minimum;
                 var interval = Arithmetic.Saturate(NotchInterval ?? 0, rangeSize);
@@ -308,6 +310,8 @@ namespace Squared.PRGUI.Controls {
 
                 if ((Maximum > 0) && (Minimum < 0))
                     DrawCenterMark(context, ref renderer, settings, decorations, rangeSize);
+
+                renderer.Layer += 1;
             }
 
             var thumb = Context.Decorations.SliderThumb;
