@@ -1080,13 +1080,12 @@ namespace Squared.PRGUI {
                 trackA, trackB,
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: ScrollbarTrackColor, outerColor: ScrollbarTrackColor
+                innerColor: ScrollbarTrackColor, outerColor: ScrollbarTrackColor,
+                sortKey: 1
             );
 
             if (data.ContentSize <= data.ViewportSize)
                 return;
-
-            renderer.Layer += 1;
 
             renderer.RasterizeRectangle(
                 thumbA, thumbB,
@@ -1094,7 +1093,8 @@ namespace Squared.PRGUI {
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: ScrollbarThumbColor, outerColor: ScrollbarThumbColor * 0.8f,
                 fillMode: RasterFillMode.Radial,
-                shadow: ScrollbarThumbShadow
+                shadow: ScrollbarThumbShadow,
+                sortKey: 2
             );
         }
 

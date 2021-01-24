@@ -227,7 +227,11 @@ namespace Squared.PRGUI.Controls {
     }
 
     public class ModalDialog : ModalDialog<object, object> {
-        public ModalDialog (object parameters = null)
+        public ModalDialog ()
+            : base (null) {
+        }
+
+        public ModalDialog (object parameters)
             : base (parameters) {
         }
 

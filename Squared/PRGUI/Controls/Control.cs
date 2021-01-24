@@ -717,6 +717,7 @@ namespace Squared.PRGUI {
                     var temp = settings;
                     ApplyClipMargins(contentContext, ref temp.Box);
 
+                    var crLayer = contentRenderer.Layer;
                     contentRenderer.Layer = -999;
                     settings.State = default(ControlStates);
                     decorations.Rasterize(contentContext, ref contentRenderer, temp);
@@ -726,6 +727,8 @@ namespace Squared.PRGUI {
                         contentRenderer.DepthStencilState = context.UIContext.GetStencilRestore(newStackDepth);
                         contentRenderer.FillRectangle(new Rectangle(-1, -1, 9999, 9999), Color.Transparent, blendState: RenderStates.DrawNone, layer: 9999);
                     }
+
+                    contentRenderer.Layer = crLayer;
 
                     // passSet.NextReferenceStencil = childrenPassSet.NextReferenceStencil;
                 }
@@ -771,10 +774,11 @@ namespace Squared.PRGUI {
 #endif
 
             var box = GetRect();
-            var isInvisible = (box.Extent.X < context.VisibleRegion.Left) ||
-                (box.Extent.Y < context.VisibleRegion.Top) ||
-                (box.Left > context.VisibleRegion.Extent.X) ||
-                (box.Top > context.VisibleRegion.Extent.Y) ||
+            Vector2 ext = box.Extent, vext = context.VisibleRegion.Extent;
+            var isInvisible = (ext.X < context.VisibleRegion.Left) ||
+                (ext.Y < context.VisibleRegion.Top) ||
+                (box.Left > vext.X) ||
+                (box.Top > vext.Y) ||
                 (box.Width <= 0) ||
                 (box.Height <= 0);
             

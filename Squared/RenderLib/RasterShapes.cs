@@ -172,6 +172,12 @@ namespace Squared.Render.RasterShape {
             }
         }
 
+        public override int GetHashCode () {
+            return (SamplerState?.GetHashCode() ?? 0) |
+                ModeAndSize.GetHashCode() |
+                Placement.GetHashCode();
+        }
+
         public bool Equals (RasterTextureSettings rhs) {
             return (SamplerState == rhs.SamplerState) && 
                 (ModeAndSize == rhs.ModeAndSize) &&
@@ -252,6 +258,7 @@ namespace Squared.Render.RasterShape {
             }
         }
 
+        public int SortKey;
         /// <summary>
         /// If true, the outline has soft falloff instead of a sharp edge.
         /// </summary>
@@ -311,9 +318,7 @@ namespace Squared.Render.RasterShape {
         public RasterShadowSettings Shadow;
 
         internal int IsSimple;
-
         internal int PackedFlags;
-
         internal int Index;
     }
 
@@ -424,11 +429,15 @@ namespace Squared.Render.RasterShape {
     }
 
     public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
-        private class RasterShapeTypeSorter : IRefComparer<RasterShapeDrawCall>, IComparer<RasterShapeDrawCall> {
+        private class RasterShapeDrawCallSorter : IRefComparer<RasterShapeDrawCall>, IComparer<RasterShapeDrawCall> {
             public int Compare (ref RasterShapeDrawCall lhs, ref RasterShapeDrawCall rhs) {
-                var result = lhs.Index - rhs.Index;
+                var result = lhs.SortKey - rhs.SortKey;
                 if (result == 0)
                     result = lhs.PackedFlags - rhs.PackedFlags;
+                if (result == 0)
+                    result = lhs.TextureSettings.GetHashCode() - rhs.TextureSettings.GetHashCode();
+                if (result == 0)
+                    result = lhs.Index - rhs.Index;
                 return result;
             }
 
@@ -462,7 +471,7 @@ namespace Squared.Render.RasterShape {
 
         public bool UseUbershader = false;
 
-        private static readonly RasterShapeTypeSorter ShapeTypeSorter = new RasterShapeTypeSorter();
+        private static readonly RasterShapeDrawCallSorter ShapeDrawCallSorter = new RasterShapeDrawCallSorter();
 
         private static ListPool<SubBatch> _SubListPool = new ListPool<SubBatch>(
             256, 4, 32, 128, 512
@@ -515,7 +524,7 @@ namespace Squared.Render.RasterShape {
                 _SubBatches.EnsureCapacity(count, true);
 
                 if (!UseUbershader)
-                    _DrawCalls.Sort(ShapeTypeSorter);
+                    _DrawCalls.Sort(ShapeDrawCallSorter);
 
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<RasterShapeVertex>>();
                 _CornerBuffer = QuadUtils.CreateCornerBuffer(Container, CornerBufferRepeatCount);
@@ -744,7 +753,9 @@ namespace Squared.Render.RasterShape {
             dc.Index = _DrawCalls.Count;
             dc.IsSimple = (dc.OuterColor4.FastEquals(ref dc.InnerColor4) || (dc.FillMode == (float)RasterFillMode.None)) ? 1 : 0;
             dc.PackedFlags = (
-                (int)dc.Type | (dc.IsSimple << 16) | (dc.Shadow.IsEnabled << 17) | ((dc.BlendInLinearSpace ? 1 : 0) << 18)
+                (int)dc.Type | (dc.IsSimple << 16) | (dc.Shadow.IsEnabled << 17) | ((dc.BlendInLinearSpace ? 1 : 0) << 18) |
+                ((dc.Shadow.Inside ? 1 : 0) << 19) | ((dc.OutputInLinearSpace ? 1 : 0) << 20) |
+                ((dc.SoftOutline ? 1 : 0) << 21)
             );
             _DrawCalls.Add(ref dc);
         }

@@ -398,6 +398,7 @@ namespace Squared.PRGUI.Controls {
                     break;
             }
 
+            // FIXME: Why is this here?
             renderer.Layer += 1;
 
             renderer.DrawMultiple(
