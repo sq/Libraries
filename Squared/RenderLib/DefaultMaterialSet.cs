@@ -943,12 +943,20 @@ namespace Squared.Render {
         }
 
 
-        public void SetLUTs (Material m, ColorLUT lut1, ColorLUT lut2 = null, float lut2Weight = 0) {
+        public void SetLUTs (Material m, ColorLUT lut1, ColorLUT lut2 = null, float lut2Weight = 0, int lutIndex1 = 0, int lutIndex2 = 0) {
             var p = m.Effect.Parameters;
             p["LUT1"].SetValue(lut1);
             p["LUT2"].SetValue(lut2);
-            p["LUTResolutions"].SetValue(new Vector2(lut1 != null ? lut1.Resolution : 1, lut2 != null ? lut2.Resolution : 1));
+            p["LUTResolutionsAndRowCounts"].SetValue(new Vector4(lut1?.Resolution ?? 1, lut2?.Resolution ?? 1, lut1?.RowCount ?? 1, lut2?.RowCount ?? 1));
             p["LUT2Weight"].SetValue(lut2Weight);
+            // 16x16 slices, 4 rows
+            // resolution = 16, height = 64, rowcount = 4
+            // index=2, y1 = 2 * resolution, uv0 = (0, y1 / height)
+            float offsetScale1 = (1.0f / lut1.Texture.Height) * lut1.Resolution,
+                offsetScale2 = (1.0f / (lut2?.Texture?.Height ?? 1)) * (lut2?.Resolution ?? 1);
+            p["LUTOffsets"]?.SetValue(
+                new Vector4(0, lutIndex1 * offsetScale1, 0, lutIndex2 * offsetScale2)
+            );
         }
 
 

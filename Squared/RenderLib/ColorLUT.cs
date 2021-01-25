@@ -62,19 +62,21 @@ namespace Squared.Render {
         public readonly Texture2D Texture;
         public readonly bool OwnsTexture;
         public readonly int Resolution;
+        public readonly int RowCount;
 
         public bool IsDisposed { get; private set; }
 
         public ColorLUT (
-            Texture2D texture, bool ownsTexture
+            Texture2D texture, bool ownsTexture, int rowCount = 1
         ) {
             Texture = texture;
-            var sliceHeight = Texture.Height;
+            var sliceHeight = Texture.Height / rowCount;
             var sliceWidth = sliceHeight;
             var totalWidth = (sliceWidth * sliceWidth);
             if (Texture.Width != totalWidth)
                 throw new ArgumentException("Texture should be N NxN slices laid out horizontally");
             Resolution = sliceWidth;
+            RowCount = rowCount;
             OwnsTexture = ownsTexture;
         }
 
