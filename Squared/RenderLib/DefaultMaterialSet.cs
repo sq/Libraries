@@ -951,9 +951,6 @@ namespace Squared.Render {
             p["LUT2Weight"].SetValue(lut2Weight);
             lutIndex1 = Arithmetic.Clamp(lutIndex1, 0, (lut1?.RowCount - 1) ?? 0);
             lutIndex2 = Arithmetic.Clamp(lutIndex2, 0, (lut2?.RowCount - 1) ?? 0);
-            // 16x16 slices, 4 rows
-            // resolution = 16, height = 64, rowcount = 4
-            // index=2, y1 = 2 * resolution, uv0 = (0, y1 / height)
             float offsetScale1 = (1.0f / lut1.Texture.Height) * lut1.Resolution,
                 offsetScale2 = (1.0f / (lut2?.Texture?.Height ?? 1)) * (lut2?.Resolution ?? 1);
             p["LUTOffsets"]?.SetValue(
