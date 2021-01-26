@@ -278,7 +278,11 @@ namespace Squared.PRGUI.Controls {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
             var gauge = context.DecorationProvider.ParameterGauge;
-            if ((Minimum.HasValue && Maximum.HasValue) && (gauge != null)) {
+            if (
+                (Minimum.HasValue && Maximum.HasValue) && 
+                (gauge != null) &&
+                (Minimum.Value.CompareTo(Maximum.Value) != 0)
+            ) {
                 var gaugeBox = ComputeGaugeBox(gauge, settings.Box);
                 var fraction = FractionD;
                 if (Exponent.HasValue)

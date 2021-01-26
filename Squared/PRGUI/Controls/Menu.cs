@@ -365,9 +365,6 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
-            if (!MouseInsideWhenShown.HasValue)
-                MouseInsideWhenShown = GetRect().Contains(MousePositionWhenShown);
-
             // Remove ourselves from the top-level context if we've just finished fading out.
             // While this isn't strictly necessary, it's worth doing for many reasons
             var opacity = GetOpacity(context.NowL);
@@ -376,6 +373,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
+            // HACK
+            if (!MouseInsideWhenShown.HasValue)
+                MouseInsideWhenShown = GetRect().Contains(MousePositionWhenShown);
+
             if (SelectedItem != null) {
                 var selectionBox = SelectedItem.GetRect();
                 selectionBox.Left = settings.ContentBox.Left;
