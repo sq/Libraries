@@ -47,6 +47,9 @@ void BasicPixelShaderWithLUT(
 
     result = multiplyColor * texColor;
     result += (addColor * result.a);
+
+    const float discardThreshold = (1.0 / 255.0);
+    clip(result.a - discardThreshold);
 }
 
 void ToSRGBPixelShader(
