@@ -84,6 +84,7 @@ namespace Squared.PRGUI.Controls {
         public bool StripNewlines = true;
 
         public const bool ClearHistoryOnFocusLoss = true;
+        public bool SelectNoneOnFocusLoss = false, SelectAllOnFocus = false;
 
         public const float SelectionHorizontalScrollPadding = 40;
         public const float MinRightScrollMargin = 16, MaxRightScrollMargin = 64;
@@ -685,6 +686,11 @@ namespace Squared.PRGUI.Controls {
             else if (name == UIEvents.LostFocus) {
                 if (ClearHistoryOnFocusLoss && !(args is Menu))
                     ResetHistory();
+                if (SelectNoneOnFocusLoss)
+                    SelectNone();
+            } else if (name == UIEvents.GotFocus) {
+                if (SelectAllOnFocus)
+                    SelectAll();
             }
             return false;
         }

@@ -142,6 +142,8 @@ namespace Squared.PRGUI.Controls {
             ValueDecoder = (s) => (T)Convert.ChangeType(s, typeof(T));
             var fp = NumberFormatInfo.CurrentInfo;
             ValueEncoder = (v) => Convert.ToString(v, fp);
+            SelectAllOnFocus = true;
+            SelectNoneOnFocusLoss = true;
         }
 
         private T? ClampValue (T value) {
@@ -386,12 +388,8 @@ namespace Squared.PRGUI.Controls {
             if (args is Menu)
                 return base.OnEvent(name, args);
 
-            if (name == UIEvents.LostFocus) {
+            if (name == UIEvents.LostFocus)
                 FinalizeValue();
-                SelectNone();
-            } else if (name == UIEvents.GotFocus) {
-                SelectAll();
-            }
 
             return base.OnEvent(name, args);
         }

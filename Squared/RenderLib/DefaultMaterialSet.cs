@@ -948,6 +948,7 @@ namespace Squared.Render {
             p["LUT1"].SetValue(lut1);
             p["LUT2"].SetValue(lut2);
             p["LUTResolutionsAndRowCounts"].SetValue(new Vector4(lut1?.Resolution ?? 1, lut2?.Resolution ?? 1, lut1?.RowCount ?? 1, lut2?.RowCount ?? 1));
+            // TODO: Pass weight and indices in userdata
             p["LUT2Weight"].SetValue(lut2Weight);
             lutIndex1 = Arithmetic.Clamp(lutIndex1, 0, (lut1?.RowCount - 1) ?? 0);
             lutIndex2 = Arithmetic.Clamp(lutIndex2, 0, (lut2?.RowCount - 1) ?? 0);
@@ -957,6 +958,8 @@ namespace Squared.Render {
                 new Vector4(0, lutIndex1 * offsetScale1, 0, lutIndex2 * offsetScale2)
             );
         }
+
+        // TODO: Helper methods for building userdata vector4s for various purposes (HSL, etc)
 
 
         private const int MaxWeightCount = 10;

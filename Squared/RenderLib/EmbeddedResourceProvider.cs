@@ -212,7 +212,7 @@ namespace Squared.Render {
 
             if (performLoad) {
                 var instance = LoadSyncUncached(name, data, optional, out Exception exc);
-                future.SetResult(instance, null);
+                future.SetResult(instance, exc);
             } else if (!future.Completed) {
                 using (var evt = future.GetCompletionEvent())
                     evt.Wait();
