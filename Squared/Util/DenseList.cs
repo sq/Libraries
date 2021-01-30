@@ -15,9 +15,28 @@ namespace Squared.Util {
 
     public struct DenseList<T> : IDisposable, IEnumerable<T> {
         [StructLayout(LayoutKind.Sequential)]
-        internal unsafe struct InlineStorage {
+        internal struct InlineStorage {
             public T Item1, Item2, Item3, Item4;
             public int Count;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void Add (ref InlineStorage storage, ref T item) {
+                var i = storage.Count++;
+                switch (i) {
+                    case 0:
+                        storage.Item1 = item;
+                        break;
+                    case 1:
+                        storage.Item2 = item;
+                        break;
+                    case 2:
+                        storage.Item3 = item;
+                        break;
+                    case 3:
+                        storage.Item4 = item;
+                        break;
+                }
+            }
         }
 
         public struct Enumerator : IEnumerator<T> {
@@ -455,21 +474,15 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Add_Fast (ref T item) {
-            var i = Storage.Count++;
-            switch (i) {
-                case 0:
-                    Storage.Item1 = item;
-                    break;
-                case 1:
-                    Storage.Item2 = item;
-                    break;
-                case 2:
-                    Storage.Item3 = item;
-                    break;
-                case 3:
-                    Storage.Item4 = item;
-                    break;
-            }
+            InlineStorage.Add(ref Storage, ref item);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void UnsafeAddWithKnownCapacity (ref DenseList<T> list, ref T item) {
+            if (list._HasList)
+                list.Items.Add(ref item);
+            else
+                InlineStorage.Add(ref list.Storage, ref item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

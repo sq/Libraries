@@ -88,7 +88,7 @@ namespace Squared.Render {
                     var drawCallsRhsBuffer = b.Data;
 
                     for (int i = 0, l = b.Count; i < l; i++) {
-                        if (!drawCallsRhsBuffer[i + b.Offset].IsValid)
+                        if (!BitmapDrawCall.CheckValid(ref drawCallsRhsBuffer[i + b.Offset]))
                             throw new Exception("Invalid draw call in batch");
 
                         bl._DrawCalls.Add(ref drawCallsRhsBuffer[i + b.Offset]);
@@ -219,7 +219,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         new public void Add (BitmapDrawCall item) {
-            if (!item.IsValid)
+            if (!BitmapDrawCall.CheckValid(ref item))
                 throw new InvalidOperationException("Invalid draw call");
 
             _DrawCalls.Add(ref item);
@@ -227,7 +227,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         new public void Add (ref BitmapDrawCall item) {
-            if (!item.IsValid)
+            if (!BitmapDrawCall.CheckValid(ref item))
                 throw new InvalidOperationException("Invalid draw call");
 
             _DrawCalls.Add(ref item);
@@ -235,7 +235,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (ref BitmapDrawCall item, Material material) {
-            if (!item.IsValid)
+            if (!BitmapDrawCall.CheckValid(ref item))
                 throw new InvalidOperationException("Invalid draw call");
             if (material != null)
                 throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
@@ -287,7 +287,7 @@ namespace Squared.Render {
             _DrawCalls.EnsureCapacity(_DrawCalls.Count + count);
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];
-                if (!item.IsValid)
+                if (!BitmapDrawCall.CheckValid(ref item))
                     continue;
 
                 if (hasScale) {
@@ -309,7 +309,7 @@ namespace Squared.Render {
                 if (hasSortKey)
                     item.SortKey = _sortKey;
 
-                _DrawCalls.Add(ref item);
+                DenseList<BitmapDrawCall>.UnsafeAddWithKnownCapacity(ref _DrawCalls, ref item);
             }
         }
         

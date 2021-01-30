@@ -100,7 +100,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (BitmapDrawCall item, Material material, SamplerState samplerState1 = null, SamplerState samplerState2 = null) {
-            if (!item.IsValid)
+            if (!BitmapDrawCall.CheckValid(ref item))
                 throw new InvalidOperationException("Invalid draw call");
 
             var dcm = material ?? Material;
@@ -113,7 +113,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (ref BitmapDrawCall item, Material material, SamplerState samplerState1 = null, SamplerState samplerState2 = null) {
-            if (!item.IsValid)
+            if (!BitmapDrawCall.CheckValid(ref item))
                 throw new InvalidOperationException("Invalid draw call");
 
             var dcm = material ?? Material;
@@ -133,8 +133,8 @@ namespace Squared.Render {
             MaterialBitmapDrawCall dc;
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];
-                if (!item.IsValid)
-                    continue;
+                if (!BitmapDrawCall.CheckValid(ref item))
+                    throw new InvalidOperationException("Invalid draw call");
 
                 if (scale.HasValue)
                     item.Position *= scale.Value;

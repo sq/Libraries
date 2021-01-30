@@ -18,15 +18,13 @@ namespace Squared.Util.DeclarativeSort {
         public static readonly Tags Null = default(Tags);
 
         public readonly int Id;
-        private readonly Tag Tag;
-        private readonly TagSet TagSet;
+        private bool IsTagSet;
 
         public Tags (Tag tag) {
             if (tag == null)
                 throw new ArgumentNullException(nameof(tag));
 
-            Tag = tag;
-            TagSet = null;
+            IsTagSet = false;
             Id = tag.Id;
         }
 
@@ -34,8 +32,7 @@ namespace Squared.Util.DeclarativeSort {
             if (tagSet == null)
                 throw new ArgumentNullException(nameof(tagSet));
 
-            Tag = null;
-            TagSet = tagSet;
+            IsTagSet = true;
             Id = tagSet.Id;
         }
 
@@ -45,10 +42,10 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public bool Contains (Tags tags) {
-            if (TagSet != null)
-                return TagSet.Contains(tags);
-            else if (Tag != null)
-                return (tags.Count == 1) && (Tag == tags[0]);
+            if (IsTagSet)
+                return Registry[Id].Contains(tags);
+            else if (Id > 0)
+                return (tags.Count == 1) && (Id == tags.Id);
             else
                 return false;
         }
@@ -66,23 +63,23 @@ namespace Squared.Util.DeclarativeSort {
         public bool IsNull {
             [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
-                return (Tag == null) && (TagSet == null);
+                return Id <= 0;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public bool Equals (Tags tags) {
-            return (Tag == tags.Tag) && (TagSet == tags.TagSet);
+            return Id == tags.Id;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public bool Equals (Tag tag) {
-            return (Tag == tag) && (TagSet == null);
+            return Id == tag.Id;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public bool Equals (TagSet tagSet) {
-            return (Tag == null) && (TagSet == tagSet);
+            return Id == tagSet.Id;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
@@ -107,9 +104,9 @@ namespace Squared.Util.DeclarativeSort {
         public int Count {
             [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
-                if (TagSet != null)
-                    return TagSet.Tags.Length;
-                else if (Tag != null)
+                if (IsTagSet)
+                    return Registry[Id].Count;
+                else if (Id > 0)
                     return 1;
                 else
                     return 0;
@@ -119,41 +116,30 @@ namespace Squared.Util.DeclarativeSort {
         public Tag this [int index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
-                if (TagSet != null)
-                    return TagSet.Tags[index];
-                else if (Tag != null)
-                    return Tag;
+                if (Id > 0)
+                    return Registry[Id][index];
                 else
-                    throw new IndexOutOfRangeException();
+                    return default(Tag);
             }
         }
 
         internal Dictionary<Tag, Tags> TransitionCache {
             [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
-                if (TagSet != null)
-                    return TagSet.TransitionCache;
-                else if (Tag != null)
-                    return Tag.TransitionCache;
+                if (Id > 0)
+                    return Registry[Id].TransitionCache;
                 else
                     return NullTransitionCache;
             }
         }
 
         public override int GetHashCode () {
-            if (Tag != null)
-                return Tag.GetHashCode();
-            else if (TagSet != null)
-                return TagSet.GetHashCode();
-            else
-                return 0;
+            return Id;
         }
 
         public override string ToString () {
-            if (Tag != null)
-                return Tag.ToString();
-            else if (TagSet != null)
-                return TagSet.ToString();
+            if (Id > 0)
+                return Registry[Id].ToString();
             else
                 return "<Null Tags>";
         }
@@ -255,7 +241,7 @@ namespace Squared.Util.DeclarativeSort {
 
         public object Object {
             get {
-                return (object)Tag ?? (object)TagSet;
+                return (Id > 0) ? Registry[Id] : default(Tags);
             }
         }
     }

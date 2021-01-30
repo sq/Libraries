@@ -856,6 +856,7 @@ namespace Squared.Render {
 
         private int Id;
         public object Reference {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return Cache.GetValue(Id);
             }
@@ -1140,9 +1141,9 @@ namespace Squared.Render {
         public bool?      WorldSpace;
 
 #if DEBUG
-        public static bool ValidateFields = false;
+        public const bool ValidateFields = false;
 #else
-        public static bool ValidateFields = false;
+        public const bool ValidateFields = false;
 #endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1379,56 +1380,67 @@ namespace Squared.Render {
             return true;
         }
 
+        public static bool CheckFieldValidity (ref BitmapDrawCall drawCall) {
+            if (!drawCall.Position.IsFinite())
+                return false;
+            if (!drawCall.TextureRegion.TopLeft.IsFinite())
+                return false;
+            if (!drawCall.TextureRegion.BottomRight.IsFinite())
+                return false;
+            if (drawCall.TextureRegion2.TopLeft != drawCall.TextureRegion2.BottomRight) {
+                if (!drawCall.TextureRegion2.TopLeft.IsFinite())
+                    return false;
+                if (!drawCall.TextureRegion2.BottomRight.IsFinite())
+                    return false;
+            }
+            if (!Arithmetic.IsFinite(drawCall.Rotation))
+                return false;
+            if (!drawCall.Scale.IsFinite())
+                return false;
+
+            return true;
+        }
+
         private bool AreFieldsValid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                if (ValidateFields) {
-                    if (!Position.IsFinite())
-                        return false;
-                    if (!TextureRegion.TopLeft.IsFinite())
-                        return false;
-                    if (!TextureRegion.BottomRight.IsFinite())
-                        return false;
-                    if (TextureRegion2.TopLeft != TextureRegion2.BottomRight) {
-                        if (!TextureRegion2.TopLeft.IsFinite())
-                            return false;
-                        if (!TextureRegion2.BottomRight.IsFinite())
-                            return false;
-                    }
-                    if (!Arithmetic.IsFinite(Rotation))
-                        return false;
-                    if (!Scale.IsFinite())
-                        return false;
-                }
-                return true;
+                if (ValidateFields)
+                    return CheckFieldValidity(ref this);
+                else
+                    return true;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool CheckValid (LocalObjectCache<object> textureCache) {
-            if (!AreFieldsValid)
+        public static bool CheckValid (ref BitmapDrawCall drawCall) {
+            if (ValidateFields && !CheckFieldValidity(ref drawCall))
                 return false;
 
 #if DEBUG
-            var instance1 = Textures.Texture1.GetInstance(textureCache);
+            var instance1 = drawCall.Textures.Texture1.Instance;
             return ((instance1 != null) && !instance1.IsDisposed && !instance1.GraphicsDevice.IsDisposed);
 #else
-            return Textures.Texture1.IsInitialized;
+            return drawCall.Textures.Texture1.IsInitialized;
+#endif
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckValid (ref BitmapDrawCall drawCall, ref LocalObjectCache<object> textureCache) {
+            if (ValidateFields && !CheckFieldValidity(ref drawCall))
+                return false;
+
+#if DEBUG
+            var instance1 = drawCall.Textures.Texture1.GetInstance(textureCache);
+            return ((instance1 != null) && !instance1.IsDisposed && !instance1.GraphicsDevice.IsDisposed);
+#else
+            return drawCall.Textures.Texture1.IsInitialized;
 #endif
         }
 
         public bool IsValid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                if (!AreFieldsValid)
-                    return false;
-
-#if DEBUG
-                var instance1 = Textures.Texture1.Instance;
-                return ((instance1 != null) && !instance1.IsDisposed && !instance1.GraphicsDevice.IsDisposed);
-#else
-                return Textures.Texture1.IsInitialized;
-#endif
+                return CheckValid(ref this);
             }
         }
 
