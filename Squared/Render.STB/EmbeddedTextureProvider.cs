@@ -62,17 +62,17 @@ namespace Squared.Render {
 
         protected override object PreloadInstance (Stream stream, object data) {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
-            return new STB.Image(stream, false, options.Premultiply, options.FloatingPoint, options.Enable16Bit);
+            var image = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint, options.Enable16Bit, options.GenerateMips);
+            if (options.sRGBFromLinear || options.sRGBToLinear)
+                ApplyColorSpaceConversion(image, options);
+            return image;
         }
 
         protected override Texture2D CreateInstance (Stream stream, object data, object preloadedData) {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
             var img = (STB.Image)preloadedData;
-            using (img) {
-                if (options.sRGBFromLinear || options.sRGBToLinear)
-                    ApplyColorSpaceConversion(img, options);
-                return img.CreateTexture(Coordinator, options.GenerateMips, options.PadToPowerOfTwo);
-            }
+            using (img)
+                return img.CreateTexture(Coordinator, options.PadToPowerOfTwo);
         }
     }
 }

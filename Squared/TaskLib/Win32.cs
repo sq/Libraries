@@ -42,6 +42,7 @@ namespace Squared.Task {
         public event UnhandledExceptionEventHandler UnhandledException;
 
         public readonly Thread OwnerThread;
+        public ThreadGroup ThreadGroup;
 
         public WindowsMessageJobQueue ()
             : this(DefaultMaxStepDuration) {
@@ -153,6 +154,8 @@ namespace Squared.Task {
         public bool WaitForFuture (IFuture future) {
             if (!future.Completed)
                 Application.DoEvents();
+            if (!future.Completed)
+                ThreadGroup?.StepMainThread();
             if (!future.Completed)
                 Thread.Sleep(0);
 

@@ -15,6 +15,8 @@ namespace Squared.Render.STB {
         public bool IsFloatingPoint { get; private set; }
         public bool Is16Bit { get; private set; }
 
+        private byte[][] MipChain = null;
+
         private static FileStream OpenStream (string path) {
             return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         }
@@ -23,7 +25,7 @@ namespace Squared.Render.STB {
             : this (OpenStream(path), true, premultiply, asFloatingPoint) {
         }
 
-        public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false, bool enable16Bit = false) {
+        public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false, bool enable16Bit = false, bool generateMips = false) {
             var length = stream.Length - stream.Position;
 
             if (!stream.CanSeek)
@@ -43,19 +45,20 @@ namespace Squared.Render.STB {
                 stream.Read(buffer, 0, (int)length);
             }
 
-            InitializeFromBuffer(buffer, readOffset, (int)length, premultiply, asFloatingPoint);
+            InitializeFromBuffer(buffer, readOffset, (int)length, premultiply, asFloatingPoint, generateMips);
 
             if (ownsStream)
                 stream.Dispose();
         }
 
-        public Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false) {
-            InitializeFromBuffer(buffer.Array, buffer.Offset, buffer.Count, premultiply, asFloatingPoint);
+        public Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, bool generateMips = false) {
+            InitializeFromBuffer(buffer.Array, buffer.Offset, buffer.Count, premultiply, asFloatingPoint, generateMips);
         }
 
         private void InitializeFromBuffer (
             byte[] buffer, int offset, int length, 
-            bool premultiply = true, bool asFloatingPoint = false, bool enable16Bit = false
+            bool premultiply = true, bool asFloatingPoint = false, 
+            bool enable16Bit = false, bool generateMips = false
         ) {
             IsFloatingPoint = asFloatingPoint;
 
@@ -88,6 +91,9 @@ namespace Squared.Render.STB {
                 ConvertData16(premultiply);
             else
                 ConvertData(premultiply);
+
+            if (generateMips)
+                GenerateMips();
         }
 
         private unsafe void ConvertFPData (bool premultiply) {
@@ -177,7 +183,7 @@ namespace Squared.Render.STB {
             }
         }
 
-        public Texture2D CreateTexture (RenderCoordinator coordinator, bool generateMips = false, bool padToPowerOfTwo = false) {
+        public Texture2D CreateTexture (RenderCoordinator coordinator, bool padToPowerOfTwo = false) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image is disposed");
             // FIXME: Channel count
@@ -187,10 +193,10 @@ namespace Squared.Render.STB {
 
             Texture2D result;
             lock (coordinator.CreateResourceLock)
-                result = new Texture2D(coordinator.Device, width, height, generateMips, Format);
+                result = new Texture2D(coordinator.Device, width, height, MipChain != null, Format);
 
             // FIXME: FP mips, 16bit mips
-            if (generateMips && !IsFloatingPoint && !Is16Bit)
+            if ((MipChain != null) && !IsFloatingPoint && !Is16Bit)
                 UploadWithMips(coordinator, result);
             else
                 UploadDirect(coordinator, result);
@@ -205,23 +211,24 @@ namespace Squared.Render.STB {
                 Evil.TextureUtils.SetDataFast(result, 0, Data, Width, Height, (uint)(Width * SizeofPixel));
         }
 
-        private void UploadWithMips (RenderCoordinator coordinator, Texture2D result) {
-            var pPreviousLevelData = Data;
-            var pLevelData = Data;
+        private unsafe void GenerateMips () {
+            void* pPreviousLevelData = null, pLevelData = Data;
             int levelWidth = Width, levelHeight = Height;
             int previousLevelWidth = Width, previousLevelHeight = Height;
+            // FIXME
+            MipChain = new byte[64][];
 
-            using (var scratch = BufferPool<Color>.Allocate(Width * Height))
-            fixed (Color* pScratch = scratch.Data)
+            var pin = default(GCHandle);
             for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
                 if (level > 0) {
-                    pLevelData = pScratch;
+                    if (pin.IsAllocated)
+                        pin.Free();
+                    MipChain[level - 1] = new byte[levelWidth * levelHeight * SizeofPixel];
+                    pin = GCHandle.Alloc(MipChain[level - 1], GCHandleType.Pinned);
+                    pLevelData = (void*)pin.AddrOfPinnedObject();
 
                     MipGenerator.Color(pPreviousLevelData, previousLevelWidth, previousLevelHeight, pLevelData, levelWidth, levelHeight);
                 }
-
-                lock (coordinator.UseResourceLock)
-                    Evil.TextureUtils.SetDataFast(result, level, pLevelData, levelWidth, levelHeight, (uint)(levelWidth * SizeofPixel));
 
                 previousLevelWidth = levelWidth;
                 previousLevelHeight = levelHeight;
@@ -229,14 +236,40 @@ namespace Squared.Render.STB {
                 var newHeight = levelHeight / 2;
                 levelWidth = newWidth;
                 levelHeight = newHeight;
-                var temp = pPreviousLevelData;
-                if (temp == pLevelData) {
-                    pLevelData = pScratch;
-                } else {
-                    pPreviousLevelData = pLevelData;
-                    pLevelData = pPreviousLevelData;
-                }
+                pPreviousLevelData = pLevelData;
             }
+            if (pin.IsAllocated)
+                pin.Free();
+        }
+
+        private unsafe void UploadWithMips (RenderCoordinator coordinator, Texture2D result) {
+            var pPreviousLevelData = Data;
+            var pLevelData = Data;
+            int levelWidth = Width, levelHeight = Height;
+            int previousLevelWidth = Width, previousLevelHeight = Height;
+
+            if (MipChain == null)
+                throw new Exception("Mip chain not generated or already uploaded");
+
+            var pin = default(GCHandle);
+            for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
+                uint mipSize;
+                if (level > 0) {
+                    if (pin.IsAllocated)
+                        pin.Free();
+                    var mip = MipChain[level - 1];
+                    pin = GCHandle.Alloc(mip, GCHandleType.Pinned);
+                    pLevelData = (void*)pin.AddrOfPinnedObject();
+                    mipSize = (uint)mip.Length;
+                } else {
+                    mipSize = (uint)(Width * Height * SizeofPixel);
+                }
+
+                lock (coordinator.UseResourceLock)
+                    Evil.TextureUtils.SetDataFast(result, level, pLevelData, levelWidth, levelHeight, mipSize);
+            }
+            if (pin.IsAllocated)
+                pin.Free();
         }
 
         public void Dispose () {

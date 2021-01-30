@@ -82,6 +82,8 @@ namespace Squared.Task {
         private readonly ConcurrentQueue<Action> _Queue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> _NextStepQueue = new ConcurrentQueue<Action>();
 
+        public ThreadGroup ThreadGroup;
+
         public ThreadSafeJobQueue ()
             : this(DefaultMaxStepDuration) {
         }
@@ -143,7 +145,8 @@ namespace Squared.Task {
                 else if (_NextStepQueue.TryDequeue(out item))
                     item();
                 else {
-                    Thread.Sleep(0);
+                    if (ThreadGroup?.StepMainThread() != true)
+                        Thread.Sleep(0);
                     return false;
                 }
             }

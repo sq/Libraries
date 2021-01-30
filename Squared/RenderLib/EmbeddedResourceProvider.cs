@@ -134,7 +134,7 @@ namespace Squared.Render {
         protected abstract T CreateInstance (Stream stream, object data, object preloadedData);
 
         private bool GetStream (string name, bool optional, out Stream result, out Exception exception) {
-            var streamName = (Prefix ?? "") + name + Suffix;
+            var streamName = FixupName((Prefix ?? "") + name + Suffix, false);
             exception = null;
             result = Assembly.GetManifestResourceStream(streamName);
             if (result == null) {
@@ -142,6 +142,10 @@ namespace Squared.Render {
                     return false;
                 } else {
                     exception = new FileNotFoundException($"No manifest resource stream with this name found: {streamName}", name);
+                    Console.WriteLine(exception.Message);
+                    foreach (var sn in Assembly.GetManifestResourceNames())
+                        Console.WriteLine(sn);
+                    Console.WriteLine();
                     return false;
                 }
             } else {
@@ -165,14 +169,15 @@ namespace Squared.Render {
             }
         }
 
-        private string FixupName (string name) {
-            if (name.Contains("."))
+        private string FixupName (string name, bool stripExtension) {
+            if (stripExtension && name.Contains("."))
                 name = name.Replace(Path.GetExtension(name), "");
+            name = name.Replace('/', '\\');
             return name;
         }
 
         private Future<T> GetFutureForResource (string name, bool cached, out bool performLoad) {
-            name = FixupName(name);
+            name = FixupName(name, true);
             performLoad = false;
             Future<T> future;
             if (cached) {
