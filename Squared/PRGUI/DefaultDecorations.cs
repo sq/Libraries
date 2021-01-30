@@ -71,6 +71,7 @@ namespace Squared.PRGUI {
             }
         }
         public Vector2 SpacingScaleRatio { get; set; }
+        public float OutlineScaleRatio { get; set; }
 
         private Material TextMaterial, SelectedTextMaterial;
 
@@ -86,6 +87,7 @@ namespace Squared.PRGUI {
             AnimationDurationMultiplier = 1f;
             _SizeScaleRatio = Vector2.One;
             SpacingScaleRatio = Vector2.One;
+            OutlineScaleRatio = 1f;
 
             InteractableShadow = new RasterShadowSettings {
                 Color = Color.Black * 0.25f,
@@ -370,6 +372,10 @@ namespace Squared.PRGUI {
             UpdateScaledSizes();
         }
 
+        private float GetOutlineSize (float baseSize) {
+            return (float)Math.Round(baseSize * OutlineScaleRatio, 1, MidpointRounding.AwayFromZero);
+        }
+
         private void UpdateScaledSizes () {
             ((DelegateDecorator)Checkbox).Padding =
                 ((DelegateDecorator)RadioButton).Padding =
@@ -539,7 +545,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: InteractableCornerRadius,
-                outlineRadius: thickness, outlineColor: outlineColor * alpha,
+                outlineRadius: GetOutlineSize(thickness), outlineColor: outlineColor * alpha,
                 innerColor: color1 * fillAlpha1, outerColor: color2 * fillAlpha2,
                 fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
                 shadow: InteractableShadow,
@@ -565,7 +571,7 @@ namespace Squared.PRGUI {
                 fillSize: fillSize,
                 fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
                 fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
-                annularRadius: EdgeGleamThickness,
+                annularRadius: GetOutlineSize(EdgeGleamThickness),
                 blendState: BlendState.Additive
             );
         }
@@ -585,7 +591,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeTriangle(
                 a, new Vector2(b.X, a.Y),
                 new Vector2((a.X + b.X) / 2f, b.Y),
-                radius: 1f, outlineRadius: 1f,
+                radius: 1f, outlineRadius: GetOutlineSize(1f),
                 innerColor: color, outerColor: color, 
                 outlineColor: outlineColor
             );
@@ -596,7 +602,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SliderCornerRadius,
-                outlineRadius: InertOutlineThickness, outlineColor: Color.Transparent,
+                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: Color.Transparent,
                 innerColor: settings.BackgroundColor ?? SliderFillColor, 
                 outerColor: settings.BackgroundColor ?? SliderFillColor,
                 shadow: SliderShadow,
@@ -611,7 +617,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SliderCornerRadius,
-                outlineRadius: InertOutlineThickness, outlineColor: Color.Transparent,
+                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: Color.Transparent,
                 innerColor: settings.BackgroundColor ?? GaugeFillColor, 
                 outerColor: settings.BackgroundColor ?? GaugeFillColor,
                 shadow: GaugeShadow,
@@ -652,7 +658,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SliderCornerRadius,
-                outlineRadius: 1f, outlineColor: fillColor * 0.5f,
+                outlineRadius: GetOutlineSize(1f), outlineColor: fillColor * 0.5f,
                 fillMode: fillMode,
                 innerColor: fillColor * alpha1, 
                 outerColor: fillColor * alpha2,
@@ -678,7 +684,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radiusCW: new Vector4(InertCornerRadius, InertCornerRadius, tip, tip),
-                outlineRadius: thickness, outlineColor: outlineColor * alpha,
+                outlineRadius: GetOutlineSize(thickness), outlineColor: outlineColor * alpha,
                 innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
                 fillMode: RasterFillMode.Vertical, fillSize: 0.95f,
                 shadow: InteractableShadow
@@ -702,7 +708,7 @@ namespace Squared.PRGUI {
                 fillSize: fillSize,
                 fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
                 fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
-                annularRadius: EdgeGleamThickness,
+                annularRadius: GetOutlineSize(EdgeGleamThickness),
                 blendState: BlendState.Additive
             );
         }
@@ -780,8 +786,12 @@ namespace Squared.PRGUI {
                 var so = renderer.RasterSoftOutlines;
                 renderer.RasterSoftOutlines = true;
                 renderer.RasterizeEllipse(
-                    settings.Box.Center - (Vector2.One * 0.1f), Vector2.One * (isChecked ? 8f : 7f), 
-                    1.2f, f, f, o
+                    settings.Box.Center - (Vector2.One * 0.1f), 
+                    Vector2.One * (isChecked ? 8f : 7f),
+                    outlineRadius: GetOutlineSize(1.2f), 
+                    innerColor: f, 
+                    outerColor: f, 
+                    outlineColor: o
                 );
                 renderer.RasterSoftOutlines = so;
             }
@@ -801,7 +811,7 @@ namespace Squared.PRGUI {
                 fillSize: fillSize,
                 fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
                 fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
-                annularRadius: EdgeGleamThickness,
+                annularRadius: GetOutlineSize(EdgeGleamThickness),
                 blendState: BlendState.Additive
             );
         }
@@ -812,7 +822,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: ContainerCornerRadius,
-                outlineRadius: InertOutlineThickness, outlineColor: ContainerOutlineColor,
+                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: ContainerOutlineColor,
                 innerColor: settings.BackgroundColor ?? ContainerFillColor, 
                 outerColor: settings.BackgroundColor ?? ContainerFillColor,
                 shadow: ContainerShadow,
@@ -828,7 +838,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: FloatingContainerCornerRadius ?? ContainerCornerRadius,
-                outlineRadius: InertOutlineThickness, outlineColor: FloatingContainerOutlineColor ?? ContainerOutlineColor,
+                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: FloatingContainerOutlineColor ?? ContainerOutlineColor,
                 innerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor, 
                 outerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor,
                 shadow: FloatingContainerShadow ?? ContainerShadow,
@@ -847,7 +857,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: TooltipCornerRadius ?? FloatingContainerCornerRadius ?? ContainerCornerRadius,
-                outlineRadius: InertOutlineThickness, outlineColor: TooltipOutlineColor,
+                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: TooltipOutlineColor,
                 innerColor: settings.BackgroundColor ?? color2, 
                 outerColor: settings.BackgroundColor ?? color1,
                 shadow: TooltipShadow ?? FloatingContainerShadow,
@@ -881,9 +891,9 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: EditableTextCornerRadius,
-                outlineRadius: isFocused
+                outlineRadius: GetOutlineSize(isFocused
                     ? EditableFocusedOutlineThickness 
-                    : InactiveOutlineThickness, 
+                    : InactiveOutlineThickness), 
                 outlineColor: isFocused
                     ? FocusedColor
                     : ContainerOutlineColor,
@@ -1228,7 +1238,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radiusCW: radius,
-                outlineRadius: 1f, outlineColor: AcceleratorOutlineColor,
+                outlineRadius: GetOutlineSize(1f), outlineColor: AcceleratorOutlineColor,
                 innerColor: AcceleratorFillColor, outerColor: AcceleratorFillColor,
                 shadow: null,
                 texture: settings.GetTexture(),
@@ -1244,7 +1254,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: 0f,
-                outlineRadius: 1f, outlineColor: outlineColor,
+                outlineRadius: GetOutlineSize(1f), outlineColor: outlineColor,
                 innerColor: Color.Transparent, outerColor: Color.Transparent,
                 shadow: AcceleratorTargetShadow
             );
@@ -1262,7 +1272,7 @@ namespace Squared.PRGUI {
             alpha2 = Arithmetic.Lerp(alpha1, alpha2, (b.X - a.X) / (settings.Box.Width));
             renderer.RasterizeRectangle(
                 a, b, radiusCW: radius,
-                outlineRadius: outlineRadius, outlineColor: outlineColor,
+                outlineRadius: GetOutlineSize(outlineRadius), outlineColor: outlineColor,
                 innerColor: Color.White * alpha1, outerColor: Color.White * alpha2,
                 fillMode: RasterFillMode.Horizontal
             );
@@ -1280,9 +1290,9 @@ namespace Squared.PRGUI {
             var outlineRadius = 1.75f;
             renderer.RasterSoftOutlines = true;
             renderer.RasterizeEllipse(
-                center, radius, annularRadius: showCenter ? 1.65f : 1.2f,
+                center, radius, annularRadius: GetOutlineSize(showCenter ? 1.65f : 1.2f),
                 innerColor: Color.White * fillAlpha, outerColor: Color.White * fillAlpha,
-                outlineRadius: outlineRadius, outlineColor: Color.Black * alpha
+                outlineRadius: GetOutlineSize(outlineRadius), outlineColor: Color.Black * alpha
             );
         }
 
@@ -1301,14 +1311,14 @@ namespace Squared.PRGUI {
                     a: unsnapped, b: snapped,
                     startRadius: 1.55f, endRadius: 2.5f,
                     innerColor: Color.White * (alpha * 0.75f), outerColor: Color.White,
-                    outlineRadius: outlineRadius, outlineColor: Color.Black * alpha
+                    outlineRadius: GetOutlineSize(outlineRadius), outlineColor: Color.Black * alpha
                 );
             } else {
                 var fillAlpha = alpha * 0.85f;
                 renderer.RasterizeEllipse(
                     snapped, new Vector2(1.7f),
                     innerColor: Color.White * fillAlpha, outerColor: Color.White * fillAlpha,
-                    outlineRadius: outlineRadius, outlineColor: Color.Black * alpha
+                    outlineRadius: GetOutlineSize(outlineRadius), outlineColor: Color.Black * alpha
                 );
             }
         }

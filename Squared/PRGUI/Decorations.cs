@@ -103,6 +103,7 @@ namespace Squared.PRGUI.Decorations {
     public interface IDecorationProvider {
         Vector2 SizeScaleRatio { get; }
         Vector2 SpacingScaleRatio { get; }
+        float OutlineScaleRatio { get; }
 
         IDecorator None { get; }
         IDecorator Container { get; }

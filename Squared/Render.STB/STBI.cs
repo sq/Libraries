@@ -274,6 +274,7 @@ namespace Squared.Render.STB {
 
         public void Dispose () {
             IsDisposed = true;
+            MipChain = null;
             if (Data != null) {
                 Native.API.stbi_image_free(Data);
                 Data = null;
