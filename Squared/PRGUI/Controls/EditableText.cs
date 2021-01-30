@@ -1319,5 +1319,13 @@ namespace Squared.PRGUI.Controls {
             ScrollOffset = value;
             return true;
         }
+
+        public override string ToString () {
+            var label = DebugLabel ?? Description;
+            if (label != null)
+                return $"{GetType().Name} #{GetHashCode():X8} '{label}'";
+            else
+                return $"{GetType().Name} #{GetHashCode():X8}";
+        }
     }
 }

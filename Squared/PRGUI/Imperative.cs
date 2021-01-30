@@ -381,6 +381,14 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> ClearLayoutFlags (ControlFlags value) {
+            Control.LayoutFlags &= ~value;
+            return this;
+        }
+        public ControlBuilder<TControl> AddLayoutFlags (ControlFlags value) {
+            Control.LayoutFlags |= value;
+            return this;
+        }
         public ControlBuilder<TControl> SetLayoutFlags (ControlFlags value) {
             Control.LayoutFlags = value;
             return this;
@@ -390,6 +398,16 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> ClearContainerFlags (ControlFlags value) {
+            if (Control is IControlContainer cast)
+                cast.ContainerFlags &= ~value;
+            return this;
+        }
+        public ControlBuilder<TControl> AddContainerFlags (ControlFlags value) {
+            if (Control is IControlContainer cast)
+                cast.ContainerFlags |= value;
+            return this;
+        }
         public ControlBuilder<TControl> SetContainerFlags (ControlFlags value) {
             if (Control is IControlContainer cast)
                 cast.ContainerFlags = value;

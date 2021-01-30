@@ -458,7 +458,7 @@ namespace Squared.PRGUI.Controls {
                 : Text.ToString();
         }
 
-        protected string GetTrimmedText (string text) {
+        public static string GetTrimmedText (string text) {
             if (text == null)
                 return null;
 

@@ -46,6 +46,7 @@ namespace Squared.PRGUI.Controls {
 
         public double? Exponent;
 
+        public IFormatProvider FormatProvider;
         public Func<T, T?> ValueFilter;
         public Func<T, string> ValueEncoder;
         public Func<string, T> ValueDecoder;
@@ -146,9 +147,14 @@ namespace Squared.PRGUI.Controls {
             else if (t == typeof(int) || t == typeof(long))
                 IntegerOnly = true;
 
-            ValueDecoder = (s) => (T)Convert.ChangeType(s, typeof(T));
-            var fp = NumberFormatInfo.CurrentInfo;
-            ValueEncoder = (v) => Convert.ToString(v, fp);
+            var nfi = (NumberFormatInfo)(CultureInfo.CurrentUICulture.NumberFormat.Clone());
+            // HACK
+            nfi.NumberGroupSeparator = "";
+            nfi.NumberDecimalDigits = IntegerOnly ? 0 : 3;
+
+            FormatProvider = nfi;
+            ValueDecoder = (s) => (T)Convert.ChangeType(s, typeof(T), FormatProvider);
+            ValueEncoder = (v) => string.Format(FormatProvider, "{0:N}", v);
             SelectAllOnFocus = true;
             SelectNoneOnFocusLoss = true;
         }
