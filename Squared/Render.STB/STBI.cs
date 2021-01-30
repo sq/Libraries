@@ -45,14 +45,26 @@ namespace Squared.Render.STB {
                 stream.Read(buffer, 0, (int)length);
             }
 
-            InitializeFromBuffer(buffer, readOffset, (int)length, premultiply, asFloatingPoint, generateMips);
+            InitializeFromBuffer(
+                buffer, readOffset, (int)length, 
+                premultiply: premultiply, 
+                asFloatingPoint: asFloatingPoint, 
+                enable16Bit: enable16Bit,
+                generateMips: generateMips
+            );
 
             if (ownsStream)
                 stream.Dispose();
         }
 
         public Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, bool generateMips = false) {
-            InitializeFromBuffer(buffer.Array, buffer.Offset, buffer.Count, premultiply, asFloatingPoint, generateMips);
+            InitializeFromBuffer(
+                buffer.Array, buffer.Offset, buffer.Count,
+                premultiply: premultiply, 
+                asFloatingPoint: asFloatingPoint,
+                enable16Bit: false,
+                generateMips: generateMips
+            );
         }
 
         private void InitializeFromBuffer (
@@ -267,6 +279,13 @@ namespace Squared.Render.STB {
 
                 lock (coordinator.UseResourceLock)
                     Evil.TextureUtils.SetDataFast(result, level, pLevelData, levelWidth, levelHeight, mipSize);
+
+                previousLevelWidth = levelWidth;
+                previousLevelHeight = levelHeight;
+                var newWidth = levelWidth / 2;
+                var newHeight = levelHeight / 2;
+                levelWidth = newWidth;
+                levelHeight = newHeight;
             }
             if (pin.IsAllocated)
                 pin.Free();
