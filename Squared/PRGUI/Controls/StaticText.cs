@@ -239,6 +239,8 @@ namespace Squared.PRGUI.Controls {
             var fontChanged = UpdateFont(context, textDecorations, decorations);
 
             ComputePadding(context, decorations, out Margins computedPadding);
+            var sr = context.DecorationProvider.SpacingScaleRatio;
+            // Margins.Scale(ref computedPadding, ref sr);
 
             var contentChanged = (ContentMeasurement?.IsValid == false) || !Content.IsValid;
             if (contentChanged || fontChanged)
@@ -282,8 +284,13 @@ namespace Squared.PRGUI.Controls {
             }
 
             var layout = GetCurrentLayout(true);
-            if (AutoSizeWidth)
+            if (AutoSizeWidth) {
                 AutoSizeComputedWidth = (float)Math.Ceiling(layout.UnconstrainedSize.X + computedPadding.Size.X);
+                // FIXME: Something is wrong here if padding scale is active
+                /* if ((sr.X > 1) || (sr.Y > 1))
+                    AutoSizeComputedWidth += 1;
+                    */
+            }
             if (AutoSizeHeight)
                 AutoSizeComputedHeight = (float)Math.Ceiling(layout.Size.Y + computedPadding.Size.Y);
         }

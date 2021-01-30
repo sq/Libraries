@@ -446,7 +446,7 @@ namespace Squared.Render.Text {
         public bool IsValid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return (_CachedStringLayout.HasValue && (_CachedGlyphVersion >= _GlyphSource.Version));
+                return (_CachedStringLayout.HasValue && (_CachedGlyphVersion >= _GlyphSource.Version) && !_GlyphSource.IsDisposed);
             }
         }
 
@@ -526,7 +526,9 @@ namespace Squared.Render.Text {
         /// If the current state is invalid, computes a current layout. Otherwise, returns the cached layout.
         /// </summary>
         public StringLayout Get () {
-            if (_CachedStringLayout.HasValue && _CachedGlyphVersion < _GlyphSource.Version)
+            if (_CachedStringLayout.HasValue && 
+                ((_CachedGlyphVersion < _GlyphSource.Version) || _GlyphSource.IsDisposed)
+            )
                 Invalidate();
 
             if (!_CachedStringLayout.HasValue) {
@@ -581,6 +583,7 @@ namespace Squared.Render.Text {
     }
 
     public class FallbackGlyphSource : IGlyphSource, IDisposable, IEnumerable<IGlyphSource> {
+        public bool IsDisposed { get; private set; }
         private readonly IGlyphSource[] Sources = null;
 
         public FallbackGlyphSource (params IGlyphSource[] sources) {
@@ -628,6 +631,7 @@ namespace Squared.Render.Text {
         }
         
         public void Dispose () {
+            IsDisposed = true;
             foreach (var item in Sources) {
                 if (item is IDisposable)
                     ((IDisposable)item).Dispose();
@@ -648,6 +652,7 @@ namespace Squared.Render.Text {
         float LineSpacing { get; }
         float DPIScaleFactor { get; }
 
+        bool IsDisposed { get; }
         int Version { get; }
     }
 
@@ -701,6 +706,8 @@ namespace Squared.Render.Text {
 
         public readonly SpriteFontUtil.FontFields Fields;
         public readonly int DefaultCharacterIndex;
+
+        public bool IsDisposed => (Texture?.IsDisposed == false);
 
         // Forward some SpriteFont methods and properties to make it easier to drop-in replace
         

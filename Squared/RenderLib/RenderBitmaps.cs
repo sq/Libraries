@@ -270,6 +270,8 @@ namespace Squared.Render {
             public readonly int LocalVertexOffset;
             public readonly int VertexCount;
 
+            public readonly bool Invalid;
+
             public NativeBatch (
                 ISoftwareBuffer softwareBuffer, TextureSet textureSet, 
                 int localVertexOffset, int vertexCount, Material material,
@@ -288,6 +290,12 @@ namespace Squared.Render {
 
                 var tex1 = textureSet.Texture1.GetInstance(textureCache);
                 var tex2 = textureSet.Texture2.GetInstance(textureCache);
+                if (tex1 == null) {
+                    Texture1Size = Texture2Size = default(Vector2);
+                    Texture1HalfTexel = Texture2HalfTexel = default(Vector2);
+                    Invalid = true;
+                    return;
+                }
 
                 Texture1Size = new Vector2(tex1.Width, tex1.Height);
                 Texture1HalfTexel = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
@@ -298,6 +306,8 @@ namespace Squared.Render {
                 } else {
                     Texture2HalfTexel = Texture2Size = Vector2.Zero;
                 }
+
+                Invalid = false;
             }
         }
 
@@ -404,35 +414,37 @@ namespace Squared.Render {
             _NativeBatches.ListCapacity = nativeBatchCapacity;
         }
 
-        protected void CreateNewNativeBatch (
+        protected bool CreateNewNativeBatch (
             BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref TextureSet currentTextures,
             ref int vertCount, ref int vertOffset, bool isFinalCall,
             Material material, SamplerState samplerState1, SamplerState samplerState2,
             LocalObjectCache<object> textureCache
         ) {
-#if DEBUG
-            if (currentTextures.Texture1.IsDisposedOrNull)
-#else
             if (!currentTextures.Texture1.IsInitialized)
-#endif
-            throw new InvalidDataException("Invalid draw call(s)");
+                return false;
 
-            _NativeBatches.Add(new NativeBatch(
+            var nb = new NativeBatch(
                 softwareBuffer, currentTextures,
                 vertOffset, vertCount,
                 material, samplerState1, samplerState2,
                 textureCache
-            ));
+            );
+            if (nb.Invalid)
+                return false;
+            _NativeBatches.Add(nb);
 
             if (!isFinalCall) {
                 vertOffset += vertCount;
                 vertCount = 0;
             }
+
+            return true;
         }
 
         protected unsafe bool FillOneSoftwareBuffer (
             int[] indices, ArraySegment<BitmapDrawCall> drawCalls, ref int drawCallsPrepared, int count,
-            Material material, SamplerState samplerState1, SamplerState samplerState2, LocalObjectCache<object> textureCache
+            Material material, SamplerState samplerState1, SamplerState samplerState2, LocalObjectCache<object> textureCache,
+            out bool failed
         ) {
             int totalVertCount = 0;
             int vertCount = 0, vertOffset = 0;
@@ -453,6 +465,7 @@ namespace Squared.Render {
             var callArray = drawCalls.Array;
 
             bool result = true;
+            failed = false;
 
             fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset]) {
                 for (int i = drawCallsPrepared; i < count; i++) {
@@ -474,13 +487,15 @@ namespace Squared.Render {
 
                     if (!texturesEqual) {
                         if (vertCount > 0)
-                            CreateNewNativeBatch(
+                            failed |= !CreateNewNativeBatch(
                                 softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, false,
                                 material, samplerState1, samplerState2,
                                 textureCache
                             );
 
                         currentTextures = callArray[callIndex + drawCalls.Offset].Textures;
+                        if (failed)
+                            break;
                     }
 
                     FillOneBitmapVertex(
@@ -500,7 +515,7 @@ namespace Squared.Render {
                 throw new InvalidOperationException("Wrote too many vertices");
 
             if (vertCount > 0) {
-                CreateNewNativeBatch(
+                failed |= !CreateNewNativeBatch(
                     softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, true,
                     material, samplerState1, samplerState2, textureCache
                 );
@@ -653,7 +668,8 @@ namespace Squared.Render {
             return result;
         }
 
-        protected abstract void PrepareDrawCalls (PrepareManager manager);
+        private bool PrepareSucceeded;
+        protected abstract bool PrepareDrawCalls (PrepareManager manager);
 
         protected sealed override void Prepare (PrepareManager manager) {
             var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)BitmapBatchPrepareState.Preparing);
@@ -663,7 +679,7 @@ namespace Squared.Render {
                 throw new ThreadStateException("This batch is not valid");
 
             if (_DrawCalls.Count > 0)
-                PrepareDrawCalls(manager);
+                PrepareSucceeded = PrepareDrawCalls(manager);
 
             Squared.Render.NativeBatch.RecordCommands(_NativeBatches.Count);
 
@@ -675,7 +691,7 @@ namespace Squared.Render {
         private static bool PrintedDPPWarning, PrintedMiscWarning;
 
         public override void Issue (DeviceManager manager) {
-            if (_DrawCalls.Count > 0) {
+            if (PrepareSucceeded && (_DrawCalls.Count > 0)) {
                 StateTransition(BitmapBatchPrepareState.Prepared, BitmapBatchPrepareState.Issuing);
 
                 if (State.IsCombined)

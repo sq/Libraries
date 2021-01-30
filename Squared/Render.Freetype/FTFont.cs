@@ -20,6 +20,8 @@ namespace Squared.Render.Text {
     public class FreeTypeFont : IGlyphSource, IDisposable {
         private static EmbeddedDLLLoader DllLoader;
 
+        public bool IsDisposed { get; private set; }
+
         static FreeTypeFont () {
             try {
                 var loader = new Util.EmbeddedDLLLoader(Assembly.GetExecutingAssembly());
@@ -38,14 +40,14 @@ namespace Squared.Render.Text {
             public static float SmallFirstAtlasThreshold = 22;
             public const int AtlasWidth = 1024, AtlasHeight = 1024;
 
-            public bool IsDisposed { get; private set; }
-
             internal List<DynamicAtlas<Color>> Atlases = new List<DynamicAtlas<Color>>();
             internal FreeTypeFont Font;
             internal SrGlyph[] LowCache = new SrGlyph[LowCacheSize];
             internal Dictionary<uint, SrGlyph> Cache = new Dictionary<uint, SrGlyph>();
             internal float _SizePoints;
             internal int _Version;
+
+            public bool IsDisposed { get; private set; }
 
             public FontSize (FreeTypeFont font, float sizePoints) {
                 Font = font;
@@ -479,6 +481,11 @@ namespace Squared.Render.Text {
         }
 
         public void Dispose () {
+            if (IsDisposed)
+                return;
+
+            IsDisposed = true;
+
             foreach (var size in Sizes)
                 size.Dispose();
 

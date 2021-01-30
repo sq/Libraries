@@ -297,7 +297,7 @@ namespace Squared.Render {
             }
         }
         
-        protected override void PrepareDrawCalls (PrepareManager manager) {
+        protected override bool PrepareDrawCalls (PrepareManager manager) {
             Squared.Render.NativeBatch.RecordPrimitives(_DrawCalls.Count * 2);
 
             AllocateNativeBatches();
@@ -339,12 +339,17 @@ namespace Squared.Render {
             using (var callBuffer = _DrawCalls.GetBuffer(false)) {
                 var callSegment = new ArraySegment<BitmapDrawCall>(callBuffer.Data, callBuffer.Offset, callBuffer.Count);
                 int drawCallsPrepared = 0;
-                while (drawCallsPrepared < count)
+                while (drawCallsPrepared < count) {
                     FillOneSoftwareBuffer(
                         indexArray, callSegment, ref drawCallsPrepared, count,
-                        Material, SamplerState, SamplerState2, textureCache
+                        Material, SamplerState, SamplerState2, textureCache, out bool failed
                     );
+                    if (failed)
+                        return false;
+                }
             }
+
+            return true;
         }
 
         protected override void OnReleaseResources () {
