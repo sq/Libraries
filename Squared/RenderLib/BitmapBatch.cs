@@ -262,15 +262,27 @@ namespace Squared.Render {
             if (material != null)
                 throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
 
-            var hasScale = (scale ?? Vector2.One) != Vector2.One;
+            bool hasScale = (scale ?? Vector2.One) != Vector2.One,
+                hasOffset = offset.HasValue,
+                hasMultiplyColor = multiplyColor.HasValue,
+                hasAddColor = addColor.HasValue,
+                hasSortKey = sortKey.HasValue,
+                hasUserData = userData.HasValue;
 
             if (
-                (offset == null) && (multiplyColor == null) && (addColor == null) &&
-                (userData == null) && (sortKey == null) && !hasScale
+                !hasOffset && !hasMultiplyColor && !hasAddColor &&
+                !hasUserData && !hasSortKey && !hasScale
             ) {
                 AddRange(items, firstIndex, count);
                 return;
             }
+
+            Vector2 _scale = scale ?? default(Vector2),
+                _offset = offset ?? default(Vector2);
+            Color _multiplyColor = multiplyColor ?? default(Color),
+                _addColor = addColor ?? default(Color);
+            var _sortKey = sortKey ?? default(DrawCallSortKey);
+            var _userData = userData ?? default(Vector4);
 
             _DrawCalls.EnsureCapacity(_DrawCalls.Count + count);
             for (int i = 0; i < count; i++) {
@@ -279,19 +291,23 @@ namespace Squared.Render {
                     continue;
 
                 if (hasScale) {
-                    item.Position *= scale.Value;
-                    item.Scale *= scale.Value;
+                    item.Position.X *= _scale.X;
+                    item.Position.Y *= _scale.Y;
+                    item.Scale.X *= _scale.X;
+                    item.Scale.Y *= _scale.Y;
                 }
-                if (offset.HasValue)
-                    item.Position += offset.Value;
-                if (multiplyColor.HasValue)
-                    item.MultiplyColor = multiplyColor.Value;
-                if (addColor.HasValue)
-                    item.AddColor = addColor.Value;
-                if (userData.HasValue)
-                    item.UserData = userData.Value;
-                if (sortKey.HasValue)
-                    item.SortKey = sortKey.Value;
+                if (hasOffset) {
+                    item.Position.X += _offset.X;
+                    item.Position.Y += _offset.Y;
+                }
+                if (hasMultiplyColor)
+                    item.MultiplyColor = _multiplyColor;
+                if (hasAddColor)
+                    item.AddColor = _addColor;
+                if (hasUserData)
+                    item.UserData = _userData;
+                if (hasSortKey)
+                    item.SortKey = _sortKey;
 
                 _DrawCalls.Add(ref item);
             }

@@ -51,11 +51,8 @@ namespace Squared.Render {
             Batch a, b;
             Type aType, bType;
 
-            var isWritable = false;
-            var _batches = batches.GetBuffer(false);
-
             while ((i < l) && (j < l)) {
-                a = _batches[i];
+                a = batches[i];
 
                 if ((a == null) || (a.SuspendFuture != null)) {
                     i += 1;
@@ -65,7 +62,7 @@ namespace Squared.Render {
 
                 aType = a.GetType();
 
-                b = _batches[j];
+                b = batches[j];
 
                 if ((b == null) || (b.SuspendFuture != null)) {
                     j += 1;
@@ -82,17 +79,11 @@ namespace Squared.Render {
 
                     foreach (var combiner in Combiners) {
                         if (combined = combiner.CanCombine(a, b)) {
-                            if (!isWritable) {
-                                isWritable = true;
-                                _batches.Dispose();
-                                _batches = batches.GetBuffer(true);
-                            }
-
-                            _batches[i] = combiner.Combine(a, b);
-                            _batches[i].Container = a.Container;
+                            batches[i] = combiner.Combine(a, b);
+                            batches[i].Container = a.Container;
 
                             lock (batchesToRelease) {
-                                if ((a != _batches[i]) && (a.ReleaseAfterDraw))
+                                if ((a != batches[i]) && (a.ReleaseAfterDraw))
                                     batchesToRelease.Add(a);
                             }
 
@@ -104,8 +95,6 @@ namespace Squared.Render {
                     j += 1;
                 }
             }
-
-            _batches.Dispose();
 
             if (false && eliminatedCount > 0)
                 Console.WriteLine("Eliminated {0:0000} of {1:0000} batch(es)", eliminatedCount, batches.Count);

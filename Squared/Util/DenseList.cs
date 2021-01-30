@@ -15,7 +15,7 @@ namespace Squared.Util {
 
     public struct DenseList<T> : IDisposable, IEnumerable<T> {
         [StructLayout(LayoutKind.Sequential)]
-        internal struct InlineStorage {
+        internal unsafe struct InlineStorage {
             public T Item1, Item2, Item3, Item4;
             public int Count;
         }

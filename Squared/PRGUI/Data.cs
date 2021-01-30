@@ -376,8 +376,18 @@ namespace Squared.PRGUI.Layout {
 }
 
 namespace Squared.PRGUI {
-    public struct RectF {
-        public float Left, Top, Width, Height;
+    [StructLayout(LayoutKind.Explicit)]
+    public unsafe struct RectF {
+        [FieldOffset(0)]
+        public fixed float Values[4];
+        [FieldOffset(0)]
+        public float Left;
+        [FieldOffset(4)]
+        public float Top;
+        [FieldOffset(8)]
+        public float Width;
+        [FieldOffset(12)]
+        public float Height;
 
         public RectF (float left, float top, float width, float height) {
             Left = left;
@@ -396,46 +406,38 @@ namespace Squared.PRGUI {
         public float this [uint index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return this[(int)index];
+#if DEBUG
+                if (index > 3)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+#endif
+                return Values[index];
             }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                this[(int)index] = value;
+#if DEBUG
+                if (index > 3)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+#endif
+                Values[index] = value;
             }
         }
 
         public float this [int index] { 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                switch (index) {
-                    case 0:
-                        return Left;
-                    case 1:
-                        return Top;
-                    case 2:
-                        return Width;
-                    case 3:
-                        return Height;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(index));
-                }
+#if DEBUG
+                if (index > 3)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+#endif
+                return Values[index];
             }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                switch (index) {
-                    case 0:
-                        Left = value;
-                        break;
-                    case 1:
-                        Top = value;
-                        break;
-                    case 2:
-                        Width = value;
-                        break;
-                    case 3:
-                        Height = value;
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(index));
-                }
+#if DEBUG
+                if (index > 3)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+#endif
+                Values[index] = value;
             }
         }
 
@@ -590,8 +592,18 @@ namespace Squared.PRGUI {
         }
     }
 
-    public struct Margins {
-        public float Left, Top, Right, Bottom;
+    [StructLayout(LayoutKind.Explicit)]
+    public unsafe struct Margins {
+        [FieldOffset(0)]
+        public fixed float Values[4];
+        [FieldOffset(0)]
+        public float Left;
+        [FieldOffset(4)]
+        public float Top;
+        [FieldOffset(8)]
+        public float Right;
+        [FieldOffset(12)]
+        public float Bottom;
 
         public Margins (float value) {
             Left = Top = Right = Bottom = value;
@@ -627,57 +639,47 @@ namespace Squared.PRGUI {
                 return false;
         }
 
-        public float this[int index] {
+        public float this [uint index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return this[(uint)index];
+#if DEBUG
+                if (index > 3)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+#endif
+                return Values[index];
             }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                this[(uint)index] = value;
+#if DEBUG
+                if (index > 3)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+#endif
+                Values[index] = value;
             }
         }
 
-        public float this[uint index] {
+        public float this [int index] { 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                switch (index) {
-                    case 0:
-                        return Left;
-                    case 1:
-                        return Top;
-                    case 2:
-                        return Right;
-                    case 3:
-                        return Bottom;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+#if DEBUG
+                if (index > 3)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+#endif
+                return Values[index];
             }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                switch (index) {
-                    case 0:
-                        Left = value;
-                        return;
-                    case 1:
-                        Top = value;
-                        return;
-                    case 2:
-                        Right = value;
-                        return;
-                    case 3:
-                        Bottom = value;
-                        return;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+#if DEBUG
+                if (index > 3)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+#endif
+                Values[index] = value;
             }
         }
 
         public static void Scale (ref Margins margins, float scale) {
-            margins.Left *= scale;
-            margins.Top *= scale;
-            margins.Right *= scale;
-            margins.Bottom *= scale;
+            for (int i = 0; i < 4; i++)
+                margins.Values[i] *= scale;
         }
 
         public static void Scale (ref Margins margins, ref Vector2 scale) {
@@ -689,10 +691,9 @@ namespace Squared.PRGUI {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Add (ref Margins lhs, Margins rhs, out Margins result) {
-            result.Left = lhs.Left + rhs.Left;
-            result.Top = lhs.Top + rhs.Top;
-            result.Right = lhs.Right + rhs.Right;
-            result.Bottom = lhs.Bottom + rhs.Bottom;
+            result = lhs;
+            for (int i = 0; i < 4; i++)
+                result.Values[i] += rhs.Values[i];
         }
 
         public static Margins operator + (Margins lhs, Margins rhs) {
