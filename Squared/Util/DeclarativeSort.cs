@@ -12,7 +12,7 @@ using System.Threading;
 namespace Squared.Util.DeclarativeSort {
     public struct Tags {
         internal static int NextId = 0;
-        internal static readonly Dictionary<int, Tags> Registry = new Dictionary<int, Tags>();
+        internal static readonly Dictionary<int, Tag> Registry = new Dictionary<int, Tag>();
         internal static readonly Dictionary<Tag, Tags> NullTransitionCache = new Dictionary<Tag, Tags>(Tag.EqualityComparer.Instance);
 
         public static readonly Tags Null = default(Tags);
@@ -37,13 +37,19 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public static Tags[] GetAllTags () {
-            lock (Registry)
-                return Registry.Values.ToArray();
+            lock (Registry) {
+                // FIXME: Do we need to include tagsets here? Probably not
+                var result = new Tags[Registry.Count];
+                int i = 0;
+                foreach (var v in Registry.Values)
+                    result[i++] = v;
+                return result;
+            }
         }
 
         public bool Contains (Tags tags) {
             if (IsTagSet)
-                return Registry[Id].Contains(tags);
+                return TagSet.Registry[Id].Contains(tags);
             else if (Id > 0)
                 return (tags.Count == 1) && (Id == tags.Id);
             else
@@ -105,7 +111,7 @@ namespace Squared.Util.DeclarativeSort {
             [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
                 if (IsTagSet)
-                    return Registry[Id].Count;
+                    return TagSet.Registry[Id].Tags.Length;
                 else if (Id > 0)
                     return 1;
                 else
@@ -116,8 +122,10 @@ namespace Squared.Util.DeclarativeSort {
         public Tag this [int index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
-                if (Id > 0)
-                    return Registry[Id][index];
+                if (IsTagSet)
+                    return TagSet.Registry[Id].Tags[index];
+                else if ((Id > 0) && (index == 0))
+                    return Registry[Id];
                 else
                     return default(Tag);
             }
@@ -126,7 +134,9 @@ namespace Squared.Util.DeclarativeSort {
         internal Dictionary<Tag, Tags> TransitionCache {
             [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
-                if (Id > 0)
+                if (IsTagSet)
+                    return TagSet.Registry[Id].TransitionCache;
+                else if (Id > 0)
                     return Registry[Id].TransitionCache;
                 else
                     return NullTransitionCache;
@@ -138,7 +148,9 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public override string ToString () {
-            if (Id > 0)
+            if (IsTagSet)
+                return TagSet.Registry[Id].ToString();
+            else if (Id > 0)
                 return Registry[Id].ToString();
             else
                 return "<Null Tags>";
@@ -241,7 +253,12 @@ namespace Squared.Util.DeclarativeSort {
 
         public object Object {
             get {
-                return (Id > 0) ? Registry[Id] : default(Tags);
+                if (IsTagSet)
+                    return TagSet.Registry[Id];
+                else if (Id > 0)
+                    return Registry[Id];
+                else
+                    return null;
             }
         }
     }
@@ -282,7 +299,7 @@ namespace Squared.Util.DeclarativeSort {
             Id = Interlocked.Increment(ref Tags.NextId);
 
             lock (Tags.Registry)
-                Tags.Registry[Id] = new Tags(this);
+                Tags.Registry[Id] = this;
         }
 
         public override int GetHashCode () {
@@ -371,6 +388,8 @@ namespace Squared.Util.DeclarativeSort {
     }
 
     public partial class TagSet : IEnumerable<Tag> {
+        internal static readonly Dictionary<int, TagSet> Registry = new Dictionary<int, TagSet>();
+
         private string _CachedToString;
         private readonly HashSet<Tag> HashSet = new HashSet<Tag>();
         internal readonly Tag[] Tags;
@@ -391,8 +410,8 @@ namespace Squared.Util.DeclarativeSort {
 
             Id = Interlocked.Increment(ref DeclarativeSort.Tags.NextId);
 
-            lock (DeclarativeSort.Tags.Registry)
-                DeclarativeSort.Tags.Registry[Id] = new Tags(this);
+            lock (Registry)
+                Registry[Id] = this;
         }
 
         /// <returns>Whether this tagset contains all the tags in rhs.</returns>
@@ -650,6 +669,8 @@ namespace Squared.Util.DeclarativeSort {
 
                 foreach (var tag in Tags.Registry.Values)
                     result.Add(tag, new DownwardEdges(tag));
+                foreach (var tagSet in TagSet.Registry.Values)
+                    result.Add(tagSet, new DownwardEdges(tagSet));
 
                 foreach (var item in this) {
                     var from = item.Source;
@@ -665,18 +686,11 @@ namespace Squared.Util.DeclarativeSort {
                             result[from].Add(edge.Target);
                 }
 
-                foreach (var tag in Tags.Registry.Values) {
-                    var items = result[tag];
-
-                    if (items.Count == 0) {
-                        // A node with no outward edges still needs to be included.
-                        // Otherwise, it may not get assigned an ordering value even
-                        //  though it participates in the sort order.
-                    } else {
-                        // HACK: Make sure least-complicated edges are visited first.
-                        // The ordering of these is most important.
-                        items.Sort(DownwardEdge.Comparer.Instance);
-                    }
+                foreach (var tagSet in TagSet.Registry.Values) {
+                    var items = result[tagSet];
+                    // HACK: Make sure least-complicated edges are visited first.
+                    // The ordering of these is most important.
+                    items.Sort(DownwardEdge.Comparer.Instance);
                 }
 
                 if (Tracing) {
@@ -749,9 +763,7 @@ namespace Squared.Util.DeclarativeSort {
 
         public int[] GetSortKeys () {
             lock (SortKeyLock) {
-                int tagCount;
-                lock (Tags.Registry)
-                    tagCount = Tags.Registry.Count;
+                int tagCount = Tags.NextId;
 
                 if (CachedTagCount != tagCount)
                     SortKeys = null;
@@ -766,6 +778,30 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
+        private void GenerateEdge (EdgeGraph result, Tag t, TagOrdering ordering) {
+            var containsLower = (ordering.Lower.Count == 1) && (ordering.Lower.Id == t.Id);
+            var containsHigher = (ordering.Higher.Count == 1) && (ordering.Higher.Id == t.Id);
+
+            if (containsLower && containsHigher)
+                return;
+            else if (containsLower)
+                result.Connect(ordering.Higher, t);
+            else if (containsHigher)
+                result.Connect(t, ordering.Lower);
+        }
+
+        private void GenerateEdge (EdgeGraph result, TagSet ts, TagOrdering ordering) {
+            var containsLower = ts.Contains(ordering.Lower);
+            var containsHigher = ts.Contains(ordering.Higher);
+
+            if (containsLower && containsHigher)
+                return;
+            else if (containsLower)
+                result.Connect(ordering.Higher, ts);
+            else if (containsHigher)
+                result.Connect(ts, ordering.Lower);
+        }
+
         private Dictionary<Tags, DownwardEdges> GenerateEdges (List<TagOrdering> orderings) {
             var result = new EdgeGraph();
 
@@ -773,17 +809,11 @@ namespace Squared.Util.DeclarativeSort {
             foreach (var ordering in orderings) {
                 result.Connect(ordering.Higher, ordering.Lower);
 
-                foreach (var kvp in Tags.Registry) {
-                    var containsLower = kvp.Value.Contains(ordering.Lower);
-                    var containsHigher = kvp.Value.Contains(ordering.Higher);
+                foreach (var kvp in Tags.Registry)
+                    GenerateEdge(result, kvp.Value, ordering);
 
-                    if (containsLower && containsHigher)
-                        continue;
-                    else if (containsLower)
-                        result.Connect(ordering.Higher, kvp.Value);
-                    else if (containsHigher)
-                        result.Connect(kvp.Value, ordering.Lower);
-                }
+                foreach (var kvp in TagSet.Registry)
+                    GenerateEdge(result, kvp.Value, ordering);
             }
 
             return result.Finalize();
@@ -1186,7 +1216,7 @@ namespace Squared.Util.DeclarativeSort {
         private SorterComparer AscendingSorter, DescendingSorter;
 
         public Sorter (bool useLCG = true) {
-            UseLCG = useLCG;
+            UseLCG = false && useLCG;
         }
 
         private void Invalidate () {
