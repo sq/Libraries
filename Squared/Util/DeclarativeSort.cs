@@ -1216,7 +1216,7 @@ namespace Squared.Util.DeclarativeSort {
         private SorterComparer AscendingSorter, DescendingSorter;
 
         public Sorter (bool useLCG = true) {
-            UseLCG = false && useLCG;
+            UseLCG = useLCG;
         }
 
         private void Invalidate () {
