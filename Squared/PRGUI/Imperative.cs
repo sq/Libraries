@@ -325,11 +325,16 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public bool GetEvent (string eventName) {
+            if (Context == null)
+                return false;
             return Context.GetUnhandledEvent(Control, eventName);
         }
 
         public ControlBuilder<TControl> GetEvent (string eventName, out bool result) {
-            result = Context.GetUnhandledEvent(Control, eventName);
+            if (Context != null)
+                result = Context.GetUnhandledEvent(Control, eventName);
+            else
+                result = false;
 
             return this;
         }
@@ -613,7 +618,7 @@ namespace Squared.PRGUI.Imperative {
                 throw new InvalidCastException("Control is not a compatible value control");
             }
 
-            GetEvent(UIEvents.ValueChanged, out changed);
+            GetEvent(UIEvents.ValueChangedByUser, out changed);
             if (!changed)
                 GetEvent(UIEvents.CheckedChanged, out changed);
             if (changed)

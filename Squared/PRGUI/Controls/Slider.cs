@@ -60,17 +60,23 @@ namespace Squared.PRGUI.Controls {
                     ? ClampValue(_Value)
                     : ClampValue((Minimum + Maximum) / 2);
             set {
-                _HasValue = true;
-
-                value = ClampValue(value);
-                if (value == _Value)
-                    return;
-
-                _Value = value;
-                InvalidateTooltip();
-                ScrollInputValue = null;
-                FireEvent(UIEvents.ValueChanged);
+                SetValue(value, false);
             }
+        }
+
+        public void SetValue (float value, bool forUserInput) {
+            _HasValue = true;
+
+            value = ClampValue(value);
+            if (value == _Value)
+                return;
+
+            _Value = value;
+            InvalidateTooltip();
+            ScrollInputValue = null;
+            FireEvent(UIEvents.ValueChanged);
+            if (forUserInput)
+                FireEvent(UIEvents.ValueChangedByUser);
         }
 
         AbstractString Accessibility.IReadingTarget.Text => base.TooltipContent.Get(this);
@@ -251,9 +257,9 @@ namespace Squared.PRGUI.Controls {
                     int snapDirection = Math.Sign(snapDelta), moveDirection = Math.Sign(newValue - oldValue);
                     // Ensure we don't get stuck as a result of value snapping
                     if ((Math.Abs(snapDelta) <= float.Epsilon) || (snapDirection != moveDirection))
-                        Value = newValue;
+                        SetValue(newValue, true);
                     else
-                        Value = snappedValue;
+                        SetValue(snappedValue, true);
                     return true;
             }
 
@@ -273,7 +279,7 @@ namespace Squared.PRGUI.Controls {
                         return false;
 
                     var newValue = ValueFromPoint(GetRect(contentRect: true), args.RelativeGlobalPosition);
-                    Value = newValue;
+                    SetValue(newValue, true);
 
                     return true;
             }
@@ -388,7 +394,7 @@ namespace Squared.PRGUI.Controls {
 
         bool IScrollableControl.TrySetScrollOffset (Vector2 value, bool forUser) {
             var newValue = _Minimum + ((value.X / ScrollScale) * (_Maximum - _Minimum));
-            Value = newValue;
+            SetValue(newValue, forUser);
             ScrollInputValue = value.X;
             return true;
         }

@@ -57,6 +57,7 @@ namespace Squared.PRGUI.Controls {
                 DisclosureLevel = new Tween<float>(targetValue);
 
             FireEvent(UIEvents.ValueChanged);
+            // FIXME: Fire byUser event
         }
 
         public bool Collapsible;

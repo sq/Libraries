@@ -279,7 +279,7 @@ namespace Squared.PRGUI.Controls {
 
             if (UndoBuffer.TryPopInto(Builder, ref _Selection)) {
                 Context.Log("Undo OK");
-                NotifyValueChanged();
+                NotifyValueChanged(true);
                 return true;
             }
 
@@ -296,7 +296,7 @@ namespace Squared.PRGUI.Controls {
 
             if (RedoBuffer.TryPopInto(Builder, ref _Selection)) {
                 Context.Log("Redo OK");
-                NotifyValueChanged();
+                NotifyValueChanged(true);
                 return true;
             }
 
@@ -321,7 +321,7 @@ namespace Squared.PRGUI.Controls {
             Builder.Clear();
             newValue.CopyTo(Builder);
             NextScrollInstant = true;
-            NotifyValueChanged();
+            NotifyValueChanged(false);
         }
 
         public void GetText (StringBuilder output) {
@@ -347,7 +347,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected void NotifyValueChanged () {
+        protected void NotifyValueChanged (bool fromUserInput) {
             Invalidate();
 
             if (IsChangingValue)
@@ -357,14 +357,16 @@ namespace Squared.PRGUI.Controls {
 
             IsChangingValue = true;
             try {
-                OnValueChanged();
+                OnValueChanged(fromUserInput);
             } finally {
                 IsChangingValue = false;
             }
         }
 
-        protected virtual void OnValueChanged () {
-            FireEvent(UIEvents.ValueChanged);
+        protected virtual void OnValueChanged (bool fromUserInput) {
+            FireEvent(UIEvents.ValueChanged, fromUserInput);
+            if (fromUserInput)
+                FireEvent(UIEvents.ValueChangedByUser, fromUserInput);
         }
 
         protected AbstractString FilterInput (AbstractString input) {
@@ -711,7 +713,7 @@ namespace Squared.PRGUI.Controls {
             PushUndoEntry();
             Builder.Remove(range.First, range.Second - range.First);
             if (fireEvent)
-                NotifyValueChanged();
+                NotifyValueChanged(true); // FIXME
         }
 
         protected Pair<int> Insert (int offset, char newText) {
@@ -721,7 +723,7 @@ namespace Squared.PRGUI.Controls {
 
             PushUndoEntry();
             Builder.Insert(offset, newText);
-            NotifyValueChanged();
+            NotifyValueChanged(true);
             return new Pair<int>(offset, offset + 1);
         }
 
@@ -734,7 +736,7 @@ namespace Squared.PRGUI.Controls {
                 PushUndoEntry();
 
             Builder.Insert(offset, filtered);
-            NotifyValueChanged();
+            NotifyValueChanged(true);
             return new Pair<int>(offset, offset + filtered.Length);
         }
 
@@ -774,7 +776,7 @@ namespace Squared.PRGUI.Controls {
                 if (!forward)
                     MoveCaret(Selection.First - count, -1);
 
-                NotifyValueChanged();
+                NotifyValueChanged(true);
             }
         }
 

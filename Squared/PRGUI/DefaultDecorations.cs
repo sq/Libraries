@@ -191,9 +191,9 @@ namespace Squared.PRGUI {
             };
 
             Window = new DelegateDecorator {
-                Padding = new Margins(4, 32, 4, 4),
+                Padding = new Margins(4),
                 GetTextSettings = GetTextSettings,
-                Below = FloatingContainer_Below,
+                Below = Window_Below,
                 // FIXME: Separate routine?
                 ContentClip = Container_ContentClip,
             };
@@ -461,7 +461,8 @@ namespace Squared.PRGUI {
         public float DisabledTextAlpha = 0.5f;
 
         public Color? FloatingContainerOutlineColor, 
-            FloatingContainerFillColor;
+            FloatingContainerFillColor,
+            WindowFillColor = new Color(60, 60, 60);
 
         private void Button_Below_Common (
             UIOperationContext context, DecorationSettings settings, 
@@ -841,6 +842,22 @@ namespace Squared.PRGUI {
                 outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: FloatingContainerOutlineColor ?? ContainerOutlineColor,
                 innerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor, 
                 outerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor,
+                shadow: FloatingContainerShadow ?? ContainerShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
+            );
+        }
+
+        private void Window_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            // FIXME: Should we draw the outline in Above?
+            renderer.RasterizeRectangle(
+                a, b,
+                radius: FloatingContainerCornerRadius ?? ContainerCornerRadius,
+                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: FloatingContainerOutlineColor ?? ContainerOutlineColor,
+                innerColor: settings.BackgroundColor ?? WindowFillColor ?? FloatingContainerFillColor ?? ContainerFillColor, 
+                outerColor: settings.BackgroundColor ?? WindowFillColor ?? FloatingContainerFillColor ?? ContainerFillColor,
                 shadow: FloatingContainerShadow ?? ContainerShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),

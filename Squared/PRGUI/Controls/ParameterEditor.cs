@@ -54,28 +54,35 @@ namespace Squared.PRGUI.Controls {
         public T Value {
             get => _Value;
             set {
-                try {
-                    IsSettingValue = true;
-                    var clamped = ClampValue(value);
-                    if (clamped == null)
-                        return;
+                SetValue(value, false);
+            }
+        }
 
-                    value = clamped.Value;
-                    if ((_Value.CompareTo(value) == 0) && HasValue)
-                        return;
+        public void SetValue (T value, bool forUserInput) {
+            try {
+                IsSettingValue = true;
+                var clamped = ClampValue(value);
+                if (clamped == null)
+                    return;
 
-                    CachedFractionD = null;
-                    HasValue = true;
-                    _Value = value;
+                value = clamped.Value;
+                if ((_Value.CompareTo(value) == 0) && HasValue)
+                    return;
 
-                    var newText = ValueEncoder(value);
-                    if (Text != newText) {
-                        SetText(newText, true);
-                        SelectNone();
-                    }
-                } finally {
-                    IsSettingValue = false;
+                CachedFractionD = null;
+                HasValue = true;
+                _Value = value;
+
+                var newText = ValueEncoder(value);
+                if (Text != newText) {
+                    SetText(newText, true);
+                    SelectNone();
                 }
+
+                if (forUserInput)
+                    FireEvent(UIEvents.ValueChangedByUser, true);
+            } finally {
+                IsSettingValue = false;
             }
         }
 
@@ -158,7 +165,7 @@ namespace Squared.PRGUI.Controls {
                 return value;
         }
 
-        protected override void OnValueChanged () {
+        protected override void OnValueChanged (bool fromUserInput) {
             try {
                 if (!IsSettingValue) {
                     var newValue = ValueDecoder(Text);
@@ -168,13 +175,16 @@ namespace Squared.PRGUI.Controls {
                     HasValue = true;
                     _Value = converted.Value;
                 }
+
                 FireEvent(UIEvents.ValueChanged);
+                if (fromUserInput)
+                    FireEvent(UIEvents.ValueChangedByUser);
             } catch {
             }
         }
 
         private void FinalizeValue () {
-            OnValueChanged();
+            OnValueChanged(false);
             SetText(ValueEncoder(_Value), true);
         }
 
@@ -326,12 +336,12 @@ namespace Squared.PRGUI.Controls {
                     else
                         value = Arithmetic.OperatorCache<T>.Subtract(value, increment);
                 }
-                Value = value;
+                SetValue(value, true);
             } else {
                 if (positive)
-                    Value = Arithmetic.OperatorCache<T>.Add(_Value, increment);
+                    SetValue(Arithmetic.OperatorCache<T>.Add(_Value, increment), true);
                 else
-                    Value = Arithmetic.OperatorCache<T>.Subtract(_Value, increment);
+                    SetValue(Arithmetic.OperatorCache<T>.Subtract(_Value, increment), true);
             }
 
             return true;
@@ -366,14 +376,14 @@ namespace Squared.PRGUI.Controls {
                     return Adjust(false, true);
                 case Keys.Home:
                     if (Minimum.HasValue && evt.Modifiers.Control) {
-                        Value = Minimum.Value;
+                        SetValue(Minimum.Value, true);
                         SelectNone();
                         return true;
                     }
                     break;
                 case Keys.End:
                     if (Maximum.HasValue && evt.Modifiers.Control) {
-                        Value = Maximum.Value;
+                        SetValue(Maximum.Value, true);
                         SelectNone();
                         return true;
                     }
@@ -428,7 +438,7 @@ namespace Squared.PRGUI.Controls {
             var range = sub(_Maximum.Value, _Minimum.Value);
             var offset = Convert.ToDouble(range) * fraction;
             var result = add(_Minimum.Value, (T)Convert.ChangeType(offset, typeof(T)));
-            Value = result;
+            SetValue(result, true);
             SelectNone();
             return true;
         }

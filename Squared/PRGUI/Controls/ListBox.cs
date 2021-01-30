@@ -77,12 +77,18 @@ namespace Squared.PRGUI.Controls {
         public T SelectedItem {
             get => Manager.SelectedItem;
             set {
-                if (!Manager.TrySetSelectedItem(ref value))
-                    return;
-                DesiredScrollOffset = null;
-                SelectedItemHasChangedSinceLastUpdate = true;
-                FireEvent(UIEvents.ValueChanged, SelectedItem);
+                SetSelectedItem(value, false);
             }
+        }
+
+        public void SetSelectedItem (T value, bool forUserInput) {
+            if (!Manager.TrySetSelectedItem(ref value))
+                return;
+            DesiredScrollOffset = null;
+            SelectedItemHasChangedSinceLastUpdate = true;
+            FireEvent(UIEvents.ValueChanged, SelectedItem);
+            if (forUserInput)
+                FireEvent(UIEvents.ValueChangedByUser, SelectedItem);
         }
 
         private bool _Virtual = false;
@@ -435,7 +441,7 @@ namespace Squared.PRGUI.Controls {
                     if (isClick && (!EnableSelect || (control == Manager.SelectedControl)))
                         Context.FireEvent(name, control, args);
                     if (EnableSelect)
-                        SelectedItem = newItem;
+                        SetSelectedItem(newItem, true);
                     return isClick;
                 } else {
                     // Console.WriteLine($"Selection not valid");
@@ -464,7 +470,7 @@ namespace Squared.PRGUI.Controls {
         private void SelectItemViaKeyboard (T item) {
             if (!EnableSelect)
                 return;
-            SelectedItem = item;
+            SetSelectedItem(item, true);
             UpdateKeyboardSelection(item, true);
         }
 

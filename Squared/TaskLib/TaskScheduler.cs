@@ -177,22 +177,22 @@ namespace Squared.Task {
             public PushedActivity (TaskScheduler scheduler) {
                 Scheduler = scheduler;
 
-                PriorContext = SynchronizationContext.Current;
+                PriorContext = System.Threading.SynchronizationContext.Current;
 
                 Prior = Current;
                 if (Prior != Scheduler)
                     Current = scheduler;
 
-                if (PriorContext != Scheduler._SynchronizationContext)
-                    SynchronizationContext.SetSynchronizationContext(Scheduler._SynchronizationContext);
+                if (PriorContext != Scheduler.SynchronizationContext)
+                    System.Threading.SynchronizationContext.SetSynchronizationContext(Scheduler.SynchronizationContext);
             }
 
             public void Dispose () {
                 var current = Current;
 
-                if (SynchronizationContext.Current == Scheduler._SynchronizationContext) {
-                    if (PriorContext != Scheduler._SynchronizationContext)
-                        SynchronizationContext.SetSynchronizationContext(PriorContext);
+                if (System.Threading.SynchronizationContext.Current == Scheduler.SynchronizationContext) {
+                    if (PriorContext != Scheduler.SynchronizationContext)
+                        System.Threading.SynchronizationContext.SetSynchronizationContext(PriorContext);
                 }
 
                 if (current == Scheduler) {
@@ -219,7 +219,7 @@ namespace Squared.Task {
         private Internal.WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
 
         public readonly ITimeProvider TimeProvider;
-        private readonly TaskSchedulerSynchronizationContext _SynchronizationContext;
+        public TaskSchedulerSynchronizationContext SynchronizationContext { get; private set; }
 
         public TaskScheduler (Func<IJobQueue> JobQueueFactory, ITimeProvider timeProvider = null) {
             TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
@@ -229,7 +229,7 @@ namespace Squared.Task {
                 SleepWorkerThreadFunc, ThreadPriority.AboveNormal, "TaskScheduler Sleep Provider"
             );
 
-            _SynchronizationContext = new TaskSchedulerSynchronizationContext(this);
+            SynchronizationContext = new TaskSchedulerSynchronizationContext(this);
 
             if (!_Default.IsValueCreated) {
                 _Default.Value = this;

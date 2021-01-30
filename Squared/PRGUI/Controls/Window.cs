@@ -93,6 +93,10 @@ namespace Squared.PRGUI.Controls {
             return base.OnGenerateLayoutTree(context, parent, existingKey);
         }
 
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
+            return provider?.Window;
+        }
+
         protected override IDecorator GetTitleDecorator (UIOperationContext context) {
             return context.DecorationProvider?.WindowTitle ?? base.GetTitleDecorator(context);
         }

@@ -28,6 +28,7 @@ namespace Squared.PRGUI {
             KeyUp = "KeyUp",
             Moved = "Moved",
             ValueChanged = "ValueChanged",
+            ValueChangedByUser = "ValueChangedByUser",
             CheckedChanged = "CheckedChanged",
             RadioButtonSelected = "RadioButtonSelected",
             SelectionChanged = "SelectionChanged",

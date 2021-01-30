@@ -47,12 +47,18 @@ namespace Squared.PRGUI.Controls {
         public T SelectedItem {
             get => Manager.SelectedItem;
             set {
-                if (!Manager.TrySetSelectedItem(ref value))
-                    return;
-                Invalidate();
-                NeedsUpdate = true;
-                FireEvent(UIEvents.ValueChanged, SelectedItem);
+                SetSelectedItem(value, false);
             }
+        }
+
+        public void SetSelectedItem (T value, bool forUserInput) {
+            if (!Manager.TrySetSelectedItem(ref value))
+                return;
+            Invalidate();
+            NeedsUpdate = true;
+            FireEvent(UIEvents.ValueChanged, SelectedItem);
+            if (forUserInput)
+                FireEvent(UIEvents.ValueChangedByUser, SelectedItem);
         }
 
         AbstractString Accessibility.IReadingTarget.Text {
@@ -131,7 +137,8 @@ namespace Squared.PRGUI.Controls {
             _Version = Items.Version;
             NeedsUpdate = false;
             if (Comparer.Equals(SelectedItem, default(T)) && (Items.Count > 0))
-                SelectedItem = Items[0];
+                // FIXME: ForUser?
+                SetSelectedItem(Items[0], true);
 
             if (!string.IsNullOrWhiteSpace(Label)) {
                 // HACK
@@ -199,7 +206,7 @@ namespace Squared.PRGUI.Controls {
                                 (args.Key == Keys.Up) ? -1 : 1,
                                 out T newItem
                             ))
-                                SelectedItem = newItem;
+                                SetSelectedItem(newItem, true);
                             return true;
                         case Keys.Space:
                             ShowMenu();
@@ -247,7 +254,7 @@ namespace Squared.PRGUI.Controls {
 
         void IMenuListener.ItemChosen (Menu menu, Control item) {
             if (Items.GetValueForControl(item, out T value))
-                SelectedItem = value;
+                SetSelectedItem(value, true);
         }
     }
 }
