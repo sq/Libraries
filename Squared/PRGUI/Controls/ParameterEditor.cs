@@ -260,16 +260,19 @@ namespace Squared.PRGUI.Controls {
 
             var box = contentBox;
             // Compensate for padding
-            box.Left -= ArrowPadding;
-            box.Width -= (ArrowPadding * 2);
+            var padding = ArrowPadding * Context.Decorations.SpacingScaleRatio.X * Context.Decorations.PaddingScaleRatio.X;
+            box.Left -= padding;
+            box.Width -= (padding * 2);
 
-            var space = (box.Height - ArrowHeight) / 2f;
+            var width = ArrowWidth * Context.Decorations.SizeScaleRatio.X;
+            var height = ArrowHeight * Context.Decorations.SizeScaleRatio.Y;
+            var space = (box.Height - height) / 2f;
             box.Top += space;
-            box.Width = ArrowWidth;
-            box.Height = ArrowHeight;
+            box.Width = width;
+            box.Height = height;
             if (!facingRight)
                 return box;
-            box.Left = contentBox.Extent.X + (ArrowPadding - ArrowWidth);
+            box.Left = contentBox.Extent.X + (padding - width);
             return box;
         }
 

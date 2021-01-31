@@ -19,7 +19,7 @@ namespace Squared.PRGUI.Controls {
         /// Rasterizes boxes for each text control's box, content box, and text layout box
         /// Also rasterizes a yellow line for the wrap/break threshold
         /// </summary>
-        public static bool VisualizeLayout = true;
+        public static bool VisualizeLayout = false;
 
         /// <summary>
         /// If true, the control will have its size set exactly to fit its content.
