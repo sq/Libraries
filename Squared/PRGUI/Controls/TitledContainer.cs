@@ -189,10 +189,12 @@ namespace Squared.PRGUI.Controls {
 
             Color? color = null;
             titleDecorations.GetTextSettings(context, default(ControlStates), out Material temp, ref color);
-            result.Top += titleDecorations.Margins.Bottom;
-            result.Top += titleDecorations.Padding.Top;
-            result.Top += titleDecorations.Padding.Bottom;
-            result.Top += titleDecorations.GlyphSource.LineSpacing;
+            var height = titleDecorations.Margins.Bottom +
+                titleDecorations.Padding.Y +
+                titleDecorations.GlyphSource.LineSpacing;
+            // Compensate for padding scale to ensure we don't over-pad the top
+            float paddingScale = context.DecorationProvider.PaddingScaleRatio.Y * context.DecorationProvider.SpacingScaleRatio.Y;
+            result.Top += (height / paddingScale);
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
