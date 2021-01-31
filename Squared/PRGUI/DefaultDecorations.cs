@@ -51,6 +51,7 @@ namespace Squared.PRGUI {
         public IDecorator Gauge { get; set; }
         public IDecorator VirtualCursor { get; set; }
         public IDecorator VirtualCursorAnchor { get; set; }
+        public IDecorator Tab { get; set; }
         public IDecorator TabPage { get; set; }
 
         public float AnimationDurationMultiplier { get; set; }
@@ -170,6 +171,22 @@ namespace Squared.PRGUI {
                 GetFont = () => ButtonFont ?? DefaultFont,
                 Below = Button_Below,
                 Above = Button_Above
+            };
+
+            Tab = new DelegateDecorator {
+                Margins = new Margins(4, 2, 8, 2),
+                Padding = new Margins(16, 8),
+                GetContentAdjustment = GetContentAdjustment_Button,
+                GetTextSettings = GetTextSettings_Button,
+                GetFont = () => ButtonFont ?? DefaultFont,
+                Below = Tab_Below,
+                Above = Tab_Above
+            };
+
+            TabPage = new DelegateDecorator {
+                Margins = new Margins(2),
+                Padding = new Margins(0, 0),
+                Below = TabPage_Below
             };
 
             Checkbox = new DelegateDecorator {
@@ -429,7 +446,8 @@ namespace Squared.PRGUI {
             MenuSelectionCornerRadius = 8f,
             ListSelectionCornerRadius = 3f,
             EditableTextCornerRadius = 4.5f,
-            SliderCornerRadius = 4.5f;
+            SliderCornerRadius = 4.5f,
+            TabCornerRadius = 10f;
         public float? FloatingContainerCornerRadius = 7f,
             TooltipCornerRadius = 8f;
         public float InactiveOutlineThickness = 1f, 
@@ -593,6 +611,94 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: InteractableCornerRadius,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
+                fillMode: RasterFillMode.Angular,
+                fillSize: fillSize,
+                fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
+                fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
+                annularRadius: GetOutlineSize(EdgeGleamThickness),
+                blendState: BlendState.Additive
+            );
+        }
+
+        private void TabPage_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            settings.State = ControlStates.Checked;
+            float alpha, thickness, pulse;
+            pSRGBColor baseColor, outlineColor;
+            Button_Below_Common(
+                context, settings, out alpha, out thickness, out pulse, 
+                out baseColor, out outlineColor
+            );
+
+            var radiusCW = new Vector4(2, 2, 2, 2);
+
+            var color1 = Color.Transparent;
+            var color2 = color1;
+
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            renderer.RasterizeRectangle(
+                a, b,
+                radiusCW: radiusCW,
+                outlineRadius: GetOutlineSize(thickness), outlineColor: outlineColor * alpha,
+                innerColor: color1, outerColor: color2,
+                fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
+                shadow: InteractableShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
+            );
+        }
+
+        private void Tab_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            float alpha, thickness, pulse;
+            pSRGBColor baseColor, outlineColor;
+            Button_Below_Common(
+                context, settings, out alpha, out thickness, out pulse, 
+                out baseColor, out outlineColor
+            );
+
+            var color1 = baseColor;
+            var color2 = baseColor;
+
+            float base1 = 0.85f, base2 = 0.35f;
+            if (settings.BackgroundColor.HasValue) {
+                color1 = color1.AdjustBrightness(1.2f);
+                base1 = 0.95f;
+                base2 = 0.75f;
+            }
+
+            var fillAlpha1 = Math.Min((base1 + pulse) * alpha, 1f);
+            var fillAlpha2 = Math.Min((base2 + pulse) * alpha, 1f);
+
+            var radiusCW = new Vector4(TabCornerRadius, TabCornerRadius, 0, 0);
+
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            renderer.RasterizeRectangle(
+                a, b,
+                radiusCW: radiusCW,
+                outlineRadius: GetOutlineSize(thickness), outlineColor: outlineColor * alpha,
+                innerColor: color1 * fillAlpha1, outerColor: color2 * fillAlpha2,
+                fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
+                shadow: InteractableShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
+            );
+        }
+
+        private void Tab_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            if (!settings.State.IsFlagged(ControlStates.Hovering))
+                return;
+
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / settings.Box.Height));
+
+            var radiusCW = new Vector4(TabCornerRadius, TabCornerRadius, 0, 0);
+
+            renderer.RasterizeRectangle(
+                a, b,
+                radiusCW: radiusCW,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
                 fillMode: RasterFillMode.Angular,

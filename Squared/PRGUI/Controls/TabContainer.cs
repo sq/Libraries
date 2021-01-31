@@ -55,7 +55,7 @@ namespace Squared.PRGUI.Controls {
                     Text = $"{Labels[child] ?? child.ToString()}",
                     EventFilter = this,
                     Appearance = {
-                        Decorator = Context?.Decorations?.Button
+                        Decorator = Context?.Decorations?.Tab
                     }
                 };
                 if (i == SelectedTabIndex + 1)
@@ -72,7 +72,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
-            return provider.Container;
+            return provider.None;
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -127,7 +127,15 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
+            var tabPage = context.DecorationProvider?.TabPage;
+            if (SelectedTab == null)
+                return;
+            var stripRect = TabStrip.GetRect();
+            var tabContentRect = SelectedTab.GetRect(contentRect: true);
+            settings.Box.Top += stripRect.Height;
+            settings.Box.Height -= stripRect.Height;
+            settings.ContentBox = tabContentRect;
+            tabPage.Rasterize(context, ref renderer, settings);
         }
 
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {

@@ -138,6 +138,8 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Gauge { get; }
         IDecorator VirtualCursor { get; }
         IDecorator VirtualCursorAnchor { get; }
+        IDecorator Tab { get; }
+        IDecorator TabPage { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 

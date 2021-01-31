@@ -255,7 +255,7 @@ namespace Squared.PRGUI.Layout {
 
 namespace Squared.PRGUI {
     [Flags]
-    public enum ControlStates : int {
+    public enum ControlStates : uint {
         Disabled = 0b1,
         Hovering = 0b10,
         Focused = 0b100,
