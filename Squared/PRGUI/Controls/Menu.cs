@@ -189,9 +189,10 @@ namespace Squared.PRGUI.Controls {
         private Control LocateContainingChild (Control control) {
             var current = control;
             while (current != null) {
-                if (!control.TryGetParent(out Control parent))
+                if (!current.TryGetParent(out Control parent))
                     return null;
-                if (parent == this)
+
+                if ((parent == this) || (parent == current))
                     return current;
                 else
                     current = parent;

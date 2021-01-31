@@ -32,6 +32,10 @@ namespace Squared.PRGUI {
             Constrain(ref size);
             return size;
         }
+
+        public override string ToString () {
+            return $"Clamp({Fixed?.ToString() ?? "<null>"}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
+        }
     }
     
     public abstract partial class Control {
@@ -520,9 +524,11 @@ namespace Squared.PRGUI {
             var actualLayoutFlags = ComputeLayoutFlags(fixedWidth.HasValue, fixedHeight.HasValue);
 
             var spacingScale = context.DecorationProvider.SpacingScaleRatio;
+            var paddingScale = spacingScale * context.DecorationProvider.PaddingScaleRatio;
+            var marginScale = spacingScale * context.DecorationProvider.MarginScaleRatio;
             if (!isFloating)
-                Margins.Scale(ref computedMargins, ref spacingScale);
-            Margins.Scale(ref computedPadding, ref spacingScale);
+                Margins.Scale(ref computedMargins, ref marginScale);
+            Margins.Scale(ref computedPadding, ref paddingScale);
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetMargins(result, computedMargins);

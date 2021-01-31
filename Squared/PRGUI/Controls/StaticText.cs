@@ -16,6 +16,12 @@ using Squared.Util.Text;
 namespace Squared.PRGUI.Controls {
     public class StaticTextBase : Control, IPostLayoutListener, Accessibility.IReadingTarget {
         /// <summary>
+        /// Rasterizes boxes for each text control's box, content box, and text layout box
+        /// Also rasterizes a yellow line for the wrap/break threshold
+        /// </summary>
+        public static bool VisualizeLayout = false;
+
+        /// <summary>
         /// If true, the control will have its size set exactly to fit its content.
         /// If false, the control will be expanded to fit its content but will not shrink.
         /// </summary>
@@ -34,7 +40,7 @@ namespace Squared.PRGUI.Controls {
         private DynamicStringLayout ContentMeasurement = null;
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
         private bool _NeedRelayout;
-        private float? MostRecentContentWidth = null;
+        private float? MostRecentContentWidth = null, MostRecentWidth = null;
 
         private float? AutoSizeComputedWidth, AutoSizeComputedHeight;
 
@@ -323,9 +329,16 @@ namespace Squared.PRGUI.Controls {
                 return null;
 
             ComputePadding(context, decorations, out Margins computedPadding);
+            var paddingScale = (context.DecorationProvider.SpacingScaleRatio * context.DecorationProvider.PaddingScaleRatio);
+            /*
+            paddingScale.X = 1.0f / paddingScale.X;
+            paddingScale.Y = 1.0f / paddingScale.Y;
+            Margins.Scale(ref computedPadding, ref paddingScale);
+            */
             float? constrainedWidth = null;
             if (MostRecentContentWidth.HasValue) {
-                float computed = MostRecentContentWidth.Value;
+                // FIXME
+                float computed = (MostRecentWidth - computedPadding.X) ?? 0;
                 if (Width.Maximum.HasValue)
                     constrainedWidth = Math.Min(computed, Width.Maximum.Value - computedPadding.X);
                 else
@@ -333,7 +346,7 @@ namespace Squared.PRGUI.Controls {
             } else
                 constrainedWidth = Width.Maximum - computedPadding.X;
 
-            var limit = Width.Fixed - computedPadding.X ?? constrainedWidth;
+            var limit = Width.Fixed ?? constrainedWidth;
             if (limit.HasValue)
                 // HACK: Suppress jitter
                 return (float)Math.Ceiling(limit.Value) + AutoSizePadding;
@@ -403,6 +416,18 @@ namespace Squared.PRGUI.Controls {
                 case HorizontalAlignment.Right:
                     textOffset.X += xSpace;
                     break;
+            }
+
+            if (VisualizeLayout) {
+                if (context.Pass == RasterizePasses.Content) {
+                    settings.ContentBox.SnapAndInset(out Vector2 ca, out Vector2 cb);
+                    renderer.RasterizeRectangle(a, b, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Red);
+                    renderer.RasterizeRectangle(ca, cb, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Green);
+                    renderer.RasterizeRectangle(textOffset, textOffset + layout.Size * textScale, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue);
+                    var la = ca + new Vector2(Content.LineBreakAtX ?? 0, 0);
+                    var lb = new Vector2(ca.X, cb.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
+                    renderer.RasterizeLineSegment(la, lb, 1f, Color.Yellow);
+                }
             }
 
             // FIXME: Why is this here?
@@ -499,12 +524,14 @@ namespace Squared.PRGUI.Controls {
                 _NeedRelayout = false;
             }
 
+            var box = context.Layout.GetRect(LayoutKey);
+            var contentBox = context.Layout.GetContentRect(LayoutKey);
+            MostRecentContentWidth = contentBox.Width;
+            MostRecentWidth = box.Width;
+
             // FIXME: This is probably wrong?
             if (!AutoSizeWidth && !Wrap && MostRecentContentWidth.HasValue)
                 return;
-
-            var contentBox = context.Layout.GetContentRect(LayoutKey);
-            MostRecentContentWidth = contentBox.Width;
         }
     }
 

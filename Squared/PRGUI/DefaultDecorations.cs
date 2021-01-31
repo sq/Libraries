@@ -63,6 +63,9 @@ namespace Squared.PRGUI {
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         private Vector2 _SizeScaleRatio;
+        /// <summary>
+        /// Sets a scale factor for minimum/fixed/maximum sizes
+        /// </summary>
         public Vector2 SizeScaleRatio {
             get => _SizeScaleRatio;
             set {
@@ -70,7 +73,21 @@ namespace Squared.PRGUI {
                 UpdateScaledSizes();
             }
         }
+        /// <summary>
+        /// Sets a global scale factor for both padding and margins
+        /// </summary>
         public Vector2 SpacingScaleRatio { get; set; }
+        /// <summary>
+        /// Sets an additional scale factor for padding
+        /// </summary>
+        public Vector2 PaddingScaleRatio { get; set; }
+        /// <summary>
+        /// Sets an additional scale factor for margins
+        /// </summary>
+        public Vector2 MarginScaleRatio { get; set; }
+        /// <summary>
+        /// Sets a scale factor for outline thickness
+        /// </summary>
         public float OutlineScaleRatio { get; set; }
 
         private Material TextMaterial, SelectedTextMaterial;
@@ -86,6 +103,8 @@ namespace Squared.PRGUI {
 
             AnimationDurationMultiplier = 1f;
             _SizeScaleRatio = Vector2.One;
+            PaddingScaleRatio = Vector2.One;
+            MarginScaleRatio = Vector2.One;
             SpacingScaleRatio = Vector2.One;
             OutlineScaleRatio = 1f;
 

@@ -72,7 +72,11 @@ namespace PRGUI.Demo {
             Graphics.PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8;
             Graphics.PreferredBackBufferWidth = 1920;
             Graphics.PreferredBackBufferHeight = 1080;
+#if DEBUG
+            Graphics.SynchronizeWithVerticalRetrace = true;
+#else
             Graphics.SynchronizeWithVerticalRetrace = false;
+#endif
             Graphics.PreferMultiSampling = false;
             Graphics.IsFullScreen = false;
 
@@ -184,7 +188,7 @@ namespace PRGUI.Demo {
                 DefaultFont = Font,
                 TitleFont = TitleFont,
                 TooltipFont = tooltipFont,
-                AcceleratorFont = tooltipFont
+                AcceleratorFont = tooltipFont,
             };
 
             UIRenderTarget = new AutoRenderTarget(

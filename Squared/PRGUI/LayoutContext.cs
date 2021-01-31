@@ -936,7 +936,7 @@ namespace Squared.PRGUI.Layout {
 
             var pItem = LayoutPtr(control);
             var rect = GetRect(control);
-            if (rect[wdim] < -1)
+            if (false && (rect[wdim] < -1))
                 System.Diagnostics.Debugger.Break();
 
             // FIXME
