@@ -32,6 +32,7 @@ namespace Squared.PRGUI.Controls {
             : base () {
             GroupId = $"TabContainer#{NextGroupId++}";
             ClipChildren = false;
+            ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap;
             TabStrip = new ControlGroup {
                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
                 ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_No_Expansion | ControlFlags.Container_Prevent_Crush
@@ -89,8 +90,9 @@ namespace Squared.PRGUI.Controls {
 
                 return result;
             } else {
-                foreach (var item in _Children)
+                foreach (var item in _Children) {
                     item.Visible = (item == st) || (item == TabStrip);
+                }
             }
 
             var containerFlags = ContainerFlags | ExtraContainerFlags;
@@ -106,7 +108,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         private static void LayoutItem (ref UIOperationContext context, ControlKey? existingKey, ControlKey self, Vector2 adoc, Control item) {
-            item.ForceBreak = true;
+            item.LayoutFlags = ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_Fill_Row |
+                ControlFlags.Layout_ForceBreak;
             item.AbsoluteDisplayOffset = adoc;
 
             // If we're performing layout again on an existing layout item, attempt to do the same
