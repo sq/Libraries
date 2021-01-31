@@ -469,6 +469,12 @@ namespace PRGUI.Demo {
                 }
             };
 
+            var tabs = new TabContainer {
+                { scrollableClipTest, "Scrollable" },
+                { listboxContainer, "Listbox" }
+            };
+            tabs.LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top;
+
             var bigScrollableContainer = new Container {
                 ClipChildren = true,
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
@@ -496,13 +502,7 @@ namespace PRGUI.Demo {
                                 Height = { Fixed = 1800 },
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
                             },
-                            // FIXME: Why does this have a bunch of horizontal space in it?
-                            new TabContainer {
-                                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
-                                Tabs = {
-                                    scrollableClipTest, listboxContainer
-                                }
-                            }
+                            tabs
                         }
                     },
                     new Button {

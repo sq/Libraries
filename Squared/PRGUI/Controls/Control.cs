@@ -37,6 +37,11 @@ namespace Squared.PRGUI {
             return $"Clamp({Fixed?.ToString() ?? "<null>"}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
         }
     }
+
+    public interface IControlEventFilter {
+        bool OnEvent (Control target, string name);
+        bool OnEvent<T> (Control target, string name, T args);
+    }
     
     public abstract partial class Control {
         public static bool ShowDebugBoxes = false;
@@ -46,6 +51,8 @@ namespace Squared.PRGUI {
         public string DebugLabel = null;
 
         internal int TypeID;
+
+        public IControlEventFilter EventFilter;
 
         public ControlAppearance Appearance;
         public Margins Margins, Padding;
@@ -309,11 +316,13 @@ namespace Squared.PRGUI {
         }
 
         protected bool FireEvent<T> (string name, T args) {
-            return Context?.FireEvent(name, this, args, suppressHandler: true) ?? false;
+            return (EventFilter?.OnEvent(this, name, args) ?? false) || 
+                (Context?.FireEvent(name, this, args, suppressHandler: true) ?? false);
         }
 
         protected bool FireEvent (string name) {
-            return Context?.FireEvent(name, this, suppressHandler: true) ?? false;
+            return (EventFilter?.OnEvent(this, name) ?? false) || 
+                (Context?.FireEvent(name, this, suppressHandler: true) ?? false);
         }
 
         protected T? AutoFireTweenEvent<T> (long now, string name, ref Tween<T>? tween, ref bool eventFired)
@@ -360,11 +369,11 @@ namespace Squared.PRGUI {
         }
 
         internal bool HandleEvent (string name) {
-            return OnEvent(name);
+            return (EventFilter?.OnEvent(this, name) ?? false) || OnEvent(name);
         }
 
         internal bool HandleEvent<T> (string name, T args) {
-            return OnEvent(name, args);
+            return (EventFilter?.OnEvent(this, name, args) ?? false) || OnEvent(name, args);
         }
 
         protected virtual bool OnEvent (string name) {
