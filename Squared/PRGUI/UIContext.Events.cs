@@ -216,8 +216,7 @@ namespace Squared.PRGUI {
                 return false;
 
             // HACK: Ensure that key repeat doesn't continue if the original repeat target becomes defocused
-            if (isRepeat && (LastNonRepeatKeyPressTarget != Focused))
-                return false;
+            var suppressRepeat = isRepeat && (LastNonRepeatKeyPressTarget != Focused);
 
             var evt = new KeyEventArgs {
                 Context = this,
@@ -225,7 +224,7 @@ namespace Squared.PRGUI {
                 Key = key,
                 Char = ch,
                 IsVirtualInput = isVirtual,
-                IsRepeat = isRepeat
+                IsRepeat = isRepeat && !suppressRepeat
             };
 
             if (name == UIEvents.KeyDown) {
@@ -244,12 +243,13 @@ namespace Squared.PRGUI {
                     if (!HasPressedKeySincePressingAlt)
                         AcceleratorOverlayVisible = !AcceleratorOverlayVisible;
                 }
-            } else if (name == UIEvents.KeyPress) {
-                LastNonRepeatKeyPressTarget = Focused;
             }
 
+            if ((name == UIEvents.KeyPress) && !isRepeat)
+                LastNonRepeatKeyPressTarget = Focused;
+
             // FIXME: Suppress events with a char if the target doesn't accept text input?
-            if (FireEvent(name, Focused, evt))
+            if (!suppressRepeat && FireEvent(name, Focused, evt))
                 return true;
 
             bool needsToClearFocus = false;
@@ -268,6 +268,9 @@ namespace Squared.PRGUI {
                         break;
                 }
             }
+
+            if (suppressRepeat)
+                return false;
 
             var activeModal = ActiveModal;
 
