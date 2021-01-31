@@ -111,6 +111,14 @@ namespace Squared.PRGUI.Controls {
             DefaultCreateControlForValue = _DefaultCreateControlForValue;
         }
 
+        protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputePadding(context, decorations, out result);
+            var paddingScale = context.DecorationProvider.SpacingScaleRatio * context.DecorationProvider.PaddingScaleRatio;
+            var width = context.DecorationProvider.DropdownArrow.Padding.X * context.DecorationProvider.SizeScaleRatio.X;
+            result.Right += width / paddingScale.X;
+            // FIXME: Use the Y value?
+        }
+
         private Control _DefaultCreateControlForValue (ref T value, Control existingControl) {
             var st = (existingControl as StaticText) ?? new StaticText();
             var text =
@@ -232,6 +240,8 @@ namespace Squared.PRGUI.Controls {
             if (ItemsMenu.IsActive)
                 settings.State |= ControlStates.Pressed;
             base.OnRasterize(context, ref renderer, settings, decorations);
+
+            context.DecorationProvider.DropdownArrow?.Rasterize(context, ref renderer, settings);
 
             // FIXME: There is probably a better place to clear this flag
             MenuJustClosed = false;

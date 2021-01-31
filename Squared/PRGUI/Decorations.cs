@@ -131,6 +131,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Slider { get; }
         IDecorator SliderThumb { get; }
         IDecorator Dropdown { get; }
+        IDecorator DropdownArrow { get; }
         IDecorator AcceleratorTarget { get; }
         IDecorator AcceleratorLabel { get; }
         IDecorator ParameterGauge { get; }

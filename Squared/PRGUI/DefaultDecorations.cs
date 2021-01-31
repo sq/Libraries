@@ -44,6 +44,7 @@ namespace Squared.PRGUI {
         public IDecorator Slider { get; set; }
         public IDecorator SliderThumb { get; set; }
         public IDecorator Dropdown { get; set; }
+        public IDecorator DropdownArrow { get; set; }
         public IDecorator AcceleratorLabel { get; set; }
         public IDecorator AcceleratorTarget { get; set; }
         public IDecorator ParameterGauge { get; set; }
@@ -328,7 +329,13 @@ namespace Squared.PRGUI {
                 GetTextSettings = GetTextSettings_Button,
                 GetFont = () => ButtonFont ?? DefaultFont,
                 Below = Button_Below,
-                Above = Dropdown_Above
+                Above = Button_Above
+            };
+
+            DropdownArrow = new DelegateDecorator {
+                Padding = new Margins(DropdownArrowWidth, DropdownArrowHeight, 0, 0),
+                Margins = new Margins(DropdownArrowPadding),
+                Above = DropdownArrow_Above
             };
 
             AcceleratorLabel = new DelegateDecorator {
@@ -596,8 +603,7 @@ namespace Squared.PRGUI {
             );
         }
 
-        private void Dropdown_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            Button_Above(context, ref renderer, settings);
+        private void DropdownArrow_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             var isPressed = settings.State.IsFlagged(ControlStates.Pressed);
             GetContentAdjustment_Button(context, settings.State, out Vector2 offset, out Vector2 scale);
             settings.ContentBox.SnapAndInset(out Vector2 tl, out Vector2 br);
