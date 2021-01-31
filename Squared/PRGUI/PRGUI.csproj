@@ -62,6 +62,7 @@
     <Compile Include="Controls\Slider.cs" />
     <Compile Include="Controls\StaticImage.cs" />
     <Compile Include="Controls\StaticText.cs" />
+    <Compile Include="Controls\TabContainer.cs" />
     <Compile Include="Controls\TitledContainer.cs" />
     <Compile Include="Controls\Tooltip.cs" />
     <Compile Include="Controls\Window.cs" />

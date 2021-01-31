@@ -726,7 +726,7 @@ namespace Squared.PRGUI {
                     var crLayer = contentRenderer.Layer;
                     contentRenderer.Layer = -999;
                     settings.State = default(ControlStates);
-                    decorations.Rasterize(contentContext, ref contentRenderer, temp);
+                    decorations?.Rasterize(contentContext, ref contentRenderer, temp);
 
                     if (passSet.StackDepth > 1) {
                         // If this is a nested stencil pass, erase our stencil data and restore what was there before

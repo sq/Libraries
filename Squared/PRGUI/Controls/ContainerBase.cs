@@ -13,18 +13,137 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public abstract class ContainerBase : Control, IControlContainer {
+    /// <summary>
+    /// A control that owns child controls with no particular layout or rendering behavior
+    /// </summary>
+    public abstract class ControlParentBase : Control, IControlContainer {
         protected ControlCollection _Children;
         protected ControlCollection Children {
             get {
-                if (DynamicContentIsInvalid)
-                    GenerateDynamicContent(false || DynamicContentIsInvalid);
+                EnsureChildrenAreValid();
                 return _Children;
             }
         }
 
         ControlCollection IControlContainer.Children => Children;
 
+        protected ControlParentBase () 
+            : base () {
+            _Children = new ControlCollection(this);
+        }
+
+        /// <summary>
+        /// If set, children will only be rendered within the volume of this container
+        /// </summary>
+        protected bool ClipChildren { get; set; } = false;
+
+        bool IControlContainer.ClipChildren {
+            get => ClipChildren;
+            set => ClipChildren = value;
+        }
+
+        public ControlFlags ContainerFlags { get; set; } =
+            ControlFlags.Container_Align_Start | ControlFlags.Container_Row | 
+            ControlFlags.Container_Wrap;
+
+        /// <summary>
+        /// Extra container flags that will be or'd in at layout time
+        /// </summary>
+        protected ControlFlags ExtraContainerFlags = default(ControlFlags);
+
+        /// <summary>
+        /// Prevents the container's children from ever being crushed below their minimum sizes,
+        ///  which will create overflow you need to clip and/or scroll
+        /// </summary>
+        public bool PreventCrush {
+            get => ContainerFlags.IsFlagged(ControlFlags.Container_Prevent_Crush);
+            set => ContainerFlags = (ContainerFlags & ~ControlFlags.Container_Prevent_Crush) |
+                (value ? ControlFlags.Container_Prevent_Crush : default(ControlFlags));
+        }
+
+        protected override bool ShouldClipContent => ClipChildren && (_Children.Count > 0);
+        // FIXME: Always true?
+        protected override bool HasChildren => (Children.Count > 0);
+
+        protected virtual bool HideChildren => false;
+
+        public override void InvalidateLayout () {
+            base.InvalidateLayout();
+            foreach (var ch in _Children)
+                ch.InvalidateLayout();
+        }
+
+        protected abstract void EnsureChildrenAreValid ();
+        protected abstract void OnDescendantReceivedFocus (Control control, bool isUserInitiated);
+
+        /// <summary>
+        /// Rasterizes a child control and updates the pass layer data
+        /// </summary>
+        /// <returns>Whether the child was successfully rasterized</returns>
+        protected virtual bool RasterizeChild (
+            ref UIOperationContext context, Control item, ref RasterizePassSet passSet, 
+            int layer1, int layer2, int layer3, ref int maxLayer1, 
+            ref int maxLayer2, ref int maxLayer3
+        ) {
+            passSet.Below.Layer = layer1;
+            passSet.Content.Layer = layer2;
+            passSet.Above.Layer = layer3;
+
+            var result = item.Rasterize(ref context, ref passSet);
+
+            maxLayer1 = Math.Max(maxLayer1, passSet.Below.Layer);
+            maxLayer2 = Math.Max(maxLayer2, passSet.Content.Layer);
+            maxLayer3 = Math.Max(maxLayer3, passSet.Above.Layer);
+
+            return result;
+        }
+
+        protected override void OnVisibilityChange (bool newValue) {
+            base.OnVisibilityChange(newValue);
+
+            if (newValue)
+                return;
+
+            ReleaseChildFocus();
+        }
+
+        protected void ReleaseChildFocus () {
+            if (IsEqualOrAncestor(Context?.Focused, this))
+                Context.NotifyControlBecomingInvalidFocusTarget(Context.Focused, false);
+        }
+
+        void IControlContainer.DescendantReceivedFocus (Control descendant, bool isUserInitiated) {
+            OnDescendantReceivedFocus(descendant, isUserInitiated);
+        }
+
+        protected bool HitTestShell (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+            return base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+        }
+
+        protected virtual bool HitTestInterior (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+            return AcceptsMouseInput || !acceptsMouseInputOnly;
+        }
+
+        public T Child<T> (Func<T, bool> predicate)
+            where T : Control {
+
+            foreach (var child in Children) {
+                if (!(child is T))
+                    continue;
+                var t = (T)child;
+                if (predicate(t))
+                    return t;
+            }
+
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// A control that can host multiple child controls with support for scrolling, columns, etc
+    /// Child controls are arranged based on its ContainerFlags
+    /// </summary>
+    public abstract class ContainerBase : ControlParentBase, IControlContainer {
         protected virtual Vector2 AbsoluteDisplayOffsetOfChildren => AbsoluteDisplayOffset;
 
         private int _ColumnCount = 1;
@@ -55,35 +174,6 @@ namespace Squared.PRGUI.Controls {
         /// If set, children will not be processed by HitTest
         /// </summary>
         protected bool DisableChildHitTests = false;
-
-        /// <summary>
-        /// If set, children will only be rendered within the volume of this container
-        /// </summary>
-        protected bool ClipChildren { get; set; } = false;
-
-        bool IControlContainer.ClipChildren {
-            get => ClipChildren;
-            set => ClipChildren = value;
-        }
-
-        public ControlFlags ContainerFlags { get; set; } =
-            ControlFlags.Container_Align_Start | ControlFlags.Container_Row | 
-            ControlFlags.Container_Wrap;
-
-        /// <summary>
-        /// Extra container flags that will be or'd in at layout time
-        /// </summary>
-        protected ControlFlags ExtraContainerFlags = default(ControlFlags);
-
-        /// <summary>
-        /// Prevents the container's children from ever being crushed below their minimum sizes,
-        ///  which will create overflow you need to clip and/or scroll
-        /// </summary>
-        public bool PreventCrush {
-            get => ContainerFlags.IsFlagged(ControlFlags.Container_Prevent_Crush);
-            set => ContainerFlags = (ContainerFlags & ~ControlFlags.Container_Prevent_Crush) |
-                (value ? ControlFlags.Container_Prevent_Crush : default(ControlFlags));
-        }
 
         /// <summary>
         /// Enables DynamicContents. Disable this if you plan to generate children yourself in a derived type
@@ -117,7 +207,14 @@ namespace Squared.PRGUI.Controls {
 
         public ContainerBase () 
             : base () {
-            _Children = new ControlCollection(this);
+        }
+
+        protected override void EnsureChildrenAreValid () {
+            if (DynamicContentIsInvalid)
+                GenerateDynamicContent(false || DynamicContentIsInvalid);
+        }
+
+        protected override void OnDescendantReceivedFocus (Control control, bool isUserInitiated) {
         }
 
         public void InvalidateDynamicContent () {
@@ -128,8 +225,6 @@ namespace Squared.PRGUI.Controls {
             base.InvalidateLayout();
             for (int i = 0, c = (ColumnKeys?.Length ?? 0); i < c; i++)
                 ColumnKeys[i] = ControlKey.Invalid;
-            foreach (var ch in _Children)
-                ch.InvalidateLayout();
         }
 
         private bool IsGeneratingDynamicContent = false;
@@ -186,7 +281,7 @@ namespace Squared.PRGUI.Controls {
         
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
-            if (result.IsInvalid) {
+            if (result.IsInvalid || SuppressChildLayout) {
                 foreach (var item in _Children)
                     item.InvalidateLayout();
 
@@ -205,48 +300,39 @@ namespace Squared.PRGUI.Controls {
 
             context.Layout.SetContainerFlags(result, containerFlags);
 
-            if (SuppressChildLayout) {
-                // FIXME: We need to also lock our minimum width in this case
-                // HACK
-                foreach (var item in _Children)
-                    item.InvalidateLayout();
+            GenerateDynamicContent(false || DynamicContentIsInvalid);
 
-                return result;
+            if (ColumnCount != (ColumnKeys?.Length ?? 0))
+                ColumnKeys = new ControlKey[ColumnCount];
+
+            if (multiColumn) {
+                if (!existingKey.HasValue)
+                    for (int i = 0; i < ColumnCount; i++)
+                        ColumnKeys[i] = CreateColumn(context, result, i);
             } else {
-                GenerateDynamicContent(false || DynamicContentIsInvalid);
-
-                if (ColumnCount != (ColumnKeys?.Length ?? 0))
-                    ColumnKeys = new ControlKey[ColumnCount];
-
-                if (multiColumn) {
-                    if (!existingKey.HasValue)
-                        for (int i = 0; i < ColumnCount; i++)
-                            ColumnKeys[i] = CreateColumn(context, result, i);
-                } else {
-                    ColumnKeys[0] = result;
-                }
-
-                var adoc = AbsoluteDisplayOffsetOfChildren;
-                for (int i = 0, c = _Children.Count; i < c; i++) {
-                    var item = _Children[i];
-                    var columnIndex = i % ColumnCount;
-                    item.AbsoluteDisplayOffset = adoc;
-
-                    // If we're performing layout again on an existing layout item, attempt to do the same
-                    //  for our children
-                    var childExistingKey = (ControlKey?)null;
-                    if ((existingKey.HasValue) && !item.LayoutKey.IsInvalid)
-                        childExistingKey = item.LayoutKey;
-
-                    var itemKey = item.GenerateLayoutTree(ref context, ColumnKeys[columnIndex], childExistingKey);
-                    if (multiColumn && AutoBreakColumnItems) {
-                        var lf = Context.Layout.GetLayoutFlags(itemKey);
-                        if (!lf.IsBreak())
-                            Context.Layout.SetLayoutFlags(itemKey, lf | ControlFlags.Layout_ForceBreak);
-                    }
-                }
-                return result;
+                ColumnKeys[0] = result;
             }
+
+            var adoc = AbsoluteDisplayOffsetOfChildren;
+            for (int i = 0, c = _Children.Count; i < c; i++) {
+                var item = _Children[i];
+                var columnIndex = i % ColumnCount;
+                item.AbsoluteDisplayOffset = adoc;
+
+                // If we're performing layout again on an existing layout item, attempt to do the same
+                //  for our children
+                var childExistingKey = (ControlKey?)null;
+                if ((existingKey.HasValue) && !item.LayoutKey.IsInvalid)
+                    childExistingKey = item.LayoutKey;
+
+                var itemKey = item.GenerateLayoutTree(ref context, ColumnKeys[columnIndex], childExistingKey);
+                if (multiColumn && AutoBreakColumnItems) {
+                    var lf = Context.Layout.GetLayoutFlags(itemKey);
+                    if (!lf.IsBreak())
+                        Context.Layout.SetLayoutFlags(itemKey, lf | ControlFlags.Layout_ForceBreak);
+                }
+            }
+            return result;
         }
 
         protected override void OnDisplayOffsetChanged () {
@@ -254,12 +340,6 @@ namespace Squared.PRGUI.Controls {
             foreach (var child in _Children)
                 child.AbsoluteDisplayOffset = adoc;
         }
-
-        protected override bool ShouldClipContent => ClipChildren && (_Children.Count > 0);
-        // FIXME: Always true?
-        protected override bool HasChildren => (Children.Count > 0);
-
-        protected virtual bool HideChildren => false;
 
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             if (HideChildren)
@@ -383,49 +463,9 @@ namespace Squared.PRGUI.Controls {
             return itemsAttempted;
         }
 
-        /// <summary>
-        /// Rasterizes a child control and updates the pass layer data
-        /// </summary>
-        /// <returns>Whether the child was successfully rasterized</returns>
-        protected virtual bool RasterizeChild (
-            ref UIOperationContext context, Control item, ref RasterizePassSet passSet, 
-            int layer1, int layer2, int layer3, ref int maxLayer1, 
-            ref int maxLayer2, ref int maxLayer3
-        ) {
-            passSet.Below.Layer = layer1;
-            passSet.Content.Layer = layer2;
-            passSet.Above.Layer = layer3;
-
-            var result = item.Rasterize(ref context, ref passSet);
-
-            maxLayer1 = Math.Max(maxLayer1, passSet.Below.Layer);
-            maxLayer2 = Math.Max(maxLayer2, passSet.Content.Layer);
-            maxLayer3 = Math.Max(maxLayer3, passSet.Above.Layer);
-
-            return result;
-        }
-
         protected override void OnVisibilityChange (bool newValue) {
-            base.OnVisibilityChange(newValue);
-
             DynamicContentIsInvalid = true;
-            if (newValue)
-                return;
-
-            ReleaseChildFocus();
-        }
-
-        protected void ReleaseChildFocus () {
-            if (IsEqualOrAncestor(Context?.Focused, this))
-                Context.NotifyControlBecomingInvalidFocusTarget(Context.Focused, false);
-        }
-
-        protected bool HitTestShell (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
-            return base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
-        }
-
-        protected virtual bool HitTestInterior (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            return AcceptsMouseInput || !acceptsMouseInputOnly;
+            base.OnVisibilityChange(newValue);
         }
 
         protected bool HitTestChildren (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
@@ -454,27 +494,6 @@ namespace Squared.PRGUI.Controls {
             bool success = !DisableSelfHitTests && HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
             success |= HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
             return success;
-        }
-
-        public T Child<T> (Func<T, bool> predicate)
-            where T : Control {
-
-            foreach (var child in Children) {
-                if (!(child is T))
-                    continue;
-                var t = (T)child;
-                if (predicate(t))
-                    return t;
-            }
-
-            return null;
-        }
-
-        protected virtual void OnDescendantReceivedFocus (Control control, bool isUserInitiated) {
-        }
-
-        void IControlContainer.DescendantReceivedFocus (Control descendant, bool isUserInitiated) {
-            OnDescendantReceivedFocus(descendant, isUserInitiated);
         }
     }
 

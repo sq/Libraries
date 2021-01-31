@@ -431,6 +431,44 @@ namespace PRGUI.Demo {
                 Width = { Fixed = 450 }
             };
 
+            var scrollableClipTest = new Container {
+                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
+                ContainerFlags = ControlFlags.Container_Wrap | ControlFlags.Container_Row,
+                Children = {
+                    new Container {
+                        ClipChildren = true,
+                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
+                        Height = { Maximum = 500 },
+                        Width = { Fixed = 450 },
+                        Scrollable = true,
+                        Children = {
+                            new StaticText { Text = "Testing nested clips" },
+                            new StaticText {
+                                Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
+                                Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                            },
+                            new Checkbox { Text = "Checkbox 1", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak },
+                            new Checkbox { Text = "Checkbox 2", Checked = true },
+                            new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
+                            new RadioButton { Text = "Radio 2", GroupId = "radio" },
+                            new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
+                            supernestedGroup
+                        }
+                    },
+                    increaseGaugeButton,
+                    gauge
+                }
+            };
+
+            var listboxContainer = new ControlGroup {
+                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
+                Children = {
+                    virtualCheckbox,
+                    columnCount,
+                    listBox
+                }
+            };
+
             var bigScrollableContainer = new Container {
                 ClipChildren = true,
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
@@ -459,40 +497,10 @@ namespace PRGUI.Demo {
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
                             },
                             // FIXME: Why does this have a bunch of horizontal space in it?
-                            new Container {
+                            new TabContainer {
                                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
-                                ContainerFlags = ControlFlags.Container_Wrap | ControlFlags.Container_Row,
-                                Children = {
-                                    new Container {
-                                        ClipChildren = true,
-                                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
-                                        Height = { Maximum = 500 },
-                                        Width = { Fixed = 450 },
-                                        Scrollable = true,
-                                        Children = {
-                                            new StaticText { Text = "Testing nested clips" },
-                                            new StaticText {
-                                                Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
-                                                Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
-                                            },
-                                            new Checkbox { Text = "Checkbox 1", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak },
-                                            new Checkbox { Text = "Checkbox 2", Checked = true },
-                                            new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
-                                            new RadioButton { Text = "Radio 2", GroupId = "radio" },
-                                            new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
-                                            supernestedGroup
-                                        }
-                                    },
-                                    increaseGaugeButton,
-                                    gauge
-                                }
-                            },
-                            new ControlGroup {
-                                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
-                                Children = {
-                                    virtualCheckbox,
-                                    columnCount,
-                                    listBox
+                                Tabs = {
+                                    scrollableClipTest, listboxContainer
                                 }
                             }
                         }

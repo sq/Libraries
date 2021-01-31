@@ -51,6 +51,7 @@ namespace Squared.PRGUI {
         public IDecorator Gauge { get; set; }
         public IDecorator VirtualCursor { get; set; }
         public IDecorator VirtualCursorAnchor { get; set; }
+        public IDecorator TabPage { get; set; }
 
         public float AnimationDurationMultiplier { get; set; }
 
