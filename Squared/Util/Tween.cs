@@ -190,18 +190,22 @@ namespace Squared.Util {
             return unclamped >= (1f + RepeatCount);
         }
 
-        public Tween<T> ChangeDirection (T to, long now, float? seconds = null) {
+        public Tween<T> ChangeDirection (T to, long now, float? seconds = null, float? delaySeconds = null, BoundInterpolator<T, Tween<T>> interpolator = null) {
             if (RepeatCount > 0)
                 throw new InvalidOperationException("Changing direction is not possible for a repeating tween");
 
+            var startWhen =
+                delaySeconds.HasValue
+                    ? now + (long)(delaySeconds.Value * Time.SecondInTicks)
+                    : now;
             var endWhen = 
                 seconds.HasValue
-                    ? now + (long)(seconds.Value * Time.SecondInTicks)
-                    : EndWhen;
+                    ? startWhen + (long)(seconds.Value * Time.SecondInTicks)
+                    : startWhen + (EndWhen - StartedWhen);
             return new Tween<T>(
                 Get(now), to, 
-                startWhen: now, endWhen: endWhen,
-                interpolator: Interpolator,
+                startWhen: startWhen, endWhen: endWhen,
+                interpolator: interpolator ?? Interpolator,
                 repeatCount: 0,
                 repeatMode: RepeatMode
             );

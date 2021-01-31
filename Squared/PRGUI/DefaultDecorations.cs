@@ -323,7 +323,7 @@ namespace Squared.PRGUI {
 
             Dropdown = new DelegateDecorator {
                 Margins = new Margins(GlobalDefaultMargin),
-                Padding = new Margins(16, 8, 16 + DropdownArrowWidth + 6, 8),
+                Padding = new Margins(16, 8),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
                 GetFont = () => ButtonFont ?? DefaultFont,
@@ -398,7 +398,7 @@ namespace Squared.PRGUI {
         private void UpdateScaledSizes () {
             ((DelegateDecorator)Checkbox).Padding =
                 ((DelegateDecorator)RadioButton).Padding =
-                new Margins(6 + ScaledCheckboxSize + (4 * SizeScaleRatio.X), 6, 6, 6);
+                new Margins(6 + CheckboxSize + 4, 6, 6, 6);
         }
 
         public IGlyphSource DefaultFont,
@@ -602,9 +602,11 @@ namespace Squared.PRGUI {
             GetContentAdjustment_Button(context, settings.State, out Vector2 offset, out Vector2 scale);
             settings.ContentBox.SnapAndInset(out Vector2 tl, out Vector2 br);
 
-            var ySpace = (float)Math.Floor((settings.ContentBox.Height - DropdownArrowHeight) / 2f);
-            var a = new Vector2(br.X + DropdownArrowPadding + offset.X, tl.Y + ySpace + offset.Y);
-            var b = a + new Vector2(DropdownArrowWidth, DropdownArrowHeight);
+            var scaleSz = SizeScaleRatio;
+            var ySpace = (float)Math.Floor((settings.ContentBox.Height - DropdownArrowHeight * scaleSz.Y) / 2f);
+            var pad = DropdownArrowPadding * scaleSz.X;
+            var a = new Vector2(br.X + pad + offset.X, tl.Y + ySpace + offset.Y);
+            var b = a + new Vector2(DropdownArrowWidth, DropdownArrowHeight) * scaleSz;
             var color = Color.White;
             var outlineColor = Color.Black;
 

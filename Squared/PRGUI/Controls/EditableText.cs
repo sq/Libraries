@@ -62,7 +62,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public const int ControlMinimumWidth = 300;
+        public const int ControlMinimumWidth = 250;
+        public bool DisableMinimumSize = false;
 
         public static readonly Menu ContextMenu = new Menu {
             Children = {
@@ -478,7 +479,8 @@ namespace Squared.PRGUI.Controls {
 
             var lineHeight = DynamicLayout.GlyphSource.LineSpacing;
             var contentMinimumHeight = lineHeight * (Multiline ? 2 : 1) + CachedPadding.Y; // FIXME: Include padding
-            minimumWidth = minimumWidth ?? (ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
+            if (!DisableMinimumSize)
+                minimumWidth = minimumWidth ?? (ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
             minimumHeight = Math.Max(minimumHeight ?? 0, contentMinimumHeight);
         }
 

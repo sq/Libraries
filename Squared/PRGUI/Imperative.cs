@@ -589,6 +589,16 @@ namespace Squared.PRGUI.Imperative {
                 cast2.IntegerOnly = value;
             return this;
         }
+        public ControlBuilder<TControl> SetIncrement<TValue> (TValue value)
+            where TValue : struct, IComparable<TValue>
+        {
+            if (Control is ParameterEditor<TValue> cast1) {
+                cast1.Increment = value;
+            } else if (Control is Slider cast2) {
+                cast2.KeyboardSpeed = Convert.ToSingle(value);
+            }
+            return this;
+        }
         public ControlBuilder<TControl> SetRange<TValue> (TValue? min = null, TValue? max = null)
             where TValue : struct, IComparable<TValue>
         {

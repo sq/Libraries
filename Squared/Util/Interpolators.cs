@@ -207,6 +207,122 @@ namespace Squared.Util {
             );
         }
 
+        private class ExponentialInterpolator {
+            public float ExponentIn, ExponentMidpoint, ExponentOut;
+
+            public T Interpolate<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+                var centered = positionInWindow - 0.5f;
+                var exponent1 = Arithmetic.Lerp(ExponentIn, ExponentMidpoint, positionInWindow * 2f);
+                var exponent2 = Arithmetic.Lerp(ExponentMidpoint, ExponentOut, centered);
+                var left =
+                    (centered < 0)
+                        ? Math.Pow(positionInWindow * 2f, exponent1)
+                        : 1;
+                var right =
+                    (centered >= 0)
+                        ? 1 - Math.Pow(1 - (centered * 2f), exponent2)
+                        : 0;
+                var finalPosition = (left + right) / 2f;
+                return _Linear(
+                    data(ref obj, dataOffset),
+                    data(ref obj, dataOffset + 1),
+                    (float)finalPosition
+                );
+            }
+        }
+
+        public static BoundInterpolator<T, U> Exponential<U> (float exponent = 2) {
+            var obj = new ExponentialInterpolator {
+                ExponentIn = exponent,
+                ExponentMidpoint = exponent,
+                ExponentOut = exponent
+            };
+            return obj.Interpolate;
+        } 
+
+        public static BoundInterpolator<T, U> Exponential<U> (float start, float? mid, float? end) {
+            var obj = new ExponentialInterpolator {
+                ExponentIn = start,
+                ExponentMidpoint = mid ?? start,
+                ExponentOut = end ?? start
+            };
+            return obj.Interpolate;
+        } 
+
+        public abstract class Easing {
+            public abstract float GetT (float t);
+
+            public T Get (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
+                return _Linear(
+                    data(dataOffset),
+                    data(dataOffset + 1),
+                    GetT(positionInWindow)
+                );
+            }
+        }
+
+        public static class Ease {
+            internal class EaseInSine : Easing {
+                public override float GetT (float t) => 
+                    (float)(1 - Math.Cos((t * Math.PI) / 2));
+            }
+
+            internal class EaseOutSine : Easing {
+                public override float GetT (float t) =>
+                    (float)(Math.Sin((t * Math.PI) / 2));
+            }
+
+            internal class EaseSine : Easing {
+                public override float GetT (float t) => 
+                    (float)-(Math.Cos(Math.PI * t) - 1) / 2;
+            }
+
+            public static readonly Easing InSine = new EaseInSine(),
+                Sine = new EaseSine(),
+                OutSine = new EaseOutSine();
+
+            public class InExponential : Easing {
+                public float Exponent = 2;
+
+                public override float GetT (float t) => 
+                    (float)Math.Pow(t, Exponent);
+            }
+
+            public class OutExponential : Easing {
+                public float Exponent = 2;
+
+                public override float GetT (float t) =>
+                    1f - (float)Math.Pow(1 - t, Exponent);
+            }
+
+            public class Exponential : Easing {
+                public float Exponent = 2;
+
+                public override float GetT (float t) {
+                    var tE = Math.Pow(t, Exponent);
+                    return (float)(tE / (tE + Math.Pow(1 - t, Exponent)));
+                }
+            }
+        }
+
+        private class EasedInterpolator {
+            public Easing Ease;
+
+            public T Interpolate<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+                var t = Ease.GetT(positionInWindow);
+                return _Linear(
+                    data(ref obj, dataOffset),
+                    data(ref obj, dataOffset + 1),
+                    t
+                );
+            }
+        }
+
+        public static BoundInterpolator<T, U> Eased<U> (Easing easing) {
+            var obj = new EasedInterpolator { Ease = easing };
+            return obj.Interpolate<U>;
+        }
+
         public static T Cubic<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
             if (positionInWindow < 0) {
                 var n = Math.Ceiling(Math.Abs(positionInWindow));

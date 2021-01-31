@@ -19,7 +19,7 @@ namespace Squared.PRGUI.Controls {
         /// Rasterizes boxes for each text control's box, content box, and text layout box
         /// Also rasterizes a yellow line for the wrap/break threshold
         /// </summary>
-        public static bool VisualizeLayout = false;
+        public static bool VisualizeLayout = true;
 
         /// <summary>
         /// If true, the control will have its size set exactly to fit its content.
@@ -245,8 +245,8 @@ namespace Squared.PRGUI.Controls {
             var fontChanged = UpdateFont(context, textDecorations, decorations);
 
             ComputePadding(context, decorations, out Margins computedPadding);
-            var sr = context.DecorationProvider.SpacingScaleRatio;
-            // Margins.Scale(ref computedPadding, ref sr);
+            var sr = context.DecorationProvider.SpacingScaleRatio * context.DecorationProvider.PaddingScaleRatio;
+            Margins.Scale(ref computedPadding, ref sr);
 
             var contentChanged = (ContentMeasurement?.IsValid == false) || !Content.IsValid;
             if (contentChanged || fontChanged)
@@ -330,26 +330,19 @@ namespace Squared.PRGUI.Controls {
 
             ComputePadding(context, decorations, out Margins computedPadding);
             var paddingScale = (context.DecorationProvider.SpacingScaleRatio * context.DecorationProvider.PaddingScaleRatio);
-            /*
-            paddingScale.X = 1.0f / paddingScale.X;
-            paddingScale.Y = 1.0f / paddingScale.Y;
             Margins.Scale(ref computedPadding, ref paddingScale);
-            */
             float? constrainedWidth = null;
+            var max = (Width.Fixed ?? Width.Maximum) ?? (9999f) - computedPadding.X;
             if (MostRecentContentWidth.HasValue) {
                 // FIXME
-                float computed = (MostRecentWidth - computedPadding.X) ?? 0;
-                if (Width.Maximum.HasValue)
-                    constrainedWidth = Math.Min(computed, Width.Maximum.Value - computedPadding.X);
-                else
-                    constrainedWidth = computed;
+                float computed = MostRecentContentWidth.Value;
+                constrainedWidth = Math.Min(computed, max);
             } else
-                constrainedWidth = Width.Maximum - computedPadding.X;
+                constrainedWidth = max - computedPadding.X;
 
-            var limit = Width.Fixed ?? constrainedWidth;
-            if (limit.HasValue)
+            if (constrainedWidth.HasValue)
                 // HACK: Suppress jitter
-                return (float)Math.Ceiling(limit.Value) + AutoSizePadding;
+                return (float)Math.Ceiling(constrainedWidth.Value) + AutoSizePadding;
             else
                 return null;
         }
@@ -390,10 +383,11 @@ namespace Squared.PRGUI.Controls {
             Content.DefaultColor = defaultColor ?? Color.White;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            settings.ContentBox.SnapAndInset(out Vector2 ca, out Vector2 cb);
 
             Vector2 textOffset = Vector2.Zero, textScale = Vector2.One;
             decorations?.GetContentAdjustment(context, settings.State, out textOffset, out textScale);
-            textOffset += a + new Vector2(computedPadding.Left, computedPadding.Top);
+            textOffset += ca;
 
             UpdateLineBreak(context, decorations);
 
@@ -420,7 +414,6 @@ namespace Squared.PRGUI.Controls {
 
             if (VisualizeLayout) {
                 if (context.Pass == RasterizePasses.Content) {
-                    settings.ContentBox.SnapAndInset(out Vector2 ca, out Vector2 cb);
                     renderer.RasterizeRectangle(a, b, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Red);
                     renderer.RasterizeRectangle(ca, cb, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Green);
                     renderer.RasterizeRectangle(textOffset, textOffset + layout.Size * textScale, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue);
