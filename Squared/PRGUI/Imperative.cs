@@ -151,8 +151,9 @@ namespace Squared.PRGUI.Imperative {
             return this.Text<StaticText>(text, layoutFlags);
         }
 
-        public ControlBuilder<Spacer> Spacer () {
-            return this.New<Spacer>();
+        public ControlBuilder<Spacer> Spacer (bool forceBreak = false) {
+            return this.New<Spacer>()
+                .SetForceBreak(forceBreak);
         }
 
         public ControlBuilder<TControl> Text<TControl> (AbstractString text, ControlFlags? layoutFlags = null)
