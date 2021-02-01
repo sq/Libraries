@@ -204,7 +204,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         public RectF GetRect (ControlKey key) {
-            if (key.IsInvalid)
+            if (key.IsInvalid || key.ID >= Boxes.Count)
                 return default(RectF);
 
             return Boxes.DangerousGetItem(key.ID);

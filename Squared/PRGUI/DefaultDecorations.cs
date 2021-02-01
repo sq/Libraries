@@ -174,7 +174,7 @@ namespace Squared.PRGUI {
             };
 
             Tab = new DelegateDecorator {
-                Margins = new Margins(4, 2, 8, 2),
+                Margins = new Margins(4, 4, 2, 2),
                 Padding = new Margins(16, 8),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
@@ -650,6 +650,16 @@ namespace Squared.PRGUI {
             );
         }
 
+        private Vector4 GetTabRadius (ref DecorationSettings settings) {
+            switch (settings.Traits.FirstOrDefault()) {
+                default:
+                case "top":
+                    return new Vector4(TabCornerRadius, TabCornerRadius, 0, 0);
+                case "left":
+                    return new Vector4(TabCornerRadius, 0, 0, TabCornerRadius);
+            }
+        }
+
         private void Tab_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             float alpha, thickness, pulse;
             pSRGBColor baseColor, outlineColor;
@@ -671,7 +681,7 @@ namespace Squared.PRGUI {
             var fillAlpha1 = Math.Min((base1 + pulse) * alpha, 1f);
             var fillAlpha2 = Math.Min((base2 + pulse) * alpha, 1f);
 
-            var radiusCW = new Vector4(TabCornerRadius, TabCornerRadius, 0, 0);
+            var radiusCW = GetTabRadius(ref settings);
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
@@ -694,7 +704,7 @@ namespace Squared.PRGUI {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / settings.Box.Height));
 
-            var radiusCW = new Vector4(TabCornerRadius, TabCornerRadius, 0, 0);
+            var radiusCW = GetTabRadius(ref settings);
 
             renderer.RasterizeRectangle(
                 a, b,

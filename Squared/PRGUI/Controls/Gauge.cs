@@ -136,11 +136,22 @@ namespace Squared.PRGUI.Controls {
         protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
             return decorations.IsPassDisabled(pass);
         }
-        
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            var direction = Direction == GaugeDirection.Auto
-                ? (DetermineIfHorizontal(settings.Box.Width, settings.Box.Height) ? GaugeDirection.LeftToRight : GaugeDirection.BottomToTop)
+
+        private GaugeDirection PickDirection (ref RectF box) {
+            return Direction == GaugeDirection.Auto
+                ? (DetermineIfHorizontal(box.Width, box.Height) ? GaugeDirection.LeftToRight : GaugeDirection.BottomToTop)
                 : Direction;
+        }
+
+        protected override DecorationSettings MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state) {
+            var direction = PickDirection(ref box);
+            var result = base.MakeDecorationSettings(ref box, ref contentBox, state);
+            result.Traits.Add(DirectionNames[(int)direction]);
+            return result;
+        }
+
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            var direction = PickDirection(ref settings.Box);
             var fill = context.DecorationProvider.Gauge;
             var fillWidth = Arithmetic.Saturate(ValueTween.Get(context.NowL));
             float extent;
@@ -163,7 +174,6 @@ namespace Squared.PRGUI.Controls {
                     settings.ContentBox.Top = extent - settings.ContentBox.Height;
                     break;
             }
-            settings.Traits.Add(DirectionNames[(int)direction]);
             base.OnRasterize(context, ref renderer, settings, decorations);
         }
     }

@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
+using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public class TabContainer : ControlParentBase, IControlEventFilter, IEnumerable<Control> {
@@ -19,10 +20,34 @@ namespace Squared.PRGUI.Controls {
         private int SelectedTabIndex = 0;
         private string GroupId;
 
-        public Control SelectedTab => 
-            (SelectedTabIndex < (Children.Count - 1))
-                ? Children[SelectedTabIndex + 1] 
-                : null;
+        /// <summary>
+        /// If set, layout will occur for all tabs simultaneously and the tab container will
+        ///  expand to the maximum size needed to contain a given tab (instead of the size of
+        ///  the current tab only).
+        /// </summary>
+        public bool ExpandToHoldAllTabs = true;
+        public bool TabsOnLeft = false;
+
+        public Control SelectedTab {
+            get =>
+                (SelectedTabIndex < (Children.Count - 1))
+                    ? Children[SelectedTabIndex + 1] 
+                    : null;
+            set {
+                var idx = _Children.IndexOf(value);
+                if (idx <= 0)
+                    SelectedTabIndex = 0;
+                else
+                    SelectedTabIndex = idx - 1;
+            }
+        }
+
+        public int SelectedIndex {
+            get => SelectedTabIndex;
+            set {
+                SelectedTabIndex = Arithmetic.Clamp(value, 0, _Children.Count - 2);
+            }
+        }
 
         new public ControlCollection Children {
             get => base.Children;
@@ -33,10 +58,7 @@ namespace Squared.PRGUI.Controls {
             GroupId = $"TabContainer#{NextGroupId++}";
             ClipChildren = false;
             ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap;
-            TabStrip = new ControlGroup {
-                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
-                ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_No_Expansion | ControlFlags.Container_Prevent_Crush
-            };
+            TabStrip = new ControlGroup();
             Children.Add(TabStrip);
             GenerateTabs();
         }
@@ -56,7 +78,9 @@ namespace Squared.PRGUI.Controls {
                     EventFilter = this,
                     Appearance = {
                         Decorator = Context?.Decorations?.Tab
-                    }
+                    },
+                    TextAlignment = Render.Text.HorizontalAlignment.Center,
+                    AutoSizeIsMaximum = false
                 };
                 if (i == SelectedTabIndex + 1)
                     btn.Checked = true;
@@ -75,11 +99,33 @@ namespace Squared.PRGUI.Controls {
             return provider.None;
         }
 
+        protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
+            base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
+        }
+
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             if (TabStrip.Children.Count != _Children.Count - 1)
                 GenerateTabs();
             if (SelectedTabIsInvalid)
                 UpdateSelectedTab();
+
+            TabStrip.LayoutFlags =
+                TabsOnLeft
+                    ? ControlFlags.Layout_Fill_Column | ControlFlags.Layout_Anchor_Left
+                    : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top;
+            TabStrip.ContainerFlags =
+                TabsOnLeft
+                    ? ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Prevent_Crush | ControlFlags.Container_Wrap
+                    : ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Prevent_Crush;
+
+            foreach (var t in TabStrip) {
+                t.Appearance.DecorationTraits.Clear();
+                t.Appearance.DecorationTraits.Add(TabsOnLeft ? "left" : "top");
+                t.LayoutFlags =
+                    TabsOnLeft
+                        ? ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
+                        : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top;
+            }
 
             var st = SelectedTab;
 
@@ -91,7 +137,8 @@ namespace Squared.PRGUI.Controls {
                 return result;
             } else {
                 foreach (var item in _Children) {
-                    item.Visible = (item == st) || (item == TabStrip);
+                    // item.Visible = (item == st) || (item == TabStrip);
+                    item.Visible = true;
                 }
             }
 
@@ -100,26 +147,49 @@ namespace Squared.PRGUI.Controls {
 
             {
                 var adoc = AbsoluteDisplayOffset; // AbsoluteDisplayOffsetOfChildren;
-                LayoutItem(ref context, existingKey, result, adoc, TabStrip);
-                LayoutItem(ref context, existingKey, result, adoc, st);
+                // fixme: existing key
+                LayoutItem(ref context, existingKey.HasValue, result, adoc, TabStrip);
+                ControlKey childBox;
+                if (existingKey.HasValue)
+                    childBox = context.Layout.GetLastChild(result);
+                else {
+                    childBox = context.Layout.CreateItem();
+                    context.Layout.Append(result, childBox);
+                }
+                context.Layout.SetContainerFlags(
+                    childBox,
+                    ControlFlags.Container_Align_Start
+                );
+                context.Layout.SetLayoutFlags(
+                    childBox, TabsOnLeft
+                        ? ControlFlags.Layout_Fill
+                        : ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak
+                );
+                foreach (var item in _Children) {
+                    if (item == TabStrip)
+                        continue;
+                    if ((st != item) && !ExpandToHoldAllTabs)
+                        continue;
+                    item.LayoutFlags = ControlFlags.Layout_Fill; // | ControlFlags.Layout_Floating;
+                    LayoutItem(ref context, existingKey.HasValue, childBox, adoc, item);
+                }
             }
 
             return result;
         }
 
-        private static void LayoutItem (ref UIOperationContext context, ControlKey? existingKey, ControlKey self, Vector2 adoc, Control item) {
-            item.LayoutFlags = ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_Fill_Row |
-                ControlFlags.Layout_ForceBreak;
+        private static void LayoutItem (ref UIOperationContext context, bool containerHasExistingKey, ControlKey container, Vector2 adoc, Control item) {
             item.AbsoluteDisplayOffset = adoc;
 
             // If we're performing layout again on an existing layout item, attempt to do the same
             //  for our children
             var childExistingKey = (ControlKey?)null;
-            if ((existingKey.HasValue) && !item.LayoutKey.IsInvalid)
+            if (containerHasExistingKey && !item.LayoutKey.IsInvalid)
                 childExistingKey = item.LayoutKey;
 
             // FIXME: Don't perform layout for invisible tabs?
-            var itemKey = item.GenerateLayoutTree(ref context, self, childExistingKey);
+            var itemKey = item.GenerateLayoutTree(ref context, container, childExistingKey);
+            ;
         }
 
         protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
@@ -132,8 +202,13 @@ namespace Squared.PRGUI.Controls {
                 return;
             var stripRect = TabStrip.GetRect();
             var tabContentRect = SelectedTab.GetRect(contentRect: true);
-            settings.Box.Top += stripRect.Height;
-            settings.Box.Height -= stripRect.Height;
+            if (TabsOnLeft) {
+                settings.Box.Left += stripRect.Width;
+                settings.Box.Width -= stripRect.Width;
+            } else {
+                settings.Box.Top += stripRect.Height;
+                settings.Box.Height -= stripRect.Height;
+            }
             settings.ContentBox = tabContentRect;
             tabPage.Rasterize(context, ref renderer, settings);
         }

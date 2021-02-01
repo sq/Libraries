@@ -66,6 +66,7 @@ namespace Squared.PRGUI {
         /// </summary>
         public IControlCompositor Compositor;
         public IDecorator Decorator, TextDecorator;
+        public DenseList<string> DecorationTraits;
         public IGlyphSource Font;
         public ColorVariable BackgroundColor;
         public ColorVariable TextColor;

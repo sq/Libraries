@@ -433,7 +433,7 @@ namespace PRGUI.Demo {
 
             var scrollableClipTest = new Container {
                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
-                ContainerFlags = ControlFlags.Container_Wrap | ControlFlags.Container_Row,
+                ContainerFlags = ControlFlags.Container_Wrap | ControlFlags.Container_Row | ControlFlags.Container_Align_Start,
                 Children = {
                     new Container {
                         ClipChildren = true,
@@ -473,6 +473,9 @@ namespace PRGUI.Demo {
                 { scrollableClipTest, "Scrollable" },
                 { listboxContainer, "Listbox" }
             };
+            tabs.SelectedIndex = 1;
+            tabs.TabsOnLeft = false;
+            tabs.ExpandToHoldAllTabs = true;
             tabs.LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top;
 
             var bigScrollableContainer = new Container {
