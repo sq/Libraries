@@ -81,6 +81,7 @@ namespace Squared.PRGUI.Controls {
         public const bool Multiline = false;
 
         public bool AllowCopy = true;
+        public bool AllowScroll = true;
 
         public bool StripNewlines = true;
 
@@ -1071,6 +1072,12 @@ namespace Squared.PRGUI.Controls {
         }
 
         void UpdateScrollOffset (RectF contentBox, Bounds? selectionBounds, StringLayout layout) {
+            if (!AllowScroll) {
+                ScrollOffset = Vector2.Zero;
+                MaxScrollOffset = Vector2.Zero;
+                return;
+            }
+
             var scrollOffset = ScrollOffset;
             var isTooWide = layout.Size.X > (contentBox.Width - MinRightScrollMargin);
             float edgeScrollMargin = isTooWide

@@ -137,6 +137,7 @@ namespace Squared.PRGUI.Controls {
 
         public ParameterEditor ()
             : base () {
+            AllowScroll = false;
             ClampVirtualPositionToTextbox = false;
             var t = typeof(T);
             if (!t.IsValueType)
