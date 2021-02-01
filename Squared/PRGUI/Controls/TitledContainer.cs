@@ -69,6 +69,7 @@ namespace Squared.PRGUI.Controls {
             LineLimit = 1
         };
 
+        private float? MostRecentTitleHeight;
         private Tween<float> DisclosureLevel = 1f;
 
         public TitledContainer ()
@@ -119,6 +120,8 @@ namespace Squared.PRGUI.Controls {
             TitleLayout.GlyphSource = decorations.GlyphSource;
             TitleLayout.DefaultColor = color ?? Color.White;
             TitleLayout.LineBreakAtX = settings.ContentBox.Width;
+            if (!TitleLayout.IsValid)
+                MostRecentTitleHeight = null;
             return decorations;
         }
 
@@ -191,7 +194,7 @@ namespace Squared.PRGUI.Controls {
             titleDecorations.GetTextSettings(context, default(ControlStates), out Material temp, ref color);
             var height = titleDecorations.Margins.Bottom +
                 titleDecorations.Padding.Y +
-                titleDecorations.GlyphSource.LineSpacing;
+                (MostRecentTitleHeight ?? titleDecorations.GlyphSource.LineSpacing);
             // Compensate for padding scale to ensure we don't over-pad the top
             float paddingScale = context.DecorationProvider.PaddingScaleRatio.Y * context.DecorationProvider.SpacingScaleRatio.Y;
             result.Top += (height / paddingScale);
@@ -278,7 +281,11 @@ namespace Squared.PRGUI.Controls {
 
                 var layout = TitleLayout.Get();
                 var titleBox = settings.Box;
-                titleBox.Height = titleDecorator.Padding.Top + titleDecorator.Padding.Bottom + TitleLayout.GlyphSource.LineSpacing;
+                MostRecentTitleHeight = (layout.DrawCalls.Count > 0) ? layout.Size.Y : (float?)null;
+                titleBox.Height = titleDecorator.Padding.Top + titleDecorator.Padding.Bottom +
+                    ((layout.DrawCalls.Count > 0)
+                        ? layout.Size.Y
+                        : TitleLayout.GlyphSource.LineSpacing);
                 if (string.IsNullOrWhiteSpace(Title)) {
                     if (Collapsible)
                         titleBox.Width = DisclosureArrowPadding;

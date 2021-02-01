@@ -106,6 +106,8 @@ namespace Squared.PRGUI.Controls {
             ControlForValue = new Dictionary<T, Control>(comparer);
         }
 
+        private bool PurgePending;
+
         public int Version { get; internal set; }
         public int Count => Items.Count;
 
@@ -117,6 +119,16 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        /// <summary>
+        /// Forces all child controls to be re-created from scratch
+        /// </summary>
+        public void Purge () {
+            PurgePending = true;
+        }
+
+        /// <summary>
+        /// Flags the sequence as having changed so controls will be updated
+        /// </summary>
         public void Invalidate () {
             Version++;
         }
@@ -260,7 +272,7 @@ namespace Squared.PRGUI.Controls {
                 if (value == null)
                     continue;
 
-                var existingControl = (i < output.Count)
+                var existingControl = ((i < output.Count) && !PurgePending)
                     ? output[i]
                     : null;
 
@@ -273,6 +285,8 @@ namespace Squared.PRGUI.Controls {
                         output.Add(newControl);
                 }
             }
+
+            PurgePending = false;
         }
 
         public IEnumerator<T> GetEnumerator () {

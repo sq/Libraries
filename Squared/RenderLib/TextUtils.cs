@@ -584,6 +584,7 @@ namespace Squared.Render.Text {
 
     public class FallbackGlyphSource : IGlyphSource, IDisposable, IEnumerable<IGlyphSource> {
         public bool IsDisposed { get; private set; }
+        public bool MaxLineSpacing = true;
         private readonly IGlyphSource[] Sources = null;
 
         public FallbackGlyphSource (params IGlyphSource[] sources) {
@@ -616,7 +617,13 @@ namespace Squared.Render.Text {
 
         public float LineSpacing {
             get {
-                return Sources[0].LineSpacing;
+                if (!MaxLineSpacing)
+                    return Sources[0].LineSpacing;
+
+                var ls = 0f;
+                foreach (var s in Sources)
+                    ls = Math.Max(ls, s.LineSpacing);
+                return ls;
             }
         }
 

@@ -43,6 +43,7 @@ namespace Squared.PRGUI.Controls {
         private float? MostRecentContentWidth = null, MostRecentWidth = null;
 
         private float? AutoSizeComputedWidth, AutoSizeComputedHeight;
+        private float AutoSizeComputedContentHeight;
 
         public StaticTextBase ()
             : base () {
@@ -285,20 +286,28 @@ namespace Squared.PRGUI.Controls {
             if (_CachedContentIsSingleLine == true) {
                 if (contentChanged)
                     GetCurrentLayout(true);
-                AutoSizeComputedHeight = (float)Math.Ceiling((Content.GlyphSource.LineSpacing * Scale) + computedPadding.Size.Y);
+                AutoSizeComputedContentHeight = (Content.GlyphSource.LineSpacing * Scale);
+                AutoSizeComputedHeight = (float)Math.Ceiling(AutoSizeComputedContentHeight + computedPadding.Y);
                 return;
             }
 
             var layout = GetCurrentLayout(true);
             if (AutoSizeWidth) {
-                AutoSizeComputedWidth = (float)Math.Ceiling(layout.UnconstrainedSize.X + computedPadding.Size.X);
+                AutoSizeComputedWidth = (float)Math.Ceiling(layout.UnconstrainedSize.X + computedPadding.X);
                 // FIXME: Something is wrong here if padding scale is active
                 /* if ((sr.X > 1) || (sr.Y > 1))
                     AutoSizeComputedWidth += 1;
                     */
             }
-            if (AutoSizeHeight)
-                AutoSizeComputedHeight = (float)Math.Ceiling(layout.Size.Y + computedPadding.Size.Y);
+            if (AutoSizeHeight) {
+                AutoSizeComputedContentHeight = layout.Size.Y;
+                AutoSizeComputedHeight = (float)Math.Ceiling(layout.Size.Y + computedPadding.Y);
+            }
+        }
+
+        public override void InvalidateLayout () {
+            base.InvalidateLayout();
+            Invalidate();
         }
 
         protected void Invalidate () {
@@ -332,13 +341,16 @@ namespace Squared.PRGUI.Controls {
             var paddingScale = (context.DecorationProvider.SpacingScaleRatio * context.DecorationProvider.PaddingScaleRatio);
             Margins.Scale(ref computedPadding, ref paddingScale);
             float? constrainedWidth = null;
-            var max = (Width.Fixed ?? Width.Maximum) ?? (9999f) - computedPadding.X;
+            var max = (Width.Fixed ?? Width.Maximum) - computedPadding.X;
             if (MostRecentContentWidth.HasValue) {
                 // FIXME
                 float computed = MostRecentContentWidth.Value;
-                constrainedWidth = Math.Min(computed, max);
+                if (max.HasValue)
+                    constrainedWidth = Math.Min(computed, max.Value);
+                else
+                    constrainedWidth = computed;
             } else
-                constrainedWidth = max - computedPadding.X;
+                constrainedWidth = max;
 
             if (constrainedWidth.HasValue)
                 // HACK: Suppress jitter
@@ -397,10 +409,17 @@ namespace Squared.PRGUI.Controls {
             var scaledSize = layout.Size * textScale;
 
             // Recenter the text if it's been scaled by the decorator
-            float extraSpaceY = Math.Max(settings.Box.Height - scaledSize.Y - computedPadding.Y, 0);
+            var psr = context.DecorationProvider.PaddingScaleRatio * context.DecorationProvider.SpacingScaleRatio;
+            float extraSpaceY = Math.Max(settings.Box.Height - scaledSize.Y - (computedPadding.Y * psr.Y), 0);
             textOffset.Y += Math.Min(extraSpaceY, (layout.Size.Y - scaledSize.Y)) * 0.5f;
+            // If a fallback glyph source's child sources are different heights, the autosize can end up producing
+            //  a box that is too big for the content. In that case, we want to center it vertically
+            if ((AutoSizeComputedHeight.HasValue) && (AutoSizeComputedContentHeight > scaledSize.Y)) {
+                var autoSizeYCentering = (AutoSizeComputedContentHeight - scaledSize.Y) * 0.5f;
+                textOffset.Y += autoSizeYCentering;
+            }
 
-            var cpx = computedPadding.X * context.DecorationProvider.PaddingScaleRatio.X * context.DecorationProvider.SpacingScaleRatio.X;
+            var cpx = computedPadding.X * psr.X;
             var xSpace = (b.X - a.X) - scaledSize.X - cpx;
             switch (Content.Alignment) {
                 case HorizontalAlignment.Left:

@@ -337,6 +337,11 @@ namespace Squared.PRGUI.Controls {
 
         public void Invalidate () {
             NeedsUpdate = true;
+            _Version++;
+            Items.Purge();
+
+            foreach (var child in Children)
+                child.InvalidateLayout();
         }
 
         // HACK
