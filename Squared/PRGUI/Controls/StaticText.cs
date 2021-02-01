@@ -400,7 +400,8 @@ namespace Squared.PRGUI.Controls {
             float extraSpaceY = Math.Max(settings.Box.Height - scaledSize.Y - computedPadding.Y, 0);
             textOffset.Y += Math.Min(extraSpaceY, (layout.Size.Y - scaledSize.Y)) * 0.5f;
 
-            var xSpace = (b.X - a.X) - scaledSize.X - computedPadding.X;
+            var cpx = computedPadding.X * context.DecorationProvider.PaddingScaleRatio.X * context.DecorationProvider.SpacingScaleRatio.X;
+            var xSpace = (b.X - a.X) - scaledSize.X - cpx;
             switch (Content.Alignment) {
                 case HorizontalAlignment.Left:
                     break;
