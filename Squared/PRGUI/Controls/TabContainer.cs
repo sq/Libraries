@@ -20,8 +20,6 @@ namespace Squared.PRGUI.Controls {
         private int SelectedTabIndex = 0;
         private string GroupId;
 
-        public IDecorator TabDecorator;
-
         /// <summary>
         /// If set, layout will occur for all tabs simultaneously and the tab container will
         ///  expand to the maximum size needed to contain a given tab (instead of the size of
@@ -205,8 +203,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            var tabPage = TabDecorator ?? context.DecorationProvider?.TabPage;
-            if ((SelectedTab == null) || (tabPage == null))
+            // HACK
+            var tabPage = Appearance.Decorator ?? context.DecorationProvider?.TabPage;
+            if (Appearance.Undecorated || (SelectedTab == null) || (tabPage == null))
                 return;
             var stripRect = TabStrip.GetRect();
             var tabContentRect = SelectedTab.GetRect(contentRect: true);

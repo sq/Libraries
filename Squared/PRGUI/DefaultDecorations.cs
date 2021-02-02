@@ -533,7 +533,7 @@ namespace Squared.PRGUI {
                 // HACK
                 state.IsFlagged(ControlStates.Checked)
             ) {
-                alpha = hasColor ? 1f : 0.9f;
+                alpha = hasColor ? 0.95f : 0.8f;
                 thickness = PressedOutlineThickness;
                 if (hasColor) {
                     // Intensify the color if the button has a custom color
