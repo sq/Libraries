@@ -15,12 +15,12 @@ using Squared.Util.Text;
 namespace Squared.PRGUI.Controls {
     public delegate Control CreateControlForValueDelegate<T> (ref T value, Control existingControl);
 
-    public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget, IMenuListener, IValueControl<T> {
+    public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget, IMenuListener, IValueControl<T>, IHasDescription {
         private readonly Menu ItemsMenu = new Menu {
             DeselectOnMouseLeave = false
         };
 
-        public string Description;
+        public string Description { get; set; }
 
         public string Label;
         public CreateControlForValueDelegate<T> CreateControlForValue = null;

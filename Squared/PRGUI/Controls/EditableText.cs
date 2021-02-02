@@ -17,7 +17,9 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, IValueControl<string>, IAcceleratorSource, ISelectionBearer {
+    public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, 
+        IValueControl<string>, IAcceleratorSource, ISelectionBearer, IHasDescription
+    {
         internal struct HistoryEntry {
             public ArraySegment<char> Text;
             public Pair<int> Selection;
@@ -96,7 +98,7 @@ namespace Squared.PRGUI.Controls {
 
         public HorizontalAlignment HorizontalAlignment = HorizontalAlignment.Left;
 
-        public string Description;
+        public string Description { get; set; }
 
         /// <summary>
         /// Pre-processes any new text being inserted

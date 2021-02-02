@@ -38,6 +38,10 @@ namespace Squared.PRGUI {
         }
     }
 
+    public interface IHasDescription {
+        string Description { get; set; }
+    }
+
     public interface IControlEventFilter {
         bool OnEvent (Control target, string name);
         bool OnEvent<T> (Control target, string name, T args);

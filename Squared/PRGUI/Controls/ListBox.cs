@@ -23,7 +23,7 @@ namespace Squared.PRGUI.Controls {
     public class ListBox<T> : 
         Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, 
         IValueControl<T>, ISelectionBearer, IListBox,
-        IPartiallyIntangibleControl, IFuzzyHitTestTarget 
+        IPartiallyIntangibleControl, IFuzzyHitTestTarget, IHasDescription
     {
         public bool DisableItemHitTests = true;
         public bool EnableSelect = true;
@@ -65,7 +65,7 @@ namespace Squared.PRGUI.Controls {
 
         public const float AutoscrollMarginSize = 24f;
 
-        public string Description;
+        public string Description { get; set; }
 
         public int SelectedIndex {
             get => Manager.SelectedIndex;
@@ -278,8 +278,9 @@ namespace Squared.PRGUI.Controls {
                 return result;
 
             var hasPushedDecorator = false;
-            for (int i = 0, c = _Children.Count; i < c; i++) {
-                var child = _Children[i];
+            var children = Children;
+            for (int i = 0, c = children.Count; i < c; i++) {
+                var child = children[i];
                 var lk = child.LayoutKey;
                 SetTextDecorator(ref context, child, ref hasPushedDecorator);
                 var m = context.Layout.GetMargins(lk);
@@ -310,11 +311,12 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
-            if (Children.Count > 0) {
+            var children = Children;
+            if (children.Count > 0) {
                 float h = 0;
                 // HACK: Measure a few items to produce a better height estimate
-                for (int i = 0, c = Math.Min(_Children.Count, 4); i < c; i++)
-                    h = Math.Max(h, _Children[i].GetRect(applyOffset: false).Height);
+                for (int i = 0, c = Math.Min(children.Count, 4); i < c; i++)
+                    h = Math.Max(h, children[i].GetRect(applyOffset: false).Height);
                 VirtualItemHeight = h;
                 // HACK: Traditional listboxes on windows scroll multiple item(s) at a time on mousewheel
                 //  instead of scrolling on a per-pixel basis

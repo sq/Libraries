@@ -20,7 +20,10 @@ namespace Squared.PRGUI.Controls {
         void ItemChosen (Menu menu, Control item);
     }
 
-    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IModal, ISelectionBearer, IPartiallyIntangibleControl, IFuzzyHitTestTarget {
+    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, 
+        IModal, ISelectionBearer, IPartiallyIntangibleControl, 
+        IFuzzyHitTestTarget, IHasDescription
+    {
         public event Action<IModal> Shown, Closed;
 
         public float ItemSpacing = 1;
@@ -47,7 +50,7 @@ namespace Squared.PRGUI.Controls {
         bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
         bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
 
-        public string Description;
+        public string Description { get; set; }
 
         private Control _SelectedItem;
 

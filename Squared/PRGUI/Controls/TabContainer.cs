@@ -20,6 +20,8 @@ namespace Squared.PRGUI.Controls {
         private int SelectedTabIndex = 0;
         private string GroupId;
 
+        public IDecorator TabDecorator;
+
         /// <summary>
         /// If set, layout will occur for all tabs simultaneously and the tab container will
         ///  expand to the maximum size needed to contain a given tab (instead of the size of
@@ -34,7 +36,7 @@ namespace Squared.PRGUI.Controls {
                     ? Children[SelectedTabIndex + 1] 
                     : null;
             set {
-                var idx = _Children.IndexOf(value);
+                var idx = Children.IndexOf(value);
                 if (idx <= 0)
                     SelectedTabIndex = 0;
                 else
@@ -45,9 +47,11 @@ namespace Squared.PRGUI.Controls {
         public int SelectedIndex {
             get => SelectedTabIndex;
             set {
-                SelectedTabIndex = Arithmetic.Clamp(value, 0, _Children.Count - 2);
+                SelectedTabIndex = Arithmetic.Clamp(value, 0, Children.Count - 2);
             }
         }
+
+        override protected int ChildrenToSkip => 1;
 
         new public ControlCollection Children {
             get => base.Children;
@@ -70,11 +74,14 @@ namespace Squared.PRGUI.Controls {
 
         protected void GenerateTabs () {
             TabStrip.Children.Clear();
-            for (var i = 1; i < _Children.Count; i++) {
-                var child = _Children[i];
+            var children = Children;
+            for (var i = 1; i < children.Count; i++) {
+                var child = children[i];
+                Labels.TryGetValue(child, out string label);
                 var btn = new RadioButton {
                     GroupId = GroupId,
-                    Text = $"{Labels[child] ?? child.ToString()}",
+                    // HACK
+                    Text = $"{label ?? (child as IHasDescription)?.Description ?? child.DebugLabel ?? child.ToString()}",
                     EventFilter = this,
                     Appearance = {
                         Decorator = Context?.Decorations?.Tab
@@ -104,7 +111,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            if (TabStrip.Children.Count != _Children.Count - 1)
+            var children = Children;
+            if (TabStrip.Children.Count != children.Count - 1)
                 GenerateTabs();
             if (SelectedTabIsInvalid)
                 UpdateSelectedTab();
@@ -131,12 +139,12 @@ namespace Squared.PRGUI.Controls {
 
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             if (result.IsInvalid) {
-                foreach (var item in _Children)
+                foreach (var item in children)
                     item.InvalidateLayout();
 
                 return result;
             } else {
-                foreach (var item in _Children) {
+                foreach (var item in children) {
                     // item.Visible = (item == st) || (item == TabStrip);
                     item.Visible = true;
                 }
@@ -165,7 +173,7 @@ namespace Squared.PRGUI.Controls {
                         ? ControlFlags.Layout_Fill
                         : ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak
                 );
-                foreach (var item in _Children) {
+                foreach (var item in children) {
                     if (item == TabStrip)
                         continue;
                     if ((st != item) && !ExpandToHoldAllTabs)
@@ -197,8 +205,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            var tabPage = context.DecorationProvider?.TabPage;
-            if (SelectedTab == null)
+            var tabPage = TabDecorator ?? context.DecorationProvider?.TabPage;
+            if ((SelectedTab == null) || (tabPage == null))
                 return;
             var stripRect = TabStrip.GetRect();
             var tabContentRect = SelectedTab.GetRect(contentRect: true);

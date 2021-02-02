@@ -35,10 +35,10 @@ namespace Squared.PRGUI.Imperative {
             if (!(control is IControlContainer))
                 throw new InvalidCastException("control must implement IControlContainer");
 
-            NextIndex = 0;
             Context = context;
             Control = control;
             Container = (IControlContainer)control;
+            NextIndex = Container?.ChildrenToSkip ?? 0;
             Children = Container.Children;
             PreviousRemovedControls = new DenseList<Control>();
             CurrentRemovedControls = new DenseList<Control>();
@@ -53,7 +53,7 @@ namespace Squared.PRGUI.Imperative {
 
         public void Reset () {
             WaitingForFocusBeneficiary = null;
-            NextIndex = 0;
+            NextIndex = Container?.ChildrenToSkip ?? 0;
         }
 
         public void Finish () {
@@ -212,13 +212,15 @@ namespace Squared.PRGUI.Imperative {
         )
             where TControl : Control, IControlContainer, new() {
             TControl instance = null;
-            if (NextIndex < Children.Count)
+            if (NextIndex < Children.Count) {
                 instance = Children[NextIndex] as TControl;
+            }
 
             ContainerBuilder result;
             ContainerBase container;
             if (instance == null) {
                 instance = new TControl();
+                instance.SetContext(Control.Context);
                 result = new ContainerBuilder(instance);
             } else if ((container = (instance as ContainerBase)) != null) {
                 container.EnsureDynamicBuilderInitialized(out result);
@@ -561,8 +563,13 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> SetDebugLabel (string value) {
+            Control.DebugLabel = value;
+            return this;
+        }
+
         public ControlBuilder<TControl> SetDescription (string value) {
-            if (Control is EditableText cast)
+            if (Control is IHasDescription cast)
                 cast.Description = value;
             return this;
         }

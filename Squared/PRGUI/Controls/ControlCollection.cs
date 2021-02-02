@@ -24,9 +24,9 @@ namespace Squared.PRGUI {
             Context = parent;
         }
 
-        public ControlCollection (Control parent) {
+        public ControlCollection (Control parent, UIContext context) {
             Parent = parent;
-            Context = parent.Context;
+            Context = context ?? parent.Context;
         }
 
         public void CopyTo (List<Control> destination) {

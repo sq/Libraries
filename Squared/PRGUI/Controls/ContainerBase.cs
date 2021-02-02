@@ -17,20 +17,24 @@ namespace Squared.PRGUI.Controls {
     /// A control that owns child controls with no particular layout or rendering behavior
     /// </summary>
     public abstract class ControlParentBase : Control, IControlContainer {
-        protected ControlCollection _Children;
+        private ControlCollection _Children;
         protected ControlCollection Children {
             get {
+                if (_Children == null)
+                    _Children = new ControlCollection(this, Context);
                 EnsureChildrenAreValid();
                 return _Children;
             }
         }
 
         ControlCollection IControlContainer.Children => Children;
+        int IControlContainer.ChildrenToSkip => ChildrenToSkip;
 
         protected ControlParentBase () 
             : base () {
-            _Children = new ControlCollection(this);
         }
+
+        protected virtual int ChildrenToSkip => 0;
 
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
@@ -61,15 +65,18 @@ namespace Squared.PRGUI.Controls {
                 (value ? ControlFlags.Container_Prevent_Crush : default(ControlFlags));
         }
 
-        protected override bool ShouldClipContent => ClipChildren && (_Children.Count > 0);
+        protected override bool ShouldClipContent => ClipChildren && (Children.Count > 0);
         // FIXME: Always true?
-        protected override bool HasChildren => (Children.Count > 0);
+        protected override bool HasChildren => (Context != null) && (Children.Count > 0);
 
         protected virtual bool HideChildren => false;
 
         public override void InvalidateLayout () {
             base.InvalidateLayout();
-            foreach (var ch in _Children)
+            if (Context == null)
+                return;
+            var children = Children;
+            foreach (var ch in children)
                 ch.InvalidateLayout();
         }
 
@@ -281,8 +288,9 @@ namespace Squared.PRGUI.Controls {
         
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+            var children = Children;
             if (result.IsInvalid || SuppressChildLayout) {
-                foreach (var item in _Children)
+                foreach (var item in children)
                     item.InvalidateLayout();
 
                 return result;
@@ -314,8 +322,8 @@ namespace Squared.PRGUI.Controls {
             }
 
             var adoc = AbsoluteDisplayOffsetOfChildren;
-            for (int i = 0, c = _Children.Count; i < c; i++) {
-                var item = _Children[i];
+            for (int i = 0, c = children.Count; i < c; i++) {
+                var item = children[i];
                 var columnIndex = i % ColumnCount;
                 item.AbsoluteDisplayOffset = adoc;
 
@@ -337,7 +345,8 @@ namespace Squared.PRGUI.Controls {
 
         protected override void OnDisplayOffsetChanged () {
             var adoc = AbsoluteDisplayOffsetOfChildren;
-            foreach (var child in _Children)
+            var children = Children;
+            foreach (var child in children)
                 child.AbsoluteDisplayOffset = adoc;
         }
 

@@ -13,7 +13,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class Gauge : Control, Accessibility.IReadingTarget, IValueControl<float> {
+    public class Gauge : Control, Accessibility.IReadingTarget, IValueControl<float>, IHasDescription {
         public GaugeDirection Direction = GaugeDirection.Auto;
 
         public const int ControlMinimumHeight = 30, ControlMinimumLength = 125;
@@ -26,7 +26,7 @@ namespace Squared.PRGUI.Controls {
 
         private Tween<float> ValueTween = 0.5f;
 
-        public string Description;
+        public string Description { get; set; }
 
         public float Value {
             get => _Value;
