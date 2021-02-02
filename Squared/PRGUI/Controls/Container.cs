@@ -235,9 +235,9 @@ namespace Squared.PRGUI.Controls {
             // FIXME: Automate this?
             var scale = context.DecorationProvider.SizeScaleRatio;
             // FIXME: Conditionally adjust padding when visibility is auto? Possibly introduces jitter
-            if (ShowVerticalScrollbar != false)
+            if (ShouldShowVerticalScrollbar)
                 result.Right += scrollbar.MinimumSize.X * scale.X;
-            if (ShowHorizontalScrollbar != false)
+            if (ShouldShowHorizontalScrollbar)
                 result.Bottom += scrollbar.MinimumSize.Y * scale.Y;
         }
 

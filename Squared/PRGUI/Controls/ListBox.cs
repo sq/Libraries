@@ -140,6 +140,8 @@ namespace Squared.PRGUI.Controls {
             ContainerFlags = ControlFlags.Container_Column | ControlFlags.Container_Align_Start;
             ClipChildren = true;
             ShowHorizontalScrollbar = false;
+            // HACK: Most lists will contain enough items to need scrolling, so just always show the bar
+            ShowVerticalScrollbar = true;
             Scrollable = true;
             // FIXME
             Manager = new ItemListManager<T>(comparer ?? EqualityComparer<T>.Default);
