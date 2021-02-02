@@ -453,6 +453,12 @@ namespace Squared.Util {
             return result;
         }
 
+        public void CopyTo (UnorderedList<T> output) {
+            output.EnsureCapacity(output.Count + Count);
+            for (int i = 0; i < _Count; i++)
+                output.Add(ref _Items[_BufferOffset + i]);
+        }
+
         public void CopyTo (T[] buffer, int offset, int count) {
             if (count > _Count)
                 count = _Count;

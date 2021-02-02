@@ -16,9 +16,11 @@ namespace Squared.PRGUI.Controls {
 
         private readonly ControlGroup TabStrip;
         private readonly Dictionary<Control, string> Labels = new Dictionary<Control, string>();
-        private bool SelectedTabIsInvalid = true;
         private int SelectedTabIndex = 0;
         private string GroupId;
+
+        private bool SelectedTabIsInvalid = true;
+        private bool TabStripIsInvalid = true;
 
         /// <summary>
         /// If set, layout will occur for all tabs simultaneously and the tab container will
@@ -26,7 +28,17 @@ namespace Squared.PRGUI.Controls {
         ///  the current tab only).
         /// </summary>
         public bool ExpandToHoldAllTabs = true;
-        public bool TabsOnLeft = false;
+
+        private bool _TabsOnLeft;
+        public bool TabsOnLeft {
+            get => _TabsOnLeft;
+            set {
+                if (_TabsOnLeft == value)
+                    return;
+                _TabsOnLeft = value;
+                InvalidateLayout();
+            }
+        }
 
         public Control SelectedTab {
             get =>
@@ -70,9 +82,25 @@ namespace Squared.PRGUI.Controls {
             Labels[tab] = label;
         }
 
+        public override void InvalidateLayout () {
+            base.InvalidateLayout();
+            SelectedTabIsInvalid = true;
+            TabStripIsInvalid = true;
+        }
+
         protected void GenerateTabs () {
+            TabStrip.LayoutFlags =
+                TabsOnLeft
+                    ? ControlFlags.Layout_Fill_Column | ControlFlags.Layout_Anchor_Left
+                    : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top;
+            TabStrip.ContainerFlags =
+                TabsOnLeft
+                    ? ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Prevent_Crush | ControlFlags.Container_Wrap
+                    : ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Prevent_Crush;
+
             TabStrip.Children.Clear();
             var children = Children;
+
             for (var i = 1; i < children.Count; i++) {
                 var child = children[i];
                 Labels.TryGetValue(child, out string label);
@@ -82,14 +110,25 @@ namespace Squared.PRGUI.Controls {
                     Text = $"{label ?? (child as IHasDescription)?.Description ?? child.DebugLabel ?? child.ToString()}",
                     EventFilter = this,
                     Appearance = {
-                        Decorator = Context?.Decorations?.Tab
+                        Decorator = Context?.Decorations?.Tab,
+                        DecorationTraits = {
+                            TabsOnLeft ? "left" : "top"
+                        }
                     },
                     TextAlignment = Render.Text.HorizontalAlignment.Center,
-                    AutoSizeIsMaximum = false
+                    AutoSizeIsMaximum = false,
+                    LayoutFlags = TabsOnLeft
+                        ? ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
+                        : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
                 };
+                    
                 if (i == SelectedTabIndex + 1)
                     btn.Checked = true;
                 TabStrip.Add(btn);
+            }
+            TabStripIsInvalid = false;
+
+            foreach (var t in TabStrip) {
             }
         }
 
@@ -111,27 +150,12 @@ namespace Squared.PRGUI.Controls {
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var children = Children;
             if (TabStrip.Children.Count != children.Count - 1)
+                TabStripIsInvalid = true;
+
+            if (TabStripIsInvalid)
                 GenerateTabs();
             if (SelectedTabIsInvalid)
                 UpdateSelectedTab();
-
-            TabStrip.LayoutFlags =
-                TabsOnLeft
-                    ? ControlFlags.Layout_Fill_Column | ControlFlags.Layout_Anchor_Left
-                    : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top;
-            TabStrip.ContainerFlags =
-                TabsOnLeft
-                    ? ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Prevent_Crush | ControlFlags.Container_Wrap
-                    : ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Prevent_Crush;
-
-            foreach (var t in TabStrip) {
-                t.Appearance.DecorationTraits.Clear();
-                t.Appearance.DecorationTraits.Add(TabsOnLeft ? "left" : "top");
-                t.LayoutFlags =
-                    TabsOnLeft
-                        ? ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
-                        : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top;
-            }
 
             var st = SelectedTab;
 

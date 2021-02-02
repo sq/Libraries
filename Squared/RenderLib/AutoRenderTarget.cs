@@ -130,19 +130,24 @@ namespace Squared.Render {
             }
         }
 
-        public void Resize (int width, int height) {
+        /// <summary>
+        /// Automatically resizes the render target if necessary
+        /// </summary>
+        /// <returns>Whether the render target was actually resized</returns>
+        public bool Resize (int width, int height) {
             lock (Lock) {
                 if (IsDisposed)
                     throw new ObjectDisposedException("AutoRenderTarget");
 
                 if ((Width == width) && (Height == height))
-                    return;
+                    return false;
 
                 Width = width;
                 Height = height;
             }
 
             GetOrCreateInstance(true);
+            return true;
         }
 
         private RenderTarget2D GetOrCreateInstance (bool forceCreate) {

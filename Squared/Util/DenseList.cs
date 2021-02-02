@@ -205,25 +205,19 @@ namespace Squared.Util {
         }
 
         public DenseList<T> Clone () {
-            var result = this;
-            if (_HasList) {
-                result.Items = new UnorderedList<T>(Items.Count);
-                for (int i = 0; i < Items.Count; i++) {
-                    var item = Items.DangerousGetItem(i);
-                    result.Items.Add(ref item);
-                }
-            }
-            return result;
+            DenseList<T> output;
+            Clone(out output);
+            return output;
         }
 
         public void Clone (out DenseList<T> output) {
-            output = this;
             if (_HasList) {
+                output = default(DenseList<T>);
+                output._HasList = true;
                 var newItems = output.Items = new UnorderedList<T>(Items.Count);
-                for (int i = 0; i < Items.Count; i++) {
-                    var item = Items.DangerousGetItem(i);
-                    newItems.Add(ref item);
-                }
+                Items.CopyTo(newItems);
+            } else {
+                output = this;
             }
         }
 

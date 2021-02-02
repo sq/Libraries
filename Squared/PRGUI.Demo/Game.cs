@@ -23,6 +23,7 @@ using Squared.Render.RasterShape;
 using Squared.Render.Text;
 using Squared.Task;
 using Squared.Util;
+using Squared.Util.Event;
 using Squared.Util.Text;
 
 namespace PRGUI.Demo {
@@ -469,9 +470,25 @@ namespace PRGUI.Demo {
                 }
             };
 
+            var canvas = new Canvas {
+                Appearance = {
+                    BackgroundColor = Color.Green
+                },
+                Width = { Minimum = 200 },
+                Height = { Minimum = 200 },
+                Buffered = true,
+                CacheContent = true,
+                BlendState = BlendState.Additive
+            };
+            canvas.OnPaint += Canvas_OnPaint;
+
+            Context.EventBus.Subscribe(canvas, UIEvents.MouseDown, Canvas_OnMouseEvent);
+            Context.EventBus.Subscribe(canvas, UIEvents.MouseMove, Canvas_OnMouseEvent);
+
             var tabs = new TabContainer {
                 { scrollableClipTest, "Scrollable" },
-                { listboxContainer, "Listbox" }
+                { listboxContainer, "Listbox" },
+                { canvas, "Canvas" }
             };
             tabs.SelectedIndex = 1;
             tabs.TabsOnLeft = false;
@@ -724,6 +741,23 @@ namespace PRGUI.Demo {
 
             Context.Controls.Add(topLevelContainer);
             Context.Controls.Add(window.Control);
+        }
+
+        Vector2? CanvasEllipsePosition;
+
+        private void Canvas_OnMouseEvent (IEventInfo e) {
+            var args = (MouseEventArgs)e.Arguments;
+            if (args.Buttons == MouseButtons.None)
+                return;
+            ((Canvas)e.Source).Invalidate();
+            CanvasEllipsePosition = args.LocalPosition;
+        }
+
+        private void Canvas_OnPaint (ref ImperativeRenderer renderer, ref RectF contentRect) {
+            var position = CanvasEllipsePosition ?? contentRect.Center;
+            renderer.AutoIncrementLayer = true;
+            renderer.RasterizeRectangle(contentRect.Position, contentRect.Extent, 0f, Color.Red);
+            renderer.RasterizeEllipse(position, new Vector2(16f), 1f, Color.White, Color.Black, Color.Blue);
         }
 
         private void BuildLoginWindow (ref ContainerBuilder builder) {

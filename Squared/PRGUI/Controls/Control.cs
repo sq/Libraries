@@ -200,6 +200,7 @@ namespace Squared.PRGUI {
         internal int TooltipContentVersion = 0;
 
         protected bool CreateNestedContextForChildren = true;
+        protected virtual bool HasPreRasterizeHandler => false;
         protected virtual bool HasChildren => false;
         protected virtual bool ShouldClipContent => false;
 
@@ -629,6 +630,9 @@ namespace Squared.PRGUI {
             return result;
         }
 
+        protected virtual void OnPreRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        }
+
         protected virtual void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             UpdateAnimation(context.NowL);
             decorations?.Rasterize(context, ref renderer, settings);
@@ -706,6 +710,9 @@ namespace Squared.PRGUI {
             } else {
                 contentContext = passContext;
             }
+
+            if (HasPreRasterizeHandler && (pass == RasterizePasses.Content))
+                OnPreRasterize(contentContext, ref passSet.Prepass, settings, decorations);
 
             if (hasNestedContext)
                 OnRasterize(contentContext, ref contentRenderer, settings, decorations);

@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="Controls\ContainerBase.cs" />
     <Compile Include="Controls\Container.cs" />
+    <Compile Include="Controls\Canvas.cs" />
     <Compile Include="Controls\Control.cs" />
     <Compile Include="Controls\Control.HitTest.cs" />
     <Compile Include="Controls\ControlAppearance.cs" />
