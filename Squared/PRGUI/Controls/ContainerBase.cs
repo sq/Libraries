@@ -105,8 +105,8 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected override void OnVisibilityChange (bool newValue) {
-            base.OnVisibilityChange(newValue);
+        protected override void OnVisibleChange (bool newValue) {
+            base.OnIntangibleChange(newValue);
 
             if (newValue)
                 return;
@@ -472,9 +472,9 @@ namespace Squared.PRGUI.Controls {
             return itemsAttempted;
         }
 
-        protected override void OnVisibilityChange (bool newValue) {
+        protected override void OnVisibleChange (bool newValue) {
             DynamicContentIsInvalid = true;
-            base.OnVisibilityChange(newValue);
+            base.OnIntangibleChange(newValue);
         }
 
         protected bool HitTestChildren (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {

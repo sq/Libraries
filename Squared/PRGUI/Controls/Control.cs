@@ -121,7 +121,7 @@ namespace Squared.PRGUI {
                     return;
                 _Visible = value;
                 _VisibleHasChanged = true;
-                OnVisibilityChange(value);
+                OnVisibleChange(value);
             }
         }
         /// <summary>
@@ -154,8 +154,17 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Intangible controls are ignored by hit-tests
         /// </summary>
-        public bool Intangible { get; set; }
+        public bool Intangible {
+            get => _Intangible;
+            set {
+                if (_Intangible == value)
+                    return;
+                _Intangible = value;
+                OnIntangibleChange(value);
+            }
+        }
 
+        private bool _Intangible;
         private Control _FocusBeneficiary;
 
         /// <summary>
@@ -305,9 +314,12 @@ namespace Squared.PRGUI {
             }
         }
 
-        protected virtual void OnVisibilityChange (bool newValue) {
+        protected virtual void OnVisibleChange (bool newValue) {
             if (newValue == false)
                 Context?.NotifyControlBecomingInvalidFocusTarget(this, false);
+        }
+
+        protected virtual void OnIntangibleChange (bool newValue) {
         }
 
         internal void Tick (MouseEventArgs args) {

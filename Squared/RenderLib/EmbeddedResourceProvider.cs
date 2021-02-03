@@ -15,6 +15,15 @@ namespace Squared.Render {
     public abstract class EmbeddedResourceProvider<T> : IDisposable
         where T : class, IDisposable {
 
+        private object PendingLoadLock = new object();
+        private int _PendingLoads;
+        public int PendingLoads {
+            get {
+                lock (PendingLoadLock)
+                    return _PendingLoads;
+            }
+        }
+
         protected class CreateWorkItem : IWorkItem {
             public Future<T> Future;
             public EmbeddedResourceProvider<T> Provider;
@@ -31,6 +40,9 @@ namespace Squared.Render {
                         Future.SetResult2(instance, null);
                     } catch (Exception exc) {
                         Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
+                    } finally {
+                        lock (Provider.PendingLoadLock)
+                            Provider._PendingLoads--;
                     }
                 }
             }
@@ -199,6 +211,7 @@ namespace Squared.Render {
             var future = GetFutureForResource(name, cached, out bool performLoad);
 
             if (performLoad) {
+                _PendingLoads++;
                 var workItem = new PreloadWorkItem {
                     Provider = this,
                     Future = future,
@@ -216,8 +229,15 @@ namespace Squared.Render {
             var future = GetFutureForResource(name, cached, out bool performLoad);
 
             if (performLoad) {
-                var instance = LoadSyncUncached(name, data, optional, out Exception exc);
-                future.SetResult(instance, exc);
+                lock (PendingLoadLock)
+                    _PendingLoads++;
+                try {
+                    var instance = LoadSyncUncached(name, data, optional, out Exception exc);
+                    future.SetResult(instance, exc);
+                } finally {
+                    lock (PendingLoadLock)
+                        _PendingLoads--;
+                }
             } else if (!future.Completed) {
                 using (var evt = future.GetCompletionEvent())
                     evt.Wait();
@@ -245,15 +265,16 @@ namespace Squared.Render {
         public virtual void Dispose () {
             IsDisposed = true;
 
-            lock (Cache)
-            foreach (var future in Cache.Values) {
-                if (!future.Completed)
-                    continue;
-                if (!future.Failed)
-                    Coordinator.DisposeResource(future.Result2);
-            }
+            lock (Cache) {
+                foreach (var future in Cache.Values) {
+                    if (!future.Completed)
+                        continue;
+                    if (!future.Failed)
+                        Coordinator.DisposeResource(future.Result2);
+                }
 
-            Cache.Clear();
+                Cache.Clear();
+            }
         }
     }
 

@@ -85,7 +85,7 @@ namespace Squared.Render {
     }
 
     public interface IDrainable {
-        void WaitForWorkItems ();
+        void WaitForWorkItems (int timeoutMs = -1);
     }
 
     public class ListPool<T> : IDrainable, IListPool<T> {
@@ -208,8 +208,8 @@ namespace Squared.Render {
             return result;
         }
 
-        void IDrainable.WaitForWorkItems () {
-            _ClearQueue?.WaitUntilDrained();
+        void IDrainable.WaitForWorkItems (int timeoutMs) {
+            _ClearQueue?.WaitUntilDrained(timeoutMs);
         }
 
         private void ClearAndReturn (UnorderedList<T> list, UnorderedList<UnorderedList<T>> pool, int limit) {

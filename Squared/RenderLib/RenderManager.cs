@@ -646,6 +646,9 @@ namespace Squared.Render {
             }
         }
 
+        private IDrainable[] CollectAllocatorsBuffer = new IDrainable[256];
+        private Stopwatch CollectAllocatorsTimer = new Stopwatch();
+
         public void CollectAllocators () {
             lock (_ArrayAllocators)
                 foreach (var allocator in _ArrayAllocators.Values)
@@ -654,9 +657,24 @@ namespace Squared.Render {
             // Ensure that all the list pools used by the previous frame
             //  have finished their async clears. This ensures that we don't
             //  end up leaking lots of lists
-            lock (ListPoolLock)
-            foreach (var lp in RequiredDrainListPools)
-                lp.WaitForWorkItems();
+
+            lock (ListPoolLock) {
+                Array.Clear(CollectAllocatorsBuffer, 0, CollectAllocatorsBuffer.Length);
+                // FIXME: Grow it
+                RequiredDrainListPools.CopyTo(CollectAllocatorsBuffer, 0, Math.Min(RequiredDrainListPools.Count, CollectAllocatorsBuffer.Length));
+            }
+
+            var elapsedTimeMs = 0.0;
+            foreach (var lp in CollectAllocatorsBuffer) {
+                if (lp == null)
+                    break;
+                CollectAllocatorsTimer.Restart();
+                lp.WaitForWorkItems(Math.Max(1, (int)(5 - elapsedTimeMs)));
+                CollectAllocatorsTimer.Stop();
+                elapsedTimeMs += CollectAllocatorsTimer.Elapsed.TotalMilliseconds;
+            }
+            if (elapsedTimeMs >= 5)
+                Debug.Write($"Collecting allocators took {elapsedTimeMs}ms");
         }
 
         public bool TrySetPoolCapacity<T> (int newCapacity)

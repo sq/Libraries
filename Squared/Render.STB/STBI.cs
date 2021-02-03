@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -218,9 +219,14 @@ namespace Squared.Render.STB {
 
         public int SizeofPixel { get; private set; }
 
+        private Stopwatch UploadTimer = new Stopwatch();
+
         private void UploadDirect (RenderCoordinator coordinator, Texture2D result) {
+            UploadTimer.Restart();
             lock (coordinator.UseResourceLock)
                 Evil.TextureUtils.SetDataFast(result, 0, Data, Width, Height, (uint)(Width * SizeofPixel));
+            if (UploadTimer.Elapsed.TotalMilliseconds > 1)
+                Debug.Print($"Uploading non-mipped texture took {UploadTimer.Elapsed.TotalMilliseconds}ms");
         }
 
         private unsafe void GenerateMips () {
@@ -263,6 +269,8 @@ namespace Squared.Render.STB {
             if (MipChain == null)
                 throw new Exception("Mip chain not generated or already uploaded");
 
+            UploadTimer.Restart();
+
             var pin = default(GCHandle);
             for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
                 uint mipSize;
@@ -277,6 +285,7 @@ namespace Squared.Render.STB {
                     mipSize = (uint)(Width * Height * SizeofPixel);
                 }
 
+                // FIXME: Create a work item for each mip to avoid blocking the main thread for too long
                 lock (coordinator.UseResourceLock)
                     Evil.TextureUtils.SetDataFast(result, level, pLevelData, levelWidth, levelHeight, mipSize);
 
@@ -289,6 +298,9 @@ namespace Squared.Render.STB {
             }
             if (pin.IsAllocated)
                 pin.Free();
+
+            if (UploadTimer.Elapsed.TotalMilliseconds > 2)
+                Debug.Print($"Uploading mipped texture took {UploadTimer.Elapsed.TotalMilliseconds}ms");
         }
 
         public void Dispose () {

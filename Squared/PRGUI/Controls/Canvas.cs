@@ -22,6 +22,7 @@ namespace Squared.PRGUI.Controls {
 
     public class Canvas : Control {
         public event CanvasPaintHandler OnPaint;
+        public bool HasPaintHandler => (OnPaint != null);
 
         private bool _Buffered;
         public bool Buffered {
@@ -80,6 +81,12 @@ namespace Squared.PRGUI.Controls {
 
         public void Invalidate () {
             _ContentIsValid = false;
+        }
+
+        protected override void OnIntangibleChange (bool newValue) {
+            AcceptsFocus = !newValue;
+            if (newValue)
+                Context?.NotifyControlBecomingInvalidFocusTarget(this, false);
         }
 
         public override void InvalidateLayout () {
