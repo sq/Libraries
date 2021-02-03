@@ -202,8 +202,6 @@ namespace Squared.Render.STB {
                 throw new ObjectDisposedException("Image is disposed");
             // FIXME: Channel count
 
-            padToPowerOfTwo = true;
-
             int width = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Width) : Width;
             var height = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Height) : Height;
 
