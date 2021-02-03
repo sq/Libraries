@@ -46,7 +46,8 @@ namespace Squared.Render {
 
             var threadCount = Math.Min(Math.Max(2, Environment.ProcessorCount + 1), 4);
             ThreadGroup = new ThreadGroup(threadCount, threadCount, true, comThreadingModel: ApartmentState.MTA) {
-                NewThreadBusyThresholdMs = 2.0f
+                NewThreadBusyThresholdMs = 2.0f,
+                MainThreadStepLengthLimitMs = 7
             };
 
 #if !FNA
