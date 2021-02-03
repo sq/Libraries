@@ -518,7 +518,36 @@ namespace Squared.Render.Evil {
                 ColorSrgbEXT = SurfaceFormat.Color;
         }
 
-#if WINDOWS
+        public static int GetBytesPerPixelAndComponents (SurfaceFormat format, out int numComponents) {
+            // HACK
+            if (format == ColorSrgbEXT)
+                format = SurfaceFormat.Color;
+
+            switch (format) {
+                case SurfaceFormat.Alpha8:
+                    numComponents = 1;
+                    return 1;
+                case SurfaceFormat.Color:
+                    numComponents = 4;
+                    return 4;
+                case SurfaceFormat.Rgba64:
+                    numComponents = 4;
+                    return 8;
+                case SurfaceFormat.Vector2:
+                    numComponents = 2;
+                    return 8;
+                case SurfaceFormat.HalfVector4:
+                    numComponents = 4;
+                    return 8;
+                case SurfaceFormat.Vector4:
+                    numComponents = 4;
+                    return 16;
+                default:
+                    throw new ArgumentException("Surface format " + format + " not implemented");
+            }
+        }
+
+    #if WINDOWS
         public static class VTables {
             public static class IDirect3DTexture9 {
                 public const uint SetAutoGenFilterType = 56;
@@ -688,7 +717,13 @@ namespace Squared.Render.Evil {
             this Texture2D texture, uint level, void* pData,
             int width, int height, uint pitch
         ) {
-            texture.SetDataPointerEXT((int)level, new Rectangle(0, 0, width, height), new IntPtr(pData), (int)(pitch * height));
+            int temp;
+            int bytesPerPixel = GetBytesPerPixelAndComponents(texture.Format, out temp);
+            var maxSize = (texture.Width * texture.Height * bytesPerPixel);
+            var actualSize = (int)(pitch * height);
+            if (actualSize > maxSize)
+                throw new ArgumentOutOfRangeException("pitch");
+            texture.SetDataPointerEXT((int)level, new Rectangle(0, 0, width, height), new IntPtr(pData), actualSize);
         }
 
         public static void GetDataFast<T> (

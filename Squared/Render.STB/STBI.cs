@@ -97,7 +97,7 @@ namespace Squared.Render.STB {
             }
 
             int components;
-            SizeofPixel = STB.ImageWrite.GetBytesPerPixelAndComponents(Format, out components);
+            SizeofPixel = Evil.TextureUtils.GetBytesPerPixelAndComponents(Format, out components);
 
             if (asFloatingPoint)
                 ConvertFPData(premultiply);
@@ -201,6 +201,8 @@ namespace Squared.Render.STB {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image is disposed");
             // FIXME: Channel count
+
+            padToPowerOfTwo = true;
 
             int width = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Width) : Width;
             var height = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Height) : Height;
@@ -307,20 +309,20 @@ namespace Squared.Render.STB {
             var queue = coordinator.ThreadGroup.GetQueueForType<UploadMipWorkItem>(mainThread);
             for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
                 byte[] mip;
-                uint mipSize;
+                uint mipPitch;
                 if (level > 0) {
                     mip = MipChain[level - 1];
-                    mipSize = (uint)mip.Length;
+                    mipPitch = (uint)(levelWidth * SizeofPixel);
                 } else {
                     mip = null;
-                    mipSize = (uint)(Width * Height * SizeofPixel);
+                    mipPitch = (uint)(Width * SizeofPixel);
                 }
 
                 var workItem = new UploadMipWorkItem {
                     Coordinator = coordinator,
                     Image = this,
                     Mip = mip,
-                    MipSize = mipSize,
+                    MipPitch = mipPitch,
                     Texture = result,
                     Level = level,
                     LevelWidth = levelWidth,
@@ -361,7 +363,7 @@ namespace Squared.Render.STB {
         }
 
         private unsafe struct UploadMipWorkItem : IWorkItem {
-            internal uint MipSize;
+            internal uint MipPitch;
             internal Image Image;
             internal Texture2D Texture;
             internal uint Level;
@@ -385,7 +387,7 @@ namespace Squared.Render.STB {
 
                 // FIXME: Create a work item for each mip to avoid blocking the main thread for too long
                 lock (Coordinator.UseResourceLock)
-                    Evil.TextureUtils.SetDataFast(Texture, Level, pData, LevelWidth, LevelHeight, MipSize);
+                    Evil.TextureUtils.SetDataFast(Texture, Level, pData, LevelWidth, LevelHeight, MipPitch);
 
                 if (pin.IsAllocated)
                     pin.Free();

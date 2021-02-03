@@ -23,28 +23,9 @@ namespace Squared.Render.STB {
             }
         }
 
-        public static int GetBytesPerPixelAndComponents (SurfaceFormat format, out int numComponents) {
-            switch (format) {
-                case SurfaceFormat.Alpha8:
-                    numComponents = 1;
-                    return 1;
-                case SurfaceFormat.Color:
-                    numComponents = 4;
-                    return 4;
-                case SurfaceFormat.Rgba64:
-                    numComponents = 4;
-                    return 8;
-                case SurfaceFormat.Vector4:
-                    numComponents = 4;
-                    return 16;
-                default:
-                    throw new ArgumentException("Surface format " + format + " not implemented");
-            }
-        }
-
         public static byte[] GetTextureData (Texture2D tex) {
             int numComponents;
-            var bytesPerPixel = GetBytesPerPixelAndComponents(tex.Format, out numComponents);
+            var bytesPerPixel = Evil.TextureUtils.GetBytesPerPixelAndComponents(tex.Format, out numComponents);
             var count = tex.Width * tex.Height * bytesPerPixel;
             var buffer = new byte[count];
             GetTextureData(tex, buffer);
@@ -77,7 +58,7 @@ namespace Squared.Render.STB {
             ImageWriteFormat format = ImageWriteFormat.PNG, int jpegQuality = 75
         ) {
             int numComponents;
-            var bytesPerPixel = GetBytesPerPixelAndComponents(sourceFormat, out numComponents);
+            var bytesPerPixel = Evil.TextureUtils.GetBytesPerPixelAndComponents(sourceFormat, out numComponents);
 
             if (buffer.Length < (bytesPerPixel * width * height))
                 throw new ArgumentException("buffer");
