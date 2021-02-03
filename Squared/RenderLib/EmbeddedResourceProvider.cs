@@ -31,13 +31,20 @@ namespace Squared.Render {
             public string Name;
             public object Data, PreloadedData;
             public bool Optional;
+            public bool Async;
 
             void IWorkItem.Execute () {
                 using (Stream) {
                     try {
                         // Console.WriteLine($"CreateInstance('{Name}') on thread {Thread.CurrentThread.Name}");
-                        var instance = Provider.CreateInstance(Stream, Data, PreloadedData);
-                        Future.SetResult2(instance, null);
+                        var instance = Provider.CreateInstance(Stream, Data, PreloadedData, Async);
+                        if (instance.Completed)
+                            Future.SetResult2(instance.Result, null);
+                        else
+                            instance.RegisterOnComplete((_) => {
+                                instance.GetResult(out T value, out Exception err);
+                                Future.SetResult(value, err);
+                            });
                     } catch (Exception exc) {
                         Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
                     } finally {
@@ -54,6 +61,7 @@ namespace Squared.Render {
             public string Name;
             public object Data;
             public bool Optional;
+            public bool Async;
 
             void IWorkItem.Execute () {
                 Stream stream = null;
@@ -77,7 +85,8 @@ namespace Squared.Render {
                         Data = Data,
                         Optional = Optional,
                         Stream = stream,
-                        PreloadedData = preloadedData
+                        PreloadedData = preloadedData,
+                        Async = Async
                     };
                     Provider.CreateQueue.Enqueue(ref item);
                 } catch (Exception exc) {
@@ -143,7 +152,7 @@ namespace Squared.Render {
         }
 
         protected virtual object PreloadInstance (Stream stream, object data) => null;
-        protected abstract T CreateInstance (Stream stream, object data, object preloadedData);
+        protected abstract Future<T> CreateInstance (Stream stream, object data, object preloadedData, bool async);
 
         private bool GetStream (string name, bool optional, out Stream result, out Exception exception) {
             var streamName = FixupName((Prefix ?? "") + name + Suffix, false);
@@ -169,12 +178,12 @@ namespace Squared.Render {
             Stream stream;
             if (GetStream(name, optional, out stream, out exception)) {
                 var preloadedData = PreloadInstance(stream, data);
-                var instance = CreateInstance(stream, data, preloadedData);
+                var future = CreateInstance(stream, data, preloadedData, false);
                 if (IsDisposed) {
-                    Coordinator.DisposeResource(instance);
+                    Coordinator.DisposeResource(future.Result);
                     return default(T);
                 } else {
-                    return instance;
+                    return future.Result;
                 }
             } else {
                 return default(T);
@@ -217,7 +226,8 @@ namespace Squared.Render {
                     Future = future,
                     Name = name,
                     Data = data,
-                    Optional = optional
+                    Optional = optional,
+                    Async = true
                 };
                 PreloadQueue.Enqueue(workItem);
             }
@@ -289,9 +299,9 @@ namespace Squared.Render {
             Suffix = ".fx";
         }
 
-        protected override Effect CreateInstance (Stream stream, object data, object preloadedData) {
+        protected override Future<Effect> CreateInstance (Stream stream, object data, object preloadedData, bool async) {
             lock (Coordinator.CreateResourceLock)
-                return EffectUtils.EffectFromFxcOutput(Coordinator.Device, stream);
+                return new Future<Effect>(EffectUtils.EffectFromFxcOutput(Coordinator.Device, stream));
         }
     }
 }

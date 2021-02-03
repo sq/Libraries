@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Threading;
 
 namespace Squared.Render {
     public class TextureLoadOptions {
@@ -68,11 +69,19 @@ namespace Squared.Render {
             return image;
         }
 
-        protected override Texture2D CreateInstance (Stream stream, object data, object preloadedData) {
+        protected override Future<Texture2D> CreateInstance (Stream stream, object data, object preloadedData, bool async) {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
             var img = (STB.Image)preloadedData;
-            using (img)
-                return img.CreateTexture(Coordinator, options.PadToPowerOfTwo);
+            if (async) {
+                var f = img.CreateTextureAsync(Coordinator, !EnableThreadedCreate, options.PadToPowerOfTwo);
+                f.RegisterOnComplete((_) => {
+                    Coordinator.DisposeResource(img);
+                });
+                return f;
+            } else {
+                using (img)
+                    return new Future<Texture2D>(img.CreateTexture(Coordinator, options.PadToPowerOfTwo));
+            }
         }
     }
 }

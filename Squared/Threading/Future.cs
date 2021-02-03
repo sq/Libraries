@@ -379,9 +379,7 @@ namespace Squared.Threading {
     }
 
     public class Future<T> : IDisposable, IFuture {
-        public static readonly Future<T> Default;
-
-        private static readonly int ProcessorCount;        
+        private static readonly int ProcessorCount;
 
         private const int State_Empty = 0;
         private const int State_Indeterminate = 1;
@@ -431,7 +429,6 @@ namespace Squared.Threading {
 
         static Future () {
             ProcessorCount = Environment.ProcessorCount;
-            Default = new Future<T>(default(T));
         }
 
         private static void SpinWait (int iterationCount) {

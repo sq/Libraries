@@ -4,8 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using Microsoft.Xna.Framework;
+using System.Threading;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.Render.STB {
@@ -210,9 +211,31 @@ namespace Squared.Render.STB {
 
             // FIXME: FP mips, 16bit mips
             if ((MipChain != null) && !IsFloatingPoint && !Is16Bit)
-                UploadWithMips(coordinator, result);
+                UploadWithMips(coordinator, result, false, true);
             else
-                UploadDirect(coordinator, result);
+                UploadDirect(coordinator, result, false, true);
+
+            return result;
+        }
+
+        public Future<Texture2D> CreateTextureAsync (RenderCoordinator coordinator, bool mainThread, bool padToPowerOfTwo) {
+            if (IsDisposed)
+                throw new ObjectDisposedException("Image is disposed");
+            // FIXME: Channel count
+
+            int width = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Width) : Width;
+            var height = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Height) : Height;
+
+            Texture2D tex;
+            lock (coordinator.CreateResourceLock)
+                tex = new Texture2D(coordinator.Device, width, height, MipChain != null, Format);
+
+            // FIXME: FP mips, 16bit mips
+            Future<Texture2D> result;
+            if ((MipChain != null) && !IsFloatingPoint && !Is16Bit)
+                result = UploadWithMips(coordinator, tex, true, mainThread);
+            else
+                result = UploadDirect(coordinator, tex, true, mainThread);
 
             return result;
         }
@@ -221,12 +244,14 @@ namespace Squared.Render.STB {
 
         private Stopwatch UploadTimer = new Stopwatch();
 
-        private void UploadDirect (RenderCoordinator coordinator, Texture2D result) {
+        private Future<Texture2D> UploadDirect (RenderCoordinator coordinator, Texture2D result, bool async, bool mainThread) {
+            // FIXME: async?
             UploadTimer.Restart();
             lock (coordinator.UseResourceLock)
                 Evil.TextureUtils.SetDataFast(result, 0, Data, Width, Height, (uint)(Width * SizeofPixel));
             if (UploadTimer.Elapsed.TotalMilliseconds > 1)
                 Debug.Print($"Uploading non-mipped texture took {UploadTimer.Elapsed.TotalMilliseconds}ms");
+            return new Future<Texture2D>(result);
         }
 
         private unsafe void GenerateMips () {
@@ -260,7 +285,7 @@ namespace Squared.Render.STB {
                 pin.Free();
         }
 
-        private unsafe void UploadWithMips (RenderCoordinator coordinator, Texture2D result) {
+        private unsafe Future<Texture2D> UploadWithMips (RenderCoordinator coordinator, Texture2D result, bool async, bool mainThread) {
             var pPreviousLevelData = Data;
             var pLevelData = Data;
             int levelWidth = Width, levelHeight = Height;
@@ -271,23 +296,42 @@ namespace Squared.Render.STB {
 
             UploadTimer.Restart();
 
-            var pin = default(GCHandle);
+            var f = new Future<Texture2D>();
+            int itemsPending = 1;
+            var onItemComplete = (OnWorkItemComplete<UploadMipWorkItem>)((ref UploadMipWorkItem wi) => {
+                if (Interlocked.Decrement(ref itemsPending) != 0)
+                    return;
+                f.SetResult(result, null);
+            });
+
+            var queue = coordinator.ThreadGroup.GetQueueForType<UploadMipWorkItem>(mainThread);
             for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
+                byte[] mip;
                 uint mipSize;
                 if (level > 0) {
-                    if (pin.IsAllocated)
-                        pin.Free();
-                    var mip = MipChain[level - 1];
-                    pin = GCHandle.Alloc(mip, GCHandleType.Pinned);
-                    pLevelData = (void*)pin.AddrOfPinnedObject();
+                    mip = MipChain[level - 1];
                     mipSize = (uint)mip.Length;
                 } else {
+                    mip = null;
                     mipSize = (uint)(Width * Height * SizeofPixel);
                 }
 
-                // FIXME: Create a work item for each mip to avoid blocking the main thread for too long
-                lock (coordinator.UseResourceLock)
-                    Evil.TextureUtils.SetDataFast(result, level, pLevelData, levelWidth, levelHeight, mipSize);
+                var workItem = new UploadMipWorkItem {
+                    Coordinator = coordinator,
+                    Image = this,
+                    Mip = mip,
+                    MipSize = mipSize,
+                    Texture = result,
+                    Level = level,
+                    LevelWidth = levelWidth,
+                    LevelHeight = levelHeight
+                };
+                if (async) {
+                    // FIXME
+                    Interlocked.Increment(ref itemsPending);
+                    queue.Enqueue(workItem, onItemComplete);
+                } else
+                    workItem.Execute();
 
                 previousLevelWidth = levelWidth;
                 previousLevelHeight = levelHeight;
@@ -296,11 +340,15 @@ namespace Squared.Render.STB {
                 levelWidth = newWidth;
                 levelHeight = newHeight;
             }
-            if (pin.IsAllocated)
-                pin.Free();
+
+            Interlocked.Decrement(ref itemsPending);
+            if (!async)
+                f.SetResult(result, null);
 
             if (UploadTimer.Elapsed.TotalMilliseconds > 2)
                 Debug.Print($"Uploading mipped texture took {UploadTimer.Elapsed.TotalMilliseconds}ms");
+
+            return f;
         }
 
         public void Dispose () {
@@ -309,6 +357,38 @@ namespace Squared.Render.STB {
             if (Data != null) {
                 Native.API.stbi_image_free(Data);
                 Data = null;
+            }
+        }
+
+        private unsafe struct UploadMipWorkItem : IWorkItem {
+            internal uint MipSize;
+            internal Image Image;
+            internal Texture2D Texture;
+            internal uint Level;
+            internal int LevelHeight;
+            internal RenderCoordinator Coordinator;
+
+            public object Mip { get; set; }
+            public int LevelWidth { get; internal set; }
+
+            public void Execute () {
+                var pin = default(GCHandle);
+                void* pData;
+                if (Mip != null) {
+                    pin = GCHandle.Alloc(Mip, GCHandleType.Pinned);
+                    pData = (void*)pin.AddrOfPinnedObject();
+                } else {
+                    pData = Image.Data;
+                    if (pData == null)
+                        throw new Exception("Image has no data");
+                }
+
+                // FIXME: Create a work item for each mip to avoid blocking the main thread for too long
+                lock (Coordinator.UseResourceLock)
+                    Evil.TextureUtils.SetDataFast(Texture, Level, pData, LevelWidth, LevelHeight, MipSize);
+
+                if (pin.IsAllocated)
+                    pin.Free();
             }
         }
     }
