@@ -37,8 +37,8 @@ namespace PRGUI.Demo {
         public GraphicsDeviceManager Graphics;
         public DefaultMaterialSet Materials { get; private set; }
 
-        public EmbeddedTexture2DProvider TextureLoader { get; private set; }
-        public EmbeddedFreeTypeFontProvider FontLoader { get; private set; }
+        public Texture2DProvider TextureLoader { get; private set; }
+        public FreeTypeFontProvider FontLoader { get; private set; }
 
         public KeyboardInputSource Keyboard = new KeyboardInputSource();
         public MouseInputSource Mouse = new MouseInputSource();
@@ -148,13 +148,13 @@ namespace PRGUI.Demo {
         protected override void OnLoadContent (bool isReloading) {
             RenderCoordinator.EnableThreading = false;
 
-            TextureLoader = new EmbeddedTexture2DProvider(RenderCoordinator) {
+            TextureLoader = new Texture2DProvider(Assembly.GetExecutingAssembly(), RenderCoordinator) {
                 DefaultOptions = new TextureLoadOptions {
                     Premultiply = true,
                     GenerateMips = true
                 }
             };
-            FontLoader = new EmbeddedFreeTypeFontProvider(RenderCoordinator);
+            FontLoader = new FreeTypeFontProvider(Assembly.GetExecutingAssembly(), RenderCoordinator);
 
             float fontScale = 1.2f;
             FiraSans = LoadFont("FiraSans-Medium");
