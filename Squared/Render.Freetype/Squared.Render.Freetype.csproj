@@ -97,7 +97,7 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="EmbeddedFontProvider.cs" />
+    <Compile Include="FontProvider.cs" />
     <Compile Include="FTFont.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

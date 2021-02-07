@@ -5,17 +5,19 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Squared.Render.Resources;
 using Squared.Render.Text;
 using Squared.Threading;
 
 namespace Squared.Render {
-    public class EmbeddedFreeTypeFontProvider : EmbeddedResourceProvider<FreeTypeFont> {
-        public EmbeddedFreeTypeFontProvider (Assembly assembly, RenderCoordinator coordinator) 
-            : base(assembly, coordinator) {
+    public class FreeTypeFontProvider : ResourceProvider<FreeTypeFont> {
+        public FreeTypeFontProvider (Assembly assembly, RenderCoordinator coordinator) 
+            : this(new EmbeddedResourceStreamProvider(assembly), coordinator) {
         }
 
-        public EmbeddedFreeTypeFontProvider (RenderCoordinator coordinator) 
-            : base(Assembly.GetCallingAssembly(), coordinator) {
+        public FreeTypeFontProvider (IResourceProviderStreamSource provider, RenderCoordinator coordinator) 
+            // FIXME: Enable threaded create?
+            : base(provider, coordinator, enableThreadedCreate: false, enableThreadedPreload: true) {
         }
 
         protected override Future<FreeTypeFont> CreateInstance (Stream stream, object data, object preloadedData, bool async) {

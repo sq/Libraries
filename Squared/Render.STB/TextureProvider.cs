@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Render.Resources;
 using Squared.Threading;
 
 namespace Squared.Render {
@@ -29,7 +30,7 @@ namespace Squared.Render {
         public bool sRGBToLinear, sRGBFromLinear;
     }
 
-    public class EmbeddedTexture2DProvider : EmbeddedResourceProvider<Texture2D> {
+    public class Texture2DProvider : ResourceProvider<Texture2D> {
         new public TextureLoadOptions DefaultOptions {
             get {
                 return (TextureLoadOptions)base.DefaultOptions;
@@ -39,12 +40,17 @@ namespace Squared.Render {
             }
         }
 
-        public EmbeddedTexture2DProvider (Assembly assembly, RenderCoordinator coordinator) 
-            : base(assembly, coordinator, enableThreadedCreate: false) {
+        public Texture2DProvider (Assembly assembly, RenderCoordinator coordinator) 
+        : this (
+            new EmbeddedResourceStreamProvider(assembly), coordinator
+        ) {
         }
 
-        public EmbeddedTexture2DProvider (RenderCoordinator coordinator) 
-            : base(Assembly.GetCallingAssembly(), coordinator, enableThreadedCreate: false) {
+        public Texture2DProvider (IResourceProviderStreamSource source, RenderCoordinator coordinator) 
+        : base (
+            source, coordinator, 
+            enableThreadedCreate: false, enableThreadedPreload: true
+        ) {
         }
 
         public Texture2D Load (string name, TextureLoadOptions options, bool cached = true, bool optional = false) {

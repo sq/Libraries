@@ -11,6 +11,7 @@ using Squared.Render.Convenience;
 using Squared.Util;
 using System.Runtime.InteropServices;
 using Squared.Game;
+using Squared.Render.Resources;
 
 namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential)]
@@ -341,7 +342,7 @@ namespace Squared.Render {
             }
         }
 
-        public readonly EmbeddedEffectProvider BuiltInShaders;
+        public readonly EffectProvider BuiltInShaders;
         public readonly ITimeProvider  TimeProvider;
 
         protected readonly MaterialDictionary<MaterialCacheKey> MaterialCache = new MaterialDictionary<MaterialCacheKey>(
@@ -454,7 +455,7 @@ namespace Squared.Render {
 
             TimeProvider = timeProvider ?? new DotNetTimeProvider();
 
-            BuiltInShaders = new EmbeddedEffectProvider(coordinator);
+            BuiltInShaders = new EffectProvider(Assembly.GetExecutingAssembly(), coordinator);
 
             Clear = new Material(
                 null, null,
