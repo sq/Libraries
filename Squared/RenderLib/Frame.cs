@@ -144,11 +144,10 @@ namespace Squared.Render {
 
             BatchesToRelease.Clear();
 
-            var _batches = Batches.GetBuffer(false);
-            for (int i = 0; i < Batches.Count; i++) {
-                var batch = _batches[i];
-                if (batch != null)
-                    batch.ReleaseResources();
+            Batch temp;
+            for (int i = 0, c = Batches.Count; i < Batches.Count; i++) {
+                if (Batches.TryGetItem(i, out temp))
+                    temp.ReleaseResources();
             }
 
             Batches.Dispose();
