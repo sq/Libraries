@@ -125,6 +125,21 @@ namespace Squared.PRGUI.Flags {
         /// </summary>
         public bool PreventCrushX, PreventCrushY, PreventCrush;
 
+        public bool Start {
+            get => (Alignment == ChildAlignment.Start);
+            set => Alignment = value ? ChildAlignment.Start : ChildAlignment.End;
+        }
+
+        public bool End {
+            get => (Alignment == ChildAlignment.End);
+            set => Alignment = value ? ChildAlignment.End : ChildAlignment.Start;
+        }
+
+        public bool Middle {
+            get => (Alignment == ChildAlignment.Middle);
+            set => Alignment = value ? ChildAlignment.Middle : ChildAlignment.Start;
+        }
+
         public bool Row {
             get => (Arrangement == ChildArrangement.Row);
             set => Arrangement = value ? ChildArrangement.Row : ChildArrangement.Column;

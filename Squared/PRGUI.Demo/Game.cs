@@ -453,7 +453,7 @@ namespace PRGUI.Demo {
                 Container = {
                     Row = true,
                     Wrap = true,
-                    Alignment = Squared.PRGUI.Flags.ChildAlignment.Start
+                    Start = true
                 },
                 Children = {
                     new Container {
