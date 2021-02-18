@@ -1,0 +1,169 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Squared.PRGUI.Layout;
+
+namespace Squared.PRGUI.Flags {
+    public struct AnchorFlags {
+        public bool Left, Top, Right, Bottom;
+        /// <summary>
+        /// Equivalent to Fill.All
+        /// </summary>
+        public bool All;
+
+        public static implicit operator ControlFlags (AnchorFlags af) {
+            var none = default(ControlFlags);
+            return
+                (af.Left ? ControlFlags.Layout_Anchor_Left : none) |
+                (af.Top ? ControlFlags.Layout_Anchor_Top : none) |
+                (af.Right ? ControlFlags.Layout_Anchor_Right : none) |
+                (af.Bottom ? ControlFlags.Layout_Anchor_Bottom : none) |
+                (af.All ? ControlFlags.Layout_Fill : none);
+        }
+    }
+
+    public struct FillFlags {
+        public bool Row, Column;
+        /// <summary>
+        /// Equivalent to Fill.Row + Fill.Column
+        /// </summary>
+        public bool All;
+
+        public static implicit operator FillFlags (bool all) {
+            return new FillFlags {
+                All = all
+            };
+        }
+
+        public static implicit operator ControlFlags (FillFlags ff) {
+            var none = default(ControlFlags);
+            return
+                (ff.Row ? ControlFlags.Layout_Fill_Row : none) |
+                (ff.Column ? ControlFlags.Layout_Fill_Column : none) |
+                (ff.All ? ControlFlags.Layout_Fill : none);
+        }
+    }
+
+    public struct LayoutFlags {
+        public AnchorFlags Anchor;
+        /// <summary>
+        /// If set, will override anchor
+        /// </summary>
+        public FillFlags Fill;
+        /// <summary>
+        /// If set inside a wrapped container, will force this control to wrap
+        /// </summary>
+        public bool ForceBreak;
+        /// <summary>
+        /// If set, this control will be laid out as if its parent has no other children
+        /// </summary>
+        public bool Floating;
+
+        public ControlFlags Mask =>
+            (
+                (ControlFlags)Anchor != default(ControlFlags)
+                    ? ~ControlFlags.Layout_Fill
+                    : ~default(ControlFlags)
+            ) &
+            (
+                (ControlFlags)Fill != default(ControlFlags)
+                    ? ~ControlFlags.Layout_Fill
+                    : ~default(ControlFlags)
+            );
+
+        public static implicit operator ControlFlags? (LayoutFlags lf) {
+            return (lf.Mask != ~default(ControlFlags))
+                ? lf
+                : (ControlFlags?)null;
+        }
+
+        public static implicit operator ControlFlags (LayoutFlags lf) {
+            var none = default(ControlFlags);
+            return
+                (ControlFlags)lf.Anchor |
+                (ControlFlags)lf.Fill |
+                (lf.ForceBreak ? ControlFlags.Layout_ForceBreak : none) |
+                (lf.Floating ? ControlFlags.Layout_Floating : none);
+        }
+    }
+
+    public enum ChildArrangement : uint {
+        Row = 0x02,
+        Column = 0x03
+    }
+
+    public enum ChildAlignment : uint {
+        Start = 0x08,
+        Middle = 0x00,
+        End = 0x10,
+        /// <summary>
+        /// Not compatible with Wrap
+        /// </summary>
+        Justify = 0x18
+    }
+
+    public struct ContainerFlags {
+        public ChildArrangement Arrangement;
+        public ChildAlignment Alignment;
+        /// <summary>
+        /// Attempts to automatically wrap children to the next row/column if they don't fit
+        /// This also enables ForceBreak
+        /// </summary>
+        public bool Wrap;
+        /// <summary>
+        /// Prevents children from being larger than this container
+        /// </summary>
+        public bool ConstrainSize;
+        /// <summary>
+        /// Prevents children from being expanded to fit this container
+        /// </summary>
+        public bool NoExpansion;
+        /// <summary>
+        /// Prevents children from being shrunk to fit this container
+        /// </summary>
+        public bool PreventCrushX, PreventCrushY, PreventCrush;
+
+        public bool Row {
+            get => (Arrangement == ChildArrangement.Row);
+            set => Arrangement = value ? ChildArrangement.Row : ChildArrangement.Column;
+        }
+
+        public bool Column {
+            get => (Arrangement == ChildArrangement.Column);
+            set => Arrangement = value ? ChildArrangement.Column : ChildArrangement.Row;
+        }
+
+        public ControlFlags Mask =>
+            (ControlFlags)(uint)(
+                Arrangement != default(ChildArrangement)
+                    ? ~(ChildArrangement.Row | ChildArrangement.Column)
+                    : ~default(ChildArrangement)
+            ) &
+            (ControlFlags)(uint)(
+                Alignment != default(ChildAlignment)
+                    ? ~(ChildAlignment.Start | ChildAlignment.Middle | ChildAlignment.End | ChildAlignment.Justify)
+                    : ~default(ChildAlignment)
+            );
+
+        public static implicit operator ControlFlags? (ContainerFlags lf) {
+            return (lf.Mask != ~default(ControlFlags))
+                ? lf
+                : (ControlFlags?)null;
+        }
+
+        public static implicit operator ControlFlags (ContainerFlags cf) {
+            var none = default(ControlFlags);
+            return
+                (ControlFlags)(uint)cf.Arrangement |
+                (ControlFlags)(uint)cf.Alignment |
+                (cf.Wrap ? ControlFlags.Container_Wrap : none) |
+                (cf.ConstrainSize ? ControlFlags.Container_Constrain_Size : none) |
+                (cf.NoExpansion ? ControlFlags.Container_No_Expansion : none) |
+                (cf.PreventCrushX ? ControlFlags.Container_Prevent_Crush_X : none) |
+                (cf.PreventCrushY ? ControlFlags.Container_Prevent_Crush_Y : none) |
+                (cf.PreventCrush ? ControlFlags.Container_Prevent_Crush : none);
+        }
+    }
+}

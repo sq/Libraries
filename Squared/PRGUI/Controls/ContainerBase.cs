@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
+using Squared.PRGUI.Flags;
 using Squared.PRGUI.Imperative;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
@@ -51,19 +52,14 @@ namespace Squared.PRGUI.Controls {
             ControlFlags.Container_Wrap;
 
         /// <summary>
+        /// Overrides ContainerFlags
+        /// </summary>
+        public ContainerFlags Container;
+
+        /// <summary>
         /// Extra container flags that will be or'd in at layout time
         /// </summary>
         protected ControlFlags ExtraContainerFlags = default(ControlFlags);
-
-        /// <summary>
-        /// Prevents the container's children from ever being crushed below their minimum sizes,
-        ///  which will create overflow you need to clip and/or scroll
-        /// </summary>
-        public bool PreventCrush {
-            get => ContainerFlags.IsFlagged(ControlFlags.Container_Prevent_Crush);
-            set => ContainerFlags = (ContainerFlags & ~ControlFlags.Container_Prevent_Crush) |
-                (value ? ControlFlags.Container_Prevent_Crush : default(ControlFlags));
-        }
 
         protected override bool ShouldClipContent => ClipChildren && (Children.Count > 0);
         // FIXME: Always true?
@@ -275,11 +271,17 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        protected ControlFlags ComputeContainerFlags () {
+            return (ContainerFlags & Container.Mask) |
+                (ControlFlags)Container;
+        }
+
         protected virtual ControlKey CreateColumn (UIOperationContext context, ControlKey parent, int columnIndex) {
             var result = context.Layout.CreateItem();
+            var cf = ComputeContainerFlags();
             context.Layout.InsertAtEnd(parent, result);
             context.Layout.SetLayoutFlags(result, ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top);
-            context.Layout.SetContainerFlags(result, ContainerFlags | ControlFlags.Container_Prevent_Crush_Y);
+            context.Layout.SetContainerFlags(result, cf | ControlFlags.Container_Prevent_Crush_Y);
             // context.Layout.SetContainerFlags(parent, );
             return result;
         }
@@ -531,11 +533,11 @@ namespace Squared.PRGUI.Controls {
             : base () {
             CreateNestedContextForChildren = false;
             Appearance.Undecorated = true;
-            ForceBreak = forceBreak;
-            PreventCrush = preventCrush;
+            Layout.ForceBreak = forceBreak;
+            Container.PreventCrush = preventCrush;
             DisableSelfHitTests = true;
             if (fill)
-                LayoutFlags |= ControlFlags.Layout_Fill;
+                Layout.Fill = true;
         }
 
         // For simple initializers

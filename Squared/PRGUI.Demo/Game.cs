@@ -228,7 +228,7 @@ namespace PRGUI.Demo {
 
         private void BuildUI () {
             var hoveringCtl = new StaticText {
-                LayoutFlags = ControlFlags.Layout_Fill,
+                Layout = { Fill = true },
                 AutoSize = false,
                 Wrap = false,
                 Text = "Hovering: None",
@@ -236,7 +236,7 @@ namespace PRGUI.Demo {
             };
 
             var lastClickedCtl = new StaticText {
-                LayoutFlags = ControlFlags.Layout_Fill,
+                Layout = { Fill = true },
                 AutoSize = false,
                 Wrap = false,
                 Text = "",
@@ -244,7 +244,7 @@ namespace PRGUI.Demo {
             };
 
             var focusedCtl = new StaticText {
-                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                Layout = { Fill = true, ForceBreak = true },
                 AutoSize = false,
                 Wrap = false,
                 Text = "",
@@ -252,7 +252,7 @@ namespace PRGUI.Demo {
             };
 
             var capturedCtl = new StaticText {
-                LayoutFlags = ControlFlags.Layout_Fill,
+                Layout = { Fill = true },
                 AutoSize = false,
                 Wrap = false,
                 Text = "",
@@ -277,7 +277,7 @@ namespace PRGUI.Demo {
                 Appearance = {
                     BackgroundColor = new Color(40, 56, 60),
                 },
-                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                Layout = { Fill = true, ForceBreak = true },
                 // MinimumWidth = 200,
                 Description = "A number",
                 HorizontalAlignment = HorizontalAlignment.Right,
@@ -293,7 +293,11 @@ namespace PRGUI.Demo {
             var hideButton = new Button {
                 Text = "$[ghost] Hide",
                 Margins = default(Margins),
-                LayoutFlags = ControlFlags.Layout_Anchor_Right | ControlFlags.Layout_Fill_Column | ControlFlags.Layout_ForceBreak,
+                Layout = {
+                    Anchor = { Right = true },
+                    Fill = { Column = true },
+                    ForceBreak = true
+                },
                 Appearance = {
                     BackgroundColor = new Color(128, 16, 16),
                 },
@@ -311,7 +315,7 @@ namespace PRGUI.Demo {
             };
 
             var volumeSlider = new Slider {
-                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                Layout = { Fill = true, ForceBreak = true },
                 Value = 80,
                 NotchInterval = 25f,
                 NotchMagnetism = 2.99f,
@@ -354,7 +358,9 @@ namespace PRGUI.Demo {
                 // FIXME: We need this spacer to fill the empty space at the bottom of the window when it's maximized.
                 // Should it really work this way?
                 new Spacer {
-                    ForceBreak = true
+                    Layout = {
+                        ForceBreak = true
+                    }
                 }
             );
 
@@ -403,7 +409,9 @@ namespace PRGUI.Demo {
                 SelectedItem = 1
             };
             var listBox = new ListBox<string> {
-                ForceBreak = true,
+                Layout = {
+                    ForceBreak = true,
+                },
                 Description = "Big List",
                 Width = { Fixed = 600 },
                 Height = { Fixed = 600 },
@@ -420,7 +428,11 @@ namespace PRGUI.Demo {
 
             var increaseGaugeButton = new Button {
                 Text = "Increase Gauge Value",
-                LayoutFlags = ControlFlags.Layout_ForceBreak | ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
+                Layout = {
+                    Fill = { Row = true },
+                    Anchor = { Top = true },
+                    ForceBreak = true
+                },
                 Width = { Fixed = 450 },
                 AutoSizeWidth = false,
                 EnableRepeat = true
@@ -428,17 +440,28 @@ namespace PRGUI.Demo {
 
             var gauge = new Gauge {
                 Description = "Test Gauge",
-                LayoutFlags = ControlFlags.Layout_ForceBreak,
+                Layout = {
+                    ForceBreak = true
+                },
                 Width = { Fixed = 450 }
             };
 
             var scrollableClipTest = new Container {
-                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
-                ContainerFlags = ControlFlags.Container_Wrap | ControlFlags.Container_Row | ControlFlags.Container_Align_Start,
+                Layout = {
+                    Anchor = { Left = true, Top = true },
+                },
+                Container = {
+                    Row = true,
+                    Wrap = true,
+                    Alignment = Squared.PRGUI.Flags.ChildAlignment.Start
+                },
                 Children = {
                     new Container {
                         ClipChildren = true,
-                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
+                        Layout = {
+                            Fill = { Row = true },
+                            Anchor = { Top = true },
+                        },
                         Height = { Maximum = 500 },
                         Width = { Fixed = 450 },
                         Scrollable = true,
@@ -446,11 +469,27 @@ namespace PRGUI.Demo {
                             new StaticText { Text = "Testing nested clips" },
                             new StaticText {
                                 Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
-                                Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                                Wrap = true, AutoSizeWidth = false,
+                                Layout = {
+                                    Fill = { Row = true },
+                                    ForceBreak = true
+                                }
                             },
-                            new Checkbox { Text = "Checkbox 1", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak },
+                            new Checkbox {
+                                Text = "Checkbox 1",
+                                Layout = {
+                                    Fill = { Row = true },
+                                    ForceBreak = true
+                                }
+                            },
                             new Checkbox { Text = "Checkbox 2", Checked = true },
-                            new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
+                            new RadioButton {
+                                Text = "Radio 1", GroupId = "radio", Checked = true,
+                                Layout = {
+                                    Fill = { Row = true },
+                                    ForceBreak = true
+                                }
+                            },
                             new RadioButton { Text = "Radio 2", GroupId = "radio" },
                             new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
                             supernestedGroup
@@ -462,7 +501,9 @@ namespace PRGUI.Demo {
             };
 
             var listboxContainer = new ControlGroup {
-                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
+                Layout = {
+                    Anchor = { Left = true, Top = true },
+                },
                 Children = {
                     virtualCheckbox,
                     columnCount,
@@ -497,7 +538,10 @@ namespace PRGUI.Demo {
 
             var bigScrollableContainer = new Container {
                 ClipChildren = true,
-                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                Layout = {
+                    Fill = true,
+                    ForceBreak = true
+                },
                 Height = { Maximum = 1200 },
                 Scrollable = true,
                 ShowHorizontalScrollbar = true,
@@ -513,20 +557,30 @@ namespace PRGUI.Demo {
                         }
                     },
                     new ControlGroup {
-                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                        Layout = {
+                            Fill = { Row = true },
+                            ForceBreak = true
+                        },
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start,
                         Children = {
                             new Button {
                                 Text = "Clipped huge button\r\nSecond line\r\n" + ButtonChars,
                                 Width = { Fixed = 600 },
                                 Height = { Fixed = 1800 },
-                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
+                                Layout = {
+                                    Anchor = { Top = true },
+                                    Fill = { Row = true },
+                                    ForceBreak = true
+                                },
                             },
                             tabs
                         }
                     },
                     new Button {
-                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                        Layout = {
+                            Fill = { Row = true },
+                            ForceBreak = true
+                        },
                         Text = "Another button at the bottom to test clipped hit tests"
                     }
                 }
@@ -534,7 +588,10 @@ namespace PRGUI.Demo {
 
             var largeText = new Checkbox {
                 Text = "Big Text",
-                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_ForceBreak,
+                Layout = {
+                    Anchor = { Left = true },
+                    ForceBreak = true
+                },
             };
 
             var fastAnimations = new Checkbox {
@@ -559,7 +616,9 @@ namespace PRGUI.Demo {
                 Appearance = {
                     BackgroundColor = new Color(60, 60, 60) * 0.9f,
                 },
-                LayoutFlags = ControlFlags.Layout_Fill,
+                Layout = {
+                    Fill = true
+                },
                 // FIXME: We shouldn't need to set Wrap here since we're setting explicit breaks
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                 Children = {
@@ -583,7 +642,9 @@ namespace PRGUI.Demo {
                         Width = { Minimum = 200 },
                         Text = "Disabled Button",
                         Enabled = false,
-                        LayoutFlags = ControlFlags.Layout_Fill_Row,
+                        Layout = {
+                            Fill = { Row = true }
+                        },
                         Appearance = {
                             BackgroundColor = Color.LightPink
                         }
@@ -592,7 +653,10 @@ namespace PRGUI.Demo {
                     new StaticText {
                         AutoSize = false,
                         Text = "Static Text 2\r\nLine 2",
-                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                        Layout = {
+                            Fill = { Row = true },
+                            ForceBreak = true
+                        },
                         Width = { Maximum = 130 },
                         Height = { Minimum = Font.LineSpacing + Context.Decorations.StaticText.Padding.Y },
                         Multiline = true,

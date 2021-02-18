@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
+using Squared.PRGUI.Flags;
 using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
@@ -61,6 +62,10 @@ namespace Squared.PRGUI {
         public ControlAppearance Appearance;
         public Margins Margins, Padding;
         public ControlFlags LayoutFlags = ControlFlags.Layout_Fill_Row;
+        /// <summary>
+        /// Overrides LayoutFlags
+        /// </summary>
+        public LayoutFlags Layout;
         public ControlDimension Width, Height;
         private bool _BackgroundColorEventFired, _OpacityEventFired, _TextColorEventFired;
 
@@ -79,18 +84,6 @@ namespace Squared.PRGUI {
                     ;
                 _LayoutKey = value;
             }
-        }
-
-        public bool Floating {
-            get => LayoutFlags.IsFlagged(ControlFlags.Layout_Floating);
-            set => LayoutFlags = (LayoutFlags & ~ControlFlags.Layout_Floating) |
-                (value ? ControlFlags.Layout_Floating : default(ControlFlags));
-        }
-
-        public bool ForceBreak {
-            get => LayoutFlags.IsFlagged(ControlFlags.Layout_ForceBreak);
-            set => LayoutFlags = (LayoutFlags & ~ControlFlags.Layout_ForceBreak) |
-                (value ? ControlFlags.Layout_ForceBreak : default(ControlFlags));
         }
 
         public bool IsTransparent {
@@ -579,15 +572,16 @@ namespace Squared.PRGUI {
         }
 
         protected ControlFlags ComputeLayoutFlags (bool hasFixedWidth, bool hasFixedHeight) {
-            var result = LayoutFlags;
+            var result = (LayoutFlags & Layout.Mask) | Layout;
             // HACK: Clearing the fill flag is necessary for fixed sizes to work,
             //  but clearing both anchors causes the control to end up centered...
             //  and if we only clear one anchor then wrapping breaks. Awesome
-            return result;
+            /*
             if (hasFixedWidth && result.IsFlagged(ControlFlags.Layout_Fill_Row))
                 result &= ~ControlFlags.Layout_Fill_Row;
             if (hasFixedHeight && result.IsFlagged(ControlFlags.Layout_Fill_Column))
                 result &= ~ControlFlags.Layout_Fill_Column;
+            */
             return result;
         }
 

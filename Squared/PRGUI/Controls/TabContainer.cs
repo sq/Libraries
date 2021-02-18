@@ -89,14 +89,17 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected void GenerateTabs () {
+            TabStrip.Layout.Fill.Column = TabsOnLeft;
+            TabStrip.Layout.Fill.Row = !TabsOnLeft;
+            TabStrip.Layout.Anchor.Left = TabsOnLeft;
+            TabStrip.Layout.Anchor.Top = !TabsOnLeft;
             TabStrip.LayoutFlags =
                 TabsOnLeft
                     ? ControlFlags.Layout_Fill_Column | ControlFlags.Layout_Anchor_Left
                     : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top;
             TabStrip.ContainerFlags =
-                TabsOnLeft
-                    ? ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Prevent_Crush | ControlFlags.Container_Wrap
-                    : ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Prevent_Crush;
+                ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Prevent_Crush;
+            TabStrip.Container.Wrap = TabsOnLeft;
 
             TabStrip.Children.Clear();
             var children = Children;

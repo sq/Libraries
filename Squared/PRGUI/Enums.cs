@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework;
 using Squared.Game;
 
 namespace Squared.PRGUI.Layout {
-    public enum Dimensions : uint {
+    public enum LayoutDimensions : uint {
         X = 0,
         Y = 1
     }
@@ -167,36 +167,36 @@ namespace Squared.PRGUI.Layout {
             return masked == (int)flag;
         }
 
-        public static float GetOrigin (this Bounds bounds, Dimensions dimension) {
-            return (dimension == Dimensions.X) ? bounds.TopLeft.X : bounds.TopLeft.Y;
+        public static float GetOrigin (this Bounds bounds, LayoutDimensions dimension) {
+            return (dimension == LayoutDimensions.X) ? bounds.TopLeft.X : bounds.TopLeft.Y;
         }
 
-        public static float GetSize (this Bounds bounds, Dimensions dimension) {
-            return (dimension == Dimensions.X) ? bounds.Size.X : bounds.Size.Y;
+        public static float GetSize (this Bounds bounds, LayoutDimensions dimension) {
+            return (dimension == LayoutDimensions.X) ? bounds.Size.X : bounds.Size.Y;
         }
 
-        public static float GetExtent (this Bounds bounds, Dimensions dimension) {
-            return (dimension == Dimensions.X) ? bounds.BottomRight.X : bounds.BottomRight.Y;
+        public static float GetExtent (this Bounds bounds, LayoutDimensions dimension) {
+            return (dimension == LayoutDimensions.X) ? bounds.BottomRight.X : bounds.BottomRight.Y;
         }
 
-        public static Bounds SetOrigin (this Bounds bounds, Dimensions dimension, float value) {
-            if (dimension == Dimensions.X)
+        public static Bounds SetOrigin (this Bounds bounds, LayoutDimensions dimension, float value) {
+            if (dimension == LayoutDimensions.X)
                 bounds.TopLeft.X = value;
             else
                 bounds.TopLeft.Y = value;
             return bounds;
         }
 
-        public static Bounds SetSize (this Bounds bounds, Dimensions dimension, float value) {
-            if (dimension == Dimensions.X)
+        public static Bounds SetSize (this Bounds bounds, LayoutDimensions dimension, float value) {
+            if (dimension == LayoutDimensions.X)
                 bounds.BottomRight.X = value + bounds.TopLeft.X;
             else
                 bounds.BottomRight.Y = value + bounds.TopLeft.Y;
             return bounds;
         }
 
-        public static Bounds SetExtent (this Bounds bounds, Dimensions dimension, float value) {
-            if (dimension == Dimensions.X)
+        public static Bounds SetExtent (this Bounds bounds, LayoutDimensions dimension, float value) {
+            if (dimension == LayoutDimensions.X)
                 bounds.BottomRight.X = value;
             else
                 bounds.BottomRight.Y = value;
