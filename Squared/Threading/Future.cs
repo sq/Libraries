@@ -230,7 +230,7 @@ namespace Squared.Threading {
         private class WaitHandler {
             public Future<IFuture> Composite;
             public readonly List<IFuture> State = new List<IFuture>();
-            public int Trigger;
+            public int TriggerAtPreviousCount;
             private bool Disposing = false;
 
             public void OnCompositeDispose (IFuture f) {
@@ -253,11 +253,12 @@ namespace Squared.Threading {
             public void OnComplete (IFuture f) {
                 bool completed = false;
                 lock (State) {
-                    if (State.Count == Trigger) {
+                    if (State.Count == TriggerAtPreviousCount) {
                         completed = true;
                         State.Clear();
                     } else {
-                        State.Remove(f);
+                        if (!State.Remove(f))
+                            throw new ThreadStateException();
                     }
                 }
 
@@ -268,11 +269,12 @@ namespace Squared.Threading {
             public void OnDispose (IFuture f) {
                 bool completed = false;
                 lock (State) {
-                    if (State.Count == Trigger) {
+                    if (State.Count == TriggerAtPreviousCount) {
                         completed = true;
                         State.Clear();
                     } else {
-                        State.Remove(f);
+                        if (!State.Remove(f))
+                            throw new ThreadStateException();
                     }
                 }
 
@@ -281,7 +283,7 @@ namespace Squared.Threading {
             }
         }
 
-        private static Future<IFuture> WaitForX (IEnumerable<IFuture> futures, int x) {
+        private static Future<IFuture> WaitForX (IEnumerable<IFuture> futures, int triggerAtPreviousCount) {
             if (futures == null)
                 throw new ArgumentException("Must specify at least one future to wait on", "futures");
 
@@ -290,7 +292,7 @@ namespace Squared.Threading {
 
             h.Composite = f;
             h.State.AddRange(futures);
-            h.Trigger = x;
+            h.TriggerAtPreviousCount = triggerAtPreviousCount;
 
             OnComplete oc = h.OnComplete;
             OnDispose od = h.OnDispose;
@@ -540,7 +542,11 @@ namespace Squared.Threading {
             return state;
         }
 
-        private void RegisterHandler_Impl (Delegate handler, ref DenseList<Delegate> list, bool acquireLock) {
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns>Whether the future is already complete and handlers were run</returns>
+        private bool RegisterHandler_Impl (Delegate handler, ref DenseList<Delegate> list, bool acquireLock, bool forDispose) {
             int oldState = TrySetIndeterminate();
                 
             if (oldState == State_Empty) {
@@ -554,40 +560,52 @@ namespace Squared.Threading {
                 }
 
                 ClearIndeterminate();
+                return false;
             } else if (
                 (oldState == State_CompletedWithValue) ||
-                (oldState == State_CompletedWithError)
+                (oldState == State_CompletedWithError) ||
+                (oldState == State_Disposed) ||
+                (oldState == State_Disposing)
             ) {
-                InvokeHandler(handler);
+                if (forDispose) {
+                    if ((oldState == State_Disposed) || (oldState == State_Disposing))
+                        InvokeHandler(handler);
+                } else {
+                    if ((oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError))
+                        InvokeHandler(handler);
+                }
+                return true;
+            } else {
+                throw new ThreadStateException();
             }
         }
 
         public void RegisterHandlers (OnComplete<T> onComplete, OnDispose onDispose) {
             var listLock = GetListLock();
             lock (listLock) {
-                RegisterHandler_Impl(onComplete, ref _OnCompletes, false);
-                RegisterHandler_Impl(onDispose, ref _OnDisposes, false);
+                if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false, false))
+                    RegisterHandler_Impl(onDispose, ref _OnDisposes, false, true);
             }
         }
 
         public void RegisterHandlers (OnComplete onComplete, OnDispose onDispose) {
             var listLock = GetListLock();
             lock (listLock) {
-                RegisterHandler_Impl(onComplete, ref _OnCompletes, false);
-                RegisterHandler_Impl(onDispose, ref _OnDisposes, false);
+                if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false, false))
+                    RegisterHandler_Impl(onDispose, ref _OnDisposes, false, true);
             }
         }
 
         public void RegisterOnComplete (OnComplete handler) {
-            RegisterHandler_Impl(handler, ref _OnCompletes, true);
+            RegisterHandler_Impl(handler, ref _OnCompletes, true, false);
         }
 
         public void RegisterOnComplete2 (OnComplete<T> handler) {
-            RegisterHandler_Impl(handler, ref _OnCompletes, true);
+            RegisterHandler_Impl(handler, ref _OnCompletes, true, false);
         }
 
         public void RegisterOnDispose (OnDispose handler) {
-            RegisterHandler_Impl(handler, ref _OnDisposes, true);
+            RegisterHandler_Impl(handler, ref _OnDisposes, true, true);
         }
 
         public bool Disposed {

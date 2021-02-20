@@ -261,8 +261,7 @@ namespace Squared.Task {
             _ResultFuture = future;
 
             _WaitFuture = Future.WaitForAll(_Futures);
-            _WaitFuture.RegisterOnComplete(HandleResult);
-            _WaitFuture.RegisterOnDispose(HandleDisposed);
+            _WaitFuture.RegisterHandlers(HandleResult, HandleDisposed);
         }
     }
 
