@@ -52,12 +52,15 @@ namespace Squared.Task {
                     ThreadPool.QueueUserWorkItem(moveNext, f);
                     yield return f;
 
-                    nv.Value = buffer;
-                    yield return nv;
+                    bool atEnd;
+                    Exception error;
+                    if (f.GetResult(out atEnd, out error)) {
+                        nv.Value = buffer;
+                        yield return nv;
 
-                    bool atEnd = f.Result;
-                    if (atEnd)
-                        yield break;
+                        if (atEnd)
+                            yield break;
+                    }
                 }
             }
         }

@@ -387,6 +387,7 @@ namespace Squared.Threading {
         private const int State_CompletedWithValue = 2;
         private const int State_CompletedWithError = 3;
         private const int State_Disposed = 4;
+        private const int State_Disposing = 5;
 
         private volatile int _State = State_Empty;
         private volatile object _ListLock = null;
@@ -415,6 +416,7 @@ namespace Squared.Threading {
                     stateText = "CompletedWithError";
                     break;
                 case State_Disposed:
+                case State_Disposing:
                     stateText = "Disposed";
                     break;
             }
@@ -590,7 +592,7 @@ namespace Squared.Threading {
 
         public bool Disposed {
             get {
-                return _State == State_Disposed;
+                return (_State == State_Disposed) || (_State == State_Disposing);
             }
         }
 
@@ -634,7 +636,7 @@ namespace Squared.Threading {
                 } else if (state == State_CompletedWithError) {
                     OnErrorCheck();
                     return (_ErrorInfo != null) ? _ErrorInfo.SourceException : _Error;
-                } else if (state == State_Disposed) {
+                } else if ((state == State_Disposed) || (state == State_Disposing)) {
                     return null;
                 } else
                     throw new FutureHasNoResultException(this);
@@ -649,7 +651,7 @@ namespace Squared.Threading {
                 } else if (state == State_CompletedWithError) {
                     OnErrorCheck();
                     throw new FutureException("Future's result was an error", (_ErrorInfo != null) ? _ErrorInfo.SourceException : _Error);
-                } else if (state == State_Disposed) {
+                } else if ((state == State_Disposed) || (state == State_Disposing)) {
                     throw new FutureDisposedException(this);
                 } else
                     throw new FutureHasNoResultException(this);
@@ -669,7 +671,7 @@ namespace Squared.Threading {
                         throw new InvalidOperationException();
                     } else
                         throw new FutureException("Future's result was an error", _Error);
-                } else if (state == State_Disposed) {
+                } else if ((state == State_Disposed) || (state == State_Disposing)) {
                     throw new FutureDisposedException(this);
                 } else
                     throw new FutureHasNoResultException(this);
@@ -750,7 +752,7 @@ namespace Squared.Threading {
             while (true) {
                 int oldState = Interlocked.CompareExchange(ref _State, State_Indeterminate, State_Empty);
 
-                if (oldState == State_Disposed) {
+                if ((oldState == State_Disposed) || (oldState == State_Disposing)) {
                     return false;
                 } else if ((oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError))
                     throw new FutureAlreadyHasResultException(this);
@@ -838,9 +840,13 @@ namespace Squared.Threading {
             int iterations = 1;
 
             while (true) {
-                int oldState = Interlocked.CompareExchange(ref _State, State_Indeterminate, State_Empty);
+                int oldState = Interlocked.CompareExchange(ref _State, State_Disposing, State_Empty);
 
-                if ((oldState == State_Disposed) || (oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError)) {
+                if ((oldState == State_Disposed) || 
+                    (oldState == State_Disposing) ||
+                    (oldState == State_CompletedWithValue) || 
+                    (oldState == State_CompletedWithError)
+                ) {
                     return;
                 } else if (oldState == State_Empty)
                     break;
@@ -852,7 +858,7 @@ namespace Squared.Threading {
             if (_ListLock != null)
                 InvokeHandlers(ref _OnDisposes, ref _OnCompletes);
 
-            if (Interlocked.Exchange(ref _State, State_Disposed) != State_Indeterminate)
+            if (Interlocked.Exchange(ref _State, State_Disposed) != State_Disposing)
                 throw new ThreadStateException();
         }
 
