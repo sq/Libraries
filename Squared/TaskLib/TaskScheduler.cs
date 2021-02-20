@@ -521,7 +521,7 @@ namespace Squared.Task {
             using (IsActive)
             while (true) {
                 if (_JobQueue.WaitForFuture(future))
-                    return future.Result2;
+                    return future.Result;
 
                 if (timeout.HasValue) {
                     var elapsed = DateTime.UtcNow - started;

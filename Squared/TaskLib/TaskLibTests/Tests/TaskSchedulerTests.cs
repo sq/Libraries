@@ -1060,6 +1060,8 @@ namespace Squared.Task {
                 using (response)
                     yield return response;
 
+                if (response.Disposed)
+                    yield break;
                 state = (int)response.Result;
             }
         }
