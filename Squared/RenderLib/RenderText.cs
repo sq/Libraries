@@ -175,6 +175,7 @@ namespace Squared.Render.Text {
         public bool                characterWrap;
         public bool                wordWrap;
         public char                wrapCharacter;
+        public bool                hideOverflow;
         public bool                reverseOrder;
         public int?                lineLimit;
         public bool                measureOnly;
@@ -687,10 +688,12 @@ namespace Squared.Render.Text {
 
                         if (lineLimit.HasValue && lineLimit.Value <= 0)
                             suppress = true;
-                    } else {
+                    } else if (hideOverflow) {
                         // If wrapping is disabled but we've hit the line break boundary, we want to suppress glyphs from appearing
                         //  until the beginning of the next line (i.e. hard line break), but continue performing layout
                         suppressUntilNextLine = true;
+                    } else {
+                        // Just overflow. Hooray!
                     }
                 }
 

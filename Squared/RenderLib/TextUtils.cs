@@ -45,6 +45,7 @@ namespace Squared.Render.Text {
         private int _LineLimit = int.MaxValue;
         private bool _MeasureOnly = false;
         private bool _RichText = false;
+        private bool _HideOverflow = false;
         private char? _ReplacementCharacter = null;
 
         private readonly Dictionary<Pair<int>, LayoutMarker> _Markers = new Dictionary<Pair<int>, LayoutMarker>();
@@ -341,6 +342,15 @@ namespace Squared.Render.Text {
             }
         }
 
+        public bool HideOverflow {
+            get {
+                return _HideOverflow;
+            }
+            set {
+                InvalidatingValueAssignment(ref _HideOverflow, value);
+            }
+        }
+
         public bool WordWrap {
             get {
                 return _WordWrap;
@@ -478,6 +488,7 @@ namespace Squared.Render.Text {
                 characterWrap = _CharacterWrap,
                 wordWrap = _WordWrap,
                 wrapCharacter = _WrapCharacter,
+                hideOverflow = _HideOverflow,
                 alignment = (HorizontalAlignment)_Alignment,
                 reverseOrder = _ReverseOrder,
                 lineLimit = _LineLimit,
