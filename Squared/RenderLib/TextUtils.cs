@@ -531,6 +531,7 @@ namespace Squared.Render.Text {
             this.RichText = source.RichText;
             this.RichTextConfiguration = source.RichTextConfiguration;
             this.ReplacementCharacter = source.ReplacementCharacter;
+            this.HideOverflow = source.HideOverflow;
         }
 
         /// <summary>

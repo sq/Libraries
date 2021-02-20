@@ -114,7 +114,9 @@ namespace Squared.PRGUI.Controls {
         protected Vector2 MinScrollOffset;
         protected Vector2? MaxScrollOffset;
 
-        protected DynamicStringLayout DescriptionLayout = new DynamicStringLayout();
+        protected DynamicStringLayout DescriptionLayout = new DynamicStringLayout {
+            HideOverflow = true
+        };
         protected DynamicStringLayout DynamicLayout = new DynamicStringLayout();
         protected StringBuilder Builder = new StringBuilder();
         protected Margins CachedPadding;

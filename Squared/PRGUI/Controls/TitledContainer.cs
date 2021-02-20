@@ -66,6 +66,7 @@ namespace Squared.PRGUI.Controls {
         public string Title;
 
         protected DynamicStringLayout TitleLayout = new DynamicStringLayout {
+            HideOverflow = true,
             LineLimit = 1
         };
 

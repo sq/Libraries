@@ -36,7 +36,9 @@ namespace Squared.PRGUI.Controls {
         public const bool DiagnosticText = false;
 
         public Material TextMaterial = null;
-        protected DynamicStringLayout Content = new DynamicStringLayout();
+        protected DynamicStringLayout Content = new DynamicStringLayout {
+            HideOverflow = true
+        };
         private DynamicStringLayout ContentMeasurement = null;
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
         private bool _NeedRelayout;
