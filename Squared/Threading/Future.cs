@@ -392,7 +392,6 @@ namespace Squared.Threading {
         private const int State_Disposing = 5;
 
         private volatile int _State = State_Empty;
-        private volatile object _ListLock = null;
         private DenseList<Delegate> _OnCompletes, _OnDisposes;
         private ExceptionDispatchInfo _ErrorInfo = null;
         private Exception _Error = null;
@@ -469,15 +468,12 @@ namespace Squared.Threading {
             if (handlers.Count <= 0)
                 return;
 
-            var listLock = GetListLock();
-            Monitor.Enter(listLock);
             try {
                 otherListToClear.Clear();
                 for (int i = 0; i < handlers.Count; i++)
                     InvokeHandler(handlers[i]);
             } finally {
                 handlers.Clear();
-                Monitor.Exit(listLock);
             }
         }
 
@@ -513,16 +509,6 @@ namespace Squared.Threading {
             }
         }
 
-        private object GetListLock () {
-            var result = _ListLock;
-            if (result == null) {
-                var newLock = new object();
-                var previous = Interlocked.CompareExchange(ref _ListLock, newLock, null);
-                result = previous ?? newLock;
-            }
-            return result;
-        }
-
         private void ClearIndeterminate () {
             if (Interlocked.CompareExchange(ref _State, State_Empty, State_Indeterminate) != State_Indeterminate)
                 throw new ThreadStateException();
@@ -546,18 +532,11 @@ namespace Squared.Threading {
         /// 
         /// </summary>
         /// <returns>Whether the future is already complete and handlers were run</returns>
-        private bool RegisterHandler_Impl (Delegate handler, ref DenseList<Delegate> list, bool acquireLock, bool forDispose) {
+        private bool RegisterHandler_Impl (Delegate handler, ref DenseList<Delegate> list, bool forDispose) {
             int oldState = TrySetIndeterminate();
                 
             if (oldState == State_Empty) {
-                if (acquireLock) {
-                    var listLock = GetListLock();
-
-                    lock (listLock)
-                        list.Add(handler);
-                } else {
-                    list.Add(handler);
-                }
+                list.Add(handler);
 
                 ClearIndeterminate();
                 return false;
@@ -581,31 +560,27 @@ namespace Squared.Threading {
         }
 
         public void RegisterHandlers (OnComplete<T> onComplete, OnDispose onDispose) {
-            var listLock = GetListLock();
-            lock (listLock) {
-                if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false, false))
-                    RegisterHandler_Impl(onDispose, ref _OnDisposes, false, true);
-            }
+            // FIXME: Set state to indeterminate once instead of twice
+            if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
+                RegisterHandler_Impl(onDispose, ref _OnDisposes, true);
         }
 
         public void RegisterHandlers (OnComplete onComplete, OnDispose onDispose) {
-            var listLock = GetListLock();
-            lock (listLock) {
-                if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false, false))
-                    RegisterHandler_Impl(onDispose, ref _OnDisposes, false, true);
-            }
+            // FIXME: Set state to indeterminate once instead of twice
+            if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
+                RegisterHandler_Impl(onDispose, ref _OnDisposes, true);
         }
 
         public void RegisterOnComplete (OnComplete handler) {
-            RegisterHandler_Impl(handler, ref _OnCompletes, true, false);
+            RegisterHandler_Impl(handler, ref _OnCompletes, false);
         }
 
         public void RegisterOnComplete2 (OnComplete<T> handler) {
-            RegisterHandler_Impl(handler, ref _OnCompletes, true, false);
+            RegisterHandler_Impl(handler, ref _OnCompletes, false);
         }
 
         public void RegisterOnDispose (OnDispose handler) {
-            RegisterHandler_Impl(handler, ref _OnDisposes, true, true);
+            RegisterHandler_Impl(handler, ref _OnDisposes, true);
         }
 
         public bool Disposed {
@@ -873,8 +848,7 @@ namespace Squared.Threading {
             }
 
             // FIXME: Possible leak / failure to invoke, but probably fine?
-            if (_ListLock != null)
-                InvokeHandlers(ref _OnDisposes, ref _OnCompletes);
+            InvokeHandlers(ref _OnDisposes, ref _OnCompletes);
 
             if (Interlocked.Exchange(ref _State, State_Disposed) != State_Disposing)
                 throw new ThreadStateException();
