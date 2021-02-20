@@ -424,9 +424,15 @@ namespace Squared.Threading {
             return String.Format("<Future<{3}> ({0}) r={1} e={2}>", stateText, result, error, typeof(T).Name);
         }
 
+        /// <summary>
+        /// Creates a future that is not yet completed
+        /// </summary>
         public Future () {
         }
 
+        /// <summary>
+        /// Creates a future that is already completed with a value
+        /// </summary>
         public Future (T value) {
             this.SetResult(value, null);
         }
@@ -486,6 +492,10 @@ namespace Squared.Threading {
             }
         }
 
+        /// <summary>
+        /// Registers a handler that will be invoked when the error status of this future is checked.
+        /// You can use this to identify whether a future has been abandoned.
+        /// </summary>
         public void RegisterOnErrorCheck (Action handler) {
             Action newHandler;
             int iterations = 1;
@@ -509,8 +519,8 @@ namespace Squared.Threading {
             }
         }
 
-        private void ClearIndeterminate () {
-            if (Interlocked.CompareExchange(ref _State, State_Empty, State_Indeterminate) != State_Indeterminate)
+        private void ClearIndeterminate (int newState) {
+            if (Interlocked.CompareExchange(ref _State, newState, State_Indeterminate) != State_Indeterminate)
                 throw new ThreadStateException();
         }
 
@@ -528,9 +538,6 @@ namespace Squared.Threading {
             return state;
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
         /// <returns>Whether the future is already complete and handlers were run</returns>
         private bool RegisterHandler_Impl (Delegate handler, ref DenseList<Delegate> list, bool forDispose) {
             int oldState = TrySetIndeterminate();
@@ -538,7 +545,7 @@ namespace Squared.Threading {
             if (oldState == State_Empty) {
                 list.Add(handler);
 
-                ClearIndeterminate();
+                ClearIndeterminate(State_Empty);
                 return false;
             } else if (
                 (oldState == State_CompletedWithValue) ||
@@ -559,36 +566,58 @@ namespace Squared.Threading {
             }
         }
 
+        /// <summary>
+        /// Registers a pair of handlers to be notified upon future completion and disposal, respectively.
+        /// </summary>
         public void RegisterHandlers (OnComplete<T> onComplete, OnDispose onDispose) {
             // FIXME: Set state to indeterminate once instead of twice
             if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
                 RegisterHandler_Impl(onDispose, ref _OnDisposes, true);
         }
 
+        /// <summary>
+        /// Registers a pair of handlers to be notified upon future completion and disposal, respectively.
+        /// </summary>
         public void RegisterHandlers (OnComplete onComplete, OnDispose onDispose) {
             // FIXME: Set state to indeterminate once instead of twice
             if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
                 RegisterHandler_Impl(onDispose, ref _OnDisposes, true);
         }
 
+        /// <summary>
+        /// Registers a handlers to be notified upon future completion. If the future is disposed, this will not run.
+        /// </summary>
         public void RegisterOnComplete (OnComplete handler) {
             RegisterHandler_Impl(handler, ref _OnCompletes, false);
         }
 
+        /// <summary>
+        /// Registers a handlers to be notified upon future completion. If the future is disposed, this will not run.
+        /// </summary>
         public void RegisterOnComplete2 (OnComplete<T> handler) {
             RegisterHandler_Impl(handler, ref _OnCompletes, false);
         }
 
+        /// <summary>
+        /// Registers a handlers to be notified upon future disposal. If the future is completed, this will not run.
+        /// </summary>
         public void RegisterOnDispose (OnDispose handler) {
             RegisterHandler_Impl(handler, ref _OnDisposes, true);
         }
-
+        
+        /// <summary>
+        /// Returns true if the future has been disposed or is in the process of being disposed.
+        /// </summary>
         public bool Disposed {
             get {
                 return (_State == State_Disposed) || (_State == State_Disposing);
             }
         }
 
+        /// <summary>
+        /// Returns true if the future has been completed.
+        /// Note that if the future is currently being completed, this may return false.
+        /// </summary>
         public bool Completed {
             get {
                 int state = _State;
@@ -596,6 +625,10 @@ namespace Squared.Threading {
             }
         }
 
+        /// <summary>
+        /// Returns true if the future has been completed but was completed with an error.
+        /// Note that if the future is currently being completed, this may return false.
+        /// </summary>
         public bool Failed {
             get {
                 OnErrorCheck();
@@ -621,6 +654,9 @@ namespace Squared.Threading {
             }
         }
 
+        /// <summary>
+        /// Returns the exception that caused the future to fail, if it has failed.
+        /// </summary>
         public Exception Error {
             get {
                 int state = _State;
@@ -636,6 +672,10 @@ namespace Squared.Threading {
             }
         }
 
+        /// <summary>
+        /// Returns the future's result if it contains one. 
+        /// If it failed, a FutureException will be thrown, with the original exception as its InnerException.
+        /// </summary>
         public T Result {
             get {
                 int state = _State;
@@ -651,7 +691,10 @@ namespace Squared.Threading {
             }
         }
 
-        // HACK: UGH. Access this if you want to rethrow with stack preserved.
+        /// <summary>
+        /// Returns the future's result if it contains one.
+        /// If it failed, the exception responsible will be rethrown with its stack preserved (if possible).
+        /// </summary>
         public T Result2 {
             get {
                 int state = _State;
@@ -690,6 +733,11 @@ namespace Squared.Threading {
             }
         }
 
+        /// <summary>
+        /// Attempts to the current state of the source future to this future.
+        /// May fail for various reasons (for example, this future is already completed).
+        /// </summary>
+        /// <returns>true if the copy was successful.</returns>
         public bool CopyFrom (Future<T> source) {
             var state = source._State;
 
@@ -767,6 +815,9 @@ namespace Squared.Threading {
                 InvokeHandlers(ref _OnCompletes, ref _OnDisposes);
         }
 
+        /// <summary>
+        /// Completes the future. If the provided task failed, its exception will be stored into this future.
+        /// </summary>
         public void SetResult2 (System.Threading.Tasks.Task task) {
             if (!task.IsCompleted)
                 throw new InvalidOperationException("Task not completed");
@@ -785,6 +836,10 @@ namespace Squared.Threading {
             SetResultEpilogue(newState);
         }
 
+        /// <summary>
+        /// Sets the result of this future to the result of a completed task.
+        /// If the task failed, the exception will be stored into this future.
+        /// </summary>
         public void SetResult2 (System.Threading.Tasks.Task<T> task) {
             if (!task.IsCompleted)
                 throw new InvalidOperationException("Task not completed");
@@ -805,6 +860,10 @@ namespace Squared.Threading {
             SetResultEpilogue(newState);
         }
 
+        /// <summary>
+        /// Sets the result of this future along with information on the responsible exception (if any).
+        /// This information will be used to rethrow with stack preserved, as necessary.
+        /// </summary>
         public void SetResult2 (T result, ExceptionDispatchInfo errorInfo) {
             if (!SetResultPrologue())
                 return;
@@ -817,6 +876,10 @@ namespace Squared.Threading {
             SetResultEpilogue(newState);
         }
 
+        /// <summary>
+        /// Sets the result of this future along with the responsible exception (if any).
+        /// The exception will be wrapped instead of being rethrown.
+        /// </summary>
         public void SetResult (T result, Exception error) {
             if (!SetResultPrologue())
                 return;
@@ -829,6 +892,10 @@ namespace Squared.Threading {
             SetResultEpilogue(newState);
         }
 
+        /// <summary>
+        /// Disposes the future and invokes any OnDispose handlers.
+        /// No OnComplete handlers will be invoked.
+        /// </summary>
         public void Dispose () {
             int iterations = 1;
 
@@ -866,6 +933,10 @@ namespace Squared.Threading {
             return retval;
         }
 
+        /// <summary>
+        /// Attempts to retrieve the future's result.
+        /// Will return false if the future completed with an error, was disposed, or is not completed.
+        /// </summary>
         public bool GetResult (out T result) {
             if (_State == State_CompletedWithValue) {
                 Thread.MemoryBarrier();
@@ -879,6 +950,10 @@ namespace Squared.Threading {
             return false;
         }
 
+        /// <summary>
+        /// Attempts to retrieve the future's result.
+        /// Will return false if the future was disposed or is not completed.
+        /// </summary>
         public bool GetResult (out T result, out Exception error) {
             int state = _State;
 
@@ -918,6 +993,9 @@ namespace Squared.Threading {
             target.RegisterOnComplete(handler);
         }
 
+        /// <summary>
+        /// Causes this future to become completed when the specified future is completed.
+        /// </summary>
         public static IFuture Bind<T> (this IFuture future, Expression<Func<T>> target) {
             var member = BoundMember.New(target);
 
@@ -931,6 +1009,9 @@ namespace Squared.Threading {
             return future;
         }
 
+        /// <summary>
+        /// Causes this future to become completed when the specified future is completed.
+        /// </summary>
         public static Future<T> Bind<T> (this Future<T> future, Expression<Func<T>> target) {
             var member = BoundMember.New(target);
 
