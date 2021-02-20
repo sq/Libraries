@@ -38,7 +38,7 @@ namespace Squared.Threading.AsyncAwait {
                     throw new InvalidOperationException("No implicitly active TaskScheduler on this thread.");
             }
 
-            public Squared.Threading.OnComplete OnComplete (Action continuation) {
+            public Squared.Threading.OnFutureResolved OnComplete (Action continuation) {
                 if ((Continuation != null) && (Continuation != continuation))
                     throw new InvalidOperationException("Continuation already registered");
 

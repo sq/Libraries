@@ -33,7 +33,7 @@ namespace Squared.Task.Http {
         private readonly BlockingQueue<Request> IncomingRequests = new BlockingQueue<Request>();
         private readonly HashSet<Request> InFlightRequests = new HashSet<Request>(); 
 
-        private readonly OnComplete RequestOnComplete;
+        private readonly OnFutureResolved RequestOnComplete;
 
         public HttpServer (TaskScheduler scheduler) {
             EndPoints = new EndPointList(this);

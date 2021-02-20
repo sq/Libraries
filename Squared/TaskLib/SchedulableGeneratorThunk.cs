@@ -18,8 +18,8 @@ namespace Squared.Task {
         bool _ErrorChecked = false;
         TaskScheduler _Scheduler;
         readonly Action _Step, _QueueStep, _OnErrorChecked;
-        readonly OnComplete _QueueStepOnComplete;
-        readonly OnDispose _QueueStepOnDispose;
+        readonly OnFutureResolved _QueueStepOnComplete;
+        readonly OnFutureResolved _QueueStepOnDispose;
 
         public override string ToString () {
             return String.Format("<Task {0} waiting on {1}>", _Task, WakeCondition);

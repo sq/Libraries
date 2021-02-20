@@ -92,6 +92,44 @@ namespace Squared.Threading {
         }
 
         [Test]
+        public void InvokesTypedOnCompletesWhenCompleted () {
+            var f = new Future<int>();
+            object completeResult = null;
+            f.RegisterOnComplete2((_) => { completeResult = _.Error ?? (object)_.Result; });
+            f.Complete(5);
+            Assert.AreEqual(5, completeResult);
+        }
+
+        [Test]
+        public void InvokesOnResolvedWhenCompleted () {
+            var f1 = new Future<int>();
+            var f2 = new Future<int>();
+            var f3 = new Future<int>();
+            object completeResult = null;
+            var handler = (OnFutureResolved<int>)(
+                (f) => {
+                    completeResult =
+                        (f.Disposed)
+                            ? "disposed"
+                            : (f.Failed
+                                ? f.Error
+                                : (object)f.Result
+                            );
+                }
+            );
+            f1.RegisterOnResolved(handler);
+            f1.Complete(5);
+            Assert.AreEqual(5, completeResult);
+            f2.RegisterOnResolved(handler);
+            f2.Dispose();
+            Assert.AreEqual("disposed", completeResult);
+            f3.RegisterOnResolved(handler);
+            var exc = new Exception("test");
+            f3.SetResult(0, exc);
+            Assert.AreEqual(exc, completeResult);
+        }
+
+        [Test]
         public void ThrowsIfCompletedTwice () {
             var f = new Future<object>();
             try {

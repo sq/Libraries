@@ -367,7 +367,7 @@ namespace Squared.Threading {
 
         public static void BindFuture<T> (this System.Threading.Tasks.Task<T> task, Future<T> future) {
             task.GetAwaiter().OnCompleted(() => {
-                future.SetResult2(task);
+                future.SetResultFrom(task);
             });
             future.RegisterOnDispose((_) => {
                 task.TryCancelScope();

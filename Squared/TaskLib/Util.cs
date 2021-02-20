@@ -900,8 +900,8 @@ namespace Squared.Task {
         }
 
         private HashSet<IFuture> _OwnedFutures = new HashSet<IFuture>(new FutureComparer());
-        private OnComplete _OnComplete;
-        private OnDispose _OnDispose;
+        private OnFutureResolved _OnComplete;
+        private OnFutureResolved _OnDispose;
 
         public OwnedFutureSet () {
             _OnComplete = OnComplete;

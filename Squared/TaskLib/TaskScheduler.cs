@@ -334,15 +334,15 @@ namespace Squared.Task {
             return Start(new SchedulableGeneratorThunk(task), executionPolicy);
         }
 
-        public OnComplete Wrap (Action target) {
+        public OnFutureResolved Wrap (Action target) {
             return (_) => QueueWorkItemForNextStep(target);
         }
 
-        public OnComplete<T> Wrap<T> (Action<T> target) {
+        public OnFutureResolved<T> Wrap<T> (Action<T> target) {
             return (f) => QueueWorkItemForNextStep(() => target((T)f.Result2));
         }
 
-        public OnComplete<T> Wrap<T> (Action<T> target, T defaultValue, T failedValue = default(T))
+        public OnFutureResolved<T> Wrap<T> (Action<T> target, T defaultValue, T failedValue = default(T))
             where T : class
         {
             return (f) => QueueWorkItemForNextStep(
@@ -355,7 +355,7 @@ namespace Squared.Task {
             );
         }
 
-        public OnComplete<T> Wrap<T> (Action<T, Exception> target) {
+        public OnFutureResolved<T> Wrap<T> (Action<T, Exception> target) {
             return (f) => QueueWorkItemForNextStep(
                 () => {
                     T _result;

@@ -9,9 +9,8 @@ using System.Runtime.CompilerServices;
 using Squared.Util;
 
 namespace Squared.Threading {
-    public delegate void OnComplete (IFuture future);
-    public delegate void OnComplete<T> (Future<T> future);
-    public delegate void OnDispose (IFuture future);
+    public delegate void OnFutureResolved (IFuture future);
+    public delegate void OnFutureResolved<T> (Future<T> future);
 
     public class FutureException : Exception {
         public FutureException (string message, Exception innerException)
@@ -148,9 +147,10 @@ namespace Squared.Threading {
         bool GetResult (out object result, out Exception error);
         void SetResult (object result, Exception error);
         void SetResult2 (object result, ExceptionDispatchInfo errorInfo);
-        void RegisterHandlers (OnComplete completeHandler, OnDispose disposeHandler);
-        void RegisterOnComplete (OnComplete handler);
-        void RegisterOnDispose (OnDispose handler);
+        void RegisterHandlers (OnFutureResolved completeHandler, OnFutureResolved disposeHandler);
+        void RegisterOnResolved (OnFutureResolved handler);
+        void RegisterOnComplete (OnFutureResolved handler);
+        void RegisterOnDispose (OnFutureResolved handler);
         void RegisterOnErrorCheck (Action handler);
         bool CopyFrom (IFuture source);
     }
@@ -294,8 +294,8 @@ namespace Squared.Threading {
             h.State.AddRange(futures);
             h.TriggerAtPreviousCount = triggerAtPreviousCount;
 
-            OnComplete oc = h.OnComplete;
-            OnDispose od = h.OnDispose;
+            OnFutureResolved oc = h.OnComplete;
+            OnFutureResolved od = h.OnDispose;
 
             if (h.State.Count == 0)
                 throw new ArgumentException("Must specify at least one future to wait on", "futures");
@@ -318,7 +318,7 @@ namespace Squared.Threading {
                 Handler = OnEvent;
 
                 Event.Add(Handler);
-                Future.RegisterOnDispose(OnDispose);
+                Future.RegisterOnDispose((Threading.OnFutureResolved)this.OnDispose);
             }
 
             public void OnEvent (object sender, EventArgs args) {
@@ -343,7 +343,7 @@ namespace Squared.Threading {
                 Handler = OnEvent;
 
                 Event.Add(Handler);
-                Future.RegisterOnDispose(OnDispose);
+                Future.RegisterOnDispose((Threading.OnFutureResolved)this.OnDispose);
             }
 
             public void OnEvent (object sender, TEventArgs args) {
@@ -452,18 +452,15 @@ namespace Squared.Threading {
         }
 
         private void InvokeHandler (Delegate handler) {
-            OnDispose od;
-            OnComplete oc;
-            OnComplete<T> oct;
+            OnFutureResolved untyped;
+            OnFutureResolved<T> typed;
             try {
-                if ((oct = handler as OnComplete<T>) != null) {
-                    oct(this);
-                } else if ((oc = handler as OnComplete) != null) {
-                    oc(this);
-                } else if ((od = handler as OnDispose) != null) {
-                    od(this);
+                if ((typed = handler as OnFutureResolved<T>) != null) {
+                    typed(this);
+                } else if ((untyped = handler as OnFutureResolved) != null) {
+                    untyped(this);
                 } else {
-                    // FIXME
+                    throw new Exception("Invalid future handler");
                 }
             } catch (Exception exc) {
                 throw new FutureHandlerException(this, handler, exc);
@@ -540,6 +537,9 @@ namespace Squared.Threading {
 
         /// <returns>Whether the future is already complete and handlers were run</returns>
         private bool RegisterHandler_Impl (Delegate handler, ref DenseList<Delegate> list, bool forDispose) {
+            if (handler == null)
+                return false;
+
             int oldState = TrySetIndeterminate();
                 
             if (oldState == State_Empty) {
@@ -569,7 +569,7 @@ namespace Squared.Threading {
         /// <summary>
         /// Registers a pair of handlers to be notified upon future completion and disposal, respectively.
         /// </summary>
-        public void RegisterHandlers (OnComplete<T> onComplete, OnDispose onDispose) {
+        public void RegisterHandlers (OnFutureResolved<T> onComplete, OnFutureResolved onDispose) {
             // FIXME: Set state to indeterminate once instead of twice
             if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
                 RegisterHandler_Impl(onDispose, ref _OnDisposes, true);
@@ -578,30 +578,43 @@ namespace Squared.Threading {
         /// <summary>
         /// Registers a pair of handlers to be notified upon future completion and disposal, respectively.
         /// </summary>
-        public void RegisterHandlers (OnComplete onComplete, OnDispose onDispose) {
+        public void RegisterHandlers (OnFutureResolved onComplete, OnFutureResolved onDispose) {
             // FIXME: Set state to indeterminate once instead of twice
             if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
                 RegisterHandler_Impl(onDispose, ref _OnDisposes, true);
         }
 
+        void IFuture.RegisterOnResolved (OnFutureResolved handler) {
+            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false))
+                RegisterHandler_Impl(handler, ref _OnDisposes, true);
+        }
+
         /// <summary>
-        /// Registers a handlers to be notified upon future completion. If the future is disposed, this will not run.
+        /// Registers a handler to be notified upon future completion or disposal.
         /// </summary>
-        public void RegisterOnComplete (OnComplete handler) {
+        public void RegisterOnResolved (OnFutureResolved<T> handler) {
+            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false))
+                RegisterHandler_Impl(handler, ref _OnDisposes, true);
+        }
+
+        /// <summary>
+        /// Registers a handler to be notified upon future completion. If the future is disposed, this will not run.
+        /// </summary>
+        public void RegisterOnComplete (OnFutureResolved handler) {
             RegisterHandler_Impl(handler, ref _OnCompletes, false);
         }
 
         /// <summary>
-        /// Registers a handlers to be notified upon future completion. If the future is disposed, this will not run.
+        /// Registers a handler to be notified upon future completion. If the future is disposed, this will not run.
         /// </summary>
-        public void RegisterOnComplete2 (OnComplete<T> handler) {
+        public void RegisterOnComplete2 (OnFutureResolved<T> handler) {
             RegisterHandler_Impl(handler, ref _OnCompletes, false);
         }
 
         /// <summary>
         /// Registers a handlers to be notified upon future disposal. If the future is completed, this will not run.
         /// </summary>
-        public void RegisterOnDispose (OnDispose handler) {
+        public void RegisterOnDispose (OnFutureResolved handler) {
             RegisterHandler_Impl(handler, ref _OnDisposes, true);
         }
         
@@ -818,7 +831,7 @@ namespace Squared.Threading {
         /// <summary>
         /// Completes the future. If the provided task failed, its exception will be stored into this future.
         /// </summary>
-        public void SetResult2 (System.Threading.Tasks.Task task) {
+        public void SetResultFrom (System.Threading.Tasks.Task task) {
             if (!task.IsCompleted)
                 throw new InvalidOperationException("Task not completed");
 
@@ -840,7 +853,7 @@ namespace Squared.Threading {
         /// Sets the result of this future to the result of a completed task.
         /// If the task failed, the exception will be stored into this future.
         /// </summary>
-        public void SetResult2 (System.Threading.Tasks.Task<T> task) {
+        public void SetResultFrom (System.Threading.Tasks.Task<T> task) {
             if (!task.IsCompleted)
                 throw new InvalidOperationException("Task not completed");
 
@@ -987,7 +1000,7 @@ namespace Squared.Threading {
         /// Causes this future to become completed when the specified future is completed.
         /// </summary>
         public static void Bind (this IFuture future, IFuture target) {
-            OnComplete handler = (f) => {
+            OnFutureResolved handler = (f) => {
                 future.CopyFrom(f);
             };
             target.RegisterOnComplete(handler);
@@ -1068,7 +1081,7 @@ namespace Squared.Threading {
         /// </summary>
         public static ManualResetEventSlim GetCompletionEvent (this IFuture future) {
             ManualResetEventSlim evt = new ManualResetEventSlim(false);
-            OnComplete handler = (f) => evt.Set();
+            OnFutureResolved handler = (f) => evt.Set();
             future.RegisterOnComplete(handler);
             return evt;
         }

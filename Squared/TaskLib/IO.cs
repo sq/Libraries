@@ -60,7 +60,7 @@ namespace Squared.Task.IO {
 
     public class PendingOperationManager {
         IFuture _PendingOperation;
-        internal OnComplete OperationOnComplete;
+        internal OnFutureResolved OperationOnComplete;
 
         public IFuture PendingOperation {
             get {
@@ -260,7 +260,7 @@ namespace Squared.Task.IO {
             public int InitialPosition, Count;
             public int Position;
             public char[] Buffer;
-            public OnComplete OnDecodeComplete;
+            public OnFutureResolved OnDecodeComplete;
 
             public ReadBlockThunk () {
                 OnDecodeComplete = _OnDecodeComplete;
@@ -318,7 +318,7 @@ namespace Squared.Task.IO {
             public AsyncTextReader Parent;
             public Future<string> Result = new Future<string>();
             public CharacterBuffer Buffer;
-            public OnComplete OnDecodeComplete;
+            public OnFutureResolved OnDecodeComplete;
 
             public ReadLineThunk () {
                 Buffer = new CharacterBuffer();
@@ -386,7 +386,7 @@ namespace Squared.Task.IO {
             public AsyncTextReader Parent;
             public Future<string> Result = new Future<string>();
             public CharacterBuffer Buffer;
-            public OnComplete OnDecodeComplete;
+            public OnFutureResolved OnDecodeComplete;
 
             public ReadToEndThunk () {
                 Buffer = new CharacterBuffer();
@@ -750,7 +750,7 @@ namespace Squared.Task.IO {
             public bool FlushWhenDone;
             public int StringIndex = -1;
             public int StringPos = 0;
-            private OnComplete FlushOnComplete;
+            private OnFutureResolved FlushOnComplete;
 
             public WriteThunk () {
                 Result = new SignalFuture();
