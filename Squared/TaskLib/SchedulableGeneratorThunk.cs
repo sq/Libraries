@@ -187,8 +187,7 @@ namespace Squared.Task {
 
         void SetWakeConditionAndSubscribe (IFuture f, bool discardingResult) {
             SetWakeCondition(f, discardingResult);
-            f.RegisterOnComplete(_QueueStepOnComplete);
-            f.RegisterOnDispose(_QueueStepOnDispose);
+            f.RegisterHandlers(_QueueStepOnComplete, _QueueStepOnDispose);
         }
 
         void OnErrorChecked () {

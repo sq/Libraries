@@ -334,6 +334,41 @@ namespace Squared.Task {
             return Start(new SchedulableGeneratorThunk(task), executionPolicy);
         }
 
+        public OnComplete Wrap (Action target) {
+            return (_) => QueueWorkItemForNextStep(target);
+        }
+
+        public OnComplete<T> Wrap<T> (Action<T> target) {
+            return (f) => QueueWorkItemForNextStep(() => target((T)f.Result2));
+        }
+
+        public OnComplete<T> Wrap<T> (Action<T> target, T defaultValue, T failedValue = default(T))
+            where T : class
+        {
+            return (f) => QueueWorkItemForNextStep(
+                () => {
+                    if (f.Failed)
+                        target(failedValue);
+                    else
+                        target((f.Result2 as T) ?? defaultValue);
+                }
+            );
+        }
+
+        public OnComplete<T> Wrap<T> (Action<T, Exception> target) {
+            return (f) => QueueWorkItemForNextStep(
+                () => {
+                    T _result;
+                    Exception _error;
+                    f.GetResult(out _result, out _error);
+                    if (_error != null)
+                        target(default(T), _error);
+                    else
+                        target(_result, null);
+                }
+            );
+        }
+
         public void QueueWorkItem (Action workItem) {
             if (_IsDisposed)
                 throw new ObjectDisposedException("TaskScheduler");
@@ -486,7 +521,7 @@ namespace Squared.Task {
             using (IsActive)
             while (true) {
                 if (_JobQueue.WaitForFuture(future))
-                    return future.Result;
+                    return future.Result2;
 
                 if (timeout.HasValue) {
                     var elapsed = DateTime.UtcNow - started;

@@ -6,10 +6,12 @@ using System.Linq.Expressions;
 using Squared.Util.Bind;
 using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
+using Squared.Util;
 
 namespace Squared.Threading {
-    public delegate void OnComplete(IFuture future);
-    public delegate void OnDispose(IFuture future);
+    public delegate void OnComplete (IFuture future);
+    public delegate void OnComplete<T> (Future<T> future);
+    public delegate void OnDispose (IFuture future);
 
     public class FutureException : Exception {
         public FutureException (string message, Exception innerException)
@@ -146,6 +148,7 @@ namespace Squared.Threading {
         bool GetResult (out object result, out Exception error);
         void SetResult (object result, Exception error);
         void SetResult2 (object result, ExceptionDispatchInfo errorInfo);
+        void RegisterHandlers (OnComplete completeHandler, OnDispose disposeHandler);
         void RegisterOnComplete (OnComplete handler);
         void RegisterOnDispose (OnDispose handler);
         void RegisterOnErrorCheck (Action handler);
@@ -297,10 +300,8 @@ namespace Squared.Threading {
 
             f.RegisterOnDispose(h.OnCompositeDispose);
 
-            foreach (IFuture _ in futures) {
-                _.RegisterOnComplete(oc);
-                _.RegisterOnDispose(od);
-            }
+            foreach (IFuture _ in futures)
+                _.RegisterHandlers(oc, od);
 
             return f;
         }
@@ -387,9 +388,9 @@ namespace Squared.Threading {
         private const int State_CompletedWithError = 3;
         private const int State_Disposed = 4;
 
-        private int _State = State_Empty;
-        private OnComplete _OnComplete = null;
-        private OnDispose _OnDispose = null;
+        private volatile int _State = State_Empty;
+        private volatile object _ListLock = null;
+        private DenseList<Delegate> _OnCompletes, _OnDisposes;
         private ExceptionDispatchInfo _ErrorInfo = null;
         private Exception _Error = null;
         private Action _OnErrorChecked = null;
@@ -441,25 +442,38 @@ namespace Squared.Threading {
             }
         }
 
-        private void InvokeOnDispose (OnDispose handler) {
-            if (handler == null)
-                return;
-
+        private void InvokeHandler (Delegate handler) {
+            OnDispose od;
+            OnComplete oc;
+            OnComplete<T> oct;
             try {
-                handler(this);
-            } catch (Exception ex) {
-                throw new FutureHandlerException(this, handler, ex);
+                if ((oct = handler as OnComplete<T>) != null) {
+                    oct(this);
+                } else if ((oc = handler as OnComplete) != null) {
+                    oc(this);
+                } else if ((od = handler as OnDispose) != null) {
+                    od(this);
+                } else {
+                    // FIXME
+                }
+            } catch (Exception exc) {
+                throw new FutureHandlerException(this, handler, exc);
             }
         }
 
-        private void InvokeOnComplete (OnComplete handler) {
-            if (handler == null)
+        private void InvokeHandlers (ref DenseList<Delegate> handlers, ref DenseList<Delegate> otherListToClear) {
+            if (handlers.Count <= 0)
                 return;
 
+            var listLock = GetListLock();
+            Monitor.Enter(listLock);
             try {
-                handler(this);
-            } catch (Exception ex) {
-                throw new FutureHandlerException(this, handler, ex);
+                otherListToClear.Clear();
+                for (int i = 0; i < handlers.Count; i++)
+                    InvokeHandler(handlers[i]);
+            } finally {
+                handlers.Clear();
+                Monitor.Exit(listLock);
             }
         }
 
@@ -495,11 +509,24 @@ namespace Squared.Threading {
             }
         }
 
-        public void RegisterOnComplete (OnComplete handler) {
-            OnComplete newOnComplete;
-            int iterations = 1;
-            int state;
+        private object GetListLock () {
+            var result = _ListLock;
+            if (result == null) {
+                var newLock = new object();
+                var previous = Interlocked.CompareExchange(ref _ListLock, newLock, null);
+                result = previous ?? newLock;
+            }
+            return result;
+        }
 
+        private void ClearIndeterminate () {
+            if (Interlocked.CompareExchange(ref _State, State_Empty, State_Indeterminate) != State_Indeterminate)
+                throw new ThreadStateException();
+        }
+
+        private int TrySetIndeterminate () {
+            int state;
+            int iterations = 1;
             while (true) {
                 state = Interlocked.CompareExchange(ref _State, State_Indeterminate, State_Empty);
 
@@ -508,61 +535,57 @@ namespace Squared.Threading {
 
                 SpinWait(iterations++);
             }
+            return state;
+        }
 
-            if (state == State_Empty) {
-                var oldOnComplete = _OnComplete;
-                if (oldOnComplete != null) {
-                    newOnComplete = (f) => {
-                        oldOnComplete(f);
-                        handler(f);
-                    };
+        private void RegisterHandler_Impl (Delegate handler, ref DenseList<Delegate> list, bool acquireLock) {
+            int oldState = TrySetIndeterminate();
+                
+            if (oldState == State_Empty) {
+                if (acquireLock) {
+                    var listLock = GetListLock();
+
+                    lock (listLock)
+                        list.Add(handler);
                 } else {
-                    newOnComplete = handler;
+                    list.Add(handler);
                 }
 
-                _OnComplete = newOnComplete;
-
-                if (Interlocked.CompareExchange(ref _State, State_Empty, State_Indeterminate) != State_Indeterminate)
-                    throw new ThreadStateException();
-            } else if (state == State_CompletedWithValue) {
-                InvokeOnComplete(handler);
-            } else if (state == State_CompletedWithError) {
-                InvokeOnComplete(handler);
+                ClearIndeterminate();
+            } else if (
+                (oldState == State_CompletedWithValue) ||
+                (oldState == State_CompletedWithError)
+            ) {
+                InvokeHandler(handler);
             }
         }
 
+        public void RegisterHandlers (OnComplete<T> onComplete, OnDispose onDispose) {
+            var listLock = GetListLock();
+            lock (listLock) {
+                RegisterHandler_Impl(onComplete, ref _OnCompletes, false);
+                RegisterHandler_Impl(onDispose, ref _OnDisposes, false);
+            }
+        }
+
+        public void RegisterHandlers (OnComplete onComplete, OnDispose onDispose) {
+            var listLock = GetListLock();
+            lock (listLock) {
+                RegisterHandler_Impl(onComplete, ref _OnCompletes, false);
+                RegisterHandler_Impl(onDispose, ref _OnDisposes, false);
+            }
+        }
+
+        public void RegisterOnComplete (OnComplete handler) {
+            RegisterHandler_Impl(handler, ref _OnCompletes, true);
+        }
+
+        public void RegisterOnComplete2 (OnComplete<T> handler) {
+            RegisterHandler_Impl(handler, ref _OnCompletes, true);
+        }
+
         public void RegisterOnDispose (OnDispose handler) {
-            OnDispose newOnDispose;
-            int iterations = 1;
-            int state;
-
-            while (true) {
-                state = Interlocked.CompareExchange(ref _State, State_Indeterminate, State_Empty);
-
-                if (state != State_Indeterminate)
-                    break;
-
-                SpinWait(iterations++);
-            }
-
-            if (state == State_Empty) {
-                var oldOnDispose = _OnDispose;
-                if (oldOnDispose != null) {
-                    newOnDispose = (f) => {
-                        oldOnDispose(f);
-                        handler(f);
-                    };
-                } else {
-                    newOnDispose = handler;
-                }
-
-                _OnDispose = newOnDispose;
-
-                if (Interlocked.CompareExchange(ref _State, State_Empty, State_Indeterminate) != State_Indeterminate)
-                    throw new ThreadStateException();
-            } else if (state == State_Disposed) {
-                InvokeOnDispose(handler);
-            }
+            RegisterHandler_Impl(handler, ref _OnDisposes, true);
         }
 
         public bool Disposed {
@@ -742,15 +765,11 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void SetResultEpilogue (int newState) {
-            OnComplete handler = _OnComplete;
-            _OnDispose = null;
-            _OnComplete = null;
-
             if (Interlocked.Exchange(ref _State, newState) != State_Indeterminate)
                 throw new ThreadStateException();
 
             if ((newState == State_CompletedWithValue) || (newState == State_CompletedWithError))
-                InvokeOnComplete(handler);
+                InvokeHandlers(ref _OnCompletes, ref _OnDisposes);
         }
 
         public void SetResult2 (System.Threading.Tasks.Task task) {
@@ -829,14 +848,12 @@ namespace Squared.Threading {
                 SpinWait(iterations++);
             }
 
-            OnDispose handler = _OnDispose;
-            _OnDispose = null;
-            _OnComplete = null;
+            // FIXME: Possible leak / failure to invoke, but probably fine?
+            if (_ListLock != null)
+                InvokeHandlers(ref _OnDisposes, ref _OnCompletes);
 
             if (Interlocked.Exchange(ref _State, State_Disposed) != State_Indeterminate)
                 throw new ThreadStateException();
-
-            InvokeOnDispose(handler);
         }
 
         bool IFuture.GetResult (out object result, out Exception error) {
@@ -919,7 +936,7 @@ namespace Squared.Threading {
         public static Future<T> Bind<T> (this Future<T> future, Expression<Func<T>> target) {
             var member = BoundMember.New(target);
 
-            future.RegisterOnComplete((_) => {
+            future.RegisterOnComplete2((f) => {
                 T result;
                 if (future.GetResult(out result))
                     member.Value = result;

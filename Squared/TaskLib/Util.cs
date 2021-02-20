@@ -922,8 +922,7 @@ namespace Squared.Task {
                 return;
 
             of.Add(future);
-            future.RegisterOnComplete(_OnComplete);
-            future.RegisterOnDispose(_OnDispose);
+            future.RegisterHandlers(_OnComplete, _OnDispose);
         }
 
         public int Count {
