@@ -85,7 +85,8 @@ namespace Squared.PRGUI.Controls {
                 length = FastAnimationLength;
             else
                 length = Math.Max(MinAnimationLength, (distance / FastAnimationThreshold) * MaxAnimationLength);
-            ValueTween = Tween.StartNow(from, to, length, now: Context.NowL);
+            length *= Context.Animations?.AnimationDurationMultiplier ?? 1;
+            ValueTween = Tween.StartNow(from, to, seconds: length, now: Context.NowL);
         }
 
         private static void SmartAppend (StringBuilder sb, float value) {

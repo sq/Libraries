@@ -1201,7 +1201,10 @@ namespace Squared.PRGUI {
             if (instant)
                 CachedTooltip.Appearance.Opacity = 0;
             else if (IsTooltipVisible)
-                CachedTooltip.Appearance.Opacity = Tween.StartNow(CachedTooltip.Appearance.Opacity.Get(Now), 0, now: NowL, seconds: TooltipFadeDuration);
+                CachedTooltip.Appearance.Opacity = Tween.StartNow(
+                    CachedTooltip.Appearance.Opacity.Get(Now), 0, now: NowL, 
+                    seconds: TooltipFadeDuration * (Animations?.AnimationDurationMultiplier ?? 1)
+                );
             IsTooltipVisible = false;
         }
 
@@ -1311,7 +1314,11 @@ namespace Squared.PRGUI {
 
             var currentOpacity = instance.Appearance.Opacity.Get(Now);
             if (!IsTooltipVisible)
-                instance.Appearance.Opacity = Tween.StartNow(currentOpacity, 1f, (currentOpacity > 0.1 ? TooltipFadeDurationFast : TooltipFadeDuration), now: NowL);
+                instance.Appearance.Opacity = Tween.StartNow(
+                    currentOpacity, 1f, 
+                    seconds: (currentOpacity > 0.1 ? TooltipFadeDurationFast : TooltipFadeDuration) * (Animations?.AnimationDurationMultiplier ?? 1), 
+                    now: NowL
+                );
             if ((anchor != PreviousTooltipAnchor) && (currentOpacity > 0))
                 instance.Appearance.Opacity = 1f;
 
@@ -1424,7 +1431,7 @@ namespace Squared.PRGUI {
                     if (!WasBackgroundFaded) {
                         BackgroundFadeTween = Tween.StartNow(
                             BackgroundFadeTween.Get(NowL), 1f,
-                            seconds: BackgroundFadeDuration, now: NowL
+                            seconds: BackgroundFadeDuration * (Animations?.AnimationDurationMultiplier ?? 1), now: NowL
                         );
                     }
 

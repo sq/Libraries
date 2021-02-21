@@ -50,7 +50,7 @@ namespace Squared.PRGUI.Controls {
                 var nowL = Context.NowL;
                 DisclosureLevel = Tween.StartNow(
                     from: DisclosureLevel.Get(nowL), to: targetValue, 
-                    seconds: DisclosureAnimationDuration, now: nowL,
+                    seconds: DisclosureAnimationDuration * (Context.Animations?.AnimationDurationMultiplier ?? 1), now: nowL,
                     interpolator: Interpolators<float>.Cosine
                 );
             } else
