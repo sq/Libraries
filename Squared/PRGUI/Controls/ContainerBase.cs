@@ -298,10 +298,10 @@ namespace Squared.PRGUI.Controls {
                 return result;
             }
 
-            var containerFlags = ContainerFlags | ExtraContainerFlags;
+            var containerFlags = ComputeContainerFlags() | ExtraContainerFlags;
             var multiColumn = (ColumnCount > 1) || false;
             if (multiColumn) {
-                containerFlags = ContainerFlags
+                containerFlags = ComputeContainerFlags()
                     & ~ControlFlags.Container_Column
                     & ~ControlFlags.Container_Wrap;
                 containerFlags |= ControlFlags.Container_Row;

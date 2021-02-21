@@ -540,17 +540,17 @@ namespace Squared.PRGUI.Layout {
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
-                if (isFloating)
-                    continue;
 
                 var childRect = GetRect(child);
                 var childMargin = pChild->Margins[wdim];
                 var childMinimum = CalcMinimumSize(pChild, idim) + childMargin;
-                if (pItem->Flags.IsFlagged((ControlFlags)((int)ControlFlags.Container_Row + idim)))
+                if (pItem->Flags.IsFlagged((ControlFlags)((int)ControlFlags.Container_Row + idim)) && !isFloating)
                     minimum += childMinimum;
                 else
                     minimum = Math.Max(childMinimum, minimum);
-                result += childRect[idim] + childRect[wdim] + childMargin;
+
+                if (!isFloating)
+                    result += childRect[idim] + childRect[wdim] + childMargin;
             }
             minimum += outerPadding;
             result += outerPadding;

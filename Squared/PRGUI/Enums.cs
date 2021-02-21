@@ -122,7 +122,7 @@ namespace Squared.PRGUI.Layout {
         /// Prevents the container from shrinking below the size required to contain its child elements.
         /// </summary>
         Container_Prevent_Crush_Y = (0x20 << 11),
-        Container_Prevent_Crush = (Container_Prevent_Crush_X | ControlFlags.Container_Prevent_Crush_Y),
+        Container_Prevent_Crush = (Container_Prevent_Crush_X | Container_Prevent_Crush_Y),
         /// <summary>
         /// Does not expand the container to hold its children.
         /// </summary>
