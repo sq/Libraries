@@ -790,7 +790,7 @@ namespace Squared.PRGUI {
         }
 
         protected virtual Color GetDebugBoxColor (int depth) {
-            return Color.Lerp(Color.Red, Color.Blue, depth / 16f);
+            return Color.Lerp(Color.Red, Color.Orange, depth / 16f);
         }
 
         public bool Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, float opacity = 1) {

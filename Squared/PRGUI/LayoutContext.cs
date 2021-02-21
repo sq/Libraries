@@ -189,14 +189,6 @@ namespace Squared.PRGUI.Layout {
             return new ChildrenEnumerable(this, parent);
         }
 
-        private unsafe void ApplyFloatingPosition (LayoutItem *pItem, int idim, int wdim) {
-            var parentRect =
-                (pItem->Parent.IsInvalid)
-                    ? new RectF(0, 0, CanvasSize.X, CanvasSize.Y)
-                    : GetContentRect(pItem->Parent);
-            ApplyFloatingPosition(pItem, ref parentRect, idim, wdim);
-        }
-
         private unsafe void ApplyFloatingPosition (LayoutItem *pItem, ref RectF parentRect, int idim, int wdim) {
             if (!pItem->Flags.IsFlagged(ControlFlags.Layout_Floating))
                 return;
@@ -229,10 +221,8 @@ namespace Squared.PRGUI.Layout {
             var pItem = LayoutPtr(key);
             // HACK: Ensure its position is updated even if we don't fully lay out all controls
 
-            ApplyFloatingPosition(pItem, 0, 2);
             CalcSize(pItem, LayoutDimensions.X);
             Arrange (pItem, LayoutDimensions.X);
-            ApplyFloatingPosition(pItem, 1, 3);
             CalcSize(pItem, LayoutDimensions.Y);
             Arrange (pItem, LayoutDimensions.Y);
 
@@ -735,13 +725,13 @@ namespace Squared.PRGUI.Layout {
                 // HACK: If we are maximized, enforce our full layout instead of just size
                 if (dim == LayoutDimensions.X && (parentRect.Width > 0)) {
                     if (pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Row)) {
-                        pRect->Left = parentRect.Left;
-                        result = parentRect.Width;
+                        // pRect->Left = parentRect.Left;
+                        result = parentRect.Width - pItem->Margins.X;
                     }
                 } else if (parentRect.Height > 0) {
                     if (pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Column)) {
-                        pRect->Top = parentRect.Top;
-                        result = parentRect.Height;
+                        // pRect->Top = parentRect.Top;
+                        result = parentRect.Height - pItem->Margins.Y;
                     }
                 }
             }
@@ -851,7 +841,7 @@ namespace Squared.PRGUI.Layout {
                     var pChild = LayoutPtr(child);
                     var childFlags = pChild->Flags;
                     if (childFlags.IsFlagged(ControlFlags.Layout_Floating)) {
-                        ApplyFloatingPosition(pChild, ref parentRect, idim, wdim);
+                        // ApplyFloatingPosition(pChild, ref parentRect, idim, wdim);
                         child = pChild->NextSibling;
                         continue;
                     }
@@ -981,7 +971,7 @@ namespace Squared.PRGUI.Layout {
                 var childFlags = pChild->Flags;
                 if (childFlags.IsFlagged(ControlFlags.Layout_Floating)) {
                     // FIXME: Should we need to do this?
-                    ApplyFloatingPosition(pChild, ref parentRect, idim, wdim);
+                    // ApplyFloatingPosition(pChild, ref parentRect, idim, wdim);
                     child = pChild->NextSibling;
                     continue;
                 }
@@ -1085,7 +1075,7 @@ namespace Squared.PRGUI.Layout {
             while (item != endItem) {
                 var pItem = LayoutPtr(item);
                 if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating)) {
-                    ApplyFloatingPosition(pItem, ref parentRect, idim, wdim);
+                    // ApplyFloatingPosition(pItem, ref parentRect, idim, wdim);
                     item = pItem->NextSibling;
                     continue;
                 }
@@ -1224,13 +1214,8 @@ namespace Squared.PRGUI.Layout {
             foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);
+                ApplyFloatingPosition(pChild, ref contentRect, idim, idim + 2);
                 Arrange(pChild, dim);
-            }
-
-            // HACK
-            if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating)) {
-                var parentRect = GetContentRect(pItem->Parent);
-                ApplyFloatingPosition(pItem, ref parentRect, idim, idim + 2);
             }
         }
     }
