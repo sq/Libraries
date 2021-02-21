@@ -229,17 +229,20 @@ namespace Squared.PRGUI.Layout {
             return true;
         }
 
+        private LayoutItem ItemTemplate = new LayoutItem(ControlKey.Invalid);
+        private RectF RectTemplate = default(RectF);
+
         public ControlKey CreateItem () {
-            var key = new ControlKey(Count);
-            var newData = new LayoutItem(key);
-            var newBox = default(RectF);
+            var newData = ItemTemplate;
+            var newIndex = Layout.Count;
+            newData._Key.ID = newIndex;
 
             Layout.Add(ref newData);
-            Boxes.Add(ref newBox);
+            Boxes.Add(ref RectTemplate);
 
-            _Count = Count;
+            _Count = newIndex + 1;
 
-            return key;
+            return newData._Key;
         }
 
         private unsafe void InsertBefore (LayoutItem * pNewItem, LayoutItem * pLater) {

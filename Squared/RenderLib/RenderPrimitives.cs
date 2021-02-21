@@ -24,7 +24,7 @@ namespace Squared.Render.Internal {
             Count = 0;
         }
 
-        public VertexWriter<T> GetWriter(int capacity) {
+        public VertexWriter<T> GetWriter (int capacity, bool clear = true) {
             var offset = Count;
             var newCount = Count + capacity;
 
@@ -33,7 +33,8 @@ namespace Squared.Render.Internal {
 
             // FIXME: This shouldn't be needed!
             var newStorage = new ArraySegment<T>(Storage.Array, Storage.Offset + offset, capacity);
-            Array.Clear(newStorage.Array, newStorage.Offset, newStorage.Count);
+            if (clear)
+                Array.Clear(newStorage.Array, newStorage.Offset, newStorage.Count);
 
             Count = newCount;
             return new VertexWriter<T>(newStorage, offset);

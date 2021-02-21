@@ -88,7 +88,8 @@ namespace Squared.PRGUI.Layout {
         public const float NoValue = -1;
         public static readonly Vector2 NoSize = new Vector2(NoValue);
 
-        public readonly ControlKey Key;
+        internal ControlKey _Key;
+        public ControlKey Key => _Key;
 
         public ControlFlags Flags;
         public ControlKey Parent, FirstChild, LastChild;
@@ -97,7 +98,7 @@ namespace Squared.PRGUI.Layout {
         public Vector2 FixedSize, MinimumSize, MaximumSize, ComputedContentSize;
 
         public LayoutItem (ControlKey key) {
-            Key = key;
+            _Key = key;
             Flags = default(ControlFlags);
             Parent = FirstChild = LastChild = PreviousSibling = NextSibling = ControlKey.Invalid;
             Margins = Padding = default(Margins);

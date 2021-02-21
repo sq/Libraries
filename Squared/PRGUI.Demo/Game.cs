@@ -112,6 +112,7 @@ namespace PRGUI.Demo {
 
         private FreeTypeFont LoadFont (string name) {
             var result = FontLoader.Load(name);
+            result.EqualizeNumberWidths = true;
             result.sRGB = false;
             result.Gamma = 2.2f;
             // High-DPI offscreen surface so the text is sharp even at subpixel positions

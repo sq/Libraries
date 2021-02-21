@@ -532,7 +532,7 @@ namespace Squared.Render.RasterShape {
                 _SoftwareBuffer = swb;
 
                 var vb = new Internal.VertexBuffer<RasterShapeVertex>(swb.Vertices);
-                var vw = vb.GetWriter(count);
+                var vw = vb.GetWriter(count, clear: false);
 
                 RasterShapeDrawCall dc;
                 _DrawCalls.GetItem(0, out dc);

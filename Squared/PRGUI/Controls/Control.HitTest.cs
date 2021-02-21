@@ -20,6 +20,8 @@ using Squared.Util.Event;
 namespace Squared.PRGUI {  
     public abstract partial class Control {
         protected virtual bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+            if (!box.Contains(position))
+                return false;
             if (Intangible)
                 return false;
             if (!AcceptsMouseInput && acceptsMouseInputOnly)
@@ -27,8 +29,6 @@ namespace Squared.PRGUI {
             if (!AcceptsFocus && acceptsFocusOnly)
                 return false;
             if ((acceptsFocusOnly || acceptsMouseInputOnly) && !Enabled)
-                return false;
-            if (!box.Contains(position))
                 return false;
 
             result = this;
