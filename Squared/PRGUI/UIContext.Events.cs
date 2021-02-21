@@ -288,7 +288,15 @@ namespace Squared.PRGUI {
         }
 
         public bool FireSyntheticClick (Control target) {
-            var args = MakeMouseEventArgs(target, LastMousePosition, null);
+            var targetRect = target.GetRect(contentRect: true, context: this);
+            // HACK: If the mouse is currently over the control, put the synthesized click under the mouse
+            // Otherwise, center it on the control. Otherwise, the synthetic click will be 'placed' somewhere random
+            var position = targetRect.Contains(LastMousePosition)
+                ? LastMousePosition
+                : targetRect.Center;
+            var args = MakeMouseEventArgs(target, position, null);
+            args.IsSynthetic = true;
+            // FIXME: implement double-click for double-space-press
             args.SequentialClickCount = 1;
             return FireEvent(UIEvents.Click, target, args);
         }

@@ -71,7 +71,7 @@ namespace Squared.PRGUI {
         public double MouseDownTimestamp;
         public RectF Box, ContentBox;
         public MouseButtons PreviousButtons, Buttons;
-        public bool MovedSinceMouseDown, DoubleClicking;
+        public bool MovedSinceMouseDown, DoubleClicking, IsSynthetic;
         public int SequentialClickCount;
 
         public override string ToString () {

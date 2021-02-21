@@ -789,6 +789,10 @@ namespace Squared.PRGUI {
             return false;
         }
 
+        protected virtual Color GetDebugBoxColor (int depth) {
+            return Color.Lerp(Color.Red, Color.Blue, depth / 16f);
+        }
+
         public bool Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, float opacity = 1) {
             // HACK: Do this first since it fires opacity change events
             opacity *= GetOpacity(context.NowL);
@@ -816,7 +820,7 @@ namespace Squared.PRGUI {
                 (box.Height <= 0);
             
             if (ShowDebugBoxes)
-                passSet.Above.RasterizeRectangle(box.Position, box.Extent, 0f, 1f, Color.Transparent, Color.Transparent, Color.Red);
+                passSet.Above.RasterizeRectangle(box.Position, box.Extent, 0f, 1f, Color.Transparent, Color.Transparent, GetDebugBoxColor(context.Depth));
 
             // Only visibility cull controls that have a parent and aren't overlaid.
             if (isInvisible && TryGetParent(out Control parent) && !Appearance.Overlay)

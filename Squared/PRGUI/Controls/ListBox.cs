@@ -258,6 +258,7 @@ namespace Squared.PRGUI.Controls {
                 // HACK: Without doing this, old content bounds can be kept that are too big/too small
                 HasContentBounds = false;
                 clearHasChanged = true;
+                NeedsUpdate = false;
             }
 
             if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection) {
@@ -439,7 +440,7 @@ namespace Squared.PRGUI.Controls {
             //  but having it not select on mousedown feels bad
             if (
                 ((name == UIEvents.MouseDown) && SelectOnMouseDown) ||
-                (name == UIEvents.Click)
+                ((name == UIEvents.Click) && !args.IsSynthetic)
             ) {
                 if (
                     args.Box.Contains(args.RelativeGlobalPosition) && 
