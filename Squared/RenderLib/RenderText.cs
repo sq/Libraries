@@ -645,9 +645,7 @@ namespace Squared.Render.Text {
                 x =
                     characterOffset.X +
                     ((
-                        glyph.LeftSideBearing +
-                        glyph.RightSideBearing +
-                        glyph.Width + glyph.CharacterSpacing
+                        glyph.WidthIncludingBearing + glyph.CharacterSpacing
                     ) * effectiveScale);
 
                 if (x >= lineBreakAtX) {
@@ -725,9 +723,7 @@ namespace Squared.Render.Text {
                 // HACK: Recompute after wrapping
                 x =
                     characterOffset.X +
-                    (glyph.LeftSideBearing +
-                    glyph.RightSideBearing +
-                    glyph.Width + glyph.CharacterSpacing) * effectiveScale;
+                    (glyph.WidthIncludingBearing + glyph.CharacterSpacing) * effectiveScale;
                 var yOffset = currentBaseline - glyphBaseline;
                 var xUnconstrained = x - characterOffset.X + characterOffsetUnconstrained.X;
 
@@ -760,7 +756,7 @@ namespace Squared.Render.Text {
 
                 // FIXME: Shift this stuff below into the append function
                 var scaledGlyphSize = new Vector2(
-                    glyph.LeftSideBearing + glyph.Width + glyph.RightSideBearing,
+                    glyph.WidthIncludingBearing,
                     glyph.LineSpacing
                 ) * effectiveScale;
 

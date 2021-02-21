@@ -119,6 +119,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        public Dictionary<Control, T>.KeyCollection Controls => ValueForControl.Keys;
+
         /// <summary>
         /// Forces all child controls to be re-created from scratch
         /// </summary>

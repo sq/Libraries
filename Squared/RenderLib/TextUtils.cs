@@ -829,5 +829,11 @@ namespace Squared.Render.Text {
         public float LineSpacing;
         public float Baseline;
         public Color? DefaultColor;
+
+        public float WidthIncludingBearing {
+            get {
+                return LeftSideBearing + RightSideBearing + Width;
+            }
+        }
     }
 }

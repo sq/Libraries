@@ -177,6 +177,33 @@ namespace Squared.Render.Text {
                 }
             }
 
+            const uint FirstDigit = '0', LastDigit = '9';
+
+            private void ApplyWidthNormalization () {
+                Color? nullableDefaultColor = null;
+                Color defaultColor;
+                SrGlyph temp;
+                float maxWidth = -1;
+
+                for (uint i = FirstDigit; i <= LastDigit; i++) {
+                    if (LowCache[i].Texture.IsInitialized)
+                        continue;
+                    if (Font.DefaultGlyphColors.TryGetValue(i, out defaultColor))
+                        nullableDefaultColor = defaultColor;
+                    PopulateGlyphCache(i, out temp, nullableDefaultColor);
+                    maxWidth = Math.Max(maxWidth, temp.WidthIncludingBearing);
+                }
+
+                if (maxWidth < 0)
+                    return;
+
+                for (uint i = FirstDigit; i <= LastDigit; i++) {
+                    var padding = maxWidth - LowCache[i].WidthIncludingBearing;
+                    LowCache[i].LeftSideBearing += padding / 2f;
+                    LowCache[i].RightSideBearing += padding / 2f;
+                }
+            }
+
             public bool GetGlyph (uint ch, out Glyph glyph) {
                 if (IsDisposed) {
                     glyph = default(Glyph);
@@ -184,6 +211,9 @@ namespace Squared.Render.Text {
                 }
 
                 if (ch < LowCacheSize) {
+                    if (Font.EqualizeNumberWidths && (ch >= FirstDigit) && (ch <= LastDigit))
+                        ApplyWidthNormalization();
+
                     if (LowCache[ch].Texture.IsInitialized) {
                         glyph = LowCache[ch];
                         return true;
@@ -203,6 +233,10 @@ namespace Squared.Render.Text {
                 if ((ch == '\r') || (ch == '\n') || (ch == '\0'))
                     return false;
 
+                return PopulateGlyphCache(ch, out glyph, nullableDefaultColor);
+            }
+
+            private bool PopulateGlyphCache (uint ch, out Glyph glyph, Color? defaultColor) {
                 Font.Face.SetCharSize(
                     0, _SizePoints, 
                     (uint)(BaseDPI * Font.DPIPercent / 100), (uint)(BaseDPI * Font.DPIPercent / 100)
@@ -215,8 +249,10 @@ namespace Squared.Render.Text {
                 else
                     index = Font.Face.GetCharIndex(ch);
 
-                if (index <= 0)
+                if (index <= 0) {
+                    glyph = default(Glyph);
                     return false;
+                }
 
                 var flags = LoadFlags.Render;
                 if (!Font.EnableBitmaps)
@@ -269,7 +305,7 @@ namespace Squared.Render.Text {
                     // FIXME: This will become invalid if the extra spacing changes
                     // FIXME: Scale the spacing appropriately based on ratios
                     LineSpacing = Font.Face.Size.Metrics.Height.ToSingle() + ExtraLineSpacing,
-                    DefaultColor = nullableDefaultColor,
+                    DefaultColor = defaultColor,
                     Baseline = Font.Face.Size.Metrics.Ascender.ToSingle()
                 };
 
@@ -288,6 +324,7 @@ namespace Squared.Render.Text {
                 if (ch < LowCacheSize)
                     LowCache[ch] = glyph;
                 Cache[ch] = glyph;
+
                 return true;
             }
 
@@ -363,6 +400,10 @@ namespace Squared.Render.Text {
             }
         }
         public int TabSize { get; set; }
+        /// <summary>
+        /// If enabled, the 0-9 digits will have padding added to make them the same width
+        /// </summary>
+        public bool EqualizeNumberWidths { get; set; }
 
         private double _Gamma;
         private GammaRamp GammaRamp;

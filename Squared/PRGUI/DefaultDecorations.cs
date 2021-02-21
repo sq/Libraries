@@ -777,11 +777,15 @@ namespace Squared.PRGUI {
             settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
             float x0, x1, x2;
             RasterFillMode fillMode;
+
+            // Select fill mode and gradient direction based on orientation
             var direction = settings.Traits.FirstOrDefault();
             switch (direction) {
                 default:
                 case "ltr":
                 case "rtl":
+                    if (a.X >= b.X)
+                        return;
                     x0 = settings.Box.Left;
                     x1 = settings.ContentBox.Extent.X;
                     x2 = settings.Box.Extent.X;
@@ -789,17 +793,37 @@ namespace Squared.PRGUI {
                     break;
                 case "ttb":
                 case "btt":
+                    if (a.Y >= b.Y)
+                        return;
                     x0 = settings.Box.Top;
                     x1 = settings.ContentBox.Extent.Y;
                     x2 = settings.Box.Extent.Y;
                     fillMode = RasterFillMode.Angular + (direction == "btt" ? 180 : 0);
                     break;
             }
-            if (x2 <= x1)
-                return;
-            var alpha1 = 0.4f;
+
+            // HACK: Based on orientation, disable snapping for the growing edge of the fill
+            //  along the growth axis so that it can shrink/expand smoothly while staying snapped
+            //  at the other 3 edges
+            switch (direction) {
+                default:
+                case "ltr":
+                    b.X = settings.ContentBox.Extent.X;
+                    break;
+                case "rtl":
+                    a.X = settings.ContentBox.Position.X;
+                    break;
+                case "ttb":
+                    b.Y = settings.ContentBox.Extent.Y;
+                    break;
+                case "btt":
+                    a.Y = settings.ContentBox.Position.Y;
+                    break;
+            }
+
+            var alpha1 = 0.5f;
             // FIXME: Padding will make this slightly wrong
-            var alpha2 = Arithmetic.Saturate(alpha1 + (0.7f * ((x1 - x0) / (x2 - x0))));
+            var alpha2 = Arithmetic.Saturate(alpha1 + (0.5f * ((x1 - x0) / (x2 - x0))));
             var fillColor = settings.TextColor ?? GaugeValueFillColor;
             renderer.RasterizeRectangle(
                 a, b,
