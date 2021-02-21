@@ -99,6 +99,7 @@
   <ItemGroup>
     <Compile Include="FontProvider.cs" />
     <Compile Include="FTFont.cs" />
+    <Compile Include="OpenType.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(Platform)' == 'FNA-x64'">

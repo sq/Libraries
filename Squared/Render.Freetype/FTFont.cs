@@ -24,8 +24,8 @@ namespace Squared.Render.Text {
 
         static FreeTypeFont () {
             try {
-                var loader = new Util.EmbeddedDLLLoader(Assembly.GetExecutingAssembly());
-                loader.Load("freetype6.dll");
+                DllLoader = new Util.EmbeddedDLLLoader(Assembly.GetExecutingAssembly());
+                DllLoader.Load("freetype6.dll");
             } catch (Exception exc) {
                 Console.Error.WriteLine("Failed to load freetype6.dll: {0}", exc.Message);
             }
@@ -392,6 +392,7 @@ namespace Squared.Render.Text {
 
         public FreeTypeFont (RenderCoordinator rc, string filename, int faceIndex = 0) {
             RenderCoordinator = rc;
+            ReadTables(File.ReadAllBytes(filename));
             Face = new Face(new Library(), filename, faceIndex);
             Initialize();
         }
@@ -400,14 +401,19 @@ namespace Squared.Render.Text {
             RenderCoordinator = rc;
             var buffer = new byte[stream.Length];
             stream.Read(buffer, 0, (int)stream.Length);
+            ReadTables(buffer);
             Face = new Face(new Library(), buffer, faceIndex);
             Initialize();
         }
 
         public FreeTypeFont (RenderCoordinator rc, byte[] buffer, int faceIndex = 0) {
             RenderCoordinator = rc;
+            ReadTables(buffer);
             Face = new Face(new Library(), buffer, faceIndex);
             Initialize();
+        }
+
+        private void ReadTables (byte[] buffer) {
         }
 
         private void Initialize () {

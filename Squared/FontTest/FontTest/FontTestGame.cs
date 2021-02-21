@@ -128,6 +128,7 @@ namespace FontTest {
                 Scale = TextScale,
                 ReverseOrder = true,
                 RichText = true,
+                HideOverflow = true,
                 RichTextConfiguration = new RichTextConfiguration {
                     Styles = new Dictionary<string, RichStyle> {
                         {"quick", new RichStyle { Color = Color.Yellow } },
