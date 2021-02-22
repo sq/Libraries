@@ -18,7 +18,7 @@ namespace Squared.PRGUI.Controls {
 
         public const int ControlMinimumHeight = 30, ControlMinimumLength = 125;
 
-        private float _Value = 0.5f;
+        private float _Value = 0.5f, _Limit = 1.0f;
         public float FastAnimationThreshold = 0.33f,
             MinAnimationLength = 0.1f,
             MaxAnimationLength = 0.4f,
@@ -35,7 +35,17 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        public float Limit {
+            get => _Limit;
+            set {
+                _Limit = value;
+                SetValue(_Value, false);
+            }
+        }
+
         public void SetValue (float value, bool enableAnimation = true) {
+            value = Math.Max(Math.Min(value, _Limit), 0f);
+
             if (_Value == value)
                 return;
 
@@ -151,31 +161,48 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            var direction = PickDirection(ref settings.Box);
-            var fill = context.DecorationProvider.Gauge;
-            var fillWidth = Arithmetic.Saturate(ValueTween.Get(context.NowL));
+        private void MakeContentBox (
+            GaugeDirection direction, float value1, float value2, ref RectF contentBox
+        ) {
             float extent;
+            var fillWidth = value2 - value1;
             switch (direction) {
                 default:
                 case GaugeDirection.LeftToRight:
-                    settings.ContentBox.Width *= fillWidth;
+                    contentBox.Left += value1 * contentBox.Width;
+                    contentBox.Width *= fillWidth;
                     break;
                 case GaugeDirection.RightToLeft:
-                    extent = settings.ContentBox.Extent.X;
-                    settings.ContentBox.Width *= fillWidth;
-                    settings.ContentBox.Left = extent - settings.ContentBox.Width;
+                    extent = contentBox.Extent.X;
+                    contentBox.Width *= fillWidth;
+                    contentBox.Left = extent - contentBox.Width;
                     break;
                 case GaugeDirection.TopToBottom:
-                    settings.ContentBox.Height *= fillWidth;
+                    contentBox.Top += value1 * contentBox.Height;
+                    contentBox.Height *= fillWidth;
                     break;
                 case GaugeDirection.BottomToTop:
-                    extent = settings.ContentBox.Extent.Y;
-                    settings.ContentBox.Height *= fillWidth;
-                    settings.ContentBox.Top = extent - settings.ContentBox.Height;
+                    extent = contentBox.Extent.Y;
+                    contentBox.Height *= fillWidth;
+                    contentBox.Top = extent - contentBox.Height;
                     break;
             }
+        }
+
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            var direction = PickDirection(ref settings.Box);
+            var fill = context.DecorationProvider.Gauge;
+            var originalCbox = settings.ContentBox;
+            var value1 = ValueTween.Get(Context.NowL);
+            MakeContentBox(direction, 0f, value1, ref settings.ContentBox);
             base.OnRasterize(context, ref renderer, settings, decorations);
+
+            if ((_Limit < 1.0f) && (context.Pass == RasterizePasses.Content)) {
+                settings.ContentBox = originalCbox;
+                settings.Traits.Add("limit");
+                MakeContentBox(direction, _Limit, 1f, ref settings.ContentBox);
+                fill.Rasterize(context, ref renderer, settings);
+            }
         }
     }
 

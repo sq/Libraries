@@ -574,7 +574,7 @@ namespace Squared.PRGUI.Controls {
         public StaticText ()
             : base () {
             Content.WordWrap = true;
-            Content.CharacterWrap = true;
+            Content.CharacterWrap = false;
             AcceptsMouseInput = false;
         }
     }

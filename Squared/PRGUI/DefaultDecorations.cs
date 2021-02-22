@@ -786,18 +786,18 @@ namespace Squared.PRGUI {
                 case "rtl":
                     if (a.X >= b.X)
                         return;
-                    x0 = settings.Box.Left;
+                    x0 = settings.ContentBox.Left;
                     x1 = settings.ContentBox.Extent.X;
-                    x2 = settings.Box.Extent.X;
+                    x2 = settings.ContentBox.Extent.X;
                     fillMode = RasterFillMode.Angular + (direction == "rtl" ? 270 : 90);
                     break;
                 case "ttb":
                 case "btt":
                     if (a.Y >= b.Y)
                         return;
-                    x0 = settings.Box.Top;
+                    x0 = settings.ContentBox.Top;
                     x1 = settings.ContentBox.Extent.Y;
-                    x2 = settings.Box.Extent.Y;
+                    x2 = settings.ContentBox.Extent.Y;
                     fillMode = RasterFillMode.Angular + (direction == "btt" ? 180 : 0);
                     break;
             }
@@ -825,6 +825,10 @@ namespace Squared.PRGUI {
             // FIXME: Padding will make this slightly wrong
             var alpha2 = Arithmetic.Saturate(alpha1 + (0.5f * ((x1 - x0) / (x2 - x0))));
             var fillColor = settings.TextColor ?? GaugeValueFillColor;
+            if (settings.Traits.IndexOf("limit") >= 0) {
+                alpha1 = alpha2 = 0.7f;
+                fillColor = new Color(64, 64, 64);
+            }
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SliderCornerRadius,
