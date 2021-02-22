@@ -144,7 +144,7 @@ namespace Squared.PRGUI.Controls {
         protected void Update () {
             _Version = Items.Version;
             NeedsUpdate = false;
-            if (Comparer.Equals(SelectedItem, default(T)) && (Items.Count > 0))
+            if (!Manager.HasSelectedItem && (Items.Count > 0))
                 // FIXME: ForUser?
                 SetSelectedItem(Items[0], true);
 

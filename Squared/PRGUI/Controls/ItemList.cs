@@ -22,11 +22,14 @@ namespace Squared.PRGUI.Controls {
             Items = new ItemList<T>(comparer);
         }
 
+        public bool HasSelectedItem { get; private set; }
+
         public T SelectedItem {
             get => _SelectedItem;
             set {
                 if (Comparer.Equals(_SelectedItem, value))
                     return;
+                HasSelectedItem = true;
                 _SelectedItem = value;
                 _SelectedIndex = Items.IndexOf(ref value, Comparer);
                 _SelectedIndexVersion = Items.Version;
@@ -50,6 +53,7 @@ namespace Squared.PRGUI.Controls {
                 } else if ((value < 0) || (value >= Items.Count)) {
                     throw new ArgumentOutOfRangeException("value");
                 } else {
+                    HasSelectedItem = true;
                     _SelectedItem = Items[value];
                 }
                 _SelectedIndexVersion = Items.Version;
@@ -91,6 +95,7 @@ namespace Squared.PRGUI.Controls {
             _SelectedItem = value;
             _SelectedIndex = indexOf;
             _SelectedIndexVersion = Items.Version;
+            HasSelectedItem = true;
             return true;
         }
     }
