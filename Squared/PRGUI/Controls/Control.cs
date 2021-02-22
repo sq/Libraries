@@ -49,7 +49,9 @@ namespace Squared.PRGUI {
     }
     
     public abstract partial class Control {
-        public static bool ShowDebugBoxes = false;
+        public static bool ShowDebugBoxes = false,
+            ShowDebugBreakMarkers = true,
+            ShowDebugMargins = true;
 
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
@@ -789,9 +791,89 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        protected virtual Color GetDebugBoxColor (int depth) {
+        protected virtual pSRGBColor GetDebugBoxColor (int depth) {
             return Color.Lerp(Color.Red, Color.Orange, depth / 16f);
         }
+
+        private void RasterizeDebugBox (ref UIOperationContext context, ref RasterizePassSet passSet, RectF rect) {
+            var mouseIsOver = rect.Contains(context.MousePosition);
+            var alpha = mouseIsOver ? 1.0f : 0.66f;
+
+            passSet.Above.RasterizeRectangle(
+                rect.Position, rect.Extent, 0f, 1f, Color.Transparent, Color.Transparent, 
+                GetDebugBoxColor(context.Depth) * alpha
+            );
+
+            var flags = context.Layout.GetFlags(LayoutKey);
+
+            if (ShowDebugMargins && !flags.IsFlagged(ControlFlags.Layout_Floating)) {
+                var lineWidth = 1.5f;
+                var lineColor = Color.Green * alpha;
+                var margins = context.Layout.GetMargins(LayoutKey);
+                var exteriorRect = rect;
+                exteriorRect.Left -= margins.Left;
+                exteriorRect.Top -= margins.Top;
+                exteriorRect.Width += margins.X;
+                exteriorRect.Height += margins.Y;
+                var center = rect.Center;
+
+                if (margins.Left > 0)
+                    passSet.Above.RasterizeRectangle(
+                        new Vector2(exteriorRect.Left, center.Y - lineWidth),
+                        new Vector2(rect.Left, center.Y + lineWidth),
+                        0, lineColor
+                    );
+
+                if (margins.Top > 0)
+                    passSet.Above.RasterizeRectangle(
+                        new Vector2(center.X - lineWidth, exteriorRect.Top),
+                        new Vector2(center.X + lineWidth, rect.Top),
+                        0, lineColor
+                    );
+
+                if (margins.Right > 0)
+                    passSet.Above.RasterizeRectangle(
+                        new Vector2(exteriorRect.Extent.X, center.Y - lineWidth),
+                        new Vector2(rect.Extent.X, center.Y + lineWidth),
+                        0, lineColor
+                    );
+
+                if (margins.Bottom > 0)
+                    passSet.Above.RasterizeRectangle(
+                        new Vector2(center.X - lineWidth, exteriorRect.Extent.Y),
+                        new Vector2(center.X + lineWidth, rect.Extent.Y),
+                        0, lineColor
+                    );
+            }
+
+            if (ShowDebugBreakMarkers && mouseIsOver && flags.IsBreak()) {
+                rect = new RectF(
+                    new Vector2(rect.Left - 1.5f, rect.Center.Y - 7.5f),
+                    new Vector2(6.5f, 15)
+                );
+                
+                var facingRight = false;
+                Vector2 a = !facingRight ? rect.Extent : rect.Position,
+                    b = !facingRight 
+                        ? new Vector2(rect.Position.X, rect.Center.Y)
+                        : new Vector2(rect.Extent.X, rect.Center.Y),
+                    c = !facingRight
+                        ? new Vector2(rect.Extent.X, rect.Position.Y)
+                        : new Vector2(rect.Position.X, rect.Extent.Y);
+
+                var arrowColor =
+                    flags.IsFlagged(ControlFlags.Layout_ForceBreak)
+                        ? Color.White
+                        : Color.Yellow;
+
+                passSet.Above.RasterizeTriangle(
+                    a, b, c, radius: 0f, outlineRadius: 1f,
+                    innerColor: arrowColor * alpha, outerColor: arrowColor * alpha, 
+                    outlineColor: Color.Black * (alpha * 0.8f)
+                );
+            }
+        }
+
 
         public bool Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, float opacity = 1) {
             // HACK: Do this first since it fires opacity change events
@@ -818,9 +900,9 @@ namespace Squared.PRGUI {
                 (box.Top > vext.Y) ||
                 (box.Width <= 0) ||
                 (box.Height <= 0);
-            
+
             if (ShowDebugBoxes)
-                passSet.Above.RasterizeRectangle(box.Position, box.Extent, 0f, 1f, Color.Transparent, Color.Transparent, GetDebugBoxColor(context.Depth));
+                RasterizeDebugBox(ref context, ref passSet, box);
 
             // Only visibility cull controls that have a parent and aren't overlaid.
             if (isInvisible && TryGetParent(out Control parent) && !Appearance.Overlay)

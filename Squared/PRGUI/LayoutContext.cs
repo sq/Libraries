@@ -461,6 +461,11 @@ namespace Squared.PRGUI.Layout {
             return true;
         }
 
+        public unsafe ControlFlags GetFlags (ControlKey key) {
+            var pItem = LayoutPtr(key);
+            return pItem->Flags;
+        }
+
         public unsafe ControlFlags GetContainerFlags (ControlKey key) {
             var pItem = LayoutPtr(key);
             return pItem->Flags & ControlFlagMask.Container;
