@@ -499,15 +499,20 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe float CalcMinimumSize (LayoutItem * pItem, int idim) {
-            return Math.Max(
+            var result = Math.Max(
                 pItem->MinimumSize.GetElement(idim),
                 pItem->FixedSize.GetElement(idim)
             );
+            var preventCrush = (uint)ControlFlags.Container_Prevent_Crush_X << idim;
+            if (pItem->Flags.IsFlagged((ControlFlags)preventCrush))
+                result = Math.Max(result, pItem->ComputedContentSize.GetElement(idim));
+            return result;
         }
 
         private unsafe float CalcOverlaySize (LayoutItem * pItem, LayoutDimensions dim) {
             float result = 0, minimum = 0;
             int idim = (int)dim, wdim = idim + 2;
+            var rowFlag = (ControlFlags)((int)ControlFlags.Container_Row + idim);
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
@@ -518,7 +523,7 @@ namespace Squared.PRGUI.Layout {
                 if (isFloating) {
                     minimum = Math.Max(childMinimum, minimum);
                     continue;
-                } else if (pItem->Flags.IsFlagged((ControlFlags)((int)ControlFlags.Container_Row + idim)))
+                } else if (pItem->Flags.IsFlagged(rowFlag))
                     minimum += childMinimum;
                 else
                     minimum = Math.Max(childMinimum, minimum);
@@ -537,6 +542,7 @@ namespace Squared.PRGUI.Layout {
             float result = 0, minimum = 0;
             int idim = (int)dim, wdim = idim + 2;
             var outerPadding = pItem->Padding[idim] + pItem->Padding[wdim];
+            var rowFlag = (ControlFlags)((int)ControlFlags.Container_Row + idim);
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
@@ -544,13 +550,17 @@ namespace Squared.PRGUI.Layout {
                 var childRect = GetRect(child);
                 var childMargin = pChild->Margins[wdim];
                 var childMinimum = CalcMinimumSize(pChild, idim) + childMargin;
-                if (pItem->Flags.IsFlagged((ControlFlags)((int)ControlFlags.Container_Row + idim)) && !isFloating)
+                if (pItem->Flags.IsFlagged(rowFlag) && !isFloating)
                     minimum += childMinimum;
                 else
                     minimum = Math.Max(childMinimum, minimum);
 
-                if (!isFloating)
-                    result += childRect[idim] + childRect[wdim] + childMargin;
+                var sum = childRect[idim] + childRect[wdim] + childMargin;
+                if (isFloating)
+                    // FIXME
+                    ; // result = Math.Max(result, sum);
+                else
+                    result += sum;
             }
             minimum += outerPadding;
             result += outerPadding;
@@ -572,6 +582,7 @@ namespace Squared.PRGUI.Layout {
                     continue;
 
                 var childRect = GetRect(child);
+                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
 
                 if (
                     (!forcedBreakOnly && pChild->Flags.IsBreak()) ||
@@ -585,7 +596,6 @@ namespace Squared.PRGUI.Layout {
                     needSize = 0;
                 }
 
-                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
                 if (overlaid)
                     needSize = Math.Max(needSize, childSize);
                 else
@@ -604,7 +614,7 @@ namespace Squared.PRGUI.Layout {
             GetComputedMinimumSize(pItem, out Vector2 minimumSize);
             GetComputedMaximumSize(pItem, null, out Vector2 maximumSize);
             PRGUIExtensions.SetElement(
-                ref pItem->ComputedContentSize, idim, needSize
+                ref pItem->ComputedContentSize, idim, result
             );
 
             result += pItem->Padding[idim] + pItem->Padding[wdim];
@@ -711,10 +721,10 @@ namespace Squared.PRGUI.Layout {
                     break;
                 case ControlFlags.Container_Row:
                 case ControlFlags.Container_Column:
-                    if (((uint)pItem->Flags & 1) == (uint)dim)
+                    if (((uint)pItem->Flags & 1) == (uint)dim) {
                         result = CalcStackedSize(pItem, dim);
                         // result = CalcWrappedSizeImpl(pItem, dim, false, true);
-                    else
+                    } else
                         result = CalcOverlaySize(pItem, dim);
                         // result = CalcWrappedSizeImpl(pItem, dim, true, true);
                     break;
