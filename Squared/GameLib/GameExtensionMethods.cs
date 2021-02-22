@@ -27,6 +27,10 @@ namespace Squared.Game {
             return new Vector2((float)Math.Floor(vector.X), (float)Math.Floor(vector.Y));
         }
 
+        public static Vector2 Ceiling (this Vector2 vector) {
+            return new Vector2((float)Math.Ceiling(vector.X), (float)Math.Ceiling(vector.Y));
+        }
+
         public static Vector2 Round (this Vector2 vector) {
             return new Vector2((float)Math.Round(vector.X, MidpointRounding.AwayFromZero), (float)Math.Round(vector.Y, MidpointRounding.AwayFromZero));
         }

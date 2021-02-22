@@ -774,7 +774,9 @@ namespace Squared.PRGUI {
         }
 
         private void Gauge_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            var ca = a + (settings.ContentBox.Position - settings.Box.Position).Round();
+            var cb = b - (settings.Box.Extent - settings.ContentBox.Extent).Round();
             float x0, x1, x2;
             RasterFillMode fillMode;
 
@@ -784,20 +786,20 @@ namespace Squared.PRGUI {
                 default:
                 case "ltr":
                 case "rtl":
-                    if (a.X >= b.X)
+                    if (ca.X >= cb.X)
                         return;
-                    x0 = settings.ContentBox.Left;
-                    x1 = settings.ContentBox.Extent.X;
-                    x2 = settings.ContentBox.Extent.X;
+                    x0 = ca.X;
+                    x1 = cb.X;
+                    x2 = cb.X;
                     fillMode = RasterFillMode.Angular + (direction == "rtl" ? 270 : 90);
                     break;
                 case "ttb":
                 case "btt":
-                    if (a.Y >= b.Y)
+                    if (ca.Y >= cb.Y)
                         return;
-                    x0 = settings.ContentBox.Top;
-                    x1 = settings.ContentBox.Extent.Y;
-                    x2 = settings.ContentBox.Extent.Y;
+                    x0 = ca.Y;
+                    x1 = cb.Y;
+                    x2 = cb.Y;
                     fillMode = RasterFillMode.Angular + (direction == "btt" ? 180 : 0);
                     break;
             }
@@ -808,16 +810,16 @@ namespace Squared.PRGUI {
             switch (direction) {
                 default:
                 case "ltr":
-                    b.X = settings.ContentBox.Extent.X;
+                    cb.X = settings.ContentBox.Extent.X;
                     break;
                 case "rtl":
-                    a.X = settings.ContentBox.Position.X;
+                    ca.X = settings.ContentBox.Position.X;
                     break;
                 case "ttb":
-                    b.Y = settings.ContentBox.Extent.Y;
+                    cb.Y = settings.ContentBox.Extent.Y;
                     break;
                 case "btt":
-                    a.Y = settings.ContentBox.Position.Y;
+                    ca.Y = settings.ContentBox.Position.Y;
                     break;
             }
 
@@ -830,7 +832,7 @@ namespace Squared.PRGUI {
                 fillColor = new Color(64, 64, 64);
             }
             renderer.RasterizeRectangle(
-                a, b,
+                ca, cb,
                 radius: SliderCornerRadius,
                 outlineRadius: GetOutlineSize(1f), outlineColor: fillColor * 0.5f,
                 fillMode: fillMode,
