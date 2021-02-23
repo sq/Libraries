@@ -224,7 +224,7 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        private static void LayoutItem (ref UIOperationContext context, bool containerHasExistingKey, ControlKey container, Vector2 adoc, Control item) {
+        private void LayoutItem (ref UIOperationContext context, bool containerHasExistingKey, ControlKey container, Vector2 adoc, Control item) {
             item.AbsoluteDisplayOffset = adoc;
 
             // If we're performing layout again on an existing layout item, attempt to do the same
@@ -234,8 +234,11 @@ namespace Squared.PRGUI.Controls {
                 childExistingKey = item.LayoutKey;
 
             // FIXME: Don't perform layout for invisible tabs?
-            var itemKey = item.GenerateLayoutTree(ref context, container, childExistingKey);
-            ;
+            if (item != SelectedTab)
+                context.HiddenCount++;
+            item.GenerateLayoutTree(ref context, container, childExistingKey);
+            if (item != SelectedTab)
+                context.HiddenCount--;
         }
 
         protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {

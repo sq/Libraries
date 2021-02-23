@@ -429,21 +429,19 @@ namespace Squared.PRGUI.Controls {
                 case HorizontalAlignment.Left:
                     break;
                 case HorizontalAlignment.Center:
-                    textOffset.X += (xSpace / 2f);
+                    textOffset.X = ca.X + (xSpace / 2f);
                     break;
                 case HorizontalAlignment.Right:
-                    textOffset.X += xSpace;
+                    textOffset.X = ca.X + xSpace;
                     break;
             }
 
             if (VisualizeLayout) {
                 if (context.Pass == RasterizePasses.Content) {
-                    renderer.RasterizeRectangle(a, b, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Red);
-                    renderer.RasterizeRectangle(ca, cb, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Green);
                     renderer.RasterizeRectangle(textOffset, textOffset + layout.Size * textScale, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue);
                     var la = ca + new Vector2(Content.LineBreakAtX ?? 0, 0);
                     var lb = new Vector2(ca.X, cb.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
-                    renderer.RasterizeLineSegment(la, lb, 1f, Color.Yellow);
+                    renderer.RasterizeLineSegment(la, lb, 1f, Color.Green);
                 }
             }
 

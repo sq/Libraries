@@ -287,15 +287,19 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected ControlKey[] ColumnKeys;
+        protected bool NeedToInvalidateChildLayout;
         
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             var children = Children;
             if (result.IsInvalid || SuppressChildLayout) {
-                foreach (var item in children)
-                    item.InvalidateLayout();
+                NeedToInvalidateChildLayout = true;
 
                 return result;
+            } else if (NeedToInvalidateChildLayout) {
+                NeedToInvalidateChildLayout = false;
+                foreach (var item in children)
+                    item.InvalidateLayout();
             }
 
             var containerFlags = ComputeContainerFlags() | ExtraContainerFlags;
@@ -310,7 +314,7 @@ namespace Squared.PRGUI.Controls {
 
             context.Layout.SetContainerFlags(result, containerFlags);
 
-            if (context.HiddenCount <= 0)
+            if ((context.HiddenCount <= 0) && Visible)
                 GenerateDynamicContent(DynamicContentIsInvalid);
 
             if (ColumnCount != (ColumnKeys?.Length ?? 0))
