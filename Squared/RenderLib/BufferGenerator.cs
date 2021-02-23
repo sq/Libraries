@@ -328,9 +328,21 @@ namespace Squared.Render.Internal {
 
                 _UsedHardwareBuffers.Clear();
 
+                foreach (var kvp in _BufferCache) {
+                    var swb = kvp.Value;
+                    if (!swb.IsInitialized)
+                        continue;
+
+                    // Console.WriteLine($"Uninit corner buffer {swb}");
+                    swb.Uninitialize();
+                    _SoftwareBufferPool.Release(swb);
+                }
                 _BufferCache.Clear();
 
                 foreach (var swb in _SoftwareBuffers) {
+                    if (!swb.IsInitialized)
+                        continue;
+
                     swb.Uninitialize();
                     _SoftwareBufferPool.Release(swb);
                 }
@@ -483,6 +495,8 @@ namespace Squared.Render.Internal {
                 hardwareBufferEntry.SoftwareBufferCount += 1;
 
                 swb = _SoftwareBufferPool.Allocate();
+                if (swb.IsInitialized)
+                    throw new ThreadStateException();
                 swb.Initialize(
                     new ArraySegment<TVertex>(_VertexArray, hardwareBufferEntry.VertexOffset + oldHwbVerticesUsed, vertexCount),
                     new ArraySegment<TIndex>(_IndexArray, hardwareBufferEntry.IndexOffset + oldHwbIndicesUsed, indexCount),

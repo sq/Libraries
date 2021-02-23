@@ -182,20 +182,32 @@ namespace Squared.Render {
         };
 
         private static readonly string[] CornerBufferNames = new string[16];
+        private static readonly Dictionary<string, BufferGenerator<CornerVertex>.SoftwareBuffer> CornerBufferCache = 
+            new Dictionary<string, BufferGenerator<CornerVertex>.SoftwareBuffer>();
 
         public static BufferGenerator<CornerVertex>.SoftwareBuffer CreateCornerBuffer (IBatchContainer container, int repeatCount = 1) {
             BufferGenerator<CornerVertex>.SoftwareBuffer result;
-            var cornerGenerator = container.RenderManager.GetBufferGenerator<BufferGenerator<CornerVertex>>();
             // TODO: Is it OK to share the buffer?
             int vertCount = 4 * repeatCount;
             int indexCount = 6 * repeatCount;
-            var bufferName = CornerBufferNames[repeatCount];
-            if (bufferName == null)
-                bufferName = CornerBufferNames[repeatCount] = "QuadCorners" + repeatCount;
-            if (!cornerGenerator.TryGetCachedBuffer(bufferName, vertCount, indexCount, out result)) {
-                result = cornerGenerator.Allocate(vertCount, indexCount, true);
-                cornerGenerator.SetCachedBuffer(bufferName, result);
-                // TODO: Can we just skip filling the buffer here?
+            string bufferName;
+            lock (CornerBufferNames) {
+                bufferName = CornerBufferNames[repeatCount];
+                if (bufferName == null)
+                    bufferName = CornerBufferNames[repeatCount] = "QuadCorners" + repeatCount;
+            }
+            lock (CornerBufferCache) {
+                if (!CornerBufferCache.TryGetValue(bufferName, out result) || !result.IsInitialized) {
+                    var cornerGenerator = container.RenderManager.GetBufferGenerator<BufferGenerator<CornerVertex>>();
+                    if (!cornerGenerator.TryGetCachedBuffer(bufferName, vertCount, indexCount, out result)) {
+                        // Console.Write($"Alloc corner buffer {bufferName} -> ");
+                        result = cornerGenerator.Allocate(vertCount, indexCount, true);
+                        // Console.WriteLine(result.ToString());
+                        cornerGenerator.SetCachedBuffer(bufferName, result);
+                        // TODO: Can we just skip filling the buffer here?
+                    }
+                    CornerBufferCache[bufferName] = result;
+                }
             }
 
             var verts = result.Vertices;

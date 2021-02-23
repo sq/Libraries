@@ -489,6 +489,13 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddRange (ref DenseList<T> items) {
+            // FIXME: use ref?
+            foreach (var item in items)
+                Add(item);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (ArraySegment<T> items) {
             AddRange(items.Array, items.Offset, items.Count);
         }

@@ -21,12 +21,12 @@ namespace Squared.Render {
             private PrepareManager Manager;
 
             public bool Async;
-            public List<Batch> BatchesToRelease;
+            public DenseList<Batch> BatchesToRelease;
 
-            public PrepareContext (PrepareManager manager, bool async, List<Batch> batchesToRelease) {
+            public PrepareContext (PrepareManager manager, bool async) {
                 Manager = manager;
                 Async = async;
-                BatchesToRelease = batchesToRelease;
+                BatchesToRelease = new DenseList<Batch>();
             }
 
             public void Prepare (IBatch batch) {

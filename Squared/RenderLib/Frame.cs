@@ -34,7 +34,7 @@ namespace Squared.Render {
         public long InitialBatchCount;
 
         internal DenseList<Batch> Batches = new DenseList<Batch>();
-        internal List<Batch> BatchesToRelease = new List<Batch>();
+        internal DenseList<Batch> BatchesToRelease = new DenseList<Batch>();
 
         volatile int State = (int)States.Disposed;
 
@@ -56,7 +56,6 @@ namespace Squared.Render {
             State = (int)States.Initialized;
             Label = "Frame";
             ChangeRenderTargets = true;
-            BatchesToRelease.Clear();
         }
 
         public void Add (Batch batch) {
@@ -83,7 +82,7 @@ namespace Squared.Render {
             if (Interlocked.Exchange(ref State, (int)States.Preparing) != (int)States.Initialized)
                 throw new InvalidOperationException("Frame was not in initialized state when prepare operation began ");
 
-            var numRemoved = BatchCombiner.CombineBatches(Batches, BatchesToRelease);
+            var numRemoved = BatchCombiner.CombineBatches(Batches, ref BatchesToRelease);
             // Batch combining shuffles the batches around to group by type. Once it's done,
             //  we need to do the final sort to preserve layer and material ordering.
             Batches.Sort(BatchComparer);

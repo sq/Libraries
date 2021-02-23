@@ -601,18 +601,20 @@ namespace Squared.Render {
         }
 
         internal void SynchronousPrepareBatches (Frame frame) {
-            var context = new Batch.PrepareContext(PrepareManager, false, frame.BatchesToRelease);
+            var context = new Batch.PrepareContext(PrepareManager, false);
             context.PrepareMany(frame.Batches);
 
             PrepareManager.AssertEmpty();
+            frame.BatchesToRelease.AddRange(ref context.BatchesToRelease);
         }
 
         internal void ParallelPrepareBatches (Frame frame) {
-            var context = new Batch.PrepareContext(PrepareManager, true, frame.BatchesToRelease);
+            var context = new Batch.PrepareContext(PrepareManager, true);
             context.PrepareMany(frame.Batches);
 
             PrepareManager.Wait();
             PrepareManager.AssertEmpty();
+            frame.BatchesToRelease.AddRange(ref context.BatchesToRelease);
         }
 
         internal int PickFrameIndex () {
