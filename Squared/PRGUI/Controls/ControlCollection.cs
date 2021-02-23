@@ -60,6 +60,9 @@ namespace Squared.PRGUI {
         }
 
         public void Adopt (Control control) {
+            if (control == null)
+                throw new ArgumentNullException("control");
+
             if (Contains(control))
                 return;
 
@@ -70,6 +73,8 @@ namespace Squared.PRGUI {
         }
 
         public void Add (Control control) {
+            if (control == null)
+                throw new ArgumentNullException("control");
             if (IndexTable.ContainsKey(control))
                 throw new InvalidOperationException("Control already in collection");
 

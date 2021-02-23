@@ -1586,6 +1586,7 @@ namespace Squared.PRGUI {
         private DenseList<IDecorator> DecoratorStack, TextDecoratorStack;
         internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
         internal bool RelayoutRequestedForVisibilityChange;
+        internal int HiddenCount;
         internal int Depth;
 
         private IDecorator GetStackTop (ref DenseList<IDecorator> stack) {
@@ -1628,7 +1629,8 @@ namespace Squared.PRGUI {
                 MousePosition = MousePosition,
                 VisibleRegion = VisibleRegion,
                 RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange,
-                Depth = Depth + 1
+                Depth = Depth + 1,
+                HiddenCount = HiddenCount
             };
             DecoratorStack.Clone(out result.DecoratorStack);
             TextDecoratorStack.Clone(out result.TextDecoratorStack);

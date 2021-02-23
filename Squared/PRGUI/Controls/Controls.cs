@@ -79,6 +79,10 @@ namespace Squared.PRGUI.Controls {
             get => base.AcceptsFocus;
             set => base.AcceptsFocus = value;
         }
+        new public bool ScaleToFit {
+            get => base.ScaleToFit;
+            set => base.ScaleToFit = value;
+        }
 
         new public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
 
@@ -150,6 +154,10 @@ namespace Squared.PRGUI.Controls {
             get => base.Text;
             set => base.Text = value;
         }
+        new public bool ScaleToFit {
+            get => base.ScaleToFit;
+            set => base.ScaleToFit = value;
+        }
         new public void Invalidate () => base.Invalidate();
 
         new public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
@@ -206,6 +214,10 @@ namespace Squared.PRGUI.Controls {
         new public AbstractString Text {
             get => base.Text;
             set => base.Text = value;
+        }
+        new public bool ScaleToFit {
+            get => base.ScaleToFit;
+            set => base.ScaleToFit = value;
         }
         new public void Invalidate () => base.Invalidate();
 

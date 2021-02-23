@@ -568,6 +568,10 @@ namespace Squared.PRGUI.Controls {
             get => base.ScaleToFit;
             set => base.ScaleToFit = value;
         }
+        new public bool AcceptsMouseInput {
+            get => base.AcceptsMouseInput;
+            set => base.AcceptsMouseInput = value;
+        }
 
         new public void Invalidate () => base.Invalidate();
 
@@ -575,7 +579,8 @@ namespace Squared.PRGUI.Controls {
             : base () {
             Content.WordWrap = true;
             Content.CharacterWrap = false;
-            AcceptsMouseInput = false;
+            // HACK: Maybe wrong, but this makes it more convenient to listen to events
+            AcceptsMouseInput = true;
         }
     }
 }

@@ -310,7 +310,8 @@ namespace Squared.PRGUI.Controls {
 
             context.Layout.SetContainerFlags(result, containerFlags);
 
-            GenerateDynamicContent(false || DynamicContentIsInvalid);
+            if (context.HiddenCount <= 0)
+                GenerateDynamicContent(DynamicContentIsInvalid);
 
             if (ColumnCount != (ColumnKeys?.Length ?? 0))
                 ColumnKeys = new ControlKey[ColumnCount];

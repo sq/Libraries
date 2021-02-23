@@ -10,6 +10,7 @@ using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Text;
 using Squared.Util;
+using Squared.Util.Event;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Imperative {
@@ -357,6 +358,22 @@ namespace Squared.PRGUI.Imperative {
             GetEvent(UIEvents.Click, out bool clicked);
             if (clicked)
                 onClick(Control);
+            return this;
+        }
+
+        public ControlBuilder<TControl> Subscribe (string eventName, EventSubscriber subscriber) {
+            if ((eventName == null) || (subscriber == null))
+                throw new ArgumentNullException();
+            Context.EventBus.Subscribe(Control, eventName, subscriber);
+            return this;
+        }
+
+        public ControlBuilder<TControl> Subscribe<T> (string eventName, TypedEventSubscriber<T> subscriber)
+            where T : class 
+        {
+            if ((eventName == null) || (subscriber == null))
+                throw new ArgumentNullException();
+            Context.EventBus.Subscribe<T>(Control, eventName, subscriber);
             return this;
         }
 

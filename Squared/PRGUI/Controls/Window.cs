@@ -87,10 +87,17 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            ExtraContainerFlags = Scrollable
-                ? ControlFlags.Container_Prevent_Crush
-                : ControlFlags.Container_Constrain_Size;
-            return base.OnGenerateLayoutTree(context, parent, existingKey);
+            try {
+                if (Collapsed)
+                    context.HiddenCount++;
+                ExtraContainerFlags = Scrollable
+                    ? ControlFlags.Container_Prevent_Crush
+                    : ControlFlags.Container_Constrain_Size;
+                return base.OnGenerateLayoutTree(context, parent, existingKey);
+            } finally {
+                if (Collapsed)
+                    context.HiddenCount--;
+            }
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {

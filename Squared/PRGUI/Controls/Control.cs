@@ -50,8 +50,8 @@ namespace Squared.PRGUI {
     
     public abstract partial class Control {
         public static bool ShowDebugBoxes = false,
-            ShowDebugBreakMarkers = true,
-            ShowDebugMargins = true;
+            ShowDebugBreakMarkers = false,
+            ShowDebugMargins = false;
 
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
@@ -795,14 +795,18 @@ namespace Squared.PRGUI {
             return Color.Lerp(Color.Red, Color.Orange, depth / 16f);
         }
 
-        private void RasterizeDebugBox (ref UIOperationContext context, ref RasterizePassSet passSet, RectF rect) {
+        private void RasterizeDebugOverlays (ref UIOperationContext context, ref RasterizePassSet passSet, RectF rect) {
+            if (!ShowDebugBoxes && !ShowDebugBreakMarkers && !ShowDebugMargins)
+                return;
+
             var mouseIsOver = rect.Contains(context.MousePosition);
             var alpha = mouseIsOver ? 1.0f : 0.66f;
 
-            passSet.Above.RasterizeRectangle(
-                rect.Position, rect.Extent, 0f, 1f, Color.Transparent, Color.Transparent, 
-                GetDebugBoxColor(context.Depth) * alpha
-            );
+            if (ShowDebugBoxes)
+                passSet.Above.RasterizeRectangle(
+                    rect.Position, rect.Extent, 0f, 1f, Color.Transparent, Color.Transparent, 
+                    GetDebugBoxColor(context.Depth) * alpha
+                );
 
             var flags = context.Layout.GetFlags(LayoutKey);
 
@@ -901,8 +905,7 @@ namespace Squared.PRGUI {
                 (box.Width <= 0) ||
                 (box.Height <= 0);
 
-            if (ShowDebugBoxes)
-                RasterizeDebugBox(ref context, ref passSet, box);
+            RasterizeDebugOverlays(ref context, ref passSet, box);
 
             // Only visibility cull controls that have a parent and aren't overlaid.
             if (isInvisible && TryGetParent(out Control parent) && !Appearance.Overlay)

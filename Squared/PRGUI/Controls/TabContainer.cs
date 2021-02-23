@@ -29,6 +29,16 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public bool ExpandToHoldAllTabs = true;
 
+        float _TabScale = 1;
+        public float TabScale {
+            get => _TabScale;
+            set {
+                value = Arithmetic.Clamp(value, 0.1f, 2.0f);
+                _TabScale = value;
+                TabStripIsInvalid = true;
+            }
+        }
+
         private bool _TabsOnLeft;
         public bool TabsOnLeft {
             get => _TabsOnLeft;
@@ -98,7 +108,7 @@ namespace Squared.PRGUI.Controls {
                     ? ControlFlags.Layout_Fill_Column | ControlFlags.Layout_Anchor_Left
                     : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top;
             TabStrip.ContainerFlags =
-                ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Prevent_Crush;
+                ControlFlags.Container_Align_Start | ControlFlags.Container_Row;
             TabStrip.Container.Wrap = TabsOnLeft;
 
             TabStrip.Children.Clear();
@@ -117,12 +127,15 @@ namespace Squared.PRGUI.Controls {
                         DecorationTraits = {
                             TabsOnLeft ? "left" : "top"
                         }
-                    },
+                    },                    
                     TextAlignment = Render.Text.HorizontalAlignment.Center,
+                    AutoSizeWidth = TabsOnLeft,
                     AutoSizeIsMaximum = false,
+                    ScaleToFit = true,
                     LayoutFlags = TabsOnLeft
                         ? ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
                         : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
+                    Scale = _TabScale
                 };
                     
                 if (i == SelectedTabIndex + 1)

@@ -176,7 +176,7 @@ namespace Squared.PRGUI {
 
             Tab = new DelegateDecorator {
                 Margins = new Margins(4, 4, 2, 2),
-                Padding = new Margins(16, 8),
+                Padding = new Margins(8, 4),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
                 GetFont = () => ButtonFont ?? DefaultFont,
