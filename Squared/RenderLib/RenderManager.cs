@@ -457,6 +457,8 @@ namespace Squared.Render {
         private Frame _Frame;
         private bool _FrameInUse = false;
 
+        private Frame _PreviousFrame, _ReusableFrame;
+
         internal long TotalVertexBytes, TotalIndexBytes;
 
         private readonly List<IBufferGenerator> _AllBufferGenerators = new List<IBufferGenerator>();
@@ -625,6 +627,10 @@ namespace Squared.Render {
             lock (_FrameLock) {
                 if (_Frame == frame)
                     _FrameInUse = false;
+                if (_PreviousFrame != frame) {
+                    _ReusableFrame = _PreviousFrame;
+                    _PreviousFrame = _Frame;
+                }
             }
         }
 
@@ -642,7 +648,7 @@ namespace Squared.Render {
                 if (!_FrameInUse)
                     CollectAllocators();
                 _FrameInUse = true;
-                _Frame = new Frame();
+                _Frame = _ReusableFrame ?? new Frame();
                 _Frame.Initialize(coordinator, this, PickFrameIndex());
                 return _Frame;
             }
