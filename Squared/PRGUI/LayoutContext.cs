@@ -503,6 +503,11 @@ namespace Squared.PRGUI.Layout {
             return pItem->Margins;
         }
 
+        public unsafe Margins GetPadding (ControlKey key) {
+            var pItem = LayoutPtr(key);
+            return pItem->Padding;
+        }
+
         private unsafe float CalcMinimumSize (LayoutItem * pItem, int idim) {
             var result = Math.Max(
                 pItem->MinimumSize.GetElement(idim),

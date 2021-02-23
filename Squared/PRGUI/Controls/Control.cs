@@ -51,7 +51,8 @@ namespace Squared.PRGUI {
     public abstract partial class Control {
         public static bool ShowDebugBoxes = false,
             ShowDebugBreakMarkers = false,
-            ShowDebugMargins = false;
+            ShowDebugMargins = false,
+            ShowDebugPadding = false;
 
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
@@ -795,12 +796,50 @@ namespace Squared.PRGUI {
             return Color.Lerp(Color.Red, Color.Orange, depth / 16f);
         }
 
+        private void RasterizeDebugMargins (ref UIOperationContext context, ref RasterizePassSet passSet, ref RectF rect, Margins margins, float direction, Color color) {
+            var lineWidth = 1.5f;
+            var exteriorRect = rect;
+            exteriorRect.Left -= margins.Left * direction;
+            exteriorRect.Top -= margins.Top * direction;
+            exteriorRect.Width += margins.X * direction;
+            exteriorRect.Height += margins.Y * direction;
+            var center = rect.Center;
+
+            if (margins.Left > 0)
+                passSet.Above.RasterizeRectangle(
+                    new Vector2(exteriorRect.Left, center.Y - lineWidth),
+                    new Vector2(rect.Left, center.Y + lineWidth),
+                    0, color
+                );
+
+            if (margins.Top > 0)
+                passSet.Above.RasterizeRectangle(
+                    new Vector2(center.X - lineWidth, exteriorRect.Top),
+                    new Vector2(center.X + lineWidth, rect.Top),
+                    0, color
+                );
+
+            if (margins.Right > 0)
+                passSet.Above.RasterizeRectangle(
+                    new Vector2(exteriorRect.Extent.X, center.Y - lineWidth),
+                    new Vector2(rect.Extent.X, center.Y + lineWidth),
+                    0, color
+                );
+
+            if (margins.Bottom > 0)
+                passSet.Above.RasterizeRectangle(
+                    new Vector2(center.X - lineWidth, exteriorRect.Extent.Y),
+                    new Vector2(center.X + lineWidth, rect.Extent.Y),
+                    0, color
+                );
+        }
+
         private void RasterizeDebugOverlays (ref UIOperationContext context, ref RasterizePassSet passSet, RectF rect) {
-            if (!ShowDebugBoxes && !ShowDebugBreakMarkers && !ShowDebugMargins)
+            if (!ShowDebugBoxes && !ShowDebugBreakMarkers && !ShowDebugMargins && !ShowDebugPadding)
                 return;
 
             var mouseIsOver = rect.Contains(context.MousePosition);
-            var alpha = mouseIsOver ? 1.0f : 0.66f;
+            var alpha = mouseIsOver ? 1.0f : 0.5f;
 
             if (ShowDebugBoxes)
                 passSet.Above.RasterizeRectangle(
@@ -810,45 +849,11 @@ namespace Squared.PRGUI {
 
             var flags = context.Layout.GetFlags(LayoutKey);
 
-            if (ShowDebugMargins && !flags.IsFlagged(ControlFlags.Layout_Floating)) {
-                var lineWidth = 1.5f;
-                var lineColor = Color.Green * alpha;
-                var margins = context.Layout.GetMargins(LayoutKey);
-                var exteriorRect = rect;
-                exteriorRect.Left -= margins.Left;
-                exteriorRect.Top -= margins.Top;
-                exteriorRect.Width += margins.X;
-                exteriorRect.Height += margins.Y;
-                var center = rect.Center;
+            if (ShowDebugMargins && !flags.IsFlagged(ControlFlags.Layout_Floating))
+                RasterizeDebugMargins(ref context, ref passSet, ref rect, context.Layout.GetMargins(LayoutKey), 1f, Color.Green);
 
-                if (margins.Left > 0)
-                    passSet.Above.RasterizeRectangle(
-                        new Vector2(exteriorRect.Left, center.Y - lineWidth),
-                        new Vector2(rect.Left, center.Y + lineWidth),
-                        0, lineColor
-                    );
-
-                if (margins.Top > 0)
-                    passSet.Above.RasterizeRectangle(
-                        new Vector2(center.X - lineWidth, exteriorRect.Top),
-                        new Vector2(center.X + lineWidth, rect.Top),
-                        0, lineColor
-                    );
-
-                if (margins.Right > 0)
-                    passSet.Above.RasterizeRectangle(
-                        new Vector2(exteriorRect.Extent.X, center.Y - lineWidth),
-                        new Vector2(rect.Extent.X, center.Y + lineWidth),
-                        0, lineColor
-                    );
-
-                if (margins.Bottom > 0)
-                    passSet.Above.RasterizeRectangle(
-                        new Vector2(center.X - lineWidth, exteriorRect.Extent.Y),
-                        new Vector2(center.X + lineWidth, rect.Extent.Y),
-                        0, lineColor
-                    );
-            }
+            if (ShowDebugPadding)
+                RasterizeDebugMargins(ref context, ref passSet, ref rect, context.Layout.GetPadding(LayoutKey), -1f, Color.Yellow);
 
             if (ShowDebugBreakMarkers && mouseIsOver && flags.IsBreak()) {
                 rect = new RectF(
