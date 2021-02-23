@@ -165,26 +165,37 @@ namespace Squared.PRGUI.Controls {
             GaugeDirection direction, float value1, float value2, ref RectF contentBox
         ) {
             float extent;
-            var fillWidth = value2 - value1;
+
+            var fillSize = Math.Abs(value2 - value1);
+            switch (direction) {
+                default:
+                case GaugeDirection.LeftToRight:
+                case GaugeDirection.RightToLeft:
+                    extent = contentBox.Extent.X;
+                    break;
+                case GaugeDirection.TopToBottom:
+                case GaugeDirection.BottomToTop:
+                    extent = contentBox.Extent.Y;
+                    break;
+            }
+
             switch (direction) {
                 default:
                 case GaugeDirection.LeftToRight:
                     contentBox.Left += value1 * contentBox.Width;
-                    contentBox.Width *= fillWidth;
+                    contentBox.Width *= fillSize;
                     break;
                 case GaugeDirection.RightToLeft:
-                    extent = contentBox.Extent.X;
-                    contentBox.Width *= fillWidth;
-                    contentBox.Left = extent - contentBox.Width;
+                    contentBox.Left = extent - (value2 * contentBox.Width);
+                    contentBox.Width *= fillSize;
                     break;
                 case GaugeDirection.TopToBottom:
                     contentBox.Top += value1 * contentBox.Height;
-                    contentBox.Height *= fillWidth;
+                    contentBox.Height *= fillSize;
                     break;
                 case GaugeDirection.BottomToTop:
-                    extent = contentBox.Extent.Y;
-                    contentBox.Height *= fillWidth;
-                    contentBox.Top = extent - contentBox.Height;
+                    contentBox.Top = extent - (value2 * contentBox.Height);
+                    contentBox.Height *= fillSize;
                     break;
             }
         }
