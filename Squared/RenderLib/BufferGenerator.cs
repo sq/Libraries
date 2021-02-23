@@ -58,8 +58,8 @@ namespace Squared.Render.Internal {
         }
 
         protected class HardwareBufferEntry {
-            public readonly int VertexOffset;
-            public readonly int IndexOffset;
+            public int VertexOffset { get; private set; }
+            public int IndexOffset { get; private set; }
             public int SourceVertexCount;
             public int SourceIndexCount;
 
@@ -69,7 +69,10 @@ namespace Squared.Render.Internal {
 
             public XNABufferPair<TVertex> Buffer;
 
-            public HardwareBufferEntry (
+            public HardwareBufferEntry () {
+            }
+
+            public void Initialize (
                 XNABufferPair<TVertex> buffer,
                 int vertexOffset, int indexOffset,
                 int sourceVertexCount, int sourceIndexCount
@@ -177,8 +180,9 @@ namespace Squared.Render.Internal {
         protected static readonly UnorderedList<XNABufferPair<TVertex>> _UnusedHardwareBuffers 
             = new UnorderedList<XNABufferPair<TVertex>>();
 
-        protected readonly UnorderedList<HardwareBufferEntry> _UsedHardwareBuffers 
-            = new UnorderedList<HardwareBufferEntry>();
+        protected readonly UnorderedList<HardwareBufferEntry> _UsedHardwareBufferEntries = new UnorderedList<HardwareBufferEntry>(),
+            _PreviouslyUsedHardwareBufferEntries = new UnorderedList<HardwareBufferEntry>(),
+            _ReusableHardwareBufferEntries = new UnorderedList<HardwareBufferEntry>();
 
         protected object _StateLock = new object();
         protected int _VertexCount = 0, _IndexCount = 0;
@@ -314,8 +318,15 @@ namespace Squared.Render.Internal {
                 lock (_StaticStateLock)
                     StaticReset(frameIndex, RenderManager);
 
+                _ReusableHardwareBufferEntries.Clear();
+                foreach (var _hb in _PreviouslyUsedHardwareBufferEntries)
+                    _ReusableHardwareBufferEntries.Add(_hb);
+                _PreviouslyUsedHardwareBufferEntries.Clear();
+
                 // Return any buffers that were used this frame to the unused state.
-                foreach (var _hb in _UsedHardwareBuffers) {
+                foreach (var _hb in _UsedHardwareBufferEntries) {
+                    _PreviouslyUsedHardwareBufferEntries.Add(_hb);
+
                     // HACK
                     var hwb = _hb.Buffer;
                     if (hwb.DeviceId < id)
@@ -326,7 +337,7 @@ namespace Squared.Render.Internal {
                         _UnusedHardwareBuffers.Add(hwb);
                 }
 
-                _UsedHardwareBuffers.Clear();
+                _UsedHardwareBufferEntries.Clear();
 
                 foreach (var kvp in _BufferCache) {
                     var swb = kvp.Value;
@@ -389,9 +400,20 @@ namespace Squared.Render.Internal {
 
             if (allocateNew) {
                 var newBuffer = AllocateSuitablySizedHardwareBuffer(additionalVertexCount, additionalIndexCount);
-                var entry = new HardwareBufferEntry(newBuffer, vertexOffset, indexOffset, additionalVertexCount, additionalIndexCount);
+                HardwareBufferEntry entry;
 
-                _UsedHardwareBuffers.Add(entry);
+                if (!_ReusableHardwareBufferEntries.TryPopFront(out entry)) {
+                    // This should almost never happen across frames, but for some reason it does infrequently?
+                    // Console.WriteLine("New entry");
+                    entry = new HardwareBufferEntry();
+                } else {
+                    // Console.WriteLine("Reused entry");
+                }
+
+                entry.Initialize(
+                    newBuffer, vertexOffset, indexOffset, additionalVertexCount, additionalIndexCount
+                );
+                _UsedHardwareBufferEntries.Add(entry);
 
                 _FillingHardwareBufferEntry = entry;
 
@@ -545,7 +567,7 @@ namespace Squared.Render.Internal {
             var va = _VertexArray;
             var ia = _IndexArray;
 
-            foreach (var hwbe in _UsedHardwareBuffers) {
+            foreach (var hwbe in _UsedHardwareBufferEntries) {
                 ArraySegment<TVertex> vertexSegment;
                 ArraySegment<TIndex> indexSegment;
 
