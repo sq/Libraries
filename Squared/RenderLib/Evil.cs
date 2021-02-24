@@ -726,6 +726,19 @@ namespace Squared.Render.Evil {
             texture.SetDataPointerEXT((int)level, new Rectangle(0, 0, width, height), new IntPtr(pData), actualSize);
         }
 
+        public static unsafe void SetDataFast (
+            this Texture2D texture, uint level, void* pData,
+            Rectangle rect, uint pitch
+        ) {
+            int temp;
+            int bytesPerPixel = GetBytesPerPixelAndComponents(texture.Format, out temp);
+            var maxSize = (texture.Width * texture.Height * bytesPerPixel);
+            var actualSize = (int)(pitch * rect.Height);
+            if (actualSize > maxSize)
+                throw new ArgumentOutOfRangeException("pitch");
+            texture.SetDataPointerEXT((int)level, rect, new IntPtr(pData), actualSize);
+        }
+
         public static void GetDataFast<T> (
             this Texture2D texture, T[] data
         ) where T : struct {
