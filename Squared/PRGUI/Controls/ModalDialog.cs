@@ -127,7 +127,7 @@ namespace Squared.PRGUI.Controls {
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
             InvalidateLayout();
             // Force realignment
-            ScreenAlignment = ScreenAlignment;
+            Alignment = Alignment;
             IsFadingOut = false;
             Visible = true;
             Intangible = false;

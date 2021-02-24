@@ -199,9 +199,10 @@ namespace Squared.PRGUI.Layout {
                 : Math.Max((*pRect)[wdim], pItem->MinimumSize.GetElement(idim));
 
             var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
+            var margins = pItem->Margins[idim] + pItem->Margins[wdim];
             var fill = bFlags.IsFlagged(ControlFlags.Layout_Fill_Row);
             if (fill)
-                size = Math.Max(size, parentRect[wdim] - pItem->Margins[wdim]);
+                size = Math.Max(size, parentRect[wdim] - margins);
 
             var max = pItem->MaximumSize.GetElement(idim);
             if ((max > 0) && (fs < 0))
@@ -209,8 +210,9 @@ namespace Squared.PRGUI.Layout {
 
             (*pRect)[idim] = 
                 (!fill && bFlags.IsFlagged(ControlFlags.Layout_Anchor_Right))
-                    ? (parentRect[idim] + parentRect[wdim]) - size - pItem->Margins[wdim]
-                    : parentRect[idim] + pItem->Margins[idim];
+                    ? (parentRect[idim] + parentRect[wdim]) - size - margins
+                    // FIXME: Should we be applying the margins to the offset here? It's kind of gross but seems expected
+                    : parentRect[idim] + + pItem->Margins[idim] + pItem->FloatingPosition.GetElement(idim);
             (*pRect)[wdim] = size;
         }
 
@@ -486,6 +488,13 @@ namespace Squared.PRGUI.Layout {
             AssertMasked(flags, ControlFlagMask.Layout);
             var pItem = LayoutPtr(key);
             pItem->Flags = (pItem->Flags & ~ControlFlagMask.Layout) | flags;
+        }
+
+        public unsafe void SetLayoutData (ControlKey key, ref Vector2 floatingPosition, ref Margins margins, ref Margins padding) {
+            var pItem = LayoutPtr(key);
+            pItem->FloatingPosition = floatingPosition;
+            pItem->Margins = margins;
+            pItem->Padding = padding;
         }
 
         public unsafe void SetMargins (ControlKey key, Margins m) {

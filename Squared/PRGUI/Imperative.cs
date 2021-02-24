@@ -497,7 +497,7 @@ namespace Squared.PRGUI.Imperative {
             if (Control is StaticImage si)
                 si.Alignment = value;
             else if (Control is Window w)
-                w.ScreenAlignment = value;
+                w.Alignment = value;
             return this;
         }
 

@@ -78,6 +78,8 @@ namespace Squared.PRGUI {
 
         public Controls.ControlDataCollection Data;
 
+        public Vector2 FloatingPosition;
+
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
 
@@ -551,15 +553,11 @@ namespace Squared.PRGUI {
             var spacingScale = context.DecorationProvider.SpacingScaleRatio;
             var paddingScale = spacingScale * context.DecorationProvider.PaddingScaleRatio;
             var marginScale = spacingScale * context.DecorationProvider.MarginScaleRatio;
-            if (!isFloating)
-                Margins.Scale(ref computedMargins, ref marginScale);
-            else
-                ;
+            Margins.Scale(ref computedMargins, ref marginScale);
             Margins.Scale(ref computedPadding, ref paddingScale);
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
-            context.Layout.SetMargins(result, computedMargins);
-            context.Layout.SetPadding(result, computedPadding);
+            context.Layout.SetLayoutData(result, ref FloatingPosition, ref computedMargins, ref computedPadding);
             context.Layout.SetFixedSize(result, fixedWidth ?? LayoutItem.NoValue, fixedHeight ?? LayoutItem.NoValue);
 
             ComputeSizeConstraints(
