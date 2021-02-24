@@ -580,5 +580,15 @@ namespace Squared.PRGUI.Controls {
             Content.WordWrap = true;
             Content.CharacterWrap = false;
         }
+
+        /// <summary>
+        /// If you're feeling naughty, you can muck with the layout directly
+        /// </summary>
+        public StringLayout GetLayout () {
+            // HACK
+            if (Content.GlyphSource == null)
+                return default(StringLayout);
+            return base.GetCurrentLayout(false);
+        }
     }
 }
