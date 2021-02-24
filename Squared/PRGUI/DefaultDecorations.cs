@@ -246,7 +246,7 @@ namespace Squared.PRGUI {
             };
 
             StaticText = new DelegateDecorator {
-                Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
+                Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin, GlobalDefaultMarginCollapsed, GlobalDefaultMarginCollapsed),
                 Padding = new Margins(6),
                 GetTextSettings = GetTextSettings,
                 GetFont = () => DefaultFont,

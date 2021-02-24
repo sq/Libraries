@@ -279,8 +279,11 @@ namespace Squared.Render {
                 var lcc = NativeBatch.LifetimeCommandCount;
                 var pcc = NextFrameTiming.PriorCommandCount;
 
+                NextFrameTiming.Prepare = RenderCoordinator.PrepareStopwatch.Elapsed;
                 NextFrameTiming.EndDraw = RenderCoordinator.WorkStopwatch.Elapsed;
+                NextFrameTiming.BeforeIssue = RenderCoordinator.BeforeIssueStopwatch.Elapsed;
                 NextFrameTiming.BeforePresent = RenderCoordinator.BeforePresentStopwatch.Elapsed;
+                NextFrameTiming.AfterPresent = RenderCoordinator.AfterPresentStopwatch.Elapsed;
                 NextFrameTiming.Wait = RenderCoordinator.WaitStopwatch.Elapsed;
                 NextFrameTiming.PrimitiveCount = (int)(lpc - ppc);
                 NextFrameTiming.CommandCount = (int)(lcc - pcc);
@@ -288,6 +291,7 @@ namespace Squared.Render {
 
                 RenderCoordinator.WaitStopwatch.Reset();
                 RenderCoordinator.BeforePresentStopwatch.Reset();
+                RenderCoordinator.AfterPresentStopwatch.Reset();
             }
 
             ThreadGroup.TryStepMainThreadUntilDrained();
@@ -297,8 +301,26 @@ namespace Squared.Render {
         }
     }
 
+    /// <summary>
+    /// Records timing and count information for the most recent frame.
+    /// Phases occur in this order:
+    /// Wait: Waiting for the render queue to become empty.
+    /// BeginDraw: Initializing the device for rendering.
+    /// Draw: Running Game.Draw to build the frame.
+    /// Prepare: Prepare the frame and its batches for rendering.
+    /// EndDraw: Multiple steps:
+    ///     Run BeforeIssue handlers
+    ///     Issue draw calls to the hardware
+    ///     Run BeforePresent handlers
+    ///     Present the final frame to the screen
+    ///     Run AfterPresent handlers
+    /// </summary>
     public struct FrameTiming {
-        public TimeSpan Wait, BeginDraw, Draw, BeforePresent, EndDraw;
+        public TimeSpan Wait, BeginDraw, Draw, Prepare, EndDraw;
+        /// <summary>
+        /// These handlers run during the EndDraw phase (i.e. don't sum them up for a total)
+        /// </summary>
+        public TimeSpan BeforeIssue, BeforePresent, AfterPresent;
         public int BatchCount, CommandCount, PrimitiveCount;
 
         internal long PriorPrimitiveCount, PriorCommandCount;

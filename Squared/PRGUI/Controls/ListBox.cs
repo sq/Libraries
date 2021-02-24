@@ -263,7 +263,7 @@ namespace Squared.PRGUI.Controls {
 
             if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection) {
                 var newControl = Manager.SelectedControl;
-                OnSelectionChange(newControl, SelectedItemHasChangedSinceLastUpdate);
+                OnSelectionChange(newControl, clearHasChanged && SelectedItemHasChangedSinceLastUpdate);
                 if (hadKeyboardSelection)
                     Context.OverrideKeyboardSelection(newControl, forUser: false);
             }

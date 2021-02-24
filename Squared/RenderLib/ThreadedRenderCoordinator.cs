@@ -118,9 +118,11 @@ namespace Squared.Render {
         public readonly Stopwatch
             WorkStopwatch = new Stopwatch(),
             WaitStopwatch = new Stopwatch(),
+            PrepareStopwatch = new Stopwatch(),
             BeforePrepareStopwatch = new Stopwatch(),
             BeforePresentStopwatch = new Stopwatch(),
-            BeforeIssueStopwatch = new Stopwatch();
+            BeforeIssueStopwatch = new Stopwatch(),
+            AfterPresentStopwatch = new Stopwatch();
 
         // Used to detect re-entrant painting (usually means that an
         //  exception was thrown on the render thread)
@@ -624,9 +626,12 @@ namespace Squared.Render {
             CheckMainThread(DoThreadedPrepare && threaded);
 
             try {
+                PrepareStopwatch.Reset();
+                PrepareStopwatch.Start();
                 Manager.ResetBufferGenerators(frame.Index);
                 frame.Prepare(DoThreadedPrepare && threaded);
             } finally {
+                PrepareStopwatch.Stop();
                 if (DoThreadedPrepare)
                     Monitor.Exit(PrepareLock);
             }
@@ -734,6 +739,7 @@ namespace Squared.Render {
         }
 
         protected void RunBeforePrepareHandlers () {
+            BeforePrepareStopwatch.Reset();
             BeforePrepareStopwatch.Start();
 
             while (BeforePrepareQueue.Count > 0) {
@@ -748,6 +754,7 @@ namespace Squared.Render {
         }
 
         protected void RunBeforeIssueHandlers () {
+            BeforeIssueStopwatch.Reset();
             BeforeIssueStopwatch.Start();
 
             while (BeforeIssueQueue.Count > 0) {
@@ -762,6 +769,7 @@ namespace Squared.Render {
         }
 
         protected void RunBeforePresentHandlers () {
+            BeforePresentStopwatch.Reset();
             BeforePresentStopwatch.Start();
 
             while (BeforePresentQueue.Count > 0) {
@@ -776,6 +784,9 @@ namespace Squared.Render {
         }
 
         protected void RunAfterPresentHandlers () {
+            AfterPresentStopwatch.Reset();
+            AfterPresentStopwatch.Start();
+
             NotifyPendingDrawCompletions();
 
             while (AfterPresentQueue.Count > 0) {
@@ -785,6 +796,8 @@ namespace Squared.Render {
 
                 afterPresent();
             }
+
+            AfterPresentStopwatch.Stop();
         }
 
         public bool TryWaitForPresentToStart (int millisecondsTimeout, out bool didPresentEnd, float delayMs = 1) {
