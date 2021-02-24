@@ -211,7 +211,7 @@ namespace Squared.PRGUI.Controls {
             if (result.IsInvalid)
                 return result;
 
-            if (string.IsNullOrEmpty(Title) && !existingKey.HasValue) {
+            if (string.IsNullOrEmpty(Title) && !existingKey.HasValue && Collapsible) {
                 var spacer = context.Layout.CreateItem();
                 context.Layout.SetLayoutFlags(spacer, ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak);
                 context.Layout.SetFixedSize(spacer, DisclosureArrowPadding, MostRecentTitleBox.Height);
