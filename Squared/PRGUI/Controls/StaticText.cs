@@ -579,8 +579,6 @@ namespace Squared.PRGUI.Controls {
             : base () {
             Content.WordWrap = true;
             Content.CharacterWrap = false;
-            // HACK: Maybe wrong, but this makes it more convenient to listen to events
-            AcceptsMouseInput = true;
         }
     }
 }
