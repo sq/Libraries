@@ -675,7 +675,7 @@ namespace Squared.Render.Text {
         int Version { get; }
     }
 
-    public static class SpriteFontUtil {
+    public static class TextUtils {
         public struct FontFields {
             public Texture2D Texture;
             public List<Rectangle> GlyphRectangles;
@@ -685,7 +685,7 @@ namespace Squared.Render.Text {
         }
         internal static readonly FieldInfo textureValue, glyphData, croppingData, kerning, characterMap;
 
-        static SpriteFontUtil () {
+        static TextUtils () {
             var tSpriteFont = typeof(SpriteFont);
             textureValue = GetPrivateField(tSpriteFont, "textureValue");
             glyphData = GetPrivateField(tSpriteFont, "glyphData");
@@ -696,6 +696,31 @@ namespace Squared.Render.Text {
 
         private static FieldInfo GetPrivateField (Type type, string fieldName) {
             return type.GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        }
+
+        /// <summary>
+        /// Prefetches all glyphs in a range so they will be available immediately in the future.
+        /// </summary>
+        /// <returns>The number of glyphs that were successfully fetched</returns>
+        public static int PrefetchGlyphs (this IGlyphSource source, char firstChar, char lastChar) {
+            return source.PrefetchGlyphs((uint)firstChar, (uint)lastChar);
+        }
+
+        /// <summary>
+        /// Prefetches all glyphs in a range so they will be available immediately in the future.
+        /// </summary>
+        /// <returns>The number of glyphs that were successfully fetched</returns>
+        public static int PrefetchGlyphs (this IGlyphSource source, uint firstChar, uint lastChar) {
+            if (lastChar < firstChar)
+                throw new ArgumentOutOfRangeException();
+
+            int result = 0;
+            Glyph temp;
+            for (uint ch = firstChar; ch <= lastChar; ch++) {
+                if (source.GetGlyph(ch, out temp))
+                    result++;
+            }
+            return result;
         }
 
         public static bool GetGlyph (this IGlyphSource source, char ch, out Glyph result) {
@@ -723,7 +748,7 @@ namespace Squared.Render.Text {
         public readonly SpriteFont Font;
         public readonly Texture2D Texture;
 
-        public readonly SpriteFontUtil.FontFields Fields;
+        public readonly TextUtils.FontFields Fields;
         public readonly int DefaultCharacterIndex;
 
         public bool IsDisposed => (Texture?.IsDisposed == false);
@@ -802,7 +827,7 @@ namespace Squared.Render.Text {
         public SpriteFontGlyphSource (SpriteFont font) {
             Font = font;
 
-            if (SpriteFontUtil.GetPrivateFields(font, out Fields)) {
+            if (TextUtils.GetPrivateFields(font, out Fields)) {
                 // XNA SpriteFont
                 Texture = Fields.Texture;
 
