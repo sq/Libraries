@@ -758,7 +758,7 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
         public ControlBuilder<TControl> SetScale (float value) {
-            if (Control is StaticText stb)
+            if (Control is StaticTextBase stb)
                 stb.Scale = value;
             else if (Control is StaticImage si)
                 si.Scale = new Vector2(value);

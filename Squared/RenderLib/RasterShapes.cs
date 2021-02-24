@@ -492,6 +492,10 @@ namespace Squared.Render.RasterShape {
         public RasterizerState RasterizerState;
         public RasterShadowSettings ShadowSettings;
 
+        static RasterShapeBatch () {
+            AdjustPoolCapacities(1024, null, 512, 16);
+        }
+
         public void Initialize (IBatchContainer container, int layer, DefaultMaterialSet materials) {
             base.Initialize(container, layer, materials.RasterShapeUbershader, true);
 
@@ -505,6 +509,13 @@ namespace Squared.Render.RasterShape {
 
             if (VertexAllocator == null)
                 VertexAllocator = container.RenderManager.GetArrayAllocator<RasterShapeVertex>();
+        }
+
+        new public static void AdjustPoolCapacities (
+            int? smallItemSizeLimit, int? largeItemSizeLimit,
+            int? smallPoolCapacity, int? largePoolCapacity
+        ) {
+            ListBatch<RasterShapeDrawCall>.AdjustPoolCapacities(smallItemSizeLimit, largeItemSizeLimit, smallPoolCapacity, largePoolCapacity);
         }
 
         private static bool ShouldBeShadowed (ref RasterShadowSettings shadow) {

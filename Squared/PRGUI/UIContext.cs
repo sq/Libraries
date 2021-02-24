@@ -109,6 +109,8 @@ namespace Squared.PRGUI {
             Keys.Insert
         };
 
+        public bool LogRelayoutRequests = false;
+
         /// <summary>
         /// Reserves empty space around composited controls on all sides to create room for drop shadows and
         ///  any other decorations that may extend outside the control's rectangle.
@@ -692,7 +694,7 @@ namespace Squared.PRGUI {
 
         private bool NotifyLayoutListeners (UIOperationContext context) {
             bool relayoutRequested = context.RelayoutRequestedForVisibilityChange;
-            if (relayoutRequested)
+            if (relayoutRequested && LogRelayoutRequests)
                 Log($"Relayout requested due to visibility change");
 
             foreach (var listener in context.PostLayoutListeners) {
@@ -700,7 +702,8 @@ namespace Squared.PRGUI {
                 listener.OnLayoutComplete(context, ref relayoutRequested);
                 if (relayoutRequested != wasRequested) {
                     var ctl = (Control)listener;
-                    Log($"Relayout requested by {ctl.DebugLabel ?? listener.GetType().Name}");
+                    if (LogRelayoutRequests)
+                        Log($"Relayout requested by {ctl.DebugLabel ?? listener.GetType().Name}");
                 }
             }
             return relayoutRequested;
