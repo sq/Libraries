@@ -166,12 +166,7 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
-            RectF parentRect;
-            if (!TryGetParent(out Control parent))
-                parentRect = context.UIContext.CanvasRect;
-            else
-                parentRect = parent.GetRect(contentRect: true, context: context.UIContext);
-
+            var parentRect = GetParentContentRect();
             var rect = GetRect(applyOffset: false);
 
             if (_AlignmentAnchor != null) {
@@ -187,7 +182,7 @@ namespace Squared.PRGUI.Controls {
                 MostRecentUnmaximizedRect = MostRecentFullSize.Value;
 
             if (!NeedsAlignment) {
-                if (UpdatePosition(_DesiredPosition ?? Position, context.UIContext, rect, false))
+                if (UpdatePosition(_DesiredPosition ?? Position, ref parentRect, ref rect, false))
                     relayoutRequested = true;
 
                 var availableSpace = (parentRect.Size - rect.Size);
@@ -202,9 +197,19 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private bool UpdatePosition (Vector2 newPosition, UIContext context, RectF box, bool updateDesiredPosition) {
-            var availableSpaceX = Math.Max(0, context.CanvasSize.X - box.Width);
-            var availableSpaceY = Math.Max(0, context.CanvasSize.Y - box.Height);
+        private RectF GetParentContentRect () {
+            RectF parentRect;
+            if (!TryGetParent(out Control parent))
+                parentRect = Context.CanvasRect;
+            else
+                parentRect = parent.GetRect(contentRect: true);
+            return parentRect;
+        }
+
+        private bool UpdatePosition (Vector2 newPosition, ref RectF parentRect, ref RectF box, bool updateDesiredPosition) {
+            var effectiveSize = box.Size + Margins.Size;
+            var availableSpaceX = Math.Max(0, parentRect.Width - effectiveSize.X);
+            var availableSpaceY = Math.Max(0, parentRect.Height - effectiveSize.Y);
             newPosition = new Vector2(
                 Arithmetic.Saturate(newPosition.X, availableSpaceX),
                 Arithmetic.Saturate(newPosition.Y, availableSpaceY)
@@ -259,12 +264,14 @@ namespace Squared.PRGUI.Controls {
                 if (shouldUnmaximize) {
                     // FIXME: Scale the mouse anchor based on the new size vs the old maximized size
                     Maximized = false;
-                    UpdatePosition(newPosition, args.Context, MostRecentUnmaximizedRect, true);
+                    var parentRect = GetParentContentRect();
+                    UpdatePosition(newPosition, ref parentRect, ref MostRecentUnmaximizedRect, true);
                 } else if (shouldMaximize || Maximized) {
                     Maximized = true;
                     SetCollapsed(false, instant: true);
                 } else {
-                    UpdatePosition(newPosition, args.Context, args.Box, Dragging && (delta.Length() >= 2));
+                    var parentRect = GetParentContentRect();
+                    UpdatePosition(newPosition, ref parentRect, ref args.Box, Dragging && (delta.Length() >= 2));
                 }
 
                 FireEvent(UIEvents.Moved);
