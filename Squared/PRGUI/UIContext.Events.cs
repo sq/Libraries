@@ -788,7 +788,7 @@ namespace Squared.PRGUI {
                     : null;
 
                 prior = current;
-                if (nextSibling != null) {
+                if ((nextSibling != null) && (nextSibling != current)) {
                     var nextContainer = (nextSibling as IControlContainer);
                     if (nextContainer != null) {
                         var possibleResult = FindFocusableSibling(nextContainer.Children, null, delta, recursive);

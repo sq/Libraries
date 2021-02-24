@@ -1222,6 +1222,9 @@ namespace Squared.PRGUI.Layout {
                     }
                     break;
                 case ControlFlags.Container_Row | ControlFlags.Container_Wrap:
+                    if (!pItem->FirstChild.IsInvalid && pItem->Flags.IsFlagged(ControlFlags.Layout_Floating))
+                        ;
+
                     if (dim == LayoutDimensions.X)
                         ArrangeStacked(pItem, LayoutDimensions.X, true);
                     else
