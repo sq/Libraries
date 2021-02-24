@@ -283,7 +283,10 @@ namespace Squared.Render {
         public void Invalidate (Rectangle rect) {
             lock (Lock) {
                 if (IsDirty) {
-                    DirtyRegion = Rectangle.Union(DirtyRegion, rect);
+                    DirtyRegion = Rectangle.Intersect(
+                        Rectangle.Union(DirtyRegion, rect),
+                        new Rectangle(0, 0, Width, Height)
+                    );
                     return;
                 }
 
@@ -324,9 +327,8 @@ namespace Squared.Render {
 
             var hSrc = GCHandle.Alloc(Pixels, GCHandleType.Pinned);
             try {
-                UploadRect(hSrc, Width, Height, 0, DirtyRegion);
-
-                GenerateMips(hSrc);
+                UploadRect(hSrc.AddrOfPinnedObject(), Width, Height, 0, DirtyRegion);
+                GenerateMips(hSrc, DirtyRegion);
                 IsDirty = false;
             } catch (ObjectDisposedException ode) {
                 if (isRetrying)
@@ -343,21 +345,23 @@ namespace Squared.Render {
             DirtyRegion = default(Rectangle);
         }
 
-        private unsafe void UploadRect (GCHandle src, int srcWidth, int srcHeight, int destLevel, Rectangle rect) {
+        private unsafe void UploadRect (IntPtr src, int srcWidth, int srcHeight, int destLevel, Rectangle rect) {
             var sizeBytes = srcWidth * srcHeight * BytesPerPixel;
             var rowPitch = (srcWidth * BytesPerPixel);
+            var y = Math.Max(0, rect.Top);
+            var h = Math.Min(Height, rect.Height);
 
             // TODO: Partial uploads on x axis as well
-            var pSrc = (src.AddrOfPinnedObject() + (rect.Top * rowPitch)).ToPointer();
+            var pSrc = (src + (y * rowPitch)).ToPointer();
 
             lock (Coordinator.UseResourceLock)
                 Evil.TextureUtils.SetDataFast(
                     Texture, (uint)destLevel, pSrc, 
-                    new Rectangle(0, rect.Y, srcWidth, rect.Height), (uint)rowPitch
+                    new Rectangle(0, y, srcWidth, h), (uint)rowPitch
                 );
         }
 
-        private unsafe void GenerateMips (GCHandle hSrc) {
+        private unsafe void GenerateMips (GCHandle hSrc, Rectangle region) {
             if (MipLevelCount <= 1)
                 return;
 
@@ -372,15 +376,21 @@ namespace Squared.Render {
                 var pSrcBuffer = hSrc.AddrOfPinnedObject().ToPointer();
                 var pSrc = pSrcBuffer;
                 var pDest = hMip1.AddrOfPinnedObject().ToPointer();
+                var mipRect = region;
 
                 // FIXME: Only re-generate mips for the portion of the atlas that changed
                 for (var i = 1; i < MipLevelCount; i++) {
                     var destWidth = srcWidth / 2;
                     var destHeight = srcHeight / 2;
+                    mipRect = new Rectangle(
+                        (int)Math.Floor(mipRect.Left / 2f),
+                        (int)Math.Floor(mipRect.Top / 2f),
+                        (int)Math.Ceiling(mipRect.Width / 2f),
+                        (int)Math.Ceiling(mipRect.Height / 2f)
+                    );
 
                     GenerateMip(pSrc, srcWidth, srcHeight, pDest, destWidth, destHeight);
-                    lock (Coordinator.UseResourceLock)
-                        Evil.TextureUtils.SetDataFast(Texture, (uint)i, pDest, destWidth, destHeight, (uint)(destWidth * BytesPerPixel));
+                    UploadRect((IntPtr)pDest, destWidth, destHeight, i, mipRect); 
 
                     var temp = pSrc;
                     pSrc = pDest;
