@@ -680,18 +680,13 @@ namespace Squared.PRGUI {
             if (tabOrdered.Count < 1)
                 return null;
 
-            int tabIndex = tabOrdered.IndexOf(current), newIndex, endIndex, idx;
-            if (tabIndex < 0) {
+            int initialIndex = tabOrdered.IndexOf(current), newIndex, idx;
+            if (initialIndex < 0)
                 newIndex = (delta > 0 ? 0 : tabOrdered.Count - 1);
-                endIndex = (delta > 0 ? tabOrdered.Count : -1);
-            } else {
-                newIndex = tabIndex + delta;
-                endIndex = Arithmetic.Wrap(tabIndex - delta, 0, tabOrdered.Count - 1);
-            }
+            else
+                newIndex = initialIndex + delta;
 
-            var initialIndex = newIndex;
-
-            while (newIndex != endIndex) {
+            while (newIndex != initialIndex) {
                 if (collection.Parent == null)
                     idx = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
                 else if (newIndex >= tabOrdered.Count)
@@ -714,6 +709,11 @@ namespace Squared.PRGUI {
                 }
 
                 newIndex += delta;
+                if (initialIndex < 0) {
+                    if ((newIndex < 0) || (newIndex >= tabOrdered.Count))
+                        break;
+                }
+
                 if (collection.Parent == null)
                     newIndex = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
 
@@ -797,6 +797,8 @@ namespace Squared.PRGUI {
                     }
 
                     current = nextSibling;
+                    if (current.Enabled && current.IsValidFocusTarget && !Control.IsRecursivelyTransparent(current))
+                        return current;
                 } else if (parent == null) {
                     break;
                 } else {

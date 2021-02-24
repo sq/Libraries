@@ -74,6 +74,10 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        protected StringLayoutFilter LayoutFilter {
+            get; set;
+        }
+
         protected bool Multiline {
             get => Content.LineLimit != 1;
             set {
@@ -437,16 +441,17 @@ namespace Squared.PRGUI.Controls {
             }
 
             if (VisualizeLayout) {
-                if (context.Pass == RasterizePasses.Content) {
-                    renderer.RasterizeRectangle(textOffset, textOffset + layout.Size * textScale, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue);
-                    var la = ca + new Vector2(Content.LineBreakAtX ?? 0, 0);
-                    var lb = new Vector2(ca.X, cb.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
-                    renderer.RasterizeLineSegment(la, lb, 1f, Color.Green);
-                }
+                renderer.RasterizeRectangle(textOffset, textOffset + layout.Size * textScale, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue);
+                var la = ca + new Vector2(Content.LineBreakAtX ?? 0, 0);
+                var lb = new Vector2(ca.X, cb.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
+                renderer.RasterizeLineSegment(la, lb, 1f, Color.Green);
             }
 
             // FIXME: Why is this here?
             renderer.Layer += 1;
+
+            if (LayoutFilter != null)
+                LayoutFilter(this, ref layout);
 
             renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
@@ -550,6 +555,8 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
+    public delegate void StringLayoutFilter (StaticTextBase control, ref StringLayout layout);
+
     public class StaticText : StaticTextBase {
         new public DynamicStringLayout Content => base.Content;
         new public AbstractString Text {
@@ -572,6 +579,10 @@ namespace Squared.PRGUI.Controls {
             get => base.AcceptsMouseInput;
             set => base.AcceptsMouseInput = value;
         }
+        new public StringLayoutFilter LayoutFilter {
+            get => base.LayoutFilter;
+            set => base.LayoutFilter = value;
+        }
 
         new public void Invalidate () => base.Invalidate();
 
@@ -579,16 +590,6 @@ namespace Squared.PRGUI.Controls {
             : base () {
             Content.WordWrap = true;
             Content.CharacterWrap = false;
-        }
-
-        /// <summary>
-        /// If you're feeling naughty, you can muck with the layout directly
-        /// </summary>
-        public StringLayout GetLayout () {
-            // HACK
-            if (Content.GlyphSource == null)
-                return default(StringLayout);
-            return base.GetCurrentLayout(false);
         }
     }
 }

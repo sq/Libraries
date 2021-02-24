@@ -72,6 +72,21 @@ namespace Squared.PRGUI {
             Add(control);
         }
 
+        public void Insert (int index, Control control) {
+            if (control == null)
+                throw new ArgumentNullException("control");
+            if (IndexTable.ContainsKey(control))
+                throw new InvalidOperationException("Control already in collection");
+
+            if (Parent != null)
+                control.SetParent(Parent);
+            else
+                control.SetContext(Context);
+
+            Items.Insert(index, control);
+            UpdateIndexTable(index);
+        }
+
         public void Add (Control control) {
             if (control == null)
                 throw new ArgumentNullException("control");
