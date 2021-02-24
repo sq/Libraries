@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.Render {
@@ -182,6 +183,14 @@ namespace Squared.Render {
     public class DynamicAtlas<T> : IDisposable, IDynamicTexture
         where T : struct 
     {
+        private struct GenerateMipsWorkItem : IWorkItem {
+            public DynamicAtlas<T> Atlas;
+
+            public void Execute () {
+                Atlas.GenerateMips();
+            }
+        }
+
         public struct Reservation {
             public readonly DynamicAtlas<T> Atlas;
             public readonly int X, Y, Width, Height;
@@ -225,9 +234,9 @@ namespace Squared.Render {
 
         private int X, Y, RowHeight;
         private object Lock = new object();
-        private Action _BeforeIssue;
+        private Action _BeforeIssue, _BeforePrepare;
         private bool _NeedClear;
-        private T[] MipBuffer1, MipBuffer2;
+        private T[] MipBuffer;
         private int MipLevelCount;
         private readonly MipGenerator<T> GenerateMip;
         private Rectangle DirtyRegion;
@@ -246,6 +255,7 @@ namespace Squared.Render {
             X = Y = Spacing;
             RowHeight = 0;
             _BeforeIssue = Flush;
+            _BeforePrepare = QueueGenerateMips;
 
             GenerateMip = mipGenerator;
 
@@ -253,10 +263,13 @@ namespace Squared.Render {
 
             Pixels = new T[width * height];
             if (mipGenerator != null) {
-                var mipSize1 = (width / 2) * (height / 2);
-                var mipSize2 = (width / 4) * (height / 4);
-                MipBuffer1 = new T[Math.Max(mipSize1, 1)];
-                MipBuffer2 = new T[Math.Max(mipSize2, 1)];
+                var totalMipSize = 4;
+                var currentMipSizePixels = (width / 2) * (height / 2);
+                while (currentMipSizePixels > 1) {
+                    totalMipSize += (currentMipSizePixels + 1);
+                    currentMipSizePixels /= 2;
+                }
+                MipBuffer = new T[totalMipSize];
             }
 
             MipLevelCount = Texture.LevelCount;
@@ -292,8 +305,10 @@ namespace Squared.Render {
 
                 IsDirty = true;
                 DirtyRegion = rect;
-                if (!IsDisposed)
+                if (!IsDisposed) {
+                    Coordinator.BeforePrepare(_BeforePrepare);
                     Coordinator.BeforeIssue(_BeforeIssue);
+                }
             }
         }
 
@@ -304,13 +319,23 @@ namespace Squared.Render {
                 if (IsDirty)
                     return;
 
-                if (!IsDisposed)
+                if (!IsDisposed) {
+                    Coordinator.BeforePrepare(_BeforePrepare);
                     Coordinator.BeforeIssue(_BeforeIssue);
+                }
                 IsDirty = true;
             }
         }
 
+        private void QueueGenerateMips () {
+            var workItem = new GenerateMipsWorkItem {
+                Atlas = this
+            };
+            Coordinator.ThreadGroup.Enqueue(workItem);
+        }
+
         public void Flush () {
+            Coordinator.ThreadGroup.GetQueueForType<GenerateMipsWorkItem>().WaitUntilDrained();
             lock (Lock) {
                 if (IsDisposed)
                     return;
@@ -328,7 +353,7 @@ namespace Squared.Render {
             var hSrc = GCHandle.Alloc(Pixels, GCHandleType.Pinned);
             try {
                 UploadRect(hSrc.AddrOfPinnedObject(), Width, Height, 0, DirtyRegion);
-                GenerateMips(hSrc, DirtyRegion);
+                UploadMipsLocked(hSrc, DirtyRegion);
                 IsDirty = false;
             } catch (ObjectDisposedException ode) {
                 if (isRetrying)
@@ -361,7 +386,7 @@ namespace Squared.Render {
                 );
         }
 
-        private unsafe void GenerateMips (GCHandle hSrc, Rectangle region) {
+        private unsafe void UploadMipsLocked (GCHandle hSrc, Rectangle region) {
             if (MipLevelCount <= 1)
                 return;
 
@@ -369,13 +394,68 @@ namespace Squared.Render {
             var srcWidth = Width;
             var srcHeight = Height;
 
-            var hMip1 = GCHandle.Alloc(MipBuffer1, GCHandleType.Pinned);
-            var hMip2 = GCHandle.Alloc(MipBuffer2, GCHandleType.Pinned);
+            var hMips = GCHandle.Alloc(MipBuffer, GCHandleType.Pinned);
             
             try {
                 var pSrcBuffer = hSrc.AddrOfPinnedObject().ToPointer();
                 var pSrc = pSrcBuffer;
-                var pDest = hMip1.AddrOfPinnedObject().ToPointer();
+                var pDest = (byte*)(hMips.AddrOfPinnedObject().ToPointer());
+                var mipRect = region;
+
+                // FIXME: Only re-generate mips for the portion of the atlas that changed
+                for (var i = 1; i < MipLevelCount; i++) {
+                    var destWidth = srcWidth / 2;
+                    var destHeight = srcHeight / 2;
+                    mipRect = new Rectangle(
+                        (int)Math.Floor(mipRect.Left / 2f),
+                        (int)Math.Floor(mipRect.Top / 2f),
+                        (int)Math.Ceiling(mipRect.Width / 2f),
+                        (int)Math.Ceiling(mipRect.Height / 2f)
+                    );
+
+                    UploadRect((IntPtr)pDest, destWidth, destHeight, i, mipRect); 
+
+                    pSrc = pDest;
+                    pDest += (destWidth * destHeight * BytesPerPixel);
+
+                    srcWidth = destWidth;
+                    srcHeight = destHeight;
+                }
+            } finally {
+                hMips.Free();
+            }
+        }
+
+        private unsafe void GenerateMips () {
+            lock (Lock) {
+                if (IsDisposed)
+                    return;
+
+                var hSrc = GCHandle.Alloc(Pixels, GCHandleType.Pinned);
+                var region = DirtyRegion;
+                try {
+                    GenerateMipsLocked(hSrc, region);
+                } finally {
+                    hSrc.Free();
+                }
+            }
+        }
+
+        // FIXME: Deduplicate?
+        private unsafe void GenerateMipsLocked (GCHandle hSrc, Rectangle region) {
+            if (MipLevelCount <= 1)
+                return;
+
+            var srcBuffer = Pixels;
+            var srcWidth = Width;
+            var srcHeight = Height;
+
+            var hMips = GCHandle.Alloc(MipBuffer, GCHandleType.Pinned);
+            
+            try {
+                var pSrcBuffer = hSrc.AddrOfPinnedObject().ToPointer();
+                var pSrc = pSrcBuffer;
+                var pDest = (byte*)(hMips.AddrOfPinnedObject().ToPointer());
                 var mipRect = region;
 
                 // FIXME: Only re-generate mips for the portion of the atlas that changed
@@ -390,21 +470,15 @@ namespace Squared.Render {
                     );
 
                     GenerateMip(pSrc, srcWidth, srcHeight, pDest, destWidth, destHeight);
-                    UploadRect((IntPtr)pDest, destWidth, destHeight, i, mipRect); 
 
-                    var temp = pSrc;
                     pSrc = pDest;
-                    if (i == 1)
-                        pDest = hMip2.AddrOfPinnedObject().ToPointer();
-                    else
-                        pDest = temp;
+                    pDest += (destWidth * destHeight * BytesPerPixel);
 
                     srcWidth = destWidth;
                     srcHeight = destHeight;
                 }
             } finally {
-                hMip1.Free();
-                hMip2.Free();
+                hMips.Free();
             }
         }
 
@@ -427,7 +501,6 @@ namespace Squared.Render {
                     X = Spacing;
                     RowHeight = 0;
                 }
-
 
                 result = new Reservation(this, X, Y, width, height);
                 X += width + Spacing;
