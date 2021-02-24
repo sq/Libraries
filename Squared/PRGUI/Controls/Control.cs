@@ -34,6 +34,10 @@ namespace Squared.PRGUI {
             return size;
         }
 
+        public static implicit operator ControlDimension (float fixedSize) {
+            return new ControlDimension { Fixed = fixedSize };
+        }
+
         public override string ToString () {
             return $"Clamp({Fixed?.ToString() ?? "<null>"}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
         }
@@ -534,8 +538,6 @@ namespace Squared.PRGUI {
 
             var result = existingKey ?? context.Layout.CreateItem();
 
-            var isFloating = LayoutFlags.IsFlagged(ControlFlags.Layout_Floating);
-
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             ComputeMargins(context, decorations, out Margins computedMargins);
             ComputePadding(context, decorations, out Margins computedPadding);
@@ -544,12 +546,15 @@ namespace Squared.PRGUI {
 
             ComputeFixedSize(out float? fixedWidth, out float? fixedHeight);
             var actualLayoutFlags = ComputeLayoutFlags(fixedWidth.HasValue, fixedHeight.HasValue);
+            var isFloating = actualLayoutFlags.IsFlagged(ControlFlags.Layout_Floating);
 
             var spacingScale = context.DecorationProvider.SpacingScaleRatio;
             var paddingScale = spacingScale * context.DecorationProvider.PaddingScaleRatio;
             var marginScale = spacingScale * context.DecorationProvider.MarginScaleRatio;
             if (!isFloating)
                 Margins.Scale(ref computedMargins, ref marginScale);
+            else
+                ;
             Margins.Scale(ref computedPadding, ref paddingScale);
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);

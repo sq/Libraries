@@ -75,7 +75,8 @@ namespace Squared.PRGUI.Controls {
         public Window ()
             : base () {
             AcceptsMouseInput = true;
-            LayoutFlags = ControlFlags.Layout_Floating;
+            LayoutFlags = default(ControlFlags);
+            Layout.Floating = true;
         }
 
         protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
