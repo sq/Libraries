@@ -56,6 +56,7 @@ namespace Squared.PRGUI.Controls {
         public Vector2 Position {
             get => base.Layout.FloatingPosition;
             set {
+                _WasPositionSetByUser = false;
                 SetPosition(value, true);
                 NeedsAlignment = false;
             }
@@ -87,6 +88,10 @@ namespace Squared.PRGUI.Controls {
         private RectF MostRecentUnmaximizedRect;
 
         private bool _Maximized;
+
+        Vector2 _LastSize;
+        RectF _LastAnchorRect, _LastParentRect;
+        bool _WasPositionSetByUser;
 
         public bool Maximized {
             get => _Maximized;
@@ -161,9 +166,6 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        Vector2 _LastSize;
-        RectF _LastAnchorRect, _LastParentRect;
-
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
@@ -178,7 +180,14 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            if ((_LastSize != rect.Size) || (_LastParentRect != parentRect))
+            // Handle the cases where our parent's size or our size have changed
+            if (
+                // We only want to realign in the event of a size change if our current position
+                //  is based on alignment and not user drags, otherwise expanding a collapsed window
+                //  will cause it to move out from under the mouse
+                ((_LastSize != rect.Size) && !_WasPositionSetByUser) || 
+                (_LastParentRect != parentRect)
+            )
                 NeedsAlignment = true;
             _LastSize = rect.Size;
             _LastParentRect = parentRect;
@@ -280,6 +289,8 @@ namespace Squared.PRGUI.Controls {
                     var parentRect = GetParentContentRect();
                     var didDrag = Dragging && (delta.Length() >= 2);
                     UpdatePosition(newPosition, ref parentRect, ref args.Box, didDrag);
+                    if (didDrag)
+                        _WasPositionSetByUser = true;
                     ComputeNewAlignment = didDrag;
                 }
 
