@@ -553,8 +553,12 @@ namespace Squared.PRGUI {
             var spacingScale = context.DecorationProvider.SpacingScaleRatio;
             var paddingScale = spacingScale * context.DecorationProvider.PaddingScaleRatio;
             var marginScale = spacingScale * context.DecorationProvider.MarginScaleRatio;
-            Margins.Scale(ref computedMargins, ref marginScale);
-            Margins.Scale(ref computedPadding, ref paddingScale);
+            if (!Appearance.SuppressDecorationScaling) {
+                Margins.Scale(ref computedMargins, ref marginScale);
+                Margins.Scale(ref computedPadding, ref paddingScale);
+            } else {
+                ;
+            }
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetLayoutData(result, ref Layout.FloatingPosition, ref computedMargins, ref computedPadding);

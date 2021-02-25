@@ -93,6 +93,10 @@ namespace Squared.PRGUI {
         /// Disables padding from the control's decorator
         /// </summary>
         public bool SuppressDecorationPadding;
+        /// <summary>
+        /// Disables the decoration provider's padding/margin scale ratios
+        /// </summary>
+        public bool SuppressDecorationScaling;
 
         public bool SuppressDecorationSpacing {
             get => SuppressDecorationMargins && SuppressDecorationPadding;

@@ -81,7 +81,7 @@ namespace Squared.PRGUI.Controls {
         public bool AllowDrag = true;
         public bool AllowMaximize = false;
 
-        private bool NeedsAlignment = true;
+        private bool NeedsAlignment = true, ComputeNewAlignment = false;
         private bool Dragging, DragStartedMaximized;
         private Vector2 DragStartMousePosition, DragStartWindowPosition;
         private RectF MostRecentUnmaximizedRect;
@@ -161,7 +161,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        RectF _LastAnchorRect;
+        Vector2 _LastSize;
+        RectF _LastAnchorRect, _LastParentRect;
 
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(context, ref relayoutRequested);
@@ -177,6 +178,11 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
+            if ((_LastSize != rect.Size) || (_LastParentRect != parentRect))
+                NeedsAlignment = true;
+            _LastSize = rect.Size;
+            _LastParentRect = parentRect;
+
             // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
             if (!Maximized && MostRecentFullSize.HasValue)
                 MostRecentUnmaximizedRect = MostRecentFullSize.Value;
@@ -186,7 +192,7 @@ namespace Squared.PRGUI.Controls {
                     relayoutRequested = true;
 
                 var availableSpace = (parentRect.Size - rect.Size);
-                if (_AlignmentAnchor == null)
+                if (ComputeNewAlignment)
                     _Alignment = (Position - parentRect.Position) / availableSpace;
             } else if (!CollapsePending && !relayoutRequested) {
                 Align(ref context, ref parentRect, ref rect, true);
@@ -266,12 +272,15 @@ namespace Squared.PRGUI.Controls {
                     Maximized = false;
                     var parentRect = GetParentContentRect();
                     UpdatePosition(newPosition, ref parentRect, ref MostRecentUnmaximizedRect, true);
+                    ComputeNewAlignment = true;
                 } else if (shouldMaximize || Maximized) {
                     Maximized = true;
                     SetCollapsed(false, instant: true);
                 } else {
                     var parentRect = GetParentContentRect();
-                    UpdatePosition(newPosition, ref parentRect, ref args.Box, Dragging && (delta.Length() >= 2));
+                    var didDrag = Dragging && (delta.Length() >= 2);
+                    UpdatePosition(newPosition, ref parentRect, ref args.Box, didDrag);
+                    ComputeNewAlignment = didDrag;
                 }
 
                 FireEvent(UIEvents.Moved);
