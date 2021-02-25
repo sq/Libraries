@@ -737,7 +737,8 @@ namespace Squared.PRGUI {
                 // Without this, setting a BackgroundColor on an order-1 control won't cause it
                 //  to cover an order-0 control's background
                 var oldLayer = renderer.Layer;
-                renderer.Layer += DisplayOrder;
+                // DisplayOrder may be very large, so clamp it to prevent integer overflow
+                renderer.Layer += Arithmetic.Clamp(DisplayOrder, -4096, 4096);
                 OnRasterize(contentContext, ref renderer, settings, decorations);
                 // FIXME: Do we want to do this?
                 // renderer.Layer = oldLayer;

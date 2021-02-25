@@ -239,7 +239,7 @@ namespace Squared.PRGUI {
             foreach (var item in Items) {
                 if (item == ctl)
                     continue;
-                if (item.DisplayOrder >= int.MaxValue)
+                if (item.DisplayOrder >= (int.MaxValue - 1))
                     continue;
                 result = Math.Max(result, item.DisplayOrder + 1);
             }
