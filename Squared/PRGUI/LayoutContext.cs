@@ -1211,15 +1211,14 @@ namespace Squared.PRGUI.Layout {
 
             switch (flags & ControlFlagMask.BoxModel) {
                 case ControlFlags.Container_Column | ControlFlags.Container_Wrap:
-                    if (dim != LayoutDimensions.X) {
+                    if (dim == LayoutDimensions.Y) {
                         ArrangeStacked(pItem, LayoutDimensions.Y, true);
-                        var offset = ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.X, false);
+                        var offset = ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.X, true);
                         // FIXME: What on earth is this here for?
                         // (*pRect)[0] = offset - (*pRect)[0];
                         ;
                     } else {
                         // FIXME: Should we do something here?
-                        ;
                     }
                     break;
                 case ControlFlags.Container_Row | ControlFlags.Container_Wrap:

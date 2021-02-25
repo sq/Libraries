@@ -72,7 +72,8 @@ namespace Squared.PRGUI.Controls {
             set => Manager.SelectedIndex = value;
         }
 
-        private bool SelectedItemHasChangedSinceLastUpdate = true;
+        private bool SelectedItemHasChangedSinceLastUpdate = true,
+            SelectionChangeEventPending = false;
 
         public T SelectedItem {
             get => Manager.SelectedItem;
@@ -209,7 +210,10 @@ namespace Squared.PRGUI.Controls {
                             delta = (selectedIndex - newEndItemOffset) + 4;
                     }
 
-                    if (SelectedItemHasChangedSinceLastUpdate && (delta != 0) && !scrollOffsetChanged) {
+                    if (
+                        SelectedItemHasChangedSinceLastUpdate && 
+                        (delta != 0) && !scrollOffsetChanged
+                    ) {
                         if (delta != 0) {
                             var newOffset = ScrollOffset;
                             newOffset.Y += (delta * VirtualYMultiplier);
@@ -245,7 +249,7 @@ namespace Squared.PRGUI.Controls {
             if (Items.Version != _Version)
                 NeedsUpdate = true;
 
-            bool hadKeyboardSelection = false, clearHasChanged = false;
+            bool hadKeyboardSelection = false;
             if (NeedsUpdate && !existingKey.HasValue) {
                 hadKeyboardSelection = Children.Contains(Context.KeyboardSelection);
                 var priorControl = Manager.SelectedControl;
@@ -257,19 +261,13 @@ namespace Squared.PRGUI.Controls {
                 _Version = Items.Version;
                 // HACK: Without doing this, old content bounds can be kept that are too big/too small
                 HasContentBounds = false;
-                clearHasChanged = true;
                 NeedsUpdate = false;
             }
 
-            if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection) {
-                var newControl = Manager.SelectedControl;
-                OnSelectionChange(newControl, clearHasChanged && SelectedItemHasChangedSinceLastUpdate);
-                if (hadKeyboardSelection)
-                    Context.OverrideKeyboardSelection(newControl, forUser: false);
-            }
+            if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection)
+                SelectionChangeEventPending = true;
 
-            if (clearHasChanged)
-                SelectedItemHasChangedSinceLastUpdate = false;
+            SelectedItemHasChangedSinceLastUpdate = false;
 
             if (scrollOffsetChanged)
                 OnDisplayOffsetChanged();
@@ -293,6 +291,15 @@ namespace Squared.PRGUI.Controls {
 
             if (hasPushedDecorator)
                 UIOperationContext.PopTextDecorator(ref context);
+
+            // FIXME: This is gross
+            if (!existingKey.HasValue && SelectionChangeEventPending) {
+                SelectionChangeEventPending = false;
+                var newControl = Manager.SelectedControl;
+                OnSelectionChange(newControl, true);
+                if (hadKeyboardSelection)
+                    Context.OverrideKeyboardSelection(newControl, forUser: false);
+            }
 
             return result;
         }
