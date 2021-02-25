@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
 using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.Flags {
@@ -47,6 +48,8 @@ namespace Squared.PRGUI.Flags {
     }
 
     public struct LayoutFlags {
+        public Vector2 FloatingPosition;
+
         public AnchorFlags Anchor;
         /// <summary>
         /// If set, will override anchor

@@ -1214,8 +1214,9 @@ namespace Squared.PRGUI.Layout {
                     if (dim != LayoutDimensions.X) {
                         ArrangeStacked(pItem, LayoutDimensions.Y, true);
                         var offset = ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.X, false);
-                        // FIXME: Content rect?
-                        (*pRect)[0] = offset - (*pRect)[0];
+                        // FIXME: What on earth is this here for?
+                        // (*pRect)[0] = offset - (*pRect)[0];
+                        ;
                     } else {
                         // FIXME: Should we do something here?
                         ;

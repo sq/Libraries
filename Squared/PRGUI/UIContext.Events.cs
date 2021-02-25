@@ -663,13 +663,9 @@ namespace Squared.PRGUI {
         }
 
         private bool IsValidContainerToSearchForFocusableControls (Control control) {
-            if (control == null)
+            if (!(control is IControlContainer))
                 return false;
-            if (!control.Visible)
-                return false;
-            if (control.Intangible)
-                return false;
-            return (control is IControlContainer);
+            return control.Enabled && control.Visible && !Control.IsRecursivelyTransparent(control);
         }
 
         public Control FindFocusableSibling (ControlCollection collection, Control current, int delta, bool recursive) {

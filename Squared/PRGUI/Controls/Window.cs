@@ -54,7 +54,7 @@ namespace Squared.PRGUI.Controls {
 
         private Vector2? _DesiredPosition;
         public Vector2 Position {
-            get => base.FloatingPosition;
+            get => base.Layout.FloatingPosition;
             set {
                 SetPosition(value, true);
                 NeedsAlignment = false;
@@ -65,7 +65,7 @@ namespace Squared.PRGUI.Controls {
             if (updateDesiredPosition)
                 _DesiredPosition = value;
 
-            base.FloatingPosition = value;
+            base.Layout.FloatingPosition = value;
         }
 
         private bool _DesiredCollapsible;

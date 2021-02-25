@@ -78,8 +78,6 @@ namespace Squared.PRGUI {
 
         public Controls.ControlDataCollection Data;
 
-        public Vector2 FloatingPosition;
-
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
 
@@ -557,7 +555,7 @@ namespace Squared.PRGUI {
             Margins.Scale(ref computedPadding, ref paddingScale);
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
-            context.Layout.SetLayoutData(result, ref FloatingPosition, ref computedMargins, ref computedPadding);
+            context.Layout.SetLayoutData(result, ref Layout.FloatingPosition, ref computedMargins, ref computedPadding);
             context.Layout.SetFixedSize(result, fixedWidth ?? LayoutItem.NoValue, fixedHeight ?? LayoutItem.NoValue);
 
             ComputeSizeConstraints(
@@ -906,12 +904,13 @@ namespace Squared.PRGUI {
 
             var box = GetRect();
             Vector2 ext = box.Extent, vext = context.VisibleRegion.Extent;
+            // HACK: There might be corner cases where you want to rasterize a zero-sized control...
+            var isZeroSized = (box.Width <= 0) || (box.Height <= 0);
             var isInvisible = (ext.X < context.VisibleRegion.Left) ||
                 (ext.Y < context.VisibleRegion.Top) ||
                 (box.Left > vext.X) ||
                 (box.Top > vext.Y) ||
-                (box.Width <= 0) ||
-                (box.Height <= 0);
+                isZeroSized;
 
             RasterizeDebugOverlays(ref context, ref passSet, box);
 
