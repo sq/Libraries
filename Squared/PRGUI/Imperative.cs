@@ -157,6 +157,17 @@ namespace Squared.PRGUI.Imperative {
                 .SetForceBreak(forceBreak);
         }
 
+        public ControlBuilder<StaticImage> Image (AbstractTextureReference texture, ControlFlags? layoutFlags = null) {
+            return this.Image<StaticImage>(texture, layoutFlags);
+        }
+
+        public ControlBuilder<TControl> Image<TControl> (AbstractTextureReference texture, ControlFlags? layoutFlags = null)
+            where TControl : Control, new() {
+            var result = New<TControl>(layoutFlags);
+            result.SetImage(texture);
+            return result;
+        }
+
         public ControlBuilder<TControl> Text<TControl> (AbstractString text, ControlFlags? layoutFlags = null)
             where TControl : Control, new() {
             var result = New<TControl>(layoutFlags);

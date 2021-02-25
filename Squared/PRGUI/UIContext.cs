@@ -1358,6 +1358,7 @@ namespace Squared.PRGUI {
         internal UIOperationContext MakeOperationContext () {
             return new UIOperationContext {
                 UIContext = this,
+                Opacity = 1,
                 Now = Now,
                 NowL = NowL,
                 Modifiers = CurrentModifiers,
@@ -1579,6 +1580,7 @@ namespace Squared.PRGUI {
         public IDecorationProvider DecorationProvider => UIContext?.Decorations;
         public LayoutContext Layout => UIContext?.Layout;
         public RasterizePasses Pass;
+        public float Opacity { get; internal set; }
         public float Now { get; internal set; }
         public long NowL { get; internal set; }
         public KeyboardModifiers Modifiers { get; internal set; }
@@ -1633,7 +1635,8 @@ namespace Squared.PRGUI {
                 VisibleRegion = VisibleRegion,
                 RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange,
                 Depth = Depth + 1,
-                HiddenCount = HiddenCount
+                HiddenCount = HiddenCount,
+                Opacity = Opacity
             };
             DecoratorStack.Clone(out result.DecoratorStack);
             TextDecoratorStack.Clone(out result.TextDecoratorStack);

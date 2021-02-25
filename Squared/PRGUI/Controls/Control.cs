@@ -137,6 +137,8 @@ namespace Squared.PRGUI {
                     Context?.NotifyControlBecomingInvalidFocusTarget(this, false);
             }
         }
+
+        public virtual bool CanApplyOpacityWithoutCompositing { get; protected set; }
         /// <summary>
         /// Can receive focus via user input
         /// </summary>
@@ -919,7 +921,7 @@ namespace Squared.PRGUI {
                 return false;
 
             var enableCompositor = Appearance.Compositor?.WillComposite(this, opacity) == true;
-            var needsComposition = (opacity < 1) || 
+            var needsComposition = ((opacity < 1) && !this.CanApplyOpacityWithoutCompositing) || 
                 enableCompositor ||
                 Appearance.Overlay ||
                 (
@@ -932,7 +934,10 @@ namespace Squared.PRGUI {
                 );
 
             if (!needsComposition) {
+                var oldOpacity = context.Opacity;
+                context.Opacity *= opacity;
                 RasterizeAllPasses(ref context, ref box, ref passSet, false);
+                context.Opacity = oldOpacity;
             } else {
                 // HACK: Create padding around the element for drop shadows
                 box.SnapAndInset(out Vector2 tl, out Vector2 br, -Context.CompositorPaddingPx);

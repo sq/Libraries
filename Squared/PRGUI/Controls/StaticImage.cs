@@ -21,9 +21,18 @@ namespace Squared.PRGUI.Controls {
         public Vector2 Alignment = new Vector2(0.5f, 0.5f);
         public Vector2 Scale = Vector2.One;
         public RasterizePasses Pass = RasterizePasses.Content;
-        public bool ScaleToFit;
+        public bool ScaleToFitX, ScaleToFitY;
+        public bool ScaleToFit {
+            get => ScaleToFitX && ScaleToFitY;
+            set => ScaleToFitX = ScaleToFitY = value;
+        }
         public AbstractTextureReference Image;
         public bool ShowLoadingSpinner;
+
+        public StaticImage ()
+            : base () {
+            CanApplyOpacityWithoutCompositing = true;
+        }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.StaticImage ?? provider?.None;
@@ -76,7 +85,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float? ComputeScaleToFit (ref RectF box) {
-            if (!ScaleToFit)
+            if (!ScaleToFitX && !ScaleToFitY)
                 return null;
 
             var instance = Image.Instance;
@@ -86,17 +95,20 @@ namespace Squared.PRGUI.Controls {
             float availableWidth = Math.Max(box.Width, 0);
             float availableHeight = Math.Max(box.Height, 0);
 
-            float? scaleFactor = null;
-            if (instance.Width > availableWidth)
-                scaleFactor = availableWidth / Math.Max(instance.Width, 1);
-            if (instance.Height > availableHeight) {
-                var f = availableHeight / Math.Max(instance.Height, 1);
-                if (scaleFactor.HasValue)
-                    scaleFactor = Math.Min(f, scaleFactor.Value);
-                else
-                    scaleFactor = f;
-            }
-            return scaleFactor;
+            float? scaleFactorX = null, scaleFactorY = null;
+
+            if ((instance.Width > availableWidth) && ScaleToFitX)
+                scaleFactorX = availableWidth / Math.Max(instance.Width, 1);
+
+            if ((instance.Height > availableHeight) && ScaleToFitY)
+                scaleFactorY = availableHeight / Math.Max(instance.Height, 1);
+
+            var result = scaleFactorX;
+            if (scaleFactorX.HasValue && scaleFactorY.HasValue)
+                result = Math.Min(scaleFactorX.Value, scaleFactorY.Value);
+            else
+                result = result ?? scaleFactorY;
+            return result;
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -128,7 +140,11 @@ namespace Squared.PRGUI.Controls {
                     Arithmetic.Lerp(settings.Box.Top, settings.Box.Extent.Y, Alignment.Y)
                 );
                 var origin = Alignment;
-                renderer.Draw(instance, position.Round(0), origin: Alignment, scale: scale);
+                renderer.Draw(
+                    instance, position.Round(0), 
+                    origin: Alignment, scale: scale,
+                    multiplyColor: Color.White * context.Opacity
+                );
             }
 
             if (ShowLoadingSpinner && (context.Pass == RasterizePasses.Above)) {
