@@ -529,7 +529,7 @@ namespace Squared.PRGUI.Imperative {
             Control.TabOrder = value;
             return this;
         }
-        public ControlBuilder<TControl> SetPaintOrder (int value) {
+        public ControlBuilder<TControl> SetDisplayOrder (int value) {
             Control.DisplayOrder = value;
             return this;
         }

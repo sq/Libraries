@@ -141,7 +141,7 @@ namespace Squared.PRGUI.Controls {
                 );
                 var origin = Alignment;
                 renderer.Draw(
-                    instance, position.Round(0), 
+                    instance, position.Round(0),
                     origin: Alignment, scale: scale,
                     multiplyColor: Color.White * context.Opacity
                 );
