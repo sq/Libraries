@@ -118,7 +118,7 @@ namespace Squared.PRGUI.Controls {
                 if (Collapsed)
                     context.HiddenCount++;
                 ExtraContainerFlags = Scrollable
-                    ? ControlFlags.Container_Prevent_Crush
+                    ? default(ControlFlags)
                     : ControlFlags.Container_Constrain_Size;
                 return base.OnGenerateLayoutTree(context, parent, existingKey);
             } finally {
