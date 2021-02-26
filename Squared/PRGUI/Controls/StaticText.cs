@@ -128,7 +128,12 @@ namespace Squared.PRGUI.Controls {
 
         public float Scale {
             get => Content.Scale;
-            set => Content.Scale = value;
+            set {
+                if (Content.Scale == value)
+                    return;
+                Content.Scale = value;
+                AutoSizeComputedHeight = AutoSizeComputedWidth = null;
+            }
         }
 
         public AbstractString Text {
@@ -294,22 +299,22 @@ namespace Squared.PRGUI.Controls {
             if (_CachedContentIsSingleLine == true) {
                 if (contentChanged)
                     GetCurrentLayout(true);
-                AutoSizeComputedContentHeight = (Content.GlyphSource.LineSpacing * Scale);
+                AutoSizeComputedContentHeight = (Content.GlyphSource.LineSpacing * Content.Scale);
                 AutoSizeComputedHeight = (float)Math.Ceiling(AutoSizeComputedContentHeight + computedPadding.Y);
                 return;
             }
 
             var layout = GetCurrentLayout(true);
             if (AutoSizeWidth) {
-                AutoSizeComputedWidth = (float)Math.Ceiling(layout.UnconstrainedSize.X + computedPadding.X);
+                AutoSizeComputedWidth = (float)Math.Ceiling((layout.UnconstrainedSize.X) + computedPadding.X);
                 // FIXME: Something is wrong here if padding scale is active
                 /* if ((sr.X > 1) || (sr.Y > 1))
                     AutoSizeComputedWidth += 1;
                     */
             }
             if (AutoSizeHeight) {
-                AutoSizeComputedContentHeight = layout.Size.Y;
-                AutoSizeComputedHeight = (float)Math.Ceiling(layout.Size.Y + computedPadding.Y);
+                AutoSizeComputedContentHeight = (layout.Size.Y);
+                AutoSizeComputedHeight = (float)Math.Ceiling((layout.Size.Y) + computedPadding.Y);
             }
         }
 
@@ -416,19 +421,16 @@ namespace Squared.PRGUI.Controls {
 
             var scaledSize = layout.Size * textScale;
 
-            // Recenter the text if it's been scaled by the decorator
             var psr = context.DecorationProvider.PaddingScaleRatio * context.DecorationProvider.SpacingScaleRatio;
-            float extraSpaceY = Math.Max(settings.Box.Height - scaledSize.Y - (computedPadding.Y * psr.Y), 0);
-            if (AutoSizeHeight) {
-                textOffset.Y += Math.Min(extraSpaceY, (layout.Size.Y - scaledSize.Y)) * VerticalAlignment;
-            } else {
-                textOffset.Y += (settings.ContentBox.Height - scaledSize.Y) * VerticalAlignment;
-            }
+
             // If a fallback glyph source's child sources are different heights, the autosize can end up producing
             //  a box that is too big for the content. In that case, we want to center it vertically
             if ((AutoSizeComputedHeight.HasValue) && (AutoSizeComputedContentHeight > scaledSize.Y)) {
                 var autoSizeYCentering = (AutoSizeComputedContentHeight - scaledSize.Y) * VerticalAlignment;
                 textOffset.Y += autoSizeYCentering;
+            } else {
+                // Vertically center the text as configured
+                textOffset.Y += (settings.ContentBox.Height - scaledSize.Y) * VerticalAlignment;
             }
 
             var cpx = computedPadding.X * psr.X;
