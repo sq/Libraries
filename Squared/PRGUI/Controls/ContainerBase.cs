@@ -388,9 +388,18 @@ namespace Squared.PRGUI.Controls {
             int layer1, int layer2, int layer3, 
             ref int maxLayer1, ref int maxLayer2, ref int maxLayer3
         ) {
-            var sequence = Children.InDisplayOrder(Context.FrameIndex);
-            foreach (var item in sequence)
+            var sequence = Children.InDisplayOrder(Context.FrameIndex, out ControlCollection.OrderRange range);
+            int lastOrderValue = range.Min;
+
+            foreach (var item in sequence) {
+                if ((lastOrderValue != item.DisplayOrder) && (range.Min != range.Max)) {
+                    maxLayer1 = maxLayer2 = maxLayer3 = 
+                        layer1 = layer2 = layer3 = Math.Max(maxLayer1, Math.Max(maxLayer2, maxLayer3));
+                    lastOrderValue = item.DisplayOrder;
+                }
+
                 RasterizeChild(ref context, item, ref passSet, layer1, layer2, layer3, ref maxLayer1, ref maxLayer2, ref maxLayer3);
+            }
         }
 
         /// <summary>

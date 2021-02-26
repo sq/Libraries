@@ -62,6 +62,11 @@ namespace Squared.Render {
 
         public readonly int TypeId;
 
+        /// <summary>
+        /// Set a name for the batch to aid debugging;
+        /// </summary>
+        public string Name;
+
         public StackTrace StackTrace;
         public IBatchContainer Container;
         public int Layer;
@@ -109,6 +114,7 @@ namespace Squared.Render {
             if ((material != null) && (material.IsDisposed))
                 throw new ObjectDisposedException("material");
 
+            Name = null;
             StackTrace = null;
             if (BatchesCombinedIntoThisOne != null)
                 BatchesCombinedIntoThisOne.Clear();
@@ -319,8 +325,25 @@ namespace Squared.Render {
             }
         }
 
+        public string StackString {
+            get {
+                var sb = new StringBuilder();
+                sb.Append(this.ToString());
+                var container = this.Container;
+                while (container != null) {
+                    sb.AppendLine();
+                    sb.Append(container.ToString());
+                    container = (container as Batch)?.Container;
+                }
+                return sb.ToString();
+            }
+        }
+
         public override string ToString () {
-            return string.Format("{0} #{1} {2} material={3}", GetType().Name, Index, StateString, Material);
+            if (Name != null)
+                return string.Format("{0} '{5}' #{1} {2} layer={4} material={3}", GetType().Name, Index, StateString, Material, Layer, Name);
+            else
+                return string.Format("{0} #{1} {2} layer={4} material={3}", GetType().Name, Index, StateString, Material, Layer);
         }
     }
 

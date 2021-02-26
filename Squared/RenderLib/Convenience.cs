@@ -682,11 +682,12 @@ namespace Squared.Render.Convenience {
 
         public ImperativeRenderer MakeSubgroup (
             bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
-            ViewTransform? viewTransform = null, Func<ViewTransform, object, ViewTransform> viewTransformModifier = null, string name = null
+            ViewTransform? viewTransform = null, Func<ViewTransform, object, ViewTransform> viewTransformModifier = null, string name = null,
+            int? layer = null
         ) {
             var result = this;
             var group = BatchGroup.New(
-                Container, Layer, before: before, after: after, userData: userData,
+                Container, layer ?? Layer, before: before, after: after, userData: userData,
                 materialSet: Materials, viewTransform: viewTransform, viewTransformModifier: viewTransformModifier, name: name
             );
             // FIXME: is this necessary? seems like it might be...
@@ -1846,7 +1847,7 @@ namespace Squared.Render.Convenience {
                 }
             }
 
-            return string.Format("ImperativeRenderer [{0}:{1}] {2} batch(es) {3} drawcall(s)", Container, Layer, Cache.Count, callCount);
+            return string.Format("IR @ [c:{0} l:{1}] b: {2} c: {3}", Container, Layer, Cache.Count, callCount);
         }
     }
 }

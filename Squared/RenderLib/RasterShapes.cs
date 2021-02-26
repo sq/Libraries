@@ -652,6 +652,7 @@ namespace Squared.Render.RasterShape {
         public override void Issue (DeviceManager manager) {
             var count = _DrawCalls.Count;
             if (count > 0) {
+                // manager.Device.SetStringMarkerEXT(this.ToString());
                 var device = manager.Device;
 
                 VertexBuffer vb, cornerVb;

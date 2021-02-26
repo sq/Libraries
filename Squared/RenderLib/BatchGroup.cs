@@ -8,11 +8,6 @@ using Microsoft.Xna.Framework.Graphics;
 namespace Squared.Render {
     public class BatchGroup : ListBatch<Batch>, IBatchContainer {
         /// <summary>
-        /// Set a name for the batch to aid debugging;
-        /// </summary>
-        public string Name;
-
-        /// <summary>
         /// A material set view transforms are pushed to.
         /// </summary>
         public DefaultMaterialSet MaterialSet;
@@ -59,6 +54,8 @@ namespace Squared.Render {
                 _Before(manager, _UserData);
 
             try {
+                // manager.Device.SetStringMarkerEXT(this.ToString());
+
                 using (var b = _DrawCalls.GetBuffer(false)) {
                     for (int i = 0; i < b.Count; i++)
                         if (b[i] != null)
@@ -261,7 +258,10 @@ namespace Squared.Render {
         }
 
         public override string ToString () {
-            return string.Format("{4} {0} #{1} {2} material={3}", Name, Index, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch");
+            if (Name != null)
+                return string.Format("{4} '{0}' #{1} {2} layer={5} material={3}", Name, Index, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
+            else
+                return string.Format("{4} #{1} {2} layer={5} material={3}", Name, Index, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
         }
     }
 

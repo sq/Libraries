@@ -8,6 +8,16 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public class ControlCollection : IEnumerable<Control> {
+        public struct OrderRange {
+            public int Min, Max;
+
+            internal void Update (int order) {
+                Min = Math.Min(Min, order);
+                Max = Math.Max(Max, order);
+            }
+        }
+
+        private OrderRange PaintOrderRange, TabOrderRange;
         private List<Control> PaintOrderedItems = new List<Control>(),
             TabOrderedItemsResult = new List<Control>();
         private List<IndexedControl> TabOrderedItems = new List<IndexedControl>();
@@ -188,10 +198,14 @@ namespace Squared.PRGUI {
 
         private int TabOrderLastValidFrame = -1, PaintOrderLastValidFrame = -1;
 
-        private bool PrepareToUpdateSortedList<T> (ref int lastValidFrame, int currentFrame, List<T> targetList) {
+        private bool PrepareToUpdateSortedList<T> (ref int lastValidFrame, int currentFrame, List<T> targetList, ref OrderRange range) {
             if ((targetList.Count == Count) && (lastValidFrame == currentFrame))
                 return false;
 
+            range = new OrderRange {
+                Min = (Items.Count > 0) ? int.MaxValue : 0,
+                Max = (Items.Count > 0) ? int.MinValue : 0
+            };
             targetList.Clear();
             targetList.Capacity = Math.Max(Math.Max(targetList.Capacity, Items.Count), 16);
             lastValidFrame = currentFrame;
@@ -199,7 +213,7 @@ namespace Squared.PRGUI {
         }
 
         internal List<Control> InTabOrder (int frameIndex, bool suitableTargetsOnly) {
-            if (PrepareToUpdateSortedList(ref TabOrderLastValidFrame, frameIndex, TabOrderedItems)) {
+            if (PrepareToUpdateSortedList(ref TabOrderLastValidFrame, frameIndex, TabOrderedItems, ref TabOrderRange)) {
                 for (int i = 0; i < Items.Count; i++) {
                     var item = Items[i];
                     if (!suitableTargetsOnly || item.IsValidFocusTarget)
@@ -218,11 +232,18 @@ namespace Squared.PRGUI {
         }
 
         internal List<Control> InDisplayOrder (int frameIndex) {
-            if (PrepareToUpdateSortedList(ref PaintOrderLastValidFrame, frameIndex, PaintOrderedItems)) {
-                foreach (var item in Items)
+            return InDisplayOrder(frameIndex, out OrderRange temp);
+        }
+
+        internal List<Control> InDisplayOrder (int frameIndex, out OrderRange range) {
+            if (PrepareToUpdateSortedList(ref PaintOrderLastValidFrame, frameIndex, PaintOrderedItems, ref PaintOrderRange)) {
+                foreach (var item in Items) {
+                    PaintOrderRange.Update(item.DisplayOrder);
                     PaintOrderedItems.Add(item);
+                }
                 PaintOrderedItems.Sort(PaintOrderComparer.Instance);
             }
+            range = PaintOrderRange;
             return PaintOrderedItems;
         }
 

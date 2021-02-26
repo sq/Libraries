@@ -316,16 +316,18 @@ namespace Squared.PRGUI.Controls {
                 if (Collapsed)
                     subSettings.State |= ControlStates.Pressed; // HACK
 
-                renderer.Layer += 1;
-                titleDecorator.Rasterize(context, ref renderer, subSettings);
+                if (layout.DrawCalls.Count > 0) {
+                    renderer.Layer += 1;
+                    titleDecorator.Rasterize(context, ref renderer, subSettings);
 
-                var textPosition = new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top);
+                    var textPosition = new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top);
 
-                renderer.Layer += 1;
-                renderer.DrawMultiple(
-                    layout.DrawCalls, textPosition.Floor(),
-                    samplerState: RenderStates.Text, multiplyColor: titleColor
-                );
+                    renderer.Layer += 1;
+                    renderer.DrawMultiple(
+                        layout.DrawCalls, textPosition.Floor(),
+                        samplerState: RenderStates.Text, multiplyColor: titleColor
+                    );
+                }
             }
         }
 
@@ -373,7 +375,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public override string ToString () {
-            return $"{GetType().Name} #{GetHashCode():X8} '{Title}'";
+            return $"{GetType().Name} #{GetHashCode():X8} '{DebugLabel ?? Title}'";
         }
 
         bool IFuzzyHitTestTarget.WalkChildren => true;
