@@ -419,7 +419,11 @@ namespace Squared.PRGUI.Controls {
             // Recenter the text if it's been scaled by the decorator
             var psr = context.DecorationProvider.PaddingScaleRatio * context.DecorationProvider.SpacingScaleRatio;
             float extraSpaceY = Math.Max(settings.Box.Height - scaledSize.Y - (computedPadding.Y * psr.Y), 0);
-            textOffset.Y += Math.Min(extraSpaceY, (layout.Size.Y - scaledSize.Y)) * VerticalAlignment;
+            if (AutoSizeHeight) {
+                textOffset.Y += Math.Min(extraSpaceY, (layout.Size.Y - scaledSize.Y)) * VerticalAlignment;
+            } else {
+                textOffset.Y += (settings.ContentBox.Height - scaledSize.Y) * VerticalAlignment;
+            }
             // If a fallback glyph source's child sources are different heights, the autosize can end up producing
             //  a box that is too big for the content. In that case, we want to center it vertically
             if ((AutoSizeComputedHeight.HasValue) && (AutoSizeComputedContentHeight > scaledSize.Y)) {

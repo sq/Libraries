@@ -142,25 +142,27 @@ namespace Squared.PRGUI.Controls {
             return context.DecorationProvider?.WindowTitle ?? base.GetTitleDecorator(context);
         }
 
-        private bool Align (ref UIOperationContext context, ref RectF parentRect, ref RectF rect, bool updateDesiredPosition) {
+        private bool Align (ref UIOperationContext context, RectF parentRect, RectF rect, bool updateDesiredPosition) {
             // Computed?
             var margins = Margins;
-            // HACK
-            parentRect.Left += margins.Left;
-            parentRect.Top += margins.Top;
-            parentRect.Size -= margins.Size;
 
             if (_AlignmentAnchor != null) {
+                // FIXME: Adjust on appropriate sides
+                rect.Size += margins.Size;
                 var anchorRect = _AlignmentAnchor.GetRect();
                 var anchorPosition = ((_AlignmentAnchor as IAlignedControl)?.AlignedPosition) ?? anchorRect.Position;
                 var anchorCenter = anchorPosition + (anchorRect.Size * _AlignmentAnchorPoint);
-                // FIXME: Not all four sides?
-                rect.Size += margins.Size;
+                anchorRect.Size -= margins.Size;
                 var offset = (rect.Size * _Alignment);
                 var result = anchorCenter - offset - parentRect.Position;
                 _MostRecentAlignedPosition = anchorCenter - offset;
                 return SetPosition(result, updateDesiredPosition);
             } else {
+                // HACK
+                parentRect.Left += margins.Left;
+                parentRect.Top += margins.Top;
+                parentRect.Size -= margins.Size;
+
                 var availableSpace = (parentRect.Size - rect.Size);
                 if (availableSpace.X < 0)
                     availableSpace.X = 0;
@@ -217,9 +219,9 @@ namespace Squared.PRGUI.Controls {
                     _Alignment = (Position - parentRect.Position) / availableSpace;
 
             } else if (!CollapsePending && (!relayoutRequested || (_AlignmentAnchor != null))) {
-                relayoutRequested |= Align(ref context, ref parentRect, ref rect, true);
+                relayoutRequested |= Align(ref context, parentRect, rect, true);
             } else if (!_Maximized) {
-                relayoutRequested |= Align(ref context, ref parentRect, ref rect, false);
+                relayoutRequested |= Align(ref context, parentRect, rect, false);
             } else {
                 _MostRecentAlignedPosition = null;
             }

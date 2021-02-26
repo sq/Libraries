@@ -856,7 +856,7 @@ namespace Squared.PRGUI {
 
             var flags = context.Layout.GetFlags(LayoutKey);
 
-            if (ShowDebugMargins && !flags.IsFlagged(ControlFlags.Layout_Floating))
+            if (ShowDebugMargins)
                 RasterizeDebugMargins(ref context, ref passSet, ref rect, context.Layout.GetMargins(LayoutKey), 1f, Color.Green);
 
             if (ShowDebugPadding)
