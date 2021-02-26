@@ -131,7 +131,10 @@ namespace Squared.PRGUI.Controls {
 
             // FIXME
             var layer = 0;
-            var container = BatchGroup.ForRenderTarget(context.Prepass, layer, Buffer);
+            var container = BatchGroup.ForRenderTarget(
+                context.Prepass, layer, Buffer, materialSet: context.Materials,
+                viewTransform: ViewTransform.CreateOrthographic(w, h)
+            );
             var contentRenderer = new ImperativeRenderer(container, context.Materials);
             contentRenderer.BlendState = BlendState.NonPremultiplied;
             Paint(ref contentRenderer, ref box);
