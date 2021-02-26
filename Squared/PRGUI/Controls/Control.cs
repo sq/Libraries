@@ -935,8 +935,7 @@ namespace Squared.PRGUI {
                     //  without explicitly clearing the transform after the animation is over.
                     Appearance.GetTransform(out Matrix temp, context.NowL) &&
                     (temp != Matrix.Identity)
-                ) ||
-                (this is IControlContainer);
+                );
 
             if (!needsComposition) {
                 var oldOpacity = context.Opacity;
