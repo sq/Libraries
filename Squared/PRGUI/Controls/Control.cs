@@ -732,17 +732,8 @@ namespace Squared.PRGUI {
 
             if (hasNestedContext)
                 OnRasterize(contentContext, ref contentRenderer, settings, decorations);
-            else {
-                // HACK: Ensure relative sorting of controls with explicit display order.
-                // Without this, setting a BackgroundColor on an order-1 control won't cause it
-                //  to cover an order-0 control's background
-                var oldLayer = renderer.Layer;
-                // DisplayOrder may be very large, so clamp it to prevent integer overflow
-                renderer.Layer += Arithmetic.Clamp(DisplayOrder, -4096, 4096);
+            else
                 OnRasterize(contentContext, ref renderer, settings, decorations);
-                // FIXME: Do we want to do this?
-                // renderer.Layer = oldLayer;
-            }
 
             if ((pass == RasterizePasses.Content) && HasChildren) {
                 if (hasNestedContext)

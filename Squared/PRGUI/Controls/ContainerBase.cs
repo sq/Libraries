@@ -88,9 +88,12 @@ namespace Squared.PRGUI.Controls {
             int layer1, int layer2, int layer3, ref int maxLayer1, 
             ref int maxLayer2, ref int maxLayer3
         ) {
-            passSet.Below.Layer = layer1;
-            passSet.Content.Layer = layer2;
-            passSet.Above.Layer = layer3;
+            // HACK: Shift controls around by display order to maintain relative ordering of their passes
+            var orderOffset = Arithmetic.Clamp(item.DisplayOrder, -10, 100) * 20;
+
+            passSet.Below.Layer = layer1 + orderOffset;
+            passSet.Content.Layer = layer2 + orderOffset;
+            passSet.Above.Layer = layer3 + orderOffset;
 
             var result = item.Rasterize(ref context, ref passSet);
 
