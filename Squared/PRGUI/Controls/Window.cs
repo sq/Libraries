@@ -13,17 +13,20 @@ using Squared.Render.Text;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public class Window : TitledContainer, IPartiallyIntangibleControl {
+    public interface IAlignedControl {
+        Control AlignmentAnchor { get; }
+        Vector2? AlignedPosition { get; }
+        void EnsureAligned (UIOperationContext context, ref bool relayoutRequested);
+    }
+
+    public class Window : TitledContainer, IPartiallyIntangibleControl, IAlignedControl {
         private Vector2 _Alignment = Vector2.One * 0.5f;
         /// <summary>
         /// Configures what point on the screen (or the anchor, if set) [0 - 1] is used as the center for this window
         /// </summary>
         public Vector2 Alignment {
             get => _Alignment;
-            set {
-                _Alignment = value;
-                NeedsAlignment = true;
-            }
+            set => _Alignment = value;
         }
 
         private Vector2 _AlignmentAnchorPoint = Vector2.One * 0.5f;
@@ -32,10 +35,7 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public Vector2 AlignmentAnchorPoint {
             get => _AlignmentAnchorPoint;
-            set {
-                _AlignmentAnchorPoint = value;
-                NeedsAlignment = true;
-            }
+            set => _AlignmentAnchorPoint = value;
         }
 
         private Control _AlignmentAnchor = null;
@@ -44,12 +44,7 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public Control AlignmentAnchor {
             get => _AlignmentAnchor;
-            set {
-                if (_AlignmentAnchor == value)
-                    return;
-                _AlignmentAnchor = value;
-                NeedsAlignment = true;
-            }
+            set => _AlignmentAnchor = value;
         }
 
         private Vector2? _DesiredPosition;
@@ -58,15 +53,19 @@ namespace Squared.PRGUI.Controls {
             set {
                 _WasPositionSetByUser = false;
                 SetPosition(value, true);
-                NeedsAlignment = false;
             }
         }
 
-        private void SetPosition (Vector2 value, bool updateDesiredPosition) {
+        private bool SetPosition (Vector2 value, bool updateDesiredPosition) {
             if (updateDesiredPosition)
                 _DesiredPosition = value;
 
-            base.Layout.FloatingPosition = value;
+            if (base.Layout.FloatingPosition != value) {
+                base.Layout.FloatingPosition = value;
+                return true;
+            }
+
+            return false;
         }
 
         private bool _DesiredCollapsible;
@@ -82,7 +81,9 @@ namespace Squared.PRGUI.Controls {
         public bool AllowDrag = true;
         public bool AllowMaximize = false;
 
-        private bool NeedsAlignment = true, ComputeNewAlignment = false;
+        private bool _AlignmentPending = false;
+        private Vector2? _MostRecentAlignedPosition = null;
+        private bool ComputeNewAlignment = false;
         private bool Dragging, DragStartedMaximized;
         private Vector2 DragStartMousePosition, DragStartWindowPosition;
         private RectF MostRecentUnmaximizedRect;
@@ -125,6 +126,7 @@ namespace Squared.PRGUI.Controls {
                 ExtraContainerFlags = Scrollable
                     ? default(ControlFlags)
                     : ControlFlags.Container_Constrain_Size;
+                _AlignmentPending = true;
                 return base.OnGenerateLayoutTree(context, parent, existingKey);
             } finally {
                 if (Collapsed)
@@ -140,7 +142,7 @@ namespace Squared.PRGUI.Controls {
             return context.DecorationProvider?.WindowTitle ?? base.GetTitleDecorator(context);
         }
 
-        private void Align (ref UIOperationContext context, ref RectF parentRect, ref RectF rect, bool updateDesiredPosition) {
+        private bool Align (ref UIOperationContext context, ref RectF parentRect, ref RectF rect, bool updateDesiredPosition) {
             // Computed?
             var margins = Margins;
             // HACK
@@ -150,33 +152,40 @@ namespace Squared.PRGUI.Controls {
 
             if (_AlignmentAnchor != null) {
                 var anchorRect = _AlignmentAnchor.GetRect();
-                var anchorCenter = anchorRect.Position + (anchorRect.Extent * _AlignmentAnchorPoint);
+                var anchorPosition = ((_AlignmentAnchor as IAlignedControl)?.AlignedPosition) ?? anchorRect.Position;
+                var anchorCenter = anchorPosition + (anchorRect.Size * _AlignmentAnchorPoint);
                 // FIXME: Not all four sides?
                 rect.Size += margins.Size;
-                // FIXME: Right-alignment is busted
                 var offset = (rect.Size * _Alignment);
-                SetPosition(anchorCenter - offset - parentRect.Position, updateDesiredPosition);
+                var result = anchorCenter - offset - parentRect.Position;
+                _MostRecentAlignedPosition = anchorCenter - offset;
+                return SetPosition(result, updateDesiredPosition);
             } else {
                 var availableSpace = (parentRect.Size - rect.Size);
                 if (availableSpace.X < 0)
                     availableSpace.X = 0;
                 if (availableSpace.Y < 0)
                     availableSpace.Y = 0;
-                SetPosition(availableSpace * _Alignment, updateDesiredPosition);
+                var result = availableSpace * _Alignment;
+                _MostRecentAlignedPosition = result + parentRect.Position;
+                return SetPosition(result, updateDesiredPosition);
             }
         }
 
-        protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
-            base.OnLayoutComplete(context, ref relayoutRequested);
+        private void EnsureAligned (UIOperationContext context, ref bool relayoutRequested) {
+            _AlignmentPending = false;
 
             var parentRect = GetParentContentRect();
             var rect = GetRect(applyOffset: false);
 
             if (_AlignmentAnchor != null) {
+                if (_AlignmentAnchor is IAlignedControl iac)
+                    iac.EnsureAligned(context, ref relayoutRequested);
+
                 var anchorRect = _AlignmentAnchor.GetRect();
                 if (anchorRect != _LastAnchorRect) {
                     _LastAnchorRect = anchorRect;
-                    NeedsAlignment = true;
+                    relayoutRequested = true;
                 }
             }
 
@@ -187,8 +196,9 @@ namespace Squared.PRGUI.Controls {
                 //  will cause it to move out from under the mouse
                 ((_LastSize != rect.Size) && !_WasPositionSetByUser) || 
                 (_LastParentRect != parentRect)
-            )
-                NeedsAlignment = true;
+            ) {
+                relayoutRequested = true;
+            }
             _LastSize = rect.Size;
             _LastParentRect = parentRect;
 
@@ -196,20 +206,33 @@ namespace Squared.PRGUI.Controls {
             if (!Maximized && MostRecentFullSize.HasValue)
                 MostRecentUnmaximizedRect = MostRecentFullSize.Value;
 
-            if (!NeedsAlignment) {
+            if (_WasPositionSetByUser) {
+                _MostRecentAlignedPosition = null;
+
                 if (UpdatePosition(_DesiredPosition ?? Position, ref parentRect, ref rect, false))
                     relayoutRequested = true;
 
                 var availableSpace = (parentRect.Size - rect.Size);
                 if (ComputeNewAlignment)
                     _Alignment = (Position - parentRect.Position) / availableSpace;
-            } else if (!CollapsePending && !relayoutRequested) {
-                Align(ref context, ref parentRect, ref rect, true);
-                NeedsAlignment = false;
-                relayoutRequested = true;
+
+            } else if (!CollapsePending && (!relayoutRequested || (_AlignmentAnchor != null))) {
+                relayoutRequested |= Align(ref context, ref parentRect, ref rect, true);
+            } else if (!_Maximized) {
+                relayoutRequested |= Align(ref context, ref parentRect, ref rect, false);
             } else {
-                Align(ref context, ref parentRect, ref rect, false);
+                _MostRecentAlignedPosition = null;
             }
+        }
+
+        protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+            base.OnLayoutComplete(context, ref relayoutRequested);
+
+            EnsureAligned(context, ref relayoutRequested);
+
+            // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
+            if (!Maximized && MostRecentFullSize.HasValue)
+                MostRecentUnmaximizedRect = MostRecentFullSize.Value;
         }
 
         private RectF GetParentContentRect () {
@@ -314,5 +337,15 @@ namespace Squared.PRGUI.Controls {
         protected override string DescriptionPrefix => (Collapsed ? "Collapsed Window" : "Window");
 
         bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) => false;
+
+        Vector2? IAlignedControl.AlignedPosition => _MostRecentAlignedPosition;
+
+        void IAlignedControl.EnsureAligned (UIOperationContext context, ref bool relayoutRequested) {
+            if (!_AlignmentPending) {
+                return;
+            } else {
+                EnsureAligned(context, ref relayoutRequested);
+            }
+        }
     }
 }

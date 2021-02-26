@@ -115,21 +115,24 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnPreRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnPreRasterize(context, ref renderer, settings, decorations);
-            AutoDisposeBuffer(renderer.Container.Coordinator);
+        protected override void OnPreRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+            base.OnPreRasterize(context, settings, decorations);
+            AutoDisposeBuffer(context.Prepass.Container.Coordinator);
             int w = (int)Math.Ceiling(settings.ContentBox.Width),
                 h = (int)Math.Ceiling(settings.ContentBox.Height);
             var box = settings.ContentBox;
             box.Position = Vector2.Zero;
             if (Buffer == null) {
                 _ContentIsValid = false;
-                Buffer = new AutoRenderTarget(renderer.Container.Coordinator, w, h, false, SurfaceFormat, DepthFormat);
+                Buffer = new AutoRenderTarget(context.Prepass.Container.Coordinator, w, h, false, SurfaceFormat, DepthFormat);
             } else {
                 _ContentIsValid = !Buffer.Resize(w, h);
             }
 
-            var contentRenderer = renderer.ForRenderTarget(Buffer, viewTransform: ViewTransform.CreateOrthographic(w, h));
+            // FIXME
+            var layer = 0;
+            var container = BatchGroup.ForRenderTarget(context.Prepass, layer, Buffer);
+            var contentRenderer = new ImperativeRenderer(container, context.Materials);
             contentRenderer.BlendState = BlendState.NonPremultiplied;
             Paint(ref contentRenderer, ref box);
         }

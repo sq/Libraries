@@ -55,6 +55,8 @@ namespace Squared.PRGUI {
             public readonly AutoRenderTarget Instance;
             public readonly UnorderedList<RectF> UsedRectangles = new UnorderedList<RectF>();
             public ImperativeRenderer Renderer;
+            public List<ScratchRenderTarget> Dependencies = new List<ScratchRenderTarget>();
+            internal bool VisitedByTopoSort;
 
             public ScratchRenderTarget (RenderCoordinator coordinator, UIContext context) {
                 Context = context;
@@ -74,6 +76,8 @@ namespace Squared.PRGUI {
 
             public void Reset () {
                 UsedRectangles.Clear();
+                Dependencies.Clear();
+                VisitedByTopoSort = false;
             }
 
             public void Dispose () {
@@ -1369,7 +1373,7 @@ namespace Squared.PRGUI {
             };
         }
 
-        internal ScratchRenderTarget GetScratchRenderTarget (ref ImperativeRenderer renderer, ref RectF rectangle) {
+        internal ScratchRenderTarget GetScratchRenderTarget (BatchGroup prepass, ref RectF rectangle) {
             ScratchRenderTarget result = null;
 
             foreach (var rt in ScratchRenderTargets) {
@@ -1380,15 +1384,16 @@ namespace Squared.PRGUI {
             }
 
             if (result == null) {
-                result = new ScratchRenderTarget(renderer.Container.Coordinator, this);
+                result = new ScratchRenderTarget(prepass.Coordinator, this);
                 ScratchRenderTargets.Add(result);
             }
 
             if (result.UsedRectangles.Count == 0) {
-                result.Renderer = renderer.ForRenderTarget(result.Instance);
+                var group = BatchGroup.ForRenderTarget(prepass, 0, result.Instance, name: "Scratch Prepass");
+                result.Renderer = new ImperativeRenderer(group, Materials);
                 result.Renderer.DepthStencilState = DepthStencilState.None;
                 result.Renderer.BlendState = BlendState.AlphaBlend;
-                result.Renderer.Clear(-9999, color: Color.Transparent, stencil: 0);
+                result.Renderer.Clear(-9999, color: Color.Transparent /* FrameColors[FrameIndex % FrameColors.Length] * 0.5f */, stencil: 0);
             }
 
             result.UsedRectangles.Add(ref rectangle);
@@ -1402,6 +1407,15 @@ namespace Squared.PRGUI {
         private bool WasBackgroundFaded = false;
         private Tween<float> BackgroundFadeTween = new Tween<float>(0f);
         private UnorderedList<BitmapDrawCall> OverlayQueue = new UnorderedList<BitmapDrawCall>();
+
+        /*
+        private Color[] FrameColors = new[] {
+            Color.Red,
+            Color.Green,
+            Color.Blue,
+            Color.Yellow
+        };
+        */
 
         private void FlushOverlayQueue (ref ImperativeRenderer renderer) {
             foreach (var dc in OverlayQueue) {
@@ -1453,10 +1467,10 @@ namespace Squared.PRGUI {
 
             OverlayQueue.Clear();
 
-            using (var outerGroup = BatchGroup.New(frame, layer))
-            using (var prepassGroup = BatchGroup.New(outerGroup, 0))
-            using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget)) {
-                var prepass = new ImperativeRenderer(prepassGroup, Materials);
+            using (var outerGroup = BatchGroup.New(frame, layer, name: "Rasterize UI"))
+            using (var prepassGroup = BatchGroup.New(outerGroup, -999, name: "Prepass"))
+            using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass")) {
+                context.Prepass = prepassGroup;
                 var renderer = new ImperativeRenderer(rtBatch, Materials) {
                     BlendState = BlendState.AlphaBlend,
                     DepthStencilState = DepthStencilState.None
@@ -1510,13 +1524,11 @@ namespace Squared.PRGUI {
                         : 1.0f;
                     // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
                     //  overlap each other, at the cost of more draw calls.
-                    var passSet = new RasterizePassSet(ref prepass, ref renderer, 0, OverlayQueue);
+                    var passSet = new RasterizePassSet(ref renderer, 0, OverlayQueue);
                     passSet.Below.DepthStencilState =
                         passSet.Content.DepthStencilState =
                         passSet.Above.DepthStencilState = DepthStencilState.None;
                     control.Rasterize(ref context, ref passSet, opacityModifier);
-                    // HACK
-                    prepass = passSet.Prepass;
                 }
 
                 FlushOverlayQueue(ref renderer);
@@ -1547,7 +1559,34 @@ namespace Squared.PRGUI {
                         isrc.Rasterize(context, ref subRenderer);
                 }
             }
+
+            // Now that we have a dependency graph for the scratch targets, use it to
+            //  reorder their batches so that the dependencies come first
+            {
+                TopoSortTable.Clear();
+
+                foreach (var srt in ScratchRenderTargets)
+                    PushRecursive(srt);
+
+                int i = -9999;
+                foreach (var item in TopoSortTable) {
+                    ((Batch)item.Renderer.Container).Layer = i++;
+                }
+            }
         }
+
+        private void PushRecursive (ScratchRenderTarget srt) {
+            if (srt.VisitedByTopoSort)
+                return;
+
+            srt.VisitedByTopoSort = true;
+            foreach (var dep in srt.Dependencies)
+                PushRecursive(dep);
+
+            TopoSortTable.Add(srt);
+        }
+
+        private List<ScratchRenderTarget> TopoSortTable = new List<ScratchRenderTarget>();
 
         public void Dispose () {
             Layout.Dispose();
@@ -1560,12 +1599,11 @@ namespace Squared.PRGUI {
     }
 
     public struct RasterizePassSet {
-        public ImperativeRenderer Prepass, Below, Content, Above;
+        public ImperativeRenderer Below, Content, Above;
         public UnorderedList<BitmapDrawCall> OverlayQueue;
         public int StackDepth;
 
-        public RasterizePassSet (ref ImperativeRenderer prepass, ref ImperativeRenderer container, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue, int? layer = null) {
-            Prepass = prepass;
+        public RasterizePassSet (ref ImperativeRenderer container, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue, int? layer = null) {
             Below = container.MakeSubgroup(name: "Below", layer: layer);
             Content = container.MakeSubgroup(name: "Content", layer: layer);
             Above = container.MakeSubgroup(name: "Above", layer: layer);
@@ -1588,7 +1626,9 @@ namespace Squared.PRGUI {
         public bool MouseButtonHeld { get; internal set; }
         public Vector2 MousePosition { get; internal set; }
         public RectF VisibleRegion { get; internal set; }
+        public BatchGroup Prepass;
         private DenseList<IDecorator> DecoratorStack, TextDecoratorStack;
+        internal DenseList<UIContext.ScratchRenderTarget> RenderTargetStack;
         internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
         internal bool RelayoutRequestedForVisibilityChange;
         internal int HiddenCount;
@@ -1636,8 +1676,10 @@ namespace Squared.PRGUI {
                 RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange,
                 Depth = Depth + 1,
                 HiddenCount = HiddenCount,
-                Opacity = Opacity
+                Opacity = Opacity,
+                Prepass = Prepass,
             };
+            RenderTargetStack.Clone(out result.RenderTargetStack);
             DecoratorStack.Clone(out result.DecoratorStack);
             TextDecoratorStack.Clone(out result.TextDecoratorStack);
         }

@@ -646,7 +646,7 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        protected virtual void OnPreRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected virtual void OnPreRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
         }
 
         protected virtual void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
@@ -714,13 +714,13 @@ namespace Squared.PRGUI {
                 if (ShouldClipContent) {
                     newStackDepth = previousStackDepth + 1;
                     contentRenderer.DepthStencilState = context.UIContext.GetStencilTest(newStackDepth);
-                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, newStackDepth, passSet.OverlayQueue);
+                    childrenPassSet = new RasterizePassSet(ref contentRenderer, newStackDepth, passSet.OverlayQueue);
                 } else {
                     contentRenderer.DepthStencilState = 
                         (previousStackDepth <= 0)
                         ? DepthStencilState.None
                         : context.UIContext.GetStencilTest(previousStackDepth);
-                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, newStackDepth, passSet.OverlayQueue);
+                    childrenPassSet = new RasterizePassSet(ref contentRenderer, newStackDepth, passSet.OverlayQueue);
                 }
                 renderer.Layer += 1;
             } else {
@@ -728,7 +728,7 @@ namespace Squared.PRGUI {
             }
 
             if (HasPreRasterizeHandler && (pass == RasterizePasses.Content))
-                OnPreRasterize(contentContext, ref passSet.Prepass, settings, decorations);
+                OnPreRasterize(contentContext, settings, decorations);
 
             if (hasNestedContext)
                 OnRasterize(contentContext, ref contentRenderer, settings, decorations);
@@ -935,7 +935,8 @@ namespace Squared.PRGUI {
                     //  without explicitly clearing the transform after the animation is over.
                     Appearance.GetTransform(out Matrix temp, context.NowL) &&
                     (temp != Matrix.Identity)
-                );
+                ) ||
+                (this is IControlContainer);
 
             if (!needsComposition) {
                 var oldOpacity = context.Opacity;
@@ -950,12 +951,16 @@ namespace Squared.PRGUI {
                 context.UIContext.CanvasRect.Clamp(ref br);
 
                 var compositeBox = new RectF(tl, br - tl);
-                var srt = context.UIContext.GetScratchRenderTarget(ref passSet.Prepass, ref compositeBox);
+                var srt = context.UIContext.GetScratchRenderTarget(context.Prepass, ref compositeBox);
+                if (context.RenderTargetStack.Count > 0)
+                    context.RenderTargetStack[context.RenderTargetStack.Count - 1].Dependencies.Add(srt);
+                context.RenderTargetStack.Add(srt);
                 try {
                     // passSet.Above.RasterizeRectangle(box.Position, box.Extent, 1f, Color.Red * 0.1f);
                     RasterizeIntoPrepass(ref context, passSet, opacity, ref box, ref compositeBox, srt, enableCompositor);
                     // passSet.Above.RasterizeEllipse(box.Center, Vector2.One * 3f, Color.White);
                 } finally {
+                    context.RenderTargetStack.RemoveTail(1);
                     context.UIContext.ReleaseScratchRenderTarget(srt.Instance);
                 }
             }
@@ -1000,10 +1005,7 @@ namespace Squared.PRGUI {
             context.Clone(out compositionContext);
             UpdateVisibleRegion(ref compositionContext, ref box);
 
-            // Create nested prepass group before the RT group so that child controls have their prepass operations run before ours
-            var nestedPrepass = passSet.Prepass.MakeSubgroup();
-
-            var newPassSet = new RasterizePassSet(ref nestedPrepass, ref rt.Renderer, 0, passSet.OverlayQueue);
+            var newPassSet = new RasterizePassSet(ref rt.Renderer, 0, passSet.OverlayQueue);
             // newPassSet.Above.RasterizeEllipse(box.Center, Vector2.One * 6f, Color.White * 0.7f);
             RasterizeAllPasses(ref compositionContext, ref box, ref newPassSet, true);
             rt.Renderer.Layer += 1;
