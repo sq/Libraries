@@ -163,7 +163,7 @@ namespace Squared.PRGUI.Controls {
             base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
         }
 
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var children = Children;
             if (TabStrip.Children.Count != children.Count - 1)
                 TabStripIsInvalid = true;
@@ -175,7 +175,7 @@ namespace Squared.PRGUI.Controls {
 
             var st = SelectedTab;
 
-            var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid) {
                 foreach (var item in children)
                     item.InvalidateLayout();

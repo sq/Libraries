@@ -111,8 +111,8 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
 
             return result;
         }

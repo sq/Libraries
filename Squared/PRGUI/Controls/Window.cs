@@ -119,7 +119,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             try {
                 if (Collapsed)
                     context.HiddenCount++;
@@ -127,7 +127,7 @@ namespace Squared.PRGUI.Controls {
                     ? default(ControlFlags)
                     : ControlFlags.Container_Constrain_Size;
                 _AlignmentPending = true;
-                return base.OnGenerateLayoutTree(context, parent, existingKey);
+                return base.OnGenerateLayoutTree(ref context, parent, existingKey);
             } finally {
                 if (Collapsed)
                     context.HiddenCount--;

@@ -15,7 +15,46 @@ using Squared.Render.Text;
 using Squared.Util;
 
 namespace Squared.PRGUI {
+    public class DefaultDecorationColorScheme {
+        public Color Focused = new Color(200, 220, 255),
+            Active = new Color(240, 240, 240),
+            Inactive = new Color(180, 180, 180),
+            ContainerOutline = new Color(32, 32, 32) * 0.5f,
+            InertOutline = new Color(255, 255, 255) * 0.33f,
+            TooltipOutline = new Color(16, 16, 16) * 0.5f,
+            ScrollbarThumb = new Color(200, 200, 200),
+            ScrollbarTrack = new Color(48, 48, 48),
+            AcceleratorOutline = Color.White;
+
+        public Color TitleFill = new Color(40, 100, 120),
+            ContainerFill = Color.Transparent,
+            InertFill = Color.Transparent,
+            SelectionFill = new Color(200, 230, 255),
+            TooltipFill = new Color(48, 48, 48),
+            SliderFill = Color.Black * 0.1f,
+            AcceleratorFill = Color.Black * 0.8f,
+            GaugeFill = Color.Black * 0.1f,
+            GaugeValueFill = Color.Transparent;
+
+        public Color SelectedText = new Color(0, 30, 55),
+            TitleText = Color.White,
+            Text = Color.White,
+            TooltipText = Color.White,
+            AcceleratorText = Color.White;
+
+        public Color? FloatingContainerOutline, 
+            FloatingContainerFill,
+            WindowFill = new Color(60, 60, 60);
+
+        public DefaultDecorationColorScheme () {
+            GaugeValueFill = SelectionFill;
+        }
+    }
+
     public class DefaultDecorations : IDecorationProvider, IAnimationProvider {
+        public DefaultDecorationColorScheme ColorScheme =
+            new DefaultDecorationColorScheme();
+
         public readonly DefaultMaterialSet Materials;
         public readonly float GlobalDefaultMargin,
             GlobalDefaultMarginCollapsed;
@@ -412,8 +451,6 @@ namespace Squared.PRGUI {
                 DefaultDuration = ModalDialogHideDuration
             };
 
-            GaugeValueFillColor = SelectionFillColor;
-
             UpdateScaledSizes();
         }
 
@@ -475,40 +512,10 @@ namespace Squared.PRGUI {
             GaugeShadow,
             GaugeValueShadow;
 
-        public Color FocusedColor = new Color(200, 220, 255),
-            ActiveColor = new Color(240, 240, 240),
-            InactiveColor = new Color(180, 180, 180),
-            ContainerOutlineColor = new Color(32, 32, 32) * 0.5f,
-            InertOutlineColor = new Color(255, 255, 255) * 0.33f,
-            TooltipOutlineColor = new Color(16, 16, 16) * 0.5f,
-            ScrollbarThumbColor = new Color(200, 200, 200),
-            ScrollbarTrackColor = new Color(48, 48, 48),
-            AcceleratorOutlineColor = Color.White;
-
-        public Color TitleFillColor = new Color(40, 100, 120),
-            ContainerFillColor = Color.Transparent,
-            InertFillColor = Color.Transparent,
-            SelectionFillColor = new Color(200, 230, 255),
-            TooltipFillColor = new Color(48, 48, 48),
-            SliderFillColor = Color.Black * 0.1f,
-            AcceleratorFillColor = Color.Black * 0.8f,
-            GaugeFillColor = Color.Black * 0.1f,
-            GaugeValueFillColor;
-
-        public Color SelectedTextColor = new Color(0, 30, 55),
-            TitleTextColor = Color.White,
-            TextColor = Color.White,
-            TooltipTextColor = Color.White,
-            AcceleratorTextColor = Color.White;
-
         public const float DropdownArrowWidth = 16, DropdownArrowHeight = 11, DropdownArrowPadding = 8;
         public float ScaledCheckboxSize => CheckboxSize * (SizeScaleRatio.Length() / 1.41421354f);
         public float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
-
-        public Color? FloatingContainerOutlineColor, 
-            FloatingContainerFillColor,
-            WindowFillColor = new Color(60, 60, 60);
 
         private void Button_Below_Common (
             UIOperationContext context, DecorationSettings settings, 
@@ -519,13 +526,13 @@ namespace Squared.PRGUI {
             var isFocused = state.IsFlagged(ControlStates.Focused);
             baseColor = settings.BackgroundColor ?? (pSRGBColor)(
                 isFocused
-                    ? FocusedColor
-                    : InactiveColor
+                    ? ColorScheme.Focused
+                    : ColorScheme.Inactive
             );
             var hasColor = settings.BackgroundColor.HasValue;
             var colorIsGray = hasColor && (baseColor.ColorDelta <= 0.05f);
             // HACK: If the background color isn't saturated, use the focused color for the outline
-            pSRGBColor? outlineBaseColor = (colorIsGray && isFocused) ? FocusedColor : (pSRGBColor?)null;
+            pSRGBColor? outlineBaseColor = (colorIsGray && isFocused) ? ColorScheme.Focused : (pSRGBColor?)null;
             var pulseThickness = Arithmetic.PulseSine(context.Now / 3f, 0, 0.4f);
 
             pulse = 0;
@@ -541,7 +548,7 @@ namespace Squared.PRGUI {
                     baseColor = (settings.BackgroundColor.Value.ToVector4()) * 1.25f;
                     baseColor.Vector4.W = 1;
                 } else
-                    baseColor = ActiveColor;
+                    baseColor = ColorScheme.Active;
                 outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.4f : 0.05f);
             } else if (state.IsFlagged(ControlStates.Hovering)) {
                 alpha = hasColor 
@@ -749,8 +756,8 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: SliderCornerRadius,
                 outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: Color.Transparent,
-                innerColor: settings.BackgroundColor ?? SliderFillColor, 
-                outerColor: settings.BackgroundColor ?? SliderFillColor,
+                innerColor: settings.BackgroundColor ?? ColorScheme.SliderFill, 
+                outerColor: settings.BackgroundColor ?? ColorScheme.SliderFill,
                 shadow: SliderShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
@@ -764,8 +771,8 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: SliderCornerRadius,
                 outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: Color.Transparent,
-                innerColor: settings.BackgroundColor ?? GaugeFillColor, 
-                outerColor: settings.BackgroundColor ?? GaugeFillColor,
+                innerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill, 
+                outerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill,
                 shadow: GaugeShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
@@ -826,7 +833,7 @@ namespace Squared.PRGUI {
             var alpha1 = 0.5f;
             // FIXME: Padding will make this slightly wrong
             var alpha2 = Arithmetic.Saturate(alpha1 + (0.5f * ((x1 - x0) / (x2 - x0))));
-            var fillColor = settings.TextColor ?? GaugeValueFillColor;
+            var fillColor = settings.TextColor ?? ColorScheme.GaugeValueFill;
             if (settings.Traits.IndexOf("limit") >= 0) {
                 alpha1 = alpha2 = 0.7f;
                 fillColor = new Color(64, 64, 64);
@@ -998,9 +1005,9 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: ContainerCornerRadius,
-                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: ContainerOutlineColor,
-                innerColor: settings.BackgroundColor ?? ContainerFillColor, 
-                outerColor: settings.BackgroundColor ?? ContainerFillColor,
+                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: ColorScheme.ContainerOutline,
+                innerColor: settings.BackgroundColor ?? ColorScheme.ContainerFill, 
+                outerColor: settings.BackgroundColor ?? ColorScheme.ContainerFill,
                 shadow: ContainerShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
@@ -1014,9 +1021,9 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: FloatingContainerCornerRadius ?? ContainerCornerRadius,
-                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: FloatingContainerOutlineColor ?? ContainerOutlineColor,
-                innerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor, 
-                outerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor,
+                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: ColorScheme.FloatingContainerOutline ?? ColorScheme.ContainerOutline,
+                innerColor: settings.BackgroundColor ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill, 
+                outerColor: settings.BackgroundColor ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill,
                 shadow: FloatingContainerShadow ?? ContainerShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
@@ -1030,9 +1037,9 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: FloatingContainerCornerRadius ?? ContainerCornerRadius,
-                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: FloatingContainerOutlineColor ?? ContainerOutlineColor,
-                innerColor: settings.BackgroundColor ?? WindowFillColor ?? FloatingContainerFillColor ?? ContainerFillColor, 
-                outerColor: settings.BackgroundColor ?? WindowFillColor ?? FloatingContainerFillColor ?? ContainerFillColor,
+                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: ColorScheme.FloatingContainerOutline ?? ColorScheme.ContainerOutline,
+                innerColor: settings.BackgroundColor ?? ColorScheme.WindowFill ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill, 
+                outerColor: settings.BackgroundColor ?? ColorScheme.WindowFill ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill,
                 shadow: FloatingContainerShadow ?? ContainerShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
@@ -1043,13 +1050,13 @@ namespace Squared.PRGUI {
         private void Tooltip_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
-            var color1 = (pSRGBColor)TooltipFillColor;
+            var color1 = (pSRGBColor)ColorScheme.TooltipFill;
             var color2 = (color1.ToVector4() * 1.25f);
             color2.W = 1;
             renderer.RasterizeRectangle(
                 a, b,
                 radius: TooltipCornerRadius ?? FloatingContainerCornerRadius ?? ContainerCornerRadius,
-                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: TooltipOutlineColor,
+                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: ColorScheme.TooltipOutline,
                 innerColor: settings.BackgroundColor ?? color2, 
                 outerColor: settings.BackgroundColor ?? color1,
                 shadow: TooltipShadow ?? FloatingContainerShadow,
@@ -1087,11 +1094,11 @@ namespace Squared.PRGUI {
                     ? EditableFocusedOutlineThickness 
                     : InactiveOutlineThickness), 
                 outlineColor: isFocused
-                    ? FocusedColor
-                    : ContainerOutlineColor,
+                    ? ColorScheme.Focused
+                    : ColorScheme.ContainerOutline,
                 // FIXME: Separate textarea fill color?
-                innerColor: (settings.BackgroundColor ?? ContainerFillColor), 
-                outerColor: (settings.BackgroundColor ?? ContainerFillColor),
+                innerColor: (settings.BackgroundColor ?? ColorScheme.ContainerFill), 
+                outerColor: (settings.BackgroundColor ?? ColorScheme.ContainerFill),
                 shadow: EditableShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
@@ -1282,7 +1289,7 @@ namespace Squared.PRGUI {
                 trackA, trackB,
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: ScrollbarTrackColor, outerColor: ScrollbarTrackColor,
+                innerColor: ColorScheme.ScrollbarTrack, outerColor: ColorScheme.ScrollbarTrack,
                 sortKey: 1
             );
 
@@ -1293,7 +1300,7 @@ namespace Squared.PRGUI {
                 thumbA, thumbB,
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: ScrollbarThumbColor, outerColor: ScrollbarThumbColor * 0.8f,
+                innerColor: ColorScheme.ScrollbarThumb, outerColor: ColorScheme.ScrollbarThumb * 0.8f,
                 fillMode: RasterFillMode.Radial,
                 shadow: ScrollbarThumbShadow,
                 sortKey: 2
@@ -1320,7 +1327,7 @@ namespace Squared.PRGUI {
             var containsFocus = settings.State.IsFlagged(ControlStates.ContainsFocus);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
-            var color1 = (pSRGBColor)(containsFocus ? TitleFillColor : TitleFillColor.ToGrayscale(0.85f));
+            var color1 = (pSRGBColor)(containsFocus ? ColorScheme.TitleFill : ColorScheme.TitleFill.ToGrayscale(0.85f));
             var color2 = color1.ToVector4() * 0.8f;
             color2.W = 1;
             renderer.RasterizeRectangle(
@@ -1338,7 +1345,7 @@ namespace Squared.PRGUI {
             var isCaret = (settings.Box.Width <= 0.5f);
             var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
                 settings.State.IsFlagged(ControlStates.ContainsFocus);
-            var fillColor = SelectionFillColor *
+            var fillColor = ColorScheme.SelectionFill *
                 (isFocused
                     ? Arithmetic.Pulse(context.Now / 2f, 0.7f, 0.8f)
                     : 0.45f
@@ -1359,7 +1366,7 @@ namespace Squared.PRGUI {
 
         private void MenuSelection_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
-            var fillColor = (pSRGBColor)SelectionFillColor * Arithmetic.Pulse(context.Now / 2f, 0.9f, 1f);
+            var fillColor = (pSRGBColor)ColorScheme.SelectionFill * Arithmetic.Pulse(context.Now / 2f, 0.9f, 1f);
 
             renderer.RasterizeRectangle(
                 a, b,
@@ -1376,8 +1383,8 @@ namespace Squared.PRGUI {
                 settings.State.IsFlagged(ControlStates.ContainsFocus);
             var fillColor = (pSRGBColor)(
                  isFocused
-                    ? SelectionFillColor
-                    : Color.Lerp(SelectionFillColor, SelectionFillColor.ToGrayscale(0.65f), 0.5f)
+                    ? ColorScheme.SelectionFill
+                    : Color.Lerp(ColorScheme.SelectionFill, ColorScheme.SelectionFill.ToGrayscale(0.65f), 0.5f)
                 );
             var outlineColor = (isFocused)
                 ? Color.White
@@ -1394,7 +1401,7 @@ namespace Squared.PRGUI {
 
         private void CompositionPreview_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
-            var fillColor = SelectionFillColor;
+            var fillColor = ColorScheme.SelectionFill;
             var outlineColor = Color.White;
 
             renderer.RasterizeRectangle(
@@ -1430,8 +1437,8 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b,
                 radiusCW: radius,
-                outlineRadius: GetOutlineSize(1f), outlineColor: AcceleratorOutlineColor,
-                innerColor: AcceleratorFillColor, outerColor: AcceleratorFillColor,
+                outlineRadius: GetOutlineSize(1f), outlineColor: ColorScheme.AcceleratorOutline,
+                innerColor: ColorScheme.AcceleratorFill, outerColor: ColorScheme.AcceleratorFill,
                 shadow: null,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
@@ -1441,7 +1448,7 @@ namespace Squared.PRGUI {
 
         private void AcceleratorTarget_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
-            var outlineColor = AcceleratorOutlineColor * Arithmetic.PulseSine((context.Now / 1.3f) + (a.X / 512), 0.65f, 1.0f);
+            var outlineColor = ColorScheme.AcceleratorOutline * Arithmetic.PulseSine((context.Now / 1.3f) + (a.X / 512), 0.65f, 1.0f);
             // FIXME
             renderer.RasterizeRectangle(
                 a, b,
@@ -1527,7 +1534,7 @@ namespace Squared.PRGUI {
             out Material material, ref Color? color, bool selected
         ) {
             if (!color.HasValue)
-                color = TextColor;
+                color = ColorScheme.Text;
 
             if (state.IsFlagged(ControlStates.Disabled))
                 color = color?.ToGrayscale(DisabledTextAlpha);
@@ -1581,7 +1588,7 @@ namespace Squared.PRGUI {
             out Material material, ref Color? color
         ) {
             if (color == null)
-                color = TitleTextColor;
+                color = ColorScheme.TitleText;
             GetTextSettings(context, state, out material, ref color);
             return true;
         }
@@ -1591,7 +1598,7 @@ namespace Squared.PRGUI {
             out Material material, ref Color? color
         ) {
             if (color == null)
-                color = AcceleratorTextColor;
+                color = ColorScheme.AcceleratorText;
             GetTextSettings(context, state, out material, ref color);
             return true;
         }
@@ -1601,7 +1608,7 @@ namespace Squared.PRGUI {
             out Material material, ref Color? color
         ) {
             if (color == null)
-                color = TooltipTextColor;
+                color = ColorScheme.TooltipText;
             GetTextSettings(context, state, out material, ref color);
             return true;
         }
@@ -1611,7 +1618,7 @@ namespace Squared.PRGUI {
             out Material material, ref Color? color
         ) {
             GetTextSettings(context, state, out material, ref color, selected: true);
-            color = SelectedTextColor;
+            color = ColorScheme.SelectedText;
             return true;
         }
     }

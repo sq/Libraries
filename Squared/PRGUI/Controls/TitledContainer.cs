@@ -201,13 +201,13 @@ namespace Squared.PRGUI.Controls {
             result.Top += (height / paddingScale);
         }
 
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             FreezeDynamicContent = _Collapsed;
             // FIXME: Broken right now
             // SuppressChildLayout = _Collapsed && (DisclosureLevel.Get(context.NowL) <= 0);
             SuppressChildLayout = false;
 
-            var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
                 return result;
 

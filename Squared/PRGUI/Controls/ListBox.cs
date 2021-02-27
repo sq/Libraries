@@ -184,7 +184,7 @@ namespace Squared.PRGUI.Controls {
         private float VirtualYMultiplier => VirtualItemHeight / ColumnCount;
         private int LastColumnCount = 0;
 
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             bool scrollOffsetChanged = false;
 
             // HACK: Ensure the scroll region is updated immediately if our column count changes,
@@ -272,7 +272,7 @@ namespace Squared.PRGUI.Controls {
             if (scrollOffsetChanged)
                 OnDisplayOffsetChanged();
 
-            var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
                 return result;
 

@@ -196,9 +196,9 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
         
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             HasContentBounds = false;
-            return base.OnGenerateLayoutTree(context, parent, existingKey);
+            return base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {

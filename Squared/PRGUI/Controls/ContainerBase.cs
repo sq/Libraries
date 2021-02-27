@@ -277,8 +277,8 @@ namespace Squared.PRGUI.Controls {
         protected ControlKey[] ColumnKeys;
         protected bool NeedToInvalidateChildLayout;
         
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             var children = Children;
             if (result.IsInvalid || SuppressChildLayout) {
                 NeedToInvalidateChildLayout = true;
@@ -367,19 +367,31 @@ namespace Squared.PRGUI.Controls {
                 maxA = layerA;
 
             var currentLayerContext = default(RasterizePassSet);
-            var currentContextOrder = int.MinValue;
+            var currentContextOrder = range.Min;
+            var hasSplitPlane = false;
             var isUsingPerLayerContext = (range.Min != range.Max);
 
             foreach (var item in sequence) {
-                if (isUsingPerLayerContext && (currentContextOrder != item.DisplayOrder)) {
+                // HACK: If we don't do this, invisible controls can cause a plane split and prevent neighboring controls from sharing layers
+                if (!item.Visible)
+                    continue;
+
+                if (
+                    isUsingPerLayerContext && 
+                    // HACK: We only want to perform a plane split after we finish with the initial layer (displayorder = min),
+                    //  so that the vast majority of controls on that layer can all share their below/content/above groups and
+                    //  get efficient batching between neighbors.
+                    (currentContextOrder != item.DisplayOrder)
+                ) {
                     var newBaseLayer = ++maxC;
-                    currentLayerContext = new RasterizePassSet(ref passSet.Content, passSet.StackDepth + 1, passSet.OverlayQueue, ref newBaseLayer);
+                    currentLayerContext = new RasterizePassSet(ref passSet.Content, passSet.StackDepth, passSet.OverlayQueue, ref newBaseLayer);
                     maxC = newBaseLayer;
                     // FIXME: Update .Content layer?
                     currentContextOrder = item.DisplayOrder;
+                    hasSplitPlane = true;
                 }
 
-                if (isUsingPerLayerContext) {
+                if (hasSplitPlane) {
                     RasterizeChild(ref context, item, ref currentLayerContext);
                 } else {
                     passSet.Below.Layer = layerB;

@@ -1625,7 +1625,6 @@ namespace Squared.PRGUI {
     public struct UIOperationContext {
         public UIContext UIContext;
         public DefaultMaterialSet Materials => UIContext?.Materials;
-        public IDecorationProvider DecorationProvider => UIContext?.Decorations;
         public LayoutContext Layout => UIContext?.Layout;
         public RasterizePasses Pass;
         public float Opacity { get; internal set; }
@@ -1638,29 +1637,35 @@ namespace Squared.PRGUI {
         public RectF VisibleRegion { get; internal set; }
         public BatchGroup Prepass;
         private DenseList<IDecorator> DecoratorStack, TextDecoratorStack;
+        private DenseList<IDecorationProvider> DecorationProviderStack;
         internal DenseList<UIContext.ScratchRenderTarget> RenderTargetStack;
         internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
         internal bool RelayoutRequestedForVisibilityChange;
         internal int HiddenCount;
         internal int Depth;
 
-        private IDecorator GetStackTop (ref DenseList<IDecorator> stack) {
+        private T GetStackTop<T> (ref DenseList<T> stack) {
             if (stack.Count <= 0)
-                return null;
-            stack.GetItem(stack.Count - 1, out IDecorator result);
+                return default(T);
+            stack.GetItem(stack.Count - 1, out T result);
             return result;
         }
 
-        private static void StackPush (ref DenseList<IDecorator> stack, IDecorator value) {
+        private static void StackPush<T> (ref DenseList<T> stack, T value) {
             stack.Add(value);
         }
 
-        private static void StackPop (ref DenseList<IDecorator> stack) {
+        private static void StackPop<T> (ref DenseList<T> stack) {
             if (stack.Count <= 0)
                 throw new InvalidOperationException("Stack empty");
             stack.RemoveAt(stack.Count - 1);
         }
 
+        public IDecorationProvider DecorationProvider => GetStackTop(ref DecorationProviderStack) ?? UIContext?.Decorations;
+        public static void PushDecorationProvider (ref UIOperationContext context, IDecorationProvider value) => 
+            StackPush(ref context.DecorationProviderStack, value);
+        public static void PopDecorationProvider (ref UIOperationContext context) => 
+            StackPop(ref context.DecorationProviderStack);
         public IDecorator DefaultDecorator => GetStackTop(ref DecoratorStack);
         public static void PushDecorator (ref UIOperationContext context, IDecorator value) => 
             StackPush(ref context.DecoratorStack, value);
@@ -1692,6 +1697,7 @@ namespace Squared.PRGUI {
             RenderTargetStack.Clone(out result.RenderTargetStack);
             DecoratorStack.Clone(out result.DecoratorStack);
             TextDecoratorStack.Clone(out result.TextDecoratorStack);
+            DecorationProviderStack.Clone(out result.DecorationProviderStack);
         }
     }
 }

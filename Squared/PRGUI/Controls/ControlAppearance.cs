@@ -65,8 +65,26 @@ namespace Squared.PRGUI {
         ///  step of compositing the rendered control from its scratch texture into the scene.
         /// </summary>
         public IControlCompositor Compositor;
-        public IDecorator Decorator, TextDecorator;
+        /// <summary>
+        /// Specifies a custom decoration provider to use instead of the current default.
+        /// Inheritable.
+        /// </summary>
+        public IDecorationProvider DecorationProvider;
+        /// <summary>
+        /// Specifies a custom decorator to use instead of the current default.
+        /// </summary>
+        public IDecorator Decorator;
+        /// <summary>
+        /// Specifies a custom decorator to use for text instead of the current default;
+        /// </summary>
+        public IDecorator TextDecorator;
+        /// <summary>
+        /// Specifies a custom list of traits to pass into the decorator during rendering.
+        /// </summary>
         public DenseList<string> DecorationTraits;
+        /// <summary>
+        /// Specifies a custom glyph source to use when rendering text.
+        /// </summary>
         public IGlyphSource Font;
         public ColorVariable BackgroundColor;
         public ColorVariable TextColor;

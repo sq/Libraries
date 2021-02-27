@@ -333,12 +333,12 @@ namespace Squared.PRGUI.Controls {
                 MostRecentContentWidth = null;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             ComputeAutoSize(context);
             UpdateLineBreak(context, GetDecorator(context.DecorationProvider, context.DefaultDecorator));
             if (!Content.IsValid)
                 ComputeAutoSize(context);
-            var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             return result;
         }
 

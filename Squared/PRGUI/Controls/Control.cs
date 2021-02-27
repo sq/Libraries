@@ -407,16 +407,23 @@ namespace Squared.PRGUI {
             if (existingKey.HasValue && existingKey.Value.IsInvalid)
                 throw new ArgumentOutOfRangeException(nameof(existingKey));
 
-            LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
-            if (!LayoutKey.IsInvalid) {
-                if (_VisibleHasChanged) {
-                    context.RelayoutRequestedForVisibilityChange = true;
-                    _VisibleHasChanged = false;
-                }
+            try {
+                if (Appearance.DecorationProvider != null)
+                    UIOperationContext.PushDecorationProvider(ref context, Appearance.DecorationProvider);
+                LayoutKey = OnGenerateLayoutTree(ref context, parent, existingKey);
+                if (!LayoutKey.IsInvalid) {
+                    if (_VisibleHasChanged) {
+                        context.RelayoutRequestedForVisibilityChange = true;
+                        _VisibleHasChanged = false;
+                    }
 
-                // TODO: Only register if the control is explicitly interested, to reduce overhead?
-                if ((this is IPostLayoutListener listener) && (existingKey == null))
-                    context.PostLayoutListeners?.Add(listener);
+                    // TODO: Only register if the control is explicitly interested, to reduce overhead?
+                    if ((this is IPostLayoutListener listener) && (existingKey == null))
+                        context.PostLayoutListeners?.Add(listener);
+                }
+            } finally {
+                if (Appearance.DecorationProvider != null)
+                    UIOperationContext.PopDecorationProvider(ref context);
             }
 
             return LayoutKey;
@@ -530,7 +537,7 @@ namespace Squared.PRGUI {
         private bool RasterizeIsPending = false;
 #endif
 
-        protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected virtual ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             if (!Visible && !context.UIContext.IsUpdatingSubtreeLayout)
                 return ControlKey.Invalid;
 
@@ -785,16 +792,24 @@ namespace Squared.PRGUI {
         }
 
         private void RasterizeAllPasses (ref UIOperationContext context, ref RectF box, ref RasterizePassSet passSet, bool compositing) {
-            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
-            var contentBox = GetRect(contentRect: true);
-            var state = GetCurrentState(context);
-            var settings = MakeDecorationSettings(ref box, ref contentBox, state);
-            if (!IsPassDisabled(RasterizePasses.Below, decorations))
-                RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
-            if (!IsPassDisabled(RasterizePasses.Content, decorations))
-                RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Content, RasterizePasses.Content);
-            if (!IsPassDisabled(RasterizePasses.Above, decorations))
-                RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
+            try {
+                if (Appearance.DecorationProvider != null)
+                    UIOperationContext.PushDecorationProvider(ref context, Appearance.DecorationProvider);
+
+                var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
+                var contentBox = GetRect(contentRect: true);
+                var state = GetCurrentState(context);
+                var settings = MakeDecorationSettings(ref box, ref contentBox, state);
+                if (!IsPassDisabled(RasterizePasses.Below, decorations))
+                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
+                if (!IsPassDisabled(RasterizePasses.Content, decorations))
+                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Content, RasterizePasses.Content);
+                if (!IsPassDisabled(RasterizePasses.Above, decorations))
+                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
+            } finally {
+                if (Appearance.DecorationProvider != null)
+                    UIOperationContext.PopDecorationProvider(ref context);
+            }
         }
 
         protected virtual bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {

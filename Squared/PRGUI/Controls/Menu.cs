@@ -135,10 +135,10 @@ namespace Squared.PRGUI.Controls {
             return provider?.Menu;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             FreezeDynamicContent = Visible;
 
-            var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
                 return result;
 
