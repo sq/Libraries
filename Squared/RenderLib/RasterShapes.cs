@@ -96,6 +96,10 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         RadialEnclosed = 6,
         /// <summary>
+        /// A fill that extends outwards from the center and travels around the outside edge (like a pie chart)
+        /// </summary>
+        Conical = 7,
+        /// <summary>
         /// Solid fill with no gradient.
         /// </summary>
         None = 8,

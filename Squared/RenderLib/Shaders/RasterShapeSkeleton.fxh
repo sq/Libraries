@@ -594,7 +594,8 @@ float evaluateGradient (
             );
         return length((worldPosition - gradientCenter) / max(radialSize, 0.0001));
     } else if (
-        gradientType == GRADIENT_TYPE_Angular
+        (gradientType == GRADIENT_TYPE_Angular) ||
+        (gradientType == GRADIENT_TYPE_Conical)
     ) {
         float2 scaled = (worldPosition - gradientCenter) / (boxSize * 0.5);
         float scaledLength = length(scaled);
@@ -602,8 +603,12 @@ float evaluateGradient (
             scaled.x = 0.001;
             scaledLength = 0.001;
         }
-        gradientAngle += atan2(scaled.y, scaled.x);
-        return ((sin(gradientAngle) * scaledLength) / 2) + 0.5;
+        if (gradientType == GRADIENT_TYPE_Angular) {
+            gradientAngle += atan2(scaled.y, scaled.x);
+            return ((sin(gradientAngle) * scaledLength) / 2) + 0.5;
+        } else {
+            return (atan2(scaled.y, scaled.x) + PI) / (2 * PI);
+        }
     }
 
     return gradientWeight;
@@ -800,6 +805,8 @@ void rasterShapeCommon (
         );
 
         gradientWeight += gradientOffset;
+
+        // FIXME: A bunch of this doesn't seem to be necessary anymore
 
         if (gradientSize > 0) {
             gradientWeight = saturate(gradientWeight / gradientSize);
