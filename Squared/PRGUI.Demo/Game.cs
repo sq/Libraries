@@ -527,10 +527,54 @@ namespace PRGUI.Demo {
             Context.EventBus.Subscribe(canvas, UIEvents.MouseDown, Canvas_OnMouseEvent);
             Context.EventBus.Subscribe(canvas, UIEvents.MouseMove, Canvas_OnMouseEvent);
 
+            var displayOrdering = new Container {
+                Children = {
+                    new StaticText {
+                        Text = "A [order=2]",
+                        DisplayOrder = 2,
+                        Appearance = {
+                            BackgroundColor = Color.Red,
+                        },
+                        Layout = {
+                            Floating = true
+                        },
+                        Width = 300,
+                        Height = 300
+                    },
+                    new StaticText {
+                        Text = "B [order=0]",
+                        DisplayOrder = 0,
+                        Appearance = {
+                            BackgroundColor = Color.Green,
+                        },
+                        Layout = {
+                            Floating = true,
+                            FloatingPosition = new Vector2(96, 16)
+                        },
+                        Width = 300,
+                        Height = 300
+                    },
+                    new StaticText {
+                        Text = "C [order=1]",
+                        DisplayOrder = 1,
+                        Appearance = {
+                            BackgroundColor = Color.Blue,
+                        },
+                        Layout = {
+                            Floating = true,
+                            FloatingPosition = new Vector2(32, 120)
+                        },
+                        Width = 300,
+                        Height = 300
+                    }
+                }
+            };
+
             var tabs = new TabContainer {
                 { scrollableClipTest, "Scrollable" },
                 { listboxContainer, "Listbox" },
-                { canvas, "Canvas" }
+                { canvas, "Canvas" },
+                { displayOrdering, "Z-Order" }
             };
             tabs.SelectedIndex = 1;
             tabs.TabsOnLeft = false;
@@ -568,6 +612,7 @@ namespace PRGUI.Demo {
                                 Text = "Clipped huge button\r\nSecond line\r\n" + ButtonChars,
                                 Width = { Fixed = 600 },
                                 Height = { Fixed = 1800 },
+                                VerticalAlignment = 0f,
                                 Layout = {
                                     Anchor = { Top = true },
                                     Fill = { Row = true },

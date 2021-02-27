@@ -1603,12 +1603,22 @@ namespace Squared.PRGUI {
         public UnorderedList<BitmapDrawCall> OverlayQueue;
         public int StackDepth;
 
-        public RasterizePassSet (ref ImperativeRenderer container, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue, int? layer = null) {
-            Below = container.MakeSubgroup(name: "Below", layer: layer);
-            Content = container.MakeSubgroup(name: "Content", layer: layer);
-            Above = container.MakeSubgroup(name: "Above", layer: layer);
+        public RasterizePassSet (ref ImperativeRenderer container, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue) {
+            // FIXME: Order them?
+            Below = container.MakeSubgroup(name: "Below");
+            Content = container.MakeSubgroup(name: "Content");
+            Above = container.MakeSubgroup(name: "Above");
             StackDepth = stackDepth;
             OverlayQueue = overlayQueue;
+        }
+
+        public RasterizePassSet (ref ImperativeRenderer container, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue, ref int layer) {
+            Below = container.MakeSubgroup(name: "Below", layer: layer);
+            Content = container.MakeSubgroup(name: "Content", layer: layer + 1);
+            Above = container.MakeSubgroup(name: "Above", layer: layer + 2);
+            StackDepth = stackDepth;
+            OverlayQueue = overlayQueue;
+            layer = layer + 3;
         }
     }
 

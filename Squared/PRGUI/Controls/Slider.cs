@@ -342,14 +342,11 @@ namespace Squared.PRGUI.Controls {
             DecorationSettings settings, IDecorator decorations, 
             float interval, float rangeSize
         ) {
-            var numSteps = (int)Math.Floor(rangeSize / interval);
+            var numSteps = (int)Math.Ceiling(rangeSize / interval) + 1;
 
-            float x = Minimum + interval, y = settings.ContentBox.Top + 0.5f;
+            float x = 0, y = settings.ContentBox.Top + 0.5f;
             for (int i = 0; i < numSteps; i++, x += interval) {
-                if ((Math.Abs(x - rangeSize) <= float.Epsilon) || (x >= Maximum))
-                    break;
-
-                var offset = ((x - Minimum) / rangeSize) * settings.ContentBox.Width;
+                var offset = (x / rangeSize) * settings.ContentBox.Width;
                 renderer.RasterizeLineSegment(
                     new Vector2(settings.ContentBox.Left + offset, y),
                     new Vector2(settings.ContentBox.Left + offset, settings.ContentBox.Extent.Y + 1f),

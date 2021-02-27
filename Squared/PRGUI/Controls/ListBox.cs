@@ -566,16 +566,12 @@ namespace Squared.PRGUI.Controls {
             lastOffset2 = -1;
 
         protected override bool RasterizeChild (
-            ref UIOperationContext context, Control item, ref RasterizePassSet passSet, 
-            int layer1, int layer2, int layer3, 
-            ref int maxLayer1, ref int maxLayer2, ref int maxLayer3
+            ref UIOperationContext context, Control item, ref RasterizePassSet passSet
         ) {
             bool temp = false;
             SetTextDecorator(ref context, item, ref temp);
             var result = base.RasterizeChild(
-                ref context, item, ref passSet, 
-                layer1, layer2, layer3, 
-                ref maxLayer1, ref maxLayer2, ref maxLayer3
+                ref context, item, ref passSet
             );
             if (temp)
                 UIOperationContext.PopTextDecorator(ref context);
@@ -583,14 +579,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void RasterizeChildrenInOrder (
-            ref UIOperationContext context, ref RasterizePassSet passSet, 
-            int layer1, int layer2, int layer3, 
-            ref int maxLayer1, ref int maxLayer2, ref int maxLayer3
+            ref UIOperationContext context, ref RasterizePassSet passSet
         ) {
             if (Virtual) {
                 base.RasterizeChildrenInOrder(
-                    ref context, ref passSet, layer1, layer2, layer2,
-                    ref maxLayer1, ref maxLayer2, ref maxLayer3
+                    ref context, ref passSet
                 );
                 PageSize = Math.Max(VirtualViewportItemCount - 4, 2);
             } else {
@@ -598,8 +591,6 @@ namespace Squared.PRGUI.Controls {
                 var displayPageSize = RasterizeChildrenFromCenter(
                     ref context, ref passSet, 
                     GetRect(), selectedControl,
-                    layer1, layer2, layer3, 
-                    ref maxLayer1, ref maxLayer2, ref maxLayer3,
                     ref lastOffset1, ref lastOffset2
                 );
 

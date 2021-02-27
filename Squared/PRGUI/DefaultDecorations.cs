@@ -327,7 +327,7 @@ namespace Squared.PRGUI {
             };
 
             Gauge = new DelegateDecorator {
-                Margins = new Margins(GlobalDefaultMargin),
+                Margins = new Margins(4, 4),
                 Padding = new Margins(2),
                 Below = Gauge_Below,
                 Content = Gauge_Content,

@@ -746,35 +746,39 @@ namespace Squared.PRGUI {
             if (hasNestedContext) {
                 // GROSS OPTIMIZATION HACK: Detect that any rendering operation(s) occurred inside the
                 //  group and if so, set up the stencil mask so that they will be clipped.
-                if (ShouldClipContent && !contentRenderer.Container.IsEmpty) {
-                    // If this is the first stencil pass instead of a nested one, clear the stencil buffer
-                    if (passSet.StackDepth < 1)
-                        contentRenderer.Clear(stencil: 0, layer: -9999);
+                if (ShouldClipContent) {
+                    if (!contentRenderer.Container.IsEmpty) {
+                        // If this is the first stencil pass instead of a nested one, clear the stencil buffer
+                        if (passSet.StackDepth < 1)
+                            contentRenderer.Clear(stencil: 0, layer: -9999);
 
-                    contentRenderer.DepthStencilState = context.UIContext.GetStencilWrite(previousStackDepth);
+                        contentRenderer.DepthStencilState = context.UIContext.GetStencilWrite(previousStackDepth);
 
-                    // FIXME: Separate context?
-                    contentContext.Pass = RasterizePasses.ContentClip;
+                        // FIXME: Separate context?
+                        contentContext.Pass = RasterizePasses.ContentClip;
 
-                    // FIXME
-                    var temp = settings;
-                    ApplyClipMargins(contentContext, ref temp.Box);
+                        // FIXME
+                        var temp = settings;
+                        ApplyClipMargins(contentContext, ref temp.Box);
 
-                    var crLayer = contentRenderer.Layer;
-                    contentRenderer.Layer = -999;
-                    settings.State = default(ControlStates);
-                    decorations?.Rasterize(contentContext, ref contentRenderer, temp);
+                        var crLayer = contentRenderer.Layer;
+                        contentRenderer.Layer = -999;
+                        settings.State = default(ControlStates);
+                        decorations?.Rasterize(contentContext, ref contentRenderer, temp);
 
-                    if (passSet.StackDepth > 1) {
-                        // If this is a nested stencil pass, erase our stencil data and restore what was there before
-                        contentRenderer.DepthStencilState = context.UIContext.GetStencilRestore(newStackDepth);
-                        contentRenderer.FillRectangle(new Rectangle(-1, -1, 9999, 9999), Color.Transparent, blendState: RenderStates.DrawNone, layer: 9999);
+                        if (passSet.StackDepth > 1) {
+                            // If this is a nested stencil pass, erase our stencil data and restore what was there before
+                            contentRenderer.DepthStencilState = context.UIContext.GetStencilRestore(newStackDepth);
+                            contentRenderer.FillRectangle(new Rectangle(-1, -1, 9999, 9999), Color.Transparent, blendState: RenderStates.DrawNone, layer: 9999);
+                        }
+
+                        contentRenderer.Layer = crLayer;
+
+                        // passSet.NextReferenceStencil = childrenPassSet.NextReferenceStencil;
+                    } else {
+                        ;
                     }
-
-                    contentRenderer.Layer = crLayer;
-
-                    // passSet.NextReferenceStencil = childrenPassSet.NextReferenceStencil;
-                }
+                } 
 
                 renderer.Layer += 1;
             }

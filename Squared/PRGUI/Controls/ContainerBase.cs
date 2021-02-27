@@ -84,24 +84,9 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         /// <returns>Whether the child was successfully rasterized</returns>
         protected virtual bool RasterizeChild (
-            ref UIOperationContext context, Control item, ref RasterizePassSet passSet, 
-            int layer1, int layer2, int layer3, ref int maxLayer1, 
-            ref int maxLayer2, ref int maxLayer3
+            ref UIOperationContext context, Control item, ref RasterizePassSet passSet
         ) {
-            // HACK: Shift controls around by display order to maintain relative ordering of their passes
-            var orderOffset = Arithmetic.Clamp(item.DisplayOrder, -10, 100) * 20;
-
-            passSet.Below.Layer = layer1 + orderOffset;
-            passSet.Content.Layer = layer2 + orderOffset;
-            passSet.Above.Layer = layer3 + orderOffset;
-
-            var result = item.Rasterize(ref context, ref passSet);
-
-            maxLayer1 = Math.Max(maxLayer1, passSet.Below.Layer);
-            maxLayer2 = Math.Max(maxLayer2, passSet.Content.Layer);
-            maxLayer3 = Math.Max(maxLayer3, passSet.Above.Layer);
-
-            return result;
+            return item.Rasterize(ref context, ref passSet);
         }
 
         protected override void OnVisibleChange (bool newValue) {
@@ -364,41 +349,47 @@ namespace Squared.PRGUI.Controls {
             if (HideChildren)
                 return;
 
-            // FIXME
-            int layer1 = passSet.Below.Layer,
-                layer2 = passSet.Content.Layer,
-                layer3 = passSet.Above.Layer,
-                maxLayer1 = layer1,
-                maxLayer2 = layer2,
-                maxLayer3 = layer3;
-
-            RasterizeChildrenInOrder(
-                ref context, ref passSet, 
-                layer1, layer2, layer3,
-                ref maxLayer1, ref maxLayer2, ref maxLayer3
-            );
-
-            passSet.Below.Layer = maxLayer1;
-            passSet.Content.Layer = maxLayer2;
-            passSet.Above.Layer = maxLayer3;
+            RasterizeChildrenInOrder(ref context, ref passSet);
         }
 
         protected virtual void RasterizeChildrenInOrder (
-            ref UIOperationContext context, ref RasterizePassSet passSet, 
-            int layer1, int layer2, int layer3, 
-            ref int maxLayer1, ref int maxLayer2, ref int maxLayer3
+            ref UIOperationContext context, ref RasterizePassSet passSet
         ) {
             var sequence = Children.InDisplayOrder(Context.FrameIndex, out ControlCollection.OrderRange range);
-            int lastOrderValue = range.Min;
+            if (sequence.Count <= 0)
+                return;
+
+            int layerB = passSet.Below.Layer,
+                layerC = passSet.Content.Layer,
+                layerA = passSet.Above.Layer,
+                maxB = layerB,
+                maxC = layerC,
+                maxA = layerA;
+
+            var currentLayerContext = default(RasterizePassSet);
+            var currentContextOrder = int.MinValue;
+            var isUsingPerLayerContext = (range.Min != range.Max);
 
             foreach (var item in sequence) {
-                if ((lastOrderValue != item.DisplayOrder) && (range.Min != range.Max)) {
-                    maxLayer1 = maxLayer2 = maxLayer3 = 
-                        layer1 = layer2 = layer3 = Math.Max(maxLayer1, Math.Max(maxLayer2, maxLayer3));
-                    lastOrderValue = item.DisplayOrder;
+                if (isUsingPerLayerContext && (currentContextOrder != item.DisplayOrder)) {
+                    var newBaseLayer = ++maxC;
+                    currentLayerContext = new RasterizePassSet(ref passSet.Content, passSet.StackDepth + 1, passSet.OverlayQueue, ref newBaseLayer);
+                    maxC = newBaseLayer;
+                    // FIXME: Update .Content layer?
+                    currentContextOrder = item.DisplayOrder;
                 }
 
-                RasterizeChild(ref context, item, ref passSet, layer1, layer2, layer3, ref maxLayer1, ref maxLayer2, ref maxLayer3);
+                if (isUsingPerLayerContext) {
+                    RasterizeChild(ref context, item, ref currentLayerContext);
+                } else {
+                    passSet.Below.Layer = layerB;
+                    passSet.Content.Layer = layerC;
+                    passSet.Above.Layer = layerA;
+                    RasterizeChild(ref context, item, ref passSet);
+                    maxB = Math.Max(maxB, passSet.Below.Layer);
+                    maxC = Math.Max(maxC, passSet.Below.Layer);
+                    maxA = Math.Max(maxA, passSet.Below.Layer);
+                }
             }
         }
 
@@ -413,8 +404,6 @@ namespace Squared.PRGUI.Controls {
         public int RasterizeChildrenFromCenter (
             ref UIOperationContext context, ref RasterizePassSet passSet, 
             RectF box, Control selectedItem,
-            int layer1, int layer2, int layer3, 
-            ref int maxLayer1, ref int maxLayer2, ref int maxLayer3,
             ref int lastOffset1, ref int lastOffset2
         ) {
             var children = Children;
@@ -455,9 +444,7 @@ namespace Squared.PRGUI.Controls {
                     // Stop searching upward once an item fails to render
                     var item1 = children[i];
                     var ok = RasterizeChild(
-                        ref context, item1, ref passSet,
-                        layer1, layer2, layer3,
-                        ref maxLayer1, ref maxLayer2, ref maxLayer3
+                        ref context, item1, ref passSet
                     );
                     if (item1.IsTransparent) {
                         ;
@@ -473,9 +460,7 @@ namespace Squared.PRGUI.Controls {
                     itemsAttempted++;
                     var item2 = children[j];
                     var ok = RasterizeChild(
-                        ref context, item2, ref passSet,
-                        layer1, layer2, layer3,
-                        ref maxLayer1, ref maxLayer2, ref maxLayer3
+                        ref context, item2, ref passSet
                     );
                     if (item2.IsTransparent) {
                         ;
