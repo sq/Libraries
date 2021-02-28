@@ -1628,7 +1628,9 @@ namespace Squared.Render.Convenience {
             var centerAngleRadians = MathHelper.ToRadians(centerAngleDegrees);
             var sizeRadians = MathHelper.ToRadians(sizeDegrees / 2);
             var b = new Vector2(centerAngleRadians, sizeRadians);
-            var c = new Vector2(MathHelper.ToRadians(startAngleDegrees % 360), sizeDegrees);
+            var c = new Vector2(MathHelper.ToRadians(startAngleDegrees + 90), sizeDegrees);
+            if (fillMode == RasterFillMode.Along)
+                fillSize *= (sizeDegrees / 360f);
 
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture
