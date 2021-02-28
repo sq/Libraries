@@ -131,7 +131,11 @@ namespace Squared.PRGUI.Controls {
             Color? color = null;
             decorations.GetTextSettings(default(UIOperationContext), default(ControlStates), out Render.Material temp, ref color);
             base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
-            if (DetermineIfHorizontal(minimumWidth, minimumHeight)) {
+            if ((Direction == GaugeDirection.Clockwise) || (Direction == GaugeDirection.CounterClockwise)) {
+                var m = Math.Max(ControlMinimumLength, ControlMinimumHeight);
+                minimumHeight = Math.Max(Math.Max(minimumHeight ?? 0, m * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                minimumWidth = Math.Max(minimumWidth ?? 0, m * Context.Decorations.SizeScaleRatio.X);
+            } else if (DetermineIfHorizontal(minimumWidth, minimumHeight)) {
                 minimumHeight = Math.Max(Math.Max(minimumHeight ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
                 minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumLength * Context.Decorations.SizeScaleRatio.X);
             } else {
@@ -141,7 +145,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private static readonly string[] DirectionNames = new[] {
-            "auto", "ltr", "rtl", "ttb", "btt"
+            "auto", "ltr", "rtl", "ttb", "btt", "cw", "ccw"
         };
 
         protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
@@ -177,6 +181,18 @@ namespace Squared.PRGUI.Controls {
                 case GaugeDirection.BottomToTop:
                     extent = contentBox.Extent.Y;
                     break;
+                case GaugeDirection.Clockwise:
+                case GaugeDirection.CounterClockwise:
+                    float sign = (direction == GaugeDirection.Clockwise)
+                        ? 1
+                        : 0;
+                    var fillRadius = ControlMinimumHeight / 2f;
+                    var maxRad = Math.Min(contentBox.Width, contentBox.Height) / 2f;
+                    contentBox = new RectF(
+                        value1 * 360f - 90f, fillSize * 360f,
+                        maxRad - fillRadius, fillRadius
+                    );
+                    return;
             }
 
             switch (direction) {
@@ -205,6 +221,7 @@ namespace Squared.PRGUI.Controls {
             var fill = context.DecorationProvider.Gauge;
             var originalCbox = settings.ContentBox;
             var value1 = ValueTween.Get(Context.NowL);
+
             MakeContentBox(direction, 0f, value1, ref settings.ContentBox);
             base.OnRasterize(context, ref renderer, settings, decorations);
 
@@ -222,6 +239,8 @@ namespace Squared.PRGUI.Controls {
         LeftToRight = 1,
         RightToLeft = 2,
         TopToBottom = 3,
-        BottomToTop = 4
+        BottomToTop = 4,
+        Clockwise = 5,
+        CounterClockwise = 6
     }
 }

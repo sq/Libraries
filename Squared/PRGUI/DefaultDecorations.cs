@@ -767,17 +767,34 @@ namespace Squared.PRGUI {
 
         private void Gauge_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
-            renderer.RasterizeRectangle(
-                a, b,
-                radius: SliderCornerRadius,
-                outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: Color.Transparent,
-                innerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill, 
-                outerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill,
-                shadow: GaugeShadow,
-                texture: settings.GetTexture(),
-                textureRegion: settings.GetTextureRegion(),
-                textureSettings: settings.GetTextureSettings()
-            );
+            var direction = settings.Traits.FirstOrDefault();
+            if ((direction == "cw") || (direction == "ccw")) {
+                renderer.RasterizeArc(
+                    settings.Box.Center, 
+                    // HACK
+                    startAngleDegrees: 0f, sizeDegrees: 360f,
+                    ringRadius: settings.ContentBox.Width, fillRadius: settings.ContentBox.Height,
+                    outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: Color.Transparent,
+                    innerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill, 
+                    outerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill,
+                    shadow: GaugeShadow,
+                    texture: settings.GetTexture(),
+                    textureRegion: settings.GetTextureRegion(),
+                    textureSettings: settings.GetTextureSettings()
+                );
+            } else {
+                renderer.RasterizeRectangle(
+                    a, b,
+                    radius: SliderCornerRadius,
+                    outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: Color.Transparent,
+                    innerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill, 
+                    outerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill,
+                    shadow: GaugeShadow,
+                    texture: settings.GetTexture(),
+                    textureRegion: settings.GetTextureRegion(),
+                    textureSettings: settings.GetTextureSettings()
+                );
+            }
         }
 
         private void Gauge_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
@@ -786,6 +803,8 @@ namespace Squared.PRGUI {
             var cb = b - (settings.Box.Extent - settings.ContentBox.Extent).Round();
             float x0, x1, x2;
             RasterFillMode fillMode;
+
+            bool isCircular = false;
 
             // Select fill mode and gradient direction based on orientation
             var direction = settings.Traits.FirstOrDefault();
@@ -809,6 +828,13 @@ namespace Squared.PRGUI {
                     x2 = cb.Y;
                     fillMode = RasterFillMode.Angular + (direction == "btt" ? 180 : 0);
                     break;
+                case "cw":
+                case "ccw":
+                    x0 = 0;
+                    x1 = x2 = 1;
+                    fillMode = RasterFillMode.Along;
+                    isCircular = true;
+                    break;
             }
 
             // HACK: Based on orientation, disable snapping for the growing edge of the fill
@@ -828,6 +854,9 @@ namespace Squared.PRGUI {
                 case "btt":
                     ca.Y = settings.ContentBox.Position.Y;
                     break;
+                case "cw":
+                case "ccw":
+                    break;
             }
 
             var alpha1 = 0.5f;
@@ -838,18 +867,37 @@ namespace Squared.PRGUI {
                 alpha1 = alpha2 = 0.7f;
                 fillColor = new Color(64, 64, 64);
             }
-            renderer.RasterizeRectangle(
-                ca, cb,
-                radius: SliderCornerRadius,
-                outlineRadius: GetOutlineSize(1f), outlineColor: fillColor * 0.5f,
-                fillMode: fillMode,
-                innerColor: fillColor * alpha1, 
-                outerColor: fillColor * alpha2,
-                shadow: GaugeValueShadow,
-                texture: settings.GetTexture(),
-                textureRegion: settings.GetTextureRegion(),
-                textureSettings: settings.GetTextureSettings()
-            );
+
+            var outlineRadius = GetOutlineSize(1f);
+            if (isCircular) {
+                renderer.RasterizeArc(
+                    settings.Box.Center, 
+                    // HACK
+                    startAngleDegrees: settings.ContentBox.Left, sizeDegrees: settings.ContentBox.Top,
+                    ringRadius: settings.ContentBox.Width, fillRadius: settings.ContentBox.Height,
+                    outlineRadius: outlineRadius, outlineColor: fillColor * 0.5f,
+                    fillMode: RasterFillMode.Along,
+                    innerColor: fillColor * alpha1, 
+                    outerColor: fillColor * alpha2,
+                    shadow: GaugeValueShadow,
+                    texture: settings.GetTexture(),
+                    textureRegion: settings.GetTextureRegion(),
+                    textureSettings: settings.GetTextureSettings()
+                );
+            } else {
+                renderer.RasterizeRectangle(
+                    ca, cb,
+                    radius: SliderCornerRadius,
+                    outlineRadius: outlineRadius, outlineColor: fillColor * 0.5f,
+                    fillMode: fillMode,
+                    innerColor: fillColor * alpha1, 
+                    outerColor: fillColor * alpha2,
+                    shadow: GaugeValueShadow,
+                    texture: settings.GetTexture(),
+                    textureRegion: settings.GetTextureRegion(),
+                    textureSettings: settings.GetTextureSettings()
+                );
+            }
         }
 
         private void SliderThumb_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {

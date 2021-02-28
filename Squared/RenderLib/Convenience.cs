@@ -1634,7 +1634,7 @@ namespace Squared.Render.Convenience {
                 // HACK: Bump the start and end angles out to account for the radius of the arc itself,
                 //  otherwise we get gross hard cut-offs at the start and end
                 var p1 = new Vector2(0, ringRadius);
-                var totalRadius = fillRadius;
+                var totalRadius = outlineRadius + fillRadius;
                 var p2 = p1 + new Vector2(totalRadius, 0);
                 var roundingOffsetRadians = (float)Math.Abs(Math.Atan2(p2.Y, p2.X) - Math.Atan2(p1.Y, p1.X));
                 var fillSizeBias = (float)((sizeRadians + (roundingOffsetRadians * 2)) / (Math.PI * 2));

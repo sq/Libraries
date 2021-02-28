@@ -444,7 +444,8 @@ namespace PRGUI.Demo {
                 Layout = {
                     ForceBreak = true
                 },
-                Width = { Fixed = 450 }
+                Width = { Fixed = 450 },
+                Direction = GaugeDirection.Clockwise
             };
 
             var scrollableClipTest = new Container {
