@@ -1230,7 +1230,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeLineSegment (
             Vector2 a, Vector2 b, float radius, pSRGBColor innerColor, pSRGBColor? outerColor = null,
-            bool gradientAlongLine = false, RasterFillMode fillMode = RasterFillMode.Natural,
+            RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
@@ -1249,7 +1249,7 @@ namespace Squared.Render.Convenience {
                     SortKey = sortKey,
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = a, B = b,
-                    C = new Vector2(gradientAlongLine ? 1 : 0, 0),
+                    C = Vector2.Zero,
                     Radius = new Vector2(radius, 0),
                     OutlineSize = 0,
                     InnerColor = innerColor,
@@ -1272,7 +1272,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeLineSegment (
             Vector2 a, Vector2 b, float startRadius, float? endRadius, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
-            bool gradientAlongLine = false, RasterFillMode fillMode = RasterFillMode.Natural,
+            RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
@@ -1294,7 +1294,7 @@ namespace Squared.Render.Convenience {
                     SortKey = sortKey,
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = a, B = b,
-                    C = new Vector2(gradientAlongLine ? 1 : 0, startRadius - maxRadius),
+                    C = new Vector2(0, startRadius - maxRadius),
                     Radius = new Vector2(maxRadius, _endRadius - maxRadius),
                     OutlineSize = outlineRadius,
                     InnerColor = innerColor,
@@ -1627,8 +1627,8 @@ namespace Squared.Render.Convenience {
             var centerAngleDegrees = startAngleDegrees + (sizeDegrees / 2);
             var centerAngleRadians = MathHelper.ToRadians(centerAngleDegrees);
             var sizeRadians = MathHelper.ToRadians(sizeDegrees / 2);
-            var b = new Vector2((float)Math.Sin(centerAngleRadians), (float)Math.Cos(centerAngleRadians));
-            var c = new Vector2((float)Math.Sin(sizeRadians), (float)Math.Cos(sizeRadians));
+            var b = new Vector2(centerAngleRadians, sizeRadians);
+            var c = new Vector2(MathHelper.ToRadians(startAngleDegrees % 360), sizeDegrees);
 
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture

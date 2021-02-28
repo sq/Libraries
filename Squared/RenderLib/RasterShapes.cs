@@ -96,9 +96,9 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         RadialEnclosed = 6,
         /// <summary>
-        /// A fill that extends outwards from the center and travels around the outside edge (like a pie chart)
+        /// A fill that travels along the shape (only valid for lines and arcs).
         /// </summary>
-        Conical = 7,
+        Along = 7,
         /// <summary>
         /// Solid fill with no gradient.
         /// </summary>
@@ -115,6 +115,10 @@ namespace Squared.Render.RasterShape {
         /// A linear gradient that goes left-to-right.
         /// </summary>
         Horizontal = Angular + 90,
+        /// <summary>
+        /// A fill that extends outwards from the center and travels around the outside edge (like a pie chart)
+        /// </summary>
+        Conical = Angular + 720,
     }
 
     public enum RasterTextureCompositeMode : byte {

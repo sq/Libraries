@@ -20,11 +20,12 @@
 #define GRADIENT_TYPE_Radial 4
 #define GRADIENT_TYPE_Radial_Enclosing 5
 #define GRADIENT_TYPE_Radial_Enclosed 6
-#define GRADIENT_TYPE_Conical 7
+#define GRADIENT_TYPE_Along 7
 // The gradient weight has already been computed by the evaluate function
 #define GRADIENT_TYPE_Other 8
 // Generic gradient that operates on the bounding box, with the angle added
 //  to the base
 #define GRADIENT_TYPE_Angular 512
+#define GRADIENT_TYPE_Conical (GRADIENT_TYPE_Angular + 720)
 
 #define ANGULAR_GRADIENT_BASE 512

@@ -470,9 +470,10 @@ void evaluateLineSegment (
     distance = length(worldPosition - closestPoint) - localRadius;
 
     PREFER_FLATTEN
-    if (c.x >= 0.5)
+    if (gradientType == GRADIENT_TYPE_Along) {
         gradientWeight = saturate(t);
-    else
+        gradientType == GRADIENT_TYPE_Other;
+    } else
         gradientWeight = 1 - saturate(-distance / localRadius);
 }
 
@@ -594,8 +595,7 @@ float evaluateGradient (
             );
         return length((worldPosition - gradientCenter) / max(radialSize, 0.0001));
     } else if (
-        (gradientType == GRADIENT_TYPE_Angular) ||
-        (gradientType == GRADIENT_TYPE_Conical)
+        (gradientType >= GRADIENT_TYPE_Angular)
     ) {
         float2 scaled = (worldPosition - gradientCenter) / (boxSize * 0.5);
         float scaledLength = length(scaled);
@@ -603,11 +603,16 @@ float evaluateGradient (
             scaled.x = 0.001;
             scaledLength = 0.001;
         }
-        if (gradientType == GRADIENT_TYPE_Angular) {
-            gradientAngle += atan2(scaled.y, scaled.x);
-            return ((sin(gradientAngle) * scaledLength) / 2) + 0.5;
+        if (gradientType >= GRADIENT_TYPE_Conical) {
+            // HACK: This gives us a clockwise gradient starting at the top, instead of the usual (???)
+            //  ccw starting at the left. This is necessary to line up with arcs and just for general convenience
+            float tan2 = atan2(scaled.x, scaled.y);
+            float divisor = (PI * 2);
+            float angle = ((tan2 + PI + gradientAngle) / divisor);
+            return 1 - (angle % 1);
         } else {
-            return (atan2(scaled.y, scaled.x) + PI) / (2 * PI);
+            float tan2 = atan2(scaled.y, scaled.x);
+            return ((sin(gradientAngle + tan2) * scaledLength) / 2) + 0.5;
         }
     }
 
@@ -618,7 +623,7 @@ void evaluateRasterShape (
     int type, float2 radius, float outlineSize, float4 params,
     in float2 worldPosition, in float2 a, in float2 b, in float2 c, in bool simple,
     out float distance, inout float2 tl, inout float2 br,
-    inout int gradientType, out float gradientWeight
+    inout int gradientType, out float gradientWeight, inout float gradientAngle
 ) {
     type = EVALUATE_TYPE;
     bool needTLBR = false;
@@ -681,9 +686,17 @@ void evaluateRasterShape (
 
 #ifdef INCLUDE_ARC
     else if (type == TYPE_Arc) {
-        distance = sdArc(worldPosition - a, b, c, radius.x, radius.y);
-        if (gradientType == GRADIENT_TYPE_Natural)
+        float2 arcB, arcC;
+        sincos(b.x, arcB.x, arcB.y);
+        sincos(b.y, arcC.x, arcC.y);
+        distance = sdArc(worldPosition - a, arcB, arcC, radius.x, radius.y);
+        if (gradientType == GRADIENT_TYPE_Natural) {
             gradientWeight = 1 - saturate(-distance / radius.y);
+        } else if (gradientType == GRADIENT_TYPE_Along) {
+            gradientType = GRADIENT_TYPE_Conical;
+            // FIXME: Size scaling
+            gradientAngle = c.x;
+        }
 
         needTLBR = true;
     }
@@ -704,7 +717,7 @@ float computeShadowAlpha (
 ) {
     float2 tl, br;
     int gradientType = 0;
-    float gradientWeight = 0;
+    float gradientWeight = 0, gradientAngle = 0;
 
     float distance;
     evaluateRasterShape(
@@ -712,7 +725,7 @@ float computeShadowAlpha (
         // Force simple on since we don't use gradient value in shadow calc
         worldPosition, a, b, c, true,
         distance, tl, br,
-        gradientType, gradientWeight
+        gradientType, gradientWeight, gradientAngle
     );
 
     distance -= ShadowExpansion;
@@ -782,7 +795,7 @@ void rasterShapeCommon (
     if (simple) {
         gradientType = GRADIENT_TYPE_Other;
     } else if (params.z >= ANGULAR_GRADIENT_BASE) {
-        gradientType = GRADIENT_TYPE_Angular;
+        gradientType = params.z;
         gradientAngle = (params.z - ANGULAR_GRADIENT_BASE) * DEG_TO_RAD;
     } else {
         gradientType = abs(trunc(params.z));
@@ -793,7 +806,7 @@ void rasterShapeCommon (
         type, radius, outlineSize, params,
         worldPosition, a, b, c, simple,
         distance, tl, br,
-        gradientType, gradientWeight
+        gradientType, gradientWeight, gradientAngle
     );
 
     if (simple) {
