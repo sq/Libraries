@@ -1628,11 +1628,21 @@ namespace Squared.Render.Convenience {
             var offsetAngleDegrees = (startAngleDegrees + 90) % 360;
             startAngleDegrees = startAngleDegrees % 360;
             var centerAngleRadians = MathHelper.ToRadians(centerAngleDegrees);
-            var sizeRadians = MathHelper.ToRadians(sizeDegrees / 2);
-            var b = new Vector2(centerAngleRadians, sizeRadians);
-            var c = new Vector2(MathHelper.ToRadians(offsetAngleDegrees), 0);
-            if (fillMode == RasterFillMode.Along)
-                fillSize *= (sizeDegrees / 360f);
+            var sizeRadians = MathHelper.ToRadians(sizeDegrees);
+            Vector2 b = new Vector2(centerAngleRadians, sizeRadians / 2f), c = Vector2.Zero;
+            if (fillMode == RasterFillMode.Along) {
+                // HACK: Bump the start and end angles out to account for the radius of the arc itself,
+                //  otherwise we get gross hard cut-offs at the start and end
+                var p1 = new Vector2(0, ringRadius);
+                var totalRadius = fillRadius;
+                var p2 = p1 + new Vector2(totalRadius, 0);
+                var roundingOffsetRadians = (float)Math.Abs(Math.Atan2(p2.Y, p2.X) - Math.Atan2(p1.Y, p1.X));
+                var fillSizeBias = (float)((sizeRadians + (roundingOffsetRadians * 2)) / (Math.PI * 2));
+                if (fillSizeBias > 1)
+                    fillSizeBias = 1;
+                fillSize *= fillSizeBias;
+                c.X = MathHelper.ToRadians(offsetAngleDegrees) - roundingOffsetRadians;
+            }
 
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture
