@@ -1628,7 +1628,7 @@ namespace Squared.Render.Convenience {
             var centerAngleRadians = MathHelper.ToRadians(centerAngleDegrees);
             var sizeRadians = MathHelper.ToRadians(sizeDegrees / 2);
             var b = new Vector2(centerAngleRadians, sizeRadians);
-            var c = new Vector2(MathHelper.ToRadians(startAngleDegrees + 90), sizeDegrees);
+            var c = new Vector2(MathHelper.ToRadians(startAngleDegrees + 90), 0);
             if (fillMode == RasterFillMode.Along)
                 fillSize *= (sizeDegrees / 360f);
 

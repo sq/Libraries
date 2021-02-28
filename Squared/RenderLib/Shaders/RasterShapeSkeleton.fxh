@@ -605,11 +605,10 @@ float evaluateGradient (
         }
         if (gradientType >= GRADIENT_TYPE_Conical) {
             // atan2 is typically counter-clockwise and starts on the left, so (-1, 0) is 0rad.
-            // We want a clockwise gradient starting at the right, to match the arc primitive.
-            float tan2 = atan2(scaled.x, scaled.y);
-            float divisor = (PI * 2);
-            float angle = ((tan2 + PI + gradientAngle) / divisor);
-            return 1 - (angle % 1);
+            // We want a clockwise gradient starting at the top.
+            float angleCw = atan2(-scaled.x, scaled.y) + PI; // [0, 2 * PI]
+            float angleCwScaled = angleCw / (2 * PI);
+            return angleCwScaled;
         } else {
             float tan2 = atan2(scaled.y, scaled.x);
             return ((sin(gradientAngle + tan2) * scaledLength) / 2) + 0.5;
