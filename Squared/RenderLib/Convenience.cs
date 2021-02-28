@@ -1624,11 +1624,13 @@ namespace Squared.Render.Convenience {
             int sortKey = 0
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
-            var centerAngleDegrees = startAngleDegrees + (sizeDegrees / 2);
+            var centerAngleDegrees = (startAngleDegrees + (sizeDegrees / 2)) % 360;
+            var offsetAngleDegrees = (startAngleDegrees + 90) % 360;
+            startAngleDegrees = startAngleDegrees % 360;
             var centerAngleRadians = MathHelper.ToRadians(centerAngleDegrees);
             var sizeRadians = MathHelper.ToRadians(sizeDegrees / 2);
             var b = new Vector2(centerAngleRadians, sizeRadians);
-            var c = new Vector2(MathHelper.ToRadians(startAngleDegrees + 90), 0);
+            var c = new Vector2(MathHelper.ToRadians(offsetAngleDegrees), 0);
             if (fillMode == RasterFillMode.Along)
                 fillSize *= (sizeDegrees / 360f);
 

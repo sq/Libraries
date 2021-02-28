@@ -607,8 +607,8 @@ float evaluateGradient (
             // atan2 is typically counter-clockwise and starts on the left, so (-1, 0) is 0rad.
             // We want a clockwise gradient starting at the top.
             float angleCw = atan2(-scaled.x, scaled.y) + PI; // [0, 2 * PI]
-            float angleCwScaled = angleCw / (2 * PI);
-            return angleCwScaled;
+            float angleCwScaled = (angleCw + ((2 * PI) - gradientAngle)) / (2 * PI);
+            return angleCwScaled % 1;
         } else {
             float tan2 = atan2(scaled.y, scaled.x);
             return ((sin(gradientAngle + tan2) * scaledLength) / 2) + 0.5;
@@ -793,9 +793,12 @@ void rasterShapeCommon (
 
     if (simple) {
         gradientType = GRADIENT_TYPE_Other;
-    } else if (params.z >= ANGULAR_GRADIENT_BASE) {
-        gradientType = params.z;
-        gradientAngle = (params.z - ANGULAR_GRADIENT_BASE) * DEG_TO_RAD;
+    } else if (params.z >= GRADIENT_TYPE_Conical) {
+        gradientType = GRADIENT_TYPE_Conical;
+        gradientAngle = min((params.z - gradientType) * DEG_TO_RAD, 2 * PI);
+    } else if (params.z >= GRADIENT_TYPE_Angular) {
+        gradientType = GRADIENT_TYPE_Angular;
+        gradientAngle = (params.z - gradientType) * DEG_TO_RAD;
     } else {
         gradientType = abs(trunc(params.z));
         gradientAngle = 0;

@@ -27,5 +27,3 @@
 //  to the base
 #define GRADIENT_TYPE_Angular 512
 #define GRADIENT_TYPE_Conical (GRADIENT_TYPE_Angular + 720)
-
-#define ANGULAR_GRADIENT_BASE 512
