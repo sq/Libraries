@@ -183,13 +183,13 @@ namespace Squared.PRGUI.Controls {
                     break;
                 case GaugeDirection.Clockwise:
                 case GaugeDirection.CounterClockwise:
-                    float sign = (direction == GaugeDirection.Clockwise)
-                        ? 1
-                        : 0;
-                    var fillRadius = ControlMinimumHeight / 2f;
+                    float a1 = (direction == GaugeDirection.Clockwise)
+                        ? value1 * 360f - 90f
+                        : 360f - (value2 * 360f) - 90f;
+                    var fillRadius = (ControlMinimumHeight / 2f) - Padding.Size.Length();
                     var maxRad = Math.Min(contentBox.Width, contentBox.Height) / 2f;
                     contentBox = new RectF(
-                        value1 * 360f - 90f, fillSize * 360f,
+                        a1, fillSize * 360f,
                         maxRad - fillRadius, fillRadius
                     );
                     return;

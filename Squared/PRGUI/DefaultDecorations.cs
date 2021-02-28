@@ -870,6 +870,12 @@ namespace Squared.PRGUI {
 
             var outlineRadius = GetOutlineSize(1f);
             if (isCircular) {
+                float temp = alpha1;
+                if (direction == "ccw") {
+                    alpha1 = alpha2;
+                    alpha2 = temp;
+                }
+
                 renderer.RasterizeArc(
                     settings.Box.Center, 
                     // HACK
