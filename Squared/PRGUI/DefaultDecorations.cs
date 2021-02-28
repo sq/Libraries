@@ -870,6 +870,11 @@ namespace Squared.PRGUI {
 
             var outlineRadius = GetOutlineSize(1f);
             if (isCircular) {
+                // HACK: Ensure that the alpha values equalize as we approach a full circle, otherwise the 
+                //  gradient will glitch at the point where the ends meet
+                var fadeRamp = (settings.ContentBox.Top - 260f) / 70f;
+                alpha1 = Arithmetic.Lerp(alpha1, alpha2, fadeRamp);
+
                 float temp = alpha1;
                 if (direction == "ccw") {
                     alpha1 = alpha2;

@@ -186,6 +186,8 @@ namespace Squared.PRGUI.Controls {
                     float a1 = (direction == GaugeDirection.Clockwise)
                         ? value1 * 360f - 90f
                         : 360f - (value2 * 360f) - 90f;
+                    // FIXME: Shrink when the value is really small so that there isn't a fill dot
+                    //  when the gauge's value is 0
                     var fillRadius = (ControlMinimumHeight / 2f) - Padding.Size.Length();
                     var maxRad = Math.Min(contentBox.Width, contentBox.Height) / 2f;
                     contentBox = new RectF(
