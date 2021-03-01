@@ -77,6 +77,14 @@ namespace Squared.PRGUI.Controls {
                 result = parent.GetRect(contentRect: true);
         }
 
+        private void ClampToCanvas (ref UIOperationContext context, ref Vector2 position, ref RectF rect) {
+            var availableSpace = context.UIContext.CanvasSize - rect.Size;
+            if (availableSpace.X > 0)
+                position.X = Arithmetic.Clamp(position.X, 0, availableSpace.X);
+            if (availableSpace.Y > 0)
+                position.Y = Arithmetic.Clamp(position.Y, 0, availableSpace.Y);
+        }
+
         private bool Align (ref UIOperationContext context, RectF parentRect, RectF rect, bool updateDesiredPosition) {
             // Computed?
             var margins = Control.Margins;
@@ -90,6 +98,7 @@ namespace Squared.PRGUI.Controls {
                 anchorRect.Size -= margins.Size;
                 var offset = (rect.Size * ControlAlignmentPoint);
                 var result = anchorCenter - offset - parentRect.Position;
+                ClampToCanvas(ref context, ref result, ref rect);
                 MostRecentAlignedPosition = anchorCenter - offset;
                 return SetPosition(result, updateDesiredPosition);
             } else {
@@ -104,6 +113,7 @@ namespace Squared.PRGUI.Controls {
                 if (availableSpace.Y < 0)
                     availableSpace.Y = 0;
                 var result = availableSpace * ControlAlignmentPoint;
+                ClampToCanvas(ref context, ref result, ref rect);
                 MostRecentAlignedPosition = result + parentRect.Position;
                 return SetPosition(result, updateDesiredPosition);
             }
