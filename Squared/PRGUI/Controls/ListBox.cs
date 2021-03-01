@@ -554,14 +554,18 @@ namespace Squared.PRGUI.Controls {
             T newItem = default(T);
             if (grow || (oneItemSelected && shrink)) {
                 result = Manager.TryResizeSelection(delta, out newItem, true);
+                if (result == false)
+                    ;
             } else if (shrink) {
                 int min = Manager.MinSelectedIndex, max = Manager.MaxSelectedIndex;
                 if (delta > 0) {
                     Manager.ConstrainSelection(min + delta, max);
+                    Manager.MostRecentItemInteractedWith = Manager.MaxSelectedIndex;
                     if (Manager.MaxSelectedIndex >= 0)
                         newItem = Manager.Items[Manager.MaxSelectedIndex];
                 } else {
                     Manager.ConstrainSelection(min, max + delta);
+                    Manager.MostRecentItemInteractedWith = Manager.MinSelectedIndex;
                     if (Manager.MinSelectedIndex >= 0)
                         newItem = Manager.Items[Manager.MinSelectedIndex];
                 }
@@ -570,6 +574,8 @@ namespace Squared.PRGUI.Controls {
                 UpdateKeyboardSelection(newItem, forUser);
                 newItem = SelectedItem;
                 result = true;
+            } else {
+                ;
             }
 
             return result;

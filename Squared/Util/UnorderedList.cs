@@ -374,6 +374,9 @@ namespace Squared.Util {
             _Items[_BufferOffset + index] = newValue;
         }
 
+        /// <summary>
+        /// WARNING: This will not preserve the order of the array! If you want that, use the Ordered version
+        /// </summary>
         public void DangerousRemoveAt (int index) {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();
@@ -382,6 +385,23 @@ namespace Squared.Util {
 
             if (index < newCount) {
                 _Items[_BufferOffset + index] = _Items[_BufferOffset + newCount];
+                _Items[_BufferOffset + newCount] = default(T);
+            } else {
+                _Items[_BufferOffset + index] = default(T);
+            }
+
+            _Count = newCount;
+        }
+
+        public void DangerousRemoveAtOrdered (int index) {
+            if ((index < 0) || (index >= _Count))
+                throw new IndexOutOfRangeException();
+
+            var newCount = _Count - 1;
+
+            if (index < newCount) {
+                for (int i = index; i < newCount; i++)
+                    _Items[_BufferOffset + i] = _Items[_BufferOffset + i + 1];
                 _Items[_BufferOffset + newCount] = default(T);
             } else {
                 _Items[_BufferOffset + index] = default(T);
@@ -405,6 +425,9 @@ namespace Squared.Util {
             Array.Clear(_Items, _BufferOffset + _Count, count);
         }
 
+        /// <summary>
+        /// WARNING: This will not preserve the order of the list! If you want that, use the Ordered version
+        /// </summary>
         public bool TryPopFront (out T result) {
             if (_Count == 0) {
                 result = default(T);
@@ -413,6 +436,17 @@ namespace Squared.Util {
 
             result = _Items[_BufferOffset + 0];
             DangerousRemoveAt(0);
+            return true;
+        }
+
+        public bool TryPopFrontOrdered (out T result) {
+            if (_Count == 0) {
+                result = default(T);
+                return false;
+            }
+
+            result = _Items[_BufferOffset + 0];
+            DangerousRemoveAtOrdered(0);
             return true;
         }
 

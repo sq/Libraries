@@ -210,11 +210,10 @@ namespace Squared.PRGUI.Controls {
                     switch (args.Key) {
                         case Keys.Up:
                         case Keys.Down:
-                            if (Manager.TryResizeSelection(
-                                (args.Key == Keys.Up) ? -1 : 1,
-                                out T newItem, false
+                            if (Manager.TryMoveSelection(
+                                (args.Key == Keys.Up) ? -1 : 1, false
                             ))
-                                SetSelectedItem(newItem, true);
+                                SetSelectedItem(Manager.SelectedItem, true);
                             return true;
                         case Keys.Space:
                             ShowMenu();

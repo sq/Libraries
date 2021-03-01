@@ -50,7 +50,7 @@ namespace Squared.PRGUI.Controls {
                 if (value <= 1) {
                     _SelectedIndices.Clear();
                     if (value > 0)
-                        _SelectedIndices.Add(_MostRecentItemSelected);
+                        _SelectedIndices.Add(MostRecentItemInteractedWith);
                 }
                 // FIXME: Prune extra selected items on change
             }
@@ -100,7 +100,7 @@ namespace Squared.PRGUI.Controls {
                 var newIndex = Items.IndexOf(ref value, Comparer);
                 if (newIndex < 0)
                     throw new ArgumentException("Item not found in collection", "value");
-                _MostRecentItemSelected = newIndex;
+                MostRecentItemInteractedWith = newIndex;
                 _SelectedIndices.Clear();
                 _LastGrowDirection = 0;
                 _SelectionVersion++;
@@ -129,7 +129,7 @@ namespace Squared.PRGUI.Controls {
                 return true;
             else if (index >= Items.Count)
                 return false;
-            _MostRecentItemSelected = index;
+            MostRecentItemInteractedWith = index;
             _SelectedIndices.Clear();
             _SelectionVersion++;
             _LastGrowDirection = 0;
@@ -154,20 +154,41 @@ namespace Squared.PRGUI.Controls {
                 ? result
                 : null;
 
-        private int _MostRecentItemSelected = -1;
+        /// <summary>
+        /// The index of the item most recently interacted with (via resize, toggle, etc)
+        /// </summary>
+        public int MostRecentItemInteractedWith { get; set; }
 
         private int _LastGrowDirection = 0;
         public int LastGrowDirection => _LastGrowDirection;
 
-        public int MinSelectedIndex => _SelectedIndices.FirstOrDefault(-1);
-        public int MaxSelectedIndex => _SelectedIndices.LastOrDefault(-1);
+        public int MinSelectedIndex {
+            get {
+                var result = _SelectedIndices.FirstOrDefault(-1);
+#if DEBUG
+                if (result > _SelectedIndices.LastOrDefault(-1))
+                    throw new Exception();
+#endif
+                return result;
+            }
+        }
+        public int MaxSelectedIndex {
+            get {
+                var result = _SelectedIndices.LastOrDefault(-1);
+#if DEBUG
+                if (result < _SelectedIndices.FirstOrDefault(-1))
+                    throw new Exception();
+#endif
+                return result;
+            }
+        }
 
         public bool TryExpandOrShrinkSelectionToItem (ref T item, bool fireEvent = true) {
             var newIndex = Items.IndexOf(ref item, Comparer);
             if (newIndex < 0)
                 return false;
 
-            _MostRecentItemSelected = newIndex;
+            MostRecentItemInteractedWith = newIndex;
 
             T temp;
             var minIndex = _SelectedIndices.FirstOrDefault();
@@ -224,22 +245,22 @@ namespace Squared.PRGUI.Controls {
         }
 
         public bool TryToggleInDirection (int delta, bool fireEvent = true) {
-            var newIndex = _MostRecentItemSelected + delta;
+            var newIndex = MostRecentItemInteractedWith + delta;
             if (newIndex < 0)
                 return false;
             if (newIndex >= Items.Count)
                 return false;
-            if (newIndex == _MostRecentItemSelected)
+            if (newIndex == MostRecentItemInteractedWith)
                 return false;
-            _MostRecentItemSelected = newIndex;
+            MostRecentItemInteractedWith = newIndex;
             var item = Items[newIndex];
             return TryToggleItemSelected(ref item, fireEvent);
         }
 
         public bool TryMoveSelection (int delta, bool fireEvent) {
             int previousIndex;
-            if ((MaxSelectedCount > 1) && (_MostRecentItemSelected >= 0))
-                previousIndex = _MostRecentItemSelected;
+            if ((MaxSelectedCount > 1) && (MostRecentItemInteractedWith >= 0))
+                previousIndex = MostRecentItemInteractedWith;
             else
                 previousIndex = SelectedIndex;
             int newIndex = Arithmetic.Clamp(previousIndex + delta, 0, Items.Count - 1);
@@ -292,9 +313,10 @@ namespace Squared.PRGUI.Controls {
                     }
                 }
 
-                if (grow)
+                if (grow) {
                     AddSelectedIndex(newLeadingEdge);
-                else {
+                    OnSelectionChanged(false);
+                } else {
                     var indexOf = _SelectedIndices.IndexOf(newLeadingEdge, IndexComparer.Instance);
                     if (indexOf >= 0)
                         _SelectedIndices.RemoveAt(indexOf);
@@ -318,15 +340,17 @@ namespace Squared.PRGUI.Controls {
                     for (int i = start; i != end; i += deltaSign)
                         AddSelectedIndex(i);
                     AddSelectedIndex(end);
+                    OnSelectionChanged(false);
                 } else {
                     var newIndex = Arithmetic.Clamp(SelectedIndex + delta, 0, Items.Count - 1);
                     _SelectedIndices.Clear();
                     AddSelectedIndex(newIndex);
+                    OnSelectionChanged(false);
                     lastNewItem = SelectedItem;
                 }
             }
 
-            _MostRecentItemSelected = Items.IndexOf(lastNewItem, Comparer);
+            MostRecentItemInteractedWith = Items.IndexOf(lastNewItem, Comparer);
             OnSelectionChanged(fireEvent);
             return true;
         }
@@ -366,7 +390,7 @@ namespace Squared.PRGUI.Controls {
             var selectionIndexOf = _SelectedIndices.IndexOf(indexOf, IndexComparer.Instance);
             if (selectionIndexOf < 0) {
                 AddSelectedIndex(indexOf);
-                _MostRecentItemSelected = indexOf;
+                MostRecentItemInteractedWith = indexOf;
             } else
                 _SelectedIndices.RemoveAt(selectionIndexOf);
 
