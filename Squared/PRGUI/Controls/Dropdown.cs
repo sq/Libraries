@@ -212,7 +212,7 @@ namespace Squared.PRGUI.Controls {
                         case Keys.Down:
                             if (Manager.TryAdjustSelection(
                                 (args.Key == Keys.Up) ? -1 : 1,
-                                out T newItem
+                                out T newItem, false
                             ))
                                 SetSelectedItem(newItem, true);
                             return true;

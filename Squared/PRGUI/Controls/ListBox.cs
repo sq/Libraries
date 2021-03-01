@@ -27,6 +27,7 @@ namespace Squared.PRGUI.Controls {
     {
         public bool DisableItemHitTests = true;
         public bool EnableSelect = true;
+        public bool DefaultToggleOnClick = false;
 
         public static bool SelectOnMouseDown = false;
 
@@ -82,14 +83,40 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public void SetSelectedItem (T value, bool forUserInput) {
-            if (!Manager.TrySetSelectedItem(ref value))
-                return;
+        private void OnSelectionChanged (bool forUserInput) {
             DesiredScrollOffset = null;
             SelectedItemHasChangedSinceLastUpdate = true;
+            // FIXME: Should we defer this?
             FireEvent(UIEvents.ValueChanged, SelectedItem);
             if (forUserInput)
                 FireEvent(UIEvents.ValueChangedByUser, SelectedItem);
+        }
+
+        public bool TryGrowSelectedItems (int delta, bool forUserInput) {
+            if (!Manager.TryAdjustSelection(delta, out T temp, true))
+                return false;
+            OnSelectionChanged(forUserInput);
+            return true;
+        }
+
+        public bool TryExpandOrShrinkSelectionToItem (ref T value, bool forUserInput) {
+            if (!Manager.TryExpandOrShrinkSelectionToItem(ref value))
+                return false;
+            OnSelectionChanged(forUserInput);
+            return true;
+        }
+
+        public bool TryToggleItemSelected (ref T value, bool forUserInput) {
+            if (!Manager.TryToggleItemSelected(ref value))
+                return false;
+            OnSelectionChanged(forUserInput);
+            return true;
+        }
+
+        public void SetSelectedItem (T value, bool forUserInput) {
+            if (!Manager.TrySetSelectedItem(ref value))
+                return;
+            OnSelectionChanged(forUserInput);
         }
 
         private bool _Virtual = false;
@@ -102,6 +129,14 @@ namespace Squared.PRGUI.Controls {
                 Children.Clear();
                 NeedsUpdate = true;
                 _Virtual = value;
+            }
+        }
+
+        public int MaxSelectedCount {
+            get => Manager.MaxSelectedCount;
+            set {
+                Manager.MaxSelectedCount = value;
+                NeedsUpdate = true;
             }
         }
 
@@ -281,7 +316,9 @@ namespace Squared.PRGUI.Controls {
             for (int i = 0, c = children.Count; i < c; i++) {
                 var child = children[i];
                 var lk = child.LayoutKey;
-                SetTextDecorator(ref context, child, ref hasPushedDecorator);
+                var childIndex = Manager.IndexOfControl(child);
+                var isSelected = Manager.IsSelectedIndex(childIndex);
+                SetTextDecorator(ref context, child, isSelected, ref hasPushedDecorator);
                 var m = context.Layout.GetMargins(lk);
                 // HACK: Override decorator margins
                 m.Top = child.Margins.Top;
@@ -294,9 +331,9 @@ namespace Squared.PRGUI.Controls {
 
             // FIXME: This is gross
             if (!existingKey.HasValue && SelectionChangeEventPending) {
+                // FIXME: overlap with OnSelectionChanged
                 SelectionChangeEventPending = false;
                 var newControl = Manager.SelectedControl;
-                OnSelectionChange(newControl, true);
                 if (hadKeyboardSelection)
                     Context.OverrideKeyboardSelection(newControl, forUser: false);
             }
@@ -304,13 +341,12 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        private void SetTextDecorator (ref UIOperationContext context, Control child, ref bool hasPushed) {
-            var isSelected = Manager.SelectedControl == child;
+        private void SetTextDecorator (ref UIOperationContext context, Control child, bool isSelected, ref bool hasPushed) {
             if (hasPushed) {
                 UIOperationContext.PopTextDecorator(ref context);
                 hasPushed = false;
             }
-            if ((isSelected) && !child.Appearance.HasBackgroundColor) {
+            if (isSelected && !child.Appearance.HasBackgroundColor) {
                 UIOperationContext.PushTextDecorator(ref context, Context?.Decorations.Selection);
                 hasPushed = true;
             }
@@ -366,13 +402,6 @@ namespace Squared.PRGUI.Controls {
             if (ok && _OverrideHitTestResults && DisableItemHitTests)
                 result = this;
             return ok;
-        }
-
-        private void OnSelectionChange (Control newControl, bool fireEvent) {
-            // FIXME
-            // if ((fireEvent) && (previous != newControl))
-            if (fireEvent)
-                FireEvent(UIEvents.SelectionChanged, newControl);
         }
 
         private Control LocateContainingChild (Control control) {
@@ -457,8 +486,14 @@ namespace Squared.PRGUI.Controls {
                     var isClick = (name == UIEvents.Click);
                     if (isClick && (!EnableSelect || (control == Manager.SelectedControl)))
                         Context.FireEvent(name, control, args);
-                    if (EnableSelect)
-                        SetSelectedItem(newItem, true);
+                    if (EnableSelect) {
+                        if ((args.Modifiers.Control == !DefaultToggleOnClick) && (MaxSelectedCount > 1))
+                            TryToggleItemSelected(ref newItem, true);
+                        else if (args.Modifiers.Shift && (MaxSelectedCount > 1)) {
+                            TryExpandOrShrinkSelectionToItem(ref newItem, true);
+                        } else
+                            SetSelectedItem(newItem, true);
+                    }
                     return isClick;
                 } else {
                     // Console.WriteLine($"Selection not valid");
@@ -491,13 +526,27 @@ namespace Squared.PRGUI.Controls {
             UpdateKeyboardSelection(item, true);
         }
 
-        public bool AdjustSelection (int delta, bool clamp = true) {
-            if (Manager.TryAdjustSelection(delta, out T newItem, clamp: clamp)) {
-                SelectItemViaKeyboard(newItem);
-                return true;
-            }
+        public bool AdjustSelection (int delta, bool grow, bool forUser) {
+            if (delta == 0)
+                return false;
 
-            return false;
+            bool result, oneItemSelected = (Manager.MinSelectedIndex == Manager.MaxSelectedIndex);
+            T newItem;
+            if (grow || oneItemSelected) {
+                result = Manager.TryAdjustSelection(delta, out newItem, true);
+            } else {
+                int min = Manager.MinSelectedIndex, max = Manager.MaxSelectedIndex;
+                if (delta > 0) {
+                    Manager.ConstrainSelection(min + delta, max);
+                    newItem = Manager.Items[Manager.MaxSelectedIndex];
+                } else {
+                    Manager.ConstrainSelection(min, max + delta);
+                    newItem = Manager.Items[Manager.MinSelectedIndex];
+                }
+                result = true;
+            }
+            UpdateKeyboardSelection(newItem, forUser);
+            return result;
         }
 
         private bool OnKeyEvent (string name, KeyEventArgs args) {
@@ -505,6 +554,12 @@ namespace Squared.PRGUI.Controls {
                 return false;
             if (name != UIEvents.KeyPress)
                 return true;
+
+            var upward = (args.Key == Keys.Up) ||
+                (args.Key == Keys.PageUp) ||
+                (args.Key == Keys.Left);
+            var indexDirection = upward ? -1 : 1;
+            var growing = args.Modifiers.Shift && (Manager.LastGrowDirection != -indexDirection);
 
             switch (args.Key) {
                 case Keys.Home:
@@ -515,15 +570,13 @@ namespace Squared.PRGUI.Controls {
                     return true;
                 case Keys.PageUp:
                 case Keys.PageDown:
-                    return AdjustSelection(args.Key == Keys.PageUp ? -PageSize : PageSize, clamp: true);
+                    return AdjustSelection(PageSize * indexDirection, growing, true);
                 case Keys.Left:
                 case Keys.Right:
-                    if (ColumnCount <= 1)
-                        return false;
-                    return AdjustSelection(args.Key == Keys.Left ? -1 : 1);
+                    return AdjustSelection(indexDirection, growing, true);
                 case Keys.Up:
                 case Keys.Down:
-                    return AdjustSelection(args.Key == Keys.Up ? -ColumnCount : ColumnCount, clamp: false);
+                    return AdjustSelection(ColumnCount * indexDirection, growing, true);
                 default:
                     return false;
             }
@@ -531,31 +584,34 @@ namespace Squared.PRGUI.Controls {
 
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             var selectionDecorator = context.DecorationProvider.ListSelection;
-            var selectedControl = Manager.SelectedControl;
-            if (
-                (selectionDecorator != null) && (selectedControl != null)
-            ) {
-                var parentColumn = context.Layout.GetParent(selectedControl.LayoutKey);
-                var parentBox = context.Layout.GetContentRect(parentColumn);
-                var selectionBox = selectedControl.GetRect();
-                selectionBox.Top += selectionDecorator.Margins.Top;
-                selectionBox.Left = parentBox.Left + selectionDecorator.Margins.Left;
-                selectionBox.Height -= selectionDecorator.Margins.Y;
-                selectionBox.Width = parentBox.Width - selectionDecorator.Margins.X;
-
-                // HACK: Selection boxes are normally rasterized on the content layer, but we want to rasterize
-                //  the selection on the Below layer beneath items' decorations and content.
+            if (selectionDecorator != null) {
                 var oldPass = context.Pass;
                 context.Pass = RasterizePasses.Content;
-                var selectionSettings = new DecorationSettings {
-                    Box = selectionBox,
-                    ContentBox = selectionBox,
-                    State = settings.State
-                };
-                // FIXME
-                selectionDecorator.Rasterize(context, ref passSet.Below, selectionSettings);
-                context.Pass = oldPass;
 
+                foreach (var index in Manager._SelectedIndices) {
+                    var selectedControl = Manager.ControlForIndex(index);
+                    if (selectedControl == null)
+                        continue;
+
+                    var parentColumn = context.Layout.GetParent(selectedControl.LayoutKey);
+                    var parentBox = context.Layout.GetContentRect(parentColumn);
+                    var selectionBox = selectedControl.GetRect();
+                    selectionBox.Top += selectionDecorator.Margins.Top;
+                    selectionBox.Left = parentBox.Left + selectionDecorator.Margins.Left;
+                    selectionBox.Height -= selectionDecorator.Margins.Y;
+                    selectionBox.Width = parentBox.Width - selectionDecorator.Margins.X;
+
+                    // HACK: Selection boxes are normally rasterized on the content layer, but we want to rasterize
+                    //  the selection on the Below layer beneath items' decorations and content.
+                    var selectionSettings = new DecorationSettings {
+                        Box = selectionBox,
+                        ContentBox = selectionBox,
+                        State = settings.State
+                    };
+                    // FIXME
+                    selectionDecorator.Rasterize(context, ref passSet.Below, selectionSettings);
+                }
+                context.Pass = oldPass;
                 passSet.Below.Layer += 1;
             }
 
@@ -566,14 +622,16 @@ namespace Squared.PRGUI.Controls {
             lastOffset2 = -1;
 
         protected override bool RasterizeChild (
-            ref UIOperationContext context, Control item, ref RasterizePassSet passSet
+            ref UIOperationContext context, Control control, ref RasterizePassSet passSet
         ) {
-            bool temp = false;
-            SetTextDecorator(ref context, item, ref temp);
+            var itemIndex = Manager.IndexOfControl(control);
+            var isSelected = Manager.IsSelectedIndex(itemIndex);
+            bool hasPushed = false;
+            SetTextDecorator(ref context, control, isSelected, ref hasPushed);
             var result = base.RasterizeChild(
-                ref context, item, ref passSet
+                ref context, control, ref passSet
             );
-            if (temp)
+            if (hasPushed)
                 UIOperationContext.PopTextDecorator(ref context);
             return result;
         }

@@ -401,8 +401,16 @@ namespace PRGUI.Demo {
                 dropdown.Items.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });
 
             var virtualCheckbox = new Checkbox {
-                Text = "Virtual List",
+                Text = "Virt",
                 Checked = true
+            };
+            var multiselectCheckbox = new Checkbox {
+                Text = "Multi",
+                Checked = true
+            };
+            var toggleCheckbox = new Checkbox {
+                Text = "Toggle",
+                Checked = false
             };
             var columnCount = new Dropdown<int> {
                 Label = "Columns: {0}",
@@ -417,7 +425,9 @@ namespace PRGUI.Demo {
                 Width = { Fixed = 600 },
                 Height = { Fixed = 600 },
                 Virtual = virtualCheckbox.Checked,
-                ColumnCount = columnCount.SelectedItem
+                MaxSelectedCount = multiselectCheckbox.Checked ? 10 : 1,
+                DefaultToggleOnClick = toggleCheckbox.Checked,
+                ColumnCount = columnCount.SelectedItem,
             };
             for (var i = 0; i < itemCount; i++)
                 listBox.Items.Add($"# {i}");
@@ -511,6 +521,8 @@ namespace PRGUI.Demo {
                 },
                 Children = {
                     virtualCheckbox,
+                    multiselectCheckbox,
+                    toggleCheckbox,
                     columnCount,
                     listBox
                 }
@@ -770,7 +782,15 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(virtualCheckbox, UIEvents.CheckedChanged, (ei) => {
-                listBox.Virtual = virtualCheckbox.Checked;
+                listBox.MaxSelectedCount = virtualCheckbox.Checked ? 10 : 1;
+            });
+
+            Context.EventBus.Subscribe(multiselectCheckbox, UIEvents.CheckedChanged, (ei) => {
+                listBox.MaxSelectedCount = multiselectCheckbox.Checked ? 10 : 1;
+            });
+
+            Context.EventBus.Subscribe(toggleCheckbox, UIEvents.CheckedChanged, (ei) => {
+                listBox.DefaultToggleOnClick = toggleCheckbox.Checked;
             });
 
             Context.EventBus.Subscribe(largeText, UIEvents.CheckedChanged, (ei) => {

@@ -9,93 +9,297 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class ItemListManager<T> {
+        private class IndexComparer : IRefComparer<int>, IEqualityComparer<int> {
+            public static IndexComparer Instance = new IndexComparer();
+
+            public int Compare (ref int lhs, ref int rhs) {
+                return lhs.CompareTo(rhs);
+            }
+
+            public bool Equals (int lhs, int rhs) {
+                return lhs == rhs;
+            }
+
+            public int GetHashCode (int value) {
+                return value.GetHashCode();
+            }
+        }
+
+        public event Action SelectionChanged;
+
         public ItemList<T> Items;
         // FIXME: Handle set
         public IEqualityComparer<T> Comparer;
 
-        private T _SelectedItem;
-        private int _SelectedIndexVersion;
-        private int _SelectedIndex = -1;
+        private int _SelectionVersion;
+        /// <summary>
+        /// Don't mutate this! If you do you deserve the problems that will result!
+        /// </summary>
+        internal DenseList<int> _SelectedIndices;
+
+        private int _MaxSelectedCount = 1;
+        public int MaxSelectedCount {
+            get => _MaxSelectedCount;
+            set {
+                if (_MaxSelectedCount == value)
+                    return;
+                if (value < 0)
+                    value = 0;
+
+                _MaxSelectedCount = value;
+                // FIXME: Prune extra selected items on change
+            }
+        }
 
         public ItemListManager (IEqualityComparer<T> comparer) {
             Comparer = comparer;
             Items = new ItemList<T>(comparer);
+            _SelectedIndices.EnsureList();
         }
 
         public bool HasSelectedItem { get; private set; }
 
+        public int SelectedItemCount => _SelectedIndices.Count;
+
+        public bool IsSelectedIndex (int index) {
+            return _SelectedIndices.IndexOf(index, IndexComparer.Instance) >= 0;
+        }
+
+        public int IndexOfControl (Control child) {
+            if (!Items.GetValueForControl(child, out T value))
+                return -1;
+            return Items.IndexOf(ref value, Comparer);
+        }
+
+        public void Clear () {
+            Items.Clear();
+            _SelectedIndices.Clear();
+            OnSelectionChanged();
+            HasSelectedItem = false;
+        }
+
+        private void OnSelectionChanged () {
+            _SelectedIndices.Sort(IndexComparer.Instance);
+            if (SelectionChanged != null)
+                SelectionChanged();
+        }
+
         public T SelectedItem {
-            get => _SelectedItem;
+            get => _SelectedIndices.Count > 0 ? Items[_SelectedIndices[0]] : default(T);
             set {
-                if (Comparer.Equals(_SelectedItem, value))
+                if ((_SelectedIndices.Count == 1) && Comparer.Equals(Items[_SelectedIndices[0]], value))
                     return;
-                HasSelectedItem = true;
-                _SelectedItem = value;
-                _SelectedIndex = Items.IndexOf(ref value, Comparer);
-                _SelectedIndexVersion = Items.Version;
+                var newIndex = Items.IndexOf(ref value, Comparer);
+                if (newIndex < 0)
+                    throw new ArgumentException("Item not found in collection", "value");
+                _SelectedIndices.Clear();
+                _LastGrowDirection = 0;
+                _SelectionVersion++;
+                if (newIndex >= 0) {
+                    HasSelectedItem = true;
+                    _SelectedIndices.Add(newIndex);
+                }
             }
         }
 
         public int SelectedIndex {
-            get {
-                if (_SelectedIndexVersion == Items.Version)
-                    return _SelectedIndex;
-                _SelectedIndexVersion = Items.Version;
-                return _SelectedIndex = Items.IndexOf(ref _SelectedItem, Comparer);
-            }
+            get => _SelectedIndices.Count > 0 ? _SelectedIndices[0] : -1;
             set {
-                if (_SelectedIndex == value)
+                if ((value < 0) && (_SelectedIndices.Count == 0))
                     return;
-
-                _SelectedIndex = value;
-                if (value == -1) {
-                    _SelectedItem = default(T);
-                } else if ((value < 0) || (value >= Items.Count)) {
-                    throw new ArgumentOutOfRangeException("value");
-                } else {
+                if ((_SelectedIndices.Count == 1) && (_SelectedIndices[0] == value))
+                    return;
+                _SelectedIndices.Clear();
+                _SelectionVersion++;
+                _LastGrowDirection = 0;
+                if (value >= 0) {
                     HasSelectedItem = true;
-                    _SelectedItem = Items[value];
+                    _SelectedIndices.Add(value);
                 }
-                _SelectedIndexVersion = Items.Version;
             }
+        }
+
+        public Control ControlForIndex (int index) {
+            if ((index < 0) || (index >= Items.Count))
+                throw new IndexOutOfRangeException();
+            var item = Items[index];
+            Items.GetControlForValue(ref item, out Control result);
+            return result;
         }
 
         public Control SelectedControl =>
-            Items.GetControlForValue(ref _SelectedItem, out Control result)
+            Items.GetControlForValue(SelectedItem, out Control result)
                 ? result
                 : null;
 
-        public bool TryAdjustSelection (int delta, out T newItem, bool clamp = true) {
-            newItem = default(T);
-            if (Items.Count == 0)
+        private int _LastGrowDirection = 0;
+        public int LastGrowDirection => _LastGrowDirection;
+
+        public int MinSelectedIndex => _SelectedIndices.FirstOrDefault(-1);
+        public int MaxSelectedIndex => _SelectedIndices.LastOrDefault(-1);
+
+        public bool TryExpandOrShrinkSelectionToItem (ref T item) {
+            var newIndex = Items.IndexOf(ref item, Comparer);
+            if (newIndex < 0)
                 return false;
+            T temp;
+            var minIndex = _SelectedIndices.FirstOrDefault();
+            var maxIndex = _SelectedIndices.LastOrDefault();
+            var insideSelection = (newIndex >= minIndex) && (newIndex <= maxIndex);
+            var shrinkDirection = -_LastGrowDirection;
+            var shrinking = (_LastGrowDirection != 0) && (
+                insideSelection || (shrinkDirection != _LastGrowDirection)
+            );
 
-            var selectedIndex = SelectedIndex;
-            if (selectedIndex < 0)
-                selectedIndex = delta > 0 ? 0 : Items.Count - 1;
-            else
-                selectedIndex += delta;
-            if (clamp)
-                selectedIndex = Arithmetic.Clamp(selectedIndex, 0, Items.Count - 1);
+            if (shrinking) {
+                if (shrinkDirection == 0)
+                    return false;
+                else if (shrinkDirection < 0)
+                    ConstrainSelection(minIndex, newIndex);
+                else
+                    ConstrainSelection(newIndex, maxIndex);
+            }
 
-            if ((selectedIndex >= 0) && (selectedIndex < Items.Count)) {
-                newItem = Items[selectedIndex];
-                return true;
+            if (!insideSelection) {
+                var deltaSign = newIndex < minIndex
+                    ? -1
+                    : 1;
+                int delta = deltaSign < 0
+                    ? newIndex - minIndex
+                    : newIndex - maxIndex;
+
+                return TryAdjustSelection(delta, out temp, true);
             } else {
-                return false;
+                return true;
             }
         }
 
-        public bool TrySetSelectedItem (ref T value) {
-            if (Comparer.Equals(value, _SelectedItem))
+        public void ConstrainSelection (int minIndex, int maxIndex) {
+            for (int i = _SelectedIndices.Count - 1; i >= 0; i--) {
+                // FIXME: This should be impossible
+                if (i >= _SelectedIndices.Count)
+                    break;
+                var index = _SelectedIndices[i];
+                if ((index >= minIndex) && (index <= maxIndex))
+                    continue;
+                _SelectedIndices.RemoveAt(i);
+            }
+        }
+
+        public bool TryAdjustSelection (int delta, out T lastNewItem, bool grow = false) {
+            if (delta == 0) {
+                lastNewItem = SelectedItem;
                 return false;
+            }
+
+            if (Items.Count == 0) {
+                lastNewItem = default(T);
+                SelectedIndex = -1;
+                return false;
+            }
+
+            var deltaSign = Math.Sign(delta);
+
+            _SelectionVersion++;
+            if (_SelectedIndices.Count > 0) {
+                int pos = (delta > 0)
+                    ? _SelectedIndices.LastOrDefault()
+                    : _SelectedIndices.FirstOrDefault(),
+                    neg = (delta > 0)
+                        ? _SelectedIndices.FirstOrDefault()
+                        : _SelectedIndices.LastOrDefault();
+                int leadingEdge, newLeadingEdge;
+
+                if (grow) {
+                    leadingEdge = pos;
+                    newLeadingEdge = pos + delta;
+                } else {
+                    leadingEdge = neg;
+                    newLeadingEdge = neg + delta;
+                }
+                leadingEdge = Arithmetic.Clamp(leadingEdge, 0, Items.Count - 1);
+                newLeadingEdge = Arithmetic.Clamp(newLeadingEdge, 0, Items.Count - 1);
+
+                for (int i = leadingEdge + deltaSign, c = Items.Count; (i != newLeadingEdge) && (i >= 0) && (i < c); i += deltaSign) {
+                    if (grow)
+                        _SelectedIndices.Add(i);
+                    else {
+                        var indexOf = _SelectedIndices.IndexOf(i, IndexComparer.Instance);
+                        if (indexOf < 0)
+                            break;
+                        _SelectedIndices.RemoveAt(indexOf);
+                    }
+                }
+
+                if (grow)
+                    _SelectedIndices.Add(newLeadingEdge);
+                else {
+                    var indexOf = _SelectedIndices.IndexOf(newLeadingEdge, IndexComparer.Instance);
+                    if (indexOf >= 0)
+                        _SelectedIndices.RemoveAt(indexOf);
+                    else
+                        ;
+                }
+
+                if ((_LastGrowDirection == 0) || grow)
+                    _LastGrowDirection = deltaSign;
+                OnSelectionChanged();
+                lastNewItem = Items[newLeadingEdge];
+                return true;
+            } else {
+                int start = (delta < 0)
+                    ? Items.Count - delta
+                    : 0;
+                int end = (delta < 0)
+                    ? Items.Count - 1
+                    : delta;
+                for (int i = start; i != end; i += deltaSign)
+                    _SelectedIndices.Add(i);
+                _SelectedIndices.Add(end);
+                OnSelectionChanged();
+                lastNewItem = Items[end];
+                return true;
+            }
+        }
+
+        public bool TryToggleItemSelected (ref T item) {
+            if (Items.Count == 0) {
+                SelectedIndex = -1;
+                return false;
+            }
+
+            _SelectionVersion++;
+            var indexOf = Items.IndexOf(ref item, Comparer);
+            if (indexOf < 0)
+                return false;
+
+            _LastGrowDirection = 0;
+            var selectionIndexOf = _SelectedIndices.IndexOf(indexOf, IndexComparer.Instance);
+            if (selectionIndexOf < 0)
+                _SelectedIndices.Add(indexOf);
+            else
+                _SelectedIndices.RemoveAt(selectionIndexOf);
+
+            _SelectedIndices.Sort(IndexComparer.Instance);
+            OnSelectionChanged();
+            return true;
+        }
+
+        public bool TrySetSelectedItem (ref T value) {
+            var indexOfNewValue = Items.IndexOf(ref value, Comparer);
+            if (indexOfNewValue < 0)
+                return false;
+
+            if (
+                (indexOfNewValue >= 0) &&
+                (indexOfNewValue == SelectedIndex) && 
+                (_SelectedIndices.Count == 1)
+            )
+                return true;
             var indexOf = Items.IndexOf(ref value, Comparer);
             if (indexOf < 0)
                 return false;
-            _SelectedItem = value;
-            _SelectedIndex = indexOf;
-            _SelectedIndexVersion = Items.Version;
-            HasSelectedItem = true;
+            SelectedIndex = indexOf;
             return true;
         }
     }
@@ -103,7 +307,7 @@ namespace Squared.PRGUI.Controls {
     public class ItemList<T> : IEnumerable<T> {
         private List<T> Items = new List<T>();
         private readonly Dictionary<T, Control> ControlForValue;
-        private readonly Dictionary<Control, T> ValueForControl = 
+        private readonly Dictionary<Control, T> ValueForControl =
             new Dictionary<Control, T>(new ReferenceComparer<Control>());
 
         public ItemList (IEqualityComparer<T> comparer) 
