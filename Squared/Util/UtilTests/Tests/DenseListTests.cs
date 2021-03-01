@@ -248,5 +248,73 @@ namespace Squared.Util {
                 dl.ToArray()
             );
         }
+
+        [Test]
+        public void CloneWithList () {
+            var dl = new DenseList<int> { 1, 2, 3, 4, 5, 6 };
+            var cloned = dl.Clone();
+            cloned.Add(7);
+            Assert.IsTrue(cloned.HasList);
+            Assert.AreEqual(
+                new int[] { 1, 2, 3, 4, 5, 6 },
+                dl.ToArray()
+            );
+            Assert.AreEqual(
+                new int[] { 1, 2, 3, 4, 5, 6, 7 },
+                cloned.ToArray()
+            );
+        }
+
+        [Test]
+        public void CloneWithoutList () {
+            var dl = new DenseList<int> { 1, 2 };
+            var cloned = dl.Clone();
+            cloned.Add(3);
+            Assert.IsFalse(dl.HasList);
+            Assert.IsFalse(cloned.HasList);
+            Assert.AreEqual(
+                new int[] { 1, 2 },
+                dl.ToArray()
+            );
+            Assert.AreEqual(
+                new int[] { 1, 2, 3 },
+                cloned.ToArray()
+            );
+        }
+
+        [Test]
+        public void CopyToWithList () {
+            var dl = new DenseList<int> { 1, 2, 3, 4, 5, 6 };
+            var destination = new DenseList<int> { 7, 8, 9, 10, 11 };
+            dl.CopyTo(ref destination);
+            destination.Add(12);
+            Assert.IsTrue(destination.HasList);
+            Assert.AreEqual(
+                new int[] { 1, 2, 3, 4, 5, 6 },
+                dl.ToArray()
+            );
+            Assert.AreEqual(
+                new int[] { 7, 8, 9, 10, 11, 1, 2, 3, 4, 5, 6, 12 },
+                destination.ToArray()
+            );
+        }
+
+        [Test]
+        public void CopyToWithoutList () {
+            var dl = new DenseList<int> { 1 };
+            var destination = new DenseList<int> { 2, 3 };
+            dl.CopyTo(ref destination);
+            destination.Add(4);
+            Assert.IsFalse(dl.HasList);
+            Assert.IsFalse(destination.HasList);
+            Assert.AreEqual(
+                new int[] { 1},
+                dl.ToArray()
+            );
+            Assert.AreEqual(
+                new int[] { 2, 3, 1, 4 },
+                destination.ToArray()
+            );
+        }
     }
 }

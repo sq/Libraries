@@ -210,11 +210,39 @@ namespace Squared.Util {
             return output;
         }
 
+        public void CopyTo (ref DenseList<T> output) {
+            if (_HasList) {
+                if (output._HasList) {
+                    Items.CopyTo(output.Items);
+                } else {
+                    for (int i = 0, c = Items.Count; i < c; i++) {
+                        var item = this[i];
+                        output.Add(ref item);
+                    }
+                }
+            } else if (output._HasList) {
+                for (int i = 0, c = Count; i < c; i++) {
+                    var item = this[i];
+                    output.Items.Add(ref item);
+                }
+            } else {
+                for (int i = 0, c = Count; i < c; i++) {
+                    var item = this[i];
+                    output.Add(ref item);
+                }
+            }
+        }
+
         public void Clone (out DenseList<T> output) {
             if (_HasList) {
                 output = default(DenseList<T>);
-                output._HasList = true;
-                var newItems = output.Items = new UnorderedList<T>(Items.Count);
+                UnorderedList<T> newItems;
+                if (output._HasList) {
+                    newItems = output.Items;
+                } else {
+                    newItems = output.Items = new UnorderedList<T>(Items.Count);
+                    output._HasList = true;
+                }
                 Items.CopyTo(newItems);
             } else {
                 output = this;
@@ -382,6 +410,26 @@ namespace Squared.Util {
                 return Items.DangerousGetItem(0);
             else
                 return Storage.Item1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T LastOrDefault () {
+            if (Count <= 0)
+                return default(T);
+            else if (_HasList)
+                return Items.DangerousGetItem(Items.Count - 1);
+            else
+                return this[Count - 1];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T LastOrDefault (T defaultValue) {
+            if (Count <= 0)
+                return defaultValue;
+            else if (_HasList)
+                return Items.DangerousGetItem(Items.Count - 1);
+            else
+                return this[Count - 1];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
