@@ -129,15 +129,17 @@ namespace Squared.Render.RasterShape {
 
     public struct RasterTextureSettings {
         public SamplerState SamplerState;
+        private int ShadowMode;
         internal Vector4 ModeAndSize;
         internal Vector4 Placement;
 
         public RasterTextureCompositeMode Mode {
             get {
-                return (RasterTextureCompositeMode)(int)ModeAndSize.X;
+                return (RasterTextureCompositeMode)ShadowMode;
             }
             set {
-                ModeAndSize.X = (float)(int)value;
+                ShadowMode = (int)value;
+                ModeAndSize.X = (float)ShadowMode;
             }
         }
 
@@ -182,7 +184,7 @@ namespace Squared.Render.RasterShape {
 
         public override int GetHashCode () {
             return (SamplerState?.GetHashCode() ?? 0) |
-                ModeAndSize.GetHashCode() |
+                ShadowMode.GetHashCode() |
                 Placement.GetHashCode();
         }
 
