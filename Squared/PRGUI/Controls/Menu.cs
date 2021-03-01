@@ -520,7 +520,7 @@ namespace Squared.PRGUI.Controls {
             return NextResultFuture;
         }
 
-        private Vector2 AdjustPosition (UIContext context, Vector2 desiredPosition) {
+        private Vector2 AdjustPosition (UIContext context, Vector2 desiredPosition, Vector2 localAlignment) {
             var decorator = GetDecorator(context.Decorations, null);
 
             // HACK city: Need an operation context to compute margins
@@ -536,9 +536,11 @@ namespace Squared.PRGUI.Controls {
             //  with any anchor point
             desiredPosition -= new Vector2(computedMargins.Left, computedMargins.Top);
             // Move ourselves into place and perform layout to figure out how big we are, etc
+            // FIXME: localAlignment
             Position = desiredPosition;
             context.UpdateSubtreeLayout(this);
             var box = GetRect(context: context);
+            var localAlignmentOffset = localAlignment * box.Size;
             // HACK: We'd want to use margin.Right/Bottom here normally, but compensation has already
             //  been applied somewhere in the layout engine for the top/left margins so we need to
             //  cancel them out again
@@ -562,25 +564,24 @@ namespace Squared.PRGUI.Controls {
 
             // Align the top-left corner of the menu with the target position (compensating for margin),
             //  then shift the menu around if necessary to keep it on screen
-            var adjustedPosition = AdjustPosition(context, (position ?? context.LastInputState.CursorPosition));
+            var adjustedPosition = AdjustPosition(context, (position ?? context.LastInputState.CursorPosition), Vector2.Zero);
 
             return ShowInternalEpilogue(context, adjustedPosition, selectedItem);
         }
 
-        public Future<Control> Show (UIContext context, RectF anchorBox, Control selectedItem = null) {
+        public Future<Control> Show (UIContext context, RectF anchorBox, Vector2? anchorAlignment = null, Vector2? localAlignment = null, Control selectedItem = null) {
             ShowInternalPrologue(context);
-            var adjustedPosition = AdjustPosition(
-                context, new Vector2(anchorBox.Left, anchorBox.Top + anchorBox.Height)
-            );
+            var idealPosition = anchorBox.Position + (anchorBox.Size * (anchorAlignment ?? new Vector2(0, 1)));
+            var adjustedPosition = AdjustPosition(context, idealPosition, localAlignment ?? Vector2.Zero);
 
             return ShowInternalEpilogue(context, adjustedPosition, selectedItem);
         }
 
-        public Future<Control> Show (UIContext context, Control anchor, Control selectedItem = null) {
+        public Future<Control> Show (UIContext context, Control anchor, Vector2? anchorAlignment = null, Vector2? localAlignment = null, Control selectedItem = null) {
             ShowInternalPrologue(context);
 
             var anchorBox = anchor.GetRect(context: context);
-            return Show(context, anchorBox, selectedItem);
+            return Show(context, anchorBox, anchorAlignment, localAlignment, selectedItem);
         }
 
         public void Close () {

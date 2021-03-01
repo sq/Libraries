@@ -19,7 +19,12 @@ namespace Squared.PRGUI.Controls {
         void EnsureAligned (UIOperationContext context, ref bool relayoutRequested);
     }
 
-    public class Window : TitledContainer, IPartiallyIntangibleControl, IAlignedControl {
+    public class ControlAlignmentHelper {
+        public delegate bool UpdatePositionHandler (Vector2 newPosition, ref RectF parentRect, ref RectF rect, bool updateDesiredPosition);
+
+        public UpdatePositionHandler UpdatePosition;
+        public Func<bool> IsAnimating, IsLocked;
+
         private Vector2 _Alignment = Vector2.One * 0.5f;
         /// <summary>
         /// Configures what point on the screen (or the anchor, if set) [0 - 1] is used as the center for this window
@@ -33,7 +38,7 @@ namespace Squared.PRGUI.Controls {
         /// <summary>
         /// Configures what point on the anchor [0 - 1] is used as the center for alignment
         /// </summary>
-        public Vector2 AlignmentAnchorPoint {
+        public Vector2 AnchorPoint {
             get => _AlignmentAnchorPoint;
             set => _AlignmentAnchorPoint = value;
         }
@@ -42,30 +47,159 @@ namespace Squared.PRGUI.Controls {
         /// <summary>
         /// If set, alignment will be relative to this control
         /// </summary>
-        public Control AlignmentAnchor {
+        public Control Anchor {
             get => _AlignmentAnchor;
             set => _AlignmentAnchor = value;
         }
 
-        private Vector2? _DesiredPosition;
-        public Vector2 Position {
-            get => base.Layout.FloatingPosition;
-            set {
-                _WasPositionSetByUser = false;
-                SetPosition(value, true);
-            }
+        Vector2 _LastSize;
+        RectF _LastAnchorRect, _LastParentRect;
+
+        public bool WasPositionSetByUser;
+        public bool AlignmentPending = false;
+        public Vector2? MostRecentAlignedPosition = null;
+        public bool ComputeNewAlignment = false;
+
+        public Vector2? DesiredPosition;
+
+        public Control Control { get; private set; }
+
+        public ControlAlignmentHelper (Control host) {
+            Control = host;
         }
 
-        private bool SetPosition (Vector2 value, bool updateDesiredPosition) {
+        public bool SetPosition (Vector2 value, bool updateDesiredPosition) {
             if (updateDesiredPosition)
-                _DesiredPosition = value;
+                DesiredPosition = value;
 
-            if (base.Layout.FloatingPosition != value) {
-                base.Layout.FloatingPosition = value;
+            if (Control.Layout.FloatingPosition != value) {
+                Control.Layout.FloatingPosition = value;
                 return true;
             }
 
             return false;
+        }
+
+        public void GetParentContentRect (out RectF result) {
+            if (!Control.TryGetParent(out Control parent))
+                result = Control.Context.CanvasRect;
+            else
+                result = parent.GetRect(contentRect: true);
+        }
+
+        public bool Align (ref UIOperationContext context, RectF parentRect, RectF rect, bool updateDesiredPosition) {
+            // Computed?
+            var margins = Control.Margins;
+
+            if (_AlignmentAnchor != null) {
+                // FIXME: Adjust on appropriate sides
+                rect.Size += margins.Size;
+                var anchorRect = Anchor.GetRect();
+                var anchorPosition = ((_AlignmentAnchor as IAlignedControl)?.AlignedPosition) ?? anchorRect.Position;
+                var anchorCenter = anchorPosition + (anchorRect.Size * AnchorPoint);
+                anchorRect.Size -= margins.Size;
+                var offset = (rect.Size * Alignment);
+                var result = anchorCenter - offset - parentRect.Position;
+                MostRecentAlignedPosition = anchorCenter - offset;
+                return SetPosition(result, updateDesiredPosition);
+            } else {
+                // HACK
+                parentRect.Left += margins.Left;
+                parentRect.Top += margins.Top;
+                parentRect.Size -= margins.Size;
+
+                var availableSpace = (parentRect.Size - rect.Size);
+                if (availableSpace.X < 0)
+                    availableSpace.X = 0;
+                if (availableSpace.Y < 0)
+                    availableSpace.Y = 0;
+                var result = availableSpace * Alignment;
+                MostRecentAlignedPosition = result + parentRect.Position;
+                return SetPosition(result, updateDesiredPosition);
+            }
+        }
+
+        public void EnsureAligned (UIOperationContext context, ref bool relayoutRequested) {
+            AlignmentPending = false;
+
+            GetParentContentRect(out RectF parentRect);
+            var rect = Control.GetRect(applyOffset: false);
+
+            if (_AlignmentAnchor != null) {
+                if (_AlignmentAnchor is IAlignedControl iac)
+                    iac.EnsureAligned(context, ref relayoutRequested);
+
+                var anchorRect = _AlignmentAnchor.GetRect();
+                if (anchorRect != _LastAnchorRect) {
+                    _LastAnchorRect = anchorRect;
+                    relayoutRequested = true;
+                }
+            }
+
+            // Handle the cases where our parent's size or our size have changed
+            if (
+                // We only want to realign in the event of a size change if our current position
+                //  is based on alignment and not user drags, otherwise expanding a collapsed window
+                //  will cause it to move out from under the mouse
+                ((_LastSize != rect.Size) && !WasPositionSetByUser) || 
+                (_LastParentRect != parentRect)
+            ) {
+                relayoutRequested = true;
+            }
+            _LastSize = rect.Size;
+            _LastParentRect = parentRect;
+
+            if (WasPositionSetByUser) {
+                MostRecentAlignedPosition = null;
+
+                if (UpdatePosition(DesiredPosition ?? Control.Layout.FloatingPosition, ref parentRect, ref rect, false))
+                    relayoutRequested = true;
+
+                var availableSpace = (parentRect.Size - rect.Size);
+                if (ComputeNewAlignment)
+                    Alignment = (Control.Layout.FloatingPosition - parentRect.Position) / availableSpace;
+            } else if (((IsAnimating == null) || !IsAnimating()) && (!relayoutRequested || (_AlignmentAnchor != null))) {
+                relayoutRequested |= Align(ref context, parentRect, rect, true);
+            } else if ((IsLocked == null) || !IsLocked()) {
+                relayoutRequested |= Align(ref context, parentRect, rect, false);
+            } else {
+                MostRecentAlignedPosition = null;
+            }
+        }
+    }
+
+    public class Window : TitledContainer, IPartiallyIntangibleControl, IAlignedControl {
+        protected ControlAlignmentHelper Aligner;
+
+        /// <summary>
+        /// Configures what point on the screen (or the anchor, if set) [0 - 1] is used as the center for this window
+        /// </summary>
+        public Vector2 Alignment {
+            get => Aligner.Alignment;
+            set => Aligner.Alignment = value;
+        }
+
+        /// <summary>
+        /// Configures what point on the anchor [0 - 1] is used as the center for alignment
+        /// </summary>
+        public Vector2 AlignmentAnchorPoint {
+            get => Aligner.AnchorPoint;
+            set => Aligner.AnchorPoint = value;
+        }
+
+        /// <summary>
+        /// If set, alignment will be relative to this control
+        /// </summary>
+        public Control AlignmentAnchor {
+            get => Aligner.Anchor;
+            set => Aligner.Anchor = value;
+        }
+
+        public Vector2 Position {
+            get => base.Layout.FloatingPosition;
+            set {
+                Aligner.SetPosition(value, true);
+            }
         }
 
         private bool _DesiredCollapsible;
@@ -81,18 +215,11 @@ namespace Squared.PRGUI.Controls {
         public bool AllowDrag = true;
         public bool AllowMaximize = false;
 
-        private bool _AlignmentPending = false;
-        private Vector2? _MostRecentAlignedPosition = null;
-        private bool ComputeNewAlignment = false;
         private bool Dragging, DragStartedMaximized;
         private Vector2 DragStartMousePosition, DragStartWindowPosition;
         private RectF MostRecentUnmaximizedRect;
 
         private bool _Maximized;
-
-        Vector2 _LastSize;
-        RectF _LastAnchorRect, _LastParentRect;
-        bool _WasPositionSetByUser;
 
         public bool Maximized {
             get => _Maximized;
@@ -106,6 +233,11 @@ namespace Squared.PRGUI.Controls {
 
         public Window ()
             : base () {
+            Aligner = new ControlAlignmentHelper(this) {
+                UpdatePosition = UpdatePosition,
+                IsAnimating = () => CollapsePending,
+                IsLocked = () => _Maximized
+            };
             AcceptsMouseInput = true;
             LayoutFlags = default(ControlFlags);
             Layout.Floating = true;
@@ -126,7 +258,7 @@ namespace Squared.PRGUI.Controls {
                 ExtraContainerFlags = Scrollable
                     ? default(ControlFlags)
                     : ControlFlags.Container_Constrain_Size;
-                _AlignmentPending = true;
+                Aligner.AlignmentPending = true;
                 return base.OnGenerateLayoutTree(ref context, parent, existingKey);
             } finally {
                 if (Collapsed)
@@ -141,109 +273,15 @@ namespace Squared.PRGUI.Controls {
         protected override IDecorator GetTitleDecorator (UIOperationContext context) {
             return context.DecorationProvider?.WindowTitle ?? base.GetTitleDecorator(context);
         }
-
-        private bool Align (ref UIOperationContext context, RectF parentRect, RectF rect, bool updateDesiredPosition) {
-            // Computed?
-            var margins = Margins;
-
-            if (_AlignmentAnchor != null) {
-                // FIXME: Adjust on appropriate sides
-                rect.Size += margins.Size;
-                var anchorRect = _AlignmentAnchor.GetRect();
-                var anchorPosition = ((_AlignmentAnchor as IAlignedControl)?.AlignedPosition) ?? anchorRect.Position;
-                var anchorCenter = anchorPosition + (anchorRect.Size * _AlignmentAnchorPoint);
-                anchorRect.Size -= margins.Size;
-                var offset = (rect.Size * _Alignment);
-                var result = anchorCenter - offset - parentRect.Position;
-                _MostRecentAlignedPosition = anchorCenter - offset;
-                return SetPosition(result, updateDesiredPosition);
-            } else {
-                // HACK
-                parentRect.Left += margins.Left;
-                parentRect.Top += margins.Top;
-                parentRect.Size -= margins.Size;
-
-                var availableSpace = (parentRect.Size - rect.Size);
-                if (availableSpace.X < 0)
-                    availableSpace.X = 0;
-                if (availableSpace.Y < 0)
-                    availableSpace.Y = 0;
-                var result = availableSpace * _Alignment;
-                _MostRecentAlignedPosition = result + parentRect.Position;
-                return SetPosition(result, updateDesiredPosition);
-            }
-        }
-
-        private void EnsureAligned (UIOperationContext context, ref bool relayoutRequested) {
-            _AlignmentPending = false;
-
-            var parentRect = GetParentContentRect();
-            var rect = GetRect(applyOffset: false);
-
-            if (_AlignmentAnchor != null) {
-                if (_AlignmentAnchor is IAlignedControl iac)
-                    iac.EnsureAligned(context, ref relayoutRequested);
-
-                var anchorRect = _AlignmentAnchor.GetRect();
-                if (anchorRect != _LastAnchorRect) {
-                    _LastAnchorRect = anchorRect;
-                    relayoutRequested = true;
-                }
-            }
-
-            // Handle the cases where our parent's size or our size have changed
-            if (
-                // We only want to realign in the event of a size change if our current position
-                //  is based on alignment and not user drags, otherwise expanding a collapsed window
-                //  will cause it to move out from under the mouse
-                ((_LastSize != rect.Size) && !_WasPositionSetByUser) || 
-                (_LastParentRect != parentRect)
-            ) {
-                relayoutRequested = true;
-            }
-            _LastSize = rect.Size;
-            _LastParentRect = parentRect;
-
-            // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
-            if (!Maximized && MostRecentFullSize.HasValue)
-                MostRecentUnmaximizedRect = MostRecentFullSize.Value;
-
-            if (_WasPositionSetByUser) {
-                _MostRecentAlignedPosition = null;
-
-                if (UpdatePosition(_DesiredPosition ?? Position, ref parentRect, ref rect, false))
-                    relayoutRequested = true;
-
-                var availableSpace = (parentRect.Size - rect.Size);
-                if (ComputeNewAlignment)
-                    _Alignment = (Position - parentRect.Position) / availableSpace;
-
-            } else if (!CollapsePending && (!relayoutRequested || (_AlignmentAnchor != null))) {
-                relayoutRequested |= Align(ref context, parentRect, rect, true);
-            } else if (!_Maximized) {
-                relayoutRequested |= Align(ref context, parentRect, rect, false);
-            } else {
-                _MostRecentAlignedPosition = null;
-            }
-        }
-
+        
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
-            EnsureAligned(context, ref relayoutRequested);
+            Aligner.EnsureAligned(context, ref relayoutRequested);
 
             // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
             if (!Maximized && MostRecentFullSize.HasValue)
                 MostRecentUnmaximizedRect = MostRecentFullSize.Value;
-        }
-
-        private RectF GetParentContentRect () {
-            RectF parentRect;
-            if (!TryGetParent(out Control parent))
-                parentRect = Context.CanvasRect;
-            else
-                parentRect = parent.GetRect(contentRect: true);
-            return parentRect;
         }
 
         private bool UpdatePosition (Vector2 newPosition, ref RectF parentRect, ref RectF box, bool updateDesiredPosition) {
@@ -258,7 +296,7 @@ namespace Squared.PRGUI.Controls {
             var changed = Position != newPosition;
 
             // context.Log($"Window position {Position} -> {newPosition}");
-            SetPosition(newPosition, updateDesiredPosition);
+            Aligner.SetPosition(newPosition, updateDesiredPosition);
 
             return changed;
         }
@@ -304,19 +342,19 @@ namespace Squared.PRGUI.Controls {
                 if (shouldUnmaximize) {
                     // FIXME: Scale the mouse anchor based on the new size vs the old maximized size
                     Maximized = false;
-                    var parentRect = GetParentContentRect();
+                    Aligner.GetParentContentRect(out RectF parentRect);
                     UpdatePosition(newPosition, ref parentRect, ref MostRecentUnmaximizedRect, true);
-                    ComputeNewAlignment = true;
+                    Aligner.ComputeNewAlignment = true;
                 } else if (shouldMaximize || Maximized) {
                     Maximized = true;
                     SetCollapsed(false, instant: true);
                 } else {
-                    var parentRect = GetParentContentRect();
+                    Aligner.GetParentContentRect(out RectF parentRect);
                     var didDrag = Dragging && (delta.Length() >= 2);
                     UpdatePosition(newPosition, ref parentRect, ref args.Box, didDrag);
                     if (didDrag)
-                        _WasPositionSetByUser = true;
-                    ComputeNewAlignment = didDrag;
+                        Aligner.WasPositionSetByUser = true;
+                    Aligner.ComputeNewAlignment = didDrag;
                 }
 
                 FireEvent(UIEvents.Moved);
@@ -340,13 +378,13 @@ namespace Squared.PRGUI.Controls {
 
         bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) => false;
 
-        Vector2? IAlignedControl.AlignedPosition => _MostRecentAlignedPosition;
+        Vector2? IAlignedControl.AlignedPosition => Aligner.MostRecentAlignedPosition;
 
         void IAlignedControl.EnsureAligned (UIOperationContext context, ref bool relayoutRequested) {
-            if (!_AlignmentPending) {
+            if (!Aligner.AlignmentPending) {
                 return;
             } else {
-                EnsureAligned(context, ref relayoutRequested);
+                Aligner.EnsureAligned(context, ref relayoutRequested);
             }
         }
     }
