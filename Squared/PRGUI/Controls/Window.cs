@@ -30,17 +30,17 @@ namespace Squared.PRGUI.Controls {
         /// <summary>
         /// Configures what point on the control [0 - 1] is aligned onto the anchor point
         /// </summary>
-        public Vector2 ControlAlignmentPoint { get; set; }
+        public Vector2 ControlAlignmentPoint { get; set; } = new Vector2(0.5f, 0.5f);
 
         /// <summary>
         /// Configures what point on the anchor [0 - 1] is used as the center for alignment
         /// </summary>
-        public Vector2 AnchorPoint { get; set; }
+        public Vector2 AnchorPoint { get; set; } = new Vector2(0.5f, 0.5f);
 
         /// <summary>
         /// If set, alignment will be relative to this control. Otherwise, the screen will be used.
         /// </summary>
-        public Control Anchor { get; set; }
+        public Control Anchor { get; set; } = null;
 
         Vector2 _LastSize;
         RectF _LastAnchorRect, _LastParentRect;

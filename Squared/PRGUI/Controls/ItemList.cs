@@ -199,7 +199,7 @@ namespace Squared.PRGUI.Controls {
                 if (shrinkDirection == 0)
                     return false;
                 else if (shrinkDirection < 0)
-                    ConstrainSelection(minIndex, minIndex);
+                    ConstrainSelection(minIndex, newIndex);
                 else
                     ConstrainSelection(maxIndex, newIndex);
             }

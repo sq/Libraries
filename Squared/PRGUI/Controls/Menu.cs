@@ -708,8 +708,8 @@ namespace Squared.PRGUI.Controls {
         public void Add (Control child) => Children.Add(child);
 
         bool IModal.BlockHitTests => false;
-        bool IModal.BlockInput => false;
-        bool IModal.RetainFocus => false;
+        bool IModal.BlockInput => !CloseOnClickOutside;
+        bool IModal.RetainFocus => !CloseOnClickOutside && !CloseWhenFocusLost;
         bool IModal.OnUnhandledEvent (string name, Util.Event.IEventInfo args) => false;
         bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) => false;
 

@@ -1060,7 +1060,7 @@ namespace Squared.PRGUI {
             var mouseWheelDelta = _CurrentInput.WheelValue - _LastInput.WheelValue;
 
             if (mouseWheelDelta != 0)
-                HandleScroll(previouslyCaptured ?? MouseOverLoose, mouseWheelDelta);
+                HandleScroll(MouseOverLoose ?? previouslyCaptured, mouseWheelDelta);
 
             TickControl(KeyboardSelection, mousePosition, mouseDownPosition);
             if (Hovering != KeyboardSelection)
