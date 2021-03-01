@@ -42,6 +42,23 @@ namespace Squared.Util {
         }
 
         [Test]
+        public void RemoveAtOrdered () {
+            var l = new UnorderedList<int>(new int[] { 1, 2, 3, 4, 5 });
+
+            l.RemoveAtOrdered(1);
+            Assert.AreEqual(
+                new int[] { 1, 3, 4, 5 },
+                l.ToArray()
+            );
+
+            l.RemoveAtOrdered(2);
+            Assert.AreEqual(
+                new int[] { 1, 3, 5 },
+                l.ToArray()
+            );
+        }
+
+        [Test]
         public void Clear () {
             var l = new UnorderedList<int>(new int[] { 1, 2 });
 

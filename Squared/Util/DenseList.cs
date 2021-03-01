@@ -595,7 +595,7 @@ namespace Squared.Util {
                 Storage.Count--;
             } else {
                 EnsureList();
-                Items.DangerousRemoveAtOrdered(index);
+                Items.RemoveAtOrdered(index);
             }
         }
 

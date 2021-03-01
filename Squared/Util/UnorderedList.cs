@@ -393,21 +393,14 @@ namespace Squared.Util {
             _Count = newCount;
         }
 
-        public void DangerousRemoveAtOrdered (int index) {
+        public void RemoveAtOrdered (int index) {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();
 
-            var newCount = _Count - 1;
-
-            if (index < newCount) {
-                for (int i = index; i < newCount; i++)
-                    _Items[_BufferOffset + i] = _Items[_BufferOffset + i + 1];
-                _Items[_BufferOffset + newCount] = default(T);
-            } else {
-                _Items[_BufferOffset + index] = default(T);
-            }
-
-            _Count = newCount;
+            _Count--;
+            if (index < _Count)
+                Array.Copy(_Items, _BufferOffset + index + 1, _Items, _BufferOffset + index, _Count - index);
+            _Items[_BufferOffset + _Count] = default(T);
         }
 
         public void DangerousRemoveRange (int index, int count) {
@@ -446,7 +439,7 @@ namespace Squared.Util {
             }
 
             result = _Items[_BufferOffset + 0];
-            DangerousRemoveAtOrdered(0);
+            RemoveAtOrdered(0);
             return true;
         }
 
