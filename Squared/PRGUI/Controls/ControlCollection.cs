@@ -91,7 +91,7 @@ namespace Squared.PRGUI {
             if (Parent != null)
                 control.SetParent(Parent);
             else
-                control.SetContext(Context);
+                control.Context = Context;
 
             Items.Insert(index, control);
             UpdateIndexTable(index);
@@ -106,7 +106,7 @@ namespace Squared.PRGUI {
             if (Parent != null)
                 control.SetParent(Parent);
             else
-                control.SetContext(Context);
+                control.Context = Context;
 
             var newIndex = Items.Count;
             Items.Add(control);

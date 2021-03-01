@@ -763,17 +763,16 @@ namespace Squared.PRGUI {
             NotifyModalShown(modal);
         }
 
-        public bool CloseActiveModal () {
+        public bool CloseActiveModal (bool force = false) {
             if (ModalStack.Count <= 0)
                 return false;
-            return CloseModal(ModalStack[ModalStack.Count - 1]);
+            return CloseModal(ModalStack[ModalStack.Count - 1], force);
         }
 
-        public bool CloseModal (IModal modal) {
+        public bool CloseModal (IModal modal, bool force = false) {
             if (!ModalStack.Contains(modal))
                 return false;
-            modal.Close();
-            return true;
+            return modal.Close(force);
         }
 
         public void NotifyModalShown (IModal modal) {

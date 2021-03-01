@@ -57,10 +57,12 @@ namespace Squared.PRGUI.Controls {
 
         private Control _SelectedItem;
 
-        public bool DeselectOnMouseLeave = true;
-        public bool CloseWhenFocusLost = true;
-        public bool CloseWhenItemChosen = true;
-        public bool CloseOnClickOutside = true;
+        public bool AllowProgrammaticClose { get; set; } = true;
+        public bool DeselectOnMouseLeave { get; set; } = true;
+        public bool CloseWhenFocusLost { get; set; } = true;
+        public bool CloseWhenItemChosen { get; set; } = true;
+        public bool CloseOnEscapePress { get; set; } = true;
+        public bool CloseOnClickOutside { get; set; } = true;
 
         public override int ColumnCount {
             get => base.ColumnCount;
@@ -254,7 +256,7 @@ namespace Squared.PRGUI.Controls {
                 if ((item != this) && !Children.Contains(item)) {
                     if (CloseOnClickOutside) {
                         Context.ReleaseCapture(this, FocusDonor);
-                        Close();
+                        Close(true);
                     }
                     return true;
                 }
@@ -277,7 +279,7 @@ namespace Squared.PRGUI.Controls {
                 } else if (item != null) {
                     return ChooseItem(item);
                 } else if (CloseOnClickOutside) {
-                    Close();
+                    Close(true);
                 }
             }
 
@@ -295,7 +297,7 @@ namespace Squared.PRGUI.Controls {
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
             else if (name == UIEvents.LostFocus) {
                 if (CloseWhenFocusLost)
-                    Close();
+                    Close(true);
             } else if (args is KeyEventArgs)
                 return OnKeyEvent(name, (KeyEventArgs)(object)args);
             else
@@ -343,7 +345,8 @@ namespace Squared.PRGUI.Controls {
 
             switch (args.Key) {
                 case Keys.Escape:
-                    Close();
+                    if (CloseOnEscapePress)
+                        Close(true);
                     return true;
                 case Keys.Space:
                 case Keys.Enter:
@@ -446,7 +449,7 @@ namespace Squared.PRGUI.Controls {
             Context.FireEvent(UIEvents.Click, item, args);
             if (CloseWhenItemChosen) {
                 SetResult(item);
-                Close();
+                Close(true);
             } else {
                 Context.RetainCapture(this);
             }
@@ -461,7 +464,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void ShowInternalPrologue (UIContext context) {
-            SetContext(context);
+            Context = context;
             // Ensure we have run a generate pass for our dynamic content before doing anything
             GenerateDynamicContent(true);
 
@@ -605,6 +608,7 @@ namespace Squared.PRGUI.Controls {
             Vector2? anchorPoint = null, Vector2? controlAlignmentPoint = null, 
             Control selectedItem = null
         ) {
+            Context = anchor.Context ?? context;
             ShowInternalPrologue(context);
 
             _FocusDonor = anchor;
@@ -615,9 +619,11 @@ namespace Squared.PRGUI.Controls {
             return ShowInternalEpilogue(context, selectedItem);
         }
 
-        public void Close () {
+        public bool Close (bool force = false) {
             if (!IsActive)
-                return;
+                return false;
+            if (!AllowProgrammaticClose && !force)
+                return false;
             IsActive = false;
             Intangible = true;
             StartAnimation(Context.Animations?.HideMenu);
@@ -629,6 +635,7 @@ namespace Squared.PRGUI.Controls {
                 NextResultFuture?.SetResult2(null, null);
             AcceptsFocus = false;
             _FocusDonor = null;
+            return true;
         }
 
         StringBuilder TextBuilder = new StringBuilder();

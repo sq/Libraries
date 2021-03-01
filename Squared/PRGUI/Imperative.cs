@@ -232,7 +232,7 @@ namespace Squared.PRGUI.Imperative {
             ContainerBase container;
             if (instance == null) {
                 instance = new TControl();
-                instance.SetContext(Control.Context);
+                instance.Context = Control.Context;
                 result = new ContainerBuilder(instance);
             } else if ((container = (instance as ContainerBase)) != null) {
                 container.EnsureDynamicBuilderInitialized(out result);

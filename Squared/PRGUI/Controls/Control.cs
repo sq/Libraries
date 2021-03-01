@@ -275,12 +275,22 @@ namespace Squared.PRGUI {
                 if (TryGetParent(out Control parent)) {
                     var result = parent.Context;
                     if (result != null) {
-                        SetContext(result);
+                        Context = result;
                         return result;
                     }
                 }
 
                 return null;
+            }
+            set {
+                if (_CachedContext == value)
+                    return;
+
+                if ((_CachedContext != null) && (_CachedContext != value))
+                    throw new InvalidOperationException("UI context already set");
+
+                _CachedContext = value;
+                InitializeForContext();
             }
         }
 
@@ -1078,17 +1088,6 @@ namespace Squared.PRGUI {
             LayoutKey = ControlKey.Invalid;
         }
 
-        internal void SetContext (UIContext context) {
-            if (_CachedContext == context)
-                return;
-
-            if ((_CachedContext != null) && (_CachedContext != context))
-                throw new InvalidOperationException("UI context already set");
-
-            _CachedContext = context;
-            InitializeForContext();
-        }
-
         internal void SetParent (Control parent) {
             if (parent == null) {
                 WeakParent = null;
@@ -1105,7 +1104,7 @@ namespace Squared.PRGUI {
 
             InvalidateLayout();
             WeakParent = new WeakReference<Control>(parent, false);
-            SetContext(parent.Context);
+            Context = parent.Context;
         }
 
         internal void UnsetParent (Control oldParent) {

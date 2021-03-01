@@ -34,8 +34,17 @@ namespace Squared.PRGUI {
         /// While this modal is active, any controls beneath it will fade out.
         /// </summary>
         bool FadeBackground { get; }
+        /// <summary>
+        /// The modal allows programmatic closing (with Close()). You can still override this with force: true
+        /// </summary>
+        bool AllowProgrammaticClose { get; }
         void Show (UIContext context);
-        void Close ();
+        /// <summary>
+        /// Attempts to close the modal.
+        /// </summary>
+        /// <param name="force">Overrides any preference for the modal not to close.</param>
+        /// <returns>true if the modal was successfully closed.</returns>
+        bool Close (bool force);
         bool OnUnhandledKeyEvent (string name, KeyEventArgs args);
         bool OnUnhandledEvent (string name, IEventInfo args);
     }

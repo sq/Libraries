@@ -123,7 +123,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public Future<TResult> Show (UIContext context, Control focusDonor = null) {
-            SetContext(context);
+            Context = context;
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
             InvalidateLayout();
             // Force realignment
@@ -153,19 +153,13 @@ namespace Squared.PRGUI.Controls {
             return f;
         }
 
-        void IModal.Close () {
-            this.Close(default(TResult));
+        bool IModal.Close (bool force) {
+            return this.Close(default(TResult), force);
         }
 
-        public void Close (TResult result) {
-            if (!IsActive) {
-                // FIXME
-                /*
-                if ((result != null) && (result != NextResultFuture.Result))
-                    throw new ArgumentException("This modal was already closed with a different result");
-                */
-                return;
-            }
+        public bool Close (TResult result, bool force = false) {
+            if (!IsActive)
+                return false;
 
             IsActive = false;
             NextResultFuture?.SetResult(result, null);
@@ -178,6 +172,7 @@ namespace Squared.PRGUI.Controls {
             Context.Controls.Remove(this);
             AcceptsFocus = false;
             _FocusDonor = null;
+            return true;
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
@@ -224,6 +219,8 @@ namespace Squared.PRGUI.Controls {
                     yield return new AcceleratorInfo(CancelControl, Keys.Escape);
             }
         }
+
+        bool IModal.AllowProgrammaticClose => true;
     }
 
     public class ModalDialog : ModalDialog<object, object> {
