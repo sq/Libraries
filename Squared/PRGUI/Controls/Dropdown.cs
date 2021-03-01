@@ -189,8 +189,9 @@ namespace Squared.PRGUI.Controls {
             ItemsMenu.Width.Minimum = box.Width;
             var selectedControl = Manager.SelectedControl;
             ItemsMenu.Show(
-                Context, this, 
-                anchorAlignment: new Vector2(0.5f, 1f), localAlignment: new Vector2(0.5f, 0f), 
+                Context, anchor: this, 
+                anchorPoint: new Vector2(0.5f, 1f), 
+                controlAlignmentPoint: new Vector2(0.5f, 0f), 
                 selectedItem: selectedControl
             );
             MenuJustClosed = false;

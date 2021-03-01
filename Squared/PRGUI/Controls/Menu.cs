@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
@@ -22,8 +23,10 @@ namespace Squared.PRGUI.Controls {
 
     public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, 
         IModal, ISelectionBearer, IPartiallyIntangibleControl, 
-        IFuzzyHitTestTarget, IHasDescription
+        IFuzzyHitTestTarget, IHasDescription, IAlignedControl
     {
+        protected ControlAlignmentHelper Aligner;
+
         public event Action<IModal> Shown, Closed;
 
         public float ItemSpacing = 1;
@@ -87,12 +90,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         public Vector2 Position {
-            get {
-                return new Vector2(Margins.Left, Margins.Top);
-            }
+            get => base.Layout.FloatingPosition;
             set {
-                Margins.Left = value.X;
-                Margins.Top = value.Y;
+                Aligner.SetPosition(value, true);
             }
         }
 
@@ -118,6 +118,9 @@ namespace Squared.PRGUI.Controls {
 
         public Menu ()
             : base () {
+            Aligner = new ControlAlignmentHelper(this) {
+                UpdatePosition = UpdatePosition
+            };
             Appearance.Opacity = 0f;
             // HACK: If we don't do this, alignment will be broken when a global scale is set
             Appearance.AutoScaleMetrics = false;
@@ -369,6 +372,8 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
+            Aligner.EnsureAligned(context, ref relayoutRequested);
+
             // Remove ourselves from the top-level context if we've just finished fading out.
             // While this isn't strictly necessary, it's worth doing for many reasons
             var opacity = GetOpacity(context.NowL);
@@ -496,7 +501,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private Future<Control> ShowInternalEpilogue (UIContext context, Vector2 adjustedPosition, Control selectedItem) {
+        private Future<Control> ShowInternalEpilogue (UIContext context, Control selectedItem) {
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
             NextResultFuture = new Future<Control>();
@@ -505,7 +510,6 @@ namespace Squared.PRGUI.Controls {
             InvalidateLayout();
             SelectedItem = null;
             SelectedItem = selectedItem;
-            Position = adjustedPosition;
             Visible = true;
             Intangible = false;
             context.CaptureMouse(this, out _FocusDonor);
@@ -520,7 +524,7 @@ namespace Squared.PRGUI.Controls {
             return NextResultFuture;
         }
 
-        private Vector2 AdjustPosition (UIContext context, Vector2 desiredPosition, Vector2 localAlignment) {
+        private Vector2 AdjustPosition_Classic (UIContext context, Vector2 desiredPosition) {
             var decorator = GetDecorator(context.Decorations, null);
 
             // HACK city: Need an operation context to compute margins
@@ -536,11 +540,9 @@ namespace Squared.PRGUI.Controls {
             //  with any anchor point
             desiredPosition -= new Vector2(computedMargins.Left, computedMargins.Top);
             // Move ourselves into place and perform layout to figure out how big we are, etc
-            // FIXME: localAlignment
             Position = desiredPosition;
             context.UpdateSubtreeLayout(this);
             var box = GetRect(context: context);
-            var localAlignmentOffset = localAlignment * box.Size;
             // HACK: We'd want to use margin.Right/Bottom here normally, but compensation has already
             //  been applied somewhere in the layout engine for the top/left margins so we need to
             //  cancel them out again
@@ -551,6 +553,23 @@ namespace Squared.PRGUI.Controls {
                 Arithmetic.Clamp(desiredPosition.Y, computedMargins.Top, maxY)
             );
             return result;
+        }
+
+        private bool UpdatePosition (Vector2 newPosition, ref RectF parentRect, ref RectF box, bool updateDesiredPosition) {
+            var effectiveSize = box.Size + Margins.Size;
+            var availableSpaceX = Math.Max(0, parentRect.Width - effectiveSize.X);
+            var availableSpaceY = Math.Max(0, parentRect.Height - effectiveSize.Y);
+            newPosition = new Vector2(
+                Arithmetic.Saturate(newPosition.X, availableSpaceX),
+                Arithmetic.Saturate(newPosition.Y, availableSpaceY)
+            ).Floor();
+
+            var changed = Position != newPosition;
+
+            // context.Log($"Menu position {Position} -> {newPosition}");
+            Aligner.SetPosition(newPosition, updateDesiredPosition);
+
+            return changed;
         }
 
         bool IModal.FadeBackground => false;
@@ -564,24 +583,36 @@ namespace Squared.PRGUI.Controls {
 
             // Align the top-left corner of the menu with the target position (compensating for margin),
             //  then shift the menu around if necessary to keep it on screen
-            var adjustedPosition = AdjustPosition(context, (position ?? context.LastInputState.CursorPosition), Vector2.Zero);
+            var adjustedPosition = AdjustPosition_Classic(context, (position ?? context.LastInputState.CursorPosition));
+            Position = adjustedPosition;
+            Aligner.Enabled = false;
 
-            return ShowInternalEpilogue(context, adjustedPosition, selectedItem);
+            return ShowInternalEpilogue(context, selectedItem);
         }
 
-        public Future<Control> Show (UIContext context, RectF anchorBox, Vector2? anchorAlignment = null, Vector2? localAlignment = null, Control selectedItem = null) {
+        public Future<Control> Show (UIContext context, RectF anchorBox, Vector2? anchorAlignment = null, Control selectedItem = null) {
             ShowInternalPrologue(context);
             var idealPosition = anchorBox.Position + (anchorBox.Size * (anchorAlignment ?? new Vector2(0, 1)));
-            var adjustedPosition = AdjustPosition(context, idealPosition, localAlignment ?? Vector2.Zero);
+            var adjustedPosition = AdjustPosition_Classic(context, idealPosition);
+            Position = adjustedPosition;
+            Aligner.Enabled = false;
 
-            return ShowInternalEpilogue(context, adjustedPosition, selectedItem);
+            return ShowInternalEpilogue(context, selectedItem);
         }
 
-        public Future<Control> Show (UIContext context, Control anchor, Vector2? anchorAlignment = null, Vector2? localAlignment = null, Control selectedItem = null) {
+        public Future<Control> Show (
+            UIContext context, Control anchor, 
+            Vector2? anchorPoint = null, Vector2? controlAlignmentPoint = null, 
+            Control selectedItem = null
+        ) {
             ShowInternalPrologue(context);
 
-            var anchorBox = anchor.GetRect(context: context);
-            return Show(context, anchorBox, anchorAlignment, localAlignment, selectedItem);
+            _FocusDonor = anchor;
+            Aligner.Enabled = true;
+            Aligner.Anchor = anchor;
+            Aligner.AnchorPoint = anchorPoint ?? new Vector2(0, 1);
+            Aligner.ControlAlignmentPoint = controlAlignmentPoint ?? new Vector2(0, 0);
+            return ShowInternalEpilogue(context, selectedItem);
         }
 
         public void Close () {
@@ -681,5 +712,17 @@ namespace Squared.PRGUI.Controls {
             List<FuzzyHitTest.Result> output, ref FuzzyHitTest.Result thisControl, Vector2 position, Func<Control, bool> predicate, float maxDistanceSquared
         ) => 0;
         bool IFuzzyHitTestTarget.WalkChildren => false;
+
+        Vector2? IAlignedControl.AlignedPosition => Aligner.MostRecentAlignedPosition;
+
+        void IAlignedControl.EnsureAligned (UIOperationContext context, ref bool relayoutRequested) {
+            if (!Aligner.AlignmentPending) {
+                return;
+            } else {
+                Aligner.EnsureAligned(context, ref relayoutRequested);
+            }
+        }
+
+        Control IAlignedControl.AlignmentAnchor => Aligner.Anchor;
     }
 }

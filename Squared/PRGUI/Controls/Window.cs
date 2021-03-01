@@ -22,35 +22,25 @@ namespace Squared.PRGUI.Controls {
     public class ControlAlignmentHelper {
         public delegate bool UpdatePositionHandler (Vector2 newPosition, ref RectF parentRect, ref RectF rect, bool updateDesiredPosition);
 
+        public bool Enabled = true;
+
         public UpdatePositionHandler UpdatePosition;
         public Func<bool> IsAnimating, IsLocked;
 
-        private Vector2 _Alignment = Vector2.One * 0.5f;
         /// <summary>
-        /// Configures what point on the screen (or the anchor, if set) [0 - 1] is used as the center for this window
+        /// Configures what point on the control [0 - 1] is aligned onto the anchor point
         /// </summary>
-        public Vector2 Alignment {
-            get => _Alignment;
-            set => _Alignment = value;
-        }
+        public Vector2 ControlAlignmentPoint { get; set; }
 
-        private Vector2 _AlignmentAnchorPoint = Vector2.One * 0.5f;
         /// <summary>
         /// Configures what point on the anchor [0 - 1] is used as the center for alignment
         /// </summary>
-        public Vector2 AnchorPoint {
-            get => _AlignmentAnchorPoint;
-            set => _AlignmentAnchorPoint = value;
-        }
+        public Vector2 AnchorPoint { get; set; }
 
-        private Control _AlignmentAnchor = null;
         /// <summary>
-        /// If set, alignment will be relative to this control
+        /// If set, alignment will be relative to this control. Otherwise, the screen will be used.
         /// </summary>
-        public Control Anchor {
-            get => _AlignmentAnchor;
-            set => _AlignmentAnchor = value;
-        }
+        public Control Anchor { get; set; }
 
         Vector2 _LastSize;
         RectF _LastAnchorRect, _LastParentRect;
@@ -87,18 +77,18 @@ namespace Squared.PRGUI.Controls {
                 result = parent.GetRect(contentRect: true);
         }
 
-        public bool Align (ref UIOperationContext context, RectF parentRect, RectF rect, bool updateDesiredPosition) {
+        private bool Align (ref UIOperationContext context, RectF parentRect, RectF rect, bool updateDesiredPosition) {
             // Computed?
             var margins = Control.Margins;
 
-            if (_AlignmentAnchor != null) {
+            if (Anchor != null) {
                 // FIXME: Adjust on appropriate sides
                 rect.Size += margins.Size;
                 var anchorRect = Anchor.GetRect();
-                var anchorPosition = ((_AlignmentAnchor as IAlignedControl)?.AlignedPosition) ?? anchorRect.Position;
+                var anchorPosition = ((Anchor as IAlignedControl)?.AlignedPosition) ?? anchorRect.Position;
                 var anchorCenter = anchorPosition + (anchorRect.Size * AnchorPoint);
                 anchorRect.Size -= margins.Size;
-                var offset = (rect.Size * Alignment);
+                var offset = (rect.Size * ControlAlignmentPoint);
                 var result = anchorCenter - offset - parentRect.Position;
                 MostRecentAlignedPosition = anchorCenter - offset;
                 return SetPosition(result, updateDesiredPosition);
@@ -113,23 +103,26 @@ namespace Squared.PRGUI.Controls {
                     availableSpace.X = 0;
                 if (availableSpace.Y < 0)
                     availableSpace.Y = 0;
-                var result = availableSpace * Alignment;
+                var result = availableSpace * ControlAlignmentPoint;
                 MostRecentAlignedPosition = result + parentRect.Position;
                 return SetPosition(result, updateDesiredPosition);
             }
         }
 
         public void EnsureAligned (UIOperationContext context, ref bool relayoutRequested) {
+            if (!Enabled)
+                return;
+
             AlignmentPending = false;
 
             GetParentContentRect(out RectF parentRect);
             var rect = Control.GetRect(applyOffset: false);
 
-            if (_AlignmentAnchor != null) {
-                if (_AlignmentAnchor is IAlignedControl iac)
+            if (Anchor != null) {
+                if (Anchor is IAlignedControl iac)
                     iac.EnsureAligned(context, ref relayoutRequested);
 
-                var anchorRect = _AlignmentAnchor.GetRect();
+                var anchorRect = Anchor.GetRect();
                 if (anchorRect != _LastAnchorRect) {
                     _LastAnchorRect = anchorRect;
                     relayoutRequested = true;
@@ -157,8 +150,8 @@ namespace Squared.PRGUI.Controls {
 
                 var availableSpace = (parentRect.Size - rect.Size);
                 if (ComputeNewAlignment)
-                    Alignment = (Control.Layout.FloatingPosition - parentRect.Position) / availableSpace;
-            } else if (((IsAnimating == null) || !IsAnimating()) && (!relayoutRequested || (_AlignmentAnchor != null))) {
+                    ControlAlignmentPoint = (Control.Layout.FloatingPosition - parentRect.Position) / availableSpace;
+            } else if (((IsAnimating == null) || !IsAnimating()) && (!relayoutRequested || (Anchor != null))) {
                 relayoutRequested |= Align(ref context, parentRect, rect, true);
             } else if ((IsLocked == null) || !IsLocked()) {
                 relayoutRequested |= Align(ref context, parentRect, rect, false);
@@ -175,8 +168,8 @@ namespace Squared.PRGUI.Controls {
         /// Configures what point on the screen (or the anchor, if set) [0 - 1] is used as the center for this window
         /// </summary>
         public Vector2 Alignment {
-            get => Aligner.Alignment;
-            set => Aligner.Alignment = value;
+            get => Aligner.ControlAlignmentPoint;
+            set => Aligner.ControlAlignmentPoint = value;
         }
 
         /// <summary>

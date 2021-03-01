@@ -693,7 +693,10 @@ namespace Squared.PRGUI.Controls {
             else if (name == UIEvents.KeyPress)
                 return OnKeyPress((KeyEventArgs)(object)args);
             else if (name == UIEvents.LostFocus) {
-                if (ClearHistoryOnFocusLoss && !(args is Menu))
+                if (args is Menu)
+                    return false;
+
+                if (ClearHistoryOnFocusLoss)
                     ResetHistory();
                 if (SelectNoneOnFocusLoss)
                     SelectNone();
