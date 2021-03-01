@@ -67,6 +67,10 @@ namespace Squared.PRGUI.Controls {
         public int SelectedItemCount => _SelectedIndices.Count;
 
         public bool IsSelectedIndex (int index) {
+            if (index < MinSelectedIndex)
+                return false;
+            else if (index > MaxSelectedIndex)
+                return false;
             return _SelectedIndices.IndexOf(index, IndexComparer.Instance) >= 0;
         }
 
@@ -165,20 +169,12 @@ namespace Squared.PRGUI.Controls {
         public int MinSelectedIndex {
             get {
                 var result = _SelectedIndices.FirstOrDefault(-1);
-#if DEBUG
-                if (result > _SelectedIndices.LastOrDefault(-1))
-                    throw new Exception();
-#endif
                 return result;
             }
         }
         public int MaxSelectedIndex {
             get {
                 var result = _SelectedIndices.LastOrDefault(-1);
-#if DEBUG
-                if (result < _SelectedIndices.FirstOrDefault(-1))
-                    throw new Exception();
-#endif
                 return result;
             }
         }
