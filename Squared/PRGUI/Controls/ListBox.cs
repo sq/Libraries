@@ -170,30 +170,36 @@ namespace Squared.PRGUI.Controls {
         }
 
         public bool TryGrowSelectedItems (int delta, bool forUserInput) {
-            if (!Manager.TryAdjustSelection(delta, out T temp, true))
+            if (!Manager.TryResizeSelection(delta, out T temp, true))
                 return false;
             OnSelectionChanged(forUserInput);
             return true;
         }
 
-        public bool TryExpandOrShrinkSelectionToItem (ref T value, bool forUserInput) {
-            if (!Manager.TryExpandOrShrinkSelectionToItem(ref value))
+        public bool TryExpandOrShrinkSelectionToItem (ref T value, bool fireEvent) {
+            if (!Manager.TryExpandOrShrinkSelectionToItem(ref value, fireEvent))
                 return false;
-            OnSelectionChanged(forUserInput);
+            OnSelectionChanged(fireEvent);
             return true;
         }
 
-        public bool TryToggleItemSelected (ref T value, bool forUserInput) {
-            if (!Manager.TryToggleItemSelected(ref value))
+        public bool TryToggleItemSelected (ref T value, bool fireEvent) {
+            if (!Manager.TryToggleItemSelected(ref value, fireEvent))
                 return false;
-            OnSelectionChanged(forUserInput);
+            OnSelectionChanged(fireEvent);
             return true;
         }
 
-        public void SetSelectedItem (T value, bool forUserInput) {
-            if (!Manager.TrySetSelectedItem(ref value))
+        public void SetSelectedIndex (int index, bool fireEvent) {
+            if (!Manager.TrySetSelectedIndex(index, fireEvent))
                 return;
-            OnSelectionChanged(forUserInput);
+            OnSelectionChanged(fireEvent);
+        }
+
+        public void SetSelectedItem (T value, bool fireEvent) {
+            if (!Manager.TrySetSelectedItem(ref value, fireEvent))
+                return;
+            OnSelectionChanged(fireEvent);
         }
 
         private Control _DefaultCreateControlForValue (ref T value, Control existingControl) {
@@ -544,10 +550,10 @@ namespace Squared.PRGUI.Controls {
             if (delta == 0)
                 return false;
 
-            bool result, oneItemSelected = (Manager.MinSelectedIndex == Manager.MaxSelectedIndex);
+            bool result = false, oneItemSelected = (Manager.MinSelectedIndex == Manager.MaxSelectedIndex);
             T newItem = default(T);
             if (grow || (oneItemSelected && shrink)) {
-                result = Manager.TryAdjustSelection(delta, out newItem, true);
+                result = Manager.TryResizeSelection(delta, out newItem, true);
             } else if (shrink) {
                 int min = Manager.MinSelectedIndex, max = Manager.MaxSelectedIndex;
                 if (delta > 0) {
@@ -560,14 +566,12 @@ namespace Squared.PRGUI.Controls {
                         newItem = Manager.Items[Manager.MinSelectedIndex];
                 }
                 result = true;
-            } else {
-                var newIndex = Arithmetic.Clamp(SelectedIndex + delta, 0, Items.Count - 1);
-                SelectedIndex = newIndex;
+            } else if (Manager.TryMoveSelection(delta, true)) {
+                UpdateKeyboardSelection(newItem, forUser);
                 newItem = SelectedItem;
                 result = true;
             }
 
-            UpdateKeyboardSelection(newItem, forUser);
             return result;
         }
 
@@ -591,23 +595,35 @@ namespace Squared.PRGUI.Controls {
                 );
             var shrinking = shifted && !growing;
 
+            int delta;
+
             // FIXME: Autoscroll doesn't work anymore?
             switch (args.Key) {
                 case Keys.Home:
                 case Keys.End:
-                    return AdjustSelection(Items.Count * indexDirection, growing, shrinking, true);
+                    delta = Items.Count * indexDirection;
+                    break;
                 case Keys.PageUp:
                 case Keys.PageDown:
-                    return AdjustSelection(PageSize * indexDirection, growing, shrinking, true);
+                    delta = PageSize * indexDirection;
+                    break;
                 case Keys.Left:
                 case Keys.Right:
-                    return AdjustSelection(indexDirection, growing, shrinking, true);
+                    delta = indexDirection;
+                    break;
                 case Keys.Up:
                 case Keys.Down:
-                    return AdjustSelection(ColumnCount * indexDirection, growing, shrinking, true);
+                    delta = ColumnCount * indexDirection;
+                    break;
                 default:
                     return false;
             }
+
+            // FIXME: Control-shift
+            if (args.Modifiers.Control && (MaxSelectedCount > 1))
+                return Manager.TryToggleInDirection(delta, true);
+            else
+                return AdjustSelection(delta, growing, shrinking, true);
         }
 
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {

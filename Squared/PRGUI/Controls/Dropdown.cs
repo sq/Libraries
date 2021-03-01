@@ -52,7 +52,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void SetSelectedItem (T value, bool forUserInput) {
-            if (!Manager.TrySetSelectedItem(ref value))
+            if (!Manager.TrySetSelectedItem(ref value, forUserInput))
                 return;
             Invalidate();
             NeedsUpdate = true;
@@ -210,7 +210,7 @@ namespace Squared.PRGUI.Controls {
                     switch (args.Key) {
                         case Keys.Up:
                         case Keys.Down:
-                            if (Manager.TryAdjustSelection(
+                            if (Manager.TryResizeSelection(
                                 (args.Key == Keys.Up) ? -1 : 1,
                                 out T newItem, false
                             ))
