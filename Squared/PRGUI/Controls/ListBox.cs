@@ -26,7 +26,6 @@ namespace Squared.PRGUI.Controls {
         IPartiallyIntangibleControl, IFuzzyHitTestTarget, IHasDescription
     {
         public bool DisableItemHitTests = true;
-        public bool EnableSelect = true;
         public bool DefaultToggleOnClick = false;
 
         public static bool SelectOnMouseDown = false;
@@ -83,6 +82,84 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        bool ISelectionBearer.HasSelection => Manager.SelectedIndex >= 0;
+        // FIXME: We should expand the width here
+        RectF? ISelectionBearer.SelectionRect => Manager.SelectedControl?.GetRect();
+        Control ISelectionBearer.SelectedControl => Manager.SelectedControl;
+
+        private bool _EnableSelect = true;
+        public bool EnableSelect {
+            get => _EnableSelect && (MaxSelectedCount > 0);
+            set {
+                _EnableSelect = value;
+                if (!value)
+                    Manager.ClearSelection();
+                NeedsUpdate = true;
+            }
+        }
+
+        public int MaxSelectedCount {
+            get => Manager.MaxSelectedCount;
+            set {
+                Manager.MaxSelectedCount = value;
+                if (value <= 0)
+                    Manager.ClearSelection();
+                NeedsUpdate = true;
+            }
+        }
+
+        private bool _Virtual = false;
+        public bool Virtual {
+            get => _Virtual;
+            set {
+                if (_Virtual == value)
+                    return;
+
+                Children.Clear();
+                NeedsUpdate = true;
+                _Virtual = value;
+            }
+        }
+
+        private int VirtualItemOffset = 0;
+        private float VirtualItemHeight = 1; // HACK, will be adjusted each frame
+        private int VirtualViewportItemCount = 2; // HACK, will be adjusted up/down each frame
+
+        private int _Version;
+        private bool NeedsUpdate = true;
+
+        protected int PageSize { get; private set; }
+
+        new public int ColumnCount {
+            get => base.ColumnCount;
+            set {
+                if (value < 1)
+                    throw new ArgumentOutOfRangeException("value");
+                base.ColumnCount = value;
+            }
+        }
+
+        public ListBox ()
+            : this (null) {
+        }
+
+        public ListBox (IEqualityComparer<T> comparer = null) 
+            : base () {
+            PageSize = 1;
+            AllowDynamicContent = false;
+            AcceptsMouseInput = true;
+            AcceptsFocus = true;
+            ContainerFlags = ControlFlags.Container_Column | ControlFlags.Container_Align_Start;
+            ClipChildren = true;
+            ShowHorizontalScrollbar = false;
+            // HACK: Most lists will contain enough items to need scrolling, so just always show the bar
+            ShowVerticalScrollbar = true;
+            Scrollable = true;
+            // FIXME
+            Manager = new ItemListManager<T>(comparer ?? EqualityComparer<T>.Default);
+            DefaultCreateControlForValue = _DefaultCreateControlForValue;
+        }
+
         private void OnSelectionChanged (bool forUserInput) {
             DesiredScrollOffset = null;
             SelectedItemHasChangedSinceLastUpdate = true;
@@ -117,71 +194,6 @@ namespace Squared.PRGUI.Controls {
             if (!Manager.TrySetSelectedItem(ref value))
                 return;
             OnSelectionChanged(forUserInput);
-        }
-
-        private bool _Virtual = false;
-        public bool Virtual {
-            get => _Virtual;
-            set {
-                if (_Virtual == value)
-                    return;
-
-                Children.Clear();
-                NeedsUpdate = true;
-                _Virtual = value;
-            }
-        }
-
-        public int MaxSelectedCount {
-            get => Manager.MaxSelectedCount;
-            set {
-                Manager.MaxSelectedCount = value;
-                NeedsUpdate = true;
-            }
-        }
-
-        private int VirtualItemOffset = 0;
-        private float VirtualItemHeight = 1; // HACK, will be adjusted each frame
-        private int VirtualViewportItemCount = 2; // HACK, will be adjusted up/down each frame
-
-        private int _Version;
-        private bool NeedsUpdate = true;
-
-        protected int PageSize { get; private set; }
-
-        bool ISelectionBearer.HasSelection => Manager.SelectedIndex >= 0;
-        // FIXME: We should expand the width here
-        RectF? ISelectionBearer.SelectionRect => Manager.SelectedControl?.GetRect();
-        Control ISelectionBearer.SelectedControl => Manager.SelectedControl;
-
-        new public int ColumnCount {
-            get => base.ColumnCount;
-            set {
-                if (value < 1)
-                    throw new ArgumentOutOfRangeException("value");
-                base.ColumnCount = value;
-            }
-        }
-
-        public ListBox ()
-            : this (null) {
-        }
-
-        public ListBox (IEqualityComparer<T> comparer = null) 
-            : base () {
-            PageSize = 1;
-            AllowDynamicContent = false;
-            AcceptsMouseInput = true;
-            AcceptsFocus = true;
-            ContainerFlags = ControlFlags.Container_Column | ControlFlags.Container_Align_Start;
-            ClipChildren = true;
-            ShowHorizontalScrollbar = false;
-            // HACK: Most lists will contain enough items to need scrolling, so just always show the bar
-            ShowVerticalScrollbar = true;
-            Scrollable = true;
-            // FIXME
-            Manager = new ItemListManager<T>(comparer ?? EqualityComparer<T>.Default);
-            DefaultCreateControlForValue = _DefaultCreateControlForValue;
         }
 
         private Control _DefaultCreateControlForValue (ref T value, Control existingControl) {
@@ -486,14 +498,16 @@ namespace Squared.PRGUI.Controls {
                     var isClick = (name == UIEvents.Click);
                     if (isClick && (!EnableSelect || (control == Manager.SelectedControl)))
                         Context.FireEvent(name, control, args);
+
                     if (EnableSelect) {
-                        if ((args.Modifiers.Control == !DefaultToggleOnClick) && (MaxSelectedCount > 1))
-                            TryToggleItemSelected(ref newItem, true);
-                        else if (args.Modifiers.Shift && (MaxSelectedCount > 1)) {
+                        if (args.Modifiers.Shift && (MaxSelectedCount > 1))
                             TryExpandOrShrinkSelectionToItem(ref newItem, true);
-                        } else
+                        else if ((args.Modifiers.Control == !DefaultToggleOnClick) && (MaxSelectedCount > 1))
+                            TryToggleItemSelected(ref newItem, true);
+                        else
                             SetSelectedItem(newItem, true);
                     }
+
                     return isClick;
                 } else {
                     // Console.WriteLine($"Selection not valid");
@@ -526,25 +540,33 @@ namespace Squared.PRGUI.Controls {
             UpdateKeyboardSelection(item, true);
         }
 
-        public bool AdjustSelection (int delta, bool grow, bool forUser) {
+        public bool AdjustSelection (int delta, bool grow, bool shrink, bool forUser) {
             if (delta == 0)
                 return false;
 
             bool result, oneItemSelected = (Manager.MinSelectedIndex == Manager.MaxSelectedIndex);
-            T newItem;
-            if (grow || oneItemSelected) {
+            T newItem = default(T);
+            if (grow || (oneItemSelected && shrink)) {
                 result = Manager.TryAdjustSelection(delta, out newItem, true);
-            } else {
+            } else if (shrink) {
                 int min = Manager.MinSelectedIndex, max = Manager.MaxSelectedIndex;
                 if (delta > 0) {
                     Manager.ConstrainSelection(min + delta, max);
-                    newItem = Manager.Items[Manager.MaxSelectedIndex];
+                    if (Manager.MaxSelectedIndex >= 0)
+                        newItem = Manager.Items[Manager.MaxSelectedIndex];
                 } else {
                     Manager.ConstrainSelection(min, max + delta);
-                    newItem = Manager.Items[Manager.MinSelectedIndex];
+                    if (Manager.MinSelectedIndex >= 0)
+                        newItem = Manager.Items[Manager.MinSelectedIndex];
                 }
                 result = true;
+            } else {
+                var newIndex = Arithmetic.Clamp(SelectedIndex + delta, 0, Items.Count - 1);
+                SelectedIndex = newIndex;
+                newItem = SelectedItem;
+                result = true;
             }
+
             UpdateKeyboardSelection(newItem, forUser);
             return result;
         }
@@ -557,26 +579,32 @@ namespace Squared.PRGUI.Controls {
 
             var upward = (args.Key == Keys.Up) ||
                 (args.Key == Keys.PageUp) ||
-                (args.Key == Keys.Left);
+                (args.Key == Keys.Left) ||
+                (args.Key == Keys.Home);
             var indexDirection = upward ? -1 : 1;
-            var growing = args.Modifiers.Shift && (Manager.LastGrowDirection != -indexDirection);
+            var shifted = args.Modifiers.Shift;
+            var growing = 
+                (MaxSelectedCount > 1) &&
+                shifted && (
+                    (Manager.LastGrowDirection != -indexDirection) ||
+                    (Manager.MinSelectedIndex == Manager.MaxSelectedIndex)
+                );
+            var shrinking = shifted && !growing;
 
+            // FIXME: Autoscroll doesn't work anymore?
             switch (args.Key) {
                 case Keys.Home:
-                    SelectItemViaKeyboard(Items.FirstOrDefault());
-                    return true;
                 case Keys.End:
-                    SelectItemViaKeyboard(Items.LastOrDefault());
-                    return true;
+                    return AdjustSelection(Items.Count * indexDirection, growing, shrinking, true);
                 case Keys.PageUp:
                 case Keys.PageDown:
-                    return AdjustSelection(PageSize * indexDirection, growing, true);
+                    return AdjustSelection(PageSize * indexDirection, growing, shrinking, true);
                 case Keys.Left:
                 case Keys.Right:
-                    return AdjustSelection(indexDirection, growing, true);
+                    return AdjustSelection(indexDirection, growing, shrinking, true);
                 case Keys.Up:
                 case Keys.Down:
-                    return AdjustSelection(ColumnCount * indexDirection, growing, true);
+                    return AdjustSelection(ColumnCount * indexDirection, growing, shrinking, true);
                 default:
                     return false;
             }
@@ -590,6 +618,8 @@ namespace Squared.PRGUI.Controls {
 
                 foreach (var index in Manager._SelectedIndices) {
                     var selectedControl = Manager.ControlForIndex(index);
+
+                    // FIXME: Figure out when to break
                     if (selectedControl == null)
                         continue;
 
