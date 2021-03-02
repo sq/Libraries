@@ -140,6 +140,12 @@ namespace Squared.PRGUI.Controls {
             return provider?.Menu;
         }
 
+        protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
+            base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
+            width.Maximum = context.UIContext.CanvasSize.X * 0.5f;
+            height.Maximum = context.UIContext.CanvasSize.Y * 0.66f;
+        }
+
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             FreezeDynamicContent = Visible;
 
@@ -488,8 +494,6 @@ namespace Squared.PRGUI.Controls {
 
             MousePositionWhenShown = context.LastInputState.CursorPosition;
             MouseInsideWhenShown = null;
-            Width.Maximum = context.CanvasSize.X * 0.5f;
-            Height.Maximum = context.CanvasSize.Y * 0.66f;
             CalculateScrollable(context);
         }
 
