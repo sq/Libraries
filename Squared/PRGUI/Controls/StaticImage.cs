@@ -86,8 +86,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void ComputeAutoSize (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height) {
-            throw new NotImplementedException();
-
+            // FIXME
             /*
             if (!AutoSizeWidth && !AutoSizeHeight)
                 return;
