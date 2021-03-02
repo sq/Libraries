@@ -27,6 +27,8 @@ namespace Squared.PRGUI.Controls {
         public UpdatePositionHandler UpdatePosition;
         public Func<bool> IsAnimating, IsLocked;
 
+        public Margins ExtraMargins;
+
         /// <summary>
         /// Configures what point on the control [0 - 1] is aligned onto the anchor point
         /// </summary>
@@ -46,6 +48,7 @@ namespace Squared.PRGUI.Controls {
         RectF _LastAnchorRect, _LastParentRect;
 
         public bool ConstrainToParentInsteadOfScreen = false;
+        public bool HideIfNotInsideParent = false;
         public bool WasPositionSetByUser;
         public bool AlignmentPending = false;
         public Vector2? MostRecentAlignedPosition = null;
@@ -86,11 +89,16 @@ namespace Squared.PRGUI.Controls {
                 position.X = Arithmetic.Clamp(position.X, area.Left, availableSpace.X);
             if (availableSpace.Y > 0)
                 position.Y = Arithmetic.Clamp(position.Y, area.Top, availableSpace.Y);
+
+            if (HideIfNotInsideParent) {
+                if (!area.Intersects(ref rect))
+                    Control.Visible = false;
+            }
         }
 
         private bool Align (ref UIOperationContext context, RectF parentRect, RectF rect, bool updateDesiredPosition) {
             // Computed?
-            var margins = Control.Margins;
+            var margins = Control.Margins + ExtraMargins;
 
             if (Anchor != null) {
                 // FIXME: Adjust on appropriate sides

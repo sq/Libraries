@@ -295,6 +295,7 @@ namespace Squared.PRGUI {
             // FIXME: StaticImage
 
             Tooltip = new DelegateDecorator {
+                Margins = new Margins(8),
                 Padding = new Margins(12, 8, 12, 8),
                 GetTextSettings = GetTextSettings_Tooltip,
                 GetFont = () => TooltipFont ?? DefaultFont,

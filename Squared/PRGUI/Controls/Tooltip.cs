@@ -10,16 +10,17 @@ using Squared.Render.Text;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class Tooltip : StaticTextBase {
+    public class Tooltip : StaticTextBase, IPostLayoutListener {
         protected ControlAlignmentHelper Aligner;
 
         public Tooltip ()
             : base() {
             // FIXME: Centered?
             Aligner = new ControlAlignmentHelper(this) {
-                AnchorPoint = new Vector2(0.5f, 0f),
-                ControlAlignmentPoint = new Vector2(0.5f, 1f),
-                ConstrainToParentInsteadOfScreen = true
+                AnchorPoint = new Vector2(0.5f, 1f),
+                ControlAlignmentPoint = new Vector2(0.5f, 0f),
+                ConstrainToParentInsteadOfScreen = true,
+                HideIfNotInsideParent = true
             };
             Content.Alignment = HorizontalAlignment.Left;
             AcceptsMouseInput = false;
@@ -34,6 +35,13 @@ namespace Squared.PRGUI.Controls {
 
         new public void Invalidate () {
             base.Invalidate();
+            // FIXME: Do something else here? Invalidate the alignment?
+        }
+
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            var decorator = GetDefaultDecorator(context.DecorationProvider);
+            Aligner.ExtraMargins = decorator.Margins;
+            return base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
         new public AbstractString Text {
@@ -47,6 +55,10 @@ namespace Squared.PRGUI.Controls {
             // FIXME
             Aligner.ComputeNewAlignment = true;
             Aligner.AlignmentPending = true;
+        }
+
+        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+            Aligner.EnsureAligned(context, ref relayoutRequested);
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {

@@ -154,8 +154,6 @@ namespace Squared.PRGUI {
         public float TooltipFadeDurationFast = 0.1f;
         public float TooltipFadeDuration = 0.2f;
 
-        public float TooltipSpacing = 8;
-
         /// <summary>
         /// Double-clicks will only be tracked if this far apart or less (in seconds)
         /// </summary>
@@ -1276,19 +1274,6 @@ namespace Squared.PRGUI {
                 textIsInvalidated;
 
             instance.Move(anchor);
-            var rect = anchor.GetRect(context: this);
-            // HACK: Clip the anchor's rect to its parent's rect to ensure that
-            //  in the event that a container is scrolling, the tooltip doesn't shift outside
-            //  of the container too far
-            if (anchor.TryGetParent(out Control anchorParent)) {
-                var parentRect = anchorParent.GetRect(context: this, contentRect: true);
-
-                // If the anchor is entirely invisible, hide the tooltip to prevent visible glitches
-                if (!rect.Intersection(ref parentRect, out rect)) {
-                    instance.Visible = false;
-                    return;
-                }
-            }
 
             instance.Visible = true;
             instance.DisplayOrder = int.MaxValue;
@@ -1303,21 +1288,6 @@ namespace Squared.PRGUI {
 
                 UpdateSubtreeLayout(instance);
             }
-
-            var instanceBox = instance.GetRect();
-            var newX = rect.Left + (rect.Width / 2f) - (instanceBox.Width / 2f);
-            /*
-            // We want to make sure the tooltip is at least roughly aligned with the mouse horizontally
-            // FIXME: This doesn't work because we're performing this position update every frame while a tooltip is open, oops
-            if ((newX > LastMousePosition.X) || (newX + instanceBox.Width) < LastMousePosition.X)
-                newX = LastMousePosition.X;
-            */
-
-            newX = Arithmetic.Clamp(newX, TooltipSpacing, CanvasSize.X - instanceBox.Width - (TooltipSpacing * 2));
-            var newY = rect.Extent.Y + TooltipSpacing;
-            if ((instanceBox.Height + rect.Extent.Y) >= CanvasSize.Y)
-                newY = rect.Top - instanceBox.Height - TooltipSpacing;
-            instance.Margins = new Margins(newX, newY, 0, 0);
 
             var currentOpacity = instance.Appearance.Opacity.Get(Now);
             if (!IsTooltipVisible)
