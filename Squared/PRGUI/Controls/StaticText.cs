@@ -175,14 +175,18 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
 
+            if (this is Tooltip) {
+                ;
+            }
+
             if (AutoSizeWidth) {
-                if (AutoSizeIsMaximum && !Width.Fixed.HasValue)
-                    Width.Fixed = AutoSizeComputedWidth ?? Width.Fixed;
+                if (AutoSizeIsMaximum && !Width.Maximum.HasValue)
+                    Width.Fixed = AutoSizeComputedWidth ?? Width.Maximum;
                 Width.Minimum = AutoSizeComputedWidth;
             }
             if (AutoSizeHeight) {
-                if (AutoSizeIsMaximum && !Height.Fixed.HasValue)
-                    Height.Fixed = AutoSizeComputedHeight ?? Height.Fixed;
+                if (AutoSizeIsMaximum)
+                    Height.Maximum = AutoSizeComputedHeight ?? Height.Maximum;
                 Height.Minimum = AutoSizeComputedHeight;
             }
 

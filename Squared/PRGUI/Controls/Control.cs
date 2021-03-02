@@ -30,6 +30,18 @@ namespace Squared.PRGUI {
             return lhs.Scale(rhs);
         }
 
+        public ControlDimension AutoComputeFixed () {
+            if (Maximum == Minimum)
+                return new ControlDimension {
+                    Minimum = Minimum,
+                    Maximum = Maximum,
+                    // FIXME: Change the order here?
+                    Fixed = Maximum ?? Fixed
+                };
+
+            return this;
+        }
+
         public ControlDimension Scale (float scale) {
             return new ControlDimension {
                 Minimum = Minimum * scale,
@@ -614,8 +626,8 @@ namespace Squared.PRGUI {
 
             MostRecentComputedMargins = computedMargins;
 
-            var width = Width;
-            var height = Height;
+            var width = Width.AutoComputeFixed();
+            var height = Height.AutoComputeFixed();
             var sizeScale = Appearance.AutoScaleMetrics ? Context.Decorations.SizeScaleRatio : Vector2.One;
             ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
 
