@@ -176,19 +176,22 @@ namespace Squared.PRGUI.Controls {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
 
             if (AutoSizeWidth) {
-                if (AutoSizeIsMaximum && !width.Maximum.HasValue)
+                // FIXME: This is how it previously worked, but it might make sense for autosize to override Fixed
+                if (AutoSizeIsMaximum && !width.Maximum.HasValue && !width.Fixed.HasValue)
                     width.Fixed = AutoSizeComputedWidth ?? width.Maximum;
                 width.Minimum = AutoSizeComputedWidth;
             }
             if (AutoSizeHeight) {
-                if (AutoSizeIsMaximum)
+                if (AutoSizeIsMaximum && !height.Fixed.HasValue)
                     height.Maximum = AutoSizeComputedHeight ?? height.Maximum;
                 height.Minimum = AutoSizeComputedHeight;
             }
 
             // FIXME: Do we need this? Should controls always do it?
+            /*
             width.Constrain(ref width.Fixed, false);
             height.Constrain(ref height.Fixed, false);
+            */
         }
 
         private void ConfigureMeasurement () {

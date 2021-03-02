@@ -35,8 +35,7 @@ namespace Squared.PRGUI {
                 return new ControlDimension {
                     Minimum = Minimum,
                     Maximum = Maximum,
-                    // FIXME: Change the order here?
-                    Fixed = Maximum ?? Fixed
+                    Fixed = Fixed ?? Maximum
                 };
 
             return this;

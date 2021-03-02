@@ -36,7 +36,18 @@ namespace Squared.PRGUI.Controls {
         }
         public ItemList<T> Items => Manager.Items;
 
+        /// <summary>
+        /// The default value for the dropdown, used if there is currently no user selection.
+        /// A freshly created dropdown will use this the first time it checks its value (for display, etc.)
+        /// </summary>
         public T DefaultValue = default(T);
+
+        // HACK: If T is a class and the default value is null,
+        //  just pick our first item, since that's sensible.
+        // For value types default(T) is the best we can do.
+        T EffectiveDefaultValue => (DefaultValue == null) && (Items.Count > 0)
+            ? Items[0]
+            : DefaultValue;
 
         private bool NeedsUpdate = true;
         private bool MenuJustClosed = false;
@@ -47,7 +58,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public T SelectedItem {
-            get => Manager.HasSelectedItem ? Manager.SelectedItem : DefaultValue;
+            get => Manager.HasSelectedItem ? Manager.SelectedItem : EffectiveDefaultValue;
             set {
                 SetSelectedItem(value, false);
             }
