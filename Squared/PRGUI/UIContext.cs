@@ -1396,7 +1396,7 @@ namespace Squared.PRGUI {
             OverlayQueue.Clear();
         }
 
-        public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer) {
+        public void Rasterize (BatchGroup container, int layer, BatchGroup prepassContainer, int prepassLayer, Color? clearColor = null) {
             FrameIndex++;
 
             Now = (float)TimeProvider.Seconds;
@@ -1437,97 +1437,93 @@ namespace Squared.PRGUI {
 
             OverlayQueue.Clear();
 
-            using (var outerGroup = BatchGroup.New(frame, layer, name: "Rasterize UI"))
-            using (var prepassGroup = BatchGroup.New(outerGroup, -999, name: "Prepass"))
-            using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass")) {
-                context.Prepass = prepassGroup;
-                var renderer = new ImperativeRenderer(rtBatch, Materials) {
-                    BlendState = BlendState.AlphaBlend,
-                    DepthStencilState = DepthStencilState.None
-                };
-                renderer.Clear(color: Color.Transparent, stencil: 0, layer: -999);
+            context.Prepass = prepassContainer;
+            var renderer = new ImperativeRenderer(container, Materials) {
+                BlendState = BlendState.AlphaBlend,
+                DepthStencilState = DepthStencilState.None
+            };
+            renderer.Clear(color: clearColor, stencil: 0, layer: -999);
 
-                var topLevelFocusIndex = seq.IndexOf(TopLevelFocused);
-                for (int i = 0; i < seq.Count; i++) {
-                    var control = seq[i];
-                    if (i == fadeBackgroundAtIndex) {
-                        var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity;
-                        renderer.FillRectangle(
-                            Game.Bounds.FromPositionAndSize(Vector2.One * -9999, Vector2.One * 99999), 
-                            Color.White * opacity, blendState: RenderStates.SubtractiveBlend
-                        );
-                        renderer.Layer += 1;
-                    }
-
-                    var m = control as IModal;
-                    if ((m != null) && ModalStack.Contains(m))
-                        FlushOverlayQueue(ref renderer);
-
-                    // When the accelerator overlay is visible, fade out any top-level controls
-                    //  that cover the currently focused top-level control so that the user can see
-                    //  any controls that might be active
-                    var fadeForKeyboardFocusVisibility = AcceleratorOverlayVisible ||
-                    // HACK: Also do this if gamepad input is active so that it's easier to tell what's going on
-                    //  when the dpad is used to move focus around
-                        ((InputSources[0] is GamepadVirtualKeyboardAndCursor) && (KeyboardSelection != null));
-
-                    var opacityModifier = (fadeForKeyboardFocusVisibility && (topLevelFocusIndex >= 0))
-                        ? (
-                            (i == topLevelFocusIndex) || (i < topLevelFocusIndex)
-                                ? 1.0f
-                                // Mousing over an inactive control that's being faded will make it more opaque
-                                //  so that you can see what it is
-                                : (
-                                    (topLevelHovering == control)
-                                        // FIXME: oh my god
-                                        // HACK: When the accelerator overlay is visible we want to make any top-level control
-                                        //  that the mouse is currently over more opaque, so you can see what you're about to
-                                        //  focus by clicking on it
-                                        // If it's not visible and we're using a virtual cursor, we want to make top-level controls
-                                        //  that are currently covering the keyboard selection *less visible* since the user is
-                                        //  currently interacting with something underneath it
-                                        // he;lp
-                                        ? (AcceleratorOverlayVisible ? 0.9f : 0.33f)
-                                        : (AcceleratorOverlayVisible ? 0.65f : 0.95f)
-                                )
-                        )
-                        : 1.0f;
-                    // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
-                    //  overlap each other, at the cost of more draw calls.
-                    var passSet = new RasterizePassSet(ref renderer, 0, OverlayQueue);
-                    passSet.Below.DepthStencilState =
-                        passSet.Content.DepthStencilState =
-                        passSet.Above.DepthStencilState = DepthStencilState.None;
-                    control.Rasterize(ref context, ref passSet, opacityModifier);
-                }
-
-                FlushOverlayQueue(ref renderer);
-
-                LastPassCount = prepassGroup.Count + 1;
-
-                if (AcceleratorOverlayVisible) {
+            var topLevelFocusIndex = seq.IndexOf(TopLevelFocused);
+            for (int i = 0; i < seq.Count; i++) {
+                var control = seq[i];
+                if (i == fadeBackgroundAtIndex) {
+                    var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity;
+                    renderer.FillRectangle(
+                        Game.Bounds.FromPositionAndSize(Vector2.One * -9999, Vector2.One * 99999), 
+                        Color.White * opacity, blendState: RenderStates.SubtractiveBlend
+                    );
                     renderer.Layer += 1;
-                    RasterizeAcceleratorOverlay(context, ref renderer);
                 }
 
-                {
-                    var subRenderer = renderer.MakeSubgroup();
-                    subRenderer.BlendState = BlendState.NonPremultiplied;
-                    // HACK
-                    context.Pass = RasterizePasses.Below;
-                    foreach (var isrc in InputSources) {
-                        isrc.SetContext(this);
-                        isrc.Rasterize(context, ref subRenderer);
-                    }
-                    subRenderer.Layer += 1;
-                    context.Pass = RasterizePasses.Content;
-                    foreach (var isrc in InputSources)
-                        isrc.Rasterize(context, ref subRenderer);
-                    subRenderer.Layer += 1;
-                    context.Pass = RasterizePasses.Above;
-                    foreach (var isrc in InputSources)
-                        isrc.Rasterize(context, ref subRenderer);
+                var m = control as IModal;
+                if ((m != null) && ModalStack.Contains(m))
+                    FlushOverlayQueue(ref renderer);
+
+                // When the accelerator overlay is visible, fade out any top-level controls
+                //  that cover the currently focused top-level control so that the user can see
+                //  any controls that might be active
+                var fadeForKeyboardFocusVisibility = AcceleratorOverlayVisible ||
+                // HACK: Also do this if gamepad input is active so that it's easier to tell what's going on
+                //  when the dpad is used to move focus around
+                    ((InputSources[0] is GamepadVirtualKeyboardAndCursor) && (KeyboardSelection != null));
+
+                var opacityModifier = (fadeForKeyboardFocusVisibility && (topLevelFocusIndex >= 0))
+                    ? (
+                        (i == topLevelFocusIndex) || (i < topLevelFocusIndex)
+                            ? 1.0f
+                            // Mousing over an inactive control that's being faded will make it more opaque
+                            //  so that you can see what it is
+                            : (
+                                (topLevelHovering == control)
+                                    // FIXME: oh my god
+                                    // HACK: When the accelerator overlay is visible we want to make any top-level control
+                                    //  that the mouse is currently over more opaque, so you can see what you're about to
+                                    //  focus by clicking on it
+                                    // If it's not visible and we're using a virtual cursor, we want to make top-level controls
+                                    //  that are currently covering the keyboard selection *less visible* since the user is
+                                    //  currently interacting with something underneath it
+                                    // he;lp
+                                    ? (AcceleratorOverlayVisible ? 0.9f : 0.33f)
+                                    : (AcceleratorOverlayVisible ? 0.65f : 0.95f)
+                            )
+                    )
+                    : 1.0f;
+                // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
+                //  overlap each other, at the cost of more draw calls.
+                var passSet = new RasterizePassSet(ref renderer, 0, OverlayQueue);
+                passSet.Below.DepthStencilState =
+                    passSet.Content.DepthStencilState =
+                    passSet.Above.DepthStencilState = DepthStencilState.None;
+                control.Rasterize(ref context, ref passSet, opacityModifier);
+            }
+
+            FlushOverlayQueue(ref renderer);
+
+            LastPassCount = prepassContainer.Count + 1;
+
+            if (AcceleratorOverlayVisible) {
+                renderer.Layer += 1;
+                RasterizeAcceleratorOverlay(context, ref renderer);
+            }
+
+            {
+                var subRenderer = renderer.MakeSubgroup();
+                subRenderer.BlendState = BlendState.NonPremultiplied;
+                // HACK
+                context.Pass = RasterizePasses.Below;
+                foreach (var isrc in InputSources) {
+                    isrc.SetContext(this);
+                    isrc.Rasterize(context, ref subRenderer);
                 }
+                subRenderer.Layer += 1;
+                context.Pass = RasterizePasses.Content;
+                foreach (var isrc in InputSources)
+                    isrc.Rasterize(context, ref subRenderer);
+                subRenderer.Layer += 1;
+                context.Pass = RasterizePasses.Above;
+                foreach (var isrc in InputSources)
+                    isrc.Rasterize(context, ref subRenderer);
             }
 
             // Now that we have a dependency graph for the scratch targets, use it to
@@ -1543,6 +1539,13 @@ namespace Squared.PRGUI {
                     ((Batch)item.Renderer.Container).Layer = i++;
                 }
             }
+        }
+
+        public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer) {
+            using (var outerGroup = BatchGroup.New(frame, layer, name: "Rasterize UI"))
+            using (var prepassGroup = BatchGroup.New(outerGroup, -999, name: "Prepass"))
+            using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass"))
+                Rasterize(rtBatch, 0, prepassGroup, 0, clearColor: Color.Transparent);
         }
 
         private void PushRecursive (ScratchRenderTarget srt) {
