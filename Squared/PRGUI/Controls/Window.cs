@@ -364,7 +364,8 @@ namespace Squared.PRGUI.Controls {
                     ? new Vector2(args.GlobalPosition.X - (MostRecentUnmaximizedRect.Width / 2f), args.GlobalPosition.Y - 4)
                     : (DragStartWindowPosition + delta);
                 var shouldMaximize = (newPosition.Y < -5) && !Maximized && AllowMaximize;
-                var shouldUnmaximize = (((delta.Y > 4) || (newPosition.Y > 4)) || !AllowMaximize) && Maximized;
+                var isPullingBackAway = (newPosition.Y > 4) && !DragStartedMaximized;
+                var shouldUnmaximize = (((delta.Y > 4) || isPullingBackAway) || !AllowMaximize) && Maximized;
                 if (shouldUnmaximize) {
                     // FIXME: Scale the mouse anchor based on the new size vs the old maximized size
                     Maximized = false;
