@@ -100,8 +100,8 @@ namespace Squared.PRGUI.Controls {
                 if (AutoSizeWidth && (instance != null)) {
                     var fw = instance.Width * Scale.X * scaleX;
                     if (!Width.Fixed.HasValue) {
-                        if (maximumWidth.HasValue)
-                            width = Math.Min(fw, maximumWidth.Value);
+                        if (Width.maximum.HasValue)
+                            width = Math.Min(fw, Width.maximum.Value);
                         else
                             width = fw;
                     }
@@ -110,8 +110,8 @@ namespace Squared.PRGUI.Controls {
                 if (AutoSizeHeight && (instance != null)) {
                     var fh = instance.Height * Scale.Y * scaleY;
                     if (!Height.Fixed.HasValue) {
-                        if (maximumHeight.HasValue)
-                            height = Math.Min(fh, maximumHeight.Value);
+                        if (Height.maximum.HasValue)
+                            height = Math.Min(fh, Height.maximum.Value);
                         else
                             height = fh;
                     }
@@ -141,10 +141,10 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             ComputeAutoSize(ref context, ref width, ref height);
-            var newW = Math.Max(w ?? -9999, minimumWidth ?? -9999);
-            var newH = Math.Max(h ?? -9999, minimumHeight ?? -9999);
-            minimumWidth = (newW > -9999) ? newW : (float?)null;
-            minimumHeight = (newH > -9999) ? newH : (float?)null;
+            var newW = Math.Max(w ?? -9999, Width.minimum ?? -9999);
+            var newH = Math.Max(h ?? -9999, Height.minimum ?? -9999);
+            Width.minimum = (newW > -9999) ? newW : (float?)null;
+            Height.minimum = (newH > -9999) ? newH : (float?)null;
         }
 
         protected float? ComputeScaleToFit (ref RectF box) {

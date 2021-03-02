@@ -177,17 +177,17 @@ namespace Squared.PRGUI.Controls {
 
             if (AutoSizeWidth) {
                 if (AutoSizeIsMaximum && !Width.Fixed.HasValue)
-                    fixedWidth = AutoSizeComputedWidth ?? fixedWidth;
-                minimumWidth = AutoSizeComputedWidth;
+                    Width.Fixed = AutoSizeComputedWidth ?? Width.Fixed;
+                Width.minimum = AutoSizeComputedWidth;
             }
             if (AutoSizeHeight) {
                 if (AutoSizeIsMaximum && !Height.Fixed.HasValue)
-                    fixedHeight = AutoSizeComputedHeight ?? fixedHeight;
-                minimumHeight = AutoSizeComputedHeight;
+                    Height.Fixed = AutoSizeComputedHeight ?? Height.Fixed;
+                Height.minimum = AutoSizeComputedHeight;
             }
 
-            Width.Constrain(ref fixedWidth);
-            Height.Constrain(ref fixedHeight);
+            Width.Constrain(ref Width.Fixed);
+            Height.Constrain(ref Height.Fixed);
         }
 
         private void ConfigureMeasurement () {

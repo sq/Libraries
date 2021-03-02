@@ -167,8 +167,8 @@ namespace Squared.PRGUI.Controls {
             var decorations = GetDefaultDecorator(Context.Decorations);
             var glyphSource = decorations.GlyphSource;
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
-            minimumHeight = Math.Max(Math.Max(minimumHeight ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y), (glyphSource?.LineSpacing ?? 0) * 0.6f);
-            minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
+            Height.minimum = Math.Max(Math.Max(Height.minimum ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y), (glyphSource?.LineSpacing ?? 0) * 0.6f);
+            Width.minimum = Math.Max(Width.minimum ?? 0, ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
         }
 
         private float ApplyNotchMagnetism (float result) {

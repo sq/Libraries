@@ -246,11 +246,11 @@ namespace Squared.PRGUI.Controls {
             Layout.Floating = true;
         }
 
-        protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
-            base.ComputeFixedSize(out fixedWidth, out fixedHeight);
+        protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
+            base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             if (_Maximized) {
-                fixedWidth = Context.CanvasSize.X;
-                fixedHeight = Context.CanvasSize.Y;
+                width.Fixed = Context.CanvasSize.X;
+                height.Fixed = Context.CanvasSize.Y;
             }
         }
 

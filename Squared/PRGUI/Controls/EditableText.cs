@@ -485,8 +485,8 @@ namespace Squared.PRGUI.Controls {
             var lineHeight = DynamicLayout.GlyphSource.LineSpacing;
             var contentMinimumHeight = lineHeight * (Multiline ? 2 : 1) + CachedPadding.Y; // FIXME: Include padding
             if (!DisableMinimumSize)
-                minimumWidth = minimumWidth ?? (ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
-            minimumHeight = Math.Max(minimumHeight ?? 0, contentMinimumHeight);
+                Width.minimum = Width.minimum ?? (ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
+            Height.minimum = Math.Max(Height.minimum ?? 0, contentMinimumHeight);
         }
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
