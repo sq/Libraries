@@ -216,8 +216,8 @@ namespace Squared.PRGUI.Controls {
             return st;
         }
 
-        protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
-            base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
+        protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
+            base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             if (minimumWidth.HasValue)
                 minimumWidth = Math.Max(minimumWidth.Value, ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
             else

@@ -12,21 +12,53 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public class StaticImage : Control {
-        public bool AutoSizeWidth = true, AutoSizeHeight = true;
-        public bool AutoSize {
-            get => AutoSizeWidth && AutoSizeHeight;
-            set => AutoSizeWidth = AutoSizeHeight = value;
-        }
+    [Flags]
+    public enum ImageDimensions {
+        None = 0,
+        X = 1,
+        Y = 2
+    }
+
+    public class StaticImage : Control, IPostLayoutListener {
         public Vector2 Alignment = new Vector2(0.5f, 0.5f);
         public Vector2 Scale = Vector2.One;
         public RasterizePasses Pass = RasterizePasses.Content;
-        public bool ScaleToFitX, ScaleToFitY;
-        public bool ScaleToFit {
-            get => ScaleToFitX && ScaleToFitY;
-            set => ScaleToFitX = ScaleToFitY = value;
+        /// <summary>
+        /// The auto-selected scale ratio will never be below this value.
+        /// </summary>
+        public float MinimumScale = 0f;
+        /// <summary>
+        /// The auto-selected scale ratio will never exceed this value.
+        /// </summary>
+        public float MaximumScale = 1f;
+        /// <summary>
+        /// If set, the displayed image will shrink or expand (if possible) to fill the entire
+        ///  control, preserving aspect ratio.
+        /// </summary>
+        public bool ScaleToFit = true;
+        /// <summary>
+        /// If set, the control will attempt to automatically expand to contain the image on these axes.
+        /// </summary>
+        public ImageDimensions ExpandAxes;
+        /// <summary>
+        /// If set, the control will attempt to automatically shrink on these axes to eliminate empty space.
+        /// </summary>
+        public ImageDimensions ShrinkAxes;
+
+        bool AreRecentRectsValid;
+        RectF MostRecentParentRect, MostRecentContentRect;
+
+        private AbstractTextureReference _Image;
+        public AbstractTextureReference Image {
+            get => _Image;
+            set {
+                if (_Image == value)
+                    return;
+                _Image = value;
+                InvalidateAutoSize();
+            }
         }
-        public AbstractTextureReference Image;
+
         public bool ShowLoadingSpinner;
 
         public StaticImage ()
@@ -34,54 +66,85 @@ namespace Squared.PRGUI.Controls {
             CanApplyOpacityWithoutCompositing = true;
         }
 
+        public void SetFixedAxes (ImageDimensions axes) {
+            ExpandAxes |= axes;
+            ShrinkAxes |= axes;
+        }
+
+        private void InvalidateAutoSize () {
+            AreRecentRectsValid = false;
+        }
+
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.StaticImage ?? provider?.None;
         }
 
-        protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
-            base.ComputeFixedSize(out fixedWidth, out fixedHeight);
+        private float ComputeDisplayScaleRatio (float availableWidth, float availableHeight) {
+            // FIXME
+            throw new NotImplementedException();
+            return 0;
+        }
+
+        private void ComputeAutoSize (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height) {
+            throw new NotImplementedException();
+
+            /*
             if (!AutoSizeWidth && !AutoSizeHeight)
                 return;
 
-            ComputeSizeConstraints(
-                out float? minimumWidth, out float? minimumHeight,
-                out float? maximumWidth, out float? maximumHeight
-            );
-
-            var instance = Image.Instance;
+            var instance = _Image.Instance;
             float? scaleToFit = null;
 
-            // FIXME
-            var computedPadding = default(Margins);
-
             while (true) {
+                var scaleX = ApplyScaleToAutoSizeX ? (scaleToFit ?? 1f) : 1f;
                 if (AutoSizeWidth && (instance != null)) {
-                    var fw = instance.Width * Scale.X * (scaleToFit ?? 1f);
+                    var fw = instance.Width * Scale.X * scaleX;
                     if (!Width.Fixed.HasValue) {
                         if (maximumWidth.HasValue)
-                            fixedWidth = Math.Min(fw, maximumWidth.Value);
+                            width = Math.Min(fw, maximumWidth.Value);
                         else
-                            fixedWidth = fw;
+                            width = fw;
                     }
                 }
+                var scaleY = ApplyScaleToAutoSizeY ? (scaleToFit ?? 1f) : 1f;
                 if (AutoSizeHeight && (instance != null)) {
-                    var fh = instance.Height * Scale.Y * (scaleToFit ?? 1f);
+                    var fh = instance.Height * Scale.Y * scaleY;
                     if (!Height.Fixed.HasValue) {
                         if (maximumHeight.HasValue)
-                            fixedHeight = Math.Min(fh, maximumHeight.Value);
+                            height = Math.Min(fh, maximumHeight.Value);
                         else
-                            fixedHeight = fh;
+                            height = fh;
                     }
                 }
 
                 if (scaleToFit.HasValue)
                     break;
 
-                var fakeBox = new RectF(0, 0, fixedWidth ?? 9999, fixedHeight ?? 9999);
-                scaleToFit = ComputeScaleToFit(ref fakeBox);
+                if (MostRecentRectIsValid) {
+                    MostRecentScaleToFit = scaleToFit = ComputeScaleToFit(ref MostRecentRect);
+                    ;
+                } else if (MostRecentScaleToFit.HasValue) {
+                    scaleToFit = MostRecentScaleToFit;
+                } else {
+                    ;
+                }
+
                 if (!scaleToFit.HasValue)
                     break;
             }
+
+            if ((MostRecentRect.Width > 0) && (MostRecentRect.Height > 0))
+                MostRecentRectIsValid = true;
+            */
+        }
+
+        protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
+            base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
+            ComputeAutoSize(ref context, ref width, ref height);
+            var newW = Math.Max(w ?? -9999, minimumWidth ?? -9999);
+            var newH = Math.Max(h ?? -9999, minimumHeight ?? -9999);
+            minimumWidth = (newW > -9999) ? newW : (float?)null;
+            minimumHeight = (newH > -9999) ? newH : (float?)null;
         }
 
         protected float? ComputeScaleToFit (ref RectF box) {
@@ -108,11 +171,9 @@ namespace Squared.PRGUI.Controls {
                 result = Math.Min(scaleFactorX.Value, scaleFactorY.Value);
             else
                 result = result ?? scaleFactorY;
-            return result;
-        }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            if (result.HasValue)
+                result = Math.Min(MaximumScale, result.Value);
 
             return result;
         }
@@ -159,6 +220,27 @@ namespace Squared.PRGUI.Controls {
                     1f, color1, color2, Color.Black * 0.8f
                 );
             }
+        }
+
+        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+            if ((LayoutKey.IsInvalid) || (_Image.Instance == null)) {
+                MostRecentRectIsValid = false;
+                MostRecentScaleToFit = null;
+                return;
+            }
+
+            var newRect = GetRect();
+            if (newRect.Size != MostRecentRect.Size) {
+                if (ScaleToFitX && (newRect.Width != MostRecentRect.Width))
+                    MostRecentScaleToFit = null;
+                if (ScaleToFitY && (newRect.Height != MostRecentRect.Height))
+                    MostRecentScaleToFit = null;
+                MostRecentRectIsValid = false;
+                MostRecentRect = newRect;
+            }
+
+            if (!MostRecentRectIsValid)
+                relayoutRequested = true;
         }
     }
 }

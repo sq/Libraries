@@ -126,11 +126,11 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
+        protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             var decorations = GetDefaultDecorator(Context.Decorations);
             Color? color = null;
             decorations.GetTextSettings(default(UIOperationContext), default(ControlStates), out Render.Material temp, ref color);
-            base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
+            base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             if ((Direction == GaugeDirection.Clockwise) || (Direction == GaugeDirection.CounterClockwise)) {
                 var m = Math.Max(ControlMinimumLength, ControlMinimumHeight);
                 minimumHeight = Math.Max(Math.Max(minimumHeight ?? 0, m * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);

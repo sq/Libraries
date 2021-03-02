@@ -172,32 +172,22 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
-            base.ComputeFixedSize(out fixedWidth, out fixedHeight);
-            /*
-            if (Context == null)
-                return;
-            */
-            // var parentRect = Context.Layout.GetRect(parent);
+        protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
+            base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
 
-            if (AutoSizeWidth && AutoSizeIsMaximum && !Width.Fixed.HasValue)
-                fixedWidth = AutoSizeComputedWidth ?? fixedWidth;
-            if (AutoSizeHeight && AutoSizeIsMaximum && !Height.Fixed.HasValue)
-                fixedHeight = AutoSizeComputedHeight ?? fixedHeight;
+            if (AutoSizeWidth) {
+                if (AutoSizeIsMaximum && !Width.Fixed.HasValue)
+                    fixedWidth = AutoSizeComputedWidth ?? fixedWidth;
+                minimumWidth = AutoSizeComputedWidth;
+            }
+            if (AutoSizeHeight) {
+                if (AutoSizeIsMaximum && !Height.Fixed.HasValue)
+                    fixedHeight = AutoSizeComputedHeight ?? fixedHeight;
+                minimumHeight = AutoSizeComputedHeight;
+            }
 
             Width.Constrain(ref fixedWidth);
             Height.Constrain(ref fixedHeight);
-        }
-
-        protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
-            base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
-            if (AutoSizeIsMaximum)
-                return;
-
-            if (AutoSizeWidth)
-                minimumWidth = AutoSizeComputedWidth;
-            if (AutoSizeHeight)
-                minimumHeight = AutoSizeComputedHeight;
         }
 
         private void ConfigureMeasurement () {

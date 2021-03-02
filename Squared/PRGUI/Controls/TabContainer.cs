@@ -159,10 +159,6 @@ namespace Squared.PRGUI.Controls {
             return provider.None;
         }
 
-        protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
-            base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
-        }
-
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var children = Children;
             if (TabStrip.Children.Count != children.Count - 1)

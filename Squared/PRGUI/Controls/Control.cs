@@ -22,15 +22,76 @@ namespace Squared.PRGUI {
     public struct ControlDimension {
         public float? Minimum, Maximum, Fixed;
 
-        public void Constrain (ref float? size) {
+        public static ControlDimension operator * (float lhs, ControlDimension rhs) {
+            return rhs.Scale(lhs);
+        }
+
+        public static ControlDimension operator * (ControlDimension lhs, float rhs) {
+            return lhs.Scale(rhs);
+        }
+
+        public ControlDimension Scale (float scale) {
+            return new ControlDimension {
+                Minimum = Minimum * scale,
+                Maximum = Maximum * scale,
+                Fixed = Fixed * scale
+            };
+        }
+
+        private static float? Min (float? lhs, float? rhs) {
+            if (lhs.HasValue && rhs.HasValue)
+                return Math.Min(lhs.Value, rhs.Value);
+            else if (lhs.HasValue)
+                return lhs;
+            else
+                return rhs;
+        }
+
+        private static float? Max (float? lhs, float? rhs) {
+            if (lhs.HasValue && rhs.HasValue)
+                return Math.Max(lhs.Value, rhs.Value);
+            else if (lhs.HasValue)
+                return lhs;
+            else
+                return rhs;
+        }
+
+        /// <summary>
+        /// Produces a new dimension with minimum/maximum values that encompass both inputs
+        /// </summary>
+        public ControlDimension Union (ref ControlDimension rhs) {
+            return new ControlDimension {
+                Minimum = Min(Minimum, rhs.Minimum),
+                Maximum = Max(Maximum, rhs.Maximum),
+                // FIXME
+                Fixed = Fixed ?? rhs.Fixed
+            };
+        }
+
+        /// <summary>
+        /// Produces a new dimension with minimum/maximum values that only encompass the place where
+        ///  the two inputs overlap
+        /// </summary>
+        public ControlDimension Intersection (ref ControlDimension rhs) {
+            return new ControlDimension {
+                Minimum = Max(Minimum, rhs.Minimum),
+                Maximum = Min(Maximum, rhs.Maximum),
+                // FIXME
+                Fixed = Fixed ?? rhs.Fixed
+            };
+        }
+
+        public void Constrain (ref float? size, bool applyFixed) {
             if (Minimum.HasValue && size.HasValue)
                 size = Math.Max(Minimum.Value, size.Value);
             if (Maximum.HasValue && size.HasValue)
                 size = Math.Min(Maximum.Value, size.Value);
+            if (applyFixed && Fixed.HasValue)
+                size = Fixed;
         }
 
-        public float? Constrain (float? size) {
-            Constrain(ref size);
+        public float? Constrain (float? size, bool applyFixed) {
+            Constrain(ref size, applyFixed);
             return size;
         }
 
@@ -526,21 +587,11 @@ namespace Squared.PRGUI {
                 result = Padding;
         }
 
-        protected virtual void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
-            var sizeScale = Appearance.AutoScaleMetrics ? Context.Decorations.SizeScaleRatio : Vector2.One;
-            fixedWidth = Width.Fixed * sizeScale.X;
-            fixedHeight = Height.Fixed * sizeScale.Y;
-        }
-
         protected virtual void ComputeSizeConstraints (
-            out float? minimumWidth, out float? minimumHeight,
-            out float? maximumWidth, out float? maximumHeight
+            ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale
         ) {
-            var sizeScale = Appearance.AutoScaleMetrics ? Context.Decorations.SizeScaleRatio : Vector2.One;
-            minimumWidth = Width.Minimum * sizeScale.X;
-            minimumHeight = Height.Minimum * sizeScale.Y;
-            maximumWidth = Width.Maximum * sizeScale.X;
-            maximumHeight = Height.Maximum * sizeScale.Y;
+            width *= sizeScale.X;
+            height *= sizeScale.Y;
         }
 
 #if DETECT_DOUBLE_RASTERIZE
@@ -563,8 +614,12 @@ namespace Squared.PRGUI {
 
             MostRecentComputedMargins = computedMargins;
 
-            ComputeFixedSize(out float? fixedWidth, out float? fixedHeight);
-            var actualLayoutFlags = ComputeLayoutFlags(fixedWidth.HasValue, fixedHeight.HasValue);
+            var width = Width;
+            var height = Height;
+            var sizeScale = Appearance.AutoScaleMetrics ? Context.Decorations.SizeScaleRatio : Vector2.One;
+            ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
+
+            var actualLayoutFlags = ComputeLayoutFlags(width.Fixed.HasValue, height.Fixed.HasValue);
             var isFloating = actualLayoutFlags.IsFlagged(ControlFlags.Layout_Floating);
 
             var spacingScale = context.DecorationProvider.SpacingScaleRatio;
@@ -579,17 +634,12 @@ namespace Squared.PRGUI {
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetLayoutData(result, ref Layout.FloatingPosition, ref computedMargins, ref computedPadding);
-            context.Layout.SetFixedSize(result, fixedWidth ?? LayoutItem.NoValue, fixedHeight ?? LayoutItem.NoValue);
-
-            ComputeSizeConstraints(
-                out float? minimumWidth, out float? minimumHeight,
-                out float? maximumWidth, out float? maximumHeight
-            );
+            context.Layout.SetFixedSize(result, width.Fixed ?? LayoutItem.NoValue, height.Fixed ?? LayoutItem.NoValue);
 
             context.Layout.SetSizeConstraints(
                 result, 
-                minimumWidth, minimumHeight, 
-                maximumWidth, maximumHeight
+                width.Minimum, height.Minimum, 
+                width.Maximum, height.Maximum
             );
 
             if (!parent.IsInvalid && !existingKey.HasValue)

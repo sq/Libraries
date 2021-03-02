@@ -247,9 +247,9 @@ namespace Squared.PRGUI.Controls {
             return (float)Math.Floor(Arithmetic.Lerp(collapsedHeight, expandedHeight, level));
         }
 
-        protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
-            base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
-            maximumHeight = ComputeDisclosureHeight(maximumHeight);
+        protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
+            base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
+            height.Maximum = ComputeDisclosureHeight(height.Maximum);
         }
 
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
