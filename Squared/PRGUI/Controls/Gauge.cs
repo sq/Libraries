@@ -133,14 +133,14 @@ namespace Squared.PRGUI.Controls {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             if ((Direction == GaugeDirection.Clockwise) || (Direction == GaugeDirection.CounterClockwise)) {
                 var m = Math.Max(ControlMinimumLength, ControlMinimumHeight);
-                Height.minimum = Math.Max(Math.Max(Height.minimum ?? 0, m * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
-                Width.minimum = Math.Max(Width.minimum ?? 0, m * Context.Decorations.SizeScaleRatio.X);
-            } else if (DetermineIfHorizontal(Width.minimum, Height.minimum)) {
-                Height.minimum = Math.Max(Math.Max(Height.minimum ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
-                Width.minimum = Math.Max(Width.minimum ?? 0, ControlMinimumLength * Context.Decorations.SizeScaleRatio.X);
+                Height.Minimum = Math.Max(Math.Max(Height.Minimum ?? 0, m * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                Width.Minimum = Math.Max(Width.Minimum ?? 0, m * Context.Decorations.SizeScaleRatio.X);
+            } else if (DetermineIfHorizontal(Width.Minimum, Height.Minimum)) {
+                Height.Minimum = Math.Max(Math.Max(Height.Minimum ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                Width.Minimum = Math.Max(Width.Minimum ?? 0, ControlMinimumLength * Context.Decorations.SizeScaleRatio.X);
             } else {
-                Height.minimum = Math.Max(Math.Max(Height.minimum ?? 0, ControlMinimumLength * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
-                Width.minimum = Math.Max(Width.minimum ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.X);
+                Height.Minimum = Math.Max(Math.Max(Height.Minimum ?? 0, ControlMinimumLength * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                Width.Minimum = Math.Max(Width.Minimum ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.X);
             }
         }
 

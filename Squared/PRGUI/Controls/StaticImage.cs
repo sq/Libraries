@@ -46,7 +46,7 @@ namespace Squared.PRGUI.Controls {
         public ImageDimensions ShrinkAxes;
 
         bool AreRecentRectsValid;
-        RectF MostRecentParentRect, MostRecentContentRect;
+        RectF MostRecentParentContentRect, MostRecentContentRect;
 
         private AbstractTextureReference _Image;
         public AbstractTextureReference Image {
@@ -100,8 +100,8 @@ namespace Squared.PRGUI.Controls {
                 if (AutoSizeWidth && (instance != null)) {
                     var fw = instance.Width * Scale.X * scaleX;
                     if (!Width.Fixed.HasValue) {
-                        if (Width.maximum.HasValue)
-                            width = Math.Min(fw, Width.maximum.Value);
+                        if (Width.Maximum.HasValue)
+                            width = Math.Min(fw, Width.Maximum.Value);
                         else
                             width = fw;
                     }
@@ -110,8 +110,8 @@ namespace Squared.PRGUI.Controls {
                 if (AutoSizeHeight && (instance != null)) {
                     var fh = instance.Height * Scale.Y * scaleY;
                     if (!Height.Fixed.HasValue) {
-                        if (Height.maximum.HasValue)
-                            height = Math.Min(fh, Height.maximum.Value);
+                        if (Height.Maximum.HasValue)
+                            height = Math.Min(fh, Height.Maximum.Value);
                         else
                             height = fh;
                     }
@@ -141,13 +141,19 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             ComputeAutoSize(ref context, ref width, ref height);
-            var newW = Math.Max(w ?? -9999, Width.minimum ?? -9999);
-            var newH = Math.Max(h ?? -9999, Height.minimum ?? -9999);
-            Width.minimum = (newW > -9999) ? newW : (float?)null;
-            Height.minimum = (newH > -9999) ? newH : (float?)null;
+            // FIXME
+            /*
+            var newW = Math.Max(w ?? -9999, Width.Minimum ?? -9999);
+            var newH = Math.Max(h ?? -9999, Height.Minimum ?? -9999);
+            Width.Minimum = (newW > -9999) ? newW : (float?)null;
+            Height.Minimum = (newH > -9999) ? newH : (float?)null;
+            */
         }
 
         protected float? ComputeScaleToFit (ref RectF box) {
+            // FIXME
+            return null;
+            /*
             if (!ScaleToFitX && !ScaleToFitY)
                 return null;
 
@@ -176,6 +182,7 @@ namespace Squared.PRGUI.Controls {
                 result = Math.Min(MaximumScale, result.Value);
 
             return result;
+            */
         }
 
         protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
@@ -224,12 +231,21 @@ namespace Squared.PRGUI.Controls {
 
         void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             if ((LayoutKey.IsInvalid) || (_Image.Instance == null)) {
-                MostRecentRectIsValid = false;
-                MostRecentScaleToFit = null;
+                AreRecentRectsValid = false;
                 return;
             }
 
-            var newRect = GetRect();
+            var contentRect = GetRect(contentRect: true);
+            var parentContentRect = TryGetParent(out Control parent)
+                ? parent.GetRect(contentRect: true)
+                : context.UIContext.CanvasRect;
+
+            MostRecentContentRect = contentRect;
+            MostRecentParentContentRect = parentContentRect;
+            AreRecentRectsValid = false;
+
+            // FIXME
+            /*
             if (newRect.Size != MostRecentRect.Size) {
                 if (ScaleToFitX && (newRect.Width != MostRecentRect.Width))
                     MostRecentScaleToFit = null;
@@ -241,6 +257,7 @@ namespace Squared.PRGUI.Controls {
 
             if (!MostRecentRectIsValid)
                 relayoutRequested = true;
+            */
         }
     }
 }

@@ -795,17 +795,23 @@ namespace Squared.PRGUI.Imperative {
         public ControlBuilder<TControl> SetAutoSize (bool value) {
             if (Control is StaticTextBase stb)
                 stb.AutoSize = value;
+            // FIXME
+            /*
             else if (Control is StaticImage si)
                 si.AutoSize = value;
+            */
             return this;
         }
         public ControlBuilder<TControl> SetAutoSize (bool width, bool height) {
             if (Control is StaticTextBase stb) {
                 stb.AutoSizeWidth = width;
                 stb.AutoSizeHeight = height;
+            // FIXME
+            /*
             } else if (Control is StaticImage si) {
                 si.AutoSizeWidth = width;
                 si.AutoSizeHeight = height;
+            */
             }
             return this;
         }
