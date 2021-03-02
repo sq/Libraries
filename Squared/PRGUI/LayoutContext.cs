@@ -422,8 +422,12 @@ namespace Squared.PRGUI.Layout {
             pItem->MaximumSize = maximumSize ?? LayoutItem.NoSize;
         }
 
-        public void SetSizeConstraints (ControlKey key, float? minimumWidth = null, float? minimumHeight = null, float? maximumWidth = null, float? maximumHeight = null) {
-            SetSizeConstraints(key, new Vector2(minimumWidth ?? -1, minimumHeight ?? -1), new Vector2(maximumWidth ?? -1, maximumHeight ?? -1));
+        public void SetSizeConstraints (ControlKey key, ref ControlDimension width, ref ControlDimension height) {
+            SetFixedSize(key, width.Fixed ?? LayoutItem.NoValue, height.Fixed ?? LayoutItem.NoValue);
+            SetSizeConstraints(
+                key, new Vector2(width.Minimum ?? LayoutItem.NoValue, height.Minimum ?? LayoutItem.NoValue), 
+                new Vector2(width.Maximum ?? LayoutItem.NoValue, height.Maximum ?? LayoutItem.NoValue)
+            );
         }
 
         public unsafe void GetSizeConstraints (ControlKey key, out Vector2 minimumSize, out Vector2 maximumSize) {

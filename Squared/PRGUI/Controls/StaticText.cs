@@ -175,24 +175,20 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
 
-            if (this is Tooltip) {
-                ;
-            }
-
             if (AutoSizeWidth) {
-                if (AutoSizeIsMaximum && !Width.Maximum.HasValue)
-                    Width.Fixed = AutoSizeComputedWidth ?? Width.Maximum;
-                Width.Minimum = AutoSizeComputedWidth;
+                if (AutoSizeIsMaximum && !width.Maximum.HasValue)
+                    width.Fixed = AutoSizeComputedWidth ?? width.Maximum;
+                width.Minimum = AutoSizeComputedWidth;
             }
             if (AutoSizeHeight) {
                 if (AutoSizeIsMaximum)
-                    Height.Maximum = AutoSizeComputedHeight ?? Height.Maximum;
-                Height.Minimum = AutoSizeComputedHeight;
+                    height.Maximum = AutoSizeComputedHeight ?? height.Maximum;
+                height.Minimum = AutoSizeComputedHeight;
             }
 
             // FIXME: Do we need this? Should controls always do it?
-            Width.Constrain(ref Width.Fixed, false);
-            Height.Constrain(ref Height.Fixed, false);
+            width.Constrain(ref width.Fixed, false);
+            height.Constrain(ref height.Fixed, false);
         }
 
         private void ConfigureMeasurement () {

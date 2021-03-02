@@ -646,13 +646,7 @@ namespace Squared.PRGUI {
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetLayoutData(result, ref Layout.FloatingPosition, ref computedMargins, ref computedPadding);
-            context.Layout.SetFixedSize(result, width.Fixed ?? LayoutItem.NoValue, height.Fixed ?? LayoutItem.NoValue);
-
-            context.Layout.SetSizeConstraints(
-                result, 
-                width.Minimum, height.Minimum, 
-                width.Maximum, height.Maximum
-            );
+            context.Layout.SetSizeConstraints(result, ref width, ref height);
 
             if (!parent.IsInvalid && !existingKey.HasValue)
                 context.Layout.InsertAtEnd(parent, result);
