@@ -83,8 +83,7 @@ namespace PRGUI.Demo {
 
             Content.RootDirectory = "Content";
 
-            IsFixedTimeStep = true;
-
+            IsFixedTimeStep = false;
             if (IsFixedTimeStep) {
                 TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 2f);
                 GamePad.FixedTimeStep = 1.0f / 60f;

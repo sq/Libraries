@@ -49,7 +49,7 @@ namespace Squared.PRGUI {
             };
         }
 
-        private static float? Min (float? lhs, float? rhs) {
+        public static float? Min (float? lhs, float? rhs) {
             if (lhs.HasValue && rhs.HasValue)
                 return Math.Min(lhs.Value, rhs.Value);
             else if (lhs.HasValue)
@@ -58,7 +58,7 @@ namespace Squared.PRGUI {
                 return rhs;
         }
 
-        private static float? Max (float? lhs, float? rhs) {
+        public static float? Max (float? lhs, float? rhs) {
             if (lhs.HasValue && rhs.HasValue)
                 return Math.Max(lhs.Value, rhs.Value);
             else if (lhs.HasValue)

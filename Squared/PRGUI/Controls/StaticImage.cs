@@ -31,11 +31,16 @@ namespace Squared.PRGUI.Controls {
         /// The auto-selected scale ratio will never exceed this value.
         /// </summary>
         public float MaximumScale = 1f;
+        public bool ScaleToFitX = true;
+        public bool ScaleToFitY = true;
         /// <summary>
         /// If set, the displayed image will shrink or expand (if possible) to fill the entire
         ///  control, preserving aspect ratio.
         /// </summary>
-        public bool ScaleToFit = true;
+        public bool ScaleToFit {
+            get => ScaleToFitX && ScaleToFitY;
+            set => ScaleToFitX = ScaleToFitY = value;
+        }
         /// <summary>
         /// If set, the control will attempt to automatically expand to contain the image on these axes.
         /// </summary>
@@ -79,10 +84,25 @@ namespace Squared.PRGUI.Controls {
             return provider?.StaticImage ?? provider?.None;
         }
 
-        private float ComputeDisplayScaleRatio (float availableWidth, float availableHeight) {
-            // FIXME
-            throw new NotImplementedException();
-            return 0;
+        private Vector2 ComputeDisplayScaleRatio (float availableWidth, float availableHeight) {
+            // HACK
+            if (Image.Instance == null)
+                return Vector2.One;
+
+            var widthScale = ScaleToFitX
+                ? availableWidth / Image.Instance.Width
+                : (float?)null;
+            var heightScale = ScaleToFitY
+                ? availableHeight / Image.Instance.Height
+                : (float?)null;
+
+            var scaleF = Arithmetic.Clamp(
+                // FIXME: Move this
+                ControlDimension.Min(widthScale, heightScale) ?? 1,
+                MinimumScale,
+                MaximumScale
+            );
+            return new Vector2(scaleF, scaleF);
         }
 
         private void ComputeAutoSize (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height) {
@@ -197,11 +217,7 @@ namespace Squared.PRGUI.Controls {
                 if (instance == null)
                     return;
 
-                var scaleToFit = ComputeScaleToFit(ref settings.ContentBox);
-                var scale = 
-                    scaleToFit.HasValue 
-                        ? new Vector2(scaleToFit.Value)
-                        : Scale;
+                var scale = ComputeDisplayScaleRatio(settings.ContentBox.Width, settings.ContentBox.Height);
                 var position = new Vector2(
                     Arithmetic.Lerp(settings.Box.Left, settings.Box.Extent.X, Alignment.X),
                     Arithmetic.Lerp(settings.Box.Top, settings.Box.Extent.Y, Alignment.Y)
