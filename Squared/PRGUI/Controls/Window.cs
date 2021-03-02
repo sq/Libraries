@@ -45,6 +45,7 @@ namespace Squared.PRGUI.Controls {
         Vector2 _LastSize;
         RectF _LastAnchorRect, _LastParentRect;
 
+        public bool ConstrainToParentInsteadOfScreen = false;
         public bool WasPositionSetByUser;
         public bool AlignmentPending = false;
         public Vector2? MostRecentAlignedPosition = null;
@@ -77,12 +78,14 @@ namespace Squared.PRGUI.Controls {
                 result = parent.GetRect(contentRect: true);
         }
 
-        private void ClampToCanvas (ref UIOperationContext context, ref Vector2 position, ref RectF rect) {
-            var availableSpace = context.UIContext.CanvasSize - rect.Size;
+        private void ClampToConstraintArea (ref UIOperationContext context, ref Vector2 position, ref RectF rect) {
+            // FIXME
+            var area = context.UIContext.CanvasRect;
+            var availableSpace = area.Size - rect.Size;
             if (availableSpace.X > 0)
-                position.X = Arithmetic.Clamp(position.X, 0, availableSpace.X);
+                position.X = Arithmetic.Clamp(position.X, area.Left, availableSpace.X);
             if (availableSpace.Y > 0)
-                position.Y = Arithmetic.Clamp(position.Y, 0, availableSpace.Y);
+                position.Y = Arithmetic.Clamp(position.Y, area.Top, availableSpace.Y);
         }
 
         private bool Align (ref UIOperationContext context, RectF parentRect, RectF rect, bool updateDesiredPosition) {
@@ -98,7 +101,7 @@ namespace Squared.PRGUI.Controls {
                 anchorRect.Size -= margins.Size;
                 var offset = (rect.Size * ControlAlignmentPoint);
                 var result = anchorCenter - offset - parentRect.Position;
-                ClampToCanvas(ref context, ref result, ref rect);
+                ClampToConstraintArea(ref context, ref result, ref rect);
                 MostRecentAlignedPosition = anchorCenter - offset;
                 return SetPosition(result, updateDesiredPosition);
             } else {
@@ -113,7 +116,7 @@ namespace Squared.PRGUI.Controls {
                 if (availableSpace.Y < 0)
                     availableSpace.Y = 0;
                 var result = availableSpace * ControlAlignmentPoint;
-                ClampToCanvas(ref context, ref result, ref rect);
+                ClampToConstraintArea(ref context, ref result, ref rect);
                 MostRecentAlignedPosition = result + parentRect.Position;
                 return SetPosition(result, updateDesiredPosition);
             }
@@ -155,7 +158,7 @@ namespace Squared.PRGUI.Controls {
             if (WasPositionSetByUser) {
                 MostRecentAlignedPosition = null;
 
-                if (UpdatePosition(DesiredPosition ?? Control.Layout.FloatingPosition, ref parentRect, ref rect, false))
+                if (DoUpdatePosition(DesiredPosition ?? Control.Layout.FloatingPosition, ref parentRect, ref rect, false))
                     relayoutRequested = true;
 
                 var availableSpace = (parentRect.Size - rect.Size);
@@ -168,6 +171,18 @@ namespace Squared.PRGUI.Controls {
             } else {
                 MostRecentAlignedPosition = null;
             }
+        }
+
+        private bool DoUpdatePosition (Vector2 newPosition, ref RectF parentRect, ref RectF rect, bool updateDesiredPosition) {
+            if (UpdatePosition != null)
+                return UpdatePosition(newPosition, ref parentRect, ref rect, updateDesiredPosition);
+
+            if (Control.Layout.FloatingPosition == newPosition)
+                // FIXME
+                return false;
+
+            Control.Layout.FloatingPosition = newPosition;
+            return true;
         }
     }
 

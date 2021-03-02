@@ -1275,6 +1275,7 @@ namespace Squared.PRGUI {
             var textChanged = !instance.Text.TextEquals(text, StringComparison.Ordinal) || 
                 textIsInvalidated;
 
+            instance.Move(anchor);
             var rect = anchor.GetRect(context: this);
             // HACK: Clip the anchor's rect to its parent's rect to ensure that
             //  in the event that a container is scrolling, the tooltip doesn't shift outside

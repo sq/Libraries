@@ -83,7 +83,7 @@ namespace PRGUI.Demo {
 
             Content.RootDirectory = "Content";
 
-            IsFixedTimeStep = false;
+            IsFixedTimeStep = true;
 
             if (IsFixedTimeStep) {
                 TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 2f);

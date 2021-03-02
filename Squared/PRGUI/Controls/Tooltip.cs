@@ -3,15 +3,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Text;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class Tooltip : StaticText {
+    public class Tooltip : StaticTextBase {
+        protected ControlAlignmentHelper Aligner;
+
         public Tooltip ()
-            : base () {
+            : base() {
+            // FIXME: Centered?
+            Aligner = new ControlAlignmentHelper(this) {
+                AnchorPoint = new Vector2(0.5f, 0f),
+                ControlAlignmentPoint = new Vector2(0.5f, 1f),
+                ConstrainToParentInsteadOfScreen = true
+            };
             Content.Alignment = HorizontalAlignment.Left;
             AcceptsMouseInput = false;
             AcceptsFocus = false;
@@ -21,6 +30,23 @@ namespace Squared.PRGUI.Controls {
             LayoutFlags = ControlFlags.Layout_Floating;
             Wrap = true;
             Multiline = true;
+        }
+
+        new public void Invalidate () {
+            base.Invalidate();
+        }
+
+        new public AbstractString Text {
+            get => base.Text;
+            set => base.Text = value;
+        }
+
+        public void Move (Control anchor) {
+            Aligner.Enabled = true;
+            Aligner.Anchor = anchor;
+            // FIXME
+            Aligner.ComputeNewAlignment = true;
+            Aligner.AlignmentPending = true;
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
