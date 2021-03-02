@@ -618,7 +618,7 @@ namespace Squared.PRGUI {
 
             var newTopLevelAncestor = FindTopLevelAncestor(newFocusTarget);
             var activeModal = ActiveModal;
-            if ((activeModal?.RetainFocus == true) && (newTopLevelAncestor != activeModal))
+            if ((activeModal?.RetainFocus == true) && (newTopLevelAncestor != activeModal) && ((Control)ActiveModal).IsValidFocusTarget)
                 return false;
 
             if (previous != newFocusTarget) {

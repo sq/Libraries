@@ -632,14 +632,18 @@ namespace Squared.PRGUI.Controls {
             IsActive = false;
             Intangible = true;
             StartAnimation(Context.Animations?.HideMenu);
+            var fd = _FocusDonor;
+            AcceptsFocus = false;
+            _FocusDonor = null;
+            Context.NotifyControlBecomingInvalidFocusTarget(this, false);
+            if (fd != null)
+                Context.TrySetFocus(fd, false, false); // FIXME
             Listener?.Closed(this);
             if (Closed != null)
                 Closed(this);
             Context.NotifyModalClosed(this);
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
-            AcceptsFocus = false;
-            _FocusDonor = null;
             return true;
         }
 
