@@ -609,10 +609,11 @@ namespace Squared.PRGUI.Controls {
 
         public Future<Control> Show (
             UIContext context, Control anchor, 
-            Vector2? anchorPoint = null, Vector2? controlAlignmentPoint = null, 
+            Vector2? anchorPoint = null, 
+            Vector2? controlAlignmentPoint = null, 
             Control selectedItem = null
         ) {
-            Context = anchor.Context ?? context;
+            Context = anchor?.Context ?? context;
             ShowInternalPrologue(context);
 
             _FocusDonor = anchor;
