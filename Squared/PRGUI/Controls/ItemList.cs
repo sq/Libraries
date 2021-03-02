@@ -84,7 +84,8 @@ namespace Squared.PRGUI.Controls {
             Items.Clear();
             _SelectedIndices.Clear();
             OnSelectionChanged(true);
-            HasSelectedItem = false;
+            // FIXME: Should we do this?
+            // HasSelectedItem = false;
         }
 
         private void OnSelectionChanged (bool fireEvent) {

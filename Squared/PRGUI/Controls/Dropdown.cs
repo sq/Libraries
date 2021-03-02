@@ -36,6 +36,8 @@ namespace Squared.PRGUI.Controls {
         }
         public ItemList<T> Items => Manager.Items;
 
+        public T DefaultValue = default(T);
+
         private bool NeedsUpdate = true;
         private bool MenuJustClosed = false;
 
@@ -45,11 +47,13 @@ namespace Squared.PRGUI.Controls {
         }
 
         public T SelectedItem {
-            get => Manager.SelectedItem;
+            get => Manager.HasSelectedItem ? Manager.SelectedItem : DefaultValue;
             set {
                 SetSelectedItem(value, false);
             }
         }
+
+        public bool HasSelectedItem => Manager.HasSelectedItem;
 
         public void SetSelectedItem (T value, bool forUserInput) {
             if (!Manager.TrySetSelectedItem(ref value, forUserInput))
@@ -146,7 +150,7 @@ namespace Squared.PRGUI.Controls {
             NeedsUpdate = false;
             if (!Manager.HasSelectedItem && (Items.Count > 0))
                 // FIXME: ForUser?
-                SetSelectedItem(Items[0], true);
+                SetSelectedItem(DefaultValue, true);
 
             if (!string.IsNullOrWhiteSpace(Label)) {
                 // HACK
