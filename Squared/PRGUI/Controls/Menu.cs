@@ -629,6 +629,7 @@ namespace Squared.PRGUI.Controls {
                 return false;
             if (!AllowProgrammaticClose && !force)
                 return false;
+            Aligner.Enabled = false;
             IsActive = false;
             Intangible = true;
             StartAnimation(Context.Animations?.HideMenu);
