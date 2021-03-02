@@ -141,7 +141,7 @@ namespace Squared.PRGUI.Controls {
                 Appearance.Opacity = 1f;
             GenerateDynamicContent(true);
             _FocusDonor = focusDonor ?? context.TopLevelFocused;
-            context.ShowModal(this);
+            context.ShowModal(this, false);
             // HACK: Ensure event handlers are registered if they weren't already
             if (!IsAcceptHandlerRegistered)
                 RegisterHandler(AcceptControl, OnAcceptClick, ref IsAcceptHandlerRegistered);

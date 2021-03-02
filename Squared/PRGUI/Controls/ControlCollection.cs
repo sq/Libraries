@@ -255,12 +255,13 @@ namespace Squared.PRGUI {
             return ((IEnumerable)Items).GetEnumerator();
         }
 
-        public int PickNewHighestDisplayOrder (Control ctl) {
+        public int PickNewHighestDisplayOrder (Control ctl, bool topmost) {
             int result = int.MinValue;
             foreach (var item in Items) {
                 if (item == ctl)
                     continue;
-                if (item.DisplayOrder >= (int.MaxValue - 1))
+                var itemIsTopmost = item.DisplayOrder >= (int.MaxValue - 16);
+                if (!topmost && itemIsTopmost)
                     continue;
                 result = Math.Max(result, item.DisplayOrder + 1);
             }

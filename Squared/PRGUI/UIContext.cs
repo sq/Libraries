@@ -751,11 +751,11 @@ namespace Squared.PRGUI {
                 Hovering = MouseOver;
         }
 
-        public void ShowModal (IModal modal) {
+        public void ShowModal (IModal modal, bool topmost) {
             if (ModalStack.Contains(modal))
                 throw new InvalidOperationException("Modal already visible");
             var ctl = (Control)modal;
-            ctl.DisplayOrder = Controls.PickNewHighestDisplayOrder(ctl);
+            ctl.DisplayOrder = Controls.PickNewHighestDisplayOrder(ctl, topmost);
             if (!Controls.Contains(ctl))
                 Controls.Add(ctl);
             NotifyModalShown(modal);

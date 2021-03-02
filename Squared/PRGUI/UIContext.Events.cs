@@ -185,6 +185,17 @@ namespace Squared.PRGUI {
             if (target == null)
                 return;
 
+            // HACK: For click events, we want to walk up the parent chain to try and find a control that
+            //  can handle the click. This lets you set a click handler on a control's parent and be certain
+            //  that any children that reject mouse input won't stop you from finding out that a click happened.
+            while (!target.IsValidMouseInputTarget) {
+                if (!target.TryGetParent(out target))
+                    break;
+            }
+
+            if (target == null)
+                return;
+
             if (!target.IsValidMouseInputTarget) {
                 TTS.ControlClicked(target);
                 return;
