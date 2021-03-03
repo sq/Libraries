@@ -965,7 +965,7 @@ namespace Squared.PRGUI {
             if (
                 (activeModal?.BlockInput == true) && 
                 (activeModal != topLevelTarget) &&
-                (topLevelTarget?.DisplayOrder < int.MaxValue)
+                (topLevelTarget?.DisplayOrder <= (activeModal as Control)?.DisplayOrder)
             ) {
                 mouseEventTarget = null;
                 wasInputBlocked = true;
@@ -1318,7 +1318,7 @@ namespace Squared.PRGUI {
                     areHitTestsBlocked && 
                     !ModalStack.Contains(control as IModal) &&
                     // HACK to allow floating controls over the modal stack
-                    (control.DisplayOrder != int.MaxValue)
+                    (control.DisplayOrder <= (ActiveModal as Control)?.DisplayOrder)
                 )
                     continue;
                 var result = control.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible);

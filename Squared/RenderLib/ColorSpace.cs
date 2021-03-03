@@ -87,6 +87,18 @@ namespace Squared.Render {
             Color = default(Color);
         }
 
+        public static pSRGBColor LinearLerp (pSRGBColor a, pSRGBColor b, float t) {
+            Vector4 vA = a.ToPLinear(), vB = b.ToPLinear(), result;
+            Vector4.Lerp(ref vA, ref vB, t, out result);
+            return FromPLinear(ref result);
+        }
+
+        public static pSRGBColor Lerp (pSRGBColor a, pSRGBColor b, float t) {
+            Vector4 vA = a.ToVector4(), vB = b.ToVector4(), result;
+            Vector4.Lerp(ref vA, ref vB, t, out result);
+            return new pSRGBColor(result, isPremultiplied: true);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public pSRGBColor (ref Vector4 v4, bool isPremultiplied = true) {
             IsVector4 = true;
