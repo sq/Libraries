@@ -713,8 +713,8 @@ namespace Squared.PRGUI.Controls {
 
         private void CalculateScrollable (UIContext context) {
             context.UpdateSubtreeLayout(this);
-            if (GetContentBounds(context, out RectF contentBounds))
-                Scrollable = contentBounds.Height >= Height.Maximum;
+            if (GetContentBounds(context, out Vector2 contentBounds))
+                Scrollable = (contentBounds.Y >= Height.Maximum) || (Height.Maximum == null);
         }
 
         StringBuilder TextBuilder = new StringBuilder();

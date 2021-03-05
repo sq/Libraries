@@ -501,8 +501,8 @@ namespace Squared.PRGUI.Controls {
 
         private void CalculateScrollable (UIContext context) {
             context.UpdateSubtreeLayout(this);
-            if (GetContentBounds(context, out RectF contentBounds)) {
-                Scrollable = (contentBounds.Height >= Height.Maximum) || (Height.Maximum == null);
+            if (GetContentBounds(context, out Vector2 contentBounds)) {
+                Scrollable = (contentBounds.Y >= Height.Maximum) || (Height.Maximum == null);
                 // HACK: Changing the scrollable flag invalidates our layout info, so recalculate it
                 // If we don't do this the menu will overhang on the right side
                 if (Scrollable)

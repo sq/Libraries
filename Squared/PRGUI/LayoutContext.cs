@@ -480,6 +480,8 @@ namespace Squared.PRGUI.Layout {
         public unsafe void SetContainerFlags (ControlKey key, ControlFlags flags) {
             AssertMasked(flags, ControlFlagMask.Container);
             var pItem = LayoutPtr(key);
+            if (!flags.IsFlagged(ControlFlags.Container_Row) && !flags.IsFlagged(ControlFlags.Container_Column))
+                throw new ArgumentException("Container must be in either row or column mode");
             pItem->Flags = (pItem->Flags & ~ControlFlagMask.Container) | flags;
         }
 
@@ -533,12 +535,19 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe float CalcOverlaySize (LayoutItem * pItem, LayoutDimensions dim) {
-            float result = 0, minimum = 0;
             int idim = (int)dim, wdim = idim + 2;
+            var outerPadding = pItem->Padding[idim] + pItem->Padding[wdim];
+            if (pItem->FirstChild.IsInvalid) {
+                PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, 0);
+                return outerPadding;
+            }
+
+            float result = 0, minimum = 0;
             var rowFlag = (ControlFlags)((int)ControlFlags.Container_Row + idim);
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
+                var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
 
                 var childRect = GetRect(child);
                 var childMargin = pChild->Margins[wdim];
@@ -554,7 +563,6 @@ namespace Squared.PRGUI.Layout {
                 var childSize = childRect[idim] + childRect[wdim] + childMargin;
                 result = Math.Max(result, childSize);
             }
-            var outerPadding = pItem->Padding[idim] + pItem->Padding[wdim];
             minimum += outerPadding;
             result += outerPadding;
             PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, minimum);
@@ -569,6 +577,7 @@ namespace Squared.PRGUI.Layout {
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
+                var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
 
                 var childRect = GetRect(child);
                 var childMargin = pChild->Margins[wdim];
@@ -601,6 +610,7 @@ namespace Squared.PRGUI.Layout {
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
+                var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
                 if (isFloating)
                     continue;
 
@@ -644,6 +654,15 @@ namespace Squared.PRGUI.Layout {
 
             result = Constrain(result, minimumSize.GetElement(idim), maximumSize.GetElement(idim));
             return result;
+        }
+
+        public unsafe void GetComputedContentSize (ControlKey key, out Vector2 result) {
+            if (key.IsInvalid || key.ID >= Layout.Count) {
+                result = default(Vector2);
+                return;
+            }
+            var pItem = LayoutPtr(key);
+            result = pItem->ComputedContentSize;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

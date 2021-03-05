@@ -241,29 +241,37 @@ namespace Squared.PRGUI.Controls {
                 result.Bottom += scrollbar.MinimumSize.Y * scale.Y;
         }
 
-        protected bool GetContentBounds (UIContext context, out RectF contentBounds) {
-            contentBounds = default(RectF);
+        protected bool GetContentBounds (UIContext context, out Vector2 contentBounds) {
+            contentBounds = default(Vector2);
             if (LayoutKey.IsInvalid)
                 return false;
 
+            /*
+                        context.Layout.GetComputedContentSize(LayoutKey, out contentBounds);
+                        return true;
+            */
+
+            var contentRect = default(RectF);
             bool ok = false;
             if (ColumnCount > 1) {
                 for (int i = 0; i < ColumnCount; i++) {
                     var ckey = ColumnKeys[i];
                     context.Layout.TryMeasureContent(ckey, out RectF columnBounds);
                     if (i == 0) {
-                        contentBounds = columnBounds;
+                        contentRect = columnBounds;
                     } else {
-                        contentBounds.Width += columnBounds.Width;
-                        contentBounds.Height = Math.Max(contentBounds.Height, columnBounds.Height);
+                        contentRect.Width += columnBounds.Width;
+                        contentRect.Height = Math.Max(contentRect.Height, columnBounds.Height);
                     }
                     ok = true;
                 }
             } else {
-                ok = context.Layout.TryMeasureContent(LayoutKey, out contentBounds);
+                ok = context.Layout.TryMeasureContent(LayoutKey, out contentRect);
             }
-            if (ok)
-                ContentBounds = contentBounds;
+            if (ok) {
+                contentRect = contentRect;
+                contentBounds = contentRect.Size;
+            }
             HasContentBounds = ok;
             return ok;
         }
@@ -290,22 +298,26 @@ namespace Squared.PRGUI.Controls {
             // FIXME: This should be done somewhere else
             if (Scrollable) {
                 var contentBox = context.Layout.GetContentRect(LayoutKey);
+                context.Layout.GetComputedContentSize(LayoutKey, out Vector2 newComputedBounds);
+
                 var scrollbar = context.DecorationProvider?.Scrollbar;
                 float viewportWidth = contentBox.Width,
                     viewportHeight = contentBox.Height;
 
-                GetContentBounds(context.UIContext, out RectF contentBounds);
+                GetContentBounds(context.UIContext, out Vector2 contentBounds);
+                if (contentBounds != newComputedBounds)
+                    Console.WriteLine($"{this} hacked = {contentBounds} new = {newComputedBounds}");
 
                 float maxScrollX = 0, maxScrollY = 0, contentSizeX = 0, contentSizeY = 0;
                 if (HasContentBounds) {
                     if (VirtualScrollRegion.X > 0)
                         contentSizeX = VirtualScrollRegion.X;
                     else
-                        contentSizeX = contentBounds.Width;
+                        contentSizeX = contentBounds.X;
                     if (VirtualScrollRegion.Y > 0)
                         contentSizeY = VirtualScrollRegion.Y;
                     else
-                        contentSizeY = contentBounds.Height;
+                        contentSizeY = contentBounds.Y;
                     maxScrollX = contentSizeX - viewportWidth;
                     maxScrollY = contentSizeY - viewportHeight;
                     maxScrollX = Math.Max(0, maxScrollX);

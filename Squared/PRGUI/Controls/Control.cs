@@ -631,7 +631,6 @@ namespace Squared.PRGUI {
             ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
 
             var actualLayoutFlags = ComputeLayoutFlags(width.Fixed.HasValue, height.Fixed.HasValue);
-            var isFloating = actualLayoutFlags.IsFlagged(ControlFlags.Layout_Floating);
 
             var spacingScale = context.DecorationProvider.SpacingScaleRatio;
             var paddingScale = spacingScale * context.DecorationProvider.PaddingScaleRatio;

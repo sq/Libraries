@@ -202,7 +202,7 @@ namespace Squared.PRGUI.Controls {
                 }
                 context.Layout.SetContainerFlags(
                     childBox,
-                    ControlFlags.Container_Align_Start | ControlFlags.Container_No_Expansion
+                    ControlFlags.Container_Align_Start | ControlFlags.Container_Column
                 );
                 context.Layout.SetLayoutFlags(
                     childBox, TabsOnLeft
@@ -211,7 +211,8 @@ namespace Squared.PRGUI.Controls {
                 );
                 var childLayoutFlags = default(ControlFlags) |
                     (ExpandTabsX ? ControlFlags.Layout_Fill_Row : default(ControlFlags)) |
-                    (ExpandTabsY ? ControlFlags.Layout_Fill_Column : default(ControlFlags));
+                    (ExpandTabsY ? ControlFlags.Layout_Fill_Column : default(ControlFlags)) | 
+                    ControlFlags.Layout_Stacked;
                 foreach (var item in children) {
                     if (item == TabStrip)
                         continue;

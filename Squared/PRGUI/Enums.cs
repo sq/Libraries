@@ -106,27 +106,31 @@ namespace Squared.PRGUI.Layout {
         /// This control does not contribute to its parent's size calculations or its siblings' layout.
         /// </summary>
         Layout_Floating = (0x20 << 5),
+        /// <summary>
+        /// This control does not contribute to its siblings' layout.
+        /// </summary>
+        Layout_Stacked = (0x20 << 6),
 
-        Internal_Break = (0x20 << 6),
-        Internal_FixedWidth = (0x20 << 7),
-        Internal_FixedHeight = (0x20 << 8),
+        Internal_Break = (0x20 << 7),
+        Internal_FixedWidth = (0x20 << 8),
+        Internal_FixedHeight = (0x20 << 9),
         /// <summary>
         /// Prevents child elements from growing past the boundaries of this container.
         /// </summary>
-        Container_Constrain_Size = (0x20 << 9),
+        Container_Constrain_Size = (0x20 << 10),
         /// <summary>
         /// Prevents the container from shrinking below the size required to contain its child elements.
         /// </summary>
-        Container_Prevent_Crush_X = (0x20 << 10),
+        Container_Prevent_Crush_X = (0x20 << 11),
         /// <summary>
         /// Prevents the container from shrinking below the size required to contain its child elements.
         /// </summary>
-        Container_Prevent_Crush_Y = (0x20 << 11),
+        Container_Prevent_Crush_Y = (0x20 << 12),
         Container_Prevent_Crush = (Container_Prevent_Crush_X | Container_Prevent_Crush_Y),
         /// <summary>
         /// Does not expand the container to hold its children.
         /// </summary>
-        Container_No_Expansion = (0x20 << 12),
+        Container_No_Expansion = (0x20 << 13),
     }
 
     public static class ControlFlagMask {
@@ -143,7 +147,8 @@ namespace Squared.PRGUI.Layout {
                 ControlFlags.Container_No_Expansion,
             Layout = ControlFlags.Layout_Fill |
                 ControlFlags.Layout_ForceBreak |
-                ControlFlags.Layout_Floating,
+                ControlFlags.Layout_Floating |
+                ControlFlags.Layout_Stacked,
             Fixed = ControlFlags.Internal_FixedWidth | 
                 ControlFlags.Internal_FixedHeight | 
                 ControlFlags.Internal_Break;
