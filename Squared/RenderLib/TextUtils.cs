@@ -47,6 +47,7 @@ namespace Squared.Render.Text {
         private bool _RichText = false;
         private bool _HideOverflow = false;
         private char? _ReplacementCharacter = null;
+        private uint[] _WordWrapCharacters = null;
 
         private readonly Dictionary<Pair<int>, LayoutMarker> _Markers = new Dictionary<Pair<int>, LayoutMarker>();
         private readonly Dictionary<Vector2, LayoutHitTest> _HitTests = new Dictionary<Vector2, LayoutHitTest>();
@@ -104,6 +105,15 @@ namespace Squared.Render.Text {
                 return result;
             else
                 return null;
+        }
+
+        public uint[] WordWrapCharacters {
+            get {
+                return _WordWrapCharacters;
+            }
+            set {
+                InvalidatingReferenceAssignment(ref _WordWrapCharacters, value);
+            }
         }
 
         // FIXME: Garbage
@@ -496,6 +506,10 @@ namespace Squared.Render.Text {
                 replacementCodepoint = _ReplacementCharacter
             };
 
+            if (_WordWrapCharacters != null)
+                foreach (var cp in _WordWrapCharacters)
+                    result.WordWrapCharacters.Add(cp);
+
             foreach (var kvp in _Markers)
                 result.Markers.Add(kvp.Value);
             foreach (var kvp in _HitTests)
@@ -532,6 +546,7 @@ namespace Squared.Render.Text {
             this.RichTextConfiguration = source.RichTextConfiguration;
             this.ReplacementCharacter = source.ReplacementCharacter;
             this.HideOverflow = source.HideOverflow;
+            this.WordWrapCharacters = source.WordWrapCharacters;
         }
 
         /// <summary>

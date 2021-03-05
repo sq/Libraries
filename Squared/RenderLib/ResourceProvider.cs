@@ -10,8 +10,11 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Evil;
 using Squared.Threading;
+using Squared.Util;
 
 namespace Squared.Render.Resources {
+    public delegate void ResourceLoadCompleteHandler (string name, long waitDuration, long preloadDuration, long createDuration);
+
     public abstract class ResourceProvider<T> : IDisposable
         where T : class 
     {
@@ -32,17 +35,25 @@ namespace Squared.Render.Resources {
             public object Data, PreloadedData;
             public bool Optional;
             public bool Async;
+            public long WaitDuration, PreloadDuration;
 
             void IWorkItem.Execute () {
                 using (Stream) {
                     try {
                         // Console.WriteLine($"CreateInstance('{Name}') on thread {Thread.CurrentThread.Name}");
+                        var createStarted = Provider.Now;
                         var instance = Provider.CreateInstance(Stream, Data, PreloadedData, Async);
-                        if (instance.Completed)
+                        if (instance.Completed) {
+                            var createElapsed = Provider.Now - createStarted;
+                            Provider.FireLoadEvent(Name, WaitDuration, PreloadDuration, createElapsed);
                             Future.SetResult2(instance.Result, null);
-                        else
+                        } else
                             instance.RegisterOnComplete((_) => {
+                                var createElapsed = Provider.Now - createStarted;
                                 instance.GetResult(out T value, out Exception err);
+                                if (err == null)
+                                    Provider.FireLoadEvent(Name, WaitDuration, PreloadDuration, createElapsed);
+
                                 Future.SetResult(value, err);
                             });
                     } catch (Exception exc) {
@@ -62,6 +73,7 @@ namespace Squared.Render.Resources {
             public object Data;
             public bool Optional;
             public bool Async;
+            public long StartedWhen;
 
             void IWorkItem.Execute () {
                 Stream stream = null;
@@ -77,7 +89,10 @@ namespace Squared.Render.Resources {
                     }
 
                     // Console.WriteLine($"PreloadInstance('{Name}') on thread {Thread.CurrentThread.Name}");
+                    var now = Provider.Now;
+                    var waitDuration = now - StartedWhen;
                     var preloadedData = Provider.PreloadInstance(stream, Data);
+                    var preloadElapsed = Provider.Now - now;
                     var item = new CreateWorkItem {
                         Future = Future,
                         Provider = Provider,
@@ -86,7 +101,9 @@ namespace Squared.Render.Resources {
                         Optional = Optional,
                         Stream = stream,
                         PreloadedData = preloadedData,
-                        Async = Async
+                        Async = Async,
+                        WaitDuration = waitDuration,
+                        PreloadDuration = preloadElapsed
                     };
                     Provider.CreateQueue.Enqueue(ref item);
                 } catch (Exception exc) {
@@ -112,6 +129,18 @@ namespace Squared.Render.Resources {
         protected abstract Future<T> CreateInstance (Stream stream, object data, object preloadedData, bool async);
 
         public IResourceProviderStreamSource StreamSource { get; protected set; }
+
+        public ITimeProvider TimeProvider = new DotNetTimeProvider();
+        public event ResourceLoadCompleteHandler OnLoad;
+
+        internal long Now => TimeProvider.Ticks;
+
+        internal void FireLoadEvent (string name, long waitDuration, long preloadDuration, long createDuration) {
+            if (OnLoad == null)
+                return;
+
+            OnLoad(name, waitDuration, preloadDuration, createDuration);
+        }
 
         protected ResourceProvider (
             IResourceProviderStreamSource source, RenderCoordinator coordinator, 
@@ -152,12 +181,16 @@ namespace Squared.Render.Resources {
         public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) {
             Stream stream;
             if (StreamSource.TryGetStream(name, optional, out stream, out exception)) {
+                var started = Now;
                 var preloadedData = PreloadInstance(stream, data);
+                var createStarted = Now;
                 var future = CreateInstance(stream, data, preloadedData, false);
+                var finished = Now;
                 if (IsDisposed) {
                     Coordinator.DisposeResource(future.Result as IDisposable);
                     return default(T);
                 } else {
+                    FireLoadEvent(name, 0, createStarted - started, finished - createStarted);
                     return future.Result;
                 }
             } else {

@@ -154,6 +154,7 @@ namespace Squared.Render.Text {
     public struct StringLayoutEngine : IDisposable {
         public DenseList<LayoutMarker> Markers;
         public DenseList<LayoutHitTest> HitTests;
+        public DenseList<uint> WordWrapCharacters;
 
         public const int DefaultBufferPadding = 64;
 
@@ -573,7 +574,8 @@ namespace Squared.Render.Text {
 
                 bool isWhiteSpace = (char.IsWhiteSpace(ch1) && !replacementCodepoint.HasValue),
                      forcedWrap = false, lineBreak = false,
-                     deadGlyph = false, isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1) || replacementCodepoint.HasValue;
+                     deadGlyph = false, isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1) || 
+                        replacementCodepoint.HasValue || (WordWrapCharacters.IndexOf(codepoint) >= 0);
                 Glyph glyph;
                 KerningAdjustment kerningAdjustment;
 
