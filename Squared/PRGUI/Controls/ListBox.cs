@@ -126,6 +126,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        public bool GenerateControlsWhenHidden = true;
+
         private int VirtualItemOffset = 0;
         private float VirtualItemHeight = 1; // HACK, will be adjusted each frame
         private int VirtualViewportItemCount = 2; // HACK, will be adjusted up/down each frame
@@ -312,14 +314,16 @@ namespace Squared.PRGUI.Controls {
                 hadKeyboardSelection = Children.Contains(Context.KeyboardSelection);
                 var priorControl = Manager.SelectedControl;
                 // FIXME: Why do virtual list items flicker for a frame before appearing?
-                Items.GenerateControls(
-                    Children, CreateControlForValue ?? DefaultCreateControlForValue,
-                    offset: Virtual ? VirtualItemOffset : 0, count: Virtual ? VirtualViewportItemCount : int.MaxValue
-                );
-                _Version = Items.Version;
-                // HACK: Without doing this, old content bounds can be kept that are too big/too small
-                HasContentBounds = false;
-                NeedsUpdate = false;
+                if (GenerateControlsWhenHidden || hadKeyboardSelection || !IsRecursivelyTransparent(this, true)) {
+                    Items.GenerateControls(
+                        Children, CreateControlForValue ?? DefaultCreateControlForValue,
+                        offset: Virtual ? VirtualItemOffset : 0, count: Virtual ? VirtualViewportItemCount : int.MaxValue
+                    );
+                    _Version = Items.Version;
+                    // HACK: Without doing this, old content bounds can be kept that are too big/too small
+                    HasContentBounds = false;
+                    NeedsUpdate = false;
+                }
             }
 
             if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection)

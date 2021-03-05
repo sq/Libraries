@@ -76,6 +76,8 @@ namespace Squared.PRGUI.Controls {
                 ch.InvalidateLayout();
         }
 
+        bool IControlContainer.IsControlHidden (Control child) => false;
+
         protected abstract void EnsureChildrenAreValid ();
         protected abstract void OnDescendantReceivedFocus (Control control, bool isUserInitiated);
 

@@ -375,6 +375,10 @@ namespace Squared.PRGUI {
                 if (!current.TryGetParent(out Control parent))
                     return false;
 
+                var icc = (parent as IControlContainer);
+                if ((icc != null) && icc.IsControlHidden(current))
+                    return true;
+
                 current = parent;
                 if (current.IsTransparent)
                     return true;

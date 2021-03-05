@@ -81,6 +81,7 @@ namespace Squared.PRGUI {
         ///  automatic state change.
         /// </summary>
         void DescendantReceivedFocus (Control descendant, bool isUserInitiated);
+        bool IsControlHidden (Control child);
     }
 
     public interface IScrollableControl {

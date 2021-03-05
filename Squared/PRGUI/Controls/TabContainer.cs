@@ -11,7 +11,7 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public class TabContainer : ControlParentBase, IControlEventFilter, IEnumerable<Control> {
+    public class TabContainer : ControlParentBase, IControlEventFilter, IEnumerable<Control>, IControlContainer {
         private static int NextGroupId = 1;
 
         private readonly ControlGroup TabStrip;
@@ -99,6 +99,8 @@ namespace Squared.PRGUI.Controls {
             SelectedTabIsInvalid = true;
             TabStripIsInvalid = true;
         }
+
+        bool IControlContainer.IsControlHidden (Control child) => (child != SelectedTab) && (child != TabStrip); 
 
         protected void GenerateTabs () {
             TabStrip.Layout.Fill.Column = TabsOnLeft;
