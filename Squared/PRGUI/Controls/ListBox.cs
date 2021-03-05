@@ -63,6 +63,9 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        new public float ScrollOffset => base.ScrollOffset.Y;
+        new public float? MaxScrollOffset => base.MaxScrollOffset?.Y;
+
         public const float AutoscrollMarginSize = 24f;
 
         public string Description { get; set; }
@@ -253,7 +256,7 @@ namespace Squared.PRGUI.Controls {
                 var selectedIndex = SelectedIndex;
 
                 while (true) {
-                    var newItemOffset = (Math.Max((int)(ScrollOffset.Y / VirtualYDivider) - 1, 0) / ColumnCount) * ColumnCount;
+                    var newItemOffset = (Math.Max((int)(base.ScrollOffset.Y / VirtualYDivider) - 1, 0) / ColumnCount) * ColumnCount;
                     var newEndItemOffset = Math.Min(newItemOffset + VirtualViewportItemCount, Items.Count - 1);
 
                     int delta = 0;
@@ -270,7 +273,7 @@ namespace Squared.PRGUI.Controls {
                         (delta != 0) && !scrollOffsetChanged
                     ) {
                         if (delta != 0) {
-                            var newOffset = ScrollOffset;
+                            var newOffset = base.ScrollOffset;
                             newOffset.Y += (delta * VirtualYMultiplier);
                             if (TrySetScrollOffset(newOffset, false)) {
                                 scrollOffsetChanged = true;
@@ -623,6 +626,10 @@ namespace Squared.PRGUI.Controls {
                 case Keys.Down:
                     delta = ColumnCount * indexDirection;
                     break;
+                case Keys.A:
+                    if (args.Modifiers.Control)
+                        SelectAll();
+                    return true;
                 default:
                     return false;
             }
@@ -632,6 +639,14 @@ namespace Squared.PRGUI.Controls {
                 return Manager.TryToggleInDirection(delta, true);
             else
                 return AdjustSelection(delta, growing, shrinking, true);
+        }
+
+        public void SelectAll () {
+            Manager.SelectAll();
+        }
+
+        public void SelectNone () {
+            SetSelectedIndex(-1, true);
         }
 
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {

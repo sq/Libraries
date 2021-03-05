@@ -241,6 +241,14 @@ namespace Squared.PRGUI.Controls {
             _SelectionVersion++;
         }
 
+        public void SelectAll (bool fireEvent = true) {
+            _SelectedIndices.Clear();
+            for (int i = 0, c = Math.Min(Items.Count, MaxSelectedCount); i < c; i++)
+                _SelectedIndices.Add(i);
+            _SelectionVersion++;
+            OnSelectionChanged(fireEvent);
+        }
+
         public bool TryToggleInDirection (int delta, bool fireEvent = true) {
             var newIndex = MostRecentItemInteractedWith + delta;
             if (newIndex < 0)
