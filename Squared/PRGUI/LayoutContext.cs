@@ -190,7 +190,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe void ApplyFloatingPosition (LayoutItem *pItem, ref RectF parentRect, int idim, int wdim) {
-            if (!pItem->Flags.IsFlagged(ControlFlags.Layout_Floating))
+            if (!pItem->Flags.IsFlagged(ControlFlags.Layout_Floating) && !pItem->Flags.IsFlagged(ControlFlags.Layout_Stacked))
                 return;
             var pRect = RectPtr(pItem->Key);
             var fs = pItem->FixedSize.GetElement(idim);
@@ -589,8 +589,9 @@ namespace Squared.PRGUI.Layout {
 
                 var sum = childRect[idim] + childRect[wdim] + childMargin;
                 if (isFloating)
-                    // FIXME
-                    ; // result = Math.Max(result, sum);
+                    ;
+                else if (isStacked)
+                    result = Math.Max(result, sum);
                 else
                     result += sum;
             }
@@ -895,7 +896,7 @@ namespace Squared.PRGUI.Layout {
                     // FIXME: Duplication
                     var pChild = LayoutPtr(child);
                     var childFlags = pChild->Flags;
-                    if (childFlags.IsFlagged(ControlFlags.Layout_Floating)) {
+                    if (childFlags.IsFlagged(ControlFlags.Layout_Floating) || childFlags.IsFlagged(ControlFlags.Layout_Stacked)) {
                         // ApplyFloatingPosition(pChild, ref parentRect, idim, wdim);
                         child = pChild->NextSibling;
                         continue;
@@ -1024,7 +1025,7 @@ namespace Squared.PRGUI.Layout {
             while (!child.IsInvalid) {
                 var pChild = LayoutPtr(child);
                 var childFlags = pChild->Flags;
-                if (childFlags.IsFlagged(ControlFlags.Layout_Floating)) {
+                if (childFlags.IsFlagged(ControlFlags.Layout_Floating) || childFlags.IsFlagged(ControlFlags.Layout_Stacked)) {
                     // FIXME: Should we need to do this?
                     // ApplyFloatingPosition(pChild, ref parentRect, idim, wdim);
                     child = pChild->NextSibling;
@@ -1092,7 +1093,7 @@ namespace Squared.PRGUI.Layout {
 
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
-                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating))
+                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating) || pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked))
                     continue;
 
                 var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
@@ -1129,7 +1130,7 @@ namespace Squared.PRGUI.Layout {
             var item = startItem;
             while (item != endItem) {
                 var pItem = LayoutPtr(item);
-                if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating)) {
+                if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating) || pItem->Flags.IsFlagged(ControlFlags.Layout_Stacked)) {
                     // ApplyFloatingPosition(pItem, ref parentRect, idim, wdim);
                     item = pItem->NextSibling;
                     continue;
@@ -1193,7 +1194,7 @@ namespace Squared.PRGUI.Layout {
             var startChild = pItem->FirstChild;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
-                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating))
+                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating) || pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked))
                     continue;
 
                 if (
