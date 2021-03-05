@@ -267,9 +267,12 @@ namespace Squared.PRGUI.Controls {
         protected virtual ControlKey CreateColumn (UIOperationContext context, ControlKey parent, int columnIndex) {
             var result = context.Layout.CreateItem();
             var cf = ComputeContainerFlags();
+            var resultFlags = cf | ControlFlags.Container_Prevent_Crush_Y;
+            if (cf.IsFlagged(ControlFlags.Container_No_Expansion))
+                resultFlags |= ControlFlags.Container_No_Expansion;
             context.Layout.InsertAtEnd(parent, result);
             context.Layout.SetLayoutFlags(result, ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top);
-            context.Layout.SetContainerFlags(result, cf | ControlFlags.Container_Prevent_Crush_Y);
+            context.Layout.SetContainerFlags(result, resultFlags);
             // context.Layout.SetContainerFlags(parent, );
             return result;
         }

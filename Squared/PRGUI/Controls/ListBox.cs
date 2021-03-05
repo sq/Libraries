@@ -67,6 +67,8 @@ namespace Squared.PRGUI.Controls {
 
         public string Description { get; set; }
 
+        public int SelectedCount => Manager.SelectedItemCount;
+
         public int SelectedIndex {
             get => Manager.SelectedIndex;
             set => Manager.SelectedIndex = value;

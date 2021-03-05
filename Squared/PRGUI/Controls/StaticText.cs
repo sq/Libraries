@@ -586,6 +586,9 @@ namespace Squared.PRGUI.Controls {
 
         new public void Invalidate () => base.Invalidate();
 
+        new public bool SetText (AbstractString value, bool? onlyIfTextChanged = null) =>
+            base.SetText(value, onlyIfTextChanged);
+
         public StaticText ()
             : base () {
             Content.WordWrap = true;

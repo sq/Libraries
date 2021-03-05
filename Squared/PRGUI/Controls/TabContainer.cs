@@ -29,6 +29,8 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public bool ExpandToHoldAllTabs = true;
 
+        public bool ExpandTabsX = true, ExpandTabsY = true;
+
         float _TabScale = 1;
         public float TabScale {
             get => _TabScale;
@@ -200,19 +202,22 @@ namespace Squared.PRGUI.Controls {
                 }
                 context.Layout.SetContainerFlags(
                     childBox,
-                    ControlFlags.Container_Align_Start
+                    ControlFlags.Container_Align_Start | ControlFlags.Container_No_Expansion
                 );
                 context.Layout.SetLayoutFlags(
                     childBox, TabsOnLeft
                         ? ControlFlags.Layout_Fill
                         : ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak
                 );
+                var childLayoutFlags = default(ControlFlags) |
+                    (ExpandTabsX ? ControlFlags.Layout_Fill_Row : default(ControlFlags)) |
+                    (ExpandTabsY ? ControlFlags.Layout_Fill_Column : default(ControlFlags));
                 foreach (var item in children) {
                     if (item == TabStrip)
                         continue;
                     if ((st != item) && !ExpandToHoldAllTabs)
                         continue;
-                    item.LayoutFlags = ControlFlags.Layout_Fill; // | ControlFlags.Layout_Floating;
+                    item.LayoutFlags = childLayoutFlags; // | ControlFlags.Layout_Floating;
                     LayoutItem(ref context, existingKey.HasValue, childBox, adoc, item);
                 }
             }
