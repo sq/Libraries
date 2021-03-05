@@ -364,6 +364,9 @@ namespace Squared.PRGUI.Controls {
             if ((index < 0) || (index >= Items.Count))
                 throw new IndexOutOfRangeException();
 
+            if (_SelectedIndices.Count >= MaxSelectedCount)
+                return;
+
             if (_SelectedIndices.IndexOf(index) >= 0)
 #if DEBUG
                 throw new ArgumentException("index already selected");
