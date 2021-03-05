@@ -534,16 +534,22 @@ namespace Squared.PRGUI.Layout {
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void SetComputedContentSize (LayoutItem * pItem, int idim, float value) {
+            PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, value);
+        }
+
         private unsafe float CalcOverlaySize (LayoutItem * pItem, LayoutDimensions dim) {
             int idim = (int)dim, wdim = idim + 2;
             var outerPadding = pItem->Padding[idim] + pItem->Padding[wdim];
             if (pItem->FirstChild.IsInvalid) {
-                PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, 0);
+                SetComputedContentSize(pItem, idim, 0);
                 return outerPadding;
             }
 
             float result = 0, minimum = 0;
             var rowFlag = (ControlFlags)((int)ControlFlags.Container_Row + idim);
+            var isRowFlaggedExact = (pItem->Flags & (ControlFlags.Container_Row | ControlFlags.Container_Column)) == rowFlag;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
@@ -555,7 +561,7 @@ namespace Squared.PRGUI.Layout {
                 if (isFloating) {
                     minimum = Math.Max(childMinimum, minimum);
                     continue;
-                } else if (pItem->Flags.IsFlagged(rowFlag))
+                } else if (isRowFlaggedExact)
                     minimum += childMinimum;
                 else
                     minimum = Math.Max(childMinimum, minimum);
@@ -565,7 +571,7 @@ namespace Squared.PRGUI.Layout {
             }
             minimum += outerPadding;
             result += outerPadding;
-            PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, minimum);
+            SetComputedContentSize(pItem, idim, minimum);
             return result;
         }
 
@@ -597,7 +603,7 @@ namespace Squared.PRGUI.Layout {
             }
             minimum += outerPadding;
             result += outerPadding;
-            PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, minimum);
+            SetComputedContentSize(pItem, idim, minimum);
             return result;
         }
 
@@ -647,9 +653,7 @@ namespace Squared.PRGUI.Layout {
             // FIXME: Is this actually necessary?
             GetComputedMinimumSize(pItem, out Vector2 minimumSize);
             GetComputedMaximumSize(pItem, null, out Vector2 maximumSize);
-            PRGUIExtensions.SetElement(
-                ref pItem->ComputedContentSize, idim, result
-            );
+            SetComputedContentSize(pItem, idim, result);
 
             result += pItem->Padding[idim] + pItem->Padding[wdim];
 
@@ -738,13 +742,14 @@ namespace Squared.PRGUI.Layout {
             var pRect = RectPtr(pItem->Key);
             var idim = (int)dim;
 
-            PRGUIExtensions.SetElement(ref pItem->ComputedContentSize, idim, 0);
+            SetComputedContentSize(pItem, idim, 0);
 
             // Start by setting position to top/left margin
             (*pRect)[idim] = pItem->Margins[idim];
 
             if (pItem->FixedSize.GetElement(idim) > 0) {
                 (*pRect)[idim + 2] = Constrain(pItem->FixedSize.GetElement(idim), pItem, idim);
+                // FIXME: This breaks computed content sizes for fixed size elements
                 return;
             }
 

@@ -246,11 +246,6 @@ namespace Squared.PRGUI.Controls {
             if (LayoutKey.IsInvalid)
                 return false;
 
-            /*
-                        context.Layout.GetComputedContentSize(LayoutKey, out contentBounds);
-                        return true;
-            */
-
             var contentRect = default(RectF);
             bool ok = false;
             if (ColumnCount > 1) {
@@ -298,15 +293,11 @@ namespace Squared.PRGUI.Controls {
             // FIXME: This should be done somewhere else
             if (Scrollable) {
                 var contentBox = context.Layout.GetContentRect(LayoutKey);
-                context.Layout.GetComputedContentSize(LayoutKey, out Vector2 newComputedBounds);
-
                 var scrollbar = context.DecorationProvider?.Scrollbar;
                 float viewportWidth = contentBox.Width,
                     viewportHeight = contentBox.Height;
 
                 GetContentBounds(context.UIContext, out Vector2 contentBounds);
-                if (contentBounds != newComputedBounds)
-                    Console.WriteLine($"{this} hacked = {contentBounds} new = {newComputedBounds}");
 
                 float maxScrollX = 0, maxScrollY = 0, contentSizeX = 0, contentSizeY = 0;
                 if (HasContentBounds) {
