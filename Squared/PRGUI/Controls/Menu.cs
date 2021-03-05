@@ -133,7 +133,9 @@ namespace Squared.PRGUI.Controls {
             LayoutFlags = ControlFlags.Layout_Floating;
             DisplayOrder = 9900;
             ClipChildren = true;
+            Scrollable = true;
             ShowHorizontalScrollbar = false;
+            ShowVerticalScrollbar = null;
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
@@ -500,7 +502,7 @@ namespace Squared.PRGUI.Controls {
         private void CalculateScrollable (UIContext context) {
             context.UpdateSubtreeLayout(this);
             if (GetContentBounds(context, out RectF contentBounds)) {
-                Scrollable = contentBounds.Height >= Height.Maximum;
+                Scrollable = (contentBounds.Height >= Height.Maximum) || (Height.Maximum == null);
                 // HACK: Changing the scrollable flag invalidates our layout info, so recalculate it
                 // If we don't do this the menu will overhang on the right side
                 if (Scrollable)
