@@ -33,9 +33,8 @@ namespace Squared.PRGUI {
 
         public struct TraversalEnumerator : IEnumerator<TraversalInfo> {
             private struct StackEntry {
-                public Control Control;
+                public int Position;
                 public ControlCollection Collection;
-                public bool YieldAfterPop;
             }
 
             ControlCollection StartingCollection;
@@ -46,6 +45,7 @@ namespace Squared.PRGUI {
             bool IsDisposed, IsInitialized, IsAtEnd;
             List<Control> TabOrdered;
             ControlCollection SearchCollection;
+            int Position;
             DenseList<StackEntry> SearchStack;
 
             public TraversalInfo Current { get; private set; }
@@ -67,6 +67,7 @@ namespace Squared.PRGUI {
                 IsDisposed = false;
                 IsInitialized = false;
                 IsAtEnd = false;
+                Position = int.MinValue;
                 Current = default(TraversalInfo);
                 SearchStack = default(DenseList<StackEntry>);
                 SearchCollection = null;
@@ -80,24 +81,21 @@ namespace Squared.PRGUI {
 
             private void Push (bool yieldAfterPop) {
                 SearchStack.Add(new StackEntry {
-                    Control = Current.Control,
+                    Position = Position,
                     Collection = SearchCollection,
-                    YieldAfterPop = yieldAfterPop
                 });
             }
 
-            private bool TryPop (out bool yieldAfterPop) {
-                yieldAfterPop = false;
+            private bool TryPop () {
                 if (SearchStack.Count <= 0)
                     return false;
                 var item = SearchStack.LastOrDefault();
-                yieldAfterPop = item.YieldAfterPop;
                 SearchStack.RemoveTail(1);
-                if (item.Control == Current.Control)
+                if ((item.Position == Position) && (item.Collection == SearchCollection))
                     throw new Exception();
                 SearchCollection = item.Collection;
                 TabOrdered = SearchCollection.InTabOrder(FrameIndex, false);
-                SetCurrent(item.Control);
+                SetCurrent(item.Position);
                 return true;
             }
 
@@ -118,20 +116,37 @@ namespace Squared.PRGUI {
                 return MoveNextImpl();
             }
 
-            private void SetCurrent (Control control) {
-                var newTarget = control;
-                while (true) {
-                    Current = new TraversalInfo {
-                        Control = newTarget,
-                        RedirectTarget = newTarget?.FocusBeneficiary,
-                        Container = newTarget as IControlContainer
-                    };
-                    if (!Settings.FollowProxies || !Current.IsProxy)
-                        break;
-                    newTarget = Current.RedirectTarget;
-                    if (newTarget == control)
-                        throw new Exception($"Found cycle in focus redirect chain involving {Current.Control} and {newTarget}");
+            private void SetCurrent (Control control, Control initial = null) {
+                if (control == null) {
+                    SetCurrent(
+                        Settings.Direction > 0
+                            ? 0
+                            : SearchCollection.Count - 1, initial
+                    );
+                } else {
+                    var index = SearchCollection.IndexOf(control);
+                    if (index < 0)
+                        throw new IndexOutOfRangeException("Control not in current search collection");
+                    SetCurrent(index, initial ?? control);
                 }
+            }
+
+            private void SetCurrent (int position, Control initial = null) {
+                Position = position;
+                var control = SearchCollection[position];
+                Current = new TraversalInfo {
+                    Control = control,
+                    RedirectTarget = control.FocusBeneficiary,
+                    Container = control as IControlContainer
+                };
+                if (!Settings.FollowProxies || !Current.IsProxy)
+                    return;
+
+                // FIXME: Detect cycles
+                var rt = Current.RedirectTarget;
+                if (rt == initial)
+                    throw new Exception($"Found cycle when following redirects involving {control} and {initial}");
+                SetCurrent(rt, initial ?? control);
             }
 
             private void SetSearchCollection (ControlCollection collection) {
@@ -164,9 +179,10 @@ namespace Squared.PRGUI {
                 if (!AdvanceLaterally(null)) {
                     if (SearchStack.LastOrDefault().Collection != cc)
                         throw new Exception();
-                    if (!TryPop(out bool yieldAfterPop))
+                    if (!TryPop())
                         throw new Exception();
 
+                    bool yieldAfterPop = false; // FIXME
                     if (yieldAfterPop) {
                         Trace($"Lateral advance failed so popping and yielding");
                         return true;
@@ -186,7 +202,8 @@ namespace Squared.PRGUI {
                 if (Current.Control == Settings.AscendNoFurtherThan)
                     return false;
 
-                if (TryPop(out bool yieldAfterPop)) {
+                if (TryPop()) {
+                    bool yieldAfterPop = false; // FIXME
                     if (yieldAfterPop) {
                         Trace($"Climb back up to {Current.Control} and yield");
                         return true;
@@ -298,7 +315,7 @@ namespace Squared.PRGUI {
                 SearchCollection = null;
             }
 
-            [System.Diagnostics.Conditional("FOCUS_TRACE")]
+            // [System.Diagnostics.Conditional("FOCUS_TRACE")]
             private static void Trace (string text) {
                 Console.WriteLine(text);
             }
