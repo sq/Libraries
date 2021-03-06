@@ -213,7 +213,7 @@ namespace PRGUI.Demo {
                         }
                     }
                 },
-                SurfaceFormat = RenderTargetFormat,
+                ScratchSurfaceFormat = RenderTargetFormat,
                 AllowNullFocus = false
             };
 

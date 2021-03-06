@@ -77,8 +77,11 @@
     <Compile Include="LayoutContext.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Data.cs" />
+    <Compile Include="UIContext.Data.cs" />
     <Compile Include="UIContext.cs" />
     <Compile Include="UIContext.Accessibility.cs" />
+    <Compile Include="UIContext.Rasterization.cs" />
+    <Compile Include="UIContext.Focus.cs" />
     <Compile Include="UIContext.Events.cs" />
   </ItemGroup>
   <PropertyGroup>
