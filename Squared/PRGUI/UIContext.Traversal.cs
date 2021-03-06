@@ -18,16 +18,14 @@ namespace Squared.PRGUI {
 
             public ControlCollection Children => Container?.Children;
 
-            // FIXME: Cache this?
-            public bool IsValidFocusTarget => Control.IsValidFocusTarget;
-            public bool WillRedirectFocus => (RedirectTarget != null);
+            public bool IsProxy => (Control is FocusProxy);
             public bool ContainsChildren => (Container != null) && (Container.Children.Count > 0);
         }
 
         public struct TraverseSettings {
             public bool AllowDescend, AllowLoop, 
                 AllowDescendIfDisabled, AllowDescendIfInvisible;
-            public bool FollowRedirects;
+            public bool FollowProxies;
             public Control AscendNoFurtherThan;
             public int Direction;
         }
@@ -70,21 +68,19 @@ namespace Squared.PRGUI {
             }
 
             private bool MoveFirstImpl () {
-                if (StartingPoint == null)
-                    return false;
                 if (SearchStack.Count > 0)
                     throw new Exception();
-                if (!StartingPoint.TryGetParent(out Control parent)) {
+                if ((StartingPoint == null) && (StartingContainer != null)) {
+                    SetSearchContainer(StartingContainer);
+                    SearchStack.Add(StartingContainer.Children);
+                } else if (!StartingPoint.TryGetParent(out Control parent)) {
                     SetSearchCollection(StartingPoint.Context.Controls);
                     SearchStack.Add(StartingPoint.Context.Controls);
                 } else if (parent is IControlContainer icc) {
                     SetSearchContainer(icc);
                     SearchStack.Add(icc.Children);
-                } else if (StartingContainer != null) {
-                    SetSearchContainer(StartingContainer);
-                    SearchStack.Add(StartingContainer.Children);
                 } else {
-                    throw new Exception("Parent is not a container");
+                    throw new Exception("Found no valid parent to search in");
                 }
 
                 SetCurrent(StartingPoint);
@@ -99,7 +95,7 @@ namespace Squared.PRGUI {
                         RedirectTarget = newTarget?.FocusBeneficiary,
                         Container = newTarget as IControlContainer
                     };
-                    if (!Settings.FollowRedirects || !Current.WillRedirectFocus)
+                    if (!Settings.FollowProxies || !Current.IsProxy)
                         break;
                     newTarget = Current.RedirectTarget;
                     if (newTarget == control)
@@ -118,6 +114,8 @@ namespace Squared.PRGUI {
             private bool AdvanceInward () {
                 if (!Current.ContainsChildren)
                     throw new InvalidOperationException();
+                if (!Settings.AllowDescend)
+                    return false;
                 if (!Settings.AllowDescendIfDisabled && !Current.Control.Enabled)
                     return false;
                 if (!Settings.AllowDescendIfInvisible && Control.IsRecursivelyTransparent(Current.Control, true))
@@ -228,15 +226,6 @@ namespace Squared.PRGUI {
             }
         }
 
-        public Control PickFocusableChild (Control container, TraverseSettings settings) {
-            var e = new TraversalEnumerator((IControlContainer)container, null, ref settings);
-            using (e) {
-                if (!e.MoveNext())
-                    return null;
-                return e.Current.Control;
-            }
-        }
-
         public struct TraversalEnumerable : IEnumerable<TraversalInfo> {
             public Control StartingPoint;
             public TraverseSettings Settings;
@@ -254,8 +243,61 @@ namespace Squared.PRGUI {
             }
         }
 
+        public Control PickFocusableChild (Control container, int direction = 1) {
+            var settings = new TraverseSettings {
+                AllowDescend = true,
+                AllowDescendIfDisabled = false,
+                AllowDescendIfInvisible = false,
+                AllowLoop = false,
+                Direction = direction,
+                // FIXME: Maybe allow a climb?
+                AscendNoFurtherThan = container,
+                // FIXME: Maybe do this?
+                FollowProxies = false
+            };
+            var e = new TraversalEnumerator((IControlContainer)container, null, ref settings);
+            using (e) {
+                while (e.MoveNext()) {
+                    if (e.Current.Control.IsValidFocusTarget)
+                        return e.Current.Control;
+                }
+            }
+            return null;
+        }
+
+        public Control PickFocusableSibling (Control child, int direction, bool allowLoop) {
+            var settings = new TraverseSettings {
+                AllowDescend = true,
+                AllowDescendIfDisabled = false,
+                AllowDescendIfInvisible = false,
+                AllowLoop = allowLoop,
+                Direction = direction,
+                FollowProxies = true,
+                // FIXME: Prevent top level rotate here?
+            };
+            var e = new TraversalEnumerator(null, child, ref settings);
+            using (e) {
+                while (e.MoveNext()) {
+                    if (e.Current.Control.EligibleForFocusRotation)
+                        return e.Current.Control;
+                }
+            }
+            return null;
+        }
+
         public TraversalEnumerable Traverse (Control startingPoint, TraverseSettings settings) {
             return new TraversalEnumerable { StartingPoint = startingPoint, Settings = settings };
+        }
+
+        public Control TraverseToNext (Control startingPoint, TraverseSettings settings, Func<Control, bool> predicate = null) {
+            var e = new TraversalEnumerator(null, startingPoint, ref settings);
+            using (e) {
+                while (e.MoveNext()) {
+                    if ((predicate == null) || predicate(e.Current.Control))
+                        return e.Current.Control;
+                }
+            }
+            return null;
         }
     }
 }
