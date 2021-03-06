@@ -80,11 +80,15 @@ namespace Squared.PRGUI {
                     AcceleratorOverlayVisible;
         }
 
-        public float Now { get; private set; }
-        public long NowL { get; private set; }
+        internal void Log (string text) {
+            if (OnLogMessage != null)
+                OnLogMessage(text);
+            else
+                DefaultLogHandler(text);
+        }
 
         [System.Diagnostics.Conditional("DEBUG")]
-        internal void Log (string text) {
+        internal void DefaultLogHandler (string text) {
             if (System.Diagnostics.Debugger.IsAttached)
                 System.Diagnostics.Debug.WriteLine(text);
             else
@@ -856,6 +860,10 @@ namespace Squared.PRGUI {
             StackPush(ref context.TextDecoratorStack, value);
         public static void PopTextDecorator (ref UIOperationContext context) => 
             StackPop(ref context.TextDecoratorStack);
+
+        public void Log (string text) {
+            UIContext.Log(text);
+        }
 
         public void Clone (out UIOperationContext result) {
             result = new UIOperationContext {

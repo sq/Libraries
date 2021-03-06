@@ -140,5 +140,7 @@ namespace Squared.PRGUI {
 
         public DefaultMaterialSet Materials { get; private set; }
         public RichTextConfiguration RichTextConfiguration;
+
+        public event Action<string> OnLogMessage;
     }
 }
