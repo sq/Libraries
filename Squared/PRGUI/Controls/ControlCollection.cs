@@ -69,6 +69,10 @@ namespace Squared.PRGUI {
             }
         }
 
+        private void Invalidate () {
+            PaintOrderLastValidFrame = TabOrderLastValidFrame = -1;
+        }
+
         public void Adopt (Control control) {
             if (control == null)
                 throw new ArgumentNullException("control");
@@ -95,6 +99,7 @@ namespace Squared.PRGUI {
 
             Items.Insert(index, control);
             UpdateIndexTable(index);
+            Invalidate();
         }
 
         public void Add (Control control) {
@@ -111,6 +116,7 @@ namespace Squared.PRGUI {
             var newIndex = Items.Count;
             Items.Add(control);
             IndexTable[control] = newIndex;
+            Invalidate();
         }
 
         private void UpdateIndexTable (int startIndex) {
@@ -135,9 +141,9 @@ namespace Squared.PRGUI {
                 Items.RemoveAt(deleteAtIndex);
                 IndexTable.Remove(control);
                 UpdateIndexTable(deleteAtIndex);
-            } else {
-                ;
             }
+
+            Invalidate();
         }
 
         public void RemoveAt (int index) {
@@ -147,6 +153,7 @@ namespace Squared.PRGUI {
             control.UnsetParent(Host);
             IndexTable.Remove(control);
             UpdateIndexTable(index);
+            Invalidate();
         }
 
         public int IndexOf (Control control) {
@@ -166,6 +173,7 @@ namespace Squared.PRGUI {
             }
 
             Items.Clear();
+            Invalidate();
         }
 
         public List<Control>.Enumerator GetEnumerator () {

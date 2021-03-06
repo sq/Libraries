@@ -15,6 +15,7 @@ namespace Squared.PRGUI {
         public struct TraversalInfo {
             public Control Control, RedirectTarget;
             public IControlContainer Container;
+            public int Index;
 
             public ControlCollection Children => Container?.Children;
 
@@ -29,6 +30,8 @@ namespace Squared.PRGUI {
             public bool FollowProxies;
             public Control AscendNoFurtherThan;
             public int Direction;
+
+            internal int FrameIndex;
         }
 
         public struct TraversalEnumerator : IEnumerator<TraversalInfo> {
@@ -40,8 +43,7 @@ namespace Squared.PRGUI {
             ControlCollection StartingCollection;
             Control StartingPoint;
             TraverseSettings Settings;
-
-            int FrameIndex;
+            
             bool IsDisposed, IsInitialized, IsAtEnd;
             List<Control> TabOrdered;
             ControlCollection SearchCollection;
@@ -49,18 +51,16 @@ namespace Squared.PRGUI {
             DenseList<StackEntry> SearchStack;
 
             public TraversalInfo Current { get; private set; }
-            TraversalInfo IEnumerator<TraversalInfo>.Current => Current;
             object IEnumerator.Current => Current;
 
             internal TraversalEnumerator (
                 ControlCollection startingCollection, 
-                Control startingPoint, int frameIndex,
+                Control startingPoint,
                 ref TraverseSettings settings
             ) {
                 if ((settings.Direction != 1) && (settings.Direction != -1))
                     throw new ArgumentOutOfRangeException("settings.Direction");
 
-                FrameIndex = frameIndex;
                 StartingPoint = startingPoint;
                 StartingCollection = startingCollection;
                 Settings = settings;
@@ -79,11 +79,13 @@ namespace Squared.PRGUI {
                 IsDisposed = true;
             }
 
-            private void Push (bool yieldAfterPop) {
+            private void Push (ControlCollection newCollection) {
                 SearchStack.Add(new StackEntry {
                     Position = Position,
                     Collection = SearchCollection,
                 });
+                Position = int.MinValue;
+                SetSearchCollection(newCollection);
             }
 
             private bool TryPop () {
@@ -94,7 +96,7 @@ namespace Squared.PRGUI {
                 if ((item.Position == Position) && (item.Collection == SearchCollection))
                     throw new Exception();
                 SearchCollection = item.Collection;
-                TabOrdered = SearchCollection.InTabOrder(FrameIndex, false);
+                TabOrdered = SearchCollection.InTabOrder(Settings.FrameIndex, false);
                 SetCurrent(item.Position);
                 return true;
             }
@@ -117,28 +119,36 @@ namespace Squared.PRGUI {
             }
 
             private void SetCurrent (Control control, Control initial = null) {
-                if (control == null) {
+                var index = (control == null)
+                    ? -1
+                    // HACK: The control may have been removed from the container since the tab ordered list
+                    //  was last updated.
+                    : TabOrdered.IndexOf(control);
+                if (index < 0) {
                     SetCurrent(
                         Settings.Direction > 0
                             ? 0
-                            : SearchCollection.Count - 1, initial
+                            : TabOrdered.Count - 1, initial
                     );
                 } else {
-                    var index = SearchCollection.IndexOf(control);
-                    if (index < 0)
-                        throw new IndexOutOfRangeException("Control not in current search collection");
                     SetCurrent(index, initial ?? control);
                 }
             }
 
             private void SetCurrent (int position, Control initial = null) {
                 Position = position;
-                var control = SearchCollection[position];
+                var control = (position == -1) 
+                    ? SearchCollection.Host
+                    : TabOrdered[position];
                 Current = new TraversalInfo {
                     Control = control,
                     RedirectTarget = control.FocusBeneficiary,
-                    Container = control as IControlContainer
+                    Container = control as IControlContainer,
+                    Index = position
                 };
+
+                // Trace($"SetCurrent idx={position} ctl={control}");
+
                 if (!Settings.FollowProxies || !Current.IsProxy)
                     return;
 
@@ -151,12 +161,12 @@ namespace Squared.PRGUI {
 
             private void SetSearchCollection (ControlCollection collection) {
                 SearchCollection = collection;
-                TabOrdered = SearchCollection.InTabOrder(FrameIndex, false);
+                TabOrdered = SearchCollection.InTabOrder(Settings.FrameIndex, false);
             }
 
             private void SetSearchContainer (IControlContainer container) {
                 SearchCollection = container.Children;
-                TabOrdered = SearchCollection.InTabOrder(FrameIndex, false);
+                TabOrdered = SearchCollection.InTabOrder(Settings.FrameIndex, false);
             }
 
             private bool AdvanceInward () {
@@ -168,17 +178,15 @@ namespace Squared.PRGUI {
                     return false;
                 if (!Settings.AllowDescendIfInvisible && Control.IsRecursivelyTransparent(Current.Control, true))
                     return false;
+                if (Position < 0)
+                    throw new InvalidOperationException();
 
                 var prev = Current;
                 var cc = Current.Children;
                 Trace($"Climb down into {Current.Control}");
-                // HACK
-                Push((Settings.Direction == -1));
-                SetSearchCollection(cc);
+                Push(cc);
 
-                if (!AdvanceLaterally(null)) {
-                    if (SearchStack.LastOrDefault().Collection != cc)
-                        throw new Exception();
+                if (!AdvanceLaterally(false)) {
                     if (!TryPop())
                         throw new Exception();
 
@@ -210,7 +218,7 @@ namespace Squared.PRGUI {
                     } else {
                         Trace($"Climb back up to {Current.Control} and advance");
                         // We previously descended so we're climbing back out
-                        result = AdvanceLaterally(Current.Control);
+                        result = AdvanceLaterally(true);
                         return true;
                     }
                 } else {
@@ -225,21 +233,27 @@ namespace Squared.PRGUI {
                         return false;
                     Trace($"Climb out into {superParent}");
                     SetSearchCollection(icc.Children);
-                    result = AdvanceLaterally(parent);
+                    SetCurrent(parent);
+                    result = AdvanceLaterally(false);
                     return true;
                 }
             }
 
-            private bool AdvanceLaterally (Control from) {
-                int currentIndex = TabOrdered.IndexOf(from),
+            private bool AdvanceLaterally (bool allowAscend) {
+                int currentIndex = Position,
                     direction = Settings.Direction,
                     newIndex;
 
-                if (currentIndex >= 0) {
+                var prev = Current.Control;
+                var minIndex = ((StartingPoint == prev) || (SearchCollection.Host == null))
+                    ? 0
+                    : -1;
+
+                if (currentIndex >= -1) {
                     newIndex = currentIndex + direction;
-                    if ((newIndex < 0) || (newIndex >= TabOrdered.Count)) {
+                    if ((newIndex < minIndex) || (newIndex >= TabOrdered.Count)) {
                         var prevTo = TabOrdered;
-                        if (!AdvanceOutward(out bool outwardResult)) {
+                        if (!allowAscend || !AdvanceOutward(out bool outwardResult)) {
                             if (prevTo != TabOrdered)
                                 throw new Exception();
                             // HACK
@@ -250,36 +264,31 @@ namespace Squared.PRGUI {
                         } else
                             return outwardResult;
                     }
-                } else if (direction > 0)
-                    newIndex = 0;
-                else
+                } else if (direction > 0) {
+                    newIndex = minIndex;
+                } else {
                     newIndex = TabOrdered.Count - 1;
+                }
 
                 if (newIndex == currentIndex)
                     return false;
 
-                var newControl = TabOrdered[newIndex];
-                SetCurrent(newControl);
-                if (Current.ContainsChildren && (Settings.Direction == -1)) {
-                    Trace($"Lateral movement from {from} to {newControl}, attempting to advance inward");
+                SetCurrent(newIndex);
+                if (Current.ContainsChildren && (Position >= 0)) {
+                    Trace($"Lateral movement from [{currentIndex}] {prev} to [{Position}] {Current.Control}, attempting to advance inward");
                     if (AdvanceInward())
                         return true;
                     else
                         ;
                 } else {
-                    Trace($"Lateral movement from {from} to {newControl}");
+                    Trace($"Lateral movement from [{currentIndex}] {prev} to [{Position}] {Current.Control}");
                 }
                 return true;
             }
 
             // FIXME: Prevent infinite loops
             private bool MoveNextImpl () {
-                if (Current.ContainsChildren && (Settings.Direction == 1)) {
-                    if (AdvanceInward())
-                        return true;
-                }
-
-                if (!AdvanceLaterally(Current.Control)) {
+                if (!AdvanceLaterally(true)) {
                     AdvanceOutward(out bool outwardResult);
                     return outwardResult;
                 }
@@ -315,7 +324,7 @@ namespace Squared.PRGUI {
                 SearchCollection = null;
             }
 
-            // [System.Diagnostics.Conditional("FOCUS_TRACE")]
+            [System.Diagnostics.Conditional("FOCUS_TRACE")]
             private static void Trace (string text) {
                 Console.WriteLine(text);
             }
@@ -324,10 +333,9 @@ namespace Squared.PRGUI {
         public struct TraversalEnumerable : IEnumerable<TraversalInfo> {
             public Control StartingPoint;
             public TraverseSettings Settings;
-            public int FrameIndex;
 
             public TraversalEnumerator GetEnumerator () {
-                return new TraversalEnumerator(null, StartingPoint, FrameIndex, ref Settings);
+                return new TraversalEnumerator(null, StartingPoint, ref Settings);
             }
 
             IEnumerator<TraversalInfo> IEnumerable<TraversalInfo>.GetEnumerator () {
@@ -349,12 +357,13 @@ namespace Squared.PRGUI {
                 // FIXME: Maybe allow a climb?
                 AscendNoFurtherThan = container,
                 // FIXME: Maybe do this?
-                FollowProxies = false
+                FollowProxies = false,
+                FrameIndex = FrameIndex,
             };
             // FIXME: Handle cases where the control isn't a container
             var collection = ((container as IControlContainer)?.Children) ?? Controls;
             DebugLog($"Finding focusable child in {container} in direction {direction}");
-            var e = new TraversalEnumerator(collection, null, FrameIndex, ref settings);
+            var e = new TraversalEnumerator(collection, null, ref settings);
             using (e) {
                 while (e.MoveNext()) {
                     if (e.Current.Control.IsValidFocusTarget)
@@ -373,9 +382,10 @@ namespace Squared.PRGUI {
                 Direction = direction,
                 FollowProxies = true,
                 // FIXME: Prevent top level rotate here?
+                FrameIndex = FrameIndex,
             };
             DebugLog($"Finding sibling for {child} in direction {direction}");
-            var e = new TraversalEnumerator(null, child, FrameIndex, ref settings);
+            var e = new TraversalEnumerator(null, child, ref settings);
             using (e) {
                 while (e.MoveNext()) {
                     if (e.Current.Control.EligibleForFocusRotation)
@@ -386,11 +396,13 @@ namespace Squared.PRGUI {
         }
 
         public TraversalEnumerable Traverse (Control startingPoint, TraverseSettings settings) {
-            return new TraversalEnumerable { StartingPoint = startingPoint, Settings = settings, FrameIndex = FrameIndex };
+            settings.FrameIndex = FrameIndex;
+            return new TraversalEnumerable { StartingPoint = startingPoint, Settings = settings };
         }
 
         public Control TraverseToNext (Control startingPoint, TraverseSettings settings, Func<Control, bool> predicate = null) {
-            var e = new TraversalEnumerator(null, startingPoint, FrameIndex, ref settings);
+            settings.FrameIndex = FrameIndex;
+            var e = new TraversalEnumerator(null, startingPoint, ref settings);
             using (e) {
                 while (e.MoveNext()) {
                     if ((predicate == null) || predicate(e.Current.Control))
