@@ -14,6 +14,73 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public partial class UIContext : IDisposable {
+        /// <summary>
+        /// Performance stats
+        /// </summary>
+        public int LastPassCount;
+
+        internal int FrameIndex;
+
+        private UnorderedList<ScratchRenderTarget> ScratchRenderTargets = new UnorderedList<ScratchRenderTarget>();
+        private readonly static Dictionary<int, DepthStencilState> StencilEraseStates = new Dictionary<int, DepthStencilState>();
+        private readonly static Dictionary<int, DepthStencilState> StencilWriteStates = new Dictionary<int, DepthStencilState>();
+        private readonly static Dictionary<int, DepthStencilState> StencilTestStates = new Dictionary<int, DepthStencilState>();
+
+        /// <summary>
+        /// The surface format used for scratch compositor textures. Update this if you want to use sRGB.
+        /// </summary>
+        public SurfaceFormat ScratchSurfaceFormat = SurfaceFormat.Color;
+
+        private bool WasBackgroundFaded = false;
+        private Tween<float> BackgroundFadeTween = new Tween<float>(0f);
+        private UnorderedList<BitmapDrawCall> OverlayQueue = new UnorderedList<BitmapDrawCall>();
+
+        private List<ScratchRenderTarget> TopoSortTable = new List<ScratchRenderTarget>();
+
+        internal class ScratchRenderTarget : IDisposable {
+            public readonly UIContext Context;
+            public readonly AutoRenderTarget Instance;
+            public readonly UnorderedList<RectF> UsedRectangles = new UnorderedList<RectF>();
+            public ImperativeRenderer Renderer;
+            public List<ScratchRenderTarget> Dependencies = new List<ScratchRenderTarget>();
+            internal bool VisitedByTopoSort;
+
+            public ScratchRenderTarget (RenderCoordinator coordinator, UIContext context) {
+                Context = context;
+                int width = (int)(context.CanvasSize.X * context.ScratchScaleFactor),
+                    height = (int)(context.CanvasSize.Y * context.ScratchScaleFactor);
+                Instance = new AutoRenderTarget(
+                    coordinator, width, height,
+                    false, Context.ScratchSurfaceFormat, DepthFormat.Depth24Stencil8
+                );
+            }
+
+            public void Update () {
+                int width = (int)(Context.CanvasSize.X * Context.ScratchScaleFactor),
+                    height = (int)(Context.CanvasSize.Y * Context.ScratchScaleFactor);
+                Instance.Resize(width, height);
+            }
+
+            public void Reset () {
+                UsedRectangles.Clear();
+                Dependencies.Clear();
+                VisitedByTopoSort = false;
+            }
+
+            public void Dispose () {
+                Instance?.Dispose();
+            }
+
+            internal bool IsSpaceAvailable (ref RectF rectangle) {
+                foreach (var used in UsedRectangles) {
+                    if (used.Intersects(ref rectangle))
+                        return false;
+                }
+
+                return true;
+            }
+        }
+
         private void FlushOverlayQueue (ref ImperativeRenderer renderer) {
             foreach (var dc in OverlayQueue) {
                 renderer.Draw(dc);
@@ -217,7 +284,60 @@ namespace Squared.PRGUI {
             TopoSortTable.Add(srt);
         }
 
-        private List<ScratchRenderTarget> TopoSortTable = new List<ScratchRenderTarget>();
+        internal DepthStencilState GetStencilRestore (int targetReferenceStencil) {
+            DepthStencilState result;
+            if (StencilEraseStates.TryGetValue(targetReferenceStencil, out result))
+                return result;
+
+            result = new DepthStencilState {
+                StencilEnable = true,
+                StencilFunction = CompareFunction.Less,
+                StencilPass = StencilOperation.Replace,
+                StencilFail = StencilOperation.Keep,
+                ReferenceStencil = targetReferenceStencil,
+                DepthBufferEnable = false
+            };
+
+            StencilEraseStates[targetReferenceStencil] = result;
+            return result;
+        }
+
+        internal DepthStencilState GetStencilWrite (int previousReferenceStencil) {
+            DepthStencilState result;
+            if (StencilWriteStates.TryGetValue(previousReferenceStencil, out result))
+                return result;
+
+            result = new DepthStencilState {
+                StencilEnable = true,
+                StencilFunction = CompareFunction.Equal,
+                StencilPass = StencilOperation.IncrementSaturation,
+                StencilFail = StencilOperation.Keep,
+                ReferenceStencil = previousReferenceStencil,
+                DepthBufferEnable = false
+            };
+
+            StencilWriteStates[previousReferenceStencil] = result;
+            return result;
+        }
+
+        internal DepthStencilState GetStencilTest (int referenceStencil) {
+            DepthStencilState result;
+            if (StencilTestStates.TryGetValue(referenceStencil, out result))
+                return result;
+
+            result = new DepthStencilState {
+                StencilEnable = true,
+                StencilFunction = CompareFunction.LessEqual,
+                StencilPass = StencilOperation.Keep,
+                StencilFail = StencilOperation.Keep,
+                ReferenceStencil = referenceStencil,
+                StencilWriteMask = 0,
+                DepthBufferEnable = false
+            };
+
+            StencilTestStates[referenceStencil] = result;
+            return result;
+        }
     }
 
     public struct RasterizePassSet {

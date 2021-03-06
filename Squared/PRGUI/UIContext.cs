@@ -21,85 +21,6 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI {
     public partial class UIContext : IDisposable {
-        internal struct UnhandledEvent {
-            internal class Comparer : IEqualityComparer<UnhandledEvent> {
-                public static readonly Comparer Instance = new Comparer();
-
-                public bool Equals (UnhandledEvent x, UnhandledEvent y) {
-                    return x.Equals(y);
-                }
-
-                public int GetHashCode (UnhandledEvent obj) {
-                    return obj.GetHashCode();
-                }
-            }
-
-            public Control Source;
-            public string Name;
-
-            public bool Equals (UnhandledEvent rhs) {
-                return (Source == rhs.Source) &&
-                    (Name == rhs.Name);
-            }
-
-            public override bool Equals (object obj) {
-                if (obj is UnhandledEvent)
-                    return Equals((UnhandledEvent)obj);
-                else
-                    return false;
-            }
-        }
-
-        internal class ScratchRenderTarget : IDisposable {
-            public readonly UIContext Context;
-            public readonly AutoRenderTarget Instance;
-            public readonly UnorderedList<RectF> UsedRectangles = new UnorderedList<RectF>();
-            public ImperativeRenderer Renderer;
-            public List<ScratchRenderTarget> Dependencies = new List<ScratchRenderTarget>();
-            internal bool VisitedByTopoSort;
-
-            public ScratchRenderTarget (RenderCoordinator coordinator, UIContext context) {
-                Context = context;
-                int width = (int)(context.CanvasSize.X * context.ScratchScaleFactor),
-                    height = (int)(context.CanvasSize.Y * context.ScratchScaleFactor);
-                Instance = new AutoRenderTarget(
-                    coordinator, width, height,
-                    false, Context.ScratchSurfaceFormat, DepthFormat.Depth24Stencil8
-                );
-            }
-
-            public void Update () {
-                int width = (int)(Context.CanvasSize.X * Context.ScratchScaleFactor),
-                    height = (int)(Context.CanvasSize.Y * Context.ScratchScaleFactor);
-                Instance.Resize(width, height);
-            }
-
-            public void Reset () {
-                UsedRectangles.Clear();
-                Dependencies.Clear();
-                VisitedByTopoSort = false;
-            }
-
-            public void Dispose () {
-                Instance?.Dispose();
-            }
-
-            internal bool IsSpaceAvailable (ref RectF rectangle) {
-                foreach (var used in UsedRectangles) {
-                    if (used.Intersects(ref rectangle))
-                        return false;
-                }
-
-                return true;
-            }
-        }
-
-        /// <summary>
-        /// Performance stats
-        /// </summary>
-        public int LastPassCount;
-        internal int FrameIndex;
-
         /// <summary>
         /// Configures the size of the rendering canvas
         /// </summary>
@@ -111,74 +32,15 @@ namespace Squared.PRGUI {
         /// </summary>
         public readonly EventBus EventBus;
 
-        internal List<UnhandledEvent> UnhandledEvents = new List<UnhandledEvent>();
-        internal List<UnhandledEvent> PreviousUnhandledEvents = new List<UnhandledEvent>();
-
-        internal List<IModal> ModalStack = new List<IModal>();
-
-        public IModal ActiveModal =>
-            (ModalStack.Count > 0)
-                ? ModalStack[ModalStack.Count - 1]
-                : null;
-
         /// <summary>
         /// The layout engine used to compute control sizes and positions
         /// </summary>
         public readonly LayoutContext Layout = new LayoutContext();
 
         /// <summary>
-        /// Configures the appearance and size of controls
-        /// </summary>
-        public IDecorationProvider Decorations;
-        public IAnimationProvider Animations;
-
-        /// <summary>
         /// The top-level controls managed by the layout engine. Each one gets a separate rendering layer
         /// </summary>
         public ControlCollection Controls { get; private set; }
-
-        private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection;
-
-        private ConditionalWeakTable<Control, Control> TopLevelFocusMemory = new ConditionalWeakTable<Control, Control>();
-
-        private Vector2 MousePositionWhenKeyboardSelectionWasLastUpdated;
-        public IScrollableControl DragToScrollTarget { get; private set; }
-        private Vector2? DragToScrollInitialOffset;
-        private Vector2 DragToScrollInitialPosition;
-
-        /// <summary>
-        /// The control that currently has the mouse captured (if a button is pressed)
-        /// </summary>
-        public Control MouseCaptured {
-            get => _MouseCaptured;
-            private set {
-                if ((value != null) && !value.AcceptsMouseInput)
-                    throw new InvalidOperationException("Control cannot accept mouse input");
-                var previous = _MouseCaptured;
-                _MouseCaptured = value;
-                if (value != null)
-                    ClearKeyboardSelection();
-                if (previous != value)
-                    FireEvent(UIEvents.MouseCaptureChanged, value, previous);
-            }
-        }
-
-        /// <summary>
-        /// The control currently underneath the mouse cursor, as long as the mouse is not captured by another control
-        /// </summary>
-        public Control Hovering {
-            get => _Hovering;
-            private set {
-                var previous = _Hovering;
-                _Hovering = value;
-                if (previous != value)
-                    HandleHoverTransition(previous, value);
-            }
-        }
-
-        public Control KeyboardSelection {
-            get => _KeyboardSelection;
-        }
 
         internal void ClearKeyboardSelection () {
             SuppressAutoscrollDueToInputScroll = false;
@@ -193,35 +55,6 @@ namespace Squared.PRGUI {
                 SuppressAutoscrollDueToInputScroll = false;
             _KeyboardSelection = control;
             MousePositionWhenKeyboardSelectionWasLastUpdated = LastMousePosition;
-        }
-
-        bool SuppressAutoscrollDueToInputScroll = false;
-
-        /// <summary>
-        /// The control most recently interacted with by the user
-        /// </summary>
-        public Control FixatedControl => MouseCaptured ?? KeyboardSelection ?? Hovering;
-
-        /// <summary>
-        /// The control currently underneath the mouse cursor
-        /// </summary>
-        public Control MouseOver { get; private set; }
-
-        /// <summary>
-        /// The control currently underneath the mouse cursor, even if it is intangible.
-        /// Used as a scroll target
-        /// </summary>
-        public Control MouseOverLoose { get; private set; }
-
-        /// <summary>
-        /// The control that currently has keyboard input focus
-        /// </summary>
-        public Control Focused {
-            get => _Focused;
-            set {
-                if (!TrySetFocus(value, false))
-                    TrySetFocus(null, true);
-            }
         }
 
         /// <summary>
@@ -247,67 +80,6 @@ namespace Squared.PRGUI {
                     AcceleratorOverlayVisible;
         }
 
-        public Control TopLevelFocused { get; private set; }
-        public Control TopLevelModalFocusDonor { get; private set; }
-
-        public Control ModalFocusDonor { get; private set; }
-        public Control PreviousFocused { get; private set; }
-        public Control PreviousTopLevelFocused { get; private set; }
-
-        private Control PreviousMouseDownTarget = null;
-
-        /// <summary>
-        /// This control is currently being scrolled via implicit scroll input
-        /// </summary>
-        public Control CurrentImplicitScrollTarget { get; private set; }
-
-        internal readonly HashSet<Control> FocusChain = new HashSet<Control>(new ReferenceComparer<Control>());
-
-        public RichTextConfiguration RichTextConfiguration;
-        public DefaultMaterialSet Materials { get; private set; }
-        private ITimeProvider TimeProvider;
-
-        private readonly List<IInputSource> ScratchInputSources = new List<IInputSource>();
-        public readonly List<IInputSource> InputSources = new List<IInputSource>();
-        private readonly List<InputID> InputIDs = new List<InputID>();
-
-        private InputState _CurrentInput, _LastInput;
-        private List<Keys> _LastHeldKeys = new List<Keys>(), 
-            _CurrentHeldKeys = new List<Keys>();
-
-        public InputState CurrentInputState => _CurrentInput;
-        public InputState LastInputState => _LastInput;
-
-        private Vector2? MouseDownPosition;
-        private Control ReleasedCapture = null;
-        private Control RetainCaptureRequested = null;
-
-        private Vector2 LastClickPosition;
-        private Control LastClickTarget;
-        private double LastMouseDownTime, LastClickTime;
-        private int SequentialClickCount;
-
-        private double? FirstTooltipHoverTime;
-        private double LastTooltipHoverTime;
-
-        private Tooltip CachedTooltip;
-        private Control PreviousTooltipAnchor;
-        private bool IsTooltipVisible;
-        private int CurrentTooltipContentVersion;
-        private Controls.StaticText CachedCompositionPreview;
-
-        private UnorderedList<ScratchRenderTarget> ScratchRenderTargets = new UnorderedList<ScratchRenderTarget>();
-        private readonly static Dictionary<int, DepthStencilState> StencilEraseStates = new Dictionary<int, DepthStencilState>();
-        private readonly static Dictionary<int, DepthStencilState> StencilWriteStates = new Dictionary<int, DepthStencilState>();
-        private readonly static Dictionary<int, DepthStencilState> StencilTestStates = new Dictionary<int, DepthStencilState>();
-
-        internal bool IsCompositionActive = false;
-
-        /// <summary>
-        /// The surface format used for scratch compositor textures. Update this if you want to use sRGB.
-        /// </summary>
-        public SurfaceFormat ScratchSurfaceFormat = SurfaceFormat.Color;
-
         public float Now { get; private set; }
         public long NowL { get; private set; }
 
@@ -317,61 +89,6 @@ namespace Squared.PRGUI {
                 System.Diagnostics.Debug.WriteLine(text);
             else
                 Console.WriteLine(text);
-        }
-
-        internal DepthStencilState GetStencilRestore (int targetReferenceStencil) {
-            DepthStencilState result;
-            if (StencilEraseStates.TryGetValue(targetReferenceStencil, out result))
-                return result;
-
-            result = new DepthStencilState {
-                StencilEnable = true,
-                StencilFunction = CompareFunction.Less,
-                StencilPass = StencilOperation.Replace,
-                StencilFail = StencilOperation.Keep,
-                ReferenceStencil = targetReferenceStencil,
-                DepthBufferEnable = false
-            };
-
-            StencilEraseStates[targetReferenceStencil] = result;
-            return result;
-        }
-
-        internal DepthStencilState GetStencilWrite (int previousReferenceStencil) {
-            DepthStencilState result;
-            if (StencilWriteStates.TryGetValue(previousReferenceStencil, out result))
-                return result;
-
-            result = new DepthStencilState {
-                StencilEnable = true,
-                StencilFunction = CompareFunction.Equal,
-                StencilPass = StencilOperation.IncrementSaturation,
-                StencilFail = StencilOperation.Keep,
-                ReferenceStencil = previousReferenceStencil,
-                DepthBufferEnable = false
-            };
-
-            StencilWriteStates[previousReferenceStencil] = result;
-            return result;
-        }
-
-        internal DepthStencilState GetStencilTest (int referenceStencil) {
-            DepthStencilState result;
-            if (StencilTestStates.TryGetValue(referenceStencil, out result))
-                return result;
-
-            result = new DepthStencilState {
-                StencilEnable = true,
-                StencilFunction = CompareFunction.LessEqual,
-                StencilPass = StencilOperation.Keep,
-                StencilFail = StencilOperation.Keep,
-                ReferenceStencil = referenceStencil,
-                StencilWriteMask = 0,
-                DepthBufferEnable = false
-            };
-
-            StencilTestStates[referenceStencil] = result;
-            return result;
         }
 
         public UIContext (DefaultMaterialSet materials, IGlyphSource font = null, ITimeProvider timeProvider = null)
@@ -413,11 +130,6 @@ namespace Squared.PRGUI {
             InputIDs.Add(result);
             return result;
         }
-
-        private Vector2 LastMousePosition => _LastInput.CursorPosition;
-        private MouseButtons LastMouseButtons => _LastInput.Buttons;
-        private KeyboardModifiers CurrentModifiers => _CurrentInput.Modifiers;
-        private MouseButtons CurrentMouseButtons => _CurrentInput.Buttons;
 
         private void EventBus_AfterBroadcast (EventBus sender, object eventSource, string eventName, object eventArgs, bool eventWasHandled) {
             if (eventWasHandled)
@@ -492,9 +204,6 @@ namespace Squared.PRGUI {
             if (RetainCaptureRequested == target)
                 RetainCaptureRequested = null;
         }
-
-        UnorderedList<IPostLayoutListener> _PostLayoutListeners = new UnorderedList<IPostLayoutListener>();
-        List<Control> _TopLevelControls = new List<Control>();
 
         private void DoUpdateLayoutInternal (UIOperationContext context, bool secondTime) {
             Layout.CanvasSize = CanvasSize;
@@ -955,9 +664,6 @@ namespace Squared.PRGUI {
             IsTooltipVisible = false;
         }
 
-        // HACK: Suppress the 'if not Visible then don't perform layout' behavior
-        internal bool IsUpdatingSubtreeLayout;
-
         /// <summary>
         /// Use at your own risk! Performs immediate layout of a control and its children.
         /// The results of this are not necessarily accurate, but can be used to infer its ideal size for positioning.
@@ -1085,19 +791,6 @@ namespace Squared.PRGUI {
                 VisibleRegion = new RectF(-VisibilityPadding, -VisibilityPadding, CanvasSize.X + (VisibilityPadding * 2), CanvasSize.Y + (VisibilityPadding * 2))
             };
         }
-
-        private bool WasBackgroundFaded = false;
-        private Tween<float> BackgroundFadeTween = new Tween<float>(0f);
-        private UnorderedList<BitmapDrawCall> OverlayQueue = new UnorderedList<BitmapDrawCall>();
-
-        /*
-        private Color[] FrameColors = new[] {
-            Color.Red,
-            Color.Green,
-            Color.Blue,
-            Color.Yellow
-        };
-        */
 
         public void Dispose () {
             Layout.Dispose();

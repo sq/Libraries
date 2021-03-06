@@ -127,5 +127,18 @@ namespace Squared.PRGUI {
         /// The key repeating rate accelerates over this period of time (in seconds)
         /// </summary>
         public double KeyRepeatAccelerationDelay = 4.5;
+
+        /// <summary>
+        /// Configures the appearance and size of controls
+        /// </summary>
+        public IDecorationProvider Decorations;
+        public IAnimationProvider Animations;
+
+        public ITimeProvider TimeProvider { get; private set; }
+
+        public readonly List<IInputSource> InputSources = new List<IInputSource>();
+
+        public DefaultMaterialSet Materials { get; private set; }
+        public RichTextConfiguration RichTextConfiguration;
     }
 }

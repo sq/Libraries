@@ -11,6 +11,35 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public partial class UIContext : IDisposable {
+        internal struct UnhandledEvent {
+            internal class Comparer : IEqualityComparer<UnhandledEvent> {
+                public static readonly Comparer Instance = new Comparer();
+
+                public bool Equals (UnhandledEvent x, UnhandledEvent y) {
+                    return x.Equals(y);
+                }
+
+                public int GetHashCode (UnhandledEvent obj) {
+                    return obj.GetHashCode();
+                }
+            }
+
+            public Control Source;
+            public string Name;
+
+            public bool Equals (UnhandledEvent rhs) {
+                return (Source == rhs.Source) &&
+                    (Name == rhs.Name);
+            }
+
+            public override bool Equals (object obj) {
+                if (obj is UnhandledEvent)
+                    return Equals((UnhandledEvent)obj);
+                else
+                    return false;
+            }
+        }
+
         public event Func<string, Keys?, char?, bool> OnKeyEvent;
 
         internal bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false, bool targetHandlesFirst = false) {

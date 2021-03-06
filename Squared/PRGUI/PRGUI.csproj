@@ -77,6 +77,7 @@
     <Compile Include="LayoutContext.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Data.cs" />
+    <Compile Include="UIContext.State.cs" />
     <Compile Include="UIContext.Data.cs" />
     <Compile Include="UIContext.cs" />
     <Compile Include="UIContext.Accessibility.cs" />
