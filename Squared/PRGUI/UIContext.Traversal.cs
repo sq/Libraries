@@ -35,6 +35,7 @@ namespace Squared.PRGUI {
             private struct StackEntry {
                 public Control Control;
                 public ControlCollection Collection;
+                public bool YieldAfterPop;
             }
 
             ControlCollection StartingCollection;
@@ -77,17 +78,20 @@ namespace Squared.PRGUI {
                 IsDisposed = true;
             }
 
-            private void Push () {
+            private void Push (bool yieldAfterPop) {
                 SearchStack.Add(new StackEntry {
                     Control = Current.Control,
-                    Collection = SearchCollection
+                    Collection = SearchCollection,
+                    YieldAfterPop = yieldAfterPop
                 });
             }
 
-            private bool TryPop () {
+            private bool TryPop (out bool yieldAfterPop) {
+                yieldAfterPop = false;
                 if (SearchStack.Count <= 0)
                     return false;
                 var item = SearchStack.LastOrDefault();
+                yieldAfterPop = item.YieldAfterPop;
                 SearchStack.RemoveTail(1);
                 if (item.Control == Current.Control)
                     throw new Exception();
@@ -153,14 +157,23 @@ namespace Squared.PRGUI {
                 var prev = Current;
                 var cc = Current.Children;
                 Trace($"Climb down into {Current.Control}");
-                Push();
+                // HACK
+                Push((Settings.Direction == -1));
                 SetSearchCollection(cc);
 
                 if (!AdvanceLaterally(null)) {
                     if (SearchStack.LastOrDefault().Collection != cc)
                         throw new Exception();
-                    if (!TryPop())
+                    if (!TryPop(out bool yieldAfterPop))
                         throw new Exception();
+
+                    if (yieldAfterPop) {
+                        Trace($"Lateral advance failed so popping and yielding");
+                        return true;
+                    } else {
+                        Trace($"Lateral advance failed so popping");
+                    }
+
                     Current = prev;
                     return false;
                 }
@@ -172,10 +185,15 @@ namespace Squared.PRGUI {
                 if (Current.Control == Settings.AscendNoFurtherThan)
                     return false;
 
-                if (TryPop()) {
-                    Trace($"Climb back up to {Current.Control}");
-                    // We previously descended so we're climbing back out
-                    return AdvanceLaterally(Current.Control);
+                if (TryPop(out bool yieldAfterPop)) {
+                    if (yieldAfterPop) {
+                        Trace($"Climb back up to {Current.Control} and yield");
+                        return true;
+                    } else {
+                        Trace($"Climb back up to {Current.Control} and advance");
+                        // We previously descended so we're climbing back out
+                        return AdvanceLaterally(Current.Control);
+                    }
                 } else {
                     // Climbing beyond our start point
                     var parent = SearchCollection.Host;
@@ -224,6 +242,8 @@ namespace Squared.PRGUI {
                     Trace($"Lateral movement from {from} to {newControl}, attempting to advance inward");
                     if (AdvanceInward())
                         return true;
+                    else
+                        ;
                 } else {
                     Trace($"Lateral movement from {from} to {newControl}");
                 }
@@ -309,6 +329,7 @@ namespace Squared.PRGUI {
             };
             // FIXME: Handle cases where the control isn't a container
             var collection = ((container as IControlContainer)?.Children) ?? Controls;
+            DebugLog($"Finding focusable child in {container} in direction {direction}");
             var e = new TraversalEnumerator(collection, null, FrameIndex, ref settings);
             using (e) {
                 while (e.MoveNext()) {
@@ -329,12 +350,12 @@ namespace Squared.PRGUI {
                 FollowProxies = true,
                 // FIXME: Prevent top level rotate here?
             };
+            DebugLog($"Finding sibling for {child} in direction {direction}");
             var e = new TraversalEnumerator(null, child, FrameIndex, ref settings);
             using (e) {
                 while (e.MoveNext()) {
                     if (e.Current.Control.EligibleForFocusRotation)
                         return e.Current.Control;
-                    // Console.WriteLine($"Skipping {e.Current.Control}");
                 }
             }
             return null;
