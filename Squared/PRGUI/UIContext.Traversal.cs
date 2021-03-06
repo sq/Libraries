@@ -23,8 +23,9 @@ namespace Squared.PRGUI {
         }
 
         public struct TraverseSettings {
-            public bool AllowDescend, AllowLoop, 
-                AllowDescendIfDisabled, AllowDescendIfInvisible;
+            public bool AllowDescend, AllowDescendIfDisabled, AllowDescendIfInvisible;
+            // HACK: Will default to true for Window and false for everything else
+            public bool? AllowLoop;
             public bool FollowProxies;
             public Control AscendNoFurtherThan;
             public int Direction;
@@ -194,7 +195,8 @@ namespace Squared.PRGUI {
                     newIndex = currentIndex + direction;
                     if ((newIndex < 0) || (newIndex >= count)) {
                         if (!AdvanceOutward()) {
-                            if (Settings.AllowLoop)
+                            // HACK
+                            if (Settings.AllowLoop ?? (SearchCollection.Host is Window))
                                 newIndex = Arithmetic.Wrap(newIndex, 0, count - 1);
                             else
                                 return false;
@@ -211,6 +213,13 @@ namespace Squared.PRGUI {
 
                 var newControl = SearchCollection[newIndex];
                 SetCurrent(newControl);
+                if (Current.ContainsChildren && (Settings.Direction == -1)) {
+                    Console.WriteLine($"Lateral movement from {from} to {newControl}, attempting to advance inward");
+                    if (AdvanceInward())
+                        return true;
+                } else {
+                    Console.WriteLine($"Lateral movement from {from} to {newControl}");
+                }
                 return true;
             }
 
@@ -223,11 +232,6 @@ namespace Squared.PRGUI {
 
                 if (!AdvanceLaterally(Current.Control))
                     return AdvanceOutward();
-
-                if (Current.ContainsChildren && (Settings.Direction == -1)) {
-                    if (AdvanceInward())
-                        return true;
-                }
 
                 return true;
             }
@@ -300,7 +304,7 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        public Control PickFocusableSibling (Control child, int direction, bool allowLoop) {
+        public Control PickFocusableSibling (Control child, int direction, bool? allowLoop) {
             var settings = new TraverseSettings {
                 AllowDescend = true,
                 AllowDescendIfDisabled = false,
@@ -315,6 +319,7 @@ namespace Squared.PRGUI {
                 while (e.MoveNext()) {
                     if (e.Current.Control.EligibleForFocusRotation)
                         return e.Current.Control;
+                    Console.WriteLine($"Skipping {e.Current.Control}");
                 }
             }
             return null;
