@@ -152,7 +152,7 @@ namespace Squared.PRGUI {
 
                 var prev = Current;
                 var cc = Current.Children;
-                Console.WriteLine($"Climb down into {Current.Control}");
+                Trace($"Climb down into {Current.Control}");
                 Push();
                 SetSearchCollection(cc);
 
@@ -173,7 +173,7 @@ namespace Squared.PRGUI {
                     return false;
 
                 if (TryPop()) {
-                    Console.WriteLine($"Climb back up to {Current.Control}");
+                    Trace($"Climb back up to {Current.Control}");
                     // We previously descended so we're climbing back out
                     return AdvanceLaterally(Current.Control);
                 } else {
@@ -186,7 +186,7 @@ namespace Squared.PRGUI {
                     var icc = superParent as IControlContainer;
                     if (icc == null)
                         return false;
-                    Console.WriteLine($"Climb out into {superParent}");
+                    Trace($"Climb out into {superParent}");
                     SetSearchCollection(icc.Children);
                     return AdvanceLaterally(parent);
                 }
@@ -221,11 +221,11 @@ namespace Squared.PRGUI {
                 var newControl = TabOrdered[newIndex];
                 SetCurrent(newControl);
                 if (Current.ContainsChildren && (Settings.Direction == -1)) {
-                    Console.WriteLine($"Lateral movement from {from} to {newControl}, attempting to advance inward");
+                    Trace($"Lateral movement from {from} to {newControl}, attempting to advance inward");
                     if (AdvanceInward())
                         return true;
                 } else {
-                    Console.WriteLine($"Lateral movement from {from} to {newControl}");
+                    Trace($"Lateral movement from {from} to {newControl}");
                 }
                 return true;
             }
@@ -269,6 +269,11 @@ namespace Squared.PRGUI {
                 Current = default(TraversalInfo);
                 SearchStack.Clear();
                 SearchCollection = null;
+            }
+
+            [System.Diagnostics.Conditional("FOCUS_TRACE")]
+            private static void Trace (string text) {
+                Console.WriteLine(text);
             }
         }
 
@@ -329,7 +334,7 @@ namespace Squared.PRGUI {
                 while (e.MoveNext()) {
                     if (e.Current.Control.EligibleForFocusRotation)
                         return e.Current.Control;
-                    Console.WriteLine($"Skipping {e.Current.Control}");
+                    // Console.WriteLine($"Skipping {e.Current.Control}");
                 }
             }
             return null;

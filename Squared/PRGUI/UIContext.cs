@@ -88,6 +88,13 @@ namespace Squared.PRGUI {
         }
 
         [System.Diagnostics.Conditional("DEBUG")]
+        internal void DebugLog (string text) {
+            if (OnLogMessage != null)
+                OnLogMessage(text);
+            else
+                DefaultLogHandler(text);
+        }
+
         internal void DefaultLogHandler (string text) {
             if (System.Diagnostics.Debugger.IsAttached)
                 System.Diagnostics.Debug.WriteLine(text);
@@ -863,6 +870,11 @@ namespace Squared.PRGUI {
 
         public void Log (string text) {
             UIContext.Log(text);
+        }
+
+        [System.Diagnostics.Conditional("DEBUG")]
+        public void DebugLog (string text) {
+            UIContext.DebugLog(text);
         }
 
         public void Clone (out UIOperationContext result) {
