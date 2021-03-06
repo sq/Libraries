@@ -181,7 +181,8 @@ namespace Squared.PRGUI {
                 return true;
             }
 
-            private bool AdvanceOutward () {
+            private bool AdvanceOutward (out bool result) {
+                result = false;
                 if (Current.Control == Settings.AscendNoFurtherThan)
                     return false;
 
@@ -192,7 +193,8 @@ namespace Squared.PRGUI {
                     } else {
                         Trace($"Climb back up to {Current.Control} and advance");
                         // We previously descended so we're climbing back out
-                        return AdvanceLaterally(Current.Control);
+                        result = AdvanceLaterally(Current.Control);
+                        return true;
                     }
                 } else {
                     // Climbing beyond our start point
@@ -206,32 +208,35 @@ namespace Squared.PRGUI {
                         return false;
                     Trace($"Climb out into {superParent}");
                     SetSearchCollection(icc.Children);
-                    return AdvanceLaterally(parent);
+                    result = AdvanceLaterally(parent);
+                    return true;
                 }
             }
 
             private bool AdvanceLaterally (Control from) {
                 int currentIndex = TabOrdered.IndexOf(from),
-                    count = TabOrdered.Count,
                     direction = Settings.Direction,
                     newIndex;
 
                 if (currentIndex >= 0) {
                     newIndex = currentIndex + direction;
-                    if ((newIndex < 0) || (newIndex >= count)) {
-                        if (!AdvanceOutward()) {
+                    if ((newIndex < 0) || (newIndex >= TabOrdered.Count)) {
+                        var prevTo = TabOrdered;
+                        if (!AdvanceOutward(out bool outwardResult)) {
+                            if (prevTo != TabOrdered)
+                                throw new Exception();
                             // HACK
                             if (Settings.AllowLoop ?? (SearchCollection.Host is Window))
-                                newIndex = Arithmetic.Wrap(newIndex, 0, count - 1);
+                                newIndex = Arithmetic.Wrap(newIndex, 0, TabOrdered.Count - 1);
                             else
                                 return false;
                         } else
-                            return true;
+                            return outwardResult;
                     }
                 } else if (direction > 0)
                     newIndex = 0;
                 else
-                    newIndex = count - 1;
+                    newIndex = TabOrdered.Count - 1;
 
                 if (newIndex == currentIndex)
                     return false;
@@ -257,8 +262,10 @@ namespace Squared.PRGUI {
                         return true;
                 }
 
-                if (!AdvanceLaterally(Current.Control))
-                    return AdvanceOutward();
+                if (!AdvanceLaterally(Current.Control)) {
+                    AdvanceOutward(out bool outwardResult);
+                    return outwardResult;
+                }
 
                 return true;
             }

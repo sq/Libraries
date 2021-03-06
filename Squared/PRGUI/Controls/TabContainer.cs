@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
@@ -19,7 +20,7 @@ namespace Squared.PRGUI.Controls {
         private int SelectedTabIndex = 0;
         private string GroupId;
 
-        private bool SelectedTabIsInvalid = true;
+        private bool IdentifySelectedTabFromUIState = true;
         private bool TabStripIsInvalid = true;
 
         /// <summary>
@@ -69,7 +70,16 @@ namespace Squared.PRGUI.Controls {
         public int SelectedIndex {
             get => SelectedTabIndex;
             set {
-                SelectedTabIndex = Arithmetic.Clamp(value, 0, Children.Count - 2);
+                var children = Children;
+                var c = children.Count - 2;
+                SelectedTabIndex = Arithmetic.Clamp(value, 0, c);
+                if ((TabStrip == null) || (TabStrip.Children.Count != children.Count - 1))
+                    return;
+
+                for (var i = 0; i <= c; i++) {
+                    var btn = TabStrip.Children[i] as RadioButton;
+                    btn.Checked = i == SelectedTabIndex;
+                }
             }
         }
 
@@ -96,7 +106,7 @@ namespace Squared.PRGUI.Controls {
 
         public override void InvalidateLayout () {
             base.InvalidateLayout();
-            SelectedTabIsInvalid = true;
+            IdentifySelectedTabFromUIState = true;
             TabStripIsInvalid = true;
         }
 
@@ -170,7 +180,7 @@ namespace Squared.PRGUI.Controls {
 
             if (TabStripIsInvalid)
                 GenerateTabs();
-            if (SelectedTabIsInvalid)
+            if (IdentifySelectedTabFromUIState)
                 UpdateSelectedTab();
 
             var st = SelectedTab;
@@ -305,7 +315,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void UpdateSelectedTab () {
-            SelectedTabIsInvalid = false;
+            IdentifySelectedTabFromUIState = false;
             foreach (var tab in TabStrip.Children) {
                 var rb = (RadioButton)tab;
                 if (rb.Checked) {
@@ -322,7 +332,52 @@ namespace Squared.PRGUI.Controls {
 
         bool IControlEventFilter.OnEvent<T> (Control target, string name, T args) {
             if (name == UIEvents.RadioButtonSelected)
-                SelectedTabIsInvalid = true;
+                IdentifySelectedTabFromUIState = true;
+            else if (name == UIEvents.KeyPress)
+                return OnTabKeyPress((KeyEventArgs)(object)args);
+
+            return false;
+        }
+
+        private bool FocusCurrentTab () {
+            var tab = SelectedTab;
+            if (tab == null)
+                return false;
+
+            return Context.TrySetFocus(tab);
+        }
+
+        private bool RotateFocusedTab (int direction) {
+            var index = TabStrip.Children.IndexOf(Context.Focused);
+            // FIXME: This should be impossible
+            if (index < 0)
+                return false;
+            var newIndex = Arithmetic.Wrap(index + direction, 0, Children.Count - 2);
+            if (index == newIndex)
+                return false;
+            var newControl = TabStrip.Children[newIndex];
+            return Context.TrySetFocus(newControl);
+        }
+
+        private bool OnTabKeyPress (KeyEventArgs args) {
+            if (TabsOnLeft) {
+                switch (args.Key) {
+                    case Keys.Up:
+                    case Keys.Down:
+                        return RotateFocusedTab(args.Key == Keys.Up ? -1 : 1);
+                    case Keys.Right:
+                        return FocusCurrentTab();
+                }
+            } else {
+                switch (args.Key) {
+                    case Keys.Left:
+                    case Keys.Right:
+                        return RotateFocusedTab(args.Key == Keys.Left ? -1 : 1);
+                    case Keys.Down:
+                        return FocusCurrentTab();
+                }
+            }
+
             return false;
         }
 
