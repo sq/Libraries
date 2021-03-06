@@ -31,13 +31,18 @@ namespace Squared.PRGUI {
         }
 
         public struct TraversalEnumerator : IEnumerator<TraversalInfo> {
+            private struct StackEntry {
+                public Control Control;
+                public ControlCollection Collection;
+            }
+
             IControlContainer StartingContainer;
             Control StartingPoint;
             TraverseSettings Settings;
 
             bool IsDisposed, IsInitialized, IsAtEnd;
             ControlCollection SearchCollection;
-            DenseList<ControlCollection> SearchStack;
+            DenseList<StackEntry> SearchStack;
 
             public TraversalInfo Current { get; private set; }
             TraversalInfo IEnumerator<TraversalInfo>.Current => Current;
@@ -58,7 +63,7 @@ namespace Squared.PRGUI {
                 IsInitialized = false;
                 IsAtEnd = false;
                 Current = default(TraversalInfo);
-                SearchStack = default(DenseList<ControlCollection>);
+                SearchStack = default(DenseList<StackEntry>);
                 SearchCollection = null;
             }
 
@@ -67,18 +72,34 @@ namespace Squared.PRGUI {
                 IsDisposed = true;
             }
 
+            private void Push () {
+                SearchStack.Add(new StackEntry {
+                    Control = Current.Control,
+                    Collection = SearchCollection
+                });
+            }
+
+            private bool TryPop () {
+                if (SearchStack.Count <= 0)
+                    return false;
+                var item = SearchStack.LastOrDefault();
+                SearchStack.RemoveTail(1);
+                if (item.Control == Current.Control)
+                    throw new Exception();
+                SearchCollection = item.Collection;
+                SetCurrent(item.Control);
+                return true;
+            }
+
             private bool MoveFirstImpl () {
                 if (SearchStack.Count > 0)
                     throw new Exception();
                 if ((StartingPoint == null) && (StartingContainer != null)) {
                     SetSearchContainer(StartingContainer);
-                    SearchStack.Add(StartingContainer.Children);
                 } else if (!StartingPoint.TryGetParent(out Control parent)) {
                     SetSearchCollection(StartingPoint.Context.Controls);
-                    SearchStack.Add(StartingPoint.Context.Controls);
                 } else if (parent is IControlContainer icc) {
                     SetSearchContainer(icc);
-                    SearchStack.Add(icc.Children);
                 } else {
                     throw new Exception("Found no valid parent to search in");
                 }
@@ -120,15 +141,18 @@ namespace Squared.PRGUI {
                     return false;
                 if (!Settings.AllowDescendIfInvisible && Control.IsRecursivelyTransparent(Current.Control, true))
                     return false;
+
                 var prev = Current;
                 var cc = Current.Children;
-                SearchStack.Add(cc);
+                Console.WriteLine($"Climb down into {Current.Control}");
+                Push();
                 SetSearchCollection(cc);
 
                 if (!AdvanceLaterally(null)) {
-                    if (SearchStack.LastOrDefault() != cc)
+                    if (SearchStack.LastOrDefault().Collection != cc)
                         throw new Exception();
-                    SearchStack.RemoveTail(1);
+                    if (!TryPop())
+                        throw new Exception();
                     Current = prev;
                     return false;
                 }
@@ -137,14 +161,27 @@ namespace Squared.PRGUI {
             }
 
             private bool AdvanceOutward () {
-                if (SearchStack.Count == 0)
-                    return false;
                 if (Current.Control == Settings.AscendNoFurtherThan)
                     return false;
-                var newContext = SearchStack.LastOrDefault();
-                SearchStack.RemoveTail(1);
-                SetSearchCollection(newContext);
-                return AdvanceLaterally(Current.Control);
+
+                if (TryPop()) {
+                    Console.WriteLine($"Climb back up to {Current.Control}");
+                    // We previously descended so we're climbing back out
+                    return AdvanceLaterally(Current.Control);
+                } else {
+                    // Climbing beyond our start point
+                    var parent = SearchCollection.Host;
+                    if (parent == null)
+                        return false;
+                    if (!parent.TryGetParent(out Control superParent))
+                        return false;
+                    var icc = superParent as IControlContainer;
+                    if (icc == null)
+                        return false;
+                    Console.WriteLine($"Climb out into {superParent}");
+                    SetSearchCollection(icc.Children);
+                    return AdvanceLaterally(parent);
+                }
             }
 
             private bool AdvanceLaterally (Control from) {
@@ -152,11 +189,6 @@ namespace Squared.PRGUI {
                     count = SearchCollection.Count,
                     direction = Settings.Direction,
                     newIndex;
-
-                if (Current.ContainsChildren && (direction == 1)) {
-                    if (AdvanceInward())
-                        return true;
-                }
 
                 if (currentIndex >= 0) {
                     newIndex = currentIndex + direction;
@@ -179,22 +211,25 @@ namespace Squared.PRGUI {
 
                 var newControl = SearchCollection[newIndex];
                 SetCurrent(newControl);
-
-                if (Current.ContainsChildren && (direction == -1)) {
-                    if (AdvanceInward())
-                        return true;
-                }
-
-                SetCurrent(newControl);
                 return true;
             }
 
             // FIXME: Prevent infinite loops
             private bool MoveNextImpl () {
-                if (AdvanceLaterally(Current.Control))
-                    return true;
+                if (Current.ContainsChildren && (Settings.Direction == 1)) {
+                    if (AdvanceInward())
+                        return true;
+                }
 
-                return false;
+                if (!AdvanceLaterally(Current.Control))
+                    return AdvanceOutward();
+
+                if (Current.ContainsChildren && (Settings.Direction == -1)) {
+                    if (AdvanceInward())
+                        return true;
+                }
+
+                return true;
             }
 
             public bool MoveNext () {

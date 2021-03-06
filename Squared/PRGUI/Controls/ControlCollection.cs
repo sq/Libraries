@@ -26,16 +26,16 @@ namespace Squared.PRGUI {
             new Dictionary<Control, int>(new ReferenceComparer<Control>());
 
         public int Count => Items.Count;
-        public Control Parent { get; private set; }
+        public Control Host { get; private set; }
         public UIContext Context { get; private set; }
 
         internal ControlCollection (UIContext parent) {
-            Parent = null;
+            Host = null;
             Context = parent;
         }
 
         public ControlCollection (Control parent, UIContext context) {
-            Parent = parent;
+            Host = parent;
             Context = context ?? parent.Context;
         }
 
@@ -88,8 +88,8 @@ namespace Squared.PRGUI {
             if (IndexTable.ContainsKey(control))
                 throw new InvalidOperationException("Control already in collection");
 
-            if (Parent != null)
-                control.SetParent(Parent);
+            if (Host != null)
+                control.SetParent(Host);
             else
                 control.Context = Context;
 
@@ -103,8 +103,8 @@ namespace Squared.PRGUI {
             if (IndexTable.ContainsKey(control))
                 throw new InvalidOperationException("Control already in collection");
 
-            if (Parent != null)
-                control.SetParent(Parent);
+            if (Host != null)
+                control.SetParent(Host);
             else
                 control.Context = Context;
 
@@ -129,7 +129,7 @@ namespace Squared.PRGUI {
                 return;
 
             Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
-            control.UnsetParent(Parent);
+            control.UnsetParent(Host);
 
             if (IndexTable.TryGetValue(control, out int deleteAtIndex)) {
                 Items.RemoveAt(deleteAtIndex);
@@ -144,7 +144,7 @@ namespace Squared.PRGUI {
             var control = Items[index];
             Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
             Items.RemoveAt(index);
-            control.UnsetParent(Parent);
+            control.UnsetParent(Host);
             IndexTable.Remove(control);
             UpdateIndexTable(index);
         }
@@ -162,7 +162,7 @@ namespace Squared.PRGUI {
 
             foreach (var control in Items) {
                 Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
-                control.UnsetParent(Parent);
+                control.UnsetParent(Host);
             }
 
             Items.Clear();
@@ -189,8 +189,8 @@ namespace Squared.PRGUI {
 
                 var previous = Items[index];
                 IndexTable.Remove(previous);
-                Items[index].UnsetParent(Parent);
-                value.SetParent(Parent);
+                Items[index].UnsetParent(Host);
+                value.SetParent(Host);
                 IndexTable[value] = index;
                 Items[index] = value;
             }

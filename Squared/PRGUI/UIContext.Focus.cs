@@ -385,7 +385,7 @@ namespace Squared.PRGUI {
                 newIndex = initialIndex + delta;
 
             while (newIndex != initialIndex) {
-                if (collection.Parent == null)
+                if (collection.Host == null)
                     idx = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
                 else if (newIndex >= tabOrdered.Count)
                     return null;
@@ -412,7 +412,7 @@ namespace Squared.PRGUI {
                         break;
                 }
 
-                if (collection.Parent == null)
+                if (collection.Host == null)
                     newIndex = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
 
                 if (newIndex == initialIndex)
@@ -500,7 +500,7 @@ namespace Squared.PRGUI {
                 } else if (parent == null) {
                     break;
                 } else {
-                    current = parentCollection?.Parent;
+                    current = parentCollection?.Host;
                 }
             }
 

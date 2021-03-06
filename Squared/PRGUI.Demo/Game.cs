@@ -433,7 +433,8 @@ namespace PRGUI.Demo {
 
             var supernestedGroup = new ControlGroup {
                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                DynamicContents = BuildSupernestedGroup
+                DynamicContents = BuildSupernestedGroup,
+                DebugLabel = "supernestedGroup"
             };
 
             var increaseGaugeButton = new Button {
@@ -524,7 +525,8 @@ namespace PRGUI.Demo {
                     toggleCheckbox,
                     columnCount,
                     listBox
-                }
+                },
+                DebugLabel = "listboxContainer"
             };
 
             var canvas = new Canvas {
@@ -635,7 +637,8 @@ namespace PRGUI.Demo {
                                 },
                             },
                             tabs
-                        }
+                        },
+                        DebugLabel = "button and tabstrip container"
                     },
                     new Button {
                         Layout = {
