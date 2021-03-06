@@ -118,7 +118,7 @@ namespace Squared.PRGUI {
 
             // Attempt to auto-shift focus as long as our parent chain is focusable
             if (!Control.IsRecursivelyTransparent(control, includeSelf: false))
-                idealNewTarget = PickFocusableSibling(control, 1, false);
+                idealNewTarget = PickFocusableSiblingForRotation(control, 1, false);
             else
                 // Auto-shifting failed, so try to return to the most recently focused control
                 idealNewTarget = PreviousFocused ?? PreviousTopLevelFocused;
@@ -179,7 +179,7 @@ namespace Squared.PRGUI {
                 return target;
             } else {
                 var currentTopLevel = FindTopLevelAncestor(Focused);
-                var newTarget = PickFocusableSibling(Focused, delta, null);
+                var newTarget = PickFocusableSiblingForRotation(Focused, delta, null);
                 var newTopLevel = FindTopLevelAncestor(newTarget);
                 // HACK: We don't want to change top-level controls during a regular tab
                 if ((newTopLevel != currentTopLevel) && (currentTopLevel != null) && Focused.IsValidFocusTarget)
@@ -193,7 +193,7 @@ namespace Squared.PRGUI {
             if (delta == 0)
                 throw new ArgumentOutOfRangeException("delta");
 
-            var target = PickFocusableSibling(location, delta, null);
+            var target = PickFocusableSiblingForRotation(location, delta, null);
             return TrySetFocus(target, isUserInitiated: isUserInitiated);
         }
 
@@ -243,7 +243,7 @@ namespace Squared.PRGUI {
             if (!AllowNullFocus && (value == null)) {
                 // Handle cases where the focused control became disabled or invisible
                 if (Focused?.IsValidFocusTarget == false)
-                    newFocusTarget = value = PickFocusableSibling(Focused, 1, false);
+                    newFocusTarget = value = PickFocusableSiblingForRotation(Focused, 1, false);
                 else
                     newFocusTarget = value = Focused ?? Controls.FirstOrDefault();
             }
