@@ -37,11 +37,13 @@ namespace Squared.PRGUI {
                 public ControlCollection Collection;
             }
 
-            IControlContainer StartingContainer;
+            ControlCollection StartingCollection;
             Control StartingPoint;
             TraverseSettings Settings;
 
+            int FrameIndex;
             bool IsDisposed, IsInitialized, IsAtEnd;
+            List<Control> TabOrdered;
             ControlCollection SearchCollection;
             DenseList<StackEntry> SearchStack;
 
@@ -50,15 +52,16 @@ namespace Squared.PRGUI {
             object IEnumerator.Current => Current;
 
             internal TraversalEnumerator (
-                IControlContainer startingContainer, 
-                Control startingPoint, 
+                ControlCollection startingCollection, 
+                Control startingPoint, int frameIndex,
                 ref TraverseSettings settings
             ) {
                 if ((settings.Direction != 1) && (settings.Direction != -1))
                     throw new ArgumentOutOfRangeException("settings.Direction");
 
+                FrameIndex = frameIndex;
                 StartingPoint = startingPoint;
-                StartingContainer = startingContainer;
+                StartingCollection = startingCollection;
                 Settings = settings;
                 IsDisposed = false;
                 IsInitialized = false;
@@ -66,6 +69,7 @@ namespace Squared.PRGUI {
                 Current = default(TraversalInfo);
                 SearchStack = default(DenseList<StackEntry>);
                 SearchCollection = null;
+                TabOrdered = null;
             }
 
             public void Dispose () {
@@ -88,6 +92,7 @@ namespace Squared.PRGUI {
                 if (item.Control == Current.Control)
                     throw new Exception();
                 SearchCollection = item.Collection;
+                TabOrdered = SearchCollection.InTabOrder(FrameIndex, false);
                 SetCurrent(item.Control);
                 return true;
             }
@@ -95,8 +100,8 @@ namespace Squared.PRGUI {
             private bool MoveFirstImpl () {
                 if (SearchStack.Count > 0)
                     throw new Exception();
-                if ((StartingPoint == null) && (StartingContainer != null)) {
-                    SetSearchContainer(StartingContainer);
+                if ((StartingPoint == null) && (StartingCollection != null)) {
+                    SetSearchCollection(StartingCollection);
                 } else if (!StartingPoint.TryGetParent(out Control parent)) {
                     SetSearchCollection(StartingPoint.Context.Controls);
                 } else if (parent is IControlContainer icc) {
@@ -127,10 +132,12 @@ namespace Squared.PRGUI {
 
             private void SetSearchCollection (ControlCollection collection) {
                 SearchCollection = collection;
+                TabOrdered = SearchCollection.InTabOrder(FrameIndex, false);
             }
 
             private void SetSearchContainer (IControlContainer container) {
                 SearchCollection = container.Children;
+                TabOrdered = SearchCollection.InTabOrder(FrameIndex, false);
             }
 
             private bool AdvanceInward () {
@@ -186,8 +193,8 @@ namespace Squared.PRGUI {
             }
 
             private bool AdvanceLaterally (Control from) {
-                int currentIndex = SearchCollection.IndexOf(from),
-                    count = SearchCollection.Count,
+                int currentIndex = TabOrdered.IndexOf(from),
+                    count = TabOrdered.Count,
                     direction = Settings.Direction,
                     newIndex;
 
@@ -211,7 +218,7 @@ namespace Squared.PRGUI {
                 if (newIndex == currentIndex)
                     return false;
 
-                var newControl = SearchCollection[newIndex];
+                var newControl = TabOrdered[newIndex];
                 SetCurrent(newControl);
                 if (Current.ContainsChildren && (Settings.Direction == -1)) {
                     Console.WriteLine($"Lateral movement from {from} to {newControl}, attempting to advance inward");
@@ -268,9 +275,10 @@ namespace Squared.PRGUI {
         public struct TraversalEnumerable : IEnumerable<TraversalInfo> {
             public Control StartingPoint;
             public TraverseSettings Settings;
+            public int FrameIndex;
 
             public TraversalEnumerator GetEnumerator () {
-                return new TraversalEnumerator(null, StartingPoint, ref Settings);
+                return new TraversalEnumerator(null, StartingPoint, FrameIndex, ref Settings);
             }
 
             IEnumerator<TraversalInfo> IEnumerable<TraversalInfo>.GetEnumerator () {
@@ -294,7 +302,9 @@ namespace Squared.PRGUI {
                 // FIXME: Maybe do this?
                 FollowProxies = false
             };
-            var e = new TraversalEnumerator((IControlContainer)container, null, ref settings);
+            // FIXME: Handle cases where the control isn't a container
+            var collection = ((container as IControlContainer)?.Children) ?? Controls;
+            var e = new TraversalEnumerator(collection, null, FrameIndex, ref settings);
             using (e) {
                 while (e.MoveNext()) {
                     if (e.Current.Control.IsValidFocusTarget)
@@ -314,7 +324,7 @@ namespace Squared.PRGUI {
                 FollowProxies = true,
                 // FIXME: Prevent top level rotate here?
             };
-            var e = new TraversalEnumerator(null, child, ref settings);
+            var e = new TraversalEnumerator(null, child, FrameIndex, ref settings);
             using (e) {
                 while (e.MoveNext()) {
                     if (e.Current.Control.EligibleForFocusRotation)
@@ -326,11 +336,11 @@ namespace Squared.PRGUI {
         }
 
         public TraversalEnumerable Traverse (Control startingPoint, TraverseSettings settings) {
-            return new TraversalEnumerable { StartingPoint = startingPoint, Settings = settings };
+            return new TraversalEnumerable { StartingPoint = startingPoint, Settings = settings, FrameIndex = FrameIndex };
         }
 
         public Control TraverseToNext (Control startingPoint, TraverseSettings settings, Func<Control, bool> predicate = null) {
-            var e = new TraversalEnumerator(null, startingPoint, ref settings);
+            var e = new TraversalEnumerator(null, startingPoint, FrameIndex, ref settings);
             using (e) {
                 while (e.MoveNext()) {
                     if ((predicate == null) || predicate(e.Current.Control))

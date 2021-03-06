@@ -118,7 +118,7 @@ namespace Squared.PRGUI {
 
             // Attempt to auto-shift focus as long as our parent chain is focusable
             if (!Control.IsRecursivelyTransparent(control, includeSelf: false))
-                idealNewTarget = PickNextFocusTarget(control, 1, true);
+                idealNewTarget = PickFocusableSibling(control, 1, false);
             else
                 // Auto-shifting failed, so try to return to the most recently focused control
                 idealNewTarget = PreviousFocused ?? PreviousTopLevelFocused;
@@ -157,7 +157,7 @@ namespace Squared.PRGUI {
             DefocusInvalidFocusTargets();
 
             if ((Focused == null) && !AllowNullFocus)
-                Focused = PickNextFocusTarget(null, 1, true);
+                Focused = PickFocusableChild(null);
         }
 
         private Control PickRotateFocusTarget (bool topLevel, int delta) {
@@ -193,7 +193,7 @@ namespace Squared.PRGUI {
             if (delta == 0)
                 throw new ArgumentOutOfRangeException("delta");
 
-            var target = PickNextFocusTarget(location, delta, true);
+            var target = PickFocusableSibling(location, delta, null);
             return TrySetFocus(target, isUserInitiated: isUserInitiated);
         }
 
@@ -243,7 +243,7 @@ namespace Squared.PRGUI {
             if (!AllowNullFocus && (value == null)) {
                 // Handle cases where the focused control became disabled or invisible
                 if (Focused?.IsValidFocusTarget == false)
-                    newFocusTarget = value = PickNextFocusTarget(Focused, 1, false);
+                    newFocusTarget = value = PickFocusableSibling(Focused, 1, false);
                 else
                     newFocusTarget = value = Focused ?? Controls.FirstOrDefault();
             }
@@ -268,7 +268,7 @@ namespace Squared.PRGUI {
                 if (childTarget?.IsValidFocusTarget == false) {
                     var childContainer = (childTarget as IControlContainer);
                     if (IsValidContainerToSearchForFocusableControls(childContainer))
-                        childTarget = FindFocusableSibling(childContainer.Children, null, 1, true);
+                        childTarget = PickFocusableChild((Control)childContainer);
                 }
 
                 if (childTarget != null)
@@ -291,7 +291,7 @@ namespace Squared.PRGUI {
                 if (!newFocusTarget.IsValidFocusTarget) {
                     var collection = (newFocusTarget as IControlContainer);
                     if (IsValidContainerToSearchForFocusableControls(collection)) {
-                        var childTarget = FindFocusableSibling(collection.Children, null, 1, true);
+                        var childTarget = PickFocusableChild((Control)collection);
                         if (childTarget == newFocusTarget) {
                             if (!force && !isTopLevel)
                                 return false;
@@ -367,143 +367,6 @@ namespace Squared.PRGUI {
             if (!(control is IControlContainer))
                 return false;
             return control.Enabled && control.Visible && !Control.IsRecursivelyTransparent(control);
-        }
-
-        public Control FindFocusableSibling (ControlCollection collection, Control current, int delta, bool recursive) {
-            if (delta == 0)
-                throw new ArgumentOutOfRangeException("delta");
-
-            var tabOrdered = collection.InTabOrder(FrameIndex, false);
-            if (tabOrdered.Count < 1)
-                return null;
-
-            int initialIndex = tabOrdered.IndexOf(current), newIndex, idx;
-            if (initialIndex < 0)
-                newIndex = (delta > 0 ? 0 : tabOrdered.Count - 1);
-            else
-                newIndex = initialIndex + delta;
-
-            while (newIndex != initialIndex) {
-                if (collection.Host == null)
-                    idx = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
-                else if (newIndex >= tabOrdered.Count)
-                    return null;
-                else if (newIndex < 0)
-                    return null;
-                else
-                    idx = newIndex;
-
-                var control = tabOrdered[idx];
-
-                if (control.Visible) {
-                    if (control.Enabled && (control.EligibleForFocusRotation || control.IsFocusProxy)) {
-                        return control;
-                    } else if (recursive && IsValidContainerToSearchForFocusableControls(control)) {
-                        var child = FindFocusableSibling(((IControlContainer)control).Children, null, delta, recursive);
-                        if (child != null)
-                            return child;
-                    }
-                }
-
-                newIndex += delta;
-                if (initialIndex < 0) {
-                    if ((newIndex < 0) || (newIndex >= tabOrdered.Count))
-                        break;
-                }
-
-                if (collection.Host == null)
-                    newIndex = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
-
-                if (newIndex == initialIndex)
-                    break;
-            }
-
-            foreach (var item in tabOrdered) {
-                if (item == current)
-                    continue;
-                else if (item.IsFocusProxy)
-                    return item;
-                else if (!item.EligibleForFocusRotation)
-                    continue;
-                else if (!item.Enabled)
-                    continue;
-
-                return item;
-            }
-
-            return null;
-        }
-
-        private Control PickNextFocusTarget (Control current, int delta, bool recursive) {
-            if (delta == 0)
-                throw new ArgumentOutOfRangeException("delta");
-
-            if (current == null)
-                return FindFocusableSibling(Controls, null, delta, recursive);
-
-            /*
-            // HACK: If for some reason a top-level container is set as focused, we want tab to focus one of its children
-            var isTopLevel = !current.TryGetParent(out Control _);
-            if (isTopLevel) {
-                var container = current as IControlContainer;
-                if (container != null) {
-                    var idealTarget = (delta > 0) ? container.Children.FirstOrDefault() : container.Children.LastOrDefault();
-                    if (!idealTarget.IsValidFocusTarget) {
-                        var focusableSibling = FindFocusableSibling(container.Children, container.Children.FirstOrDefault(), delta, recursive);
-                        if (focusableSibling != null)
-                            return focusableSibling;
-                    } else
-                        return idealTarget;
-                }
-            }
-            */
-
-            if (IsValidContainerToSearchForFocusableControls(current)) {
-                var child = FindFocusableSibling(((IControlContainer)current).Children, null, delta, recursive);
-                if (child != null)
-                    return child;
-            }
-
-            var ineligible = current;
-            Control prior;
-            ControlCollection parentCollection;
-
-            while (current != null) {
-                if (!current.TryGetParent(out Control parent))
-                    parentCollection = Controls;
-                else
-                    parentCollection = (parent as IControlContainer)?.Children;
-
-                var sibling = FindFocusableSibling(parentCollection, current, delta, recursive);
-                if ((sibling != null) && (sibling != ineligible))
-                    return sibling;
-
-                var currentIndex = parentCollection.IndexOf(current);
-                var nextIndex = currentIndex + delta;
-                var nextSibling = (nextIndex >= 0) && (nextIndex < parentCollection.Count)
-                    ? parentCollection[nextIndex]
-                    : null;
-
-                prior = current;
-                if ((nextSibling != null) && (nextSibling != current)) {
-                    var nextContainer = (nextSibling as IControlContainer);
-                    if (nextContainer != null) {
-                        var possibleResult = FindFocusableSibling(nextContainer.Children, null, delta, recursive);
-                        if ((possibleResult != null) && (possibleResult != ineligible))
-                            return possibleResult;
-                    }
-
-                    current = nextSibling;
-                    if (current.Enabled && current.IsValidFocusTarget && !Control.IsRecursivelyTransparent(current))
-                        return current;
-                } else if (parent == null) {
-                    break;
-                } else {
-                    current = parentCollection?.Host;
-                }
-            }
-
-            return null;
         }
     }
 }
