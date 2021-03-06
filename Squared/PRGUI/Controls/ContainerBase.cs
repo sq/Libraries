@@ -29,13 +29,13 @@ namespace Squared.PRGUI.Controls {
         }
 
         ControlCollection IControlContainer.Children => Children;
-        int IControlContainer.ChildrenToSkip => ChildrenToSkip;
+        int IControlContainer.ChildrenToSkipWhenBuilding => ChildrenToSkipWhenBuilding;
 
         protected ControlParentBase () 
             : base () {
         }
 
-        protected virtual int ChildrenToSkip => 0;
+        protected virtual int ChildrenToSkipWhenBuilding => 0;
 
         /// <summary>
         /// If set, children will only be rendered within the volume of this container

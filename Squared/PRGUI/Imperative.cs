@@ -39,7 +39,7 @@ namespace Squared.PRGUI.Imperative {
             Context = context;
             Control = control;
             Container = (IControlContainer)control;
-            NextIndex = Container?.ChildrenToSkip ?? 0;
+            NextIndex = Container?.ChildrenToSkipWhenBuilding ?? 0;
             Children = Container.Children;
             PreviousRemovedControls = new DenseList<Control>();
             CurrentRemovedControls = new DenseList<Control>();
@@ -54,7 +54,7 @@ namespace Squared.PRGUI.Imperative {
 
         public void Reset () {
             WaitingForFocusBeneficiary = null;
-            NextIndex = Container?.ChildrenToSkip ?? 0;
+            NextIndex = Container?.ChildrenToSkipWhenBuilding ?? 0;
         }
 
         public void Finish () {

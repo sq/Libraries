@@ -73,7 +73,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        override protected int ChildrenToSkip => 1;
+        override protected int ChildrenToSkipWhenBuilding => 1;
 
         new public ControlCollection Children {
             get => base.Children;

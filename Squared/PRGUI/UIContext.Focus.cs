@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,13 +12,6 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public partial class UIContext : IDisposable {
-        internal struct FocusInfo {
-            public Control Control;
-            public IControlContainer Container;
-            public bool CanReceiveFocus, CanHoldFocus;
-            public bool WillRedirectFocus, ContainsChildren;
-        }
-
         private void AutomaticallyTransferFocusOnTopLevelChange (Control target) {
             if (target.AcceptsFocus)
                 return;
