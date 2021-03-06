@@ -569,18 +569,6 @@ namespace Squared.PRGUI {
             return CachedCompositionPreview;
         }
 
-        private void AutomaticallyTransferFocusOnTopLevelChange (Control target) {
-            if (target.AcceptsFocus)
-                return;
-
-            var previousTopLevel = FindTopLevelAncestor(Focused);
-            var newTopLevel = FindTopLevelAncestor(target);
-            if ((newTopLevel != previousTopLevel) && (newTopLevel != null)) {
-                Log($"Automatically transfering focus to new top level ancestor {newTopLevel}");
-                TrySetFocus(newTopLevel, isUserInitiated: false);
-            }
-        }
-
         public bool CaptureMouse (Control target) {
             return CaptureMouse(target, out Control temp);
         }
@@ -596,67 +584,6 @@ namespace Squared.PRGUI {
                 TrySetFocus(target, true, true);
             MouseCaptured = target;
             return (MouseCaptured == target);
-        }
-
-        public bool ReleaseFocus (Control target, bool forward) {
-            if (Focused != target)
-                return false;
-
-            // FIXME
-            var isUserInitiated = false;
-            if (!RotateFocus(false, forward ? 1 : -1, isUserInitiated)) {
-                // Forward is a best-effort request, go backward instead if necessary
-                if (forward && RotateFocus(false, -1, isUserInitiated))
-                    return true;
-                return TrySetFocus(null);
-            }
-
-            return true;
-        }
-
-        private void RemoveFromFocusMemory (Control control) {
-            foreach (var topLevel in Controls) {
-                if (!TopLevelFocusMemory.TryGetValue(topLevel, out Control memory))
-                    continue;
-                if (control == memory)
-                    TopLevelFocusMemory.Remove(topLevel);
-            }
-        }
-
-        // FIXME: This operation can shift the focus out of view, should it perform auto-scroll?
-        public bool ReleaseDescendantFocus (Control container, bool forward) {
-            if (Focused == null)
-                return false;
-            if (container == null)
-                return false;
-
-            // FIXME
-            var isUserInitiated = false;
-
-            if (TopLevelFocused == container)
-                return RotateFocus(true, forward ? 1 : -1, isUserInitiated);
-            
-            var chain = Focused;
-            while (chain != null) {
-                // If focus memory points to this control we're defocusing, clear it
-                RemoveFromFocusMemory(chain);
-
-                if (chain == container) {
-                    if (!RotateFocusFrom(container, forward ? 1 : -1, isUserInitiated)) {
-                        if (forward)
-                            return RotateFocusFrom(container, -1, isUserInitiated);
-                        else
-                            return TrySetFocus(null, true);
-                    } else
-                        return true;
-                }
-
-                if (!chain.TryGetParent(out Control parent) || (parent == null))
-                    return false;
-                chain = parent;
-            }
-
-            return false;
         }
 
         public void RetainCapture (Control target) {
@@ -802,74 +729,6 @@ namespace Squared.PRGUI {
                 TrySetFocus(newFocusTarget, false, false);
         }
 
-        private readonly Dictionary<Control, Control> InvalidFocusTargets = 
-            new Dictionary<Control, Control>(new ReferenceComparer<Control>());
-
-        private void DefocusInvalidFocusTargets () {
-            while ((Focused != null) && !Focused.IsValidFocusTarget && InvalidFocusTargets.TryGetValue(Focused, out Control idealNewTarget)) {
-                InvalidFocusTargets.Remove(Focused);
-                var current = Focused;
-                var ok = (idealNewTarget == null) && TrySetFocus(idealNewTarget);
-
-                if (!ok) {
-                    var interim = Focused;
-                    idealNewTarget = PickIdealNewFocusTargetForInvalidFocusTarget(Focused);
-                    if (!TrySetFocus(idealNewTarget)) {
-                        // Log($"Could not move focus from invalid target {current}");
-                        break;
-                    } else
-                        ; // Log($"Moved focus from invalid target {current} to {Focused} through {interim}");
-                } else {
-                    // Log($"Moved focus from invalid target {current} to {Focused}");
-                }
-            }
-            InvalidFocusTargets.Clear();
-        }
-
-        private Control PickIdealNewFocusTargetForInvalidFocusTarget (Control control) {
-            var fm = Focused as IModal;
-            Control idealNewTarget = null;
-            // FIXME: TopLevelFocused fixes some behaviors here but breaks others :(
-            if ((fm?.FocusDonor != null) && Control.IsEqualOrAncestor(Focused, control))
-                idealNewTarget = fm.FocusDonor;
-
-            // Attempt to auto-shift focus as long as our parent chain is focusable
-            if (!Control.IsRecursivelyTransparent(control, includeSelf: false))
-                idealNewTarget = PickNextFocusTarget(control, 1, true);
-            else
-                // Auto-shifting failed, so try to return to the most recently focused control
-                idealNewTarget = PreviousFocused ?? PreviousTopLevelFocused;
-
-            return idealNewTarget;
-        }
-
-        // Clean up when a control is removed in case it has focus or mouse capture,
-        //  and attempt to return focus to the most recent place it occupied (for modals)
-        public void NotifyControlBecomingInvalidFocusTarget (Control control, bool removed) {
-            RemoveFromFocusMemory(control);
-
-            if (PreviousFocused == control)
-                PreviousFocused = null;
-            if (PreviousTopLevelFocused == control)
-                PreviousTopLevelFocused = null;
-            if (Control.IsEqualOrAncestor(_MouseCaptured, control))
-                MouseCaptured = null;
-
-            InvalidFocusTargets[control] = 
-                PickIdealNewFocusTargetForInvalidFocusTarget(control);
-
-            if (Control.IsEqualOrAncestor(KeyboardSelection, control))
-                ClearKeyboardSelection();
-
-            if (PreviousFocused == control)
-                PreviousFocused = null;
-            if (PreviousTopLevelFocused == control)
-                PreviousTopLevelFocused = null;
-
-            if (removed)
-                NotifyModalClosed(control as IModal);
-        }
-
         public bool IsPriorityInputSource (IInputSource source) {
             if (ScratchInputSources.Count > 0)
                 return ScratchInputSources.IndexOf(source) == 0;
@@ -884,13 +743,6 @@ namespace Squared.PRGUI {
             else if (existingIndex > 0)
                 InputSources.RemoveAt(existingIndex);
             InputSources.Insert(0, source);
-        }
-
-        private void EnsureValidFocus () {
-            DefocusInvalidFocusTargets();
-
-            if ((Focused == null) && !AllowNullFocus)
-                Focused = PickNextFocusTarget(null, 1, true);
         }
 
         public void UpdateInput (bool processEvents = true) {
