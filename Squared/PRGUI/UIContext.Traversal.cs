@@ -60,12 +60,20 @@ namespace Squared.PRGUI {
                 yield break;
 
             int i = (settings.Direction > 0) ? 0 : collection.Count - 1;
+            var tabOrdered = collection.InTabOrder(FrameIndex, false);
 
             while (true) {
-                var child = collection[i];
+                if ((i < 0) || (i >= tabOrdered.Count))
+                    break;
+
+                var child = tabOrdered[i];
+                if ((settings.Predicate != null) && !settings.Predicate(child)) {
+                    i += settings.Direction;
+                    continue;
+                }
+
                 var info = Traverse_MakeInfo(child);
-                if ((settings.Predicate == null) || settings.Predicate(child))
-                    yield return info;
+                yield return info;
 
                 if (Traverse_CanDescend(ref info, ref settings)) {
                     foreach (var subchild in TraverseChildren(info.Container.Children, settings))
@@ -73,8 +81,6 @@ namespace Squared.PRGUI {
                 }
 
                 i += settings.Direction;
-                if ((i < 0) || (i >= collection.Count))
-                    break;
             }
         }
 
@@ -94,17 +100,24 @@ namespace Squared.PRGUI {
 
             var currentStartingPosition = startingPosition;
             while (true) {
-                int index = currentCollection.IndexOf(currentStartingPosition), i = index + settings.Direction;
+                var tabOrdered = currentCollection.InTabOrder(FrameIndex, false);
+                int index = tabOrdered.IndexOf(currentStartingPosition), i = index + settings.Direction;
 
                 while (true) {
                     // FIXME: Wrap
-                    if ((i < 0) || (i >= currentCollection.Count))
+                    if ((i < 0) || (i >= tabOrdered.Count))
                         break;
 
-                    var child = currentCollection[i];
+                    var child = tabOrdered[i];
+                    if ((settings.Predicate != null) && !settings.Predicate(child)) {
+                        i += settings.Direction;
+                        if (i == index)
+                            break;
+                        continue;
+                    }
+
                     var info = Traverse_MakeInfo(child);
-                    if ((settings.Predicate == null) || settings.Predicate(child))
-                        yield return info;
+                    yield return info;
 
                     if (Traverse_CanDescend(ref info, ref settings)) {
                         foreach (var subchild in TraverseChildren(info.Container.Children, descendSettings))
