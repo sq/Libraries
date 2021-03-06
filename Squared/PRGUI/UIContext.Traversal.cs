@@ -26,9 +26,9 @@ namespace Squared.PRGUI {
             public bool AllowDescend, AllowDescendIfDisabled, AllowDescendIfInvisible, AllowAscend;
             // HACK: Will default to true for Window and false for everything else
             public bool? AllowWrap;
-            // public bool FollowProxies;
             public int Direction;
             public Func<Control, bool> Predicate;
+            public bool FollowProxies;
 
             internal int FrameIndex;
         }
@@ -67,13 +67,13 @@ namespace Squared.PRGUI {
                     break;
 
                 var child = tabOrdered[i];
-                if ((settings.Predicate != null) && !settings.Predicate(child)) {
-                    i += settings.Direction;
-                    continue;
-                }
-
                 var info = Traverse_MakeInfo(child);
-                yield return info;
+
+                if ((settings.Predicate == null) || settings.Predicate(child))
+                    yield return info;
+
+                if (info.IsProxy && settings.FollowProxies)
+                    yield break;
 
                 if (Traverse_CanDescend(ref info, ref settings)) {
                     foreach (var subchild in TraverseChildren(info.Container.Children, settings))
@@ -88,6 +88,7 @@ namespace Squared.PRGUI {
             if (startingPosition == null)
                 throw new ArgumentNullException(nameof(startingPosition));
 
+            var visitedProxyTargets = new DenseList<Control>();
             var descendSettings = settings;
             descendSettings.AllowAscend = false;
             var currentCollection = collection ?? ((startingPosition as IControlContainer)?.Children);
@@ -102,6 +103,7 @@ namespace Squared.PRGUI {
             while (true) {
                 var tabOrdered = currentCollection.InTabOrder(FrameIndex, false);
                 int index = tabOrdered.IndexOf(currentStartingPosition), i = index + settings.Direction;
+                Control proxyTarget = null;
 
                 while (true) {
                     // FIXME: Wrap
@@ -109,19 +111,29 @@ namespace Squared.PRGUI {
                         break;
 
                     var child = tabOrdered[i];
-                    if ((settings.Predicate != null) && !settings.Predicate(child)) {
-                        i += settings.Direction;
-                        if (i == index)
-                            break;
-                        continue;
+                    var info = Traverse_MakeInfo(child);
+
+                    if (info.IsProxy && settings.FollowProxies && (visitedProxyTargets.IndexOf(info.RedirectTarget) < 0)) {
+                        proxyTarget = info.RedirectTarget;
+                        visitedProxyTargets.Add(proxyTarget);
+                        break;
+                    } else if ((settings.Predicate == null) || settings.Predicate(child)) {
+                        yield return info;
                     }
 
-                    var info = Traverse_MakeInfo(child);
-                    yield return info;
-
                     if (Traverse_CanDescend(ref info, ref settings)) {
-                        foreach (var subchild in TraverseChildren(info.Container.Children, descendSettings))
+                        foreach (var subchild in TraverseChildren(info.Container.Children, descendSettings)) {
+                            if (subchild.IsProxy && settings.FollowProxies && (visitedProxyTargets.IndexOf(subchild.RedirectTarget) < 0)) {
+                                proxyTarget = info.RedirectTarget;
+                                visitedProxyTargets.Add(proxyTarget);
+                                break;
+                            }
+
                             yield return subchild;
+                        }
+
+                        if (proxyTarget != null)
+                            break;
                     }
 
                     i += settings.Direction;
@@ -129,8 +141,12 @@ namespace Squared.PRGUI {
                         break;
                 }
 
-                if (!settings.AllowAscend)
-                    break;
+                if (proxyTarget != null) {
+                    currentStartingPosition = proxyTarget;
+                } else {
+                    if (!settings.AllowAscend)
+                        break;
+                }
 
                 currentStartingPosition = currentCollection.Host;
                 if (!currentStartingPosition.TryGetParent(out Control parent))
@@ -157,7 +173,7 @@ namespace Squared.PRGUI {
                 AllowWrap = false,
                 Direction = direction,
                 // FIXME: Maybe do this?
-                // FollowProxies = false,
+                FollowProxies = false,
                 FrameIndex = FrameIndex,
                 Predicate = FocusablePredicate ?? (FocusablePredicate = _FocusablePredicate)
             };
@@ -175,8 +191,7 @@ namespace Squared.PRGUI {
                 AllowAscend = true,
                 AllowWrap = allowLoop,
                 Direction = direction,
-                // FIXME
-                // FollowProxies = true,
+                FollowProxies = true,
                 // FIXME: Prevent top level rotate here?
                 FrameIndex = FrameIndex,
                 Predicate = RotatablePredicate ?? (RotatablePredicate = _RotatablePredicate)
