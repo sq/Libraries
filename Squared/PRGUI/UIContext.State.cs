@@ -160,6 +160,8 @@ namespace Squared.PRGUI {
         // HACK: Suppress the 'if not Visible then don't perform layout' behavior
         internal bool IsUpdatingSubtreeLayout;
 
+        private int ScratchRenderTargetsUsedThisFrame;
+
         public float Now { get; private set; }
         public long NowL { get; private set; }
     }

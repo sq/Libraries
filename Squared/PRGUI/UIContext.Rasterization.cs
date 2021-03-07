@@ -81,6 +81,15 @@ namespace Squared.PRGUI {
             }
         }
 
+        public T ForEachScratchRenderTarget<T> (Func<T, Texture2D, T> f, T initialValue = default(T)) {
+            var result = initialValue;
+            foreach (var srt in ScratchRenderTargets) {
+                var tex = srt?.Instance?.Get();
+                result = f(result, tex);
+            }
+            return result;
+        }
+
         private void FlushOverlayQueue (ref ImperativeRenderer renderer) {
             foreach (var dc in OverlayQueue) {
                 renderer.Draw(dc);
@@ -129,6 +138,7 @@ namespace Squared.PRGUI {
 
             var context = MakeOperationContext();
 
+            ScratchRenderTargetsUsedThisFrame = 0;
             foreach (var srt in ScratchRenderTargets) {
                 srt.Update();
                 srt.Reset();
@@ -256,12 +266,22 @@ namespace Squared.PRGUI {
             {
                 TopoSortTable.Clear();
 
-                foreach (var srt in ScratchRenderTargets)
+                foreach (var srt in ScratchRenderTargets) {
+                    if (srt.UsedRectangles.Count > 0)
+                        ScratchRenderTargetsUsedThisFrame++;
                     PushRecursive(srt);
+                }
 
                 int i = -9999;
                 foreach (var item in TopoSortTable) {
                     ((Batch)item.Renderer.Container).Layer = i++;
+                }
+
+                var retainCount = Math.Max(1, ScratchRenderTargetsUsedThisFrame);
+                for (int j = ScratchRenderTargets.Count - 1; j >= retainCount; j--) {
+                    var srt = ScratchRenderTargets.DangerousGetItem(j);
+                    container.Coordinator.DisposeResource(srt);
+                    ScratchRenderTargets.RemoveAtOrdered(j);
                 }
             }
         }
