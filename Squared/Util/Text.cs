@@ -231,6 +231,18 @@ namespace Squared.Util.Text {
         private readonly StringBuilder StringBuilder;
         private readonly ArraySegment<char> ArraySegment;
 
+        public bool IsArraySegment {
+            get {
+                return (ArraySegment.Array != null);
+            }
+        }
+
+        public bool IsString {
+            get {
+                return (String != null);
+            }
+        }
+
         public bool IsStringBuilder {
             get {
                 return (StringBuilder != null);

@@ -119,7 +119,13 @@ namespace Squared.Render.Resources {
         public readonly bool EnableThreadedPreload = true, 
             EnableThreadedCreate = false;
 
-        protected readonly Dictionary<string, Future<T>> Cache = new Dictionary<string, Future<T>>();
+        protected struct CacheEntry {
+            public string Name;
+            public Future<T> Future;
+            public object Data;
+        }
+
+        protected readonly Dictionary<string, CacheEntry> Cache = new Dictionary<string, CacheEntry>();
         protected object DefaultOptions;
 
         protected WorkQueue<PreloadWorkItem> PreloadQueue { get; private set; }
@@ -198,27 +204,35 @@ namespace Squared.Render.Resources {
             }
         }
 
-        private Future<T> GetFutureForResource (string name, bool cached, out bool performLoad) {
+        private CacheEntry MakeCacheEntry (string name, object data) {
+            return new CacheEntry {
+                Name = name,
+                Data = data,
+                Future = new Future<T>()
+            };
+        }
+
+        private Future<T> GetFutureForResource (string name, object data, bool cached, out bool performLoad) {
             name = StreamSource.FixupName(name, true);
             performLoad = false;
-            Future<T> future;
+            CacheEntry entry;
             if (cached) {
                 lock (Cache) {
-                    if (!Cache.TryGetValue(name, out future)) {
-                        Cache[name] = future = new Future<T>();
+                    if (!Cache.TryGetValue(name, out entry)) {
+                        Cache[name] = entry = MakeCacheEntry(name, data);
                         performLoad = true;
                     }
                 }
             } else {
-                future = new Future<T>();
+                entry = MakeCacheEntry(name, data);
                 performLoad = true;
             }
 
-            return future;
+            return entry.Future;
         }
 
         public Future<T> LoadAsync (string name, object data, bool cached = true, bool optional = false) {
-            var future = GetFutureForResource(name, cached, out bool performLoad);
+            var future = GetFutureForResource(name, data, cached, out bool performLoad);
 
             if (performLoad) {
                 _PendingLoads++;
@@ -237,7 +251,7 @@ namespace Squared.Render.Resources {
         }
 
         public T LoadSync (string name, object data, bool cached, bool optional) {
-            var future = GetFutureForResource(name, cached, out bool performLoad);
+            var future = GetFutureForResource(name, data, cached, out bool performLoad);
 
             if (performLoad) {
                 lock (PendingLoadLock)
@@ -277,12 +291,24 @@ namespace Squared.Render.Resources {
             return LoadSync(name, DefaultOptions, cached, optional);
         }
 
+        public U Reduce<U> (Func<U, string, T, object, U> f, U initialValue = default(U)) {
+            var result = initialValue;
+            lock (Cache)
+                foreach (var entry in Cache.Values) {
+                    if (!entry.Future.Completed || entry.Future.Failed)
+                        continue;
+                    result = f(result, entry.Name, entry.Future.Result, entry.Data);
+                }
+            return result;
+        }
+
         public void ClearCache () {
             lock (Cache) {
-                foreach (var future in Cache.Values) {
-                    future.RegisterOnComplete((_) => {
+                foreach (var entry in Cache.Values) {
+                    entry.Future.RegisterOnComplete((f) => {
                         try {
-                            Coordinator.DisposeResource(future.Result2 as IDisposable);
+                            if (f.Completed && !f.Failed)
+                                Coordinator.DisposeResource(f.Result2 as IDisposable);
                         } catch {
                         }
                     });

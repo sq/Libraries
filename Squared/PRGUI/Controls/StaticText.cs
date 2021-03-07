@@ -145,15 +145,15 @@ namespace Squared.PRGUI.Controls {
 
         protected bool SetText (AbstractString value, bool? onlyIfTextChanged = null) {
             // Don't perform a text compare for long strings
-            var checkEquality = onlyIfTextChanged ?? !value.IsStringBuilder;
-            if (value.Length < 4096) {
-                if (
-                    checkEquality &&
-                    value.TextEquals(Content.Text, StringComparison.Ordinal)
-                )
-                    return false;
-            }
+            var checkEquality = (onlyIfTextChanged ?? true) && (value.Length < 10240) && value.IsString;
+            if (
+                checkEquality &&
+                value.TextEquals(Content.Text, StringComparison.Ordinal)
+            )
+                return false;
             Content.Text = value;
+            if (!value.IsString)
+                Content.Invalidate();
             return true;
         }
 
