@@ -296,8 +296,8 @@ namespace Squared.PRGUI.Controls {
             return provider?.Window;
         }
 
-        protected override IDecorator GetTitleDecorator (UIOperationContext context) {
-            return context.DecorationProvider?.WindowTitle ?? base.GetTitleDecorator(context);
+        protected override IDecorator GetTitleDecorator (IDecorationProvider provider) {
+            return provider?.WindowTitle ?? base.GetTitleDecorator(provider);
         }
         
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {

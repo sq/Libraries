@@ -105,22 +105,25 @@ namespace Squared.PRGUI.Controls {
             return provider?.TitledContainer ?? base.GetDefaultDecorator(provider);
         }
 
-        protected virtual IDecorator GetTitleDecorator (UIOperationContext context) {
-            return context.DecorationProvider?.ContainerTitle ?? 
-                context.DecorationProvider?.WindowTitle;
+        protected virtual IDecorator GetTitleDecorator (IDecorationProvider provider) {
+            return provider?.ContainerTitle ?? 
+                provider?.WindowTitle;
         }
 
-        protected IDecorator UpdateTitle (UIOperationContext context, DecorationSettings settings, out Material material, ref Color? color) {
-            var decorations = GetTitleDecorator(context);
+        protected IDecorator UpdateTitle (
+            ref UIOperationContext context, ControlStates state, ref RectF contentBox,
+            out Material material, ref Color? color
+        ) {
+            var decorations = GetTitleDecorator(context.DecorationProvider);
             if (decorations == null) {
                 material = null;
                 return null;
             }
-            decorations.GetTextSettings(context, settings.State, out material, ref color);
+            decorations.GetTextSettings(context, state, out material, ref color);
             TitleLayout.Text = Title;
             TitleLayout.GlyphSource = decorations.GlyphSource;
             TitleLayout.DefaultColor = color ?? Color.White;
-            TitleLayout.LineBreakAtX = settings.ContentBox.Width;
+            TitleLayout.LineBreakAtX = contentBox.Width;
             if (!TitleLayout.IsValid)
                 MostRecentTitleHeight = null;
             return decorations;
@@ -234,7 +237,14 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private float? ComputeDisclosureHeight (float? input) {
+        private float GetTitleHeightForConstraints (ref UIOperationContext context) {
+            if (MostRecentTitleBox != default(RectF))
+                return MostRecentTitleBox.Height;
+            var decorations = GetTitleDecorator(context.DecorationProvider);
+            return (TitleLayout.GlyphSource?.LineSpacing ?? 0) + decorations.Padding.Y;
+        }
+
+        private float? ComputeDisclosureHeight (ref UIOperationContext context, float? input) {
             if (!MostRecentFullSize.HasValue)
                 return input;
             if (!Collapsible)
@@ -242,14 +252,25 @@ namespace Squared.PRGUI.Controls {
             var level = DisclosureLevel.Get(Context.NowL);
             if (level >= 1)
                 return input;
-            float collapsedHeight = input.HasValue ? Math.Min(input.Value, MostRecentTitleBox.Height) : MostRecentTitleBox.Height;
+
+            // HACK
+            if (
+                (MostRecentTitleHeight == null) && (TitleLayout.GlyphSource == null)
+            ) {
+                var cb = new RectF(Vector2.Zero, new Vector2(1024, 1024));
+                var color = (Color?)null;
+                UpdateTitle(ref context, default(ControlStates), ref cb, out Material temp, ref color);
+            }
+
+            var thfc = GetTitleHeightForConstraints(ref context);
+            float collapsedHeight = input.HasValue ? Math.Min(input.Value, thfc) : thfc;
             float expandedHeight = input.HasValue ? Math.Min(input.Value, MostRecentFullSize.Value.Height) : MostRecentFullSize.Value.Height;
             return (float)Math.Floor(Arithmetic.Lerp(collapsedHeight, expandedHeight, level));
         }
 
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
-            height.Maximum = ComputeDisclosureHeight(height.Maximum);
+            height.Maximum = ComputeDisclosureHeight(ref context, height.Maximum);
         }
 
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
@@ -272,7 +293,7 @@ namespace Squared.PRGUI.Controls {
             IDecorator titleDecorator;
             Color? titleColor = null;
             if (
-                (titleDecorator = UpdateTitle(context, settings, out Material titleMaterial, ref titleColor)) != null
+                (titleDecorator = UpdateTitle(ref context, settings.State, ref settings.ContentBox, out Material titleMaterial, ref titleColor)) != null
             ) {
                 if (Collapsible && (context.Pass == RasterizePasses.Above))
                     RasterizeDisclosureArrow(ref context, ref renderer, settings);

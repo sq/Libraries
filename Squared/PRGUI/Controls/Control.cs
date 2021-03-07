@@ -32,7 +32,7 @@ namespace Squared.PRGUI {
         }
 
         public ControlDimension AutoComputeFixed () {
-            if (Maximum == Minimum)
+            if ((Maximum == Minimum) && Maximum.HasValue)
                 return new ControlDimension {
                     Minimum = Minimum,
                     Maximum = Maximum,
@@ -291,7 +291,7 @@ namespace Squared.PRGUI {
         protected WeakReference<UIContext> WeakContext = null;
         protected WeakReference<Control> WeakParent = null;
 
-        protected Future<bool> ActiveAnimationFuture { get; private set; }
+        public Future<bool> ActiveAnimationFuture { get; private set; }
         protected IControlAnimation ActiveAnimation { get; private set; }
         protected long ActiveAnimationEndWhen;
 
@@ -1008,10 +1008,10 @@ namespace Squared.PRGUI {
                 hidden = true;
 
             var box = default(RectF);
-            bool isZeroSized = true, isInvisible = true;
+            bool isZeroSized = false, isInvisible = false;
             if (LayoutKey.IsInvalid) {
                 hidden = true;
-            } else if (!hidden) {
+            } else {
                 box = GetRect();
                 Vector2 ext = box.Extent,
                     vext = context.VisibleRegion.Extent;
