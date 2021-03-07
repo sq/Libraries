@@ -265,9 +265,18 @@ namespace Squared.PRGUI {
         Hovering = 0b10,
         Focused = 0b100,
         Pressed = 0b1000,
+        /// <summary>
+        /// If a checkbox or radio button is pressed, this will be set.
+        /// </summary>
         Checked = 0b10000,
-        // FIXME: Currently only reported for top-level controls
-        ContainsFocus = 0b100000
+        /// <summary>
+        /// If this control or one of its children is focused, this will be set.
+        /// </summary>
+        ContainsFocus = 0b100000,
+        /// <summary>
+        /// PreRasterize handlers may be run while the control is invisible. If so, this will be set.
+        /// </summary>
+        Invisible = 0b1000000
     }
 
     public enum RasterizePasses {

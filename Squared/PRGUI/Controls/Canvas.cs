@@ -70,7 +70,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool ShouldClipContent => !_Buffered;
-        protected override bool HasPreRasterizeHandler => _Buffered && (!_CacheContent || !_ContentIsValid || (Buffer == null));
+        protected override bool HasPreRasterizeHandler => (_Buffered && (!_CacheContent || !_ContentIsValid || (Buffer == null))) || base.HasPreRasterizeHandler;
 
         public Canvas () 
             : base () {

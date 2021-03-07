@@ -15,6 +15,7 @@ using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.RasterShape;
 using Squared.Render.Text;
+using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Event;
 
@@ -283,13 +284,14 @@ namespace Squared.PRGUI {
         internal int TooltipContentVersion = 0;
 
         protected bool CreateNestedContextForChildren = true;
-        protected virtual bool HasPreRasterizeHandler => false;
+        protected virtual bool HasPreRasterizeHandler => (ActiveAnimation != null);
         protected virtual bool HasChildren => false;
         protected virtual bool ShouldClipContent => false;
 
         protected WeakReference<UIContext> WeakContext = null;
         protected WeakReference<Control> WeakParent = null;
 
+        protected Future<bool> ActiveAnimationFuture { get; private set; }
         protected IControlAnimation ActiveAnimation { get; private set; }
         protected long ActiveAnimationEndWhen;
 
@@ -304,6 +306,22 @@ namespace Squared.PRGUI {
                 return;
             ActiveAnimation.End(this, false);
             ActiveAnimation = null;
+            if ((ActiveAnimationFuture != null) && !ActiveAnimationFuture.Completed)
+                ActiveAnimationFuture.Complete(false);
+            ActiveAnimationFuture = null;
+        }
+
+        public void CancelActiveAnimation (long? now = null) {
+            if (Context == null)
+                return;
+            if (ActiveAnimation == null)
+                return;
+            var _now = now ?? Context.NowL;
+            UpdateAnimation(_now);
+            ActiveAnimation?.End(this, true);
+            ActiveAnimation = null;
+            if ((ActiveAnimationFuture != null) && !ActiveAnimationFuture.Completed)
+                ActiveAnimationFuture.Complete(true);
         }
 
         /// <summary>
@@ -311,23 +329,24 @@ namespace Squared.PRGUI {
         /// </summary>
         /// <param name="animation">An animation to apply. If null, this method will return after canceling any existing animation.</param>
         /// <param name="duration">A custom duration for the animation. If unset, the animation's default length will be used.</param>
-        public void StartAnimation (IControlAnimation animation, float? duration = null, long? now = null) {
+        /// <returns>A custom completion future for the animation. When the animation finishes this future will be completed (with true if cancelled).</returns>
+        public Future<bool> StartAnimation (IControlAnimation animation, float? duration = null, long? now = null) {
+            CancelActiveAnimation(now);
+            if ((animation == null) || (Context == null))
+                return new Future<bool>(false);
             var _now = now ?? Context.NowL;
-            UpdateAnimation(_now);
-            ActiveAnimation?.End(this, true);
-            ActiveAnimation = null;
-            if (animation == null)
-                return;
             var multiplier = (Context?.Animations?.AnimationDurationMultiplier ?? 1f);
             var _duration = (duration ?? animation.DefaultDuration) * multiplier;
             ActiveAnimationEndWhen = _now + (long)((double)_duration * Time.SecondInTicks);
             ActiveAnimation = animation;
+            ActiveAnimationFuture = new Future<bool>();
             // If the duration is zero end the animation immediately and bias the current time forward
             //  to ensure that the endpoint (end of fade, etc) is applied. Likewise make sure the duration
             //  is never zero since that could produce divide-by-zero effects
             animation.Start(this, _now, Math.Max(_duration, 1f / 1000f));
             if (_duration <= 0)
                 UpdateAnimation(_now + Time.MillisecondInTicks);
+            return ActiveAnimationFuture;
         }
 
         protected void InvalidateTooltip () {
@@ -722,10 +741,10 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void OnPreRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+            UpdateAnimation(context.NowL);
         }
 
         protected virtual void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            UpdateAnimation(context.NowL);
             decorations?.Rasterize(context, ref renderer, settings);
         }
 
@@ -980,14 +999,35 @@ namespace Squared.PRGUI {
 
         public bool Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, float opacity = 1) {
             // HACK: Do this first since it fires opacity change events
+            var hidden = false;
             opacity *= GetOpacity(context.NowL);
-            if (opacity <= 0)
-                return false;
 
+            if (opacity <= 0)
+                hidden = true;
             if (!Visible)
-                return false;
-            if (LayoutKey.IsInvalid)
-                return false;
+                hidden = true;
+
+            var box = default(RectF);
+            bool isZeroSized = true, isInvisible = true;
+            if (LayoutKey.IsInvalid) {
+                hidden = true;
+            } else if (!hidden) {
+                box = GetRect();
+                Vector2 ext = box.Extent,
+                    vext = context.VisibleRegion.Extent;
+                // HACK: There might be corner cases where you want to rasterize a zero-sized control...
+                isZeroSized = (box.Width <= 0) || (box.Height <= 0);
+                isInvisible = (ext.X < context.VisibleRegion.Left) ||
+                    (ext.Y < context.VisibleRegion.Top) ||
+                    (box.Left > vext.X) ||
+                    (box.Top > vext.Y) ||
+                    isZeroSized;
+
+                if (isInvisible)
+                    hidden = true;
+
+                RasterizeDebugOverlays(ref context, ref passSet, box);
+            }
 
 #if DETECT_DOUBLE_RASTERIZE
             if (!RasterizeIsPending)
@@ -995,21 +1035,21 @@ namespace Squared.PRGUI {
             RasterizeIsPending = false;
 #endif
 
-            var box = GetRect();
-            Vector2 ext = box.Extent, vext = context.VisibleRegion.Extent;
-            // HACK: There might be corner cases where you want to rasterize a zero-sized control...
-            var isZeroSized = (box.Width <= 0) || (box.Height <= 0);
-            var isInvisible = (ext.X < context.VisibleRegion.Left) ||
-                (ext.Y < context.VisibleRegion.Top) ||
-                (box.Left > vext.X) ||
-                (box.Top > vext.Y) ||
-                isZeroSized;
-
-            RasterizeDebugOverlays(ref context, ref passSet, box);
-
             // Only visibility cull controls that have a parent and aren't overlaid.
             if (isInvisible && TryGetParent(out Control parent) && !Appearance.Overlay)
+                hidden = true;
+
+            if (hidden) {
+                // HACK: Ensure pre-rasterize handlers run for hidden controls, because the handler
+                //  may be doing something important like updating animations or repainting a buffer
+                if (HasPreRasterizeHandler) {
+                    var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
+                    var state = GetCurrentState(context) | ControlStates.Invisible;
+                    var settings = MakeDecorationSettings(ref box, ref box, state);
+                    OnPreRasterize(context, settings, decorations);
+                }
                 return false;
+            }
 
             var enableCompositor = Appearance.Compositor?.WillComposite(this, opacity) == true;
             var needsComposition = ((opacity < 1) && !this.CanApplyOpacityWithoutCompositing) || 
@@ -1167,6 +1207,8 @@ namespace Squared.PRGUI {
 
         internal void UnsetParent (Control oldParent) {
             InvalidateLayout();
+
+            CancelActiveAnimation();
 
             if (WeakParent == null)
                 return;
