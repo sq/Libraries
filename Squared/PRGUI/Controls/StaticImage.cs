@@ -217,6 +217,8 @@ namespace Squared.PRGUI.Controls {
                 if (instance == null)
                     return;
 
+                context.UIContext.NotifyTextureUsed(this, Image);
+
                 var scale = ComputeDisplayScaleRatio(settings.ContentBox.Width, settings.ContentBox.Height);
                 var position = new Vector2(
                     Arithmetic.Lerp(settings.Box.Left, settings.Box.Extent.X, Alignment.X),

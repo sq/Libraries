@@ -46,6 +46,7 @@ namespace Squared.Render.Text {
         private bool _MeasureOnly = false;
         private bool _RichText = false;
         private bool _HideOverflow = false;
+        private bool _RecordUsedTextures = false;
         private char? _ReplacementCharacter = null;
         private uint[] _WordWrapCharacters = null;
 
@@ -463,6 +464,15 @@ namespace Squared.Render.Text {
             }
         }
 
+        public bool RecordUsedTextures {
+            get {
+                return _RecordUsedTextures;
+            }
+            set {
+                InvalidatingValueAssignment(ref _RecordUsedTextures, value);
+            }
+        }
+
         public bool IsValid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
@@ -503,7 +513,8 @@ namespace Squared.Render.Text {
                 reverseOrder = _ReverseOrder,
                 lineLimit = _LineLimit,
                 measureOnly = _MeasureOnly,
-                replacementCodepoint = _ReplacementCharacter
+                replacementCodepoint = _ReplacementCharacter,
+                recordUsedTextures = _RecordUsedTextures
             };
 
             if (_WordWrapCharacters != null)
@@ -547,6 +558,7 @@ namespace Squared.Render.Text {
             this.ReplacementCharacter = source.ReplacementCharacter;
             this.HideOverflow = source.HideOverflow;
             this.WordWrapCharacters = source.WordWrapCharacters;
+            this.RecordUsedTextures = source.RecordUsedTextures;
         }
 
         /// <summary>

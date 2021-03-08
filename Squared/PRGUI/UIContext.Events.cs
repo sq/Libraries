@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Input;
+using Squared.Render;
 using Squared.Util;
 
 namespace Squared.PRGUI {
@@ -40,6 +42,7 @@ namespace Squared.PRGUI {
             }
         }
 
+        public event Action<Control, AbstractTextureReference> OnTextureUsed;
         public event Func<string, Keys?, char?, bool> OnKeyEvent;
 
         internal bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false, bool targetHandlesFirst = false) {
@@ -107,6 +110,11 @@ namespace Squared.PRGUI {
             }
 
             return -1;
+        }
+
+        public void NotifyTextureUsed (Control source, AbstractTextureReference texture) {
+            if (OnTextureUsed != null)
+                OnTextureUsed(source, texture);
         }
 
         public bool GetUnhandledChildEvent (Control parent, string eventName, out Control source) {

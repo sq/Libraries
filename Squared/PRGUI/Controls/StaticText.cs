@@ -37,7 +37,8 @@ namespace Squared.PRGUI.Controls {
 
         public Material TextMaterial = null;
         protected DynamicStringLayout Content = new DynamicStringLayout {
-            HideOverflow = true
+            HideOverflow = true,
+            RecordUsedTextures = true
         };
         private DynamicStringLayout ContentMeasurement = null;
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
@@ -452,6 +453,9 @@ namespace Squared.PRGUI.Controls {
 
             if (LayoutFilter != null)
                 LayoutFilter(this, ref layout);
+
+            foreach (var tex in layout.UsedTextures)
+                context.UIContext.NotifyTextureUsed(this, tex);
 
             renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),

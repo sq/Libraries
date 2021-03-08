@@ -32,6 +32,7 @@ namespace Squared.Render.Text {
         public readonly Bounds FirstCharacterBounds;
         public readonly Bounds LastCharacterBounds;
         public readonly ArraySegment<BitmapDrawCall> DrawCalls;
+        public DenseList<AbstractTextureReference> UsedTextures;
 
         public StringLayout (
             Vector2 position, Vector2 size, Vector2 unconstrainedSize, 
@@ -45,6 +46,7 @@ namespace Squared.Render.Text {
             FirstCharacterBounds = firstCharacter;
             LastCharacterBounds = lastCharacter;
             DrawCalls = drawCalls;
+            UsedTextures = default(DenseList<AbstractTextureReference>);
         }
 
         public int Count {
@@ -180,6 +182,7 @@ namespace Squared.Render.Text {
         public bool                reverseOrder;
         public int?                lineLimit;
         public bool                measureOnly;
+        public bool                recordUsedTextures;
         public GlyphPixelAlignment alignToPixels;
         public HorizontalAlignment alignment;
         public uint?               replacementCodepoint;
@@ -211,6 +214,8 @@ namespace Squared.Render.Text {
         float          maxLineSpacing;
         Vector2        wordStartOffset;
         private bool   ownsBuffer, suppress, suppressUntilNextLine;
+        private AbstractTextureReference lastUsedTexture;
+        private DenseList<AbstractTextureReference> usedTextures;
 
         int currentCharacterIndex;
 
@@ -251,6 +256,8 @@ namespace Squared.Render.Text {
             }
 
             currentCharacterIndex = 0;
+            lastUsedTexture = null;
+            usedTextures = default(DenseList<AbstractTextureReference>);
 
             IsInitialized = true;
         }
@@ -823,6 +830,13 @@ namespace Squared.Render.Text {
             bool isWhiteSpace, float glyphLineSpacing, float yOffset, 
             float xUnconstrained, ref Bounds testBounds
         ) {
+            if (recordUsedTextures && (drawCall.Textures.Texture1 != lastUsedTexture)) {
+                lastUsedTexture = drawCall.Textures.Texture1;
+                var existingIndex = usedTextures.IndexOf(drawCall.Textures.Texture1);
+                if (existingIndex < 0)
+                    usedTextures.Add(lastUsedTexture);
+            }
+
             if (colIndex == 0) {
                 characterOffset.X = Math.Max(characterOffset.X, 0);
                 characterOffsetUnconstrained.X = Math.Max(characterOffsetUnconstrained.X, 0);
@@ -921,7 +935,9 @@ namespace Squared.Render.Text {
                 maxLineSpacing,
                 firstCharacterBounds, lastCharacterBounds,
                 result
-            );
+            ) {
+                UsedTextures = usedTextures
+            };
         }
 
         public void Dispose () {
