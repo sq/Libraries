@@ -174,6 +174,21 @@ namespace Squared.Render.Resources {
             CreateQueue = coordinator.ThreadGroup.GetQueueForType<CreateWorkItem>(forMainThread: !EnableThreadedCreate);
         }
 
+        protected bool Evict (string name) {
+            CacheEntry ce;
+            lock (Cache) {
+                if (!Cache.TryGetValue(name, out ce)) {
+                    name = StreamSource.FixupName(name, true);
+                    if (!Cache.TryGetValue(name, out ce))
+                        return false;
+                }
+
+                Cache.Remove(name);
+            }
+            // FIXME: Release the resource? Dispose the future?
+            return true;
+        }
+
         public void SetStreamSource (IResourceProviderStreamSource source, bool clearCache) {
             if (source == StreamSource)
                 return;

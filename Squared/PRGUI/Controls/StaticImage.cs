@@ -213,10 +213,10 @@ namespace Squared.PRGUI.Controls {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
             if (context.Pass == Pass) {
-                var instance = Image.Instance;
-                if (instance == null)
+                if (Image.IsDisposedOrNull)
                     return;
 
+                var instance = Image.Instance;
                 context.UIContext.NotifyTextureUsed(this, Image);
 
                 var scale = ComputeDisplayScaleRatio(settings.ContentBox.Width, settings.ContentBox.Height);
