@@ -50,8 +50,8 @@ namespace Squared.Render.Text {
         private char? _ReplacementCharacter = null;
         private uint[] _WordWrapCharacters = null;
 
-        private readonly Dictionary<Pair<int>, LayoutMarker> _Markers = new Dictionary<Pair<int>, LayoutMarker>();
-        private readonly Dictionary<Vector2, LayoutHitTest> _HitTests = new Dictionary<Vector2, LayoutHitTest>();
+        private Dictionary<Pair<int>, LayoutMarker> _Markers = null; // = new Dictionary<Pair<int>, LayoutMarker>();
+        private Dictionary<Vector2, LayoutHitTest> _HitTests = null; // = new Dictionary<Vector2, LayoutHitTest>();
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _GlyphSource = new SpriteFontGlyphSource(font);
@@ -64,18 +64,37 @@ namespace Squared.Render.Text {
         }
 
         public void ResetMarkersAndHitTests () {
-            if ((_Markers.Count > 0) || (_HitTests.Count > 0))
+            if ((_Markers != null) && (_Markers.Count > 0)) {
+                _Markers.Clear();
                 Invalidate();
-            _Markers.Clear();
-            _HitTests.Clear();
+            }
+            if ((_HitTests != null) && (_HitTests.Count > 0)) {
+                _HitTests.Clear();
+                Invalidate();
+            }
+        }
+
+        private Dictionary<Pair<int>, LayoutMarker> GetMarkers () {
+            if (_Markers == null)
+                return _Markers = new Dictionary<Pair<int>, LayoutMarker>();
+            else
+                return _Markers;
+        }
+
+        private Dictionary<Vector2, LayoutHitTest> GetHitTests () {
+            if (_HitTests == null)
+                return _HitTests = new Dictionary<Vector2, LayoutHitTest>();
+            else
+                return _HitTests;
         }
 
         public LayoutMarker? Mark (int characterIndex) {
+            var m = GetMarkers();
             var key = new Pair<int>(characterIndex, characterIndex);
 
             LayoutMarker result;
-            if (!_Markers.TryGetValue(key, out result)) {
-                _Markers[key] = new LayoutMarker {
+            if (!m.TryGetValue(key, out result)) {
+                m[key] = new LayoutMarker {
                     FirstCharacterIndex = characterIndex,
                     LastCharacterIndex = characterIndex
                 };
@@ -90,11 +109,12 @@ namespace Squared.Render.Text {
         }
 
         public LayoutMarker? Mark (int firstCharacterIndex, int lastCharacterIndex) {
+            var m = GetMarkers();
             var key = new Pair<int>(firstCharacterIndex, lastCharacterIndex);
 
             LayoutMarker result;
-            if (!_Markers.TryGetValue(key, out result)) {
-                _Markers[key] = new LayoutMarker {
+            if (!m.TryGetValue(key, out result)) {
+                m[key] = new LayoutMarker {
                     FirstCharacterIndex = firstCharacterIndex,
                     LastCharacterIndex = lastCharacterIndex
                 };
@@ -117,14 +137,18 @@ namespace Squared.Render.Text {
             }
         }
 
+        private static readonly Dictionary<Pair<int>, LayoutMarker> EmptyMarkers = new Dictionary<Pair<int>, LayoutMarker>();
+        private static readonly Dictionary<Vector2, LayoutHitTest> EmptyHitTests = new Dictionary<Vector2, LayoutHitTest>();
+
         // FIXME: Garbage
-        public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Markers;
-        public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _HitTests;
+        public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Markers ?? EmptyMarkers;
+        public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _HitTests ?? EmptyHitTests;
 
         public LayoutHitTest? HitTest (Vector2 position) {
+            var ht = GetHitTests();
             LayoutHitTest result;
-            if (!_HitTests.TryGetValue(position, out result)) {
-                _HitTests[position] = new LayoutHitTest {
+            if (!ht.TryGetValue(position, out result)) {
+                ht[position] = new LayoutHitTest {
                     Position = position
                 };
                 Invalidate();
@@ -521,10 +545,13 @@ namespace Squared.Render.Text {
                 foreach (var cp in _WordWrapCharacters)
                     result.WordWrapCharacters.Add(cp);
 
-            foreach (var kvp in _Markers)
-                result.Markers.Add(kvp.Value);
-            foreach (var kvp in _HitTests)
-                result.HitTests.Add(new LayoutHitTest { Position = kvp.Key });
+            if (_Markers != null)
+                foreach (var kvp in _Markers)
+                    result.Markers.Add(kvp.Value);
+
+            if (_HitTests != null)
+                foreach (var kvp in _HitTests)
+                    result.HitTests.Add(new LayoutHitTest { Position = kvp.Key });
         }
 
         /// <summary>
@@ -608,10 +635,16 @@ namespace Squared.Render.Text {
                     _CachedGlyphVersion = _GlyphSource.Version;
                     _CachedStringLayout = le.Finish();
 
-                    foreach (var kvp in le.Markers)
-                        _Markers[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp;
-                    foreach (var kvp in le.HitTests)
-                        _HitTests[kvp.Position] = kvp;
+                    if (le.Markers.Count > 0) {
+                        var m = GetMarkers();
+                        foreach (var kvp in le.Markers)
+                            m[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp;
+                    }
+                    if (le.HitTests.Count > 0) {
+                        var ht = GetHitTests();
+                        foreach (var kvp in le.HitTests) 
+                            ht[kvp.Position] = kvp;
+                    }
                 } finally {
                     le.Dispose();
                 }
