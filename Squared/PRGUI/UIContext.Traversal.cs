@@ -179,7 +179,7 @@ namespace Squared.PRGUI {
             };
             // FIXME: Handle cases where the control isn't a container
             var collection = ((container as IControlContainer)?.Children) ?? Controls;
-            DebugLog($"Finding focusable child in {container} in direction {direction}");
+            // DebugLog($"Finding focusable child in {container} in direction {direction}");
             return TraverseChildren(collection, settings).FirstOrDefault().Control;
         }
 
@@ -197,7 +197,7 @@ namespace Squared.PRGUI {
                 Predicate = RotatablePredicate ?? (RotatablePredicate = _RotatablePredicate)
             };
 
-            DebugLog($"Finding sibling for {child} in direction {direction}");
+            // DebugLog($"Finding sibling for {child} in direction {direction}");
             return SearchForSiblings(null, child, settings).FirstOrDefault().Control;
         }
     }
