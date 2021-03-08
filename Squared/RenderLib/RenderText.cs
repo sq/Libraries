@@ -158,7 +158,7 @@ namespace Squared.Render.Text {
         public DenseList<LayoutHitTest> HitTests;
         public DenseList<uint> WordWrapCharacters;
 
-        public const int DefaultBufferPadding = 64;
+        public const int DefaultBufferPadding = 4;
 
         // Parameters
         public ArraySegment<BitmapDrawCall> buffer;

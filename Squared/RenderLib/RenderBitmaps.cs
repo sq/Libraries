@@ -1137,20 +1137,57 @@ namespace Squared.Render {
         }
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    // HACK: Pack=1 reduces the size of this struct by a decent amount, and so does Pack=4
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct BitmapDrawCall {
+        // 8
         public Vector2    Position;
+        // 16
         public Vector2    Scale;
+        // 24
         public Vector2    Origin;
+        // 28
         public float      Rotation;
+        // 32
         public float      SortOrder;
+        // 36, 40
         public Color      MultiplyColor, AddColor;
+        // 56
         public Vector4    UserData;
+        // 72
         public Bounds     TextureRegion;
+        // 88
         public Bounds     TextureRegion2;
+        // 100
         public TextureSet Textures;
+        // 104
         public Tags       SortTags;
-        public bool?      WorldSpace;
+        // 105
+        private sbyte      _WorldSpace;
+
+        // TODO: Consider allocating TextureRegion2 and UserData on the heap only if used,
+        //  to shrink most draw calls by 32 bytes
+
+        public bool?      WorldSpace {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                switch (_WorldSpace) {
+                    case 1:
+                        return true;
+                    case 0:
+                        return false;
+                    default:
+                        return null;
+                }
+            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set {
+                if (value.HasValue)
+                    _WorldSpace = value.Value ? (sbyte)1 : (sbyte)0;
+                else
+                    _WorldSpace = -1;
+            }
+        }
 
 #if DEBUG
         public const bool ValidateFields = false;
@@ -1227,7 +1264,7 @@ namespace Squared.Render {
             Origin = origin;
             Rotation = rotation;
             UserData = default(Vector4);
-            WorldSpace = default(bool?);
+            _WorldSpace = -1;
             SortOrder = 0f;
             SortTags = default(Tags);
         }

@@ -17,24 +17,28 @@ namespace Squared.Util.DeclarativeSort {
 
         public static readonly Tags Null = default(Tags);
 
-        public readonly int Id;
-        private bool IsTagSet;
+        private int _Id;
+        public int Id {
+            get {
+                return (_Id < 0) ? -_Id : _Id;
+            }
+        }
 
         public Tags (Tag tag) {
             if (tag == null)
                 throw new ArgumentNullException(nameof(tag));
 
-            IsTagSet = false;
-            Id = tag.Id;
+            _Id = tag.Id;
         }
 
         public Tags (TagSet tagSet) {
             if (tagSet == null)
                 throw new ArgumentNullException(nameof(tagSet));
 
-            IsTagSet = true;
-            Id = tagSet.Id;
+            _Id = -tagSet.Id;
         }
+
+        public bool IsTagSet => (_Id < 0);
 
         public static Tags[] GetAllTags () {
             lock (Registry) {
@@ -50,8 +54,8 @@ namespace Squared.Util.DeclarativeSort {
         public bool Contains (Tags tags) {
             if (IsTagSet)
                 return TagSet.Registry[Id].Contains(tags);
-            else if (Id > 0)
-                return (tags.Count == 1) && (Id == tags.Id);
+            else if (_Id != 0)
+                return (tags.Count == 1) && (_Id == tags._Id);
             else
                 return false;
         }
@@ -69,18 +73,18 @@ namespace Squared.Util.DeclarativeSort {
         public bool IsNull {
             [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
-                return Id <= 0;
+                return _Id == 0;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public bool Equals (Tags tags) {
-            return Id == tags.Id;
+            return _Id == tags._Id;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public bool Equals (Tag tag) {
-            return Id == tag.Id;
+            return _Id == tag.Id;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
