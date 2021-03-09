@@ -894,6 +894,7 @@ namespace PRGUI.Demo {
             renderer.AutoIncrementLayer = true;
             renderer.RasterizeRectangle(contentRect.Position, contentRect.Extent, 0f, Color.Red);
             renderer.RasterizeEllipse(position, new Vector2(16f), 1f, Color.White, Color.Black, Color.Blue);
+            throw new Exception("test");
         }
 
         private void BuildLoginWindow (ref ContainerBuilder builder) {

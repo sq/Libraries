@@ -45,6 +45,8 @@ namespace Squared.PRGUI.Controls {
         private bool _NeedRelayout;
         private float? MostRecentContentWidth = null, MostRecentWidth = null;
 
+        protected int? CharacterLimit { get; set; }
+
         private float? AutoSizeComputedWidth, AutoSizeComputedHeight;
         private float AutoSizeComputedContentHeight;
 
@@ -457,8 +459,12 @@ namespace Squared.PRGUI.Controls {
             foreach (var tex in layout.UsedTextures)
                 context.UIContext.NotifyTextureUsed(this, tex);
 
+            var segment = layout.DrawCalls;
+            if (CharacterLimit != null)
+                segment = new ArraySegment<BitmapDrawCall>(segment.Array, segment.Offset, Math.Min(CharacterLimit.Value, segment.Count));
+
             renderer.DrawMultiple(
-                layout.DrawCalls, offset: textOffset.Floor(),
+                segment, offset: textOffset.Floor(),
                 material: material, samplerState: RenderStates.Text,
                 scale: textScale, multiplyColor: overrideColor?.ToColor()
             );
@@ -586,6 +592,10 @@ namespace Squared.PRGUI.Controls {
         new public StringLayoutFilter LayoutFilter {
             get => base.LayoutFilter;
             set => base.LayoutFilter = value;
+        }
+        new public int? CharacterLimit {
+            get => base.CharacterLimit;
+            set => base.CharacterLimit = value;
         }
 
         new public void Invalidate () => base.Invalidate();

@@ -830,7 +830,7 @@ namespace Squared.Render.Text {
             bool isWhiteSpace, float glyphLineSpacing, float yOffset, 
             float xUnconstrained, ref Bounds testBounds
         ) {
-            if (recordUsedTextures && (drawCall.Textures.Texture1 != lastUsedTexture)) {
+            if (recordUsedTextures && (drawCall.Textures.Texture1 != lastUsedTexture) && (drawCall.Textures.Texture1 != null)) {
                 lastUsedTexture = drawCall.Textures.Texture1;
                 var existingIndex = usedTextures.IndexOf(drawCall.Textures.Texture1);
                 if (existingIndex < 0)

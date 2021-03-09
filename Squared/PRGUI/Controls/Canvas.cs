@@ -42,6 +42,8 @@ namespace Squared.PRGUI.Controls {
             set => _CacheContent = value;
         }
 
+        public bool DisabledDueToException { get; private set; }
+
         private bool _ShouldDisposeBuffer;
         public AutoRenderTarget Buffer { get; private set; }
 
@@ -99,8 +101,16 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected virtual void Paint (ref ImperativeRenderer renderer, ref RectF contentRect) {
-            if (OnPaint != null)
-                OnPaint(ref renderer, ref contentRect);
+            if (DisabledDueToException)
+                return;
+
+            try {
+                if (OnPaint != null)
+                    OnPaint(ref renderer, ref contentRect);
+            } catch (Exception exc) {
+                Context.Log($"Unhandled exception in canvas {this}: {exc}");
+                DisabledDueToException = true;
+            }
         }
 
         private void AutoDisposeBuffer (RenderCoordinator coordinator) {

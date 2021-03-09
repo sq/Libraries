@@ -660,6 +660,9 @@ namespace Squared.PRGUI.Controls {
                 context.Pass = RasterizePasses.Content;
 
                 foreach (var index in Manager._SelectedIndices) {
+                    if (index >= Items.Count)
+                        continue;
+
                     var selectedControl = Manager.ControlForIndex(index);
 
                     // FIXME: Figure out when to break
