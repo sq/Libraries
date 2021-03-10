@@ -582,7 +582,7 @@ namespace Squared.Threading {
         /// <summary>
         /// Registers a pair of handlers to be notified upon future completion and disposal, respectively.
         /// </summary>
-        public void RegisterHandlers (OnFutureResolved onComplete, OnFutureResolved onDispose) {
+        void IFuture.RegisterHandlers (OnFutureResolved onComplete, OnFutureResolved onDispose) {
             // FIXME: Set state to indeterminate once instead of twice
             if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
                 RegisterHandler_Impl(onDispose, ref _OnDisposes, true);

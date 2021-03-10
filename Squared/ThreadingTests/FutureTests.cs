@@ -208,6 +208,27 @@ namespace Squared.Threading {
         }
 
         [Test]
+        public void RegisteringHandlersOnDisposedFutureWorks () {
+            bool[] invoked = new bool[4];
+            
+            var f = new Future<object>();
+            f.RegisterHandlers(
+                (_) => invoked[0] = true,
+                (_) => invoked[1] = true
+            );
+            f.Dispose();
+            f.RegisterHandlers(
+                (_) => invoked[2] = true,
+                (_) => invoked[3] = true
+            );
+
+            Assert.IsFalse(invoked[0]);
+            Assert.IsTrue(invoked[1]);
+            Assert.IsFalse(invoked[2]);
+            Assert.IsTrue(invoked[3]);
+        }
+
+        [Test]
         public void CollectingFutureDoesNotInvokeOnDisposeHandlers () {
             bool[] invoked = new bool[1];
 
