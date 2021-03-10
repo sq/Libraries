@@ -554,13 +554,17 @@ namespace Squared.Threading {
                 (oldState == State_Disposing)
             ) {
                 if (forDispose) {
-                    if ((oldState == State_Disposed) || (oldState == State_Disposing))
+                    if ((oldState == State_Disposed) || (oldState == State_Disposing)) {
                         InvokeHandler(handler);
+                        return true;
+                    }
                 } else {
-                    if ((oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError))
+                    if ((oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError)) {
                         InvokeHandler(handler);
+                        return true;
+                    }
                 }
-                return true;
+                return false;
             } else {
                 throw new ThreadStateException();
             }
