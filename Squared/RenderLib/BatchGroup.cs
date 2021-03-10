@@ -24,6 +24,8 @@ namespace Squared.Render {
 
         public OcclusionQuery OcclusionQuery;
 
+        public Frame Frame { get; private set;  }
+
         Action<DeviceManager, object> _Before, _After;
         private object _UserData;
 
@@ -202,6 +204,7 @@ namespace Squared.Render {
             if (viewTransform.HasValue && (materialSet == null))
                 throw new ArgumentException("No view transform can be applied without a material set");
 
+            Frame = container.Frame;
             Coordinator = container.Coordinator;
             RenderManager = container.RenderManager;
             _Before = before;

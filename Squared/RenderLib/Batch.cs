@@ -49,7 +49,7 @@ namespace Squared.Render {
         }
 
         public class PrepareState {
-            public bool IsInitialized, IsPrepareQueued, IsPrepared, IsIssued, IsCombined;
+            public volatile bool IsInitialized, IsPrepareQueued, IsPrepared, IsIssued, IsCombined;
         }
 
         private static Dictionary<Type, int> TypeIds = new Dictionary<Type, int>(new ReferenceComparer<Type>());

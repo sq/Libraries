@@ -359,7 +359,7 @@ namespace Squared.Render {
             }
 
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
-            _CornerBuffer = QuadUtils.CreateCornerBuffer(Container);
+            _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container);
 
             using (var callBuffer = _DrawCalls.GetBuffer(false)) {
                 var callSegment = new ArraySegment<BitmapDrawCall>(callBuffer.Data, callBuffer.Offset, callBuffer.Count);

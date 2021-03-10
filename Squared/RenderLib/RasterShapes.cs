@@ -548,7 +548,7 @@ namespace Squared.Render.RasterShape {
                     _DrawCalls.Sort(ShapeDrawCallSorter);
 
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<RasterShapeVertex>>();
-                _CornerBuffer = QuadUtils.CreateCornerBuffer(Container, CornerBufferRepeatCount);
+                _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container, CornerBufferRepeatCount);
                 var swb = _BufferGenerator.Allocate(vertexCount, 1);
                 _SoftwareBuffer = swb;
 

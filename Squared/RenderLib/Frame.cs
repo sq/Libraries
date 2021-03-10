@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Squared.Render.Internal;
 using Squared.Util;
 
 namespace Squared.Render {
@@ -33,6 +34,27 @@ namespace Squared.Render {
         public int Index;
         public long InitialBatchCount;
 
+        public class FramePrepareData {
+            public BufferGenerator<CornerVertex>.SoftwareBuffer[] CornerBuffers =
+                new BufferGenerator<CornerVertex>.SoftwareBuffer[8];
+
+            public void Initialize () {
+                Array.Clear(CornerBuffers, 0, CornerBuffers.Length);
+            }
+
+            public BufferGenerator<CornerVertex>.SoftwareBuffer GetCornerBuffer (IBatchContainer container, int repeatCount = 1) {
+                var result = CornerBuffers[repeatCount];
+                if (result == null) {
+                    result = QuadUtils.CreateCornerBuffer(container, repeatCount);
+                    var exchanged = Interlocked.CompareExchange(ref CornerBuffers[repeatCount], result, null);
+                    if (exchanged != null)
+                        // Dispose result?
+                        ;
+                }
+                return result;
+            }
+        }
+
         internal DenseList<Batch> Batches = new DenseList<Batch>();
         internal DenseList<Batch> BatchesToRelease = new DenseList<Batch>();
 
@@ -45,6 +67,9 @@ namespace Squared.Render {
 
         public RenderCoordinator Coordinator { get; private set; }
         public RenderManager RenderManager { get; private set; }
+        public FramePrepareData PrepareData { get; private set; }
+
+        Frame IBatchContainer.Frame { get { return this; } }
 
         internal void Initialize (RenderCoordinator coordinator, RenderManager renderManager, int index) {
             Batches.ListPool = _ListPool;
@@ -56,6 +81,10 @@ namespace Squared.Render {
             State = (int)States.Initialized;
             Label = "Frame";
             ChangeRenderTargets = true;
+            if (PrepareData == null)
+                PrepareData = new FramePrepareData();
+            else
+                PrepareData.Initialize();
         }
 
         public void Add (Batch batch) {
