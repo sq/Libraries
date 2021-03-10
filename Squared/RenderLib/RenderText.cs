@@ -337,6 +337,8 @@ namespace Squared.Render.Text {
             // Remove the effect of the previous baseline adjustment then realign to our new baseline
             var yOffset = -previousBaseline + previousLineSpacing + currentBaseline;
 
+            var suppressedByLineLimit = lineLimit.HasValue && (lineLimit.Value <= 0);
+
             for (var i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
                 var newCharacterX = (xOffsetOfWrappedLine) + (dc.Position.X - firstOffset.X);
@@ -345,6 +347,9 @@ namespace Squared.Render.Text {
                 dc.Position = new Vector2(newCharacterX, dc.Position.Y + yOffset);
                 if (alignment != HorizontalAlignment.Left)
                     dc.SortOrder += 1;
+
+                if (suppressedByLineLimit && hideOverflow)
+                    dc.MultiplyColor = Color.Transparent;
 
                 buffer.Array[buffer.Offset + i] = dc;
             }
@@ -602,6 +607,8 @@ namespace Squared.Render.Text {
                         lineLimit--;
                     if (lineLimit.HasValue && lineLimit.Value <= 0)
                         suppress = true;
+                } else if (lineLimit.HasValue && lineLimit.Value <= 0) {
+                    suppress = true;
                 }
 
                 if (isWordWrapPoint) {
