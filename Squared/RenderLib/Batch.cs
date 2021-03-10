@@ -49,11 +49,7 @@ namespace Squared.Render {
         }
 
         public class PrepareState {
-            public bool IsInitialized;
-            public bool IsPrepareQueued;
-            public bool IsPrepared;
-            public bool IsIssued;
-            public bool IsCombined;
+            public bool IsInitialized, IsPrepareQueued, IsPrepared, IsIssued, IsCombined;
         }
 
         private static Dictionary<Type, int> TypeIds = new Dictionary<Type, int>(new ReferenceComparer<Type>());
@@ -126,11 +122,11 @@ namespace Squared.Render {
 
             Index = Interlocked.Increment(ref _BatchCount);
 
-            lock (State) {
-                State.IsCombined = false;
-                State.IsInitialized = true;
-                State.IsPrepared = State.IsPrepareQueued = State.IsIssued = false;
-            }
+            Thread.MemoryBarrier();
+            State.IsCombined = false;
+            State.IsInitialized = true;
+            State.IsPrepared = State.IsPrepareQueued = State.IsIssued = false;
+            Thread.MemoryBarrier();
 
 #if DEBUG
             if (material?.Effect != null) {
@@ -148,23 +144,26 @@ namespace Squared.Render {
         /// Use this if you already created a batch in a previous frame and wish to use it again.
         /// </summary>
         public void Reuse (IBatchContainer newContainer, int? newLayer = null) {
-            lock (State) {
-                if (Released)
-                    throw new ObjectDisposedException("batch");
-                else if (State.IsCombined)
-                    throw new InvalidOperationException("Batch was combined into another batch");
+            Thread.MemoryBarrier();
+            if (Released)
+                throw new ObjectDisposedException("batch");
+            else if (State.IsCombined)
+                throw new InvalidOperationException("Batch was combined into another batch");
 
-                if (newLayer.HasValue)
-                    Layer = newLayer.Value;
+            if (newLayer.HasValue)
+                Layer = newLayer.Value;
 
-                if (!State.IsInitialized)
-                    throw new Exception("Not initialized");
+            Thread.MemoryBarrier();
+            if (!State.IsInitialized)
+                throw new Exception("Not initialized");
 
-                if (State.IsPrepareQueued)
-                    throw new Exception("Batch currently queued for prepare");
+            Thread.MemoryBarrier();
+            if (State.IsPrepareQueued)
+                throw new Exception("Batch currently queued for prepare");
 
-                State.IsPrepared = State.IsIssued = false;
-            }
+            Thread.MemoryBarrier();
+            State.IsPrepared = State.IsIssued = false;
+            Thread.MemoryBarrier();
 
             newContainer.Add(this);
         }
@@ -190,10 +189,10 @@ namespace Squared.Render {
         }
 
         protected void OnPrepareDone () {
-            lock (State) {
-                State.IsPrepareQueued = false;
-                State.IsPrepared = true;
-            }
+            Thread.MemoryBarrier();
+            State.IsPrepareQueued = false;
+            State.IsPrepared = true;
+            Thread.MemoryBarrier();
         }
 
         private void WaitForSuspend () {
@@ -249,21 +248,22 @@ namespace Squared.Render {
             if (Released)
                 return;
 
-            lock (State) {
-                if (State.IsPrepareQueued)
-                    throw new Exception("Batch currently queued for prepare");
-                else if (!State.IsInitialized)
-                    throw new Exception("Batch uninitialized");
+            Thread.MemoryBarrier();
+            if (State.IsPrepareQueued)
+                throw new Exception("Batch currently queued for prepare");
+            else if (!State.IsInitialized)
+                throw new Exception("Batch uninitialized");
+            Thread.MemoryBarrier();
 
-                State.IsPrepared = false;
-                State.IsInitialized = false;
+            State.IsPrepared = false;
+            State.IsInitialized = false;
+            Released = true;
+            Thread.MemoryBarrier();
 
-                Released = true;
-                Pool.Release(this);
+            Pool.Release(this);
 
-                Container = null;
-                Material = null;
-            }
+            Container = null;
+            Material = null;
         }
 
         public void ReleaseResources () {

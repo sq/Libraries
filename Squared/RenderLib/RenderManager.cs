@@ -941,25 +941,27 @@ namespace Squared.Render {
 
         internal void ValidateBatch (IBatch batch, bool enqueuing) {
             var state = batch.State;
+            Thread.MemoryBarrier();
 
-            lock (state) {
-                if (!state.IsInitialized)
-                    throw new Exception("Uninitialized batch");
-                /*
-                else if (state.IsCombined)
-                    throw new Exception("Batch combined");
-                */
-                else if (state.IsPrepared)
-                    throw new Exception("Batch already prepared");
-                else if (state.IsIssued)
-                    throw new Exception("Batch already issued");
+            if (!state.IsInitialized)
+                throw new Exception("Uninitialized batch");
+            /*
+            else if (state.IsCombined)
+                throw new Exception("Batch combined");
+            */
+            else if (state.IsPrepared)
+                throw new Exception("Batch already prepared");
+            else if (state.IsIssued)
+                throw new Exception("Batch already issued");
 
-                if (enqueuing) {
-                    if (state.IsPrepareQueued)
-                        throw new Exception("Batch already queued for prepare");
+            Thread.MemoryBarrier();
+            if (enqueuing) {
+                if (state.IsPrepareQueued)
+                    throw new Exception("Batch already queued for prepare");
 
-                    state.IsPrepareQueued = true;
-                }
+                Thread.MemoryBarrier();
+
+                state.IsPrepareQueued = true;
             }
         }
 
