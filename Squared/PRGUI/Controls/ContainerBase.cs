@@ -453,6 +453,7 @@ namespace Squared.PRGUI.Controls {
                             : count / 2
                     );
             bool hasRenderedAny = false;
+            startOffset = Arithmetic.Clamp(startOffset, 0, count - 1);
 
             int itemsAttempted = 0;
             for (int i = startOffset, j = startOffset; (i >= 0) || (j < count); i--, j++) {
