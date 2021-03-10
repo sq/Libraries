@@ -754,7 +754,7 @@ namespace Squared.PRGUI {
         protected virtual void ApplyClipMargins (UIOperationContext context, ref RectF box) {
         }
 
-        protected virtual DecorationSettings MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state) {
+        protected virtual DecorationSettings MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state, bool compositing) {
             return new DecorationSettings {
                 Box = box,
                 ContentBox = contentBox,
@@ -762,7 +762,8 @@ namespace Squared.PRGUI {
                 BackgroundColor = GetBackgroundColor(Context.NowL),
                 TextColor = GetTextColor(Context.NowL),
                 BackgroundImage = Appearance.BackgroundImage,
-                Traits = Appearance.DecorationTraits
+                Traits = Appearance.DecorationTraits,
+                IsCompositing = compositing
             };
         }
 
@@ -886,7 +887,7 @@ namespace Squared.PRGUI {
                 var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
                 var contentBox = GetRect(contentRect: true);
                 var state = GetCurrentState(context);
-                var settings = MakeDecorationSettings(ref box, ref contentBox, state);
+                var settings = MakeDecorationSettings(ref box, ref contentBox, state, compositing);
                 if (!IsPassDisabled(RasterizePasses.Below, decorations))
                     RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
                 if (!IsPassDisabled(RasterizePasses.Content, decorations))
@@ -1045,7 +1046,7 @@ namespace Squared.PRGUI {
                 if (HasPreRasterizeHandler) {
                     var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
                     var state = GetCurrentState(context) | ControlStates.Invisible;
-                    var settings = MakeDecorationSettings(ref box, ref box, state);
+                    var settings = MakeDecorationSettings(ref box, ref box, state, false);
                     OnPreRasterize(context, settings, decorations);
                 }
                 return false;

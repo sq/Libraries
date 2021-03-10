@@ -448,6 +448,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public Dictionary<Control, T>.KeyCollection Controls => ValueForControl.Keys;
+        private HashSet<Control> InvalidatedControls = new HashSet<Control>();
 
         /// <summary>
         /// Forces all child controls to be re-created from scratch
@@ -461,6 +462,14 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public void Invalidate () {
             Version++;
+        }
+
+        /// <summary>
+        /// Flags a single item as having changed so its control will be updated
+        /// </summary>
+        public void Invalidate (T item) {
+            if (ControlForValue.TryGetValue(item, out Control control))
+                InvalidatedControls.Add(control);
         }
 
         public void Clear () {
@@ -569,6 +578,25 @@ namespace Squared.PRGUI.Controls {
 
             ValueForControl[newControl] = value;
             return newControl;
+        }
+
+        public void GenerateInvalidatedControls (
+            CreateControlForValueDelegate<T> createControlForValue
+        ) {
+            var originalCount = InvalidatedControls.Count;
+            if (originalCount == 0)
+                return;
+
+            foreach (var ic in InvalidatedControls) {
+                if (!ValueForControl.TryGetValue(ic, out T value))
+                    // FIXME
+                    continue;
+                if (createControlForValue(ref value, ic) != ic)
+                    throw new Exception("A new control was created when updating an invalidated control");
+            }
+            if (InvalidatedControls.Count != originalCount)
+                throw new Exception("New controls were invalidated while previous ones were being updated");
+            InvalidatedControls.Clear();
         }
 
         public void GenerateControls (

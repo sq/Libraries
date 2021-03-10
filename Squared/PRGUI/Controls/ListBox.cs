@@ -310,11 +310,12 @@ namespace Squared.PRGUI.Controls {
                 NeedsUpdate = true;
 
             bool hadKeyboardSelection = false;
+            var generatingEnabled = GenerateControlsWhenHidden || hadKeyboardSelection || !IsRecursivelyTransparent(this, true);
             if (NeedsUpdate && !existingKey.HasValue) {
                 hadKeyboardSelection = Children.Contains(Context.KeyboardSelection);
                 var priorControl = Manager.SelectedControl;
                 // FIXME: Why do virtual list items flicker for a frame before appearing?
-                if (GenerateControlsWhenHidden || hadKeyboardSelection || !IsRecursivelyTransparent(this, true)) {
+                if (generatingEnabled) {
                     Items.GenerateControls(
                         Children, CreateControlForValue ?? DefaultCreateControlForValue,
                         offset: Virtual ? VirtualItemOffset : 0, count: Virtual ? VirtualViewportItemCount : int.MaxValue
@@ -324,6 +325,8 @@ namespace Squared.PRGUI.Controls {
                     HasContentBounds = false;
                     NeedsUpdate = false;
                 }
+            } else if (generatingEnabled) {
+                Items.GenerateInvalidatedControls(CreateControlForValue ?? DefaultCreateControlForValue);
             }
 
             if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection)
@@ -408,6 +411,12 @@ namespace Squared.PRGUI.Controls {
             VirtualScrollRegion.Y = (EffectiveCount * VirtualYMultiplier);
             if (Virtual)
                 VirtualScrollRegion.Y += partialItemScrollOffset;
+        }
+
+        public void Invalidate (T item) {
+            NeedsUpdate = true;
+            _Version++;
+            Items.Invalidate(item);
         }
 
         public void Invalidate () {

@@ -158,9 +158,9 @@ namespace Squared.PRGUI.Controls {
                 : Direction;
         }
 
-        protected override DecorationSettings MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state) {
+        protected override DecorationSettings MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state, bool compositing) {
             var direction = PickDirection(ref box);
-            var result = base.MakeDecorationSettings(ref box, ref contentBox, state);
+            var result = base.MakeDecorationSettings(ref box, ref contentBox, state, compositing);
             result.Traits.Add(DirectionNames[(int)direction]);
             return result;
         }

@@ -257,7 +257,7 @@ namespace Squared.Render {
             BitmapDrawCall[] items, int firstIndex, int count, 
             Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, 
             DrawCallSortKey? sortKey = null, Vector2? scale = null, Material material = null,
-            Vector4? userData = null
+            Vector4? userData = null, float? multiplyOpacity = null
         ) {
             if (material != null)
                 throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
@@ -267,11 +267,12 @@ namespace Squared.Render {
                 hasMultiplyColor = multiplyColor.HasValue,
                 hasAddColor = addColor.HasValue,
                 hasSortKey = sortKey.HasValue,
-                hasUserData = userData.HasValue;
+                hasUserData = userData.HasValue,
+                hasOpacity = multiplyOpacity.HasValue;
 
             if (
                 !hasOffset && !hasMultiplyColor && !hasAddColor &&
-                !hasUserData && !hasSortKey && !hasScale
+                !hasUserData && !hasSortKey && !hasScale && !hasOpacity
             ) {
                 AddRange(items, firstIndex, count);
                 return;
@@ -283,6 +284,7 @@ namespace Squared.Render {
                 _addColor = addColor ?? default(Color);
             var _sortKey = sortKey ?? default(DrawCallSortKey);
             var _userData = userData ?? default(Vector4);
+            var _opacity = multiplyOpacity ?? 1.0f;
 
             _DrawCalls.EnsureCapacity(_DrawCalls.Count + count);
             for (int i = 0; i < count; i++) {
@@ -300,8 +302,15 @@ namespace Squared.Render {
                     item.Position.X += _offset.X;
                     item.Position.Y += _offset.Y;
                 }
-                if (hasMultiplyColor)
-                    item.MultiplyColor = _multiplyColor;
+                if (hasMultiplyColor) {
+                    if (hasOpacity)
+                        item.MultiplyColor = _multiplyColor * _opacity;
+                    else
+                        item.MultiplyColor = _multiplyColor;
+                } else if (hasOpacity) {
+                    item.MultiplyColor *= _opacity;
+                }
+
                 if (hasAddColor)
                     item.AddColor = _addColor;
                 if (hasUserData)

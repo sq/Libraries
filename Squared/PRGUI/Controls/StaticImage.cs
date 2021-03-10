@@ -225,10 +225,13 @@ namespace Squared.PRGUI.Controls {
                     Arithmetic.Lerp(settings.Box.Top, settings.Box.Extent.Y, Alignment.Y)
                 );
                 var origin = Alignment;
+                var color = settings.IsCompositing 
+                    ? Color.White 
+                    : Color.White * context.Opacity;
                 renderer.Draw(
                     instance, position.Round(0),
                     origin: Alignment, scale: scale,
-                    multiplyColor: Color.White * context.Opacity
+                    multiplyColor: color
                 );
             }
 

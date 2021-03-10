@@ -946,7 +946,8 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, 
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
-            Material material = null, Vector2? scale = null, Vector4? userData = null
+            Material material = null, Vector2? scale = null, Vector4? userData = null,
+            float? multiplyOpacity = null
         ) {
             using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, depthStencilState ?? DepthStencilState, rasterizerState ?? RasterizerState, material ?? DefaultBitmapMaterial)) {
                 if (LowPriorityMaterialOrdering) {
@@ -967,7 +968,7 @@ namespace Squared.Render.Convenience {
                     bb.AddRange(
                         drawCalls.Array, drawCalls.Offset, drawCalls.Count,
                         offset: offset, multiplyColor: multiplyColor, addColor: addColor, userData: userData, sortKey: sortKey,
-                        scale: scale
+                        scale: scale, multiplyOpacity: multiplyOpacity
                     );
                 }
             }

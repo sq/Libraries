@@ -463,10 +463,14 @@ namespace Squared.PRGUI.Controls {
             if (CharacterLimit != null)
                 segment = new ArraySegment<BitmapDrawCall>(segment.Array, segment.Offset, Math.Min(CharacterLimit.Value, segment.Count));
 
+            var opacity = GetOpacity(context.NowL);
+            var multiplyOpacity = (opacity < 1) ? opacity : (float?)null;
+
             renderer.DrawMultiple(
                 segment, offset: textOffset.Floor(),
                 material: material, samplerState: RenderStates.Text,
-                scale: textScale, multiplyColor: overrideColor?.ToColor()
+                scale: textScale, multiplyColor: overrideColor?.ToColor(),
+                multiplyOpacity: multiplyOpacity 
             );
         }
 
@@ -607,6 +611,7 @@ namespace Squared.PRGUI.Controls {
             : base () {
             Content.WordWrap = true;
             Content.CharacterWrap = false;
+            CanApplyOpacityWithoutCompositing = true;
         }
     }
 }
