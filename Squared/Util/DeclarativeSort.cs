@@ -1101,9 +1101,9 @@ namespace Squared.Util.DeclarativeSort {
                 );
                 var sortKeys = Expression.Variable(typeof(int[]), "sortKeys");
 
-                var fId = typeof(Tags).GetField("Id", BindingFlags.Instance | BindingFlags.Public);
-                var lhsId = Expression.Field(lhsTags, fId);
-                var rhsId = Expression.Field(rhsTags, fId);
+                var pId = typeof(Tags).GetProperty("Id", BindingFlags.Instance | BindingFlags.Public);
+                var lhsId = Expression.Property(lhsTags, pId);
+                var rhsId = Expression.Property(rhsTags, pId);
 
                 var lhsSortKey = Expression.ArrayIndex(sortKeys, lhsId);
                 var rhsSortKey = Expression.ArrayIndex(sortKeys, rhsId);
