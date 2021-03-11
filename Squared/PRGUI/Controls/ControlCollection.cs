@@ -102,6 +102,14 @@ namespace Squared.PRGUI {
             Invalidate();
         }
 
+        public int AddOrGetIndex (Control control) {
+            var index = IndexOf(control);
+            if (index >= 0)
+                return index;
+            Add(control);
+            return Items.Count - 1;
+        }
+
         public void Add (Control control) {
             if (control == null)
                 throw new ArgumentNullException("control");

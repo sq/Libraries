@@ -126,6 +126,12 @@ namespace Squared.PRGUI {
     }
     
     public abstract partial class Control {
+        private struct PendingAnimationRecord {
+            public IControlAnimation Animation;
+            public float? Duration;
+            public long? Now;
+        }
+
         public static bool ShowDebugBoxes = false,
             ShowDebugBreakMarkers = false,
             ShowDebugMargins = false,
@@ -294,6 +300,7 @@ namespace Squared.PRGUI {
         public Future<bool> ActiveAnimationFuture { get; private set; }
         protected IControlAnimation ActiveAnimation { get; private set; }
         protected long ActiveAnimationEndWhen;
+        private PendingAnimationRecord PendingAnimation;
 
         public Control () {
             TypeID = GetType().GetHashCode();
@@ -332,21 +339,35 @@ namespace Squared.PRGUI {
         /// <returns>A custom completion future for the animation. When the animation finishes this future will be completed (with true if cancelled).</returns>
         public Future<bool> StartAnimation (IControlAnimation animation, float? duration = null, long? now = null) {
             CancelActiveAnimation(now);
-            if ((animation == null) || (Context == null))
+            if (animation == null)
                 return new Future<bool>(false);
+
+            ActiveAnimationFuture = new Future<bool>();
+            if (Context == null)
+                PendingAnimation = new PendingAnimationRecord {
+                    Animation = animation,
+                    Duration = duration,
+                    Now = now
+                };
+            else
+                StartAnimationImpl(animation, duration, now);
+
+            return ActiveAnimationFuture;
+        }
+
+        private void StartAnimationImpl (IControlAnimation animation, float? duration, long? now) {
+            PendingAnimation = default(PendingAnimationRecord);
             var _now = now ?? Context.NowL;
             var multiplier = (Context?.Animations?.AnimationDurationMultiplier ?? 1f);
             var _duration = (duration ?? animation.DefaultDuration) * multiplier;
             ActiveAnimationEndWhen = _now + (long)((double)_duration * Time.SecondInTicks);
             ActiveAnimation = animation;
-            ActiveAnimationFuture = new Future<bool>();
             // If the duration is zero end the animation immediately and bias the current time forward
             //  to ensure that the endpoint (end of fade, etc) is applied. Likewise make sure the duration
             //  is never zero since that could produce divide-by-zero effects
             animation.Start(this, _now, Math.Max(_duration, 1f / 1000f));
             if (_duration <= 0)
                 UpdateAnimation(_now + Time.MillisecondInTicks);
-            return ActiveAnimationFuture;
         }
 
         protected void InvalidateTooltip () {
@@ -1181,6 +1202,8 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void InitializeForContext () {
+            if (PendingAnimation.Animation != null)
+                StartAnimationImpl(PendingAnimation.Animation, PendingAnimation.Duration, PendingAnimation.Now);
         }
 
         public virtual void InvalidateLayout () {

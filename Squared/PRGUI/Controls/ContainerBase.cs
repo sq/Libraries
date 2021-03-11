@@ -203,6 +203,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void EnsureChildrenAreValid () {
+            if (Context == null)
+                return;
             if (DynamicContentIsInvalid)
                 GenerateDynamicContent(false || DynamicContentIsInvalid);
         }

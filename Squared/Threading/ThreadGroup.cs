@@ -20,7 +20,8 @@ namespace Squared.Threading {
 
         /// <summary>
         /// If set to a value above 0, the amount of time spent stepping on the main thread
-        ///  in one invocation will be limited to this duration
+        ///  in one invocation will be limited to this duration.
+        /// Note that under normal circumstances, the main thread will be stepped twice (BeforeDraw and EndDraw)
         /// </summary>
         public float?   MainThreadStepLengthLimitMs = null;
 

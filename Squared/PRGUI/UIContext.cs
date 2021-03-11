@@ -733,6 +733,8 @@ namespace Squared.PRGUI {
             var textChanged = !instance.Text.TextEquals(text, StringComparison.Ordinal) || 
                 textIsInvalidated;
 
+            // HACK: Copy the target's decoration provider so the tooltip matches
+            instance.Appearance.DecorationProvider = (anchor.Appearance.DecorationProvider ?? Decorations);
             instance.Move(anchor);
 
             instance.Visible = true;
