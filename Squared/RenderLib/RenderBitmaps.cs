@@ -1390,7 +1390,12 @@ namespace Squared.Render {
             );
         }
 
-        // Returns true if the draw call was modified at all
+        /// <summary>
+        /// Attempts to crop the draw call to a sub-region of the source texture.
+        /// May fail if the draw call is rotated or otherwise complex.
+        /// </summary>
+        /// <param name="cropBounds"></param>
+        /// <returns>true if the draw call was modified</returns>
         public bool Crop (Bounds cropBounds) {
             // HACK
             if (Math.Abs(Rotation) >= 0.01)
@@ -1425,6 +1430,39 @@ namespace Squared.Render {
                 TextureRegion.BottomRight.X += (newBounds.BottomRight.X - drawBounds.BottomRight.X) / scaledSize.X;
             if (newBounds.BottomRight.Y < drawBounds.BottomRight.Y)
                 TextureRegion.BottomRight.Y += (newBounds.BottomRight.Y - drawBounds.BottomRight.Y) / scaledSize.Y;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Attempts to align Texture2 with Texture1 in a way that preserves its aspect ratio and scale.
+        /// If Texture2 is smaller than Texture1, this will produce texture coordinates that will wrap the texture.
+        /// </summary>
+        /// <returns>true if successful</returns>
+        public bool AlignTexture2 (float scaleRatio = 1.0f) {
+            var instance1 = Texture1.Instance;
+            var instance2 = Texture2.Instance;
+            if (instance1 == null)
+                return false;
+            if (instance2 == null)
+                return false;
+
+            var size1 = TextureRegion.Size * new Vector2(instance1.Width, instance1.Height);
+
+            var rgn2 = TextureRegion2;
+            if (rgn2.TopLeft == rgn2.BottomRight)
+                rgn2 = Bounds.Unit;
+            var size2 = TextureRegion2.Size * new Vector2(instance2.Width, instance2.Height);
+
+            var scaleRatioX = size1.X / size2.X;
+            var scaleRatioY = size1.Y / size2.Y;
+            if (Double.IsInfinity(scaleRatioX) || Double.IsNaN(scaleRatioX))
+                return false;
+            if (Double.IsInfinity(scaleRatioY) || Double.IsNaN(scaleRatioY))
+                return false;
+
+            rgn2.Size = rgn2.Size * new Vector2((float)scaleRatioX / scaleRatio, (float)scaleRatioY / scaleRatio);
+            TextureRegion2 = rgn2;
 
             return true;
         }

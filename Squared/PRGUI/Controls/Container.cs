@@ -232,13 +232,11 @@ namespace Squared.PRGUI.Controls {
             var scrollbar = context.DecorationProvider?.Scrollbar;
             if (scrollbar == null)
                 return;
-            // FIXME: Automate this?
-            var scale = context.DecorationProvider.SizeScaleRatio;
             // FIXME: Conditionally adjust padding when visibility is auto? Possibly introduces jitter
             if (ShouldShowVerticalScrollbar)
-                result.Right += scrollbar.MinimumSize.X * scale.X;
+                result.Right += scrollbar.MinimumSize.X;
             if (ShouldShowHorizontalScrollbar)
-                result.Bottom += scrollbar.MinimumSize.Y * scale.Y;
+                result.Bottom += scrollbar.MinimumSize.Y;
         }
 
         protected bool GetContentBounds (UIContext context, out Vector2 contentBounds) {

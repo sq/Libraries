@@ -60,6 +60,9 @@ namespace Squared.Game {
                     BottomRight.Y - TopLeft.Y
                 );
             }
+            set {
+                BottomRight = TopLeft + value;
+            }
         }
 
         public Interval X {

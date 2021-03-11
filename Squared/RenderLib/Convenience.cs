@@ -318,7 +318,7 @@ namespace Squared.Render.Convenience {
             public IBatchContainer Container;
             public int Layer;
             public BlendState BlendState;
-            public SamplerState SamplerState;
+            public SamplerState SamplerState1, SamplerState2;
             public RasterizerState RasterizerState;
             public DepthStencilState DepthStencilState;
             public Material CustomMaterial;
@@ -339,7 +339,9 @@ namespace Squared.Render.Convenience {
                     (lhs.RasterizerState == rhs.RasterizerState) &&
                     (lhs.DepthStencilState == rhs.DepthStencilState) &&
                     (lhs.CustomMaterial == rhs.CustomMaterial) &&
-                    (lhs.DepthPrePass == rhs.DepthPrePass)
+                    (lhs.DepthPrePass == rhs.DepthPrePass) &&
+                    object.ReferenceEquals(lhs.SamplerState1, rhs.SamplerState1) &&
+                    object.ReferenceEquals(lhs.SamplerState2, rhs.SamplerState2)
                 );
 
                 return result;
@@ -387,7 +389,8 @@ namespace Squared.Render.Convenience {
                 RasterizerState rasterizerState, 
                 DepthStencilState depthStencilState, 
                 BlendState blendState, 
-                SamplerState samplerState, 
+                SamplerState samplerState1, 
+                SamplerState samplerState2,
                 Material customMaterial,
                 bool useZBuffer,
                 bool zBufferOnlySorting,
@@ -408,7 +411,8 @@ namespace Squared.Render.Convenience {
                     result.RasterizerState = rasterizerState;
                     result.DepthStencilState = depthStencilState;
                     result.BlendState = blendState;
-                    result.SamplerState = samplerState;
+                    result.SamplerState1 = samplerState1;
+                    result.SamplerState2 = samplerState2;
                     result.CustomMaterial = customMaterial;
                 }
 
@@ -521,7 +525,7 @@ namespace Squared.Render.Convenience {
         public DepthStencilState DepthStencilState;
         public RasterizerState RasterizerState;
         public BlendState BlendState;
-        public SamplerState SamplerState;
+        public SamplerState SamplerState, SamplerState2;
 
         /// <summary>
         /// Overrides the default material used to draw bitmaps if no custom material has been specified.
@@ -617,6 +621,7 @@ namespace Squared.Render.Convenience {
             DepthStencilState depthStencilState = null,
             BlendState blendState = null,
             SamplerState samplerState = null,
+            SamplerState samplerState2 = null,
             bool worldSpace = true,
             bool useZBuffer = false,
             bool autoIncrementSortKey = false,
@@ -639,6 +644,7 @@ namespace Squared.Render.Convenience {
             DepthStencilState = depthStencilState;
             BlendState = blendState;
             SamplerState = samplerState;
+            SamplerState2 = samplerState2;
             UseZBuffer = useZBuffer;
             ZBufferOnlySorting = zBufferOnlySorting;
             DepthPrePass = depthPrePass;
@@ -772,17 +778,22 @@ namespace Squared.Render.Convenience {
         public void Draw (
             BitmapDrawCall drawCall, 
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null,
+            BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null
         ) {
-            Draw(ref drawCall, layer, worldSpace, blendState, samplerState, depthStencilState, rasterizerState, material);
+            Draw(
+                ref drawCall, layer, worldSpace, blendState, 
+                samplerState: samplerState, samplerState2: samplerState2, 
+                depthStencilState: depthStencilState, rasterizerState: rasterizerState, 
+                material: material
+            );
         }
 
         public void Draw (
             ref BitmapDrawCall drawCall, 
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null,
+            BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null
         ) {
@@ -798,7 +809,8 @@ namespace Squared.Render.Convenience {
             using (var batch = GetBitmapBatch(
                 layer, worldSpace,
                 blendState ?? BlendState, samplerState, depthStencilState ?? DepthStencilState, 
-                rasterizerState ?? RasterizerState, material ?? DefaultBitmapMaterial
+                rasterizerState ?? RasterizerState, material ?? DefaultBitmapMaterial,
+                samplerState2: samplerState2 ?? SamplerState2
             )) {
                 if (LowPriorityMaterialOrdering) {
                     if (material != null)
@@ -807,7 +819,7 @@ namespace Squared.Render.Convenience {
                         material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState, UseDiscard);
 
                     var mmbb = (MultimaterialBitmapBatch)batch;
-                    mmbb.Add(ref drawCall, material, samplerState, samplerState);
+                    mmbb.Add(ref drawCall, material, samplerState, samplerState2);
                 } else {
                     batch.Add(ref drawCall);
                 }
@@ -820,7 +832,7 @@ namespace Squared.Render.Convenience {
             float rotation = 0, Vector2? scale = null, Vector2 origin = default(Vector2),
             bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null, 
-            BlendState blendState = null, SamplerState samplerState = null,
+            BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null
         ) {
@@ -846,7 +858,11 @@ namespace Squared.Render.Convenience {
             if (AutoIncrementSortKey)
                 NextSortKey.Order += 1;
 
-            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState, depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material);
+            Draw(
+                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                samplerState: samplerState, samplerState2: SamplerState2, 
+                depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
+            );
         }
 
         public void Draw (
@@ -855,7 +871,7 @@ namespace Squared.Render.Convenience {
             float rotation = 0, Vector2? scale = null, Vector2 origin = default(Vector2),
             bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null, 
-            BlendState blendState = null, SamplerState samplerState = null,
+            BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null, Vector4 userData = default(Vector4)
         ) {
@@ -875,7 +891,11 @@ namespace Squared.Render.Convenience {
             if (AutoIncrementSortKey)
                 NextSortKey.Order += 1;
 
-            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState, depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material);
+            Draw(
+                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                samplerState: samplerState, samplerState2: samplerState2,
+                depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
+            );
         }
 
         public void Draw (
@@ -884,7 +904,7 @@ namespace Squared.Render.Convenience {
             float rotation = 0, float scaleX = 1, float scaleY = 1, float originX = 0, float originY = 0,
             bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null,
+            BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null, Vector4 userData = default(Vector4)
         ) {
@@ -904,7 +924,11 @@ namespace Squared.Render.Convenience {
             if (AutoIncrementSortKey)
                 NextSortKey.Order += 1;
 
-            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState, depthStencilState: depthStencilState, rasterizerState: rasterizerState);
+            Draw(
+                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                samplerState: samplerState, samplerState2: samplerState2,
+                depthStencilState: depthStencilState, rasterizerState: rasterizerState
+            );
         }
 
         public void Draw (
@@ -913,7 +937,7 @@ namespace Squared.Render.Convenience {
             float rotation = 0, float originX = 0, float originY = 0,
             bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null,
+            BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null, Vector4 userData = default(Vector4)
         ) {
@@ -937,19 +961,27 @@ namespace Squared.Render.Convenience {
             if (AutoIncrementSortKey)
                 NextSortKey.Order += 1;
 
-            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState, depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material);
+            Draw(
+                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                samplerState: samplerState, samplerState2: samplerState2,
+                depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
+            );
         }
 
         public void DrawMultiple (
             ArraySegment<BitmapDrawCall> drawCalls,
             Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null, 
+            BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null, Vector2? scale = null, Vector4? userData = null,
             float? multiplyOpacity = null
         ) {
-            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, depthStencilState ?? DepthStencilState, rasterizerState ?? RasterizerState, material ?? DefaultBitmapMaterial)) {
+            using (var batch = GetBitmapBatch(
+                layer, worldSpace, blendState, samplerState, 
+                depthStencilState ?? DepthStencilState, rasterizerState ?? RasterizerState,
+                material ?? DefaultBitmapMaterial, samplerState2: samplerState2
+            )) {
                 if (LowPriorityMaterialOrdering) {
                     if (material != null)
                         material = Materials.Get(material, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState);
@@ -1673,17 +1705,22 @@ namespace Squared.Render.Convenience {
                 });
         }
 
-        public IBitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null, Material customMaterial = null) {
+        public IBitmapBatch GetBitmapBatch (
+            int? layer, bool? worldSpace, BlendState blendState, 
+            SamplerState samplerState, DepthStencilState depthStencilState = null, 
+            RasterizerState rasterizerState = null, Material customMaterial = null, SamplerState samplerState2 = null
+        ) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
             var actualLayer = layer.GetValueOrDefault(Layer);
             var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
             var desiredBlendState = blendState ?? BlendState;
-            var desiredSamplerState = samplerState ?? SamplerState;
+            var desiredSamplerState1 = samplerState ?? SamplerState;
+            var desiredSamplerState2 = samplerState2 ?? samplerState2;
 
             if (LowPriorityMaterialOrdering)
-                desiredSamplerState = null;
+                desiredSamplerState1 = desiredSamplerState2 = null;
 
             CachedBatch cacheEntry;
             if (!Cache.TryGet<IBitmapBatch>(
@@ -1695,7 +1732,8 @@ namespace Squared.Render.Convenience {
                 rasterizerState: rasterizerState ?? RasterizerState,
                 depthStencilState: depthStencilState ?? DepthStencilState,
                 blendState: desiredBlendState,
-                samplerState: desiredSamplerState,
+                samplerState1: desiredSamplerState1,
+                samplerState2: desiredSamplerState2,
                 customMaterial: customMaterial,
                 useZBuffer: UseZBuffer,
                 depthPrePass: DepthPrePass,
@@ -1722,7 +1760,8 @@ namespace Squared.Render.Convenience {
                     );
                 } else {
                     bb = BitmapBatch.New(
-                        Container, actualLayer, material, desiredSamplerState, desiredSamplerState, 
+                        Container, actualLayer, material, 
+                        samplerState: desiredSamplerState1, samplerState2: desiredSamplerState2, 
                         useZBuffer: UseZBuffer, zBufferOnlySorting: ZBufferOnlySorting, 
                         depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
                     );
@@ -1759,7 +1798,8 @@ namespace Squared.Render.Convenience {
                 rasterizerState: RasterizerState,
                 depthStencilState: DepthStencilState,
                 blendState: desiredBlendState,
-                samplerState: null,
+                samplerState1: null,
+                samplerState2: null,
                 customMaterial: customMaterial,
                 useZBuffer: UseZBuffer,
                 zBufferOnlySorting: ZBufferOnlySorting,
@@ -1823,7 +1863,8 @@ namespace Squared.Render.Convenience {
                 rasterizerState: RasterizerState,
                 depthStencilState: DepthStencilState,
                 blendState: desiredBlendState,
-                samplerState: desiredSamplerState,
+                samplerState1: desiredSamplerState,
+                samplerState2: null,
                 customMaterial: null,
                 useZBuffer: UseZBuffer,
                 zBufferOnlySorting: ZBufferOnlySorting,

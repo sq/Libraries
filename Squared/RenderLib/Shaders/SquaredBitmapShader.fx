@@ -150,6 +150,78 @@ void HighlightColorPixelShaderWithDiscard(
     }
 }
 
+void CrossfadePixelShaderWithDiscard(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float4 blendWeight : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    in float2 texCoord2 : TEXCOORD2,
+    in float4 texRgn2 : TEXCOORD3,
+    out float4 result : COLOR0
+) {
+    addColor.rgb *= addColor.a;
+    addColor.a = 0;
+
+    float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS));
+    float4 lerped = lerp(sample1, sample2, blendWeight);
+
+    result = multiplyColor * lerped;
+    result += (addColor * result.a);
+
+    const float discardThreshold = (1.0 / 255.0);
+    clip(result.a - discardThreshold);
+}
+
+void OverPixelShaderWithDiscard(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float4 blendWeight : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    in float2 texCoord2 : TEXCOORD2,
+    in float4 texRgn2 : TEXCOORD3,
+    out float4 result : COLOR0
+) {
+    addColor.rgb *= addColor.a;
+    addColor.a = 0;
+
+    float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS)) * blendWeight;
+    float4 composited = sample1 + (sample2 * (1 - sample1.a));
+
+    result = multiplyColor * composited;
+    result += (addColor * result.a);
+
+    const float discardThreshold = (1.0 / 255.0);
+    clip(result.a - discardThreshold);
+}
+
+void UnderPixelShaderWithDiscard(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float4 blendWeight : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    in float2 texCoord2 : TEXCOORD2,
+    in float4 texRgn2 : TEXCOORD3,
+    out float4 result : COLOR0
+) {
+    addColor.rgb *= addColor.a;
+    addColor.a = 0;
+
+    float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS)) * blendWeight;
+    float4 composited = sample2 + (sample1 * (1 - sample2.a));
+
+    result = multiplyColor * composited;
+    result += (addColor * result.a);
+
+    const float discardThreshold = (1.0 / 255.0);
+    clip(result.a - discardThreshold);
+}
+
 technique BitmapTechnique
 {
     pass P0
@@ -246,5 +318,32 @@ technique HighlightColorBitmapTechnique
     {
         vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 HighlightColorPixelShaderWithDiscard();
+    }
+}
+
+technique CrossfadeBitmapTechnique
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 CrossfadePixelShaderWithDiscard();
+    }
+}
+
+technique OverBitmapTechnique
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 OverPixelShaderWithDiscard();
+    }
+}
+
+technique UnderBitmapTechnique
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 UnderPixelShaderWithDiscard();
     }
 }
