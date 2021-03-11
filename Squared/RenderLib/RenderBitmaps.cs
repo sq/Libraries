@@ -1435,11 +1435,11 @@ namespace Squared.Render {
         }
 
         /// <summary>
-        /// Attempts to align Texture2 with Texture1 in a way that preserves its aspect ratio and scale.
+        /// Attempts to align Texture2 with Texture1 while maintaining Texture2's aspect ratio and size.
         /// If Texture2 is smaller than Texture1, this will produce texture coordinates that will wrap the texture.
         /// </summary>
         /// <returns>true if successful</returns>
-        public bool AlignTexture2 (float scaleRatio = 1.0f) {
+        public bool AlignTexture2 (float scaleRatio = 1.0f, bool preserveAspectRatio = true) {
             var instance1 = Texture1.Instance;
             var instance2 = Texture2.Instance;
             if (instance1 == null)
@@ -1452,16 +1452,22 @@ namespace Squared.Render {
             var rgn2 = TextureRegion2;
             if (rgn2.TopLeft == rgn2.BottomRight)
                 rgn2 = Bounds.Unit;
-            var size2 = TextureRegion2.Size * new Vector2(instance2.Width, instance2.Height);
+            var size2 = rgn2.Size * new Vector2(instance2.Width, instance2.Height);
 
             var scaleRatioX = size1.X / size2.X;
             var scaleRatioY = size1.Y / size2.Y;
-            if (Double.IsInfinity(scaleRatioX) || Double.IsNaN(scaleRatioX))
+            if (float.IsInfinity(scaleRatioX) || float.IsNaN(scaleRatioX))
                 return false;
-            if (Double.IsInfinity(scaleRatioY) || Double.IsNaN(scaleRatioY))
+            if (float.IsInfinity(scaleRatioY) || float.IsNaN(scaleRatioY))
                 return false;
 
-            rgn2.Size = rgn2.Size * new Vector2((float)scaleRatioX / scaleRatio, (float)scaleRatioY / scaleRatio);
+            if (!preserveAspectRatio) {
+                var xy = Math.Min(scaleRatioX, scaleRatioY);
+                rgn2.Size = rgn2.Size * (xy / scaleRatio);
+            } else {
+                var xy = new Vector2(scaleRatioX / scaleRatio, scaleRatioY / scaleRatio);
+                rgn2.Size = rgn2.Size * xy;
+            }
             TextureRegion2 = rgn2;
 
             return true;

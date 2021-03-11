@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
@@ -17,6 +18,21 @@ namespace Squared.PRGUI.Controls {
         None = 0,
         X = 1,
         Y = 2
+    }
+
+    public enum StaticImageCompositeMode {
+        /// <summary>
+        /// Render Image1 on top of Image2
+        /// </summary>
+        Over,
+        /// <summary>
+        /// Render Image1 under Image2
+        /// </summary>
+        Under,
+        /// <summary>
+        /// Cross-fade between Image and Image2
+        /// </summary>
+        Crossfade
     }
 
     public class StaticImage : Control, IPostLayoutListener {
@@ -64,6 +80,21 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private AbstractTextureReference _Image2;
+        public AbstractTextureReference Image2 {
+            get => _Image2;
+            set {
+                if (_Image2 == value)
+                    return;
+                _Image2 = value;
+                InvalidateAutoSize();
+            }
+        }
+
+        public Tween<float> Image2Opacity = 1f;
+
+        public StaticImageCompositeMode Image2Mode = StaticImageCompositeMode.Over;
+
         public bool ShowLoadingSpinner;
 
         public StaticImage ()
@@ -84,25 +115,24 @@ namespace Squared.PRGUI.Controls {
             return provider?.StaticImage ?? provider?.None;
         }
 
-        private Vector2 ComputeDisplayScaleRatio (float availableWidth, float availableHeight) {
+        private float ComputeDisplayScaleRatio (Texture2D instance, float availableWidth, float availableHeight) {
             // HACK
-            if (Image.Instance == null)
-                return Vector2.One;
+            if (instance == null)
+                return 1;
 
             var widthScale = ScaleToFitX
-                ? availableWidth / Image.Instance.Width
+                ? availableWidth / instance.Width
                 : (float?)null;
             var heightScale = ScaleToFitY
-                ? availableHeight / Image.Instance.Height
+                ? availableHeight / instance.Height
                 : (float?)null;
 
-            var scaleF = Arithmetic.Clamp(
+            return Arithmetic.Clamp(
                 // FIXME: Move this
                 ControlDimension.Min(widthScale, heightScale) ?? 1,
                 MinimumScale,
                 MaximumScale
             );
-            return new Vector2(scaleF, scaleF);
         }
 
         private void ComputeAutoSize (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height) {
@@ -209,6 +239,18 @@ namespace Squared.PRGUI.Controls {
             return decorations.IsPassDisabled(pass) && (pass != Pass) && !showSpinner && !ShouldClipContent;
         }
 
+        private Material GetMaterialForCompositing (DefaultMaterialSet materials) {
+            switch (Image2Mode) {
+                default:
+                case StaticImageCompositeMode.Over:
+                    return materials.OverBitmap;
+                case StaticImageCompositeMode.Under:
+                    return materials.UnderBitmap;
+                case StaticImageCompositeMode.Crossfade:
+                    return materials.CrossfadeBitmap;
+            }
+        }
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
@@ -217,9 +259,11 @@ namespace Squared.PRGUI.Controls {
                     return;
 
                 var instance = Image.Instance;
+                var instance2 = Image2.Instance;
                 context.UIContext.NotifyTextureUsed(this, Image);
+                context.UIContext.NotifyTextureUsed(this, Image2);
 
-                var scale = ComputeDisplayScaleRatio(settings.ContentBox.Width, settings.ContentBox.Height);
+                var scale = ComputeDisplayScaleRatio(instance, settings.ContentBox.Width, settings.ContentBox.Height);
                 var position = new Vector2(
                     Arithmetic.Lerp(settings.Box.Left, settings.Box.Extent.X, Alignment.X),
                     Arithmetic.Lerp(settings.Box.Top, settings.Box.Extent.Y, Alignment.Y)
@@ -228,11 +272,23 @@ namespace Squared.PRGUI.Controls {
                 var color = settings.IsCompositing 
                     ? Color.White 
                     : Color.White * context.Opacity;
-                renderer.Draw(
-                    instance, position.Round(0),
-                    origin: Alignment, scale: scale,
-                    multiplyColor: color
-                );
+                var drawCall = new BitmapDrawCall(instance, position.Round(0)) {
+                    Origin = Alignment,
+                    ScaleF = scale,
+                    MultiplyColor = color,
+                };
+                Material material = null;
+
+                if ((instance2 != null) && (instance2 != instance)) {
+                    var opacity2 = Image2Opacity.Get(now: context.NowL);
+                    var scale2 = ComputeDisplayScaleRatio(instance2, settings.ContentBox.Width, settings.ContentBox.Height);
+                    drawCall.UserData = new Vector4(opacity2);
+                    drawCall.Texture2 = instance2;
+                    drawCall.AlignTexture2(scale2 / scale, preserveAspectRatio: true);
+                    material = GetMaterialForCompositing(renderer.Materials);
+                }
+
+                renderer.Draw(ref drawCall, material: material);
             }
 
             if (ShowLoadingSpinner && (context.Pass == RasterizePasses.Above)) {

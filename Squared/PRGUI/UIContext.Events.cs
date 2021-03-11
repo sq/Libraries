@@ -113,6 +113,8 @@ namespace Squared.PRGUI {
         }
 
         public void NotifyTextureUsed (Control source, AbstractTextureReference texture) {
+            if (texture == default(AbstractTextureReference))
+                return;
             if (OnTextureUsed != null)
                 OnTextureUsed(source, texture);
         }
