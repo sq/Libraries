@@ -577,9 +577,6 @@ namespace Squared.Render.Evil {
 
         internal static readonly FieldInfo pComPtr;
 
-        static TextureUtils () {
-        }
-
         /// <summary>
         /// Retrieves a pointer to the IDirect3DTexture9 for the specified texture.
         /// </summary>
@@ -610,7 +607,7 @@ namespace Squared.Render.Evil {
 
         public static unsafe void SetDataFast (
             this Texture2D texture, uint level, void* pData,
-            int width, int height, uint pitch
+            Rectangle rect, uint pitch
         ) {
             void* pTexture = texture.GetIDirect3DTexture9();
             void* pLockRect = COMUtils.AccessVTable(pTexture, VTables.IDirect3DTexture9.LockRect);
@@ -621,11 +618,11 @@ namespace Squared.Render.Evil {
             var lockedRect = new D3DLOCKED_RECT();
             try {
                 var flags = D3DLOCK.NOSYSLOCK | D3DLOCK.DISCARD;
-                var rect = new RECT {
-                    Left = 0, Top = 0,
-                    Right = width, Bottom = height
+                var w32rect = new RECT {
+                    Left = rect.Left, Top = rect.Top,
+                    Right = rect.Width, Bottom = rect.Height
                 };
-                lockHr = lockRect(pTexture, level, &lockedRect, &rect, (uint)flags);
+                lockHr = lockRect(pTexture, level, &lockedRect, &w32rect, (uint)flags);
                 if (lockHr != 0)
                     throw Marshal.GetExceptionForHR(lockHr);
                 if (lockedRect.pBits == null)
@@ -634,10 +631,10 @@ namespace Squared.Render.Evil {
                 if (lockedRect.Pitch < pitch) {
                     throw new ArgumentException("Pitch of provided data is larger than pitch of locked surface", "pitch");
                 } else if (lockedRect.Pitch == pitch) {
-                    Buffer.MemoryCopy(pData, lockedRect.pBits, lockedRect.Pitch * height, pitch * height);
+                    Buffer.MemoryCopy(pData, lockedRect.pBits, lockedRect.Pitch * rect.Height, pitch * rect.Height);
                 } else {
-                    // yuck                    
-                    for (int y = 0; y < height; y++) {
+                    // yuck
+                    for (int y = 0; y < rect.Height; y++) {
                         var pSource = ((byte*)pData) + (y * pitch);
                         var pDest = ((byte*)lockedRect.pBits) + (y * lockedRect.Pitch);
                         Buffer.MemoryCopy(pSource, pDest, pitch, pitch);

@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Threading;
 using Squared.Util;
@@ -248,7 +249,7 @@ namespace Squared.Render.STB {
             // FIXME: async?
             UploadTimer.Restart();
             lock (coordinator.UseResourceLock)
-                Evil.TextureUtils.SetDataFast(result, 0, Data, Width, Height, (uint)(Width * SizeofPixel));
+                Evil.TextureUtils.SetDataFast(result, 0, Data, new Rectangle(0, 0, Width, Height), (uint)(Width * SizeofPixel));
             if (UploadTimer.Elapsed.TotalMilliseconds > 1)
                 Debug.Print($"Uploading non-mipped texture took {UploadTimer.Elapsed.TotalMilliseconds}ms");
             return new Future<Texture2D>(result);
@@ -385,7 +386,7 @@ namespace Squared.Render.STB {
 
                 // FIXME: Create a work item for each mip to avoid blocking the main thread for too long
                 lock (Coordinator.UseResourceLock)
-                    Evil.TextureUtils.SetDataFast(Texture, Level, pData, LevelWidth, LevelHeight, MipPitch);
+                    Evil.TextureUtils.SetDataFast(Texture, Level, pData, new Rectangle(0, 0, LevelWidth, LevelHeight), MipPitch);
 
                 if (pin.IsAllocated)
                     pin.Free();

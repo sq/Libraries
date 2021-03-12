@@ -22,7 +22,7 @@ namespace Squared.PRGUI {
             public bool ContainsChildren => (Container != null) && (Container.Children.Count > 0);
         }
 
-        public struct TraverseSettings {
+        public class TraverseSettings {
             public bool AllowDescend, AllowDescendIfDisabled, AllowDescendIfInvisible, AllowAscend;
             // HACK: Will default to true for Window and false for everything else
             public bool? AllowWrap;
@@ -31,6 +31,23 @@ namespace Squared.PRGUI {
             public bool FollowProxies;
 
             internal int FrameIndex;
+
+            public bool DidFollowProxy;
+
+            public TraverseSettings Clone () {
+                return new TraverseSettings {
+                    AllowDescend = AllowDescend,
+                    AllowDescendIfDisabled = AllowDescendIfDisabled,
+                    AllowDescendIfInvisible = AllowDescendIfInvisible,
+                    AllowAscend = AllowAscend,
+                    AllowWrap = AllowWrap,
+                    Direction = Direction,
+                    Predicate = Predicate,
+                    FollowProxies = FollowProxies,
+                    FrameIndex = FrameIndex,
+                    DidFollowProxy = DidFollowProxy
+                };
+            }
         }
 
         private TraversalInfo Traverse_MakeInfo (Control control) {
@@ -89,8 +106,10 @@ namespace Squared.PRGUI {
                 throw new ArgumentNullException(nameof(startingPosition));
 
             var visitedProxyTargets = new DenseList<Control>();
-            var descendSettings = settings;
+            var descendSettings = settings.Clone();
             descendSettings.AllowAscend = false;
+            // FIXME
+            // descendSettings.FollowProxies = false;
             var currentCollection = collection ?? ((startingPosition as IControlContainer)?.Children);
             if (currentCollection == null) {
                 if (!startingPosition.TryGetParent(out Control startingParent) || !(startingParent is IControlContainer icc))
@@ -100,9 +119,12 @@ namespace Squared.PRGUI {
             }
 
             var currentStartingPosition = startingPosition;
+            var didFollowProxy = false;
             while (true) {
                 var tabOrdered = currentCollection.InTabOrder(FrameIndex, false);
-                int index = tabOrdered.IndexOf(currentStartingPosition), i = index + settings.Direction;
+                int motion = didFollowProxy ? 0 : settings.Direction, 
+                    index = tabOrdered.IndexOf(currentStartingPosition), 
+                    i = index + motion;
                 Control proxyTarget = null;
 
                 while (true) {
@@ -113,7 +135,10 @@ namespace Squared.PRGUI {
                     var child = tabOrdered[i];
                     var info = Traverse_MakeInfo(child);
 
-                    if (info.IsProxy && settings.FollowProxies && (visitedProxyTargets.IndexOf(info.RedirectTarget) < 0)) {
+                    if (
+                        info.IsProxy && settings.FollowProxies && info.Control.Enabled &&
+                        (visitedProxyTargets.IndexOf(info.RedirectTarget) < 0)
+                    ) {
                         proxyTarget = info.RedirectTarget;
                         visitedProxyTargets.Add(proxyTarget);
                         break;
@@ -143,12 +168,15 @@ namespace Squared.PRGUI {
 
                 if (proxyTarget != null) {
                     currentStartingPosition = proxyTarget;
+                    didFollowProxy = true;
+                    settings.DidFollowProxy = true;
                 } else {
+                    currentStartingPosition = currentCollection.Host;
+                    didFollowProxy = false;
                     if (!settings.AllowAscend)
                         break;
                 }
 
-                currentStartingPosition = currentCollection.Host;
                 if (!currentStartingPosition.TryGetParent(out Control parent))
                     break;
 
@@ -157,6 +185,8 @@ namespace Squared.PRGUI {
 
                 currentCollection = parentContainer.Children;
             }
+
+            ;
         }
 
         private bool _FocusablePredicate (Control control) => control.IsValidFocusTarget;
@@ -183,7 +213,7 @@ namespace Squared.PRGUI {
             return TraverseChildren(collection, settings).FirstOrDefault().Control;
         }
 
-        public Control PickFocusableSiblingForRotation (Control child, int direction, bool? allowLoop) {
+        public Control PickFocusableSiblingForRotation (Control child, int direction, bool? allowLoop, out bool didFollowProxy) {
             var settings = new TraverseSettings {
                 AllowDescend = true,
                 AllowDescendIfDisabled = false,
@@ -198,7 +228,9 @@ namespace Squared.PRGUI {
             };
 
             // DebugLog($"Finding sibling for {child} in direction {direction}");
-            return SearchForSiblings(null, child, settings).FirstOrDefault().Control;
+            var result = SearchForSiblings(null, child, settings).FirstOrDefault().Control;
+            didFollowProxy = settings.DidFollowProxy;
+            return result;
         }
     }
 }

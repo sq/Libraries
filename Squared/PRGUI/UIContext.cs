@@ -506,7 +506,7 @@ namespace Squared.PRGUI {
                 // FIXME: if a menu is opened by a mousedown event, this will
                 //  fire a click on the menu in response to its mouseup
                 if (
-                    (Hovering == previouslyCaptured) ||
+                    ((Hovering == previouslyCaptured) && (previouslyCaptured != null)) ||
                     ((previouslyCaptured == null) && (Hovering == PreviousMouseDownTarget))
                 ) {
                     if ((LastMouseButtons & MouseButtons.Left) == MouseButtons.Left)

@@ -217,11 +217,13 @@ namespace Squared.Render {
             IsOpenGL = (f != null);
 
             if (IsOpenGL) {
-                var hDevice = (IntPtr)f.GetValue(device);
-                Evil.FNA3D_SysRendererEXT sr;
                 try {
+#if FNA
+                    var hDevice = (IntPtr)f.GetValue(device);
+                    Evil.FNA3D_SysRendererEXT sr;
                     Evil.DeviceUtils.FNA3D_GetSysRendererEXT(hDevice, out sr);
                     GraphicsBackendName = sr.rendererType.ToString();
+#endif
                 } catch {
                     GraphicsBackendName = "OpenGL";
                 }

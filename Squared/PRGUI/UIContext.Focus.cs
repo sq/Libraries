@@ -118,7 +118,7 @@ namespace Squared.PRGUI {
 
             // Attempt to auto-shift focus as long as our parent chain is focusable
             if (!Control.IsRecursivelyTransparent(control, includeSelf: false))
-                idealNewTarget = PickFocusableSiblingForRotation(control, 1, false);
+                idealNewTarget = PickFocusableSiblingForRotation(control, 1, false, out bool temp);
             else
                 // Auto-shifting failed, so try to return to the most recently focused control
                 idealNewTarget = PreviousFocused ?? PreviousTopLevelFocused;
@@ -170,7 +170,8 @@ namespace Squared.PRGUI {
                 var inTabOrder = Controls.InTabOrder(FrameIndex, false)
                     .Where(c => 
                         ((c is IControlContainer) || c.AcceptsFocus) &&
-                        c.Enabled && !c.IsTransparent
+                        c.Enabled && !c.IsTransparent &&
+                        !(c is FocusProxy)
                     )
                     .ToList();
                 var currentIndex = inTabOrder.IndexOf(currentTopLevel);
@@ -179,10 +180,10 @@ namespace Squared.PRGUI {
                 return target;
             } else {
                 var currentTopLevel = FindTopLevelAncestor(Focused);
-                var newTarget = PickFocusableSiblingForRotation(Focused, delta, null);
+                var newTarget = PickFocusableSiblingForRotation(Focused, delta, null, out bool didFollowProxy);
                 var newTopLevel = FindTopLevelAncestor(newTarget);
                 // HACK: We don't want to change top-level controls during a regular tab
-                if ((newTopLevel != currentTopLevel) && (currentTopLevel != null) && Focused.IsValidFocusTarget)
+                if ((newTopLevel != currentTopLevel) && (currentTopLevel != null) && Focused.IsValidFocusTarget && !didFollowProxy)
                     return Focused;
                 else
                     return newTarget;
@@ -193,7 +194,7 @@ namespace Squared.PRGUI {
             if (delta == 0)
                 throw new ArgumentOutOfRangeException("delta");
 
-            var target = PickFocusableSiblingForRotation(location, delta, null);
+            var target = PickFocusableSiblingForRotation(location, delta, null, out bool temp);
             return TrySetFocus(target, isUserInitiated: isUserInitiated);
         }
 
@@ -243,7 +244,7 @@ namespace Squared.PRGUI {
             if (!AllowNullFocus && (value == null)) {
                 // Handle cases where the focused control became disabled or invisible
                 if (Focused?.IsValidFocusTarget == false)
-                    newFocusTarget = value = PickFocusableSiblingForRotation(Focused, 1, false);
+                    newFocusTarget = value = PickFocusableSiblingForRotation(Focused, 1, false, out bool temp);
                 else
                     newFocusTarget = value = Focused ?? Controls.FirstOrDefault();
             }
