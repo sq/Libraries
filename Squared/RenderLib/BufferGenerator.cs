@@ -456,6 +456,13 @@ namespace Squared.Render.Internal {
 
             return true;
         }
+        
+        // HACK: In multi-threaded scenarios, if a vertex's size is odd enough,
+        //  writes from different threads can potentially clash with each other and corrupt the buffer,
+        //  due to the writes touching 4-16 bytes instead of 1 or 2
+        // The writes can also cause cache line conflicts so in general they're just a bad time.
+        // This padding wastes memory, but honestly, who cares
+        public static int AllocationSafetyPadding = 4;
 
         /// <summary>
         /// Allocates a software vertex/index buffer pair that you can write vertices and indices into. 
@@ -466,6 +473,16 @@ namespace Squared.Render.Internal {
         /// <param name="forceExclusiveBuffer">Forces a unique hardware vertex/index buffer pair to be created for this allocation. This allows you to ignore the hardware vertex/index offsets.</param>
         /// <returns>A software buffer.</returns>
         public SoftwareBuffer Allocate (int vertexCount, int indexCount, bool forceExclusiveBuffer = false) {
+            var padding = (_VertexCount > 0) || (_IndexCount > 0)
+                ? AllocationSafetyPadding
+                : 0;
+
+            var requestedVertexCount = vertexCount;
+            var requestedIndexCount = indexCount;
+
+            vertexCount += padding;
+            indexCount += padding;
+
             if (vertexCount > MaxVerticesPerHardwareBuffer)
                 throw new ArgumentOutOfRangeException("vertexCount", vertexCount, "Maximum vertex count on this platform is " + MaxVerticesPerHardwareBuffer);
 
@@ -507,11 +524,10 @@ namespace Squared.Render.Internal {
                 );
 
                 int oldHwbVerticesUsed, oldHwbIndicesUsed;
-
-                // Guess the interlocked isn't really needed...
                 oldHwbVerticesUsed = hardwareBufferEntry.VerticesUsed;
-                hardwareBufferEntry.VerticesUsed += vertexCount;
                 oldHwbIndicesUsed = hardwareBufferEntry.IndicesUsed;
+
+                hardwareBufferEntry.VerticesUsed += vertexCount;
                 hardwareBufferEntry.IndicesUsed += indexCount;
 
                 hardwareBufferEntry.SoftwareBufferCount += 1;
@@ -520,8 +536,8 @@ namespace Squared.Render.Internal {
                 if (swb.IsInitialized)
                     throw new ThreadStateException();
                 swb.Initialize(
-                    new ArraySegment<TVertex>(_VertexArray, hardwareBufferEntry.VertexOffset + oldHwbVerticesUsed, vertexCount),
-                    new ArraySegment<TIndex>(_IndexArray, hardwareBufferEntry.IndexOffset + oldHwbIndicesUsed, indexCount),
+                    new ArraySegment<TVertex>(_VertexArray, hardwareBufferEntry.VertexOffset + oldHwbVerticesUsed, requestedVertexCount),
+                    new ArraySegment<TIndex>(_IndexArray, hardwareBufferEntry.IndexOffset + oldHwbIndicesUsed, requestedIndexCount),
                     hardwareBufferEntry.Buffer,
                     oldHwbVerticesUsed,
                     oldHwbIndicesUsed

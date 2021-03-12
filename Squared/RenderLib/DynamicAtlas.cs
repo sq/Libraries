@@ -183,6 +183,10 @@ namespace Squared.Render {
     public class DynamicAtlas<T> : IDisposable, IDynamicTexture
         where T : struct 
     {
+        public bool DebugColors = false;
+        private static int NextId = 0;
+        private int Id;
+
         private struct GenerateMipsWorkItem : IWorkItem {
             public DynamicAtlas<T> Atlas;
 
@@ -245,6 +249,7 @@ namespace Squared.Render {
             RenderCoordinator coordinator, int width, int height, SurfaceFormat format, 
             int spacing = 2, MipGenerator<T> mipGenerator = null
         ) {
+            Id = NextId++;
             Coordinator = coordinator;
             Width = width;
             Height = height;
@@ -270,6 +275,15 @@ namespace Squared.Render {
                     currentMipSizePixels /= 2;
                 }
                 MipBuffer = new T[totalMipSize];
+            }
+            
+            if (DebugColors) {
+                var p = Pixels as Color[];
+                if (p != null) {
+                    var w = 4096 * 4;
+                    for (int i = 0, l = p.Length; i < l; i++)
+                        p[i] = (Color)new Color(i % 255, (Id * 64) % 255, (Id * 192) % 255, 255);
+                }
             }
 
             MipLevelCount = Texture.LevelCount;

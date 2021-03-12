@@ -428,8 +428,8 @@ namespace Squared.Render {
 
         protected bool CreateNewNativeBatch (
             BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref TextureSet currentTextures,
-            ref int vertCount, ref int vertOffset, bool isFinalCall,
-            Material material, SamplerState samplerState1, SamplerState samplerState2,
+            ref int vertCount, ref int vertOffset, Material material, 
+            SamplerState samplerState1, SamplerState samplerState2,
             LocalObjectCache<object> textureCache
         ) {
             if (!currentTextures.Texture1.IsInitialized)
@@ -445,10 +445,8 @@ namespace Squared.Render {
                 return false;
             _NativeBatches.Add(nb);
 
-            if (!isFinalCall) {
-                vertOffset += vertCount;
-                vertCount = 0;
-            }
+            vertOffset += vertCount;
+            vertCount = 0;
 
             return true;
         }
@@ -463,13 +461,13 @@ namespace Squared.Render {
             int nativeBatchSizeLimit = NativeBatchSize;
             int vertexWritePosition = 0;
 
-            TextureSet currentTextures = new TextureSet();
+            TextureSet currentTextures = TextureSet.Invalid;
 
             var remainingDrawCalls = (count - drawCallsPrepared);
             var remainingVertices = remainingDrawCalls;
 
-            int nativeBatchSize = Math.Min(nativeBatchSizeLimit, remainingVertices);
-            var softwareBuffer = _BufferGenerator.Allocate(nativeBatchSize, 1);
+            int allocatedBatchSize = Math.Min(nativeBatchSizeLimit, remainingVertices);
+            var softwareBuffer = _BufferGenerator.Allocate(allocatedBatchSize, 1);
 
             float zBufferFactor = UseZBuffer ? 1.0f : 0.0f;
 
@@ -487,22 +485,23 @@ namespace Squared.Render {
                     }
 
                     int callIndex;
-                    if (indices != null)
+                    if (indices != null) {
                         callIndex = indices[i];
-                    else
+                        if (callIndex >= callCount)
+                            continue;
+                    } else {
                         callIndex = i;
-
-                    if (callIndex >= callCount)
-                        break;
+                        if (callIndex >= callCount)
+                            break;
+                    }
 
                     bool texturesEqual = callArray[callIndex + drawCalls.Offset].Textures.Equals(ref currentTextures);
 
                     if (!texturesEqual) {
                         if (vertCount > 0)
                             failed |= !CreateNewNativeBatch(
-                                softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, false,
-                                material, samplerState1, samplerState2,
-                                textureCache
+                                softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset,
+                                material, samplerState1, samplerState2, textureCache
                             );
 
                         currentTextures = callArray[callIndex + drawCalls.Offset].Textures;
@@ -512,7 +511,7 @@ namespace Squared.Render {
 
                     FillOneBitmapVertex(
                         softwareBuffer, ref callArray[callIndex + drawCalls.Offset], out pVertices[vertexWritePosition],
-                        ref vertCount, ref vertOffset, zBufferFactor
+                        zBufferFactor
                     );
 
                     vertexWritePosition += 1;
@@ -528,7 +527,7 @@ namespace Squared.Render {
 
             if (vertCount > 0) {
                 failed |= !CreateNewNativeBatch(
-                    softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, true,
+                    softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset,
                     material, samplerState1, samplerState2, textureCache
                 );
             }
@@ -539,7 +538,7 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void FillOneBitmapVertex (
             BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref BitmapDrawCall call, out BitmapVertex result, 
-            ref int vertCount, ref int vertOffset, float zBufferFactor
+            float zBufferFactor
         ) {
             var ws = (short)((call.WorldSpace ?? WorldSpace) ? 1 : 0);
             result = new BitmapVertex {
@@ -770,8 +769,9 @@ namespace Squared.Render {
 
                             hwb.GetBuffers(out vb, out ib);
 
+                            var bindOffset = swb.HardwareVertexOffset + nb.LocalVertexOffset;
                             scratchBindings[0] = cornerVb;
-                            scratchBindings[1] = new VertexBufferBinding(vb, swb.HardwareVertexOffset + nb.LocalVertexOffset, 1);
+                            scratchBindings[1] = new VertexBufferBinding(vb, bindOffset, 1);
 
                             device.SetVertexBuffers(scratchBindings);
 
@@ -835,9 +835,6 @@ namespace Squared.Render {
                 _CornerBuffer = null;
 
                 StateTransition(BitmapBatchPrepareState.Issuing, BitmapBatchPrepareState.Issued);
-
-                if (totalDraws != _DrawCalls.Count)
-                    ; // throw new Exception();
             }
 
             base.Issue(manager);
@@ -863,36 +860,50 @@ namespace Squared.Render {
     }
 
     public struct AbstractTextureReference {
+        public static readonly AbstractTextureReference Invalid;
+
         public static readonly LocallyReplicatedObjectCache<object> Cache = 
             new LocallyReplicatedObjectCache<object>();
 
-        private int Id;
+        static AbstractTextureReference () {
+            Invalid = new AbstractTextureReference {
+                _Id = -9958923
+            };
+        }
+
+        private int _Id;
         public object Reference {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return Cache.GetValue(Id);
+                return Cache.GetValue(_Id);
+            }
+        }
+
+        public int Id { 
+            get {
+                return _Id;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public AbstractTextureReference (Texture2D tex) {
-            Id = Cache.GetId(tex);
+            _Id = Cache.GetId(tex);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public AbstractTextureReference (IDynamicTexture tex) {
-            Id = Cache.GetId(tex);
+            _Id = Cache.GetId(tex);
         }
 
         public bool IsInitialized {
             get {
-                return (Id != 0);
+                return (_Id != 0);
             }
         }
 
         public bool IsNull {
             get {
-                if (Id == 0)
+                if (_Id == 0)
                     return true;
 
                 var obj = Reference;
@@ -905,7 +916,7 @@ namespace Squared.Render {
 
         public bool IsDisposedOrNull {
             get {
-                if (Id == 0)
+                if (_Id == 0)
                     return true;
 
                 var obj = Reference;
@@ -922,7 +933,7 @@ namespace Squared.Render {
 
         public bool IsDisposed {
             get {
-                if (Id == 0)
+                if (_Id == 0)
                     return false;
 
                 var obj = Reference;
@@ -938,7 +949,7 @@ namespace Squared.Render {
         }
 
         public Texture2D GetInstance (LocalObjectCache<object> cache) {
-            var obj = cache.GetValue(Id);
+            var obj = cache.GetValue(_Id);
             var dyn = obj as IDynamicTexture;
             if (dyn != null)
                 return dyn.Texture;
@@ -960,12 +971,12 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
-            return Id.GetHashCode();
+            return _Id.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (AbstractTextureReference rhs) {
-            return Id == rhs.Id;
+            return _Id == rhs._Id;
         }
 
         public override bool Equals (object obj) {
@@ -1017,11 +1028,26 @@ namespace Squared.Render {
         public static implicit operator AbstractTextureReference (Texture2D tex) {
             return new AbstractTextureReference(tex);
         }
+
+        public override string ToString () {
+            if (IsNull)
+                return "{null}";
+            else if (IsDisposed)
+                return "{disposed}";
+            else
+                return _Id.ToString();
+        }
     }
 
     public struct TextureSet {
+        public static readonly TextureSet Invalid;
+
         public readonly AbstractTextureReference Texture1, Texture2;
         internal int HashCode;
+
+        static TextureSet () {
+            Invalid = new TextureSet(AbstractTextureReference.Invalid, AbstractTextureReference.Invalid);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (AbstractTextureReference texture1) {
@@ -1075,7 +1101,8 @@ namespace Squared.Render {
         public bool Equals (ref TextureSet rhs) {
             return (HashCode == rhs.HashCode) && 
                 (Texture1 == rhs.Texture1) && 
-                (Texture2 == rhs.Texture2);
+                (Texture2 == rhs.Texture2) &&
+                (object.ReferenceEquals(Texture1.Instance, rhs.Texture1.Instance));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1549,7 +1576,7 @@ namespace Squared.Render {
             if (Texture == null)
                 name = "null";
             else if (!ObjectNames.TryGetName(Texture, out name))
-                name = string.Format("{2:X4} {0}x{1}", Texture.Width, Texture.Height, Texture.GetHashCode());
+                name = string.Format("{2:X4} {0}x{1}", Texture.Width, Texture.Height, Textures.Texture1.Id);
 
             return string.Format("tex {0} pos {1} sort {2}", name, Position, SortOrder);
         }
