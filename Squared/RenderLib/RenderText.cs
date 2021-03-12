@@ -349,9 +349,10 @@ namespace Squared.Render.Text {
                     dc.SortOrder += 1;
 
                 if (suppressedByLineLimit && hideOverflow)
-                    dc.MultiplyColor = Color.Transparent;
-
-                buffer.Array[buffer.Offset + i] = dc;
+                    // HACK: Just setting multiplycolor or scale etc isn't enough since a layout filter may modify it
+                    buffer.Array[buffer.Offset + i] = default(BitmapDrawCall);
+                else
+                    buffer.Array[buffer.Offset + i] = dc;
             }
 
             characterOffset.X = xOffsetOfWrappedLine + (characterOffset.X - firstOffset.X);

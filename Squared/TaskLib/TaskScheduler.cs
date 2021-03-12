@@ -318,6 +318,26 @@ namespace Squared.Task {
             }
         }
 
+        public IFuture Start (System.Threading.Tasks.Task task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.Default) {
+            var future = task.GetFuture();
+            switch (executionPolicy) {
+                case TaskExecutionPolicy.RunAsBackgroundTask:
+                    future.RegisterOnComplete(BackgroundTaskOnComplete);
+                    break;
+            }
+            return future;
+        }
+
+        public Future<T> Start<T> (System.Threading.Tasks.Task<T> task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.Default) {
+            var future = task.GetFuture();
+            switch (executionPolicy) {
+                case TaskExecutionPolicy.RunAsBackgroundTask:
+                    future.RegisterOnComplete(BackgroundTaskOnComplete);
+                    break;
+            }
+            return future;
+        }
+
         public IFuture Start (ISchedulable task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.Default) {
             var future = new Future<object>();
             Start(future, task, executionPolicy);
