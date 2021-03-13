@@ -147,10 +147,40 @@ namespace Squared.Util {
                 _Index = -1;
             }
 
-            public void RemoveCurrent () {
+            public int Index {
+                get {
+                    return _Index;
+                }
+            }
+
+            public bool RemoveCurrentOrdered () {
+                if (_Index >= _Count)
+                    return false;
+
+                _List.RemoveAtOrdered(_Index + _Offset);
+                _Count -= 1;
+                _Index -= 1;
+                return true;
+            }
+
+            public bool RemoveCurrent () {
+                if (_Index >= _Count)
+                    return false;
+
                 _List.DangerousRemoveAt(_Index + _Offset);
                 _Count -= 1;
                 _Index -= 1;
+                return true;
+            }
+
+            public bool RemoveToHere (int startOffset = 0) {
+                if (_Index >= _Count)
+                    return false;
+                var count = _Index - startOffset + 1;
+                _List.DangerousRemoveRange(startOffset, count);
+                _Count -= count;
+                _Index -= count;
+                return (_Count == _List.Count);
             }
         }
 
