@@ -125,6 +125,26 @@ namespace Squared.Util {
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool GetCurrent (out T value) {
+                if ((_Index < 0) || (_Index >= _Count)) {
+                    value = default(T);
+                    return false;
+                }
+                value = _List._Items[_Index + _Offset];
+                return true;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool PeekNext (out T value) {
+                if ((_Index < -1) || (_Index >= (_Count - 1))) {
+                    value = default(T);
+                    return false;
+                }
+                value = _List._Items[_Index + _Offset + 1];
+                return true;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool GetNext (out T nextItem) {
                 _Index += 1;
 

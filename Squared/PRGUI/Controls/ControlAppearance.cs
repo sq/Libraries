@@ -88,6 +88,11 @@ namespace Squared.PRGUI {
         public IGlyphSource Font;
         public ColorVariable BackgroundColor;
         public ColorVariable TextColor;
+        /// <summary>
+        /// If set, the TextColor will only change the default text color instead of overriding
+        ///  the color set by the text decorator.
+        /// </summary>
+        public bool TextColorIsDefault;
         public BackgroundImageSettings BackgroundImage;
         /// <summary>
         /// Suppresses clipping of the control and causes it to be rendered above everything

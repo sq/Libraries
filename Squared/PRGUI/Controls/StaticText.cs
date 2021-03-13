@@ -397,7 +397,12 @@ namespace Squared.PRGUI.Controls {
             ComputePadding(context, decorations, out Margins computedPadding);
 
             var overrideColor = GetTextColor(context.NowL);
-            Color? defaultColor = null;
+            Color? defaultColor = 
+                Appearance.TextColorIsDefault
+                    ? overrideColor?.ToColor()
+                    : (Color?)null;
+            if (Appearance.TextColorIsDefault)
+                overrideColor = null;
             Material material;
             var textDecorations = GetTextDecorator(context.DecorationProvider, context.DefaultTextDecorator);
             GetTextSettings(context, textDecorations, decorations, settings.State, out material, ref defaultColor);
