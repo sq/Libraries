@@ -85,6 +85,8 @@ namespace Squared.Render.Resources {
                                 ? ExceptionDispatchInfo.Capture(exc) 
                                 : null
                         );
+                        lock (Provider.PendingLoadLock)
+                            Provider._PendingLoads--;
                         return;
                     }
 
