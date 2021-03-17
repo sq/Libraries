@@ -606,6 +606,9 @@ namespace Squared.Render.Text {
                 int length = _Text.Length;
 
                 int capacity = length + StringLayoutEngine.DefaultBufferPadding;
+                // HACK: Make room for parse error messages
+                if (_RichText)
+                    capacity += 1024;
 
                 if ((_Buffer.Array != null) && (_Buffer.Count < capacity))
                     _Buffer = default(ArraySegment<BitmapDrawCall>);

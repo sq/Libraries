@@ -865,8 +865,13 @@ namespace Squared.PRGUI {
                 if (ShouldClipContent) {
                     if (!contentRenderer.Container.IsEmpty) {
                         // If this is the first stencil pass instead of a nested one, clear the stencil buffer
-                        if (passSet.StackDepth < 1)
+                        if (passSet.StackDepth < 1) {
                             contentRenderer.Clear(stencil: 0, layer: -9999);
+                        } else {
+                            // Erase any siblings' clip regions
+                            contentRenderer.DepthStencilState = context.UIContext.GetStencilRestore(previousStackDepth);
+                            contentRenderer.FillRectangle(new Rectangle(-1, -1, 9999, 9999), Color.Transparent, blendState: RenderStates.DrawNone, layer: -1000);
+                        }
 
                         contentRenderer.DepthStencilState = context.UIContext.GetStencilWrite(previousStackDepth);
 
@@ -881,12 +886,6 @@ namespace Squared.PRGUI {
                         contentRenderer.Layer = -999;
                         settings.State = default(ControlStates);
                         decorations?.Rasterize(contentContext, ref contentRenderer, temp);
-
-                        if (passSet.StackDepth > 1) {
-                            // If this is a nested stencil pass, erase our stencil data and restore what was there before
-                            contentRenderer.DepthStencilState = context.UIContext.GetStencilRestore(newStackDepth);
-                            contentRenderer.FillRectangle(new Rectangle(-1, -1, 9999, 9999), Color.Transparent, blendState: RenderStates.DrawNone, layer: 9999);
-                        }
 
                         contentRenderer.Layer = crLayer;
 

@@ -178,7 +178,7 @@ namespace Squared.Render.Text {
                                 }
                             }
                         } else {
-                            ;
+                            layoutEngine.AppendText(glyphSource ?? defaultGlyphSource, "<invalid: $[" + command + "]>");
                         }
                     }
                 }
