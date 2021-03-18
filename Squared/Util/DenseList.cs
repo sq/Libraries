@@ -13,7 +13,7 @@ namespace Squared.Util {
         void Release (ref UnorderedList<T> items);
     }
 
-    public struct DenseList<T> : IDisposable, IEnumerable<T> {
+    public struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
         [StructLayout(LayoutKind.Sequential)]
         internal struct InlineStorage {
             public T Item1, Item2, Item3, Item4;
@@ -329,6 +329,12 @@ namespace Squared.Util {
                     return Storage.Count;
             }
         }
+
+        int ICollection<T>.Count => Count;
+
+        bool ICollection<T>.IsReadOnly => false;
+
+        T IList<T>.this[int index] { get => this[index]; set => this[index] = value; }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (T item) {
@@ -839,6 +845,42 @@ namespace Squared.Util {
 
         IEnumerator IEnumerable.GetEnumerator () {
             return new Enumerator(ref this);
+        }
+
+        int IList<T>.IndexOf (T item) {
+            return IndexOf(item);
+        }
+
+        void IList<T>.Insert (int index, T item) {
+            throw new NotImplementedException();
+        }
+
+        void IList<T>.RemoveAt (int index) {
+            RemoveAt(index);
+        }
+
+        void ICollection<T>.Add (T item) {
+            Add(ref item);
+        }
+
+        void ICollection<T>.Clear () {
+            Clear();
+        }
+
+        bool ICollection<T>.Contains (T item) {
+            return IndexOf(ref item) >= 0;
+        }
+
+        void ICollection<T>.CopyTo (T[] array, int arrayIndex) {
+            throw new NotImplementedException();
+        }
+
+        bool ICollection<T>.Remove (T item) {
+            var index = IndexOf(ref item);
+            if (index < 0)
+                return false;
+            RemoveAt(index);
+            return true;
         }
     }
 

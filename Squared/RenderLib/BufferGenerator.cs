@@ -399,7 +399,7 @@ namespace Squared.Render.Internal {
                 CannotFitInBuffer(currentBufferEntry, additionalVertexCount, additionalIndexCount);
 
             if (allocateNew) {
-                var newBuffer = AllocateSuitablySizedHardwareBuffer(additionalVertexCount, additionalIndexCount);
+                var newBuffer = AllocateSuitablySizedHardwareBuffer(additionalVertexCount, additionalIndexCount, forceExclusiveBuffer);
                 HardwareBufferEntry entry;
 
                 if (!_ReusableHardwareBufferEntries.TryPopFront(out entry)) {
@@ -549,7 +549,7 @@ namespace Squared.Render.Internal {
             }
         }
 
-        private XNABufferPair<TVertex> AllocateSuitablySizedHardwareBuffer (int vertexCount, int indexCount) {
+        private XNABufferPair<TVertex> AllocateSuitablySizedHardwareBuffer (int vertexCount, int indexCount, bool dedicated) {
             XNABufferPair<TVertex> buffer;
 
             lock (_StaticStateLock) {
@@ -568,10 +568,12 @@ namespace Squared.Render.Internal {
                 }
             }
 
-            if (vertexCount < MinVerticesPerHardwareBuffer)
-                vertexCount = MinVerticesPerHardwareBuffer;
-            if (indexCount < MinIndicesPerHardwareBuffer)
-                indexCount = MinIndicesPerHardwareBuffer;
+            if (!dedicated) {
+                if (vertexCount < MinVerticesPerHardwareBuffer)
+                    vertexCount = MinVerticesPerHardwareBuffer;
+                if (indexCount < MinIndicesPerHardwareBuffer)
+                    indexCount = MinIndicesPerHardwareBuffer;
+            }
 
             // We didn't find a suitably large buffer.
             buffer = AllocateHardwareBuffer(vertexCount, indexCount);
@@ -626,7 +628,6 @@ namespace Squared.Render.Internal {
             }
 
             lock (hardwareBuffer.InUseLock) {
-                // FIXME: NoOverwrite should work here, but it causes glitches
                 hardwareBuffer.Vertices.SetData(vertices.Array, vertices.Offset, vertices.Count, SetDataOptions.Discard);
                 hardwareBuffer.Indices.SetData(indices.Array, indices.Offset, indices.Count, SetDataOptions.Discard);
             }

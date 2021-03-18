@@ -39,6 +39,10 @@ namespace Squared.Render {
             _VertexDeclaration = new VertexDeclaration(Elements);
         }
 
+        public override string ToString () {
+            return string.Format("{0},{1}", CornerWeightsAndIndex.X, CornerWeightsAndIndex.Y);
+        }
+
         public VertexDeclaration VertexDeclaration {
             get { return _VertexDeclaration; }
         }
@@ -53,7 +57,7 @@ namespace Squared.Render {
         public Vector4 ScaleOrigin;
         public Color MultiplyColor;
         public Color AddColor;
-        public short WorldSpace, Unused;
+        public short WorldSpace, TexID; // for debugging
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -81,6 +85,10 @@ namespace Squared.Render {
             };
 
             _VertexDeclaration = new VertexDeclaration(Elements);
+        }
+
+        public override string ToString () {
+            return string.Format("tex{4} sr={2} mc={3} tex1r={1} pnr={0}", PositionAndRotation, Texture1Region, ScaleOrigin, MultiplyColor, TexID);
         }
 
         public VertexDeclaration VertexDeclaration {
@@ -280,7 +288,7 @@ namespace Squared.Render {
             public readonly Vector2 Texture2Size, Texture2HalfTexel;
 
             public readonly int LocalVertexOffset;
-            public readonly int VertexCount;
+            public int VertexCount;
 
             public readonly bool Invalid;
 
@@ -547,7 +555,7 @@ namespace Squared.Render {
                 AddColor = call.AddColor,
                 UserData = call.UserData,
                 WorldSpace = ws,
-                Unused = ws
+                TexID = (short)call.Textures.Texture1.Id
             };
             result.PositionAndRotation.X = call.Position.X;
             result.PositionAndRotation.Y = call.Position.Y;
@@ -628,16 +636,22 @@ namespace Squared.Render {
             ref NativeBatch nb, ref CurrentNativeBatchState cnbs,
             bool force, LocalObjectCache<object> textureCache
         ) {
+            var changedTextures = false;
             if (!nb.TextureSet.Equals(ref cnbs.Textures) || force) {
+                changedTextures = true;
                 cnbs.Textures = nb.TextureSet;
                 var tex1 = nb.TextureSet.Texture1;
                 var tex2 = nb.TextureSet.Texture2;
 
+#if !FNA
                 cnbs.Texture1?.SetValue((Texture2D)null);
+#endif
                 if (tex1.IsInitialized)
                     cnbs.Texture1?.SetValue(tex1.GetInstance(textureCache));
 
+#if !FNA
                 cnbs.Texture2?.SetValue((Texture2D)null);
+#endif
                 if (tex2.IsInitialized)
                     cnbs.Texture2?.SetValue(tex2.GetInstance(textureCache));
 
@@ -670,10 +684,12 @@ namespace Squared.Render {
             if (nb.SamplerState != null) {
                 cnbs.SamplerState1 = nb.SamplerState;
                 manager.Device.SamplerStates[0] = cnbs.SamplerState1;
+                result = true;
             }
             if (nb.SamplerState2 != null) {
                 cnbs.SamplerState2 = nb.SamplerState2;
                 manager.Device.SamplerStates[1] = cnbs.SamplerState2;
+                result = true;
             }
 
             return result;
