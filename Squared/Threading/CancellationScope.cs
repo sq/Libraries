@@ -55,7 +55,7 @@ namespace Squared.Threading.AsyncAwait {
             }
 
             public void ThrowIfCanceled () {
-                Scope.ThrowIfCanceled();
+                Scope?.ThrowIfCanceled();
             }
         }
 
@@ -96,7 +96,7 @@ namespace Squared.Threading.AsyncAwait {
             }
 
             public CancellationScope GetResult () {
-                Scope.ThrowIfCanceled();
+                Scope?.ThrowIfCanceled();
                 return Scope;
             }
         }

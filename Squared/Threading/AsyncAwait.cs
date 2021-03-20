@@ -60,6 +60,8 @@ namespace Squared.Threading {
             public readonly bool ThrowOnError;
 
             public FutureAwaiter (Future<TResult> future, bool throwOnError) {
+                if (future == null)
+                    throw new ArgumentNullException(nameof(future));
                 Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
                 HasDisposedValue = false;
@@ -68,6 +70,8 @@ namespace Squared.Threading {
             }
 
             public FutureAwaiter (Future<TResult> future, TResult disposedValue, bool throwOnError) {
+                if (future == null)
+                    throw new ArgumentNullException(nameof(future));
                 Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
                 HasDisposedValue = true;
@@ -107,6 +111,8 @@ namespace Squared.Threading {
             public readonly bool ThrowOnError;
 
             public IFutureAwaiter (IFuture future, bool throwOnError) {
+                if (future == null)
+                    throw new ArgumentNullException(nameof(future));
                 Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
                 HasDisposedValue = false;
@@ -115,6 +121,8 @@ namespace Squared.Threading {
             }
 
             public IFutureAwaiter (IFuture future, object disposedValue, bool throwOnError) {
+                if (future == null)
+                    throw new ArgumentNullException(nameof(future));
                 Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
                 HasDisposedValue = true;
@@ -151,6 +159,8 @@ namespace Squared.Threading {
             public readonly Future<NoneType> Future;
 
             public VoidFutureAwaiter (Future<NoneType> future) {
+                if (future == null)
+                    throw new ArgumentNullException(nameof(future));
                 Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
             }
@@ -167,7 +177,7 @@ namespace Squared.Threading {
             }
 
             public void GetResult () {
-                CancellationScope.Current.ThrowIfCanceled();
+                CancellationScope.Current?.ThrowIfCanceled();
 
                 if (!Future.Disposed) {
                     var @void = Future.Result;

@@ -41,7 +41,7 @@ namespace Squared.Task {
             }
 
             public object GetResult () {
-                CancellationScope.Current.ThrowIfCanceled();
+                CancellationScope.Current?.ThrowIfCanceled();
 
                 return Future.Result;
             }
@@ -71,7 +71,7 @@ namespace Squared.Task {
             }
 
             public T GetResult () {
-                CancellationScope.Current.ThrowIfCanceled();
+                CancellationScope.Current?.ThrowIfCanceled();
 
                 return Future.Result;
             }
@@ -121,7 +121,7 @@ namespace Squared.Task {
             }
 
             public T[] GetResult () {
-                CancellationScope.Current.ThrowIfCanceled();
+                CancellationScope.Current?.ThrowIfCanceled();
 
                 var result = new T[Futures.Length];
                 for (int i = 0; i < result.Length; i++)
