@@ -81,7 +81,7 @@ namespace Squared.Render {
         }
 
         public static implicit operator Texture2D (ColorLUT lut) {
-            return lut.Texture;
+            return lut?.Texture;
         }
 
         public static ColorLUT CreateIdentity (
