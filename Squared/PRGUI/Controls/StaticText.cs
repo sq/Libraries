@@ -645,6 +645,7 @@ namespace Squared.PRGUI.Controls {
 
             bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => true;
             bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => true;
+            bool ICustomTooltipTarget.ShowTooltipWhileFocus => true;
             bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
             bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
 

@@ -91,6 +91,7 @@ namespace Squared.PRGUI.Controls {
         float? ICustomTooltipTarget.TooltipAppearanceDelay => HasCustomTooltipContent ? (float?)null : 0f;
         bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => true;
         bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => HasCustomTooltipContent;
+        bool ICustomTooltipTarget.ShowTooltipWhileFocus => false;
         bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
         bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
 

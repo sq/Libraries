@@ -566,8 +566,13 @@ namespace Squared.PRGUI {
             FirstTooltipHoverTime = null;
         }
 
-        private bool IsTooltipAllowedToAppear (bool leftButtonPressed) {
-            var target = FixatedControl;
+        private Control PickTooltipTarget (bool leftButtonPressed) {
+            if ((Focused as ICustomTooltipTarget)?.ShowTooltipWhileFocus == true)
+                return Focused;
+            return FixatedControl;
+        }
+
+        private bool IsTooltipAllowedToAppear (Control target, bool leftButtonPressed) {
             var cttt = target as ICustomTooltipTarget;
             if (cttt == null)
                 return !leftButtonPressed;
@@ -575,14 +580,16 @@ namespace Squared.PRGUI {
             var result = (leftButtonPressed
                 ? cttt.ShowTooltipWhileMouseIsHeld
                 : cttt.ShowTooltipWhileMouseIsNotHeld);
-            if (FixatedControl == KeyboardSelection)
+            if (target == KeyboardSelection)
                 result |= cttt.ShowTooltipWhileKeyboardFocus;
+            if (target == Focused)
+                result |= cttt.ShowTooltipWhileFocus;
             return result;
         }
 
         private void UpdateTooltip (bool leftButtonPressed) {
-            var target = FixatedControl;
-            if (!IsTooltipAllowedToAppear(leftButtonPressed))
+            var target = PickTooltipTarget(leftButtonPressed);
+            if (!IsTooltipAllowedToAppear(target, leftButtonPressed))
                 return;
 
             var cttt = target as ICustomTooltipTarget;
@@ -649,7 +656,7 @@ namespace Squared.PRGUI {
         }
 
         private void HideTooltipForMouseInput (bool isMouseDown) {
-            var cttt = FixatedControl as ICustomTooltipTarget;
+            var cttt = PickTooltipTarget(isMouseDown) as ICustomTooltipTarget;
             if (cttt != null) {
                 if (!cttt.HideTooltipOnMousePress)
                     return;

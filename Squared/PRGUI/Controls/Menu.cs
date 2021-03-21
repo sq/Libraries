@@ -48,6 +48,7 @@ namespace Squared.PRGUI.Controls {
             !SelectedItem.TooltipContent.Equals(default(AbstractTooltipContent))
                 ? 0f
                 : (float?)null;
+        bool ICustomTooltipTarget.ShowTooltipWhileFocus => false;
         bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => true;
         bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => true;
         bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
