@@ -104,6 +104,7 @@ namespace Squared.Render.Text {
         public Dictionary<string, RichStyle> Styles;
         public Dictionary<string, RichImage> Images;
         public Dictionary<char, KerningAdjustment> KerningAdjustments;
+        public Func<AbstractString, AbstractString> MarkedStringFilter;
 
         public string DefaultStyle;
 
@@ -210,10 +211,14 @@ namespace Squared.Render.Text {
                                 }
                             }
                         } else if (!commandMode) {
-                            var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + bracketed.Length, bracketed);
-                            layoutEngine.Markers.Add(m);
-                            state.MarkedStrings.Add(bracketed);
-                            AppendRange(ref layoutEngine, state.GlyphSource ?? defaultGlyphSource, bracketed, 0, bracketed.Length);
+                            AbstractString astr = bracketed;
+                            astr = (MarkedStringFilter != null) ? MarkedStringFilter(astr) : astr;
+                            if (astr.Length > 0) {
+                                var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + astr.Length, bracketed);
+                                layoutEngine.Markers.Add(m);
+                                state.MarkedStrings.Add(bracketed);
+                                AppendRange(ref layoutEngine, state.GlyphSource ?? defaultGlyphSource, astr, 0, astr.Length);
+                            }
                         } else {
                             var close = (next == '[') ? ']' : ')';
                             layoutEngine.AppendText(state.GlyphSource ?? defaultGlyphSource, "<invalid: $" + next + bracketed + close + ">");

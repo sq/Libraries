@@ -304,6 +304,8 @@ namespace Squared.Render.Text {
         private void ProcessMarkers (ref Bounds bounds, int currentCodepointSize, int? drawCallIndex) {
             if (measureOnly)
                 return;
+            if (suppress || suppressUntilNextLine)
+                return;
 
             var characterIndex1 = currentCharacterIndex - currentCodepointSize + 1;
             var characterIndex2 = currentCharacterIndex;
@@ -424,10 +426,7 @@ namespace Squared.Render.Text {
                     continue;
                 if (!m.Bounds.HasValue)
                     continue;
-                var newBounds = m.Bounds.Value.Translate(adjustment);
-                // HACK: The line height may have changed, so push the top edge of the bounds down appropriately
-                newBounds.TopLeft.Y += (previousLineSpacing - currentLineSpacing);
-                m.Bounds = newBounds;
+                m.Bounds = m.Bounds.Value.Translate(adjustment);
                 Markers[i] = m;
             }
         }

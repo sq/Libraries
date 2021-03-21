@@ -130,6 +130,12 @@ namespace FontTest {
                 RichText = true,
                 HideOverflow = true,
                 RichTextConfiguration = new RichTextConfiguration {
+                    MarkedStringFilter = (astr) => {
+                        if (astr.ToString() == "quick")
+                            return "slow";
+                        else
+                            return astr;
+                    },
                     Styles = new Dictionary<string, RichStyle> {
                         {"quick", new RichStyle { Color = Color.Yellow } },
                         {"brown", new RichStyle { Color = Color.Brown, Scale = 2 } }
