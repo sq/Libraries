@@ -42,7 +42,10 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         protected bool ClipChildren { get; set; } = false;
 
-        bool IControlContainer.ClipChildren => ClipChildren;
+        bool IControlContainer.ClipChildren {
+            get => ClipChildren;
+            set => ClipChildren = value;
+        }
 
         public ControlFlags ContainerFlags { get; set; } =
             ControlFlags.Container_Align_Start | ControlFlags.Container_Row | 

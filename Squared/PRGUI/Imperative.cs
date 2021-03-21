@@ -444,6 +444,11 @@ namespace Squared.PRGUI.Imperative {
                 cast.ContainerFlags = value;
             return this;
         }
+        public ControlBuilder<TControl> SetClipChildren (bool value) {
+            if (Control is IControlContainer cast)
+                cast.ClipChildren = value;
+            return this;
+        }
         public ControlBuilder<TControl> SetScrollable (bool value) {
             if (Control is IScrollableControl cast)
                 cast.Scrollable = value;

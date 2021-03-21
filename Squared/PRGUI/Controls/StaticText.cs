@@ -699,7 +699,11 @@ namespace Squared.PRGUI.Controls {
 
         protected override bool HasChildren => true;
         int IControlContainer.ChildrenToSkipWhenBuilding => 0;
-        bool IControlContainer.ClipChildren => false;
+        bool IControlContainer.ClipChildren {
+            get => false;
+            set {
+            }
+        }
         ControlFlags IControlContainer.ContainerFlags => ControlFlags.Container_Row | ControlFlags.Container_No_Expansion | ControlFlags.Container_Prevent_Crush;
         ControlCollection IControlContainer.Children => Children;
 
