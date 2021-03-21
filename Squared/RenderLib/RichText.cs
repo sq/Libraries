@@ -66,6 +66,27 @@ namespace Squared.Render.Text {
         }
     }
 
+    public struct RichTextLayoutState {
+        public IGlyphSource GlyphSource;
+        public readonly Color? InitialColor;
+        public readonly float InitialScale;
+        public readonly float InitialSpacing;
+
+        public RichTextLayoutState (ref StringLayoutEngine engine) {
+            InitialColor = engine.overrideColor;
+            InitialScale = engine.scale;
+            InitialSpacing = engine.spacing;
+            GlyphSource = null;
+        }
+
+        public void Reset (ref StringLayoutEngine engine) {
+            GlyphSource = null;
+            engine.overrideColor = InitialColor;
+            engine.scale = InitialScale;
+            engine.spacing = InitialSpacing;
+        }
+    }
+
     public struct RichTextConfiguration : IEquatable<RichTextConfiguration> {
         private static readonly Regex RuleRegex = new Regex(@"([\w\-_]+)(?:\s*):(?:\s*)([^;\]]*)(?:;|)", RegexOptions.Compiled);
         private static readonly Dictionary<string, Color?> SystemNamedColorCache = new Dictionary<string, Color?>();
@@ -107,35 +128,32 @@ namespace Squared.Render.Text {
         }
 
         public void Append (
-            ref StringLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, string styleName = null
+            ref StringLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, string styleName
         ) {
-            var initialColor = layoutEngine.overrideColor;
-            var initialScale = layoutEngine.scale;
-            var initialSpacing = layoutEngine.spacing;
-            RichStyle style;
-            RichImage image;
+            var state = new RichTextLayoutState(ref layoutEngine);
             var count = text.Length;
             var currentRangeStart = 0;
-            IGlyphSource glyphSource = null;
+            RichStyle style;
+            RichImage image;
 
             try {
                 styleName = styleName ?? DefaultStyle;
                 if (!string.IsNullOrWhiteSpace(styleName) && Styles.TryGetValue(styleName, out RichStyle defaultStyle))
-                    ApplyStyle(ref layoutEngine, ref glyphSource, initialColor, initialScale, initialSpacing, defaultStyle);
+                    ApplyStyle(ref layoutEngine, ref state, ref defaultStyle);
 
                 for (int i = 0; i < count; i++) {
                     var ch = text[i];
                     var next = (i < count - 2) ? text[i + 1] : '\0';
-                    if ((ch == '$') && (next == '[')) {
-                        AppendRange(ref layoutEngine, glyphSource ?? defaultGlyphSource, text, currentRangeStart, i);
+                    if ((ch == '$') && ((next == '[') || (next == '('))) {
+                        AppendRange(ref layoutEngine, state.GlyphSource ?? defaultGlyphSource, text, currentRangeStart, i);
                         var command = ParseCommand(text, ref i, ref currentRangeStart);
                         if (command == null) {
                             // FIXME: Can this cause an infinite loop?
                             continue;
                         } else if (string.IsNullOrWhiteSpace(command)) {
-                            glyphSource = ResetStyle(ref layoutEngine, initialColor, initialScale, initialSpacing);
+                            state.Reset(ref layoutEngine);
                         } else if ((Styles != null) && command.StartsWith(".") && Styles.TryGetValue(command.Substring(1), out style)) {
-                            ApplyStyle(ref layoutEngine, ref glyphSource, initialColor, initialScale, initialSpacing, style);
+                            ApplyStyle(ref layoutEngine, ref state, ref style);
                         } else if ((Images != null) && Images.TryGetValue(command, out image)) {
                             AppendImage(ref layoutEngine, image);
                         } else if (command.Contains(":")) {
@@ -149,21 +167,21 @@ namespace Squared.Render.Text {
                                 switch (key) {
                                     case "color":
                                     case "c":
-                                        layoutEngine.overrideColor = ParseColor(value) ?? initialColor;
+                                        layoutEngine.overrideColor = ParseColor(value) ?? state.InitialColor;
                                         break;
                                     case "scale":
                                     case "sc":
                                         if (!float.TryParse(value, out float newScale))
-                                            layoutEngine.scale = initialScale;
+                                            layoutEngine.scale = state.InitialScale;
                                         else
-                                            layoutEngine.scale = initialScale * newScale;
+                                            layoutEngine.scale = state.InitialScale * newScale;
                                         break;
                                     case "spacing":
                                     case "sp":
                                         if (!float.TryParse(value, out float newSpacing))
-                                            layoutEngine.spacing = initialSpacing;
+                                            layoutEngine.spacing = state.InitialSpacing;
                                         else
-                                            layoutEngine.spacing = initialSpacing * newSpacing;
+                                            layoutEngine.spacing = state.InitialSpacing * newSpacing;
                                         break;
                                     case "font":
                                     case "glyph-source":
@@ -171,39 +189,30 @@ namespace Squared.Render.Text {
                                     case "gs":
                                     case "f":
                                         if (GlyphSources != null)
-                                            GlyphSources.TryGetValue(value, out glyphSource);
+                                            GlyphSources.TryGetValue(value, out state.GlyphSource);
                                         else
-                                            glyphSource = null;
+                                            state.GlyphSource = null;
                                         break;
                                 }
                             }
                         } else {
-                            layoutEngine.AppendText(glyphSource ?? defaultGlyphSource, "<invalid: $[" + command + "]>");
+                            layoutEngine.AppendText(state.GlyphSource ?? defaultGlyphSource, "<invalid: $[" + command + "]>");
                         }
                     }
                 }
-                AppendRange(ref layoutEngine, glyphSource ?? defaultGlyphSource, text, currentRangeStart, count);
+                AppendRange(ref layoutEngine, state.GlyphSource ?? defaultGlyphSource, text, currentRangeStart, count);
             } finally {
-                ResetStyle(ref layoutEngine, initialColor, initialScale, initialSpacing);
+                state.Reset(ref layoutEngine);
             }
         }
 
-        private static IGlyphSource ResetStyle (ref StringLayoutEngine layoutEngine, Color? initialColor, float initialScale, float initialSpacing) {
-            layoutEngine.overrideColor = initialColor;
-            layoutEngine.scale = initialScale;
-            layoutEngine.spacing = initialSpacing;
-            return null;
-        }
-
         private static void ApplyStyle (
-            ref StringLayoutEngine layoutEngine, ref IGlyphSource glyphSource, 
-            Color? initialColor, float initialScale, float initialSpacing, 
-            RichStyle style
+            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, ref RichStyle style
         ) {
-            glyphSource = style.GlyphSource ?? glyphSource;
-            layoutEngine.overrideColor = style.Color ?? initialColor;
-            layoutEngine.scale = style.Scale * initialScale ?? initialScale;
-            layoutEngine.spacing = style.Spacing ?? initialSpacing;
+            state.GlyphSource = style.GlyphSource ?? state.GlyphSource;
+            layoutEngine.overrideColor = style.Color ?? state.InitialColor;
+            layoutEngine.scale = style.Scale * state.InitialScale ?? state.InitialScale;
+            layoutEngine.spacing = style.Spacing ?? state.InitialSpacing;
         }
 
         private void AppendImage (ref StringLayoutEngine layoutEngine, RichImage image) {
