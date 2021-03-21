@@ -159,22 +159,18 @@ namespace Squared.Game {
             }
         }
 
-        public static Bounds? FromUnion (Bounds lhs, Bounds rhs) {
+        public static Bounds FromUnion (Bounds lhs, Bounds rhs) {
             return FromUnion(ref lhs, ref rhs);
         }
 
-        public static Bounds? FromUnion (ref Bounds lhs, ref Bounds rhs) {
+        public static Bounds FromUnion (ref Bounds lhs, ref Bounds rhs) {
             Vector2 tl = Vector2.Zero, br = Vector2.Zero;
             tl.X = Math.Min(lhs.TopLeft.X, rhs.TopLeft.X);
             tl.Y = Math.Min(lhs.TopLeft.Y, rhs.TopLeft.Y);
             br.X = Math.Max(lhs.BottomRight.X, rhs.BottomRight.X);
             br.Y = Math.Max(lhs.BottomRight.Y, rhs.BottomRight.Y);
 
-            if ((br.X > tl.X) && (br.Y > tl.Y)) {
-                return new Bounds(tl, br);
-            } else {
-                return null;
-            }
+            return new Bounds(tl, br);
         }
 
         public static Bounds FromPoints (params Vector2[] points) {
