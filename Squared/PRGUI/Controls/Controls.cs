@@ -50,6 +50,10 @@ namespace Squared.PRGUI.Controls {
             Height.Maximum = 0;
         }
 
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            return ControlKey.Invalid;
+        }
+
         public override string ToString () {
             return $"FocusProxy ({FocusBeneficiary})";
         }
