@@ -16,9 +16,9 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string TestText =
-            "The $[.quick]quick $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] fox $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[] the lazy dogs" +
-            "\r\nこの体は、無限のチェイサーで出来ていた" +
-            "\r\n\r\nEmpty line before this one";
+            "The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[] the $(lazy) dogs" +
+            "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
+            "\r\n\r\nEmpty line before this one $(marked)";
 
         public string TestText2 =
             "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +
@@ -223,6 +223,10 @@ namespace FontTest {
                 ir.DrawMultiple(layout, material: m, samplerState: RenderStates.Text);
             }
 
+            foreach (var rm in Text.RichMarkers) {
+                if (rm.Bounds.HasValue)
+                    ir.OutlineRectangle(rm.Bounds.Value, Color.Green);
+            }
         }
     }
 

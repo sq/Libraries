@@ -126,10 +126,24 @@ namespace Squared.Render.Text {
             }
         }
 
+        public object Tag;
         public int FirstCharacterIndex, LastCharacterIndex;
         public int? FirstDrawCallIndex, LastDrawCallIndex;
         public int GlyphCount;
         public Bounds? Bounds;
+
+        public LayoutMarker (int firstIndex, int lastIndex, object tag = null) {
+            FirstCharacterIndex = firstIndex;
+            LastCharacterIndex = lastIndex;
+            Tag = tag;
+            FirstDrawCallIndex = LastDrawCallIndex = null;
+            GlyphCount = 0;
+            Bounds = null;
+        }
+
+        public override string ToString () {
+            return $"{Tag ?? "marker"} [{FirstCharacterIndex} - {LastCharacterIndex}] -> [{FirstDrawCallIndex} - {LastDrawCallIndex}] {Bounds}";
+        }
     }
 
     public struct LayoutHitTest {
@@ -144,12 +158,20 @@ namespace Squared.Render.Text {
             }
         }
 
+        public object Tag;
         public Vector2 Position;
         public int? FirstCharacterIndex, LastCharacterIndex;
         public bool LeaningRight;
 
+        public LayoutHitTest (Vector2 position, object tag = null) {
+            Position = position;
+            Tag = tag;
+            FirstCharacterIndex = LastCharacterIndex = null;
+            LeaningRight = false;
+        }
+
         public override string ToString () {
-            return $"hitTest {Position} -> {FirstCharacterIndex} leaning {(LeaningRight ? "right" : "left")}";
+            return $"{Tag ?? "hitTest"} {Position} -> {FirstCharacterIndex} leaning {(LeaningRight ? "right" : "left")}";
         }
     }
 
@@ -204,7 +226,8 @@ namespace Squared.Render.Text {
         public int     drawCallsWritten, drawCallsSuppressed;
         float          initialLineXOffset;
         int            bufferWritePosition, wordStartWritePosition, baselineAdjustmentStart;
-        int            rowIndex, colIndex;
+        public int     rowIndex { get; private set; }
+        public int     colIndex { get; private set; }
         bool           wordWrapSuppressed;
         float          currentLineMaxX, currentLineMaxXUnconstrained;
         float          currentLineWhitespaceMaxXLeft, currentLineWhitespaceMaxX;
@@ -217,7 +240,7 @@ namespace Squared.Render.Text {
         private AbstractTextureReference lastUsedTexture;
         private DenseList<AbstractTextureReference> usedTextures;
 
-        int currentCharacterIndex;
+        public int currentCharacterIndex { get; private set; }
 
         private bool IsInitialized;
 

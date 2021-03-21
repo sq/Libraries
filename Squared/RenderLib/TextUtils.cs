@@ -50,8 +50,9 @@ namespace Squared.Render.Text {
         private char? _ReplacementCharacter = null;
         private uint[] _WordWrapCharacters = null;
 
-        private Dictionary<Pair<int>, LayoutMarker> _Markers = null; // = new Dictionary<Pair<int>, LayoutMarker>();
-        private Dictionary<Vector2, LayoutHitTest> _HitTests = null; // = new Dictionary<Vector2, LayoutHitTest>();
+        private Dictionary<Pair<int>, LayoutMarker> _Markers = null;
+        private Dictionary<Vector2, LayoutHitTest> _HitTests = null;
+        private List<LayoutMarker> _RichMarkers = null;
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _GlyphSource = new SpriteFontGlyphSource(font);
@@ -94,10 +95,7 @@ namespace Squared.Render.Text {
 
             LayoutMarker result;
             if (!m.TryGetValue(key, out result)) {
-                m[key] = new LayoutMarker {
-                    FirstCharacterIndex = characterIndex,
-                    LastCharacterIndex = characterIndex
-                };
+                m[key] = new LayoutMarker(characterIndex, characterIndex);
                 Invalidate();
                 return null;
             }
@@ -114,10 +112,7 @@ namespace Squared.Render.Text {
 
             LayoutMarker result;
             if (!m.TryGetValue(key, out result)) {
-                m[key] = new LayoutMarker {
-                    FirstCharacterIndex = firstCharacterIndex,
-                    LastCharacterIndex = lastCharacterIndex
-                };
+                m[key] = new LayoutMarker(firstCharacterIndex, lastCharacterIndex);
                 Invalidate();
                 return null;
             }
@@ -139,10 +134,12 @@ namespace Squared.Render.Text {
 
         private static readonly Dictionary<Pair<int>, LayoutMarker> EmptyMarkers = new Dictionary<Pair<int>, LayoutMarker>();
         private static readonly Dictionary<Vector2, LayoutHitTest> EmptyHitTests = new Dictionary<Vector2, LayoutHitTest>();
+        private static readonly List<LayoutMarker> EmptyRichMarkers = new List<LayoutMarker>();
 
         // FIXME: Garbage
         public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Markers ?? EmptyMarkers;
         public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _HitTests ?? EmptyHitTests;
+        public IReadOnlyList<LayoutMarker> RichMarkers => _RichMarkers ?? EmptyRichMarkers;
 
         public LayoutHitTest? HitTest (Vector2 position) {
             var ht = GetHitTests();
@@ -623,14 +620,18 @@ namespace Squared.Render.Text {
                     throw new InvalidOperationException("Buffer too small");
 
                 StringLayoutEngine le;
+                var rls = default(RichTextLayoutState);
                 MakeLayoutEngine(out le);
+                if (_RichMarkers != null)
+                    _RichMarkers.Clear();
 
                 try {
                     le.Initialize();
                     if (_RichText) {
                         var ka = _RichTextConfiguration.KerningAdjustments;
                         _RichTextConfiguration.KerningAdjustments = _KerningAdjustments ?? ka;
-                        _RichTextConfiguration.Append(ref le, _GlyphSource, _Text, _StyleName);
+                        rls = new RichTextLayoutState(ref le);
+                        _RichTextConfiguration.Append(ref le, ref rls, _GlyphSource, _Text, _StyleName);
                         _RichTextConfiguration.KerningAdjustments = ka;
                     } else
                         le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
@@ -640,8 +641,14 @@ namespace Squared.Render.Text {
 
                     if (le.Markers.Count > 0) {
                         var m = GetMarkers();
-                        foreach (var kvp in le.Markers)
+                        foreach (var kvp in le.Markers) {
                             m[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp;
+                            if ((rls.MarkedStrings.Count > 0) && (kvp.Tag != null)) {
+                                if (_RichMarkers == null)
+                                    _RichMarkers = new List<LayoutMarker>();
+                                _RichMarkers.Add(kvp);
+                            }
+                        }
                     }
                     if (le.HitTests.Count > 0) {
                         var ht = GetHitTests();

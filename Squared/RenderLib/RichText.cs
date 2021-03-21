@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.Render.Text {
@@ -71,12 +72,18 @@ namespace Squared.Render.Text {
         public readonly Color? InitialColor;
         public readonly float InitialScale;
         public readonly float InitialSpacing;
+        public DenseList<string> MarkedStrings;
 
         public RichTextLayoutState (ref StringLayoutEngine engine) {
             InitialColor = engine.overrideColor;
             InitialScale = engine.scale;
             InitialSpacing = engine.spacing;
             GlyphSource = null;
+            MarkedStrings = default(DenseList<string>);
+        }
+
+        public void GetMarkedString (ref StringLayoutEngine engine, string text) {
+            throw new NotImplementedException();
         }
 
         public void Reset (ref StringLayoutEngine engine) {
@@ -131,6 +138,12 @@ namespace Squared.Render.Text {
             ref StringLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, string styleName
         ) {
             var state = new RichTextLayoutState(ref layoutEngine);
+            Append(ref layoutEngine, ref state, defaultGlyphSource, text, styleName);
+        }
+
+        public void Append (
+            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, IGlyphSource defaultGlyphSource, AbstractString text, string styleName
+        ) {
             var count = text.Length;
             var currentRangeStart = 0;
             RichStyle style;
@@ -146,18 +159,19 @@ namespace Squared.Render.Text {
                     var next = (i < count - 2) ? text[i + 1] : '\0';
                     if ((ch == '$') && ((next == '[') || (next == '('))) {
                         AppendRange(ref layoutEngine, state.GlyphSource ?? defaultGlyphSource, text, currentRangeStart, i);
-                        var command = ParseCommand(text, ref i, ref currentRangeStart);
-                        if (command == null) {
+                        var bracketed = ParseBracketedText(text, ref i, ref currentRangeStart);
+                        var commandMode = next == '[';
+                        if (bracketed == null) {
                             // FIXME: Can this cause an infinite loop?
                             continue;
-                        } else if (string.IsNullOrWhiteSpace(command)) {
+                        } else if (commandMode && string.IsNullOrWhiteSpace(bracketed)) {
                             state.Reset(ref layoutEngine);
-                        } else if ((Styles != null) && command.StartsWith(".") && Styles.TryGetValue(command.Substring(1), out style)) {
+                        } else if (commandMode && (Styles != null) && bracketed.StartsWith(".") && Styles.TryGetValue(bracketed.Substring(1), out style)) {
                             ApplyStyle(ref layoutEngine, ref state, ref style);
-                        } else if ((Images != null) && Images.TryGetValue(command, out image)) {
+                        } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
                             AppendImage(ref layoutEngine, image);
-                        } else if (command.Contains(":")) {
-                            foreach (var _match in RuleRegex.Matches(command)) {
+                        } else if (commandMode && bracketed.Contains(":")) {
+                            foreach (var _match in RuleRegex.Matches(bracketed)) {
                                 var match = (Match)_match;
                                 if (!match.Success)
                                     continue;
@@ -195,8 +209,14 @@ namespace Squared.Render.Text {
                                         break;
                                 }
                             }
+                        } else if (!commandMode) {
+                            var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + bracketed.Length, bracketed);
+                            layoutEngine.Markers.Add(m);
+                            state.MarkedStrings.Add(bracketed);
+                            AppendRange(ref layoutEngine, state.GlyphSource ?? defaultGlyphSource, bracketed, 0, bracketed.Length);
                         } else {
-                            layoutEngine.AppendText(state.GlyphSource ?? defaultGlyphSource, "<invalid: $[" + command + "]>");
+                            var close = (next == '[') ? ']' : ')';
+                            layoutEngine.AppendText(state.GlyphSource ?? defaultGlyphSource, "<invalid: $" + next + bracketed + close + ">");
                         }
                     }
                 }
@@ -233,20 +253,21 @@ namespace Squared.Render.Text {
             layoutEngine.AppendText(glyphSource, text, KerningAdjustments, start: rangeStart, end: rangeEnd);
         }
 
-        private string ParseCommand (AbstractString text, ref int i, ref int currentRangeStart) {
+        private string ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart) {
             var count = text.Length;
             var start = i + 2;
             i = start;
             while (i < count) {
                 var ch = text[i];
                 switch (ch) {
+                    case ')':
                     case ']':
-                        i++;
-                        currentRangeStart = i;
-                        return text.Substring(start, i - start - 1);
+                        currentRangeStart = i + 1;
+                        return text.Substring(start, i - start);
                     case '\"':
                     case '\'':
                     case '$':
+                    case '(':
                     case '[': {
                         i = start;
                         return null;
