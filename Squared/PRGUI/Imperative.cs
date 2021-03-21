@@ -430,23 +430,18 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> ClearContainerFlags (ControlFlags value) {
-            if (Control is IControlContainer cast)
+            if (Control is ContainerBase cast)
                 cast.ContainerFlags &= ~value;
             return this;
         }
         public ControlBuilder<TControl> AddContainerFlags (ControlFlags value) {
-            if (Control is IControlContainer cast)
+            if (Control is ContainerBase cast)
                 cast.ContainerFlags |= value;
             return this;
         }
         public ControlBuilder<TControl> SetContainerFlags (ControlFlags value) {
-            if (Control is IControlContainer cast)
+            if (Control is ContainerBase cast)
                 cast.ContainerFlags = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetClipChildren (bool value) {
-            if (Control is IControlContainer cast)
-                cast.ClipChildren = value;
             return this;
         }
         public ControlBuilder<TControl> SetScrollable (bool value) {

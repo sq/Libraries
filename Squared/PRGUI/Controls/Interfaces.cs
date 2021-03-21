@@ -72,8 +72,8 @@ namespace Squared.PRGUI {
 
     public interface IControlContainer {
         int ChildrenToSkipWhenBuilding { get; }
-        bool ClipChildren { get; set; }
-        ControlFlags ContainerFlags { get; set; }
+        bool ClipChildren { get; }
+        ControlFlags ContainerFlags { get; }
         ControlCollection Children { get; }
         /// <summary>
         /// Invoked to notify a container that one of its descendants (either a direct child or

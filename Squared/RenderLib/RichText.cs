@@ -218,7 +218,7 @@ namespace Squared.Render.Text {
                             if (MarkedStringProcessor != null)
                                 ok = MarkedStringProcessor(ref astr, ref markedState, ref layoutEngine);
                             if (ok) {
-                                var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + astr.Length, bracketed);
+                                var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + astr.Length - 1, bracketed);
                                 layoutEngine.Markers.Add(m);
                                 state.MarkedStrings.Add(bracketed);
                                 AppendRange(ref layoutEngine, markedState.GlyphSource ?? defaultGlyphSource, astr, 0, astr.Length);

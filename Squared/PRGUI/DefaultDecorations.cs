@@ -93,6 +93,7 @@ namespace Squared.PRGUI {
         public IDecorator Tab { get; set; }
         public IDecorator TabPage { get; set; }
         public IDecorator Canvas { get; set; }
+        public IDecorator HyperTextHotspot { get; set; }
 
         public float AnimationDurationMultiplier { get; set; }
 
@@ -423,6 +424,10 @@ namespace Squared.PRGUI {
 
             VirtualCursorAnchor = new DelegateDecorator {
                 Above = VirtualCursorAnchor_Above
+            };
+
+            HyperTextHotspot = new DelegateDecorator {
+                Below = None_Below
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {

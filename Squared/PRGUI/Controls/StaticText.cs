@@ -416,7 +416,6 @@ namespace Squared.PRGUI.Controls {
 
             Vector2 textOffset = Vector2.Zero, textScale = Vector2.One;
             decorations?.GetContentAdjustment(context, settings.State, out textOffset, out textScale);
-            textOffset += ca;
 
             UpdateLineBreak(context, decorations);
 
@@ -443,15 +442,15 @@ namespace Squared.PRGUI.Controls {
                 case HorizontalAlignment.Left:
                     break;
                 case HorizontalAlignment.Center:
-                    textOffset.X = ca.X + (xSpace / 2f);
+                    textOffset.X += (xSpace / 2f);
                     break;
                 case HorizontalAlignment.Right:
-                    textOffset.X = ca.X + xSpace;
+                    textOffset.X += xSpace;
                     break;
             }
 
             if (VisualizeLayout) {
-                renderer.RasterizeRectangle(textOffset, textOffset + layout.Size * textScale, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue);
+                renderer.RasterizeRectangle(textOffset + ca, textOffset + ca + layout.Size * textScale, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue);
                 var la = ca + new Vector2(Content.LineBreakAtX ?? 0, 0);
                 var lb = new Vector2(ca.X, cb.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
                 renderer.RasterizeLineSegment(la, lb, 1f, Color.Green);
@@ -474,7 +473,7 @@ namespace Squared.PRGUI.Controls {
             var multiplyOpacity = (opacity < 1) ? opacity : (float?)null;
 
             renderer.DrawMultiple(
-                segment, offset: textOffset.Floor(),
+                segment, offset: (textOffset + ca).Floor(),
                 material: material, samplerState: RenderStates.Text,
                 scale: textScale, multiplyColor: overrideColor?.ToColor(),
                 multiplyOpacity: multiplyOpacity 
@@ -625,9 +624,71 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public class HyperText : StaticText { //, IControlContainer {
-        public IDecorator MarkerDecorator;
-        private LayoutMarker _HoveringMarkedString;
+    public class HyperText : StaticText, IControlContainer {
+        public class Hotspot : Control, ICustomTooltipTarget {
+            public string String;
+
+            public Hotspot ()
+                : base () {
+                LayoutFlags = ControlFlags.Layout_Floating;
+                AcceptsFocus = true;
+                AcceptsMouseInput = true;
+                AcceptsTextInput = false;
+            }
+
+            internal void SetAcceptsFocus (bool value) {
+                AcceptsFocus = value;
+            }
+
+            float? ICustomTooltipTarget.TooltipAppearanceDelay => 0f;
+            float? ICustomTooltipTarget.TooltipDisappearDelay => null;
+
+            bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => true;
+            bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => true;
+            bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
+            bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
+
+            public HyperText Parent {
+                get {
+                    TryGetParent(out Control parent);
+                    return (HyperText)parent;
+                }
+            }
+
+            AbstractTooltipContent ICustomTooltipTarget.GetContent () {
+                return String;
+            }
+
+            protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
+                return provider.HyperTextHotspot;
+            }
+
+            protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+                return base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            }
+
+            protected override bool OnEvent<T> (string name, T args) {
+                if (name == UIEvents.Click)
+                    Context.FireEvent("HotspotClick", Parent, this);
+
+                return base.OnEvent(name, args);
+            }
+        }
+
+        public bool HotspotsAcceptFocus = true;
+        public ControlAppearance HotspotAppearance = new ControlAppearance {
+            SuppressDecorationMargins = true,
+            SuppressDecorationScaling = true,
+            AutoScaleMetrics = false
+        };
+        private ControlCollection _Children;
+        protected ControlCollection Children {
+            get {
+                if (_Children == null)
+                    _Children = new ControlCollection(this, Context);
+                return _Children;
+            }
+        }
 
         public HyperText ()
             : base () {
@@ -636,30 +697,94 @@ namespace Squared.PRGUI.Controls {
             RichText = true;
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
-            if (RichText && (Content.RichMarkers.Count > 0)) {
-                _HoveringMarkedString = default(LayoutMarker);
-                var rm = Content.RichMarkers;
-                var relativeMousePos = context.MousePosition - _LastDrawOffset;
-                foreach (var m in rm) {
-                    if (!m.Bounds.HasValue)
-                        continue;
-                    // FIXME: Scale
-                    var b = m.Bounds.Value;
-                    var isMouseOver = b.Contains(relativeMousePos);
-                    if (MarkerDecorator != null) {
-                        var subSettings = settings;
-                        subSettings.Box = subSettings.ContentBox = (RectF)(b.Translate(_LastDrawOffset));
-                        subSettings.State = isMouseOver ? ControlStates.Hovering : default(ControlStates);
-                        MarkerDecorator.Rasterize(context, ref renderer, subSettings);
+        protected override bool HasChildren => true;
+        int IControlContainer.ChildrenToSkipWhenBuilding => 0;
+        bool IControlContainer.ClipChildren => false;
+        ControlFlags IControlContainer.ContainerFlags => ControlFlags.Container_Row | ControlFlags.Container_No_Expansion | ControlFlags.Container_Prevent_Crush;
+        ControlCollection IControlContainer.Children => Children;
+
+        void IControlContainer.DescendantReceivedFocus (Control descendant, bool isUserInitiated) {
+        }
+
+        bool IControlContainer.IsControlHidden (Control child) {
+            return false;
+        }
+
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            var rm = Content.RichMarkers;
+            var children = Children;
+
+            if (!existingKey.HasValue) {
+                if (Content.IsValid) {
+                    int numHotspots = rm.Count;
+                    while (children.Count > numHotspots)
+                        children.RemoveAt(children.Count - 1);
+                    while (children.Count < numHotspots)
+                        children.Add(new Hotspot());
+
+                    for (int i = 0; i < rm.Count; i++) {
+                        var m = Content.RichMarkers[i];
+                        var hs = (Hotspot)children[i];
+                        hs.String = (string)m.Tag;
+                        if (!m.Bounds.HasValue) {
+                            hs.Visible = false;
+                            hs.Enabled = false;
+                        } else {
+                            hs.Visible = true;
+                            hs.Enabled = true;
+                            hs.Appearance = HotspotAppearance;
+                            var b = m.Bounds.Value;
+                            hs.Layout.FloatingPosition = b.TopLeft + _LastDrawOffset;
+                            hs.Width.Fixed = b.Size.X;
+                            hs.Height.Fixed = b.Size.Y;
+                            hs.SetAcceptsFocus(HotspotsAcceptFocus);
+                        }
                     }
-                    if (isMouseOver)
-                        _HoveringMarkedString = m;
                 }
-            } else {
-                _HoveringMarkedString = default(LayoutMarker);
             }
+
+            for (int i = 0; i < rm.Count; i++) {
+                var child = children[i];
+                var childExistingKey = (ControlKey?)null;
+                if ((existingKey.HasValue) && !child.LayoutKey.IsInvalid)
+                    childExistingKey = child.LayoutKey;
+                child.GenerateLayoutTree(ref context, result, childExistingKey);
+            }
+
+            return result;
+        }
+
+        protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
+            foreach (var child in Children)
+                child.Rasterize(ref context, ref passSet, 1);
+        }
+
+        protected bool HitTestChildren (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+            var sorted = Children.InDisplayOrder(Context.FrameIndex);
+            for (int i = sorted.Count - 1; i >= 0; i--) {
+                var item = sorted[i];
+                var newResult = item.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible);
+                if (newResult != null) {
+                    result = newResult;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+            bool success = base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+            success |= HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+            return success;
+        }
+
+        protected override void OnDisplayOffsetChanged () {
+            var ado = AbsoluteDisplayOffset;
+            var children = Children;
+            foreach (var child in children)
+                child.AbsoluteDisplayOffset = ado;
         }
     }
 }
