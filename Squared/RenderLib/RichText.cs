@@ -82,10 +82,6 @@ namespace Squared.Render.Text {
             MarkedStrings = default(DenseList<string>);
         }
 
-        public void GetMarkedString (ref StringLayoutEngine engine, string text) {
-            throw new NotImplementedException();
-        }
-
         public void Reset (ref StringLayoutEngine engine) {
             GlyphSource = null;
             engine.overrideColor = InitialColor;
@@ -93,6 +89,8 @@ namespace Squared.Render.Text {
             engine.spacing = InitialSpacing;
         }
     }
+
+    public delegate bool MarkedStringProcessor (ref AbstractString text, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
 
     public struct RichTextConfiguration : IEquatable<RichTextConfiguration> {
         private static readonly Regex RuleRegex = new Regex(@"([\w\-_]+)(?:\s*):(?:\s*)([^;\]]*)(?:;|)", RegexOptions.Compiled);
@@ -104,7 +102,7 @@ namespace Squared.Render.Text {
         public Dictionary<string, RichStyle> Styles;
         public Dictionary<string, RichImage> Images;
         public Dictionary<char, KerningAdjustment> KerningAdjustments;
-        public Func<AbstractString, AbstractString> MarkedStringFilter;
+        public MarkedStringProcessor MarkedStringProcessor;
 
         public string DefaultStyle;
 
@@ -212,13 +210,21 @@ namespace Squared.Render.Text {
                             }
                         } else if (!commandMode) {
                             AbstractString astr = bracketed;
-                            astr = (MarkedStringFilter != null) ? MarkedStringFilter(astr) : astr;
-                            if (astr.Length > 0) {
+                            var ok = true;
+                            // HACK: The string processor may mess with layout state, so we want to restore it after
+                            var markedState = new RichTextLayoutState(ref layoutEngine) {
+                                GlyphSource = state.GlyphSource
+                            };
+                            if (MarkedStringProcessor != null)
+                                ok = MarkedStringProcessor(ref astr, ref markedState, ref layoutEngine);
+                            if (ok) {
                                 var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + astr.Length, bracketed);
                                 layoutEngine.Markers.Add(m);
                                 state.MarkedStrings.Add(bracketed);
-                                AppendRange(ref layoutEngine, state.GlyphSource ?? defaultGlyphSource, astr, 0, astr.Length);
+                                AppendRange(ref layoutEngine, markedState.GlyphSource ?? defaultGlyphSource, astr, 0, astr.Length);
                             }
+                            if (MarkedStringProcessor != null)
+                                markedState.Reset(ref layoutEngine);
                         } else {
                             var close = (next == '[') ? ']' : ')';
                             layoutEngine.AppendText(state.GlyphSource ?? defaultGlyphSource, "<invalid: $" + next + bracketed + close + ">");

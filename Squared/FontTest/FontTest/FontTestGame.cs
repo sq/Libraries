@@ -10,6 +10,7 @@ using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
 using Squared.Util;
+using Squared.Util.Text;
 
 namespace FontTest {
     public class FontTestGame : MultithreadedGame {
@@ -130,12 +131,7 @@ namespace FontTest {
                 RichText = true,
                 HideOverflow = true,
                 RichTextConfiguration = new RichTextConfiguration {
-                    MarkedStringFilter = (astr) => {
-                        if (astr.ToString() == "quick")
-                            return "slow";
-                        else
-                            return astr;
-                    },
+                    MarkedStringProcessor = ProcessMarkedString,
                     Styles = new Dictionary<string, RichStyle> {
                         {"quick", new RichStyle { Color = Color.Yellow } },
                         {"brown", new RichStyle { Color = Color.Brown, Scale = 2 } }
@@ -153,6 +149,14 @@ namespace FontTest {
                 Scale = TextScale,
                 ReverseOrder = true
             };
+        }
+
+        private bool ProcessMarkedString (ref AbstractString text, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
+            if (text.TextEquals("quick")) {
+                layoutEngine.overrideColor = Color.GreenYellow;
+                text = "slow";
+            }
+            return true;
         }
 
         protected override void Update (GameTime gameTime) {
@@ -213,9 +217,10 @@ namespace FontTest {
 
             foreach (var rm in Text.RichMarkers) {
                 // Console.WriteLine(rm);
-                for (int i = rm.FirstDrawCallIndex ?? 999999; i <= (rm.LastDrawCallIndex ?? -1); i++) {
-                    layout.DrawCalls.Array[layout.DrawCalls.Offset + i].Color = Color.Purple;
-                }
+                if (!rm.FirstDrawCallIndex.HasValue)
+                    continue;
+                layout.DrawCalls.Array[layout.DrawCalls.Offset + rm.FirstDrawCallIndex.Value].Color = Color.Purple;
+                layout.DrawCalls.Array[layout.DrawCalls.Offset + rm.LastDrawCallIndex.Value].Color = Color.Purple;
             }
 
             if (ShowOutlines.Value)
