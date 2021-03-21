@@ -331,6 +331,23 @@ namespace Squared.Render.Text {
                     var yOffset = newBaseline - currentBaseline;
                     for (int i = baselineAdjustmentStart; i < bufferWritePosition; i++)
                         buffer.Array[buffer.Offset + i].Position.Y += yOffset;
+
+                    if (!measureOnly) {
+                        for (int i = 0; i < Markers.Count; i++) {
+                            var m = Markers[i];
+                            if (!m.Bounds.HasValue)
+                                continue;
+                            if (m.FirstCharacterIndex > bufferWritePosition)
+                                continue;
+                            if (m.LastCharacterIndex < baselineAdjustmentStart)
+                                continue;
+                            var b = m.Bounds.Value;
+                            b.TopLeft.Y += yOffset;
+                            b.BottomRight.Y += yOffset;
+                            m.Bounds = b;
+                            Markers[i] = m;
+                        }
+                    }
                 }
                 currentBaseline = newBaseline;
                 baselineAdjustmentStart = bufferWritePosition;
@@ -584,7 +601,6 @@ namespace Squared.Render.Text {
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
                     suppress = true;
 
-                var stringOffset = i;
                 char ch1 = text[i],
                     ch2 = i < (text.Length - 1)
                         ? text[i + 1]
@@ -602,7 +618,6 @@ namespace Squared.Render.Text {
                         ch1 = ch2;
                         i++;
                         currentCharacterIndex++;
-                        stringOffset++;
                     }
                 }
 
@@ -802,7 +817,7 @@ namespace Squared.Render.Text {
 
                 if (!suppress && !suppressUntilNextLine)
                     lastCharacterBounds = Bounds.FromPositionAndSize(
-                        characterOffset, scaledGlyphSize
+                        actualPosition + characterOffset + new Vector2(0, yOffset), scaledGlyphSize
                     );
 
                 var testBounds = lastCharacterBounds;
@@ -925,6 +940,33 @@ namespace Squared.Render.Text {
             FisherYates.Shuffle(rng, result);
         }
 
+        private void FinishProcessingMarkers (ArraySegment<BitmapDrawCall> result) {
+            if (measureOnly)
+                return;
+
+            /*
+
+            for (int i = 0; i < Markers.Count; i++) {
+                var m = Markers[i];
+                if ((m.FirstDrawCallIndex == null) || (m.LastDrawCallIndex == null)) {
+                    m.Bounds = null;
+                    continue;
+                } else {
+                    Bounds? newBounds = null;
+                    for (int j = m.FirstDrawCallIndex.Value; j <= m.LastDrawCallIndex.Value; j++) {
+                        var b = result.Array[result.Offset + j].EstimateDrawBounds();
+                        if (newBounds.HasValue)
+                            newBounds = Bounds.FromUnion(newBounds.Value, b) ?? newBounds;
+                        else
+                            newBounds = b;
+                    }
+                    m.Bounds = newBounds;
+                }
+                Markers[i] = m;
+            }
+            */
+        }
+
         public StringLayout Finish () {
             var result = default(ArraySegment<BitmapDrawCall>);
             if (!measureOnly) {
@@ -959,6 +1001,8 @@ namespace Squared.Render.Text {
             // FIXME: Index of last draw call?
             // FIXME: Codepoint size?
             ProcessMarkers(ref endpointBounds, 1, null);
+
+            FinishProcessingMarkers(result);
 
             return new StringLayout(
                 position.GetValueOrDefault(), 

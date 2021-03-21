@@ -200,6 +200,12 @@ namespace FontTest {
 
             var layout = Text.Get();
 
+            foreach (var rm in Text.RichMarkers) {
+                for (int i = rm.FirstDrawCallIndex ?? 999999; i <= (rm.LastDrawCallIndex ?? -1); i++) {
+                    layout.DrawCalls.Array[layout.DrawCalls.Offset + i].Color = Color.Purple;
+                }
+            }
+
             if (ShowOutlines.Value)
             foreach (var dc in layout.DrawCalls)
                 ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
