@@ -162,10 +162,15 @@ namespace FontTest {
                 return;
 
             var ms = Mouse.GetState();
-            if (ms.LeftButton == ButtonState.Pressed)
-                BottomRight = new Vector2(ms.X, ms.Y);
-            else if (ms.RightButton == ButtonState.Pressed)
-                TopLeft = new Vector2(ms.X, ms.Y);
+            var mousePos = new Vector2(ms.X, ms.Y);
+            if (
+                (mousePos.X >= 0) && (mousePos.Y >= 0)
+            ) {
+                if (ms.LeftButton == ButtonState.Pressed)
+                    BottomRight = mousePos;
+                else if (ms.RightButton == ButtonState.Pressed)
+                    TopLeft = mousePos;
+            }
 
             var ks = Keyboard.GetState();
             Alignment.Update(ref ks);

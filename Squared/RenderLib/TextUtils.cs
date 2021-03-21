@@ -504,6 +504,8 @@ namespace Squared.Render.Text {
         public void Invalidate () {
             // Hey, you're the boss
             _CachedStringLayout = null;
+            if (_RichMarkers != null)
+                _RichMarkers.Clear();
         }
 
         /// <summary>
@@ -644,11 +646,12 @@ namespace Squared.Render.Text {
                     if (le.Markers.Count > 0) {
                         var m = GetMarkers();
                         foreach (var kvp in le.Markers) {
-                            m[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp;
                             if ((rls.MarkedStrings.Count > 0) && (kvp.Tag != null)) {
                                 if (_RichMarkers == null)
                                     _RichMarkers = new List<LayoutMarker>();
                                 _RichMarkers.Add(kvp);
+                            } else {
+                                m[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp;
                             }
                         }
                     }
