@@ -118,10 +118,10 @@ namespace Squared.PRGUI {
 
             // Attempt to auto-shift focus as long as our parent chain is focusable
             if (!Control.IsRecursivelyTransparent(control, includeSelf: false))
-                idealNewTarget = PickFocusableSiblingForRotation(control, 1, false, out bool temp);
-            else
-                // Auto-shifting failed, so try to return to the most recently focused control
-                idealNewTarget = PreviousFocused ?? PreviousTopLevelFocused;
+                idealNewTarget = idealNewTarget ?? PickFocusableSiblingForRotation(control, 1, false, out bool temp);
+
+            // Auto-shifting failed, so try to return to the most recently focused control
+            idealNewTarget = idealNewTarget ?? PreviousFocused ?? PreviousTopLevelFocused;
 
             return idealNewTarget;
         }

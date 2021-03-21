@@ -656,7 +656,10 @@ namespace Squared.PRGUI.Controls {
             }
 
             AbstractTooltipContent ICustomTooltipTarget.GetContent () {
-                return String;
+                if (Parent.GetTooltipForString != null)
+                    return Parent.GetTooltipForString(String);
+                else
+                    return default(AbstractTooltipContent);
             }
 
             protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
@@ -674,6 +677,8 @@ namespace Squared.PRGUI.Controls {
                 return base.OnEvent(name, args);
             }
         }
+
+        public Func<string, AbstractTooltipContent> GetTooltipForString;
 
         public bool HotspotsAcceptFocus = true;
         public ControlAppearance HotspotAppearance = new ControlAppearance {
@@ -701,8 +706,7 @@ namespace Squared.PRGUI.Controls {
         int IControlContainer.ChildrenToSkipWhenBuilding => 0;
         bool IControlContainer.ClipChildren {
             get => false;
-            set {
-            }
+            set { }
         }
         ControlFlags IControlContainer.ContainerFlags => ControlFlags.Container_Row | ControlFlags.Container_No_Expansion | ControlFlags.Container_Prevent_Crush;
         ControlCollection IControlContainer.Children => Children;
