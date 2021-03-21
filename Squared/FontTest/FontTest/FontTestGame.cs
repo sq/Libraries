@@ -198,9 +198,11 @@ namespace FontTest {
 
             ir.OutlineRectangle(new Bounds(TopLeft, BottomRight), Color.Red);
 
+            Text.ReverseOrder = false;
             var layout = Text.Get();
 
             foreach (var rm in Text.RichMarkers) {
+                // Console.WriteLine(rm);
                 for (int i = rm.FirstDrawCallIndex ?? 999999; i <= (rm.LastDrawCallIndex ?? -1); i++) {
                     layout.DrawCalls.Array[layout.DrawCalls.Offset + i].Color = Color.Purple;
                 }

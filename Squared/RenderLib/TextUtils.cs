@@ -619,6 +619,8 @@ namespace Squared.Render.Text {
                 if (_Buffer.Count < capacity)
                     throw new InvalidOperationException("Buffer too small");
 
+                Array.Clear(_Buffer.Array, _Buffer.Offset, _Buffer.Count);
+
                 StringLayoutEngine le;
                 var rls = default(RichTextLayoutState);
                 MakeLayoutEngine(out le);

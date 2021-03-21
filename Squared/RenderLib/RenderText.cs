@@ -378,13 +378,17 @@ namespace Squared.Render.Text {
             var yOffset = -previousBaseline + previousLineSpacing + currentBaseline;
 
             var suppressedByLineLimit = lineLimit.HasValue && (lineLimit.Value <= 0);
+            var adjustment = Vector2.Zero;
 
             for (var i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
                 var newCharacterX = (xOffsetOfWrappedLine) + (dc.Position.X - firstOffset.X);
 
                 // FIXME: Baseline?
-                dc.Position = new Vector2(newCharacterX, dc.Position.Y + yOffset);
+                var newPosition = new Vector2(newCharacterX, dc.Position.Y + yOffset);
+                if (i == firstIndex)
+                    adjustment = newPosition - dc.Position;
+                dc.Position = newPosition;
                 if (alignment != HorizontalAlignment.Left)
                     dc.SortOrder += 1;
 
@@ -409,6 +413,23 @@ namespace Squared.Render.Text {
 
             // FIXME: This will break if the word mixes styles
             baselineAdjustmentStart = firstIndex;
+
+            // HACK: If a marker is inside of the wrapped word or around it, we need to adjust the marker to account
+            //  for the fact that its anchoring characters have just moved
+            for (int i = 0; i < Markers.Count; i++) {
+                var m = Markers[i];
+                if ((m.FirstDrawCallIndex == null) || (m.FirstDrawCallIndex < firstIndex))
+                    continue;
+                if (m.LastDrawCallIndex < firstIndex)
+                    continue;
+                if (!m.Bounds.HasValue)
+                    continue;
+                var newBounds = m.Bounds.Value.Translate(adjustment);
+                // HACK: The line height may have changed, so push the top edge of the bounds down appropriately
+                newBounds.TopLeft.Y += (previousLineSpacing - currentLineSpacing);
+                m.Bounds = newBounds;
+                Markers[i] = m;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -981,6 +1002,15 @@ namespace Squared.Render.Text {
                     SnapPositions(result);
 
                 if (reverseOrder) {
+                    for (int k = 0; k < Markers.Count; k++) {
+                        var m = Markers[k];
+                        var a = result.Count - m.FirstCharacterIndex;
+                        var b = result.Count - m.LastCharacterIndex;
+                        m.FirstCharacterIndex = b;
+                        m.LastCharacterIndex = a;
+                        Markers[k] = m;
+                    }
+
                     int i = result.Offset;
                     int j = result.Offset + result.Count - 1;
                     while (i < j) {
