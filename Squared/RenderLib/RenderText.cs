@@ -1003,10 +1003,10 @@ namespace Squared.Render.Text {
                 if (reverseOrder) {
                     for (int k = 0; k < Markers.Count; k++) {
                         var m = Markers[k];
-                        var a = result.Count - m.FirstCharacterIndex;
-                        var b = result.Count - m.LastCharacterIndex;
-                        m.FirstCharacterIndex = b;
-                        m.LastCharacterIndex = a;
+                        var a = result.Count - m.FirstDrawCallIndex - 1;
+                        var b = result.Count - m.LastDrawCallIndex - 1;
+                        m.FirstDrawCallIndex = b;
+                        m.LastDrawCallIndex = a;
                         Markers[k] = m;
                     }
 

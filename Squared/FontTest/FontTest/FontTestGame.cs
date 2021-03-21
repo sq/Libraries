@@ -209,7 +209,6 @@ namespace FontTest {
 
             ir.OutlineRectangle(new Bounds(TopLeft, BottomRight), Color.Red);
 
-            Text.ReverseOrder = false;
             var layout = Text.Get();
 
             foreach (var rm in Text.RichMarkers) {
