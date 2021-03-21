@@ -211,7 +211,8 @@ namespace PRGUI.Demo {
                                 Margin = new Vector2(0, -2)
                             }
                         }
-                    }
+                    },
+                    MarkedStringProcessor = ProcessMarkedString
                 },
                 ScratchSurfaceFormat = RenderTargetFormat,
                 AllowNullFocus = false
@@ -224,6 +225,11 @@ namespace PRGUI.Demo {
             Window_ClientSizeChanged(null, EventArgs.Empty);
 
             BuildUI();
+        }
+
+        private bool ProcessMarkedString (ref AbstractString text, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
+            layoutEngine.overrideColor = Color.Teal;
+            return true;
         }
 
         private void BuildUI () {
@@ -587,11 +593,19 @@ namespace PRGUI.Demo {
                 }
             };
 
+            var rich = new HyperText {
+                MarkerDecorator = Decorations.Button,
+                Text = "Hello World.\r\n$[color:red]Red$[], $[color:green]green$[], and $[color:blue]blue$[] are merely three $(colors) of the rainbow.\r\n" +
+                    "Yet another $(color) you may encounter in the real world is $[color:black]black$[], though some may insist that it is not a color. They are liars.",
+                AutoSize = false
+            };
+
             var tabs = new TabContainer {
                 { scrollableClipTest, "Scrollable" },
                 { listboxContainer, "Listbox" },
                 { canvas, "Canvas" },
-                { displayOrdering, "Z-Order" }
+                { displayOrdering, "Z-Order" },
+                { rich, "Rich Text" },
             };
             tabs.SelectedIndex = 1;
             tabs.TabsOnLeft = false;

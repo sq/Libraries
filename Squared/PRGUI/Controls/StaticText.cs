@@ -388,6 +388,8 @@ namespace Squared.PRGUI.Controls {
             return decorations.IsPassDisabled(pass) && (pass != RasterizePasses.Content) && !ShouldClipContent;
         }
 
+        protected Vector2 _LastDrawOffset, _LastDrawScale;
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
@@ -477,6 +479,9 @@ namespace Squared.PRGUI.Controls {
                 scale: textScale, multiplyColor: overrideColor?.ToColor(),
                 multiplyOpacity: multiplyOpacity 
             );
+
+            _LastDrawOffset = textOffset.Floor();
+            _LastDrawScale = textScale;
         }
 
         protected void UpdateLineBreak (UIOperationContext context, IDecorator decorations) {
@@ -617,6 +622,44 @@ namespace Squared.PRGUI.Controls {
             Content.WordWrap = true;
             Content.CharacterWrap = false;
             CanApplyOpacityWithoutCompositing = true;
+        }
+    }
+
+    public class HyperText : StaticText { //, IControlContainer {
+        public IDecorator MarkerDecorator;
+        private LayoutMarker _HoveringMarkedString;
+
+        public HyperText ()
+            : base () {
+            // HACK: Due to decorators
+            CanApplyOpacityWithoutCompositing = false;
+            RichText = true;
+        }
+
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, ref renderer, settings, decorations);
+            if (RichText && (Content.RichMarkers.Count > 0)) {
+                _HoveringMarkedString = default(LayoutMarker);
+                var rm = Content.RichMarkers;
+                var relativeMousePos = context.MousePosition - _LastDrawOffset;
+                foreach (var m in rm) {
+                    if (!m.Bounds.HasValue)
+                        continue;
+                    // FIXME: Scale
+                    var b = m.Bounds.Value;
+                    var isMouseOver = b.Contains(relativeMousePos);
+                    if (MarkerDecorator != null) {
+                        var subSettings = settings;
+                        subSettings.Box = subSettings.ContentBox = (RectF)(b.Translate(_LastDrawOffset));
+                        subSettings.State = isMouseOver ? ControlStates.Hovering : default(ControlStates);
+                        MarkerDecorator.Rasterize(context, ref renderer, subSettings);
+                    }
+                    if (isMouseOver)
+                        _HoveringMarkedString = m;
+                }
+            } else {
+                _HoveringMarkedString = default(LayoutMarker);
+            }
         }
     }
 }
