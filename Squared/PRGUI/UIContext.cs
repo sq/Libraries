@@ -621,7 +621,7 @@ namespace Squared.PRGUI {
                     (hoveringFor >= (cttt?.TooltipAppearanceDelay ?? TooltipAppearanceDelay)) || 
                     (disappearTimeout < disappearDelay)
                 ) {
-                    ShowTooltip(target, tooltipText, tooltipContent.RichText, CurrentTooltipContentVersion != version);
+                    ShowTooltip(target, tooltipText, tooltipContent, CurrentTooltipContentVersion != version);
                     CurrentTooltipContentVersion = version;
                 }
             } else {
@@ -735,7 +735,7 @@ namespace Squared.PRGUI {
             Layout.UpdateSubtree(subtreeRoot.LayoutKey);
         }
 
-        private void ShowTooltip (Control anchor, AbstractString text, bool richText, bool textIsInvalidated) {
+        private void ShowTooltip (Control anchor, AbstractString text, AbstractTooltipContent content, bool textIsInvalidated) {
             var instance = GetTooltipInstance();
 
             var textChanged = !instance.Text.TextEquals(text, StringComparison.Ordinal) || 
@@ -743,7 +743,7 @@ namespace Squared.PRGUI {
 
             // HACK: Copy the target's decoration provider so the tooltip matches
             instance.Appearance.DecorationProvider = (anchor.Appearance.DecorationProvider ?? Decorations);
-            instance.Move(anchor);
+            instance.Move(anchor, content.Settings.AnchorPoint, content.Settings.ControlAlignmentPoint);
 
             instance.Visible = true;
             instance.DisplayOrder = int.MaxValue;
@@ -752,7 +752,7 @@ namespace Squared.PRGUI {
                 var idealMaxSize = CanvasSize * MaxTooltipSize;
 
                 instance.Text = text;
-                instance.RichText = richText;
+                instance.RichText = content.Settings.RichText;
                 // FIXME: Shift it around if it's already too close to the right side
                 instance.Width.Maximum = idealMaxSize.X;
                 instance.Height.Maximum = idealMaxSize.Y;

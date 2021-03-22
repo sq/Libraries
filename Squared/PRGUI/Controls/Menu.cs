@@ -203,7 +203,7 @@ namespace Squared.PRGUI.Controls {
             FireEvent(UIEvents.SelectionChanged, newControl);
             // HACK
             if (newControl != null)
-                SelectedItemTooltip.RichText = newControl.TooltipContent.RichText;
+                SelectedItemTooltip.Settings = newControl.TooltipContent.Settings;
         }
 
         private Control LocateContainingChild (Control control) {

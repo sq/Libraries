@@ -11,14 +11,17 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class Tooltip : StaticTextBase, IPostLayoutListener {
+        public static Vector2 DefaultAnchorPoint = new Vector2(0.5f, 1f),
+            DefaultControlAlignmentPoint = new Vector2(0.5f, 0f);
+
         protected ControlAlignmentHelper Aligner;
 
         public Tooltip ()
             : base() {
             // FIXME: Centered?
             Aligner = new ControlAlignmentHelper(this) {
-                AnchorPoint = new Vector2(0.5f, 1f),
-                ControlAlignmentPoint = new Vector2(0.5f, 0f),
+                AnchorPoint = DefaultAnchorPoint,
+                ControlAlignmentPoint = DefaultControlAlignmentPoint,
                 ConstrainToParentInsteadOfScreen = true,
                 HideIfNotInsideParent = true
             };
@@ -50,9 +53,11 @@ namespace Squared.PRGUI.Controls {
             set => base.Text = value;
         }
 
-        public void Move (Control anchor) {
+        public void Move (Control anchor, Vector2? anchorPoint, Vector2? controlAlignmentPoint) {
             Aligner.Enabled = true;
             Aligner.Anchor = anchor;
+            Aligner.AnchorPoint = anchorPoint ?? DefaultAnchorPoint;
+            Aligner.ControlAlignmentPoint = controlAlignmentPoint ?? DefaultControlAlignmentPoint;
             // FIXME
             Aligner.ComputeNewAlignment = true;
             Aligner.AlignmentPending = true;
@@ -80,24 +85,42 @@ namespace Squared.PRGUI {
         bool HideTooltipOnMousePress { get; }
     }
 
+    public struct TooltipSettings {
+        public bool RichText;
+        public Vector2? AnchorPoint, ControlAlignmentPoint;
+
+        public bool Equals (TooltipSettings rhs) {
+            return (RichText == rhs.RichText) &&
+                (AnchorPoint == rhs.AnchorPoint) &&
+                (ControlAlignmentPoint == rhs.ControlAlignmentPoint);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is TooltipSettings)
+                return Equals((TooltipSettings)obj);
+            else
+                return false;
+        }
+    }
+
     public struct AbstractTooltipContent {
         public Func<Control, AbstractString> GetText;
         public AbstractString Text;
         public int Version;
-        public bool RichText;
+        public TooltipSettings Settings;
 
-        public AbstractTooltipContent (Func<Control, AbstractString> getText, int version = 0, bool richText = false) {
+        public AbstractTooltipContent (Func<Control, AbstractString> getText, int version = 0, TooltipSettings settings = default(TooltipSettings)) {
             Text = default(AbstractString);
             GetText = getText;
             Version = version;
-            RichText = richText;
+            Settings = settings;
         }
 
-        public AbstractTooltipContent (AbstractString text, int version = 0, bool richText = false) {
+        public AbstractTooltipContent (AbstractString text, int version = 0, TooltipSettings settings = default(TooltipSettings)) {
             Text = text;
             GetText = null;
             Version = version;
-            RichText = richText;
+            Settings = settings;
         }
 
         public AbstractString Get (Control target) {
@@ -109,13 +132,13 @@ namespace Squared.PRGUI {
 
         public AbstractString GetPlainText (Control target) {
             var result = Get(target);
-            if (RichText)
+            if (Settings.RichText)
                 result = Squared.Render.Text.RichText.ToPlainText(result.ToString());
             return result;
         }
 
         public bool Equals (AbstractTooltipContent rhs) {
-            var result = (GetText == rhs.GetText) && Text.Equals(rhs.Text) && (RichText == rhs.RichText);
+            var result = (GetText == rhs.GetText) && Text.Equals(rhs.Text) && Settings.Equals(rhs.Settings);
             if (result) {
                 if ((GetText == null) && Text.Equals(default(AbstractString)))
                     return true;

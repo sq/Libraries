@@ -696,7 +696,7 @@ namespace Squared.PRGUI.Controls {
 
             AbstractTooltipContent ICustomTooltipTarget.GetContent () {
                 if (Parent.GetTooltipForString != null)
-                    return Parent.GetTooltipForString(String);
+                    return Parent.GetTooltipForString(String, Parent);
                 else
                     return default(AbstractTooltipContent);
             }
@@ -717,7 +717,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public Func<string, AbstractTooltipContent> GetTooltipForString;
+        public Func<string, HyperText, AbstractTooltipContent> GetTooltipForString;
 
         public bool HotspotsAcceptFocus = true;
         public ControlAppearance HotspotAppearance = new ControlAppearance {
