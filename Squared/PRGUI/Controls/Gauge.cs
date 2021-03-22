@@ -60,7 +60,7 @@ namespace Squared.PRGUI.Controls {
         AbstractString Accessibility.IReadingTarget.Text {
             get {
                 var sb = new StringBuilder();
-                var desc = (Description ?? base.TooltipContent.Get(this));
+                var desc = (Description ?? base.TooltipContent.GetPlainText(this));
                 if (desc != null) {
                     sb.Append(desc);
                     sb.Append(": ");

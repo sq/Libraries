@@ -595,17 +595,18 @@ namespace Squared.PRGUI {
             var cttt = target as ICustomTooltipTarget;
 
             var now = Now;
-            var tooltipContent = default(AbstractString);
+            var tooltipContent = default(AbstractTooltipContent);
             if (target != null) {
                 if (cttt != null)
-                    tooltipContent = cttt.GetContent().Get(target);
+                    tooltipContent = cttt.GetContent();
                 else
-                    tooltipContent = target.TooltipContent.Get(target);
+                    tooltipContent = target.TooltipContent;
             }
+            var tooltipText = tooltipContent.Get(target);
 
             var disappearDelay = (cttt?.TooltipDisappearDelay ?? TooltipDisappearDelay);
 
-            if (!tooltipContent.IsNull) {
+            if (!tooltipText.IsNull) {
                 if (!FirstTooltipHoverTime.HasValue)
                     FirstTooltipHoverTime = now;
 
@@ -620,7 +621,7 @@ namespace Squared.PRGUI {
                     (hoveringFor >= (cttt?.TooltipAppearanceDelay ?? TooltipAppearanceDelay)) || 
                     (disappearTimeout < disappearDelay)
                 ) {
-                    ShowTooltip(target, tooltipContent, CurrentTooltipContentVersion != version);
+                    ShowTooltip(target, tooltipText, tooltipContent.RichText, CurrentTooltipContentVersion != version);
                     CurrentTooltipContentVersion = version;
                 }
             } else {
@@ -734,7 +735,7 @@ namespace Squared.PRGUI {
             Layout.UpdateSubtree(subtreeRoot.LayoutKey);
         }
 
-        private void ShowTooltip (Control anchor, AbstractString text, bool textIsInvalidated) {
+        private void ShowTooltip (Control anchor, AbstractString text, bool richText, bool textIsInvalidated) {
             var instance = GetTooltipInstance();
 
             var textChanged = !instance.Text.TextEquals(text, StringComparison.Ordinal) || 
@@ -748,11 +749,13 @@ namespace Squared.PRGUI {
             instance.DisplayOrder = int.MaxValue;
 
             if (textChanged || !IsTooltipVisible) {
-                var idealMaxWidth = CanvasSize.X * 0.35f;
+                var idealMaxSize = CanvasSize * MaxTooltipSize;
 
                 instance.Text = text;
+                instance.RichText = richText;
                 // FIXME: Shift it around if it's already too close to the right side
-                instance.Width.Maximum = idealMaxWidth;
+                instance.Width.Maximum = idealMaxSize.X;
+                instance.Height.Maximum = idealMaxSize.Y;
                 instance.Invalidate();
 
                 UpdateSubtreeLayout(instance);

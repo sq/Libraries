@@ -82,6 +82,12 @@ namespace Squared.PRGUI {
         public float TooltipFadeDuration = 0.2f;
 
         /// <summary>
+        /// Constrains the size of tooltips. If the tooltip becomes too wide, its content will be wrapped.
+        /// If the tooltip becomes too tall, its content will shrink.
+        /// </summary>
+        public Vector2 MaxTooltipSize = new Vector2(0.4f, 0.5f);
+
+        /// <summary>
         /// Double-clicks will only be tracked if this far apart or less (in seconds)
         /// </summary>
         public double DoubleClickWindowSize = 0.4;

@@ -120,7 +120,7 @@ namespace Squared.PRGUI.Accessibility {
             var customTarget = control as IReadingTarget;
             var text = customTarget?.Text.ToString();
             if ((text == null) && control.TooltipContent)
-                text = control.TooltipContent.Get(control).ToString();
+                text = control.TooltipContent.GetPlainText(control).ToString();
             if (text == null)
                 text = control.ToString();
 

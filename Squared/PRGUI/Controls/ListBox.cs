@@ -756,7 +756,7 @@ namespace Squared.PRGUI.Controls {
                 if (Description != null)
                     TextBuilder.Append(Description);
                 else {
-                    var ttc = TooltipContent.Get(this).ToString();
+                    var ttc = TooltipContent.GetPlainText(this).ToString();
                     if (ttc != null)
                         TextBuilder.Append(ttc);
                 }

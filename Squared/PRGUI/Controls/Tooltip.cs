@@ -31,6 +31,7 @@ namespace Squared.PRGUI.Controls {
             LayoutFlags = ControlFlags.Layout_Floating;
             Wrap = true;
             Multiline = true;
+            ScaleToFitY = true;
         }
 
         new public void Invalidate () {
@@ -83,17 +84,20 @@ namespace Squared.PRGUI {
         public Func<Control, AbstractString> GetText;
         public AbstractString Text;
         public int Version;
+        public bool RichText;
 
-        public AbstractTooltipContent (Func<Control, AbstractString> getText, int version = 0) {
+        public AbstractTooltipContent (Func<Control, AbstractString> getText, int version = 0, bool richText = false) {
             Text = default(AbstractString);
             GetText = getText;
             Version = version;
+            RichText = richText;
         }
 
-        public AbstractTooltipContent (AbstractString text, int version = 0) {
+        public AbstractTooltipContent (AbstractString text, int version = 0, bool richText = false) {
             Text = text;
             GetText = null;
             Version = version;
+            RichText = richText;
         }
 
         public AbstractString Get (Control target) {
@@ -103,8 +107,15 @@ namespace Squared.PRGUI {
                 return Text;
         }
 
+        public AbstractString GetPlainText (Control target) {
+            var result = Get(target);
+            if (RichText)
+                result = Squared.Render.Text.RichText.ToPlainText(result.ToString());
+            return result;
+        }
+
         public bool Equals (AbstractTooltipContent rhs) {
-            var result = (GetText == rhs.GetText) && Text.Equals(rhs.Text);
+            var result = (GetText == rhs.GetText) && Text.Equals(rhs.Text) && (RichText == rhs.RichText);
             if (result) {
                 if ((GetText == null) && Text.Equals(default(AbstractString)))
                     return true;

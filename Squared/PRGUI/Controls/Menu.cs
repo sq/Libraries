@@ -101,23 +101,23 @@ namespace Squared.PRGUI.Controls {
 
         public bool IsActive { get; private set; }
 
-        public static readonly AbstractTooltipContent SelectedItemTooltip = new AbstractTooltipContent(
-            (Control ctl) => {
-                var m = ctl as Menu;
-                if (m == null)
-                    return default(AbstractString);
-
-                AbstractString result = default(AbstractString);
-                if (m._SelectedItem != null)
-                    result = m._SelectedItem.TooltipContent.Get(m._SelectedItem);
-                if (result == default(AbstractString))
-                    result = m.TooltipContent.Get(m);
-                return result;
-            }
-        );
+        private AbstractTooltipContent SelectedItemTooltip = new AbstractTooltipContent(GetTooltipForSelectedItem);
 
         protected Control _FocusDonor;
         public Control FocusDonor => _FocusDonor;
+
+        private static AbstractString GetTooltipForSelectedItem (Control control) {
+            var m = control as Menu;
+            if (m == null)
+                return default(AbstractString);
+
+            AbstractString result = default(AbstractString);
+            if (m._SelectedItem != null)
+                result = m._SelectedItem.TooltipContent.Get(m._SelectedItem);
+            if (result == default(AbstractString))
+                result = m.TooltipContent.Get(m);
+            return result;
+        }
 
         public Menu ()
             : base () {
@@ -201,6 +201,9 @@ namespace Squared.PRGUI.Controls {
         private void OnSelectionChange (Control previous, Control newControl) {
             Listener?.ItemSelected(this, newControl);
             FireEvent(UIEvents.SelectionChanged, newControl);
+            // HACK
+            if (newControl != null)
+                SelectedItemTooltip.RichText = newControl.TooltipContent.RichText;
         }
 
         private Control LocateContainingChild (Control control) {
@@ -659,7 +662,7 @@ namespace Squared.PRGUI.Controls {
                 if (Description != null)
                     TextBuilder.Append(Description);
                 else {
-                    var ttc = TooltipContent.Get(this).ToString();
+                    var ttc = TooltipContent.GetPlainText(this).ToString();
                     if (ttc != null)
                         TextBuilder.Append(ttc);
                     else {

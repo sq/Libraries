@@ -43,12 +43,13 @@ namespace Squared.PRGUI.Controls {
         private DynamicStringLayout ContentMeasurement = null;
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
         private bool _NeedRelayout;
-        private float? MostRecentContentWidth = null, MostRecentWidth = null;
+        private float? MostRecentContentBoxWidth = null, MostRecentWidth = null;
 
         protected int? CharacterLimit { get; set; }
 
         private float? AutoSizeComputedWidth, AutoSizeComputedHeight;
         private float AutoSizeComputedContentHeight;
+        private float MostRecentXScaleFactor = 1, MostRecentYScaleFactor = 1;
 
         public StaticTextBase ()
             : base () {
@@ -65,14 +66,34 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        bool _ScaleToFit;
+        bool _ScaleToFitX, _ScaleToFitY;
+
+        protected bool ScaleToFitX {
+            get => _ScaleToFitX;
+            set {
+                if (_ScaleToFitX == value)
+                    return;
+                _ScaleToFitX = value;
+                Invalidate();
+            }
+        }
+
+        protected bool ScaleToFitY {
+            get => _ScaleToFitY;
+            set {
+                if (_ScaleToFitY == value)
+                    return;
+                _ScaleToFitY = value;
+                Invalidate();
+            }
+        }
 
         protected bool ScaleToFit {
-            get => _ScaleToFit;
+            get => _ScaleToFitX && _ScaleToFitY;
             set {
-                if (_ScaleToFit == value)
+                if ((_ScaleToFitX == value) && (_ScaleToFitY == value))
                     return;
-                _ScaleToFit = true;
+                _ScaleToFitX = _ScaleToFitY = value;
                 Invalidate();
             }
         }
@@ -327,7 +348,7 @@ namespace Squared.PRGUI.Controls {
             ContentMeasurement?.Invalidate();
             // HACK: Ensure we do not erroneously wrap content that is intended to be used as an input for auto-size
             if (AutoSizeWidth)
-                MostRecentContentWidth = null;
+                MostRecentContentBoxWidth = null;
         }
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -344,7 +365,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations) {
-            if (_ScaleToFit)
+            if (_ScaleToFitX)
                 return null;
 
             ComputePadding(context, decorations, out Margins computedPadding);
@@ -352,9 +373,9 @@ namespace Squared.PRGUI.Controls {
             Margins.Scale(ref computedPadding, ref paddingScale);
             float? constrainedWidth = null;
             var max = (Width.Fixed ?? Width.Maximum) - computedPadding.X;
-            if (MostRecentContentWidth.HasValue) {
+            if (MostRecentContentBoxWidth.HasValue) {
                 // FIXME
-                float computed = MostRecentContentWidth.Value;
+                float computed = MostRecentContentBoxWidth.Value;
                 if (max.HasValue)
                     constrainedWidth = Math.Min(computed, max.Value);
                 else
@@ -362,26 +383,35 @@ namespace Squared.PRGUI.Controls {
             } else
                 constrainedWidth = max;
 
-            if (constrainedWidth.HasValue)
+            if (constrainedWidth.HasValue) {
+                if (_ScaleToFitY)
+                    constrainedWidth = constrainedWidth.Value / MostRecentYScaleFactor;
                 // HACK: Suppress jitter
                 return (float)Math.Ceiling(constrainedWidth.Value) + AutoSizePadding;
-            else
+            } else
                 return null;
         }
 
-        protected float ComputeScaleToFit (ref StringLayout layout, ref RectF box, ref Margins margins) {
-            if (!_ScaleToFit)
+        protected float ComputeScaleToFit (Vector2 unconstrainedSize, ref RectF box, ref Margins margins) {
+            if (!_ScaleToFitX && !_ScaleToFitY) {
+                MostRecentXScaleFactor = MostRecentYScaleFactor = 1;
                 return 1;
+            }
 
             float availableWidth = Math.Max(box.Width - margins.X, 0);
             float availableHeight = Math.Max(box.Height - margins.Y, 0);
 
-            float scaleFactor = 1;
-            if (layout.UnconstrainedSize.X > availableWidth)
-                scaleFactor = Math.Min(scaleFactor, availableWidth / (layout.UnconstrainedSize.X + 0.1f));
-            if (layout.UnconstrainedSize.Y > availableHeight)
-                scaleFactor = Math.Min(scaleFactor, availableHeight / (layout.UnconstrainedSize.Y + 0.1f));
-            return scaleFactor;
+            if ((unconstrainedSize.X > availableWidth) && _ScaleToFitX) {
+                MostRecentXScaleFactor = availableWidth / (unconstrainedSize.X + 0.1f);
+            } else {
+                MostRecentXScaleFactor = 1;
+            }
+            if ((unconstrainedSize.Y > availableHeight) && _ScaleToFitY) {
+                MostRecentYScaleFactor = availableHeight / (unconstrainedSize.Y + 0.1f);
+            } else {
+                MostRecentYScaleFactor = 1;
+            }
+            return Math.Min(MostRecentXScaleFactor, MostRecentYScaleFactor);
         }
 
         protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
@@ -420,7 +450,7 @@ namespace Squared.PRGUI.Controls {
             UpdateLineBreak(context, decorations);
 
             var layout = GetCurrentLayout(false);
-            textScale *= ComputeScaleToFit(ref layout, ref settings.Box, ref computedPadding);
+            textScale *= ComputeScaleToFit(layout.UnconstrainedSize, ref settings.Box, ref computedPadding);
 
             var scaledSize = layout.Size * textScale;
 
@@ -485,7 +515,7 @@ namespace Squared.PRGUI.Controls {
 
         protected void UpdateLineBreak (UIOperationContext context, IDecorator decorations) {
             var textWidthLimit = ComputeTextWidthLimit(context, decorations);
-            if (textWidthLimit.HasValue && !_ScaleToFit)
+            if (textWidthLimit.HasValue && !_ScaleToFitX)
                 Content.LineBreakAtX = textWidthLimit;
             else
                 Content.LineBreakAtX = null;
@@ -547,7 +577,7 @@ namespace Squared.PRGUI.Controls {
         protected virtual AbstractString GetReadingText () {
             var plainText = GetPlainText();
             if (UseTooltipForReading || string.IsNullOrWhiteSpace(plainText))
-                return TooltipContent.Get(this);
+                return TooltipContent.GetPlainText(this);
 
             return plainText;
         }
@@ -569,11 +599,11 @@ namespace Squared.PRGUI.Controls {
 
             var box = context.Layout.GetRect(LayoutKey);
             var contentBox = context.Layout.GetContentRect(LayoutKey);
-            MostRecentContentWidth = contentBox.Width;
+            MostRecentContentBoxWidth = contentBox.Width;
             MostRecentWidth = box.Width;
 
             // FIXME: This is probably wrong?
-            if (!AutoSizeWidth && !Wrap && MostRecentContentWidth.HasValue)
+            if (!AutoSizeWidth && !Wrap && MostRecentContentBoxWidth.HasValue)
                 return;
         }
     }
@@ -597,6 +627,14 @@ namespace Squared.PRGUI.Controls {
         new public bool ScaleToFit {
             get => base.ScaleToFit;
             set => base.ScaleToFit = value;
+        }
+        new public bool ScaleToFitX {
+            get => base.ScaleToFitX;
+            set => base.ScaleToFitX = value;
+        }
+        new public bool ScaleToFitY {
+            get => base.ScaleToFitY;
+            set => base.ScaleToFitY = value;
         }
         new public bool AcceptsMouseInput {
             get => base.AcceptsMouseInput;

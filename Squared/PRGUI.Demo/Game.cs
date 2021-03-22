@@ -745,7 +745,7 @@ namespace PRGUI.Demo {
                         Appearance = {
                             BackgroundColor = Color.DarkRed,
                         },
-                        ScaleToFit = true
+                        ScaleToFitY = true
                     },
                     new StaticText {
                         AutoSizeWidth = false,

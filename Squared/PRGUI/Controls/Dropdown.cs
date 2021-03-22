@@ -84,7 +84,7 @@ namespace Squared.PRGUI.Controls {
                 else if (Description != null)
                     return $"{Description}: {GetValueText()}";
                 else if (TooltipContent)
-                    return TooltipContent.Get(this);
+                    return TooltipContent.GetPlainText(this);
 
                 if (SelectedItem is Accessibility.IReadingTarget irt)
                     return irt.Text;

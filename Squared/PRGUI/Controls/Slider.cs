@@ -79,7 +79,7 @@ namespace Squared.PRGUI.Controls {
                 FireEvent(UIEvents.ValueChangedByUser);
         }
 
-        AbstractString Accessibility.IReadingTarget.Text => base.TooltipContent.Get(this);
+        AbstractString Accessibility.IReadingTarget.Text => base.TooltipContent.GetPlainText(this);
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) => FormatValue(sb);
 
         protected bool HasCustomTooltipContent => !TooltipContent.Equals(default(AbstractTooltipContent));
