@@ -116,8 +116,12 @@ namespace Squared.PRGUI.Accessibility {
             BeginReading(topLevel, control, prefix);
         }
 
+        private IReadingTarget FindReadingTarget (Control control) {
+            return control?.DelegatedReadingTarget ?? (control as IReadingTarget);
+        }
+
         private void SpeakControl (Control control, string prefix = null) {
-            var customTarget = control as IReadingTarget;
+            var customTarget = FindReadingTarget(control);
             var text = customTarget?.Text.ToString();
             if ((text == null) && control.TooltipContent)
                 text = control.TooltipContent.GetPlainText(control).ToString();
@@ -179,7 +183,7 @@ namespace Squared.PRGUI.Accessibility {
             if ((target != CurrentlyReading) && (Context.MouseCaptured != target))
                 return;
 
-            var irt = target as IReadingTarget;
+            var irt = FindReadingTarget(target);
             if (irt == null)
                 return;
 
@@ -228,7 +232,7 @@ namespace Squared.PRGUI.Accessibility {
             }
         }
 
-        internal void ControlClicked (Control target) {
+        internal bool AttemptToReadForClick (Control target) {
             // FIXME: If clicking on a static transferred focus to a neighbor (because it was in
             //  another top-level container) should we read it?
             if (
@@ -240,8 +244,10 @@ namespace Squared.PRGUI.Accessibility {
                 //  we want to read the new focus target instead
                 (target.FocusBeneficiary == null) &&
                 ((CurrentlyReading != target) || !IsSpeaking)
-            )
+            ) {
                 BeginReading(target);
+                return true;
+            }
             // HACK: Once we started reading an unfocusable control, we need to detect when the
             //  reading needs to shift back to the focused control
             else if (
@@ -249,8 +255,10 @@ namespace Squared.PRGUI.Accessibility {
                 Context.ReadAloudOnClickIfNotFocusable &&
                 (CurrentlyReading != target) &&
                 (CurrentlyReading?.AcceptsFocus == false)
-            )
+            ) {
                 BeginReading(target);
+                return true;
+            }
             // HACK: The user might want narration for a control that transfers focus to a beneficiary
             //  and the default behavior will be to simply read whatever it transferred focus to.
             // However if focus has already been transferred there is nothing to read so we might as well
@@ -258,8 +266,26 @@ namespace Squared.PRGUI.Accessibility {
             else if (
                 (target.FocusBeneficiary == Context.Focused) &&
                 Context.ReadAloudOnClickIfNotFocusable
-            )
+            ) {
                 SpeakControl(target);
+                return true;
+            }
+
+            return false;
+        }
+
+        internal void ControlClicked (Control target, Control mouseOver) {
+            var moRt = FindReadingTarget(mouseOver);
+            var targetRt = FindReadingTarget(target);
+
+            if ((moRt != null) && AttemptToReadForClick(moRt as Control))
+                return;
+
+            if (targetRt != null)
+                target = (targetRt as Control) ?? target;
+
+            if (AttemptToReadForClick(target))
+                return;
         }
     }
 }

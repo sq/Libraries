@@ -241,7 +241,7 @@ namespace Squared.PRGUI {
                 return;
 
             if (!target.IsValidMouseInputTarget) {
-                TTS.ControlClicked(target);
+                TTS.ControlClicked(target, MouseOver);
                 return;
             }
 
@@ -255,7 +255,7 @@ namespace Squared.PRGUI {
             LastClickTime = LastMouseDownTime;
             FireEvent(UIEvents.Click, target, MakeMouseEventArgs(target, mousePosition, mouseDownPosition));
 
-            TTS.ControlClicked(target);
+            TTS.ControlClicked(target, MouseOver);
         }
 
         private void HandleDrag (Control originalTarget, Control finalTarget) {

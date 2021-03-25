@@ -13,12 +13,55 @@ using Squared.Util.Text;
 
 namespace Squared.Render.Text {
     public static class RichText {
-        private static readonly Regex RichCommandRegex = new Regex(@"\$\[[^\]]*\]", RegexOptions.Compiled);
+        private static string ToPlainText_Slow (AbstractString richText, int firstDollarOffset) {
+            var result = new StringBuilder();
+            for (int i = 0; i < firstDollarOffset; i++)
+                result.Append(richText[i]);
+
+            int rangeStarted = 0;
+            char? closer = null;
+            for (int i = firstDollarOffset, l = richText.Length; i < l; i++) {
+                var ch = richText[i];
+                var next = (i < richText.Length - 1) ? richText[i + 1] : '\0';
+                if (closer != null) {
+                    if (ch == closer) {
+                        if (closer == ')') {
+                            var markedText = richText.Substring(rangeStarted, i - rangeStarted);
+                            var pipeOffset = markedText.IndexOf('|');
+                            if (pipeOffset >= 0)
+                                result.Append(markedText.Substring(pipeOffset + 1));
+                            else
+                                result.Append(markedText);
+                        }
+                        closer = null;
+                    }
+                    continue;
+                } else if (ch == '$') {
+                    if ((next == '(') || (next == '[')) {
+                        closer = (next == '(') ? ')' : ']';
+                        i++;
+                        rangeStarted = i + 1;
+                        continue;
+                    }
+                } else {
+                    result.Append(ch);
+                }
+            }
+
+            return result.ToString();
+        }
 
         public static string ToPlainText (AbstractString richText) {
             if (richText.IsNull)
                 return null;
-            return RichCommandRegex.Replace(richText.ToString(), "");
+
+            for (int i = 0, l = richText.Length; i < l - 1; i++) {
+                var c = richText[i];
+                if ((c == '$') && (richText[i + 1] == '[') || (richText[i + 1] == '('))
+                    return ToPlainText_Slow(richText, i);
+            }
+
+            return richText.ToString();
         }
     }
 

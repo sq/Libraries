@@ -143,6 +143,7 @@ namespace Squared.PRGUI {
 
         internal int TypeID;
 
+        public Accessibility.IReadingTarget DelegatedReadingTarget;
         public IControlEventFilter EventFilter;
 
         public ControlAppearance Appearance;

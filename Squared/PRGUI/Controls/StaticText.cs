@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
+using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render;
@@ -665,7 +666,7 @@ namespace Squared.PRGUI.Controls {
     public class HyperText : StaticText, IControlContainer {
         public delegate AbstractTooltipContent GetTooltipForMarkedStringHandler (HyperText control, AbstractString text, string id);
 
-        public class Hotspot : Control, ICustomTooltipTarget {
+        public class Hotspot : Control, ICustomTooltipTarget, IReadingTarget {
             public AbstractString MarkedString;
             public string MarkedID;
 
@@ -697,6 +698,23 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
+            AbstractString IReadingTarget.Text {
+                get {
+                    var result = new StringBuilder();
+                    result.AppendLine(MarkedString.ToString());
+                    var ictt = (this as ICustomTooltipTarget);
+                    var content = ictt.GetContent();
+                    if (content != default(AbstractTooltipContent)) {
+                        var ttt = (content.GetText != null) 
+                            ? content.GetText(this)
+                            : content.Text;
+                        if (ttt != default(AbstractString))
+                            result.Append(ttt.ToString());
+                    }
+                    return Squared.Render.Text.RichText.ToPlainText(result);
+                }
+            }
+
             AbstractTooltipContent ICustomTooltipTarget.GetContent () {
                 if (Parent.GetTooltipForString != null)
                     return Parent.GetTooltipForString(Parent, MarkedString, MarkedID);
@@ -717,6 +735,10 @@ namespace Squared.PRGUI.Controls {
                     Context.FireEvent("HotspotClick", Parent, this);
 
                 return base.OnEvent(name, args);
+            }
+
+            void IReadingTarget.FormatValueInto (StringBuilder sb) {
+                sb.Append(MarkedString.ToString());
             }
         }
 
