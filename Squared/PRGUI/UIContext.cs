@@ -49,10 +49,14 @@ namespace Squared.PRGUI {
         }
 
         internal void SetKeyboardSelection (Control control, bool forUser) {
+            if (forUser) {
+                if (control != null)
+                    _PreferredTooltipSource = control;
+                // FIXME: Do this after the equals check?
+                SuppressAutoscrollDueToInputScroll = false;
+            }
             if (control == _KeyboardSelection)
                 return;
-            if (forUser)
-                SuppressAutoscrollDueToInputScroll = false;
             _KeyboardSelection = control;
             MousePositionWhenKeyboardSelectionWasLastUpdated = LastMousePosition;
         }
@@ -197,6 +201,7 @@ namespace Squared.PRGUI {
             if (target.AcceptsFocus)
                 TrySetFocus(target, true, true);
             MouseCaptured = target;
+            _PreferredTooltipSource = target;
             return (MouseCaptured == target);
         }
 
@@ -566,10 +571,23 @@ namespace Squared.PRGUI {
             FirstTooltipHoverTime = null;
         }
 
+        private bool IsTooltipPriority (Control control) {
+            var ictt = control as ICustomTooltipTarget;
+            if (ictt == null)
+                return false;
+
+            return (ictt.ShowTooltipWhileFocus || ictt.ShowTooltipWhileKeyboardFocus) && (control == Focused);
+        }
+
         private Control PickTooltipTarget (bool leftButtonPressed) {
-            if ((Focused as ICustomTooltipTarget)?.ShowTooltipWhileFocus == true)
-                return Focused;
-            return FixatedControl;
+            var fixated = FixatedControl;
+            if ((_PreferredTooltipSource != Focused) && (_PreferredTooltipSource != null) && _PreferredTooltipSource.AcceptsFocus)
+                return fixated;
+
+            if (!IsTooltipPriority(fixated) && IsTooltipPriority(_PreferredTooltipSource))
+                return _PreferredTooltipSource;
+            else
+                return fixated ?? _PreferredTooltipSource;
         }
 
         private bool IsTooltipAllowedToAppear (Control target, bool leftButtonPressed) {

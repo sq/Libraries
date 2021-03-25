@@ -90,7 +90,15 @@ namespace Squared.Render.Text {
         }
     }
 
-    public delegate bool MarkedStringProcessor (ref AbstractString text, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
+    /// <summary>
+    /// Prepares a layout engine to display a marked string (i.e. '$(text)' or '$(id|text)'), and potentially changes its display text.
+    /// </summary>
+    /// <param name="text">The display text for the marked string. You can modify this to change the text.</param>
+    /// <param name="id">The identifier for the string, if any. i.e. $(identifier|text)</param>
+    /// <param name="state">A state snapshot that can be used to examine or restore the current state of the layout engine.</param>
+    /// <param name="layoutEngine">The layout engine that will be used to append the text (after this method returns).</param>
+    /// <returns>true if the string should be laid out, false if it should be omitted from the output entirely.</returns>
+    public delegate bool MarkedStringProcessor (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
 
     public struct RichTextConfiguration : IEquatable<RichTextConfiguration> {
         private static readonly Regex RuleRegex = new Regex(@"([\w\-_]+)(?:\s*):(?:\s*)([^;\]]*)(?:;|)", RegexOptions.Compiled);
@@ -210,15 +218,23 @@ namespace Squared.Render.Text {
                             }
                         } else if (!commandMode) {
                             AbstractString astr = bracketed;
+                            string id = null;
+                            int pipeIndex = bracketed.IndexOf('|');
+                            if (pipeIndex >= 0) {
+                                id = bracketed.Substring(0, pipeIndex);
+                                bracketed = bracketed.Substring(pipeIndex + 1);
+                                astr = bracketed;
+                            }
+
                             var ok = true;
                             // HACK: The string processor may mess with layout state, so we want to restore it after
                             var markedState = new RichTextLayoutState(ref layoutEngine) {
                                 GlyphSource = state.GlyphSource
                             };
                             if (MarkedStringProcessor != null)
-                                ok = MarkedStringProcessor(ref astr, ref markedState, ref layoutEngine);
+                                ok = MarkedStringProcessor(ref astr, id, ref markedState, ref layoutEngine);
                             if (ok) {
-                                var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + astr.Length - 1, bracketed);
+                                var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + astr.Length - 1, bracketed, id);
                                 layoutEngine.Markers.Add(m);
                                 state.MarkedStrings.Add(bracketed);
                                 AppendRange(ref layoutEngine, markedState.GlyphSource ?? defaultGlyphSource, astr, 0, astr.Length);

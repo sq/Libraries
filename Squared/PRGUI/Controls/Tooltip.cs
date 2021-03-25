@@ -20,6 +20,7 @@ namespace Squared.PRGUI.Controls {
             : base() {
             // FIXME: Centered?
             Aligner = new ControlAlignmentHelper(this) {
+                AllowOverlap = false,
                 AnchorPoint = DefaultAnchorPoint,
                 ControlAlignmentPoint = DefaultControlAlignmentPoint,
                 ConstrainToParentInsteadOfScreen = true,

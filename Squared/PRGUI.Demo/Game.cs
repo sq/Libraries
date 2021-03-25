@@ -227,7 +227,7 @@ namespace PRGUI.Demo {
             BuildUI();
         }
 
-        private bool ProcessMarkedString (ref AbstractString text, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
+        private bool ProcessMarkedString (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
             layoutEngine.overrideColor = Color.Teal;
             return true;
         }

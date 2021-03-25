@@ -151,7 +151,7 @@ namespace FontTest {
             };
         }
 
-        private bool ProcessMarkedString (ref AbstractString text, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
+        private bool ProcessMarkedString (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
             if (text.TextEquals("quick")) {
                 layoutEngine.overrideColor = Color.GreenYellow;
                 text = "slow";

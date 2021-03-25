@@ -126,23 +126,25 @@ namespace Squared.Render.Text {
             }
         }
 
-        public object Tag;
+        public AbstractString MarkedString;
+        public string MarkedID;
         public int FirstCharacterIndex, LastCharacterIndex;
         public int? FirstDrawCallIndex, LastDrawCallIndex;
         public int GlyphCount;
         public Bounds? Bounds;
 
-        public LayoutMarker (int firstIndex, int lastIndex, object tag = null) {
+        public LayoutMarker (int firstIndex, int lastIndex, AbstractString markedString = default(AbstractString), string markedID = null) {
             FirstCharacterIndex = firstIndex;
             LastCharacterIndex = lastIndex;
-            Tag = tag;
+            MarkedString = markedString;
+            MarkedID = markedID;
             FirstDrawCallIndex = LastDrawCallIndex = null;
             GlyphCount = 0;
             Bounds = null;
         }
 
         public override string ToString () {
-            return $"{Tag ?? "marker"} [{FirstCharacterIndex} - {LastCharacterIndex}] -> [{FirstDrawCallIndex} - {LastDrawCallIndex}] {Bounds}";
+            return $"{MarkedID ?? "marker"} [{FirstCharacterIndex} - {LastCharacterIndex}] -> [{FirstDrawCallIndex} - {LastDrawCallIndex}] {Bounds}";
         }
     }
 

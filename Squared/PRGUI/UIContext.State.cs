@@ -33,10 +33,17 @@ namespace Squared.PRGUI {
 
         private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection;
 
+        private Control _PreferredTooltipSource;
+
         /// <summary>
         /// The control most recently interacted with by the user
         /// </summary>
         public Control FixatedControl => MouseCaptured ?? KeyboardSelection ?? Hovering;
+
+        /// <summary>
+        /// The control that most recently received a click from the user
+        /// </summary>
+        public Control PreviousClickTarget { get; private set; }
 
         /// <summary>
         /// The control currently underneath the mouse cursor
@@ -134,7 +141,6 @@ namespace Squared.PRGUI {
         private Control RetainCaptureRequested = null;
 
         private Vector2 LastClickPosition;
-        private Control LastClickTarget;
         private double LastMouseDownTime, LastClickTime;
         private int SequentialClickCount;
 

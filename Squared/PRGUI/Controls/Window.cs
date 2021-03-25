@@ -47,6 +47,10 @@ namespace Squared.PRGUI.Controls {
         Vector2 _LastSize;
         RectF _LastAnchorRect, _LastParentRect;
 
+        /// <summary>
+        /// If false, the aligner will attempt to prevent the control from covering its anchor.
+        /// </summary>
+        public bool AllowOverlap = true;
         public bool ConstrainToParentInsteadOfScreen = false;
         public bool HideIfNotInsideParent = false;
         public bool WasPositionSetByUser;
@@ -101,17 +105,38 @@ namespace Squared.PRGUI.Controls {
             var margins = Control.Margins + ExtraMargins;
 
             if (Anchor != null) {
+                var actualRect = rect;
+                var trialAnchorPoint = AnchorPoint;
+                var trialAlignmentPoint = ControlAlignmentPoint;
                 // FIXME: Adjust on appropriate sides
                 rect.Size += margins.Size;
                 var anchorRect = Anchor.GetRect();
-                var anchorPosition = ((Anchor as IAlignedControl)?.AlignedPosition) ?? anchorRect.Position;
-                var anchorCenter = anchorPosition + (anchorRect.Size * AnchorPoint);
-                anchorRect.Size -= margins.Size;
-                var offset = (rect.Size * ControlAlignmentPoint);
-                var result = anchorCenter - offset - parentRect.Position;
-                ClampToConstraintArea(ref context, ref result, ref rect);
-                MostRecentAlignedPosition = anchorCenter - offset;
-                return SetPosition(result, updateDesiredPosition);
+                if (anchorRect == default(RectF))
+                    return false;
+                var a = AlignmentTrial(ref context, ref parentRect, ref rect, margins, trialAnchorPoint, trialAlignmentPoint, anchorRect, out Vector2 mrapA);
+                var isectA = GetIntersectionFactor(ref anchorRect, ref actualRect, a);
+                // HACK: If the specified alignment causes the control to overlap its anchor, attempt to flip the alignment vertically to find it a better spot
+                if (!AllowOverlap && (isectA > 4f)) {
+                    trialAnchorPoint.Y = 1 - trialAnchorPoint.Y;
+                    trialAlignmentPoint.Y = 1 - trialAlignmentPoint.Y;
+                    var b = AlignmentTrial(ref context, ref parentRect, ref rect, margins, trialAnchorPoint, trialAlignmentPoint, anchorRect, out Vector2 mrapB);
+                    var isectB = GetIntersectionFactor(ref anchorRect, ref actualRect, b);
+                    if (isectB < isectA) {
+                        MostRecentAlignedPosition = mrapB;
+                        return SetPosition(b, updateDesiredPosition);
+                    }
+                    // HACK 2.0: Vertical flip wasn't enough, try also flipping horizontally.
+                    trialAnchorPoint.X = 1 - trialAnchorPoint.X;
+                    trialAlignmentPoint.X = 1 - trialAlignmentPoint.X;
+                    b = AlignmentTrial(ref context, ref parentRect, ref rect, margins, trialAnchorPoint, trialAlignmentPoint, anchorRect, out mrapB);
+                    isectB = GetIntersectionFactor(ref anchorRect, ref actualRect, b);
+                    if (isectB < isectA) {
+                        MostRecentAlignedPosition = mrapB;
+                        return SetPosition(b, updateDesiredPosition);
+                    }
+                }
+                MostRecentAlignedPosition = mrapA;
+                return SetPosition(a, updateDesiredPosition);
             } else {
                 // HACK
                 parentRect.Left += margins.Left;
@@ -130,6 +155,29 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private float GetIntersectionFactor (ref RectF anchorRect, ref RectF originalRect, Vector2 newPosition) {
+            var rect = originalRect;
+            rect.Position = newPosition;
+            if (!anchorRect.Intersection(ref rect, out RectF intersection))
+                return 0f;
+            return intersection.Size.Length();
+        }
+
+        private Vector2 AlignmentTrial (
+            ref UIOperationContext context, ref RectF parentRect, ref RectF rect, 
+            Margins margins, Vector2 trialAnchorPoint, Vector2 trialAlignmentPoint, 
+            RectF anchorRect, out Vector2 mostRecentAlignedPosition
+        ) {
+            var anchorPosition = ((Anchor as IAlignedControl)?.AlignedPosition) ?? anchorRect.Position;
+            var anchorCenter = anchorPosition + (anchorRect.Size * trialAnchorPoint);
+            anchorRect.Size -= margins.Size;
+            var offset = (rect.Size * trialAlignmentPoint);
+            var result = anchorCenter - offset - parentRect.Position;
+            ClampToConstraintArea(ref context, ref result, ref rect);
+            mostRecentAlignedPosition = anchorCenter - offset;
+            return result;
+        }
+
         public void EnsureAligned (UIOperationContext context, ref bool relayoutRequested) {
             if (!Enabled)
                 return;
@@ -138,6 +186,10 @@ namespace Squared.PRGUI.Controls {
 
             GetParentContentRect(out RectF parentRect);
             var rect = Control.GetRect(applyOffset: false);
+            if (rect == default(RectF)) {
+                relayoutRequested = true;
+                return;
+            }
 
             if (Anchor != null) {
                 if (Anchor is IAlignedControl iac)

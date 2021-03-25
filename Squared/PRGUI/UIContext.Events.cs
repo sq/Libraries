@@ -199,8 +199,13 @@ namespace Squared.PRGUI {
             if (previous != null)
                 FireEvent(UIEvents.MouseLeave, previous, current);
 
-            if (current != null)
+            if (current != null) {
                 FireEvent(UIEvents.MouseEnter, current, previous);
+
+                // HACK: Clear temporary tooltip source lock
+                if (current != _PreferredTooltipSource)
+                    _PreferredTooltipSource = null;
+            }
 
             ResetTooltipShowTimer();
         }
@@ -211,7 +216,7 @@ namespace Squared.PRGUI {
 
             var movedDistance = (position - LastClickPosition).Length();
             if (
-                (LastClickTarget == target) &&
+                (PreviousClickTarget == target) &&
                 (movedDistance < MinimumMouseMovementDistance)
             ) {
                 var elapsed = Now - LastClickTime;
@@ -246,7 +251,7 @@ namespace Squared.PRGUI {
                 SequentialClickCount = 1;
 
             LastClickPosition = mousePosition;
-            LastClickTarget = target;
+            PreviousClickTarget = target;
             LastClickTime = LastMouseDownTime;
             FireEvent(UIEvents.Click, target, MakeMouseEventArgs(target, mousePosition, mouseDownPosition));
 
@@ -571,7 +576,7 @@ namespace Squared.PRGUI {
                     DoubleClicking = doubleClicking,
                     PreviousButtons = LastMouseButtons,
                     Buttons = CurrentMouseButtons,
-                    SequentialClickCount = (target == LastClickTarget)
+                    SequentialClickCount = (target == PreviousClickTarget)
                         ? SequentialClickCount 
                         : 0
                 };
@@ -607,6 +612,7 @@ namespace Squared.PRGUI {
                 if (target != null && target.IsValidMouseInputTarget) {
                     AutomaticallyTransferFocusOnTopLevelChange(target);
                     MouseCaptured = target;
+                    _PreferredTooltipSource = target;
                 }
                 // FIXME: Should focus changes only occur on mouseup in order to account for drag-to-scroll?
                 if (target == null || target.IsValidFocusTarget)

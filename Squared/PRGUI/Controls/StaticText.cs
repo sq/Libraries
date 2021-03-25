@@ -663,8 +663,11 @@ namespace Squared.PRGUI.Controls {
     }
 
     public class HyperText : StaticText, IControlContainer {
+        public delegate AbstractTooltipContent GetTooltipForMarkedStringHandler (HyperText control, AbstractString text, string id);
+
         public class Hotspot : Control, ICustomTooltipTarget {
-            public string String;
+            public AbstractString MarkedString;
+            public string MarkedID;
 
             public Hotspot ()
                 : base () {
@@ -696,7 +699,7 @@ namespace Squared.PRGUI.Controls {
 
             AbstractTooltipContent ICustomTooltipTarget.GetContent () {
                 if (Parent.GetTooltipForString != null)
-                    return Parent.GetTooltipForString(String, Parent);
+                    return Parent.GetTooltipForString(Parent, MarkedString, MarkedID);
                 else
                     return default(AbstractTooltipContent);
             }
@@ -717,7 +720,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public Func<string, HyperText, AbstractTooltipContent> GetTooltipForString;
+        public GetTooltipForMarkedStringHandler GetTooltipForString;
 
         public bool HotspotsAcceptFocus = true;
         public ControlAppearance HotspotAppearance = new ControlAppearance {
@@ -773,7 +776,8 @@ namespace Squared.PRGUI.Controls {
                     for (int i = 0; i < rm.Count; i++) {
                         var m = Content.RichMarkers[i];
                         var hs = (Hotspot)children[i];
-                        hs.String = (string)m.Tag;
+                        hs.MarkedString = m.MarkedString;
+                        hs.MarkedID = m.MarkedID;
                         if (!m.Bounds.HasValue) {
                             hs.Visible = false;
                             hs.Enabled = false;
