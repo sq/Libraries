@@ -192,6 +192,8 @@ namespace Squared.PRGUI.Decorations {
                 ContentClip = ContentClip,
                 Margins = Margins,
                 Padding = Padding,
+                Font = Font,
+                GetFont = GetFont,
                 GetTextSettings = GetTextSettings,
                 GetContentAdjustment = GetContentAdjustment
             };
