@@ -662,7 +662,7 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public class HyperText : StaticText, IControlContainer {
+    public class HyperText : StaticText, IControlContainer, IControlEventFilter {
         public delegate AbstractTooltipContent GetTooltipForMarkedStringHandler (HyperText control, AbstractString text, string id);
 
         public class Hotspot : Control, ICustomTooltipTarget, IReadingTarget {
@@ -741,6 +741,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        public event Action<HyperText, Hotspot> OnHotSpotClicked;
         public GetTooltipForMarkedStringHandler GetTooltipForString;
 
         public bool HotspotsAcceptFocus = true;
@@ -792,7 +793,10 @@ namespace Squared.PRGUI.Controls {
                     while (children.Count > numHotspots)
                         children.RemoveAt(children.Count - 1);
                     while (children.Count < numHotspots)
-                        children.Add(new Hotspot());
+                        children.Add(new Hotspot { EventFilter = this });
+
+                    var hsd = HotspotAppearance.Decorator ?? context.DecorationProvider.HyperTextHotspot;
+                    var padding = hsd.Padding;
 
                     for (int i = 0; i < rm.Count; i++) {
                         var m = Content.RichMarkers[i];
@@ -807,9 +811,9 @@ namespace Squared.PRGUI.Controls {
                             hs.Enabled = true;
                             hs.Appearance = HotspotAppearance;
                             var b = m.Bounds.Value;
-                            hs.Layout.FloatingPosition = b.TopLeft + _LastDrawOffset;
-                            hs.Width.Fixed = b.Size.X;
-                            hs.Height.Fixed = b.Size.Y;
+                            hs.Layout.FloatingPosition = b.TopLeft + _LastDrawOffset - new Vector2(padding.Left, padding.Top);
+                            hs.Width.Fixed = b.Size.X + padding.X;
+                            hs.Height.Fixed = b.Size.Y + padding.Y;
                             hs.SetAcceptsFocus(HotspotsAcceptFocus);
                         }
                     }
@@ -857,6 +861,20 @@ namespace Squared.PRGUI.Controls {
             var children = Children;
             foreach (var child in children)
                 child.AbsoluteDisplayOffset = ado;
+        }
+
+        bool IControlEventFilter.OnEvent (Control target, string name) {
+            return false;
+        }
+
+        bool IControlEventFilter.OnEvent<T> (Control target, string name, T args) {
+            if (name == UIEvents.Click) {
+                if (OnHotSpotClicked != null) {
+                    OnHotSpotClicked(this, (Hotspot)target);
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

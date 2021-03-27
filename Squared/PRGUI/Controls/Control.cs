@@ -121,7 +121,13 @@ namespace Squared.PRGUI {
     }
 
     public interface IControlEventFilter {
+        /// <summary>
+        /// Return true to suppress the event
+        /// </summary>
         bool OnEvent (Control target, string name);
+        /// <summary>
+        /// Return true to suppress the event
+        /// </summary>
         bool OnEvent<T> (Control target, string name, T args);
     }
     
