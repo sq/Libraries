@@ -476,8 +476,7 @@ namespace Squared.PRGUI.Controls {
                     Control child = HitTest(globalPosition, false, false);
                     if ((child == this) || (child == null)) {
                         foreach (var c in Children) {
-                            var childRect = c.GetRect();
-                            if (childRect.Contains(globalPosition)) {
+                            if (c.GetRect().Contains(globalPosition)) {
                                 child = c;
                                 break;
                             }
@@ -668,6 +667,7 @@ namespace Squared.PRGUI.Controls {
                 var oldPass = context.Pass;
                 context.Pass = RasterizePasses.Content;
 
+                RectF parentBox, selectionBox;
                 foreach (var index in Manager._SelectedIndices) {
                     if (index >= Items.Count)
                         continue;
@@ -679,8 +679,8 @@ namespace Squared.PRGUI.Controls {
                         continue;
 
                     var parentColumn = context.Layout.GetParent(selectedControl.LayoutKey);
-                    var parentBox = context.Layout.GetContentRect(parentColumn);
-                    var selectionBox = selectedControl.GetRect();
+                    context.Layout.TryGetContentRect(parentColumn, out parentBox);
+                    selectionBox = selectedControl.GetRect();
                     selectionBox.Top += selectionDecorator.Margins.Top;
                     selectionBox.Left = parentBox.Left + selectionDecorator.Margins.Left;
                     selectionBox.Height -= selectionDecorator.Margins.Y;

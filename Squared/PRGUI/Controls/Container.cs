@@ -168,8 +168,7 @@ namespace Squared.PRGUI.Controls {
             if ((ShowHorizontalScrollbar == false) && (ShowVerticalScrollbar == false))
                 return false;
 
-            var box = GetRect();
-            var contentBox = GetRect(contentRect: true);
+            GetRects(out RectF box, out RectF contentBox);
             settings = MakeDecorationSettings(ref box, ref contentBox, default(ControlStates), false);
 
             // Ensure the scrollbar state is up-to-date if someone modified our offset
@@ -290,7 +289,7 @@ namespace Squared.PRGUI.Controls {
         protected virtual void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             // FIXME: This should be done somewhere else
             if (Scrollable) {
-                var contentBox = context.Layout.GetContentRect(LayoutKey);
+                context.Layout.TryGetContentRect(LayoutKey, out RectF contentBox);
                 var scrollbar = context.DecorationProvider?.Scrollbar;
                 float viewportWidth = contentBox.Width,
                     viewportHeight = contentBox.Height;

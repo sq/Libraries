@@ -212,9 +212,20 @@ namespace Squared.PRGUI.Layout {
             return Boxes.DangerousGetItem(key.ID);
         }
 
-        private unsafe RectF GetContentRect (LayoutItem * pItem, ref RectF exterior) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool GetRects (ControlKey key, out RectF rect, out RectF contentRect) {
+            if (key.IsInvalid || !Boxes.DangerousTryGetItem(key.ID, out rect)) {
+                rect = contentRect = default(RectF);
+                return false;
+            }
+
+            var pItem = LayoutPtr(key);
+            GetContentRect(pItem, ref rect, out contentRect);
+            return true;
+        }
+
+        private unsafe void GetContentRect (LayoutItem * pItem, ref RectF exterior, out RectF interior) {
             Vector2 extent;
-            RectF interior;
             if (pItem->Key.ID == Root.ID) {
                 // FIXME: Why is this necessary?
                 extent = CanvasSize;
@@ -228,21 +239,37 @@ namespace Squared.PRGUI.Layout {
             interior.Top = Math.Min(extent.Y, interior.Top + pItem->Padding.Top);
             interior.Width = Math.Max(0, exterior.Width - pItem->Padding.X);
             interior.Height = Math.Max(0, exterior.Height - pItem->Padding.Y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe RectF GetContentRect (LayoutItem * pItem) {
+            var pExterior = RectPtr(pItem->Key);
+            GetContentRect(pItem, ref *pExterior, out RectF interior);
             return interior;
         }
 
-        private unsafe RectF GetContentRect (LayoutItem * pItem) {
-            var pExterior = RectPtr(pItem->Key);
-            return GetContentRect(pItem, ref *pExterior);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe bool TryGetContentRect (ControlKey key, out RectF result) {
+            if ((key.IsInvalid) || (key.ID >= Boxes.Count)) {
+                result = default(RectF);
+                return false;
+            }
+
+            var pItem = LayoutPtr(key);
+            var pExterior = RectPtr(key);
+            GetContentRect(pItem, ref *pExterior, out result);
+            return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe RectF GetContentRect (ControlKey key) {
             if (key.IsInvalid)
                 return default(RectF);
 
             var pItem = LayoutPtr(key);
             var pExterior = RectPtr(key);
-            return GetContentRect(pItem, ref *pExterior);
+            GetContentRect(pItem, ref *pExterior, out RectF interior);
+            return interior;
         }
 
         private void SetRect (ControlKey key, ref RectF newRect) {
@@ -252,7 +279,13 @@ namespace Squared.PRGUI.Layout {
             Boxes.DangerousSetItem(key.ID, ref newRect);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetRect (ControlKey key, out RectF result) {
+            if (key.IsInvalid) {
+                result = default(RectF);
+                return false;
+            }
+
             return Boxes.DangerousTryGetItem(key.ID, out result);
         }
 
@@ -286,6 +319,7 @@ namespace Squared.PRGUI.Layout {
             return (LayoutItem*)PinnedLayoutPtr;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe LayoutItem * LayoutPtr (ControlKey key, bool optional = false) {
             var id = key.ID;
             if (id < 0) {
@@ -328,6 +362,7 @@ namespace Squared.PRGUI.Layout {
             return (RectF*)PinnedBoxesPtr;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe RectF * RectPtr (ControlKey key, bool optional = false) {
             if (key.ID < 0) {
                 if (optional)

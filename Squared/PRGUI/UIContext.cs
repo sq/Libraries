@@ -866,9 +866,7 @@ namespace Squared.PRGUI {
         internal int Depth;
 
         private T GetStackTop<T> (ref DenseList<T> stack) {
-            if (stack.Count <= 0)
-                return default(T);
-            stack.GetItem(stack.Count - 1, out T result);
+            stack.TryGetItem(stack.Count - 1, out T result);
             return result;
         }
 

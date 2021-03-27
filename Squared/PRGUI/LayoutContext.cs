@@ -446,9 +446,10 @@ namespace Squared.PRGUI.Layout {
                 return true;
             }
 
+            RectF childRect;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
-                var childRect = GetRect(child);
+                TryGetRect(child, out childRect);
 
                 // HACK: The arrange algorithms will clip an element to its containing box, which
                 //  hinders attempts to measure all of the content inside a container for scrolling
@@ -550,12 +551,13 @@ namespace Squared.PRGUI.Layout {
             float result = 0, minimum = 0;
             var rowFlag = (ControlFlags)((int)ControlFlags.Container_Row + idim);
             var isRowFlaggedExact = (pItem->Flags & (ControlFlags.Container_Row | ControlFlags.Container_Column)) == rowFlag;
+            RectF childRect;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
                 var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
 
-                var childRect = GetRect(child);
+                TryGetRect(child, out childRect);
                 var childMargin = pChild->Margins[wdim];
                 var childMinimum = CalcMinimumSize(pChild, idim) + childMargin;
                 if (isFloating) {
@@ -580,12 +582,13 @@ namespace Squared.PRGUI.Layout {
             int idim = (int)dim, wdim = idim + 2;
             var outerPadding = pItem->Padding[idim] + pItem->Padding[wdim];
             var rowFlag = (ControlFlags)((int)ControlFlags.Container_Row + idim);
+            RectF childRect;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
                 var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
 
-                var childRect = GetRect(child);
+                TryGetRect(child, out childRect);
                 var childMargin = pChild->Margins[wdim];
                 var childMinimum = CalcMinimumSize(pChild, idim) + childMargin;
                 if (pItem->Flags.IsFlagged(rowFlag) && !isFloating)
@@ -614,6 +617,7 @@ namespace Squared.PRGUI.Layout {
 
             int idim = (int)dim, wdim = idim + 2;
             float needSize = 0, needSize2 = 0;
+            RectF childRect;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
@@ -621,7 +625,7 @@ namespace Squared.PRGUI.Layout {
                 if (isFloating)
                     continue;
 
-                var childRect = GetRect(child);
+                TryGetRect(child, out childRect);
                 var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
 
                 if (
@@ -886,6 +890,7 @@ namespace Squared.PRGUI.Layout {
 
             var attemptLastChanceWrap = wrap && false;
             var startChild = child;
+            RectF childRect;
             var parentRect = GetContentRect(pParent);
 
             // Perform initial size calculation for items, and then arrange items and calculate final sizes
@@ -910,7 +915,7 @@ namespace Squared.PRGUI.Layout {
                     var flags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Layout) >> idim);
                     var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
                     var childMargins = pChild->Margins;
-                    var childRect = GetRect(child);
+                    TryGetRect(child, out childRect);
                     var isFixedSize = fFlags.IsFlagged(ControlFlags.Internal_FixedWidth);
 
                     x += childRect[idim] + extraMargin;
@@ -926,9 +931,13 @@ namespace Squared.PRGUI.Layout {
                     if ((pass == 1) && (fillerCount > constrainedCount) && (constrainedCount > 0) && !isFixedSize)
                         computedSize += extraFromConstraints / (fillerCount - constrainedCount);
 
-                    float constrainedSize = Constrain(computedSize, pChild, idim);
+                    GetComputedMinimumSize(pChild, out Vector2 childMinimum);
+                    GetComputedMaximumSize(pChild, null, out Vector2 childMaximum);
+                    // return Constrain(value, minimum.GetElement(dimension), maximum.GetElement(dimension));
+
+                    float constrainedSize = Constrain(computedSize, childMinimum.GetElement(idim), childMaximum.GetElement(idim));
                     if (wrap)
-                        constrainedSize = Constrain(Math.Min(max_x2 - childMargins[wdim] - x, constrainedSize), pChild, idim);
+                        constrainedSize = Constrain(Math.Min(max_x2 - childMargins[wdim] - x, constrainedSize), childMinimum.GetElement(idim), childMaximum.GetElement(idim));
                     if (pass == 0) {
                         float constraintDelta = (computedSize - constrainedSize);
                         // FIXME: Epsilon too big?
@@ -983,15 +992,15 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe void CheckConstraints (ControlKey control, int dimension) {
 #if DEBUG
+            // FIXME
+            return;
+
             var wdim = dimension + 2;
 
             var pItem = LayoutPtr(control);
             var rect = GetRect(control);
             if (false && (rect[wdim] < -1))
                 System.Diagnostics.Debugger.Break();
-
-            // FIXME
-            return;
 
             GetComputedMinimumSize(pItem, out Vector2 minimum);
             GetComputedMaximumSize(pItem, null, out Vector2 maximum);
@@ -1020,6 +1029,7 @@ namespace Squared.PRGUI.Layout {
             fixedCount = fillerCount = squeezedCount = total = 0;
             hardBreak = false;
 
+            RectF childRect;
             var parentRect = startChild.IsInvalid 
                 ? default(RectF)
                 : GetContentRect(GetParent(startChild));
@@ -1040,7 +1050,7 @@ namespace Squared.PRGUI.Layout {
                 var flags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Layout) >> idim);
                 var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
                 var childMargins = pChild->Margins;
-                var childRect = GetRect(child);
+                TryGetRect(child, out childRect);
                 var extend = used;
                 var isFillRow = flags.IsFlagged(ControlFlags.Layout_Fill_Row);
                 var isFixedSize = fFlags.IsFlagged(ControlFlags.Internal_FixedWidth);
@@ -1095,6 +1105,7 @@ namespace Squared.PRGUI.Layout {
             var contentRect = GetContentRect(pItem);
             var offset = contentRect[idim];
             var space = contentRect[wdim];
+            RectF childRect;
 
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
@@ -1103,7 +1114,7 @@ namespace Squared.PRGUI.Layout {
 
                 var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
                 var childMargins = pChild->Margins;
-                var childRect = GetRect(child);
+                TryGetRect(child, out childRect);
 
                 switch (bFlags & ControlFlags.Layout_Fill_Row) {
                     case 0: // ControlFlags.Layout_Center:
@@ -1132,6 +1143,7 @@ namespace Squared.PRGUI.Layout {
 
             int idim = (int)dim, wdim = idim + 2;
 
+            RectF rect;
             var item = startItem;
             while (item != endItem) {
                 var pItem = LayoutPtr(item);
@@ -1143,7 +1155,7 @@ namespace Squared.PRGUI.Layout {
 
                 var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
                 var margins = pItem->Margins;
-                var rect = GetRect(item);
+                TryGetRect(item, out rect);
                 var maxSize = Math.Max(0, space - rect[idim] - margins[wdim]);
 
                 switch (bFlags & ControlFlags.Layout_Fill_Row) {
@@ -1197,6 +1209,7 @@ namespace Squared.PRGUI.Layout {
             float offset = contentRect[idim], needSize = 0;
 
             var startChild = pItem->FirstChild;
+            RectF childRect;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating) || pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked))
@@ -1211,7 +1224,7 @@ namespace Squared.PRGUI.Layout {
                     needSize = 0;
                 }
 
-                var childRect = GetRect(child);
+                TryGetRect(child, out childRect);
                 var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
                 needSize = Math.Max(needSize, childSize);
             }
@@ -1235,7 +1248,7 @@ namespace Squared.PRGUI.Layout {
         private unsafe void Arrange (LayoutItem * pItem, LayoutDimensions dim) {
             var flags = pItem->Flags;
             var pRect = RectPtr(pItem->Key);
-            var contentRect = GetContentRect(pItem, ref *pRect);
+            GetContentRect(pItem, ref *pRect, out RectF contentRect);
             var idim = (int)dim;
 
             switch (flags & ControlFlagMask.BoxModel) {

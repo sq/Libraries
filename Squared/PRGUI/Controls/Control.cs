@@ -556,6 +556,26 @@ namespace Squared.PRGUI {
             return LayoutKey;
         }
 
+        public bool GetRects (out RectF rect, out RectF contentRect, bool applyOffset = true, UIContext context = null) {
+            context = context ?? Context;
+            if ((LayoutKey.IsInvalid) || (context == null)) {
+                rect = contentRect = default(RectF);
+                return false;
+            }
+
+            if (!context.Layout.GetRects(LayoutKey, out rect, out contentRect))
+                return false;
+
+            if (applyOffset) {
+                rect.Left += _AbsoluteDisplayOffset.X;
+                rect.Top += _AbsoluteDisplayOffset.Y;
+                contentRect.Left += _AbsoluteDisplayOffset.X;
+                contentRect.Top += _AbsoluteDisplayOffset.Y;
+            }
+
+            return true;
+        }
+
         /// <summary>
         /// Gets the current computed rectangle of the control.
         /// </summary>
@@ -567,9 +587,11 @@ namespace Squared.PRGUI {
                 return default(RectF);
 
             context = context ?? Context;
-            var result = contentRect 
-                ? context.Layout.GetContentRect(LayoutKey) 
-                : context.Layout.GetRect(LayoutKey);
+            RectF result;
+            if (contentRect)
+                context.Layout.TryGetContentRect(LayoutKey, out result);
+            else
+                context.Layout.TryGetRect(LayoutKey, out result);
 
             if (exteriorRect) {
                 if (contentRect)

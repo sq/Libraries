@@ -549,8 +549,12 @@ namespace Squared.PRGUI {
             var transformedGlobalPosition = CalculateRelativeGlobalPosition(target, globalPosition);
 
             {
-                var box = target?.GetRect(contentRect: false) ?? CanvasRect;
-                var contentBox = target?.GetRect(contentRect: true) ?? CanvasRect;
+                RectF box, contentBox;
+                if (target == null) {
+                    box = contentBox = CanvasRect;
+                } else {
+                    target.GetRects(out box, out contentBox);
+                }
                 var mdp = MouseDownPosition ?? mouseDownPosition ?? globalPosition;
                 var travelDistance = (globalPosition - mdp).Length();
                 var doubleClicking = IsInDoubleClickWindow(target, globalPosition);

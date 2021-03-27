@@ -598,8 +598,7 @@ namespace Squared.PRGUI.Controls {
                 _NeedRelayout = false;
             }
 
-            var box = context.Layout.GetRect(LayoutKey);
-            var contentBox = context.Layout.GetContentRect(LayoutKey);
+            context.Layout.GetRects(LayoutKey, out RectF box, out RectF contentBox);
             MostRecentContentBoxWidth = contentBox.Width;
             MostRecentWidth = box.Width;
 
