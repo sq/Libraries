@@ -191,6 +191,10 @@ namespace Squared.Render.Text {
             Append(ref layoutEngine, ref state, defaultGlyphSource, text, styleName);
         }
 
+        private static readonly HashSet<char>
+            CommandTerminators = new HashSet<char> { '\"', '\'', '$', '[' },
+            StringTerminators = new HashSet<char> { '$', '(' };
+
         public void Append (
             ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, IGlyphSource defaultGlyphSource, AbstractString text, string styleName
         ) {
@@ -209,8 +213,12 @@ namespace Squared.Render.Text {
                     var next = (i < count - 2) ? text[i + 1] : '\0';
                     if ((ch == '$') && ((next == '[') || (next == '('))) {
                         AppendRange(ref layoutEngine, state.GlyphSource ?? defaultGlyphSource, text, currentRangeStart, i);
-                        var bracketed = ParseBracketedText(text, ref i, ref currentRangeStart);
                         var commandMode = next == '[';
+                        var bracketed = ParseBracketedText(
+                            text, ref i, ref currentRangeStart, 
+                            commandMode ? CommandTerminators : StringTerminators, 
+                            commandMode ? ']' : ')'
+                        );
                         if (bracketed == null) {
                             // FIXME: Can this cause an infinite loop?
                             continue;
@@ -323,31 +331,20 @@ namespace Squared.Render.Text {
             layoutEngine.AppendText(glyphSource, text, KerningAdjustments, start: rangeStart, end: rangeEnd);
         }
 
-        private string ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart) {
+        private string ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart, HashSet<char> terminators, char close) {
             var count = text.Length;
             var start = i + 2;
             i = start;
             while (i < count) {
                 var ch = text[i];
-                switch (ch) {
-                    case ')':
-                    case ']':
-                        currentRangeStart = i + 1;
-                        return text.Substring(start, i - start);
-                    case '\"':
-                    case '\'':
-                    case '$':
-                    case '(':
-                    case '[': {
-                        i = start;
-                        return null;
-                    }
-                }
-
-                if (ch < ' ') {
+                if (ch == close) {
+                    currentRangeStart = i + 1;
+                    return text.Substring(start, i - start);
+                } else if (terminators.Contains(ch) || (ch < ' ')) {
                     i = start;
                     return null;
                 }
+
                 i++;
             }
             return null;
