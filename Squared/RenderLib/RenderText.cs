@@ -214,6 +214,7 @@ namespace Squared.Render.Text {
         public float               xOffsetOfNewLine;
         public float?              lineBreakAtX;
         public float?              stopAtY;
+        public float               extraLineBreakSpacing;
         public bool                characterWrap;
         public bool                wordWrap;
         public char                wrapCharacter;
@@ -827,11 +828,12 @@ namespace Squared.Render.Text {
 
                 if (lineBreak) {
                     if (!forcedWrap) {
+                        var spacingForThisLineBreak = currentLineSpacing + extraLineBreakSpacing;
                         characterOffset.X = xOffsetOfNewLine;
                         // FIXME: didn't we already do this?
-                        characterOffset.Y += currentLineSpacing;
+                        characterOffset.Y += spacingForThisLineBreak;
                         characterOffsetUnconstrained.X = xOffsetOfNewLine;
-                        characterOffsetUnconstrained.Y += currentLineSpacing;
+                        characterOffsetUnconstrained.Y += spacingForThisLineBreak;
 
                         maxX = Math.Max(maxX, currentLineMaxX);
                         maxXUnconstrained = Math.Max(maxXUnconstrained, currentLineMaxXUnconstrained);

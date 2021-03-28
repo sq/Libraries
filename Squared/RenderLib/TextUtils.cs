@@ -38,6 +38,7 @@ namespace Squared.Render.Text {
         private bool _WordWrap = false;
         private bool _CharacterWrap = true;
         private float _WrapIndentation = 0f;
+        private float _ExtraLineBreakSpacing = 0f;
         private GlyphPixelAlignment _AlignToPixels = GlyphPixelAlignment.Default;
         private char _WrapCharacter = '\0';
         private int _Alignment = (int)HorizontalAlignment.Left;
@@ -449,6 +450,15 @@ namespace Squared.Render.Text {
             }
         }
 
+        public float ExtraLineBreakSpacing {
+            get {
+                return _ExtraLineBreakSpacing;
+            }
+            set {
+                InvalidatingValueAssignment(ref _ExtraLineBreakSpacing, value);
+            }
+        }
+
         public GlyphPixelAlignment AlignToPixels {
             get {
                 return _AlignToPixels;
@@ -525,6 +535,7 @@ namespace Squared.Render.Text {
                 xOffsetOfFirstLine = _XOffsetOfFirstLine,
                 xOffsetOfWrappedLine = _XOffsetOfNewLine + _WrapIndentation,
                 xOffsetOfNewLine = _XOffsetOfNewLine,
+                extraLineBreakSpacing = _ExtraLineBreakSpacing,
                 lineBreakAtX = _LineBreakAtX,
                 stopAtY = _StopAtY,
                 alignToPixels = _AlignToPixels,
@@ -577,6 +588,7 @@ namespace Squared.Render.Text {
             this.WordWrap = source.WordWrap;
             this.WrapCharacter = source.WrapCharacter;
             this.WrapIndentation = source.WrapIndentation;
+            this.ExtraLineBreakSpacing = source.ExtraLineBreakSpacing;
             this.XOffsetOfFirstLine = source.XOffsetOfFirstLine;
             this.XOffsetOfNewLine = source.XOffsetOfNewLine;
             this.RichText = source.RichText;
