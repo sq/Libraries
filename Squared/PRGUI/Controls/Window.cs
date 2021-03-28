@@ -125,15 +125,6 @@ namespace Squared.PRGUI.Controls {
                         MostRecentAlignedPosition = mrapB;
                         return SetPosition(b, updateDesiredPosition);
                     }
-                    // HACK 2.0: Vertical flip wasn't enough, try also flipping horizontally.
-                    trialAnchorPoint.X = 1 - trialAnchorPoint.X;
-                    trialAlignmentPoint.X = 1 - trialAlignmentPoint.X;
-                    b = AlignmentTrial(ref context, ref parentRect, ref rect, margins, trialAnchorPoint, trialAlignmentPoint, anchorRect, out mrapB);
-                    isectB = GetIntersectionFactor(ref anchorRect, ref actualRect, b);
-                    if (isectB < isectA) {
-                        MostRecentAlignedPosition = mrapB;
-                        return SetPosition(b, updateDesiredPosition);
-                    }
                 }
                 MostRecentAlignedPosition = mrapA;
                 return SetPosition(a, updateDesiredPosition);
@@ -168,9 +159,20 @@ namespace Squared.PRGUI.Controls {
             Margins margins, Vector2 trialAnchorPoint, Vector2 trialAlignmentPoint, 
             RectF anchorRect, out Vector2 mostRecentAlignedPosition
         ) {
-            var anchorPosition = ((Anchor as IAlignedControl)?.AlignedPosition) ?? anchorRect.Position;
-            var anchorCenter = anchorPosition + (anchorRect.Size * trialAnchorPoint);
-            anchorRect.Size -= margins.Size;
+            var evaluatedAnchorPosition = ((Anchor as IAlignedControl)?.AlignedPosition);
+            if (evaluatedAnchorPosition.HasValue) {
+                var clampedAp = evaluatedAnchorPosition.Value;
+                // HACK: The anchor may be hanging off the edges of the screen, so account for that when computing its real rectangle
+                ClampToConstraintArea(ref context, ref clampedAp, ref anchorRect);
+                anchorRect.Position = clampedAp;
+            }
+            anchorRect.Left -= margins.Left;
+            anchorRect.Top -= margins.Top;
+            anchorRect.Size += margins.Size;
+            // We also need to clamp the final anchor rectangle to the screen when deciding where to place the control
+            anchorRect.Intersection(ref parentRect, out RectF clampedAnchorRect);
+            // FIXME
+            var anchorCenter = clampedAnchorRect.Position + (clampedAnchorRect.Size * trialAnchorPoint);
             var offset = (rect.Size * trialAlignmentPoint);
             var result = anchorCenter - offset - parentRect.Position;
             ClampToConstraintArea(ref context, ref result, ref rect);
