@@ -329,16 +329,12 @@ namespace Squared.Render.Text {
                             newBounds.TopLeft.X = Math.Min(curr.BottomRight.X, bounds.TopLeft.X);
                             newBounds.TopLeft.Y = Math.Min(curr.TopLeft.Y, bounds.TopLeft.Y);
                         }
-                        if (newBounds.TopLeft.X <= 0)
-                            ;
                         m.CurrentSplitGlyphCount = 0;
                         m.Bounds.Add(newBounds);
                     } else if (didWrapWord && splitMarker && (m.CurrentSplitGlyphCount == 0)) {
                         m.Bounds[m.Bounds.Count - 1] = bounds;
                     } else {
                         var newBounds = Bounds.FromUnion(bounds, curr);
-                        if (newBounds.TopLeft.X <= 0)
-                            ;
                         m.Bounds[m.Bounds.Count - 1] = newBounds;
                     }
                 } else if (bounds != default(Bounds))
@@ -851,10 +847,13 @@ namespace Squared.Render.Text {
                         new Vector2(characterOffset.X, characterOffset.Y + yOffset),
                         new Vector2(x - characterOffset.X, glyph.LineSpacing * effectiveScale)
                     );
+                    // HACK: Why is this necessary?
+                    whitespaceBounds.TopLeft.Y = Math.Max(whitespaceBounds.TopLeft.Y, whitespaceBounds.BottomRight.Y - currentLineSpacing);
 
                     // FIXME: is the center X right?
-                    ProcessHitTests(ref whitespaceBounds, whitespaceBounds.Center.X);
-                    ProcessMarkers(ref whitespaceBounds, currentCodepointSize, null, false, didWrapWord);
+                    // ProcessHitTests(ref whitespaceBounds, whitespaceBounds.Center.X);
+                    // HACK: AppendCharacter will invoke ProcessMarkers anyway
+                    // ProcessMarkers(ref whitespaceBounds, currentCodepointSize, null, false, didWrapWord);
 
                     // Ensure that trailing spaces are factored into total size
                     if (isWhiteSpace)
@@ -1014,12 +1013,6 @@ namespace Squared.Render.Text {
             if (measureOnly)
                 return;
 
-            for (int i = 0; i < Markers.Count; i++) {
-                var m = Markers[i];
-                Console.WriteLine(m.MarkedString);
-                foreach (var b in m.Bounds)
-                    Console.WriteLine(b);
-            }
         }
 
         public StringLayout Finish () {
