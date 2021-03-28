@@ -810,7 +810,7 @@ namespace Squared.PRGUI.Controls {
                             hs.Visible = true;
                             hs.Enabled = true;
                             hs.Appearance = HotspotAppearance;
-                            var b = m.Bounds.LastOrDefault();
+                            var b = m.UnionBounds;
                             hs.Layout.FloatingPosition = b.TopLeft + _LastDrawOffset - new Vector2(padding.Left, padding.Top);
                             hs.Width.Fixed = b.Size.X + padding.X;
                             hs.Height.Fixed = b.Size.Y + padding.Y;

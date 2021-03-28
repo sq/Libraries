@@ -147,6 +147,17 @@ namespace Squared.Render.Text {
             Bounds = default(DenseList<Bounds>);
         }
 
+        public Bounds UnionBounds {
+            get {
+                if (Bounds.Count <= 1)
+                    return Bounds.LastOrDefault();
+                var b = Bounds[0];
+                for (int i = 1; i < Bounds.Count; i++)
+                    b = Squared.Game.Bounds.FromUnion(b, Bounds[i]);
+                return b;
+            }
+        }
+
         public override string ToString () {
             return $"{MarkedID ?? "marker"} [{FirstCharacterIndex} - {LastCharacterIndex}] -> [{FirstDrawCallIndex} - {LastDrawCallIndex}] {Bounds.FirstOrDefault()}";
         }
@@ -407,7 +418,9 @@ namespace Squared.Render.Text {
             var suppressedByLineLimit = lineLimit.HasValue && (lineLimit.Value <= 0);
             var adjustment = Vector2.Zero;
 
-            var oldFirstGlyphBounds = buffer.Array[buffer.Offset + firstGlyphIndex - 1].EstimateDrawBounds();
+            var oldFirstGlyphBounds = (firstGlyphIndex > 0)
+                ? buffer.Array[buffer.Offset + firstGlyphIndex - 1].EstimateDrawBounds()
+                : default(Bounds);
 
             for (var i = firstGlyphIndex; i <= lastGlyphIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
@@ -434,7 +447,9 @@ namespace Squared.Render.Text {
             // HACK: firstOffset may include whitespace so we want to pull the right edge in.
             //  Without doing this, the size rect for the string is too large.
             var actualRightEdge = firstOffset.X;
-            var newFirstGlyphBounds = buffer.Array[buffer.Offset + firstGlyphIndex - 1].EstimateDrawBounds();
+            var newFirstGlyphBounds = (firstGlyphIndex > 0)
+                ? buffer.Array[buffer.Offset + firstGlyphIndex - 1].EstimateDrawBounds()
+                : default(Bounds);
             if (firstGlyphIndex > 0)
                 actualRightEdge = Math.Min(
                     actualRightEdge, newFirstGlyphBounds.BottomRight.X

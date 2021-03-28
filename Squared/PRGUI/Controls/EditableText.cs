@@ -1061,7 +1061,7 @@ namespace Squared.PRGUI.Controls {
             else if (selection.Value.Bounds.Count < 1)
                 return null;
 
-            var sel = selection.Value.Bounds.LastOrDefault();
+            var sel = selection.Value.UnionBounds;
             // If there's no text or something else bad happened, synthesize a selection rect
             if (sel.Size.Length() < 1)
                 sel.BottomRight = sel.TopLeft + new Vector2(0, DynamicLayout.GlyphSource.LineSpacing);
