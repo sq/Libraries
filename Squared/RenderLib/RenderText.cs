@@ -1028,6 +1028,30 @@ namespace Squared.Render.Text {
             if (measureOnly)
                 return;
 
+            // HACK: During initial layout we split each word of a marked region into
+            //  separate bounds so that wrapping would work correctly. Now that we're
+            //  done, we want to find words that weren't wrapped and weld their bounds
+            //  together so the entire marked string will be one bounds (if possible).
+            for (int i = 0; i < Markers.Count; i++) {
+                var m = Markers[i];
+                if (m.Bounds.Count <= 1)
+                    continue;
+
+                for (int j = m.Bounds.Count - 1; j >= 1; j--) {
+                    var b1 = m.Bounds[j - 1];
+                    var b2 = m.Bounds[j];
+                    // HACK: Detect a wrap/line break
+                    if (b2.TopLeft.Y >= b1.Center.Y)
+                        continue;
+                    var xDelta = b2.TopLeft.X - b1.BottomRight.X;
+                    if (xDelta > 0.5f)
+                        continue;
+                    m.Bounds[j - 1] = Bounds.FromUnion(b1, b2);
+                    m.Bounds.RemoveAt(j);
+                }
+
+                Markers[i] = m;
+            }
         }
 
         public StringLayout Finish () {
