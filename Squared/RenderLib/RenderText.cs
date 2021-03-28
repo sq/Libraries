@@ -305,7 +305,7 @@ namespace Squared.Render.Text {
             }
         }
 
-        private void ProcessMarkers (ref Bounds bounds, int currentCodepointSize, int? drawCallIndex) {
+        private void ProcessMarkers (ref Bounds bounds, int currentCodepointSize, int? drawCallIndex, bool lineBreak) {
             if (measureOnly)
                 return;
             if (suppress || suppressUntilNextLine)
@@ -319,8 +319,9 @@ namespace Squared.Render.Text {
                     continue;
                 if (m.LastCharacterIndex < characterIndex1)
                     continue;
-                if (m.Bounds.Count > 0)
-                    m.Bounds[m.Bounds.Count - 1] = Bounds.FromUnion(bounds, m.Bounds[m.Bounds.Count - 1]);
+                var curr = m.Bounds.LastOrDefault();
+                if ((curr != default(Bounds)) && !lineBreak)
+                    m.Bounds[m.Bounds.Count - 1] = Bounds.FromUnion(bounds, curr);
                 else
                     m.Bounds.Add(bounds);
                 if (drawCallIndex != null)
@@ -429,10 +430,10 @@ namespace Squared.Render.Text {
                     continue;
                 if (m.LastDrawCallIndex < firstIndex)
                     continue;
-                if (m.Bounds.Count <= 0)
-                    continue;
-                // FIXME
-                m.Bounds[m.Bounds.Count - 1] = m.Bounds.LastOrDefault().Translate(adjustment);
+
+                for (int j = 0; j < m.Bounds.Count; j++)
+                    m.Bounds[j] = m.Bounds[j].Translate(adjustment);
+
                 Markers[i] = m;
             }
         }
@@ -591,7 +592,7 @@ namespace Squared.Render.Text {
             var sizeX = estimatedBounds.Size.X + (margin?.X ?? 0);
             characterOffset.X += sizeX;
             characterOffsetUnconstrained.X += sizeX;
-            AppendCharacter(ref dc, x, 1, false, lineSpacing, 0f, x, ref estimatedBounds);
+            AppendCharacter(ref dc, x, 1, false, lineSpacing, 0f, x, ref estimatedBounds, false);
         }
 
         public ArraySegment<BitmapDrawCall> AppendText (
@@ -816,7 +817,7 @@ namespace Squared.Render.Text {
 
                     // FIXME: is the center X right?
                     ProcessHitTests(ref whitespaceBounds, whitespaceBounds.Center.X);
-                    ProcessMarkers(ref whitespaceBounds, currentCodepointSize, null);
+                    ProcessMarkers(ref whitespaceBounds, currentCodepointSize, null, false);
 
                     // Ensure that trailing spaces are factored into total size
                     if (isWhiteSpace)
@@ -873,7 +874,7 @@ namespace Squared.Render.Text {
                     ref drawCall, 
                     x, currentCodepointSize, 
                     isWhiteSpace, glyphLineSpacing, 
-                    yOffset, xUnconstrained, ref testBounds
+                    yOffset, xUnconstrained, ref testBounds, lineBreak
                 );
 
                 if (!suppress && !suppressUntilNextLine)
@@ -900,7 +901,7 @@ namespace Squared.Render.Text {
             ref BitmapDrawCall drawCall, 
             float x, int currentCodepointSize, 
             bool isWhiteSpace, float glyphLineSpacing, float yOffset, 
-            float xUnconstrained, ref Bounds testBounds
+            float xUnconstrained, ref Bounds testBounds, bool lineBreak
         ) {
             if (recordUsedTextures && (drawCall.Textures.Texture1 != lastUsedTexture) && (drawCall.Textures.Texture1 != null)) {
                 lastUsedTexture = drawCall.Textures.Texture1;
@@ -936,7 +937,7 @@ namespace Squared.Render.Text {
                     if (!suppress && !suppressUntilNextLine) {
                         if (!measureOnly) {
                             buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
-                            ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition);
+                            ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition, lineBreak);
                             bufferWritePosition += 1;
                             drawCallsWritten += 1;
                         }
@@ -952,7 +953,7 @@ namespace Squared.Render.Text {
                     currentLineWhitespaceMaxXLeft = Math.Max(currentLineWhitespaceMaxXLeft, characterOffset.X);
                     currentLineWhitespaceMaxX = Math.Max(currentLineWhitespaceMaxX, x);
 
-                    ProcessMarkers(ref testBounds, currentCodepointSize, null);
+                    ProcessMarkers(ref testBounds, currentCodepointSize, null, lineBreak);
                 }
 
                 characterLimit--;
@@ -1035,7 +1036,7 @@ namespace Squared.Render.Text {
             var endpointBounds = lastCharacterBounds;
             // FIXME: Index of last draw call?
             // FIXME: Codepoint size?
-            ProcessMarkers(ref endpointBounds, 1, null);
+            ProcessMarkers(ref endpointBounds, 1, null, false);
 
             FinishProcessingMarkers(result);
 
