@@ -595,10 +595,9 @@ namespace PRGUI.Demo {
 
             var rich = new HyperText {
                 HotspotAppearance = {
-                    BackgroundColor = Color.Red,
-                    Decorator = Decorations.Button
+                    BackgroundColor = Color.Red
                 },
-                Text = "Hello World.\r\n$[color:red]Red$[], $[color:green]green$[], and $[color:blue]blue$[] are merely three $(colors) of the rainbow.\r\n" +
+                Text = "Hello World.\r\n$[color:red]Red$[], $[color:green]green$[], and $[color:blue]blue$[] $(are merely three colors) of the rainbow.\r\n" +
                     "Yet another $(color) you may encounter in the real world is $[color:black]black$[], though some may insist that it is not a color. They are liars.",
                 AutoSize = false
             };

@@ -665,9 +665,11 @@ namespace Squared.PRGUI.Controls {
     public delegate AbstractTooltipContent GetTooltipForMarkedStringHandler (HyperText control, AbstractString text, string id);
 
     public class HyperText : StaticText, IControlContainer, IControlEventFilter {
-        public class Hotspot : Control, ICustomTooltipTarget, IReadingTarget {
+        public class Hotspot : Control, ICustomTooltipTarget, IReadingTarget, IPartiallyIntangibleControl {
             public AbstractString MarkedString;
             public string MarkedID;
+            public Vector2 RectBase;
+            public DenseList<Bounds> Rects;
 
             public Hotspot ()
                 : base () {
@@ -739,6 +741,35 @@ namespace Squared.PRGUI.Controls {
             void IReadingTarget.FormatValueInto (StringBuilder sb) {
                 sb.Append(MarkedString.ToString());
             }
+
+            protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+                var ipic = (IPartiallyIntangibleControl)this;
+                if (ipic.IsIntangibleAtPosition(position))
+                    return false;
+                return base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+            }
+
+            protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+                var outerBox = settings.ContentBox;
+                foreach (var b in Rects) {
+                    var r = new RectF(b.TopLeft - RectBase + outerBox.Position, b.Size);
+                    settings.ContentBox = r;
+                    r.Position = r.Position - new Vector2(decorations.Margins.Left, decorations.Margins.Top);
+                    r.Size = r.Size + decorations.Margins.Size;
+                    settings.Box = r;
+                    decorations?.Rasterize(context, ref renderer, settings);
+                }
+            }
+
+            bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) {
+                var cb = this.GetRect(contentRect: true);
+                foreach (var b in Rects) {
+                    var r = new RectF(b.TopLeft - RectBase + cb.Position, b.Size);
+                    if (r.Contains(position))
+                        return false;
+                }
+                return true;
+            }
         }
 
         public Action<HyperText, Hotspot> OnHotSpotClicked;
@@ -801,6 +832,7 @@ namespace Squared.PRGUI.Controls {
                     for (int i = 0; i < rm.Count; i++) {
                         var m = Content.RichMarkers[i];
                         var hs = (Hotspot)children[i];
+                        hs.Rects = m.Bounds;
                         hs.MarkedString = m.MarkedString;
                         hs.MarkedID = m.MarkedID;
                         if (m.Bounds.Count <= 0) {
@@ -812,6 +844,7 @@ namespace Squared.PRGUI.Controls {
                             hs.Appearance = HotspotAppearance;
                             var b = m.UnionBounds;
                             hs.Layout.FloatingPosition = b.TopLeft + _LastDrawOffset - new Vector2(padding.Left, padding.Top);
+                            hs.RectBase = b.TopLeft;
                             hs.Width.Fixed = b.Size.X + padding.X;
                             hs.Height.Fixed = b.Size.Y + padding.Y;
                             hs.SetAcceptsFocus(HotspotsAcceptFocus);
