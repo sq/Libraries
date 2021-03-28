@@ -165,6 +165,11 @@ namespace Squared.PRGUI.Controls {
             // FIXME
             Manager = new ItemListManager<T>(comparer ?? EqualityComparer<T>.Default);
             DefaultCreateControlForValue = _DefaultCreateControlForValue;
+            Manager.SelectionChanged += Manager_SelectionChanged;
+        }
+
+        private void Manager_SelectionChanged () {
+            OnSelectionChanged(true);
         }
 
         private void OnSelectionChanged (bool forUserInput) {

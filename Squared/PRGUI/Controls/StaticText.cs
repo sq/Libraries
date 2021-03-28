@@ -817,6 +817,8 @@ namespace Squared.PRGUI.Controls {
                             hs.SetAcceptsFocus(HotspotsAcceptFocus);
                         }
                     }
+                } else {
+                    children.Clear();
                 }
             }
 
