@@ -867,7 +867,7 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            for (int i = 0; i < rm.Count; i++) {
+            for (int i = 0, l = Math.Min(rm.Count, children.Count); i < l; i++) {
                 var child = children[i];
                 var childExistingKey = (ControlKey?)null;
                 if ((existingKey.HasValue) && !child.LayoutKey.IsInvalid)

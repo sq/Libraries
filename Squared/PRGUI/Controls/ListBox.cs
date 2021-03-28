@@ -202,16 +202,18 @@ namespace Squared.PRGUI.Controls {
             return true;
         }
 
-        public void SetSelectedIndex (int index, bool fireEvent) {
+        public bool SetSelectedIndex (int index, bool fireEvent) {
             if (!Manager.TrySetSelectedIndex(index, fireEvent))
-                return;
+                return false;
             OnSelectionChanged(fireEvent);
+            return true;
         }
 
-        public void SetSelectedItem (T value, bool fireEvent) {
+        public bool SetSelectedItem (T value, bool fireEvent) {
             if (!Manager.TrySetSelectedItem(ref value, fireEvent))
-                return;
+                return false;
             OnSelectionChanged(fireEvent);
+            return true;
         }
 
         private Control _DefaultCreateControlForValue (ref T value, Control existingControl) {
