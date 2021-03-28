@@ -323,6 +323,10 @@ namespace Squared.PRGUI.Controls {
             Layout.Floating = true;
         }
 
+        protected void CancelDrag () {
+            Dragging = false;
+        }
+
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             if (_Maximized) {
@@ -393,7 +397,7 @@ namespace Squared.PRGUI.Controls {
             if (name == UIEvents.MouseDown) {
                 Context.TrySetFocus(this);
 
-                if (MostRecentTitleBox.Contains(args.RelativeGlobalPosition) && AllowDrag) {
+                if (MostRecentTitleBox.Contains(args.RelativeGlobalPosition) && AllowDrag && (args.Buttons == MouseButtons.Left)) {
                     Context.CaptureMouse(this);
                     Dragging = true;
                     DragStartedMaximized = Maximized;

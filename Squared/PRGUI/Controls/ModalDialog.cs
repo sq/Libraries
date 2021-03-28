@@ -158,6 +158,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public bool Close (TResult result, bool force = false) {
+            CancelDrag();
             if (!IsActive)
                 return false;
 
