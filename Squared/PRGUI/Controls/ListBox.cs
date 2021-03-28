@@ -866,6 +866,18 @@ namespace Squared.PRGUI.Controls {
             Invalidate();
         }
 
+        public bool TryScrollSelectedItemIntoView (bool forUserInput) {
+            var ctl = Manager.SelectedControl;
+            if (ctl == null)
+                return false;
+
+            var parentRect = GetRect(applyOffset: false);
+            var itemRect = ctl.GetRect(applyOffset: false, true);
+            itemRect.Position -= parentRect.Position;
+            var desiredOffset = itemRect.Center - (parentRect.Size * 0.5f);
+            return TrySetScrollOffset(desiredOffset, forUserInput);
+        }
+
         bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) => false;
 
         int IFuzzyHitTestTarget.WalkTree (

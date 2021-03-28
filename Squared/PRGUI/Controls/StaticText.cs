@@ -420,6 +420,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected Vector2 _LastDrawOffset, _LastDrawScale;
+        protected BitmapDrawCall[] _LayoutFilterScratchBuffer;
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
@@ -490,13 +491,24 @@ namespace Squared.PRGUI.Controls {
             // FIXME: Why is this here?
             renderer.Layer += 1;
 
-            if (LayoutFilter != null)
-                LayoutFilter(this, ref layout);
+            var segment = layout.DrawCalls;
+
+            if (LayoutFilter != null) {
+                var size = layout.DrawCalls.Count;
+                if ((_LayoutFilterScratchBuffer == null) || (_LayoutFilterScratchBuffer.Length < size))
+                    _LayoutFilterScratchBuffer = new BitmapDrawCall[size + 256];
+                var temp = layout;
+                Array.Copy(layout.DrawCalls.Array, layout.DrawCalls.Offset, _LayoutFilterScratchBuffer, 0, layout.DrawCalls.Count);
+                temp.DrawCalls = new ArraySegment<BitmapDrawCall>(_LayoutFilterScratchBuffer, 0, layout.DrawCalls.Count);
+                LayoutFilter(this, ref temp);
+                segment = temp.DrawCalls;
+            } else {
+                _LayoutFilterScratchBuffer = null;
+            }
 
             foreach (var tex in layout.UsedTextures)
                 context.UIContext.NotifyTextureUsed(this, tex);
 
-            var segment = layout.DrawCalls;
             if (CharacterLimit != null)
                 segment = new ArraySegment<BitmapDrawCall>(segment.Array, segment.Offset, Math.Min(CharacterLimit.Value, segment.Count));
 

@@ -31,9 +31,9 @@ namespace Squared.Render.Text {
         public readonly float LineHeight;
         public readonly Bounds FirstCharacterBounds;
         public readonly Bounds LastCharacterBounds;
-        public readonly ArraySegment<BitmapDrawCall> DrawCalls;
+        public ArraySegment<BitmapDrawCall> DrawCalls;
         public DenseList<AbstractTextureReference> UsedTextures;
-        public bool WasLineLimited;
+        public readonly bool WasLineLimited;
 
         public StringLayout (
             Vector2 position, Vector2 size, Vector2 unconstrainedSize, 
