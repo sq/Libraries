@@ -329,13 +329,16 @@ namespace Squared.Render.Text {
                             newBounds.TopLeft.X = Math.Min(curr.BottomRight.X, bounds.TopLeft.X);
                             newBounds.TopLeft.Y = Math.Min(curr.TopLeft.Y, bounds.TopLeft.Y);
                         }
+                        if (newBounds.TopLeft.X <= 0)
+                            ;
                         m.CurrentSplitGlyphCount = 0;
                         m.Bounds.Add(newBounds);
-                    } else if (didWrapWord && splitMarker) {
+                    } else if (didWrapWord && splitMarker && (m.CurrentSplitGlyphCount == 0)) {
                         m.Bounds[m.Bounds.Count - 1] = bounds;
-                        m.CurrentSplitGlyphCount = 0;
                     } else {
                         var newBounds = Bounds.FromUnion(bounds, curr);
+                        if (newBounds.TopLeft.X <= 0)
+                            ;
                         m.Bounds[m.Bounds.Count - 1] = newBounds;
                     }
                 } else if (bounds != default(Bounds))
@@ -454,15 +457,15 @@ namespace Squared.Render.Text {
                 Bounds oldBounds = m.Bounds.LastOrDefault(),
                     newBounds = oldBounds.Translate(adjustment);
 
+                newBounds.TopLeft.X = (position?.X ?? 0) + xOffsetOfWrappedLine;
+                newBounds.TopLeft.Y = Math.Max(newBounds.TopLeft.Y, newBounds.BottomRight.Y - currentLineSpacing);
+
                 if ((m.FirstDrawCallIndex == null) || (m.FirstDrawCallIndex > lastGlyphIndex))
                     continue;
                 if (m.LastDrawCallIndex < firstGlyphIndex)
                     continue;
                 if (m.Bounds.Count < 1)
                     continue;
-
-                newBounds.TopLeft.X = xOffsetOfWrappedLine;
-                newBounds.TopLeft.Y = Math.Max(newBounds.TopLeft.Y, newBounds.BottomRight.Y - currentLineSpacing);
 
                 m.Bounds[m.Bounds.Count - 1] = newBounds;
 
