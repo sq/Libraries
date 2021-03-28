@@ -34,6 +34,11 @@ namespace Squared.PRGUI.Controls {
         public bool? ShowVerticalScrollbar = null, 
             ShowHorizontalScrollbar = null;
 
+        new public Control DefaultFocusTarget {
+            get => base.DefaultFocusTarget;
+            set => base.DefaultFocusTarget = value;
+        }
+
         protected bool ShouldShowHorizontalScrollbar =>
             ShowHorizontalScrollbar ?? (HScrollbar.ContentSize > HScrollbar.ViewportSize);
         protected bool ShouldShowVerticalScrollbar =>

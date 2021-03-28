@@ -787,6 +787,8 @@ namespace Squared.PRGUI.Controls {
         public Action<HyperText, Hotspot> OnHotSpotClicked;
         public GetTooltipForMarkedStringHandler GetTooltipForString;
 
+        Control IControlContainer.DefaultFocusTarget => null;
+
         public bool HotspotsAcceptFocus = true;
         public ControlAppearance HotspotAppearance = new ControlAppearance {
             SuppressDecorationMargins = true,

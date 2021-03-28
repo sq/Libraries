@@ -28,6 +28,9 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        protected Control DefaultFocusTarget = null;
+        Control IControlContainer.DefaultFocusTarget => DefaultFocusTarget;
+
         ControlCollection IControlContainer.Children => Children;
         int IControlContainer.ChildrenToSkipWhenBuilding => ChildrenToSkipWhenBuilding;
 

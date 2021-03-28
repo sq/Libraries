@@ -261,7 +261,7 @@ namespace Squared.PRGUI {
                 ) {
                     var container = value as IControlContainer;
                     if (IsValidContainerToSearchForFocusableControls(container))
-                        childTarget = container.Children.InTabOrder(FrameIndex, true).FirstOrDefault();
+                        childTarget = container.DefaultFocusTarget ?? container.Children.InTabOrder(FrameIndex, true).FirstOrDefault();
                 }
 
                 // HACK: If the focus is shifted to an invalid focus target but it's a container,
@@ -269,7 +269,7 @@ namespace Squared.PRGUI {
                 if (childTarget?.IsValidFocusTarget == false) {
                     var childContainer = (childTarget as IControlContainer);
                     if (IsValidContainerToSearchForFocusableControls(childContainer))
-                        childTarget = PickFocusableChild((Control)childContainer);
+                        childTarget = childContainer.DefaultFocusTarget ?? PickFocusableChild((Control)childContainer);
                 }
 
                 if (childTarget != null)
@@ -292,7 +292,7 @@ namespace Squared.PRGUI {
                 if (!newFocusTarget.IsValidFocusTarget) {
                     var collection = (newFocusTarget as IControlContainer);
                     if (IsValidContainerToSearchForFocusableControls(collection)) {
-                        var childTarget = PickFocusableChild((Control)collection);
+                        var childTarget = collection.DefaultFocusTarget ?? PickFocusableChild((Control)collection);
                         if (childTarget == newFocusTarget) {
                             if (!force && !isTopLevel)
                                 return false;
