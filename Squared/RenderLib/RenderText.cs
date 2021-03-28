@@ -133,6 +133,7 @@ namespace Squared.Render.Text {
         public int FirstCharacterIndex, LastCharacterIndex;
         public int? FirstDrawCallIndex, LastDrawCallIndex;
         public int GlyphCount;
+        internal int CurrentSplitGlyphCount;
         public DenseList<Bounds> Bounds;
 
         public LayoutMarker (int firstIndex, int lastIndex, AbstractString markedString = default(AbstractString), string markedID = null) {
@@ -142,6 +143,7 @@ namespace Squared.Render.Text {
             MarkedID = markedID;
             FirstDrawCallIndex = LastDrawCallIndex = null;
             GlyphCount = 0;
+            CurrentSplitGlyphCount = 0;
             Bounds = default(DenseList<Bounds>);
         }
 
@@ -240,7 +242,7 @@ namespace Squared.Render.Text {
         float          currentBaseline;
         float          maxLineSpacing;
         Vector2        wordStartOffset;
-        private bool   ownsBuffer, suppress, suppressUntilNextLine;
+        private bool   ownsBuffer, suppress, suppressUntilNextLine, previousGlyphWasDead;
         private AbstractTextureReference lastUsedTexture;
         private DenseList<AbstractTextureReference> usedTextures;
 
@@ -253,7 +255,7 @@ namespace Squared.Render.Text {
             characterOffsetUnconstrained = characterOffset = new Vector2(xOffsetOfFirstLine, 0);
             initialLineXOffset = characterOffset.X;
 
-            suppress = suppressUntilNextLine = false;
+            previousGlyphWasDead = suppress = suppressUntilNextLine = false;
 
             bufferWritePosition = 0;
             drawCallsWritten = 0;
@@ -305,7 +307,7 @@ namespace Squared.Render.Text {
             }
         }
 
-        private void ProcessMarkers (ref Bounds bounds, int currentCodepointSize, int? drawCallIndex, bool lineBreak) {
+        private void ProcessMarkers (ref Bounds bounds, int currentCodepointSize, int? drawCallIndex, bool splitMarker, bool didWrapWord) {
             if (measureOnly)
                 return;
             if (suppress || suppressUntilNextLine)
@@ -320,12 +322,30 @@ namespace Squared.Render.Text {
                 if (m.LastCharacterIndex < characterIndex1)
                     continue;
                 var curr = m.Bounds.LastOrDefault();
-                if ((curr != default(Bounds)) && !lineBreak)
-                    m.Bounds[m.Bounds.Count - 1] = Bounds.FromUnion(bounds, curr);
-                else
+                if (curr != default(Bounds)) {
+                    if (splitMarker && !didWrapWord) {
+                        var newBounds = bounds;
+                        if (m.CurrentSplitGlyphCount > 0) {
+                            newBounds.TopLeft.X = Math.Min(curr.BottomRight.X, bounds.TopLeft.X);
+                            newBounds.TopLeft.Y = Math.Min(curr.TopLeft.Y, bounds.TopLeft.Y);
+                        }
+                        m.CurrentSplitGlyphCount = 0;
+                        m.Bounds.Add(newBounds);
+                    } else if (didWrapWord && splitMarker) {
+                        m.Bounds[m.Bounds.Count - 1] = bounds;
+                        m.CurrentSplitGlyphCount = 0;
+                    } else {
+                        var newBounds = Bounds.FromUnion(bounds, curr);
+                        m.Bounds[m.Bounds.Count - 1] = newBounds;
+                    }
+                } else if (bounds != default(Bounds))
                     m.Bounds.Add(bounds);
-                if (drawCallIndex != null)
+
+                if (drawCallIndex != null) {
                     m.GlyphCount++;
+                    m.CurrentSplitGlyphCount++;
+                }
+
                 m.FirstDrawCallIndex = m.FirstDrawCallIndex ?? drawCallIndex;
                 m.LastDrawCallIndex = drawCallIndex ?? m.LastDrawCallIndex;
                 Markers[i] = m;
@@ -348,10 +368,10 @@ namespace Squared.Render.Text {
                                 continue;
                             if (m.LastCharacterIndex < baselineAdjustmentStart)
                                 continue;
+                            // FIXME
                             var b = m.Bounds.LastOrDefault();
                             b.TopLeft.Y += yOffset;
                             b.BottomRight.Y += yOffset;
-                            // FIXME
                             m.Bounds[m.Bounds.Count - 1] = b;
                             Markers[i] = m;
                         }
@@ -367,7 +387,7 @@ namespace Squared.Render.Text {
 
         private void WrapWord (
             ArraySegment<BitmapDrawCall> buffer,
-            Vector2 firstOffset, int firstIndex, int lastIndex, 
+            Vector2 firstOffset, int firstGlyphIndex, int lastGlyphIndex, 
             float glyphLineSpacing, float glyphBaseline
         ) {
             // FIXME: Can this ever happen?
@@ -388,13 +408,15 @@ namespace Squared.Render.Text {
             var suppressedByLineLimit = lineLimit.HasValue && (lineLimit.Value <= 0);
             var adjustment = Vector2.Zero;
 
-            for (var i = firstIndex; i <= lastIndex; i++) {
+            var oldFirstGlyphBounds = buffer.Array[buffer.Offset + firstGlyphIndex - 1].EstimateDrawBounds();
+
+            for (var i = firstGlyphIndex; i <= lastGlyphIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
                 var newCharacterX = (xOffsetOfWrappedLine) + (dc.Position.X - firstOffset.X);
 
                 // FIXME: Baseline?
                 var newPosition = new Vector2(newCharacterX, dc.Position.Y + yOffset);
-                if (i == firstIndex)
+                if (i == firstGlyphIndex)
                     adjustment = newPosition - dc.Position;
                 dc.Position = newPosition;
                 if (alignment != HorizontalAlignment.Left)
@@ -413,26 +435,36 @@ namespace Squared.Render.Text {
             // HACK: firstOffset may include whitespace so we want to pull the right edge in.
             //  Without doing this, the size rect for the string is too large.
             var actualRightEdge = firstOffset.X;
-            if (firstIndex > 0)
+            var newFirstGlyphBounds = buffer.Array[buffer.Offset + firstGlyphIndex - 1].EstimateDrawBounds();
+            if (firstGlyphIndex > 0)
                 actualRightEdge = Math.Min(
-                    actualRightEdge, 
-                    buffer.Array[buffer.Offset + firstIndex - 1].EstimateDrawBounds().BottomRight.X
+                    actualRightEdge, newFirstGlyphBounds.BottomRight.X
                 );
 
             // FIXME: This will break if the word mixes styles
-            baselineAdjustmentStart = firstIndex;
+            baselineAdjustmentStart = firstGlyphIndex;
+
+            if (Markers.Count <= 0)
+                return;
 
             // HACK: If a marker is inside of the wrapped word or around it, we need to adjust the marker to account
             //  for the fact that its anchoring characters have just moved
             for (int i = 0; i < Markers.Count; i++) {
                 var m = Markers[i];
-                if ((m.FirstDrawCallIndex == null) || (m.FirstDrawCallIndex < firstIndex))
+                Bounds oldBounds = m.Bounds.LastOrDefault(),
+                    newBounds = oldBounds.Translate(adjustment);
+
+                if ((m.FirstDrawCallIndex == null) || (m.FirstDrawCallIndex > lastGlyphIndex))
                     continue;
-                if (m.LastDrawCallIndex < firstIndex)
+                if (m.LastDrawCallIndex < firstGlyphIndex)
+                    continue;
+                if (m.Bounds.Count < 1)
                     continue;
 
-                for (int j = 0; j < m.Bounds.Count; j++)
-                    m.Bounds[j] = m.Bounds[j].Translate(adjustment);
+                newBounds.TopLeft.X = xOffsetOfWrappedLine;
+                newBounds.TopLeft.Y = Math.Max(newBounds.TopLeft.Y, newBounds.BottomRight.Y - currentLineSpacing);
+
+                m.Bounds[m.Bounds.Count - 1] = newBounds;
 
                 Markers[i] = m;
             }
@@ -592,7 +624,7 @@ namespace Squared.Render.Text {
             var sizeX = estimatedBounds.Size.X + (margin?.X ?? 0);
             characterOffset.X += sizeX;
             characterOffsetUnconstrained.X += sizeX;
-            AppendCharacter(ref dc, x, 1, false, lineSpacing, 0f, x, ref estimatedBounds, false);
+            AppendCharacter(ref dc, x, 1, false, lineSpacing, 0f, x, ref estimatedBounds, false, false);
         }
 
         public ArraySegment<BitmapDrawCall> AppendText (
@@ -651,9 +683,10 @@ namespace Squared.Render.Text {
                 codepoint = replacementCodepoint ?? codepoint;
 
                 bool isWhiteSpace = (char.IsWhiteSpace(ch1) && !replacementCodepoint.HasValue),
-                     forcedWrap = false, lineBreak = false,
-                     deadGlyph = false, isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1) || 
-                        replacementCodepoint.HasValue || (WordWrapCharacters.IndexOf(codepoint) >= 0);
+                    forcedWrap = false, lineBreak = false,
+                    deadGlyph = false, isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1) ||
+                        replacementCodepoint.HasValue || (WordWrapCharacters.IndexOf(codepoint) >= 0),
+                    didWrapWord = false;
                 Glyph glyph;
                 KerningAdjustment kerningAdjustment;
 
@@ -748,6 +781,7 @@ namespace Squared.Render.Text {
                         WrapWord(buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, glyphLineSpacing, glyphBaseline);
                         wordWrapSuppressed = true;
                         lineBreak = true;
+                        didWrapWord = true;
 
                         // FIXME: While this will abort when the line limit is reached, we need to erase the word we wrapped to the next line
                         if (lineLimit.HasValue && lineLimit.Value <= 0)
@@ -817,7 +851,7 @@ namespace Squared.Render.Text {
 
                     // FIXME: is the center X right?
                     ProcessHitTests(ref whitespaceBounds, whitespaceBounds.Center.X);
-                    ProcessMarkers(ref whitespaceBounds, currentCodepointSize, null, false);
+                    ProcessMarkers(ref whitespaceBounds, currentCodepointSize, null, false, didWrapWord);
 
                     // Ensure that trailing spaces are factored into total size
                     if (isWhiteSpace)
@@ -825,12 +859,18 @@ namespace Squared.Render.Text {
                 }
 
                 if (deadGlyph) {
+                    previousGlyphWasDead = true;
                     currentCharacterIndex++;
                     characterSkipCount--;
                     if (characterLimit.HasValue)
                         characterLimit--;
                     continue;
                 }
+
+                if (isWhiteSpace)
+                    previousGlyphWasDead = true;
+                else
+                    previousGlyphWasDead = false;
 
                 if (!suppress && !suppressUntilNextLine)
                     characterOffset.X += (glyph.CharacterSpacing * effectiveScale);
@@ -874,7 +914,7 @@ namespace Squared.Render.Text {
                     ref drawCall, 
                     x, currentCodepointSize, 
                     isWhiteSpace, glyphLineSpacing, 
-                    yOffset, xUnconstrained, ref testBounds, lineBreak
+                    yOffset, xUnconstrained, ref testBounds, lineBreak, didWrapWord
                 );
 
                 if (!suppress && !suppressUntilNextLine)
@@ -901,7 +941,7 @@ namespace Squared.Render.Text {
             ref BitmapDrawCall drawCall, 
             float x, int currentCodepointSize, 
             bool isWhiteSpace, float glyphLineSpacing, float yOffset, 
-            float xUnconstrained, ref Bounds testBounds, bool lineBreak
+            float xUnconstrained, ref Bounds testBounds, bool splitMarker, bool didWrapWord
         ) {
             if (recordUsedTextures && (drawCall.Textures.Texture1 != lastUsedTexture) && (drawCall.Textures.Texture1 != null)) {
                 lastUsedTexture = drawCall.Textures.Texture1;
@@ -937,7 +977,7 @@ namespace Squared.Render.Text {
                     if (!suppress && !suppressUntilNextLine) {
                         if (!measureOnly) {
                             buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
-                            ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition, lineBreak);
+                            ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition, splitMarker || previousGlyphWasDead, didWrapWord);
                             bufferWritePosition += 1;
                             drawCallsWritten += 1;
                         }
@@ -953,7 +993,7 @@ namespace Squared.Render.Text {
                     currentLineWhitespaceMaxXLeft = Math.Max(currentLineWhitespaceMaxXLeft, characterOffset.X);
                     currentLineWhitespaceMaxX = Math.Max(currentLineWhitespaceMaxX, x);
 
-                    ProcessMarkers(ref testBounds, currentCodepointSize, null, lineBreak);
+                    ProcessMarkers(ref testBounds, currentCodepointSize, null, splitMarker || previousGlyphWasDead, didWrapWord);
                 }
 
                 characterLimit--;
@@ -971,27 +1011,12 @@ namespace Squared.Render.Text {
             if (measureOnly)
                 return;
 
-            /*
-
             for (int i = 0; i < Markers.Count; i++) {
                 var m = Markers[i];
-                if ((m.FirstDrawCallIndex == null) || (m.LastDrawCallIndex == null)) {
-                    m.Bounds = null;
-                    continue;
-                } else {
-                    Bounds? newBounds = null;
-                    for (int j = m.FirstDrawCallIndex.Value; j <= m.LastDrawCallIndex.Value; j++) {
-                        var b = result.Array[result.Offset + j].EstimateDrawBounds();
-                        if (newBounds.HasValue)
-                            newBounds = Bounds.FromUnion(newBounds.Value, b) ?? newBounds;
-                        else
-                            newBounds = b;
-                    }
-                    m.Bounds = newBounds;
-                }
-                Markers[i] = m;
+                Console.WriteLine(m.MarkedString);
+                foreach (var b in m.Bounds)
+                    Console.WriteLine(b);
             }
-            */
         }
 
         public StringLayout Finish () {
@@ -1036,7 +1061,7 @@ namespace Squared.Render.Text {
             var endpointBounds = lastCharacterBounds;
             // FIXME: Index of last draw call?
             // FIXME: Codepoint size?
-            ProcessMarkers(ref endpointBounds, 1, null, false);
+            ProcessMarkers(ref endpointBounds, 1, null, false, false);
 
             FinishProcessingMarkers(result);
 

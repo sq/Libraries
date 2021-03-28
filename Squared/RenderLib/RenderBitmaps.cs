@@ -1423,6 +1423,9 @@ namespace Squared.Render {
 
         public Bounds EstimateDrawBounds () {
             var tex1 = Textures.Texture1.Instance;
+            if (tex1 == null)
+                return Bounds.FromPositionAndSize(Position, Vector2.Zero);
+
             var texSize = new Vector2(tex1.Width, tex1.Height);
             var texRgn = (TextureRegion.BottomRight - TextureRegion.TopLeft) * texSize * Scale;
             var offset = Origin * texRgn;
