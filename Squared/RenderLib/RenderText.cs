@@ -33,11 +33,12 @@ namespace Squared.Render.Text {
         public readonly Bounds LastCharacterBounds;
         public readonly ArraySegment<BitmapDrawCall> DrawCalls;
         public DenseList<AbstractTextureReference> UsedTextures;
+        public bool WasLineLimited;
 
         public StringLayout (
             Vector2 position, Vector2 size, Vector2 unconstrainedSize, 
             float lineHeight, Bounds firstCharacter, Bounds lastCharacter, 
-            ArraySegment<BitmapDrawCall> drawCalls
+            ArraySegment<BitmapDrawCall> drawCalls, bool wasLineLimited
         ) {
             Position = position;
             Size = size;
@@ -46,6 +47,7 @@ namespace Squared.Render.Text {
             FirstCharacterBounds = firstCharacter;
             LastCharacterBounds = lastCharacter;
             DrawCalls = drawCalls;
+            WasLineLimited = wasLineLimited;
             UsedTextures = default(DenseList<AbstractTextureReference>);
         }
 
@@ -131,7 +133,7 @@ namespace Squared.Render.Text {
         public int FirstCharacterIndex, LastCharacterIndex;
         public int? FirstDrawCallIndex, LastDrawCallIndex;
         public int GlyphCount;
-        public Bounds? Bounds;
+        public DenseList<Bounds> Bounds;
 
         public LayoutMarker (int firstIndex, int lastIndex, AbstractString markedString = default(AbstractString), string markedID = null) {
             FirstCharacterIndex = firstIndex;
@@ -140,11 +142,11 @@ namespace Squared.Render.Text {
             MarkedID = markedID;
             FirstDrawCallIndex = LastDrawCallIndex = null;
             GlyphCount = 0;
-            Bounds = null;
+            Bounds = default(DenseList<Bounds>);
         }
 
         public override string ToString () {
-            return $"{MarkedID ?? "marker"} [{FirstCharacterIndex} - {LastCharacterIndex}] -> [{FirstDrawCallIndex} - {LastDrawCallIndex}] {Bounds}";
+            return $"{MarkedID ?? "marker"} [{FirstCharacterIndex} - {LastCharacterIndex}] -> [{FirstDrawCallIndex} - {LastDrawCallIndex}] {Bounds.FirstOrDefault()}";
         }
     }
 
@@ -276,7 +278,7 @@ namespace Squared.Render.Text {
             Markers.Sort(LayoutMarker.Comparer.Instance);
             for (int i = 0; i < Markers.Count; i++) {
                 var m = Markers[i];
-                m.Bounds = null;
+                m.Bounds.Clear();
                 Markers[i] = m;
             }
 
@@ -317,10 +319,10 @@ namespace Squared.Render.Text {
                     continue;
                 if (m.LastCharacterIndex < characterIndex1)
                     continue;
-                if (m.Bounds.HasValue)
-                    m.Bounds = Bounds.FromUnion(bounds, m.Bounds.Value);
+                if (m.Bounds.Count > 0)
+                    m.Bounds[m.Bounds.Count - 1] = Bounds.FromUnion(bounds, m.Bounds[m.Bounds.Count - 1]);
                 else
-                    m.Bounds = bounds;
+                    m.Bounds.Add(bounds);
                 if (drawCallIndex != null)
                     m.GlyphCount++;
                 m.FirstDrawCallIndex = m.FirstDrawCallIndex ?? drawCallIndex;
@@ -339,16 +341,17 @@ namespace Squared.Render.Text {
                     if (!measureOnly) {
                         for (int i = 0; i < Markers.Count; i++) {
                             var m = Markers[i];
-                            if (!m.Bounds.HasValue)
+                            if (m.Bounds.Count <= 0)
                                 continue;
                             if (m.FirstCharacterIndex > bufferWritePosition)
                                 continue;
                             if (m.LastCharacterIndex < baselineAdjustmentStart)
                                 continue;
-                            var b = m.Bounds.Value;
+                            var b = m.Bounds.LastOrDefault();
                             b.TopLeft.Y += yOffset;
                             b.BottomRight.Y += yOffset;
-                            m.Bounds = b;
+                            // FIXME
+                            m.Bounds[m.Bounds.Count - 1] = b;
                             Markers[i] = m;
                         }
                     }
@@ -426,9 +429,10 @@ namespace Squared.Render.Text {
                     continue;
                 if (m.LastDrawCallIndex < firstIndex)
                     continue;
-                if (!m.Bounds.HasValue)
+                if (m.Bounds.Count <= 0)
                     continue;
-                m.Bounds = m.Bounds.Value.Translate(adjustment);
+                // FIXME
+                m.Bounds[m.Bounds.Count - 1] = m.Bounds.LastOrDefault().Translate(adjustment);
                 Markers[i] = m;
             }
         }
@@ -1040,7 +1044,7 @@ namespace Squared.Render.Text {
                 new Vector2(maxX, maxY), new Vector2(maxXUnconstrained, maxYUnconstrained),
                 maxLineSpacing,
                 firstCharacterBounds, lastCharacterBounds,
-                result
+                result, lineLimit.HasValue && (lineLimit.Value <= 0)
             ) {
                 UsedTextures = usedTextures
             };

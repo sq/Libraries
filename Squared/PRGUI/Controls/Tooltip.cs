@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Squared.PRGUI.Controls;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Text;
@@ -71,6 +72,13 @@ namespace Squared.PRGUI.Controls {
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.Tooltip;
         }
+
+        public void ApplySettings (TooltipSettings settings) {
+            RichText = settings.RichText;
+            if (settings.ConfigureLayout != null)
+                settings.ConfigureLayout(Content);
+            LayoutFilter = settings.LayoutFilter;
+        }
     }
 }
 
@@ -89,11 +97,15 @@ namespace Squared.PRGUI {
     public struct TooltipSettings {
         public bool RichText;
         public Vector2? AnchorPoint, ControlAlignmentPoint;
+        public Action<DynamicStringLayout> ConfigureLayout;
+        public StringLayoutFilter LayoutFilter;
 
         public bool Equals (TooltipSettings rhs) {
             return (RichText == rhs.RichText) &&
                 (AnchorPoint == rhs.AnchorPoint) &&
-                (ControlAlignmentPoint == rhs.ControlAlignmentPoint);
+                (ControlAlignmentPoint == rhs.ControlAlignmentPoint) &&
+                (ConfigureLayout == rhs.ConfigureLayout) &&
+                (LayoutFilter == rhs.LayoutFilter);
         }
 
         public override bool Equals (object obj) {

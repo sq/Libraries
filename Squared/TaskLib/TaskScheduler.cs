@@ -318,7 +318,7 @@ namespace Squared.Task {
             }
         }
 
-        public IFuture Start (System.Threading.Tasks.Task task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.Default) {
+        public IFuture Start (System.Threading.Tasks.Task task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.RunAsBackgroundTask) {
             var future = task.GetFuture();
             switch (executionPolicy) {
                 case TaskExecutionPolicy.RunAsBackgroundTask:
@@ -328,7 +328,7 @@ namespace Squared.Task {
             return future;
         }
 
-        public Future<T> Start<T> (System.Threading.Tasks.Task<T> task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.Default) {
+        public Future<T> Start<T> (System.Threading.Tasks.Task<T> task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.RunAsBackgroundTask) {
             var future = task.GetFuture();
             switch (executionPolicy) {
                 case TaskExecutionPolicy.RunAsBackgroundTask:

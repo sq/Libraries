@@ -111,9 +111,9 @@ namespace Squared.PRGUI.Accessibility {
             SpeechQueue.Clear();
         }
 
-        public void BeginReading (Control control, string prefix = null) {
+        public void BeginReading (Control control, string prefix = null, bool force = false) {
             var topLevel = Context.FindTopLevelAncestor(control);
-            BeginReading(topLevel, control, prefix);
+            BeginReading(topLevel, control, prefix, force);
         }
 
         private IReadingTarget FindReadingTarget (Control control) {
@@ -132,8 +132,8 @@ namespace Squared.PRGUI.Accessibility {
                 Speak((prefix ?? "") + text.ToString(), Context.TTSDescriptionReadingSpeed);
         }
 
-        private void BeginReading (Control topLevel, Control control, string prefix = null) {
-            if (CurrentlyReading == control)
+        private void BeginReading (Control topLevel, Control control, string prefix = null, bool force = false) {
+            if ((CurrentlyReading == control) && !force)
                 return;
 
             var prefixed = (topLevel != CurrentlyReadingTopLevel) && (topLevel != control) && 
@@ -149,7 +149,7 @@ namespace Squared.PRGUI.Accessibility {
             Stop();
             if (prefixed)
                 SpeakControl(topLevel, "Inside");
-            SpeakControl(control, prefixed ? ", " : null);
+            SpeakControl(control, prefix ?? (prefixed ? ", " : null));
         }
 
         private void Control_OnSelectionChanged (IEventInfo e) {

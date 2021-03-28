@@ -247,8 +247,8 @@ namespace FontTest {
             }
 
             foreach (var rm in Text.RichMarkers) {
-                if (rm.Bounds.HasValue)
-                    ir.OutlineRectangle(rm.Bounds.Value, Color.Green);
+                foreach (var b in rm.Bounds)
+                    ir.OutlineRectangle(b, Color.Green);
             }
         }
     }

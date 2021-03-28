@@ -605,6 +605,10 @@ namespace Squared.PRGUI {
             return result;
         }
 
+        public void HideTooltip () {
+            HideTooltip(true);
+        }
+
         private void UpdateTooltip (bool leftButtonPressed) {
             var target = PickTooltipTarget(leftButtonPressed);
             if (!IsTooltipAllowedToAppear(target, leftButtonPressed))
@@ -770,7 +774,7 @@ namespace Squared.PRGUI {
                 var idealMaxSize = CanvasSize * MaxTooltipSize;
 
                 instance.Text = text;
-                instance.RichText = content.Settings.RichText;
+                instance.ApplySettings(content.Settings);
                 // FIXME: Shift it around if it's already too close to the right side
                 instance.Width.Maximum = idealMaxSize.X;
                 instance.Height.Maximum = idealMaxSize.Y;

@@ -100,7 +100,7 @@ namespace Squared.Render.Text {
                 return null;
             }
 
-            if (result.Bounds.HasValue)
+            if (result.Bounds.Count > 0)
                 return result;
             else
                 return null;
@@ -117,7 +117,7 @@ namespace Squared.Render.Text {
                 return null;
             }
 
-            if (result.Bounds.HasValue)
+            if (result.Bounds.Count > 0)
                 return result;
             else
                 return null;

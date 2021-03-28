@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Squared.Util;
@@ -307,6 +308,54 @@ namespace Squared.Threading {
 
         ~ThreadGroup () {
             Dispose(true);
+        }
+    }
+
+    public static class ThreadGroupExtensions {
+        private class ActionWorkItem : IWorkItem {
+            public Action Action;
+            public SignalFuture Future;
+
+            public void Execute () {
+                try {
+                    Action();
+                    Future.Complete();
+                } catch (Exception exc) {
+                    Future.SetResult2(NoneType.None, ExceptionDispatchInfo.Capture(exc));
+                }
+            }
+        }
+
+        private class FuncWorkItem<T> : IWorkItem {
+            public Func<T> Func;
+            public Future<T> Future;
+
+            public void Execute () {
+                try {
+                    var result = Func();
+                    Future.SetResult(result, null);
+                } catch (Exception exc) {
+                    Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
+                }
+            }
+        }
+
+        public static SignalFuture Invoke (this ThreadGroup group, Action action) {
+            var workItem = new ActionWorkItem {
+                Action = action,
+                Future = new SignalFuture()
+            };
+            group.Enqueue(ref workItem);
+            return workItem.Future;
+        }
+
+        public static Future<T> Invoke<T> (this ThreadGroup group, Func<T> func) {
+            var workItem = new FuncWorkItem<T> {
+                Func = func,
+                Future = new Future<T>()
+            };
+            group.Enqueue(ref workItem);
+            return workItem.Future;
         }
     }
 }

@@ -21,6 +21,22 @@ namespace Squared.PRGUI.Controls {
             DisclosureAnimationDuration = 0.175f,
             DisclosureArrowSizeMultiplier = 0.375f;
 
+        protected virtual string DescriptionPrefix => (Collapsed ? "Collapsed Group" : "Group");
+        public string Description = null;
+
+        public bool Collapsible;
+        protected bool CollapsingEnabled = true;
+
+        public string Title;
+
+        private float? MostRecentTitleHeight;
+        private Tween<float> DisclosureLevel = 1f;
+
+        protected DynamicStringLayout TitleLayout = new DynamicStringLayout {
+            HideOverflow = true,
+            LineLimit = 1
+        };
+
         private bool _Collapsed, _CollapsePending;
         protected bool CollapsePending => _CollapsePending;
         public bool Collapsed {
@@ -59,19 +75,6 @@ namespace Squared.PRGUI.Controls {
             FireEvent(UIEvents.ValueChanged);
             // FIXME: Fire byUser event
         }
-
-        public bool Collapsible;
-        protected bool CollapsingEnabled = true;
-
-        public string Title;
-
-        protected DynamicStringLayout TitleLayout = new DynamicStringLayout {
-            HideOverflow = true,
-            LineLimit = 1
-        };
-
-        private float? MostRecentTitleHeight;
-        private Tween<float> DisclosureLevel = 1f;
 
         public TitledContainer ()
             : base () {
@@ -387,9 +390,7 @@ namespace Squared.PRGUI.Controls {
             );
         }
 
-        protected virtual string DescriptionPrefix => (Collapsed ? "Collapsed Group" : "Group");
-
-        AbstractString IReadingTarget.Text => $"{DescriptionPrefix} {Title}" ?? DescriptionPrefix;
+        AbstractString IReadingTarget.Text => Description ?? $"{DescriptionPrefix} {Title}" ?? DescriptionPrefix;
 
         void IReadingTarget.FormatValueInto (StringBuilder sb) {
             sb.Append(Collapsed ? "Collapsed" : "Expanded");

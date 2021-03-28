@@ -662,9 +662,9 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public class HyperText : StaticText, IControlContainer, IControlEventFilter {
-        public delegate AbstractTooltipContent GetTooltipForMarkedStringHandler (HyperText control, AbstractString text, string id);
+    public delegate AbstractTooltipContent GetTooltipForMarkedStringHandler (HyperText control, AbstractString text, string id);
 
+    public class HyperText : StaticText, IControlContainer, IControlEventFilter {
         public class Hotspot : Control, ICustomTooltipTarget, IReadingTarget {
             public AbstractString MarkedString;
             public string MarkedID;
@@ -731,7 +731,7 @@ namespace Squared.PRGUI.Controls {
 
             protected override bool OnEvent<T> (string name, T args) {
                 if (name == UIEvents.Click)
-                    Context.FireEvent("HotspotClick", Parent, this);
+                    Context.FireEvent(UIEvents.HotspotClick, Parent, this);
 
                 return base.OnEvent(name, args);
             }
@@ -741,7 +741,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public event Action<HyperText, Hotspot> OnHotSpotClicked;
+        public Action<HyperText, Hotspot> OnHotSpotClicked;
         public GetTooltipForMarkedStringHandler GetTooltipForString;
 
         public bool HotspotsAcceptFocus = true;
@@ -803,14 +803,14 @@ namespace Squared.PRGUI.Controls {
                         var hs = (Hotspot)children[i];
                         hs.MarkedString = m.MarkedString;
                         hs.MarkedID = m.MarkedID;
-                        if (!m.Bounds.HasValue) {
+                        if (m.Bounds.Count <= 0) {
                             hs.Visible = false;
                             hs.Enabled = false;
                         } else {
                             hs.Visible = true;
                             hs.Enabled = true;
                             hs.Appearance = HotspotAppearance;
-                            var b = m.Bounds.Value;
+                            var b = m.Bounds.LastOrDefault();
                             hs.Layout.FloatingPosition = b.TopLeft + _LastDrawOffset - new Vector2(padding.Left, padding.Top);
                             hs.Width.Fixed = b.Size.X + padding.X;
                             hs.Height.Fixed = b.Size.Y + padding.Y;

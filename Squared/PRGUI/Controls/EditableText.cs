@@ -1044,7 +1044,7 @@ namespace Squared.PRGUI.Controls {
             var selectedColorC = (selectedColor ?? Color.Black);
             var nonSelectedColorC = (DynamicLayout.Color ?? Color.White);
             var noColorizing = (selection == null) || 
-                (selection.Value.Bounds == null) || 
+                (selection.Value.Bounds.Count < 1) || 
                 (Selection.First == Selection.Second) ||
                 (selection.Value.GlyphCount == 0);
             for (int i = 0; i < drawCalls.Count; i++) {
@@ -1058,10 +1058,10 @@ namespace Squared.PRGUI.Controls {
         private Bounds? GetBoundsForSelection (LayoutMarker? selection) {
             if (selection == null)
                 return null;
-            else if (selection.Value.Bounds == null)
+            else if (selection.Value.Bounds.Count < 1)
                 return null;
 
-            var sel = selection.Value.Bounds ?? default(Bounds);
+            var sel = selection.Value.Bounds.LastOrDefault();
             // If there's no text or something else bad happened, synthesize a selection rect
             if (sel.Size.Length() < 1)
                 sel.BottomRight = sel.TopLeft + new Vector2(0, DynamicLayout.GlyphSource.LineSpacing);
