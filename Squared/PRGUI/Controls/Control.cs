@@ -1010,7 +1010,8 @@ namespace Squared.PRGUI {
                     GetDebugBoxColor(context.Depth) * alpha
                 );
 
-            var flags = context.Layout.GetFlags(LayoutKey);
+            if (!context.Layout.TryGetFlags(LayoutKey, out ControlFlags flags))
+                return;
 
             if (ShowDebugMargins)
                 RasterizeDebugMargins(ref context, ref passSet, ref rect, context.Layout.GetMargins(LayoutKey), 1f, Color.Green);

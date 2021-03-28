@@ -329,8 +329,12 @@ namespace Squared.PRGUI.Layout {
                     throw new ArgumentOutOfRangeException(nameof(key));
             }
 
-            if (id >= _Count)
-                throw new ArgumentOutOfRangeException(nameof(key));
+            if (id >= _Count) {
+                if (optional)
+                    return null;
+                else
+                    throw new ArgumentOutOfRangeException(nameof(key));
+            }
 
             if (Layout.BufferVersion != LayoutBufferVersion)
                 UpdateLayoutPin();
