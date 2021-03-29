@@ -113,6 +113,8 @@ namespace Squared.PRGUI.Controls {
         bool IControlContainer.IsControlHidden (Control child) => (child != SelectedTab) && (child != TabStrip); 
 
         protected void GenerateTabs () {
+            TabStripIsInvalid = false;
+
             TabStrip.Layout.Fill.Column = TabsOnLeft;
             TabStrip.Layout.Fill.Row = !TabsOnLeft;
             TabStrip.Layout.Anchor.Left = TabsOnLeft;
@@ -156,13 +158,11 @@ namespace Squared.PRGUI.Controls {
                     btn.Checked = true;
                 TabStrip.Add(btn);
             }
-            TabStripIsInvalid = false;
-
-            foreach (var t in TabStrip) {
-            }
         }
 
         protected override void EnsureChildrenAreValid () {
+            if (TabStripIsInvalid)
+                GenerateTabs();
         }
 
         protected override void OnDescendantReceivedFocus (Control control, bool isUserInitiated) {

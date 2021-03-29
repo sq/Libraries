@@ -23,7 +23,7 @@ namespace Squared.PRGUI {
         }
 
         public class TraverseSettings {
-            public bool AllowDescend, AllowDescendIfDisabled, AllowDescendIfInvisible, AllowAscend;
+            public bool AllowDescend, AllowDescendIfDisabled, AllowDescendIfInvisible, AllowAscend, StartWithDefault;
             // HACK: Will default to true for Window and false for everything else
             public bool? AllowWrap;
             public int Direction;
@@ -40,6 +40,7 @@ namespace Squared.PRGUI {
                     AllowDescendIfDisabled = AllowDescendIfDisabled,
                     AllowDescendIfInvisible = AllowDescendIfInvisible,
                     AllowAscend = AllowAscend,
+                    StartWithDefault = StartWithDefault,
                     AllowWrap = AllowWrap,
                     Direction = Direction,
                     Predicate = Predicate,
@@ -72,12 +73,37 @@ namespace Squared.PRGUI {
             return true;
         }
 
+        private Control FindFocusableChildOfDefaultFocusTarget (Control defaultFocusTarget, TraverseSettings settings) {
+            if (defaultFocusTarget.IsValidFocusTarget)
+                return defaultFocusTarget;
+            else if (defaultFocusTarget is IControlContainer icc)
+                return TraverseChildren(icc.Children, settings).FirstOrDefault().Control;
+            else
+                return null;
+        }
+
         private IEnumerable<TraversalInfo> TraverseChildren (ControlCollection collection, TraverseSettings settings) {
             if (collection.Count <= 0)
                 yield break;
 
             int i = (settings.Direction > 0) ? 0 : collection.Count - 1;
             var tabOrdered = collection.InTabOrder(FrameIndex, false);
+            var icc = collection.Host as IControlContainer;
+            if (settings.StartWithDefault && (icc?.DefaultFocusTarget != null)) {
+                var dft = icc.DefaultFocusTarget;
+                if (Control.IsEqualOrAncestor(dft, collection.Host)) {
+                    var actualTarget = FindFocusableChildOfDefaultFocusTarget(dft, settings);
+                    if (actualTarget != null) {
+                        var info = Traverse_MakeInfo(actualTarget);
+                        if ((settings.Predicate == null) || settings.Predicate(info.Control))
+                            yield return info;
+                    }
+                }
+
+                var defaultIndex = tabOrdered.IndexOf(dft);
+                if (defaultIndex >= 0)
+                    i = defaultIndex;
+            }
 
             while (true) {
                 if ((i < 0) || (i >= tabOrdered.Count))
@@ -201,6 +227,7 @@ namespace Squared.PRGUI {
                 AllowDescendIfInvisible = false,
                 AllowAscend = false,
                 AllowWrap = false,
+                StartWithDefault = true,
                 Direction = direction,
                 // FIXME: Maybe do this?
                 FollowProxies = false,

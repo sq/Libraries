@@ -269,7 +269,7 @@ namespace Squared.PRGUI {
                 if (childTarget?.IsValidFocusTarget == false) {
                     var childContainer = (childTarget as IControlContainer);
                     if (IsValidContainerToSearchForFocusableControls(childContainer))
-                        childTarget = childContainer.DefaultFocusTarget ?? PickFocusableChild((Control)childContainer);
+                        childTarget = PickFocusableChild((Control)childContainer);
                 }
 
                 if (childTarget != null)
@@ -292,7 +292,7 @@ namespace Squared.PRGUI {
                 if (!newFocusTarget.IsValidFocusTarget) {
                     var collection = (newFocusTarget as IControlContainer);
                     if (IsValidContainerToSearchForFocusableControls(collection)) {
-                        var childTarget = collection.DefaultFocusTarget ?? PickFocusableChild((Control)collection);
+                        var childTarget = PickFocusableChild((Control)collection);
                         if (childTarget == newFocusTarget) {
                             if (!force && !isTopLevel)
                                 return false;

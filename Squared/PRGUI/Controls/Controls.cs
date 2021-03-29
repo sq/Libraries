@@ -185,7 +185,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override AbstractString GetReadingText () {
-            return Text.ToString() + (Checked ? ": Yes" : ": No");
+            return (UseTooltipForReading 
+                ? (TooltipContent.Get(this).ToString() ?? Text.ToString())
+                : Text.ToString()
+            ) + (Checked ? ": Yes" : ": No");
         }
 
         protected override void FormatValueInto (StringBuilder sb) {
