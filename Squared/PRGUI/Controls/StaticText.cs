@@ -367,7 +367,7 @@ namespace Squared.PRGUI.Controls {
             if (_ScaleToFitX)
                 return null;
 
-            var sizeScale = context.DecorationProvider.SizeScaleRatio;
+            ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
             ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
             float? constrainedWidth = null;
             var max = ((Width.Fixed ?? Width.Maximum) * sizeScale.X) - computedPadding.X;
