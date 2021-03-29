@@ -75,6 +75,7 @@ namespace Squared.PRGUI.Decorations {
     public interface IMetricsProvider {
         Margins Margins { get; }
         Margins Padding { get; }
+        Margins UnscaledPadding { get; }
         IGlyphSource GlyphSource { get; }
         void GetContentAdjustment (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
         bool GetTextSettings (UIOperationContext context, ControlStates state, out Material material, ref Color? color);
@@ -102,10 +103,25 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public interface IDecorationProvider {
+        /// <summary>
+        /// Scale factor for the overall size of controls (minimum/fixed/maximum)
+        /// </summary>
         Vector2 SizeScaleRatio { get; }
+        /// <summary>
+        /// Scale factor for both control padding and control margins
+        /// </summary>
         Vector2 SpacingScaleRatio { get; }
+        /// <summary>
+        /// Scale factor for control padding
+        /// </summary>
         Vector2 PaddingScaleRatio { get; }
+        /// <summary>
+        /// Scale factor for control margins
+        /// </summary>
         Vector2 MarginScaleRatio { get; }
+        /// <summary>
+        /// Scale factor for decoration outlines
+        /// </summary>
         float OutlineScaleRatio { get; }
 
         IDecorator None { get; }
@@ -153,6 +169,7 @@ namespace Squared.PRGUI.Decorations {
     public abstract class DelegateBaseDecorator : IMetricsProvider {
         public Margins Margins { get; set; }
         public Margins Padding { get; set; }
+        public Margins UnscaledPadding { get; set; }
 
         public IGlyphSource Font;
         public Func<IGlyphSource> GetFont;
@@ -192,6 +209,7 @@ namespace Squared.PRGUI.Decorations {
                 ContentClip = ContentClip,
                 Margins = Margins,
                 Padding = Padding,
+                UnscaledPadding = UnscaledPadding,
                 Font = Font,
                 GetFont = GetFont,
                 GetTextSettings = GetTextSettings,

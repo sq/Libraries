@@ -189,8 +189,8 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputePadding(context, decorations, out result);
+        protected override void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputeUnscaledPadding(context, decorations, out result);
             var titleDecorations = context.DecorationProvider?.WindowTitle;
             if (titleDecorations == null)
                 return;
@@ -200,11 +200,10 @@ namespace Squared.PRGUI.Controls {
             Color? color = null;
             titleDecorations.GetTextSettings(context, default(ControlStates), out Material temp, ref color);
             var height = titleDecorations.Margins.Bottom +
+                // FIXME: Scale this?
                 titleDecorations.Padding.Y +
                 (MostRecentTitleHeight ?? titleDecorations.GlyphSource.LineSpacing);
-            // Compensate for padding scale to ensure we don't over-pad the top
-            float paddingScale = context.DecorationProvider.PaddingScaleRatio.Y * context.DecorationProvider.SpacingScaleRatio.Y;
-            result.Top += (height / paddingScale);
+            result.Top += height;
         }
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {

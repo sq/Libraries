@@ -542,13 +542,7 @@ namespace Squared.PRGUI.Controls {
 
             // HACK city: Need an operation context to compute margins
             var tempContext = context.MakeOperationContext();
-            // Also our position is stored in margins top/left so we gotta clear that
-            var m = Margins;
-            Margins = default(Margins);
-            // Now we can get the actual margins of our control for layout purposes
-            ComputeMargins(tempContext, decorator, out Margins computedMargins);
-            // Put back the original margins (even though we'll be changing them potentially)
-            Margins = m;
+            ComputeEffectiveSpacing(tempContext, decorator, out Margins computedPadding, out Margins computedMargins);
             // Shift ourself up/left to compensate for our decoration margins and align perfectly
             //  with any anchor point
             desiredPosition -= new Vector2(computedMargins.Left, computedMargins.Top);

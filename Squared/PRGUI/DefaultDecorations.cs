@@ -206,7 +206,8 @@ namespace Squared.PRGUI {
 
             Button = new DelegateDecorator {
                 Margins = new Margins(GlobalDefaultMargin),
-                Padding = new Margins(16, 8),
+                Padding = new Margins(8, 8),
+                UnscaledPadding = new Margins(8, 0),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
                 GetFont = () => ButtonFont ?? DefaultFont,
@@ -217,6 +218,7 @@ namespace Squared.PRGUI {
             Tab = new DelegateDecorator {
                 Margins = new Margins(4, 4, 2, 2),
                 Padding = new Margins(8, 4),
+                UnscaledPadding = new Margins(8, 0),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
                 GetFont = () => ButtonFont ?? DefaultFont,
@@ -297,7 +299,8 @@ namespace Squared.PRGUI {
 
             Tooltip = new DelegateDecorator {
                 Margins = new Margins(8),
-                Padding = new Margins(12, 8, 12, 8),
+                Padding = new Margins(8, 8),
+                UnscaledPadding = new Margins(2, 0),
                 GetTextSettings = GetTextSettings_Tooltip,
                 GetFont = () => TooltipFont ?? DefaultFont,
                 Below = Tooltip_Below,
@@ -384,7 +387,8 @@ namespace Squared.PRGUI {
 
             Dropdown = new DelegateDecorator {
                 Margins = new Margins(GlobalDefaultMargin),
-                Padding = new Margins(16, 8),
+                Padding = new Margins(8, 8),
+                UnscaledPadding = new Margins(4, 0),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
                 GetFont = () => ButtonFont ?? DefaultFont,
@@ -393,8 +397,8 @@ namespace Squared.PRGUI {
             };
 
             DropdownArrow = new DelegateDecorator {
-                Padding = new Margins(DropdownArrowWidth, DropdownArrowHeight, 0, 0),
-                Margins = new Margins(DropdownArrowPadding),
+                UnscaledPadding = new Margins(DropdownArrowWidth, DropdownArrowHeight, 0, 0),
+                Padding = new Margins(DropdownArrowPadding),
                 Above = DropdownArrow_Above
             };
 
@@ -518,7 +522,7 @@ namespace Squared.PRGUI {
             GaugeShadow,
             GaugeValueShadow;
 
-        public const float DropdownArrowWidth = 16, DropdownArrowHeight = 11, DropdownArrowPadding = 8;
+        public const float DropdownArrowWidth = 16, DropdownArrowHeight = 11, DropdownArrowPadding = 4;
         public float ScaledCheckboxSize => CheckboxSize * (SizeScaleRatio.Length() / 1.41421354f);
         public float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
@@ -739,10 +743,10 @@ namespace Squared.PRGUI {
             GetContentAdjustment_Button(context, settings.State, out Vector2 offset, out Vector2 scale);
             settings.ContentBox.SnapAndInset(out Vector2 tl, out Vector2 br);
 
-            var scaleSz = SizeScaleRatio;
+            var scaleSz = PaddingScaleRatio;
             var ySpace = (float)Math.Floor((settings.ContentBox.Height - DropdownArrowHeight * scaleSz.Y) / 2f);
             var pad = DropdownArrowPadding * scaleSz.X;
-            var a = new Vector2(br.X + pad + offset.X, tl.Y + ySpace + offset.Y);
+            var a = new Vector2(br.X + offset.X, tl.Y + ySpace + offset.Y);
             var b = a + new Vector2(DropdownArrowWidth, DropdownArrowHeight) * scaleSz;
             var color = Color.White;
             var outlineColor = Color.Black;

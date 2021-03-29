@@ -295,8 +295,8 @@ namespace Squared.PRGUI.Controls {
             return thumbSize;
         }
 
-        protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputePadding(context, decorations, out result);
+        protected override void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputeUnscaledPadding(context, decorations, out result);
             var thumbSize = ComputeThumbSize();
             result.Left += thumbSize.X * 0.5f;
             result.Right += thumbSize.X * 0.5f;

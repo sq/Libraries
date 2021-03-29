@@ -277,9 +277,7 @@ namespace Squared.PRGUI.Controls {
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             var fontChanged = UpdateFont(context, textDecorations, decorations);
 
-            ComputePadding(context, decorations, out Margins computedPadding);
-            var sr = context.DecorationProvider.SpacingScaleRatio * context.DecorationProvider.PaddingScaleRatio;
-            Margins.Scale(ref computedPadding, ref sr);
+            ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
 
             var contentChanged = (ContentMeasurement?.IsValid == false) || !Content.IsValid;
             if (contentChanged || fontChanged)
@@ -369,9 +367,7 @@ namespace Squared.PRGUI.Controls {
             if (_ScaleToFitX)
                 return null;
 
-            ComputePadding(context, decorations, out Margins computedPadding);
-            var paddingScale = (context.DecorationProvider.SpacingScaleRatio * context.DecorationProvider.PaddingScaleRatio);
-            Margins.Scale(ref computedPadding, ref paddingScale);
+            ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
             float? constrainedWidth = null;
             var max = (Width.Fixed ?? Width.Maximum) - computedPadding.X;
             if (MostRecentContentBoxWidth.HasValue) {
@@ -428,7 +424,7 @@ namespace Squared.PRGUI.Controls {
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            ComputePadding(context, decorations, out Margins computedPadding);
+            ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
 
             var overrideColor = GetTextColor(context.NowL);
             Color? defaultColor = 
@@ -456,8 +452,6 @@ namespace Squared.PRGUI.Controls {
 
             var scaledSize = layout.Size * textScale;
 
-            var psr = context.DecorationProvider.PaddingScaleRatio * context.DecorationProvider.SpacingScaleRatio;
-
             // If a fallback glyph source's child sources are different heights, the autosize can end up producing
             //  a box that is too big for the content. In that case, we want to center it vertically
             if ((AutoSizeComputedHeight.HasValue) && (AutoSizeComputedContentHeight > scaledSize.Y)) {
@@ -468,7 +462,7 @@ namespace Squared.PRGUI.Controls {
                 textOffset.Y += (settings.ContentBox.Height - scaledSize.Y) * VerticalAlignment;
             }
 
-            var cpx = computedPadding.X * psr.X;
+            var cpx = computedPadding.X;
             var xSpace = (b.X - a.X) - scaledSize.X - cpx;
             switch (Content.Alignment) {
                 case HorizontalAlignment.Left:
@@ -483,9 +477,13 @@ namespace Squared.PRGUI.Controls {
 
             if (VisualizeLayout) {
                 renderer.RasterizeRectangle(textOffset + ca, textOffset + ca + layout.Size * textScale, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue);
-                var la = ca + new Vector2(Content.LineBreakAtX ?? 0, 0);
-                var lb = new Vector2(ca.X, cb.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
-                renderer.RasterizeLineSegment(la, lb, 1f, Color.Green);
+                if (Content.LineBreakAtX.HasValue) {
+                    var la = new Vector2(ca.X, (ca.Y + cb.Y) / 2f) + new Vector2(Content.LineBreakAtX ?? 0, 0);
+                    var lb = new Vector2(ca.X, cb.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
+                    var lc = new Vector2(ca.X, la.Y);
+                    renderer.RasterizeLineSegment(la, lb, 1f, Color.Green);
+                    renderer.RasterizeLineSegment(la, lc, 1f, Color.Green);
+                }
             }
 
             // FIXME: Why is this here?

@@ -657,18 +657,46 @@ namespace Squared.PRGUI {
                 return result;
         }
 
-        protected virtual void ComputeMargins (UIOperationContext context, IDecorator decorations, out Margins result) {
+        protected void ComputeEffectiveScaleRatios (IDecorationProvider decorations, out Vector2 padding, out Vector2 margins, out Vector2 size) {
+            margins = decorations.SpacingScaleRatio * decorations.MarginScaleRatio;
+            padding = decorations.SpacingScaleRatio * decorations.PaddingScaleRatio;
+
+            if (Appearance.AutoScaleMetrics)
+                size = decorations.SizeScaleRatio;
+            else
+                size = Vector2.One;
+        }
+
+        protected virtual void ComputeScaledMargins (UIOperationContext context, IDecorator decorations, out Margins result) {
             if (!Appearance.SuppressDecorationMargins && (decorations != null))
                 Margins.Add(ref Margins, decorations.Margins, out result);
             else
                 result = Margins;
         }
 
-        protected virtual void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+        protected virtual void ComputeScaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
             if (!Appearance.SuppressDecorationPadding && (decorations != null))
                 Margins.Add(ref Padding, decorations.Padding, out result);
             else
                 result = Padding;
+        }
+
+        protected virtual void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+            if (!Appearance.SuppressDecorationPadding && (decorations != null))
+                result = decorations.UnscaledPadding;
+            else
+                result = default(Margins);
+        }
+
+        protected void ComputeEffectiveSpacing (UIOperationContext context, IDecorator decorations, out Margins padding, out Margins margins) {
+            ComputeScaledMargins(context, decorations, out Margins scaledMargins);
+            ComputeScaledPadding(context, decorations, out Margins scaledPadding);
+            ComputeUnscaledPadding(context, decorations, out Margins unscaledPadding);
+            ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
+            Margins.Scale(ref scaledPadding, ref paddingScale);
+            Margins.Add(ref scaledPadding, unscaledPadding, out padding);
+            Margins.Scale(ref scaledMargins, ref marginScale);
+            margins = scaledMargins;
         }
 
         protected virtual void ComputeSizeConstraints (
@@ -693,8 +721,7 @@ namespace Squared.PRGUI {
             var result = existingKey ?? context.Layout.CreateItem();
 
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
-            ComputeMargins(context, decorations, out Margins computedMargins);
-            ComputePadding(context, decorations, out Margins computedPadding);
+            ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
 
             MostRecentComputedMargins = computedMargins;
 
@@ -704,16 +731,6 @@ namespace Squared.PRGUI {
             ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
 
             var actualLayoutFlags = ComputeLayoutFlags(width.Fixed.HasValue, height.Fixed.HasValue);
-
-            var spacingScale = context.DecorationProvider.SpacingScaleRatio;
-            var paddingScale = spacingScale * context.DecorationProvider.PaddingScaleRatio;
-            var marginScale = spacingScale * context.DecorationProvider.MarginScaleRatio;
-            if (!Appearance.SuppressDecorationScaling) {
-                Margins.Scale(ref computedMargins, ref marginScale);
-                Margins.Scale(ref computedPadding, ref paddingScale);
-            } else {
-                ;
-            }
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetLayoutData(result, ref Layout.FloatingPosition, ref computedMargins, ref computedPadding);

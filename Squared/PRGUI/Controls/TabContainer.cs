@@ -255,10 +255,6 @@ namespace Squared.PRGUI.Controls {
                 context.HiddenCount--;
         }
 
-        protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputePadding(context, decorations, out result);
-        }
-
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             // HACK
             var tabPage = Appearance.Decorator ?? context.DecorationProvider?.TabPage;

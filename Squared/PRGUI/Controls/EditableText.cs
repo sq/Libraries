@@ -464,7 +464,7 @@ namespace Squared.PRGUI.Controls {
             Color? color = null;
             var font = decorations.GlyphSource;
             decorations.GetTextSettings(context, settings.State, out material, ref color);
-            ComputePadding(context, decorations, out CachedPadding);
+            ComputeEffectiveSpacing(context, decorations, out CachedPadding, out Margins computedMargins);
 
             if (font != null)
                 DynamicLayout.GlyphSource = font;
@@ -482,8 +482,9 @@ namespace Squared.PRGUI.Controls {
             if (DynamicLayout.GlyphSource == null)
                 return;
 
+            ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 effectiveSizeScale);
             var lineHeight = DynamicLayout.GlyphSource.LineSpacing;
-            var contentMinimumHeight = lineHeight * (Multiline ? 2 : 1) + CachedPadding.Y; // FIXME: Include padding
+            var contentMinimumHeight = lineHeight * (Multiline ? 2 : 1) + (CachedPadding.Y / 2f); // FIXME: Why is the padding value too big?
             if (!DisableMinimumSize)
                 width.Minimum = width.Minimum ?? (ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
 

@@ -195,8 +195,8 @@ namespace Squared.PRGUI.Controls {
             SetText(ValueEncoder(_Value), true);
         }
 
-        protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputePadding(context, decorations, out result);
+        protected override void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputeUnscaledPadding(context, decorations, out result);
 
             if (Increment.HasValue) {
                 result.Left += ArrowPadding;
@@ -206,8 +206,9 @@ namespace Squared.PRGUI.Controls {
             // If there's a gauge, adjust our content box based on its padding so that it doesn't overlap
             //  our text or selection box
             var gauge = context.DecorationProvider.ParameterGauge;
-            var y1 = gauge.Padding.Top * context.DecorationProvider.SizeScaleRatio.Y;
-            var y2 = gauge.Padding.Bottom * context.DecorationProvider.SizeScaleRatio.Y;
+            ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
+            var y1 = (gauge.Padding.Top * sizeScale.Y) + (gauge.Margins.Bottom * marginScale.Y);
+            var y2 = (gauge.Padding.Bottom * sizeScale.Y) + (gauge.Margins.Top * marginScale.Y);
             if ((gauge != null) && Minimum.HasValue && Maximum.HasValue) {
                 if (gauge.Padding.Top > 0)
                     result.Top += y1;
@@ -240,18 +241,21 @@ namespace Squared.PRGUI.Controls {
             );
         }
 
-        private RectF ComputeGaugeBox (IDecorator decorations, RectF box) {
+        private RectF ComputeGaugeBox (IDecorationProvider decorations, RectF box) {
             if (decorations == null)
                 return default(RectF);
             if (!Minimum.HasValue || !Maximum.HasValue)
                 return default(RectF);
+            ComputeEffectiveScaleRatios(decorations, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
+            var gauge = decorations.ParameterGauge;
             var gaugeBox = box;
-            gaugeBox.Top += decorations.Margins.Top;
-            gaugeBox.Left += decorations.Margins.Left;
-            gaugeBox.Width -= decorations.Margins.X;
-            gaugeBox.Height -= decorations.Margins.Y;
-            gaugeBox.Top = gaugeBox.Extent.Y - (decorations.Padding.Y * Context.Decorations.SizeScaleRatio.Y);
-            gaugeBox.Height = box.Extent.Y - gaugeBox.Top - decorations.Margins.Bottom;
+            gaugeBox.Top += gauge.Margins.Top;
+            gaugeBox.Left += gauge.Margins.Left;
+            gaugeBox.Width -= gauge.Margins.X;
+            gaugeBox.Height -= gauge.Margins.Y;
+            var gaugeHeight = gauge.Padding.Y * sizeScale.Y;
+            gaugeBox.Top = gaugeBox.Extent.Y - gaugeHeight;
+            gaugeBox.Height = gaugeHeight;
             return gaugeBox;
         }
 
@@ -305,7 +309,7 @@ namespace Squared.PRGUI.Controls {
                 (gauge != null) &&
                 (Minimum.Value.CompareTo(Maximum.Value) != 0)
             ) {
-                var gaugeBox = ComputeGaugeBox(gauge, settings.Box);
+                var gaugeBox = ComputeGaugeBox(context.DecorationProvider, settings.Box);
                 var fraction = FractionD;
                 if (Exponent.HasValue)
                     fraction = 1 - Math.Pow(1 - fraction, Exponent.Value);
@@ -456,7 +460,7 @@ namespace Squared.PRGUI.Controls {
         protected override bool OnMouseEvent (string name, MouseEventArgs args) {
             var gauge = Context.Decorations.ParameterGauge;
             if (gauge != null) {
-                var gaugeBox = ComputeGaugeBox(gauge, args.Box);
+                var gaugeBox = ComputeGaugeBox(Context.Decorations, args.Box);
                 if (gaugeBox.Contains(args.MouseDownPosition)) {
                     IsDraggingGauge = (args.Buttons == MouseButtons.Left);
                     double fraction = Arithmetic.Saturate((args.RelativeGlobalPosition.X - args.Box.Left) / args.Box.Width);

@@ -126,11 +126,12 @@ namespace Squared.PRGUI.Controls {
             DefaultCreateControlForValue = _DefaultCreateControlForValue;
         }
 
-        protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputePadding(context, decorations, out result);
-            var paddingScale = context.DecorationProvider.SpacingScaleRatio * context.DecorationProvider.PaddingScaleRatio;
-            var width = context.DecorationProvider.DropdownArrow.Padding.X * context.DecorationProvider.SizeScaleRatio.X;
-            result.Right += width / paddingScale.X;
+        protected override void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputeUnscaledPadding(context, decorations, out result);
+            ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
+            var width = (context.DecorationProvider.DropdownArrow.Padding.X * paddingScale.X) +
+                (context.DecorationProvider.DropdownArrow.UnscaledPadding.X);
+            result.Right += width;
             // FIXME: Use the Y value?
         }
 
