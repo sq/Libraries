@@ -33,7 +33,7 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public bool UseTooltipForReading = false;
 
-        public const float AutoSizePadding = 3f;
+        public const float AutoSizePadding = 1.5f;
         public const bool DiagnosticText = false;
 
         public Material TextMaterial = null;
@@ -367,9 +367,10 @@ namespace Squared.PRGUI.Controls {
             if (_ScaleToFitX)
                 return null;
 
+            var sizeScale = context.DecorationProvider.SizeScaleRatio;
             ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
             float? constrainedWidth = null;
-            var max = (Width.Fixed ?? Width.Maximum) - computedPadding.X;
+            var max = ((Width.Fixed ?? Width.Maximum) * sizeScale.X) - computedPadding.X;
             if (MostRecentContentBoxWidth.HasValue) {
                 // FIXME
                 float computed = MostRecentContentBoxWidth.Value;
@@ -476,13 +477,13 @@ namespace Squared.PRGUI.Controls {
             }
 
             if (VisualizeLayout) {
-                renderer.RasterizeRectangle(textOffset + ca, textOffset + ca + layout.Size * textScale, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue);
+                renderer.RasterizeRectangle(textOffset + ca, textOffset + ca + layout.Size * textScale, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue, layer: 1);
                 if (Content.LineBreakAtX.HasValue) {
-                    var la = new Vector2(ca.X, (ca.Y + cb.Y) / 2f) + new Vector2(Content.LineBreakAtX ?? 0, 0);
+                    var la = new Vector2(ca.X, ca.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
                     var lb = new Vector2(ca.X, cb.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
                     var lc = new Vector2(ca.X, la.Y);
-                    renderer.RasterizeLineSegment(la, lb, 1f, Color.Green);
-                    renderer.RasterizeLineSegment(la, lc, 1f, Color.Green);
+                    renderer.RasterizeLineSegment(la, lb, 1f, Color.Green, layer: 2);
+                    renderer.RasterizeLineSegment(la, lc, 1f, Color.Green, layer: 2);
                 }
             }
 
