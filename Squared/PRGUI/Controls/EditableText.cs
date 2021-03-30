@@ -484,7 +484,7 @@ namespace Squared.PRGUI.Controls {
 
             ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 effectiveSizeScale);
             var lineHeight = DynamicLayout.GlyphSource.LineSpacing;
-            var contentMinimumHeight = lineHeight * (Multiline ? 2 : 1) + (CachedPadding.Y / 2f); // FIXME: Why is the padding value too big?
+            var contentMinimumHeight = lineHeight * (Multiline ? 2 : 1) + CachedPadding.Y; // FIXME: Why is the padding value too big?
             if (!DisableMinimumSize)
                 width.Minimum = width.Minimum ?? (ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
 
@@ -1190,7 +1190,8 @@ namespace Squared.PRGUI.Controls {
             if (totalSize >= settings.ContentBox.Width)
                 color *= 0.33f;
 
-            var textCorner = new Vector2(x, settings.ContentBox.Top).Floor();
+            float yAlignment = (settings.ContentBox.Height - descriptionLayout.UnconstrainedSize.Y) / 2f;
+            var textCorner = new Vector2(x, settings.ContentBox.Top + yAlignment).Floor();
             renderer.DrawMultiple(
                 descriptionLayout.DrawCalls, textCorner, 
                 multiplyColor: color.Value, material: material
@@ -1215,6 +1216,8 @@ namespace Squared.PRGUI.Controls {
                     (settings.ContentBox.Width - layout.Size.X) * (HorizontalAlignment == HorizontalAlignment.Center ? 0.5f : 1.0f), 0
                 );
             }
+
+            AlignmentOffset.Y += (settings.ContentBox.Height - layout.UnconstrainedSize.Y) / 2f;
 
             var selection = MarkSelection();
             var selBounds = GetBoundsForSelection(selection);
@@ -1277,6 +1280,17 @@ namespace Squared.PRGUI.Controls {
                 layout.DrawCalls, offset: textOffset,
                 material: textMaterial, samplerState: RenderStates.Text
             );
+
+            if (StaticTextBase.VisualizeLayout) {
+                settings.ContentBox.SnapAndInset(out Vector2 ca, out Vector2 cb);
+                renderer.RasterizeRectangle(ca, cb, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue, layer: 1);
+                ca += AlignmentOffset;
+                cb.Y += AlignmentOffset.Y;
+                var h = layout.UnconstrainedSize.Y;
+                var la = new Vector2(ca.X, ca.Y + h);
+                var lb = new Vector2(cb.X, ca.Y + h);
+                renderer.RasterizeLineSegment(la, lb, 1f, Color.Green, layer: 2);
+            }
         }
 
         string IValueControl<string>.Value {

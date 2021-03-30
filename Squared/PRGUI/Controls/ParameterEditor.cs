@@ -195,6 +195,17 @@ namespace Squared.PRGUI.Controls {
             SetText(ValueEncoder(_Value), true);
         }
 
+        protected override void ComputeScaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputeScaledPadding(context, decorations, out result);
+            var gauge = context.DecorationProvider.ParameterGauge;
+            if ((gauge != null) && Minimum.HasValue && Maximum.HasValue) {
+                if (gauge.Padding.Top > 0)
+                    result.Top = 0;
+                if (gauge.Padding.Bottom > 0)
+                    result.Bottom = 0;
+            }
+        }
+
         protected override void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
             base.ComputeUnscaledPadding(context, decorations, out result);
 

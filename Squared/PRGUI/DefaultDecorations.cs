@@ -743,10 +743,11 @@ namespace Squared.PRGUI {
             GetContentAdjustment_Button(context, settings.State, out Vector2 offset, out Vector2 scale);
             settings.ContentBox.SnapAndInset(out Vector2 tl, out Vector2 br);
 
-            var scaleSz = PaddingScaleRatio;
+            var scaleSz = SizeScaleRatio;
+            var scalePadding = PaddingScaleRatio * SpacingScaleRatio;
+            var pad = DropdownArrowPadding * scalePadding.X;
             var ySpace = (float)Math.Floor((settings.ContentBox.Height - DropdownArrowHeight * scaleSz.Y) / 2f);
-            var pad = DropdownArrowPadding * scaleSz.X;
-            var a = new Vector2(br.X + offset.X, tl.Y + ySpace + offset.Y);
+            var a = new Vector2(br.X + offset.X + pad, tl.Y + ySpace + offset.Y);
             var b = a + new Vector2(DropdownArrowWidth, DropdownArrowHeight) * scaleSz;
             var color = Color.White;
             var outlineColor = Color.Black;
