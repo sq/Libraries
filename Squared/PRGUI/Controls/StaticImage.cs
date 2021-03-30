@@ -291,18 +291,8 @@ namespace Squared.PRGUI.Controls {
                 renderer.Draw(ref drawCall, material: material);
             }
 
-            if (ShowLoadingSpinner && (context.Pass == RasterizePasses.Above)) {
-                // FIXME
-                var center = settings.ContentBox.Center;
-                var radius = Math.Min(settings.ContentBox.Size.Length(), 48);
-                var angle1 = (float)(Time.Seconds * 360 * 1.33f);
-                var color1 = Color.White;
-                var color2 = color1 * 0.8f;
-                renderer.RasterizeArc(
-                    center, angle1, 48, radius, 6,
-                    1f, color1, color2, Color.Black * 0.8f
-                );
-            }
+            if (ShowLoadingSpinner)
+                context.DecorationProvider.LoadingSpinner?.Rasterize(context, ref renderer, settings);
         }
 
         void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {

@@ -159,6 +159,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator TabPage { get; }
         IDecorator Canvas { get; }
         IDecorator HyperTextHotspot { get; }
+        IDecorator LoadingSpinner { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 

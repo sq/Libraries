@@ -94,6 +94,7 @@ namespace Squared.PRGUI {
         public IDecorator TabPage { get; set; }
         public IDecorator Canvas { get; set; }
         public IDecorator HyperTextHotspot { get; set; }
+        public IDecorator LoadingSpinner { get; set; }
 
         public float AnimationDurationMultiplier { get; set; }
 
@@ -434,6 +435,10 @@ namespace Squared.PRGUI {
                 Below = None_Below
             };
 
+            LoadingSpinner = new DelegateDecorator {
+                Above = LoadingSpinner_Above
+            };
+
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
                 MinimumSize = new Vector2(ScrollbarSize, ScrollbarSize),
                 Above = Scrollbar_Above,
@@ -462,6 +467,33 @@ namespace Squared.PRGUI {
             };
 
             UpdateScaledSizes();
+        }
+
+        public float LoadingSpinnerRadius = 128f,
+            LoadingSpinnerLength = 68f,
+            LoadingSpinnerThickness = 6.5f,
+            LoadingSpinnerSpeed = 0.75f;
+
+        private void LoadingSpinner_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            const float boxPadding = 8f;
+            var center = settings.ContentBox.Center;
+            var sizeScale = (SizeScaleRatio.X + SizeScaleRatio.Y) / 2f;
+            var fillRadius = Arithmetic.Clamp(LoadingSpinnerThickness * sizeScale, 4f, 16f);
+            var boxSize = Math.Min(settings.ContentBox.Width, settings.ContentBox.Height) - (fillRadius * 2f) - boxPadding;
+            var radius = Math.Min(boxSize / 2f, LoadingSpinnerRadius * sizeScale);
+            var angle1 = (float)(Time.Seconds * 360 * LoadingSpinnerSpeed) + center.X + (center.Y * 1.7f);
+            var outlineRadius = GetOutlineSize(1f);
+            renderer.RasterizeArc(
+                center, angle1, LoadingSpinnerLength, radius, fillRadius + outlineRadius,
+                0f, Color.Transparent, Color.Black * 0.6f, Color.Transparent,
+                fillMode: RasterFillMode.Along, annularRadius: outlineRadius
+            );
+            renderer.RasterizeArc(
+                center, angle1, LoadingSpinnerLength, radius, fillRadius,
+                0f, Color.Transparent, Color.White, Color.Transparent,
+                fillMode: RasterFillMode.Along,
+                layer: renderer.Layer + 1
+            );
         }
 
         private float GetOutlineSize (float baseSize) {
