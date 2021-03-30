@@ -1581,19 +1581,31 @@ namespace Squared.PRGUI {
 
         // FIXME: Why this offset?
         static Vector2 WeirdVirtualCursorOffset = new Vector2(0.9f);
+        public float VirtualCursorThickness = 2.5f,
+            VirtualCursorOutlineThickness = 1.5f,
+            VirtualCursorAnchorRadius1 = 2.5f,
+            VirtualCursorAnchorRadius2 = 1.55f,
+            VirtualCursorOutlineAlpha = 0.9f,
+            VirtualCursorLockedAlpha = 0.55f,
+            VirtualCursorUnlockedAlpha = 0.95f;
+        public Color VirtualCursorColor = Color.White,
+            VirtualCursorOutlineColor = Color.Black;
 
         private void VirtualCursor_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             var center = settings.Box.Center + WeirdVirtualCursorOffset;
-            var radius = settings.Box.Size / 2f;
+            var radius = (settings.Box.Size / 2f).X; // HACK
             var showCenter = !settings.State.IsFlagged(ControlStates.Disabled);
-            var alpha = settings.State.IsFlagged(ControlStates.Disabled) ? 0.5f : 0.9f;
-            var fillAlpha = alpha * 0.85f;
-            var outlineRadius = 1.75f;
+            var alpha = settings.State.IsFlagged(ControlStates.Disabled) ? VirtualCursorLockedAlpha : VirtualCursorUnlockedAlpha;
+            var thickness = (showCenter ? 1.2f : 1.0f) * VirtualCursorThickness;
+            float fillAlpha = (alpha * 0.85f) + 0.05f, fillAlpha2 = (alpha * 0.85f) - 0.35f,
+                fillOffset = (float)Time.Seconds * 0.4f;
             renderer.RasterSoftOutlines = true;
-            renderer.RasterizeEllipse(
-                center, radius, annularRadius: GetOutlineSize(showCenter ? 1.65f : 1.2f),
-                innerColor: Color.White * fillAlpha, outerColor: Color.White * fillAlpha,
-                outlineRadius: GetOutlineSize(outlineRadius), outlineColor: Color.Black * alpha
+            renderer.RasterizeArc(
+                center, 0f, 360f, radius, thickness * SizeScaleRatio.X, // HACK
+                innerColor: VirtualCursorColor * fillAlpha, outerColor: VirtualCursorColor * fillAlpha2,
+                outlineRadius: GetOutlineSize(VirtualCursorOutlineThickness), outlineColor: VirtualCursorOutlineColor * (alpha * VirtualCursorOutlineAlpha),
+                fillMode: RasterFillMode.Along, fillSize: 0.25f * -1, // HACK: Repeat fill
+                fillOffset: fillOffset
             );
         }
 
@@ -1610,7 +1622,7 @@ namespace Squared.PRGUI {
             if (distance >= 0.5f) {
                 renderer.RasterizeLineSegment(
                     a: unsnapped, b: snapped,
-                    startRadius: 1.55f, endRadius: 2.5f,
+                    startRadius: VirtualCursorAnchorRadius2, endRadius: VirtualCursorAnchorRadius1,
                     innerColor: Color.White * (alpha * 0.75f), outerColor: Color.White,
                     outlineRadius: GetOutlineSize(outlineRadius), outlineColor: Color.Black * alpha
                 );
