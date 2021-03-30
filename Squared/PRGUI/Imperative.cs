@@ -412,6 +412,12 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> StoreInstance (ref TControl result, out bool changed) {
+            changed = (result != Control);
+            result = Control;
+            return this;
+        }
+
         public ControlBuilder<TControl> ClearLayoutFlags (ControlFlags value) {
             Control.LayoutFlags &= ~value;
             return this;
