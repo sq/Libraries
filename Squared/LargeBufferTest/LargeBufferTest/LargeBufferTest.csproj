@@ -8,7 +8,8 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>LargeBufferTest</RootNamespace>
     <AssemblyName>LargeBufferTest</AssemblyName>
-    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <LangVersion>latest</LangVersion>
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <OutputPath Condition=" '$(OutputPath)' == '' ">bin\$(Platform)\$(Configuration)</OutputPath>    
   </PropertyGroup>

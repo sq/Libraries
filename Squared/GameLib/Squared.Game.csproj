@@ -8,7 +8,8 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>GameLib</RootNamespace>
     <AssemblyName>GameLib</AssemblyName>
-    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <LangVersion>latest</LangVersion>
     <OutputPath>bin\$(Platform)\$(Configuration)</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'x86'">
