@@ -102,45 +102,6 @@ namespace Squared.Util {
         static extern bool FindNextFile (
             IntPtr hFindFile, out WIN32_FIND_DATA lpFindFileData
         );
-
-        const uint SHGFI_ICON = 0x100;
-        const uint SHGFI_LARGEICON = 0x0;
-        const uint SHGFI_SMALLICON = 0x1;
-        const uint SHGFI_USEFILEATTRIBUTES = 0x10;
-
-        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-        [SuppressUnmanagedCodeSecurity()]
-        static extern IntPtr SHGetFileInfo (string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
-
-        static System.Reflection.ConstructorInfo _IconConstructor = null;
-
-        public static Icon ExtractAssociatedIcon (string path, bool large) {
-            if (_IconConstructor == null) {
-                _IconConstructor = typeof(System.Drawing.Icon).GetConstructor(
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                    null,
-                    new Type[] { typeof(IntPtr), typeof(bool) },
-                    new System.Reflection.ParameterModifier[0]
-                );
-            }
-
-            var info = new SHFILEINFO();
-            const uint fileAttributes = FILE_ATTRIBUTE_NORMAL;
-            uint flags = SHGFI_ICON | (large ? SHGFI_LARGEICON : SHGFI_SMALLICON);
-            try {
-                if (!System.IO.File.Exists(path) && !System.IO.Directory.Exists(path))
-                    flags |= SHGFI_USEFILEATTRIBUTES;
-            } catch (Exception) {
-                flags |= SHGFI_USEFILEATTRIBUTES;
-            }
-            SHGetFileInfo(path, fileAttributes, ref info, (uint)Marshal.SizeOf(info), flags);
-
-            var iconHandle = info.hIcon;
-            if (iconHandle != IntPtr.Zero)
-                return (Icon)_IconConstructor.Invoke(new object[] { iconHandle, true });
-            else
-                return null;
-        }
 #endif
 
         const int FILE_ATTRIBUTE_DIRECTORY = 0x10;
