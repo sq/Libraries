@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Squared.Util {
     public static class DisposableBufferPool<T>
@@ -42,7 +43,9 @@ namespace Squared.Util {
         public const int DefaultSmallMaxBufferSize = 8192;
         public const int DefaultBigMaxBufferSize = 1024;
 
-        public static int MaxPoolCount = 16;
+        public static bool EnableThreadLocalPools = true;
+        public static int MaxGlobalPoolCount = 8;
+        public static int MaxLocalPoolCount = 8;
         public static int MaxBufferSize;
 
         static BufferPool () {
@@ -100,68 +103,75 @@ namespace Squared.Util {
             }
         }
 
-        private static UnorderedList<T[]> Pool = new UnorderedList<T[]>();
+        private class Pool : UnorderedList<T[]> {
+        }
+
+        private static readonly ThreadLocal<Pool> ThreadLocalPool =
+            new ThreadLocal<Pool>(() => new Pool());
+        private static readonly Pool GlobalPool = new Pool();
+
+        private static bool TryAddToPool (T[] buffer, Pool pool, int maxCount, bool removeIfFull) {
+            if (pool.Count >= maxCount) {
+                var firstItem = pool.DangerousGetItem(0);
+                if ((firstItem.Length < buffer.Length) && removeIfFull)
+                    pool.RemoveAtOrdered(0);
+                else
+                    return false;
+            }
+
+            pool.Add(buffer);
+            pool.FastCLRSortRef(PoolEntryComparer.Instance);
+            return true;
+        }
 
         internal static void AddToPool (T[] buffer) {
             if (buffer.Length > MaxBufferSize)
                 return;
 
-            lock (Pool) {
-                if (Pool.Count >= MaxPoolCount) {
-                    var firstItem = Pool.DangerousGetItem(0);
-                    if (firstItem.Length < buffer.Length)
-                        Pool.DangerousRemoveAt(0);
-                    else
-                        return;
-                }
-
-                Pool.Add(buffer);
-                Pool.FastCLRSortRef(PoolEntryComparer.Instance);
+            if (!EnableThreadLocalPools || !TryAddToPool(buffer, ThreadLocalPool.Value, MaxLocalPoolCount, false)) {
+                lock (GlobalPool)
+                    TryAddToPool(buffer, GlobalPool, MaxGlobalPoolCount, true);
             }
         }
 
         public static Buffer Allocate (int? size = null) {
             int _size = size.GetValueOrDefault(MaxBufferSize);
 
+            T[] resultArray;
+            Buffer result = default(Buffer);
             if (_size > MaxBufferSize) {
-                T[] result = new T[_size];
-                return new Buffer(result, true);
+                resultArray = new T[_size];
+                return new Buffer(resultArray, true);
             }
 
-            lock (Pool) {
-                // Find the smallest buffer that can hold the requested size
-                for (int i = Pool.Count - 1; i >= 0; i--) {
-                    var item = Pool.DangerousGetItem(i);
-                    if (item.Length >= _size) {
-                        T[] result = item;
-                        Pool.DangerousRemoveAt(i);
-                        return new Buffer(result, true);
-                    }
-                }
+            var allocated = false;
+            allocated = EnableThreadLocalPools && TryAllocateFromPool(ThreadLocalPool.Value, _size, MaxLocalPoolCount, out result);
+            if (!allocated) {
+                lock (GlobalPool)
+                    allocated = TryAllocateFromPool(GlobalPool, _size, MaxGlobalPoolCount, out result);
+            }
+            if (allocated)
+                return result;
 
-                // If the pool is full and doesn't contain anything this big, prune the smallest item
-                //  to make room so this new buffer can be returned
-                if ((Pool.Count == MaxPoolCount) && (size <= MaxBufferSize)) {
-                    int smallest = int.MaxValue;
-                    int smallestIndex = -1;
-                    for (int i = 0; i < Pool.Count; i++) {
-                        var item = Pool.DangerousGetItem(i);
-                        if (item.Length < smallest) {
-                            smallest = item.Length;
-                            smallestIndex = i;
-                        }
-                    }
+            // Nothing big enough was found in the pool.
+            resultArray = new T[_size];
+            return new Buffer(resultArray, true);
+        }
 
-                    if (smallestIndex != -1)
-                        Pool.DangerousRemoveAt(smallestIndex);
+        private static bool TryAllocateFromPool (Pool pool, int? size, int maxCount, out Buffer result) {
+            // Find the smallest buffer that can hold the requested size
+            for (int i = pool.Count - 1; i >= 0; i--) {
+                var item = pool.DangerousGetItem(i);
+                if (item.Length >= size) {
+                    T[] resultArray = item;
+                    pool.RemoveAtOrdered(i);
+                    result = new Buffer(resultArray, true);
+                    return true;
                 }
             }
 
-            {
-                // Nothing big enough was found in the pool.
-                T[] result = new T[_size];
-                return new Buffer(result, true);
-            }
+            result = default(Buffer);
+            return false;
         }
     }
 
