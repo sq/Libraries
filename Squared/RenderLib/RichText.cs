@@ -65,11 +65,14 @@ namespace Squared.Render.Text {
         }
     }
 
+    public delegate void RichStyleApplier (ref RichStyle style, ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state);
+
     public struct RichStyle {
         public IGlyphSource GlyphSource;
         public Color? Color;
         public float? Scale;
         public float? Spacing;
+        public RichStyleApplier Apply;
     }
 
     public struct RichImage {
@@ -111,16 +114,17 @@ namespace Squared.Render.Text {
     }
 
     public struct RichTextLayoutState {
-        public IGlyphSource GlyphSource;
+        public IGlyphSource DefaultGlyphSource, GlyphSource;
         public readonly Color? InitialColor;
         public readonly float InitialScale;
         public readonly float InitialSpacing;
         public DenseList<string> MarkedStrings;
 
-        public RichTextLayoutState (ref StringLayoutEngine engine) {
+        public RichTextLayoutState (ref StringLayoutEngine engine, IGlyphSource defaultGlyphSource) {
             InitialColor = engine.overrideColor;
             InitialScale = engine.scale;
             InitialSpacing = engine.spacing;
+            DefaultGlyphSource = defaultGlyphSource;
             GlyphSource = null;
             MarkedStrings = default(DenseList<string>);
         }
@@ -187,8 +191,8 @@ namespace Squared.Render.Text {
         public void Append (
             ref StringLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, string styleName
         ) {
-            var state = new RichTextLayoutState(ref layoutEngine);
-            Append(ref layoutEngine, ref state, defaultGlyphSource, text, styleName);
+            var state = new RichTextLayoutState(ref layoutEngine, defaultGlyphSource);
+            Append(ref layoutEngine, ref state, text, styleName);
         }
 
         private static readonly HashSet<char>
@@ -196,7 +200,7 @@ namespace Squared.Render.Text {
             StringTerminators = new HashSet<char> { '$', '(' };
 
         public void Append (
-            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, IGlyphSource defaultGlyphSource, AbstractString text, string styleName
+            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, string styleName
         ) {
             var count = text.Length;
             var currentRangeStart = 0;
@@ -212,7 +216,7 @@ namespace Squared.Render.Text {
                     var ch = text[i];
                     var next = (i < count - 2) ? text[i + 1] : '\0';
                     if ((ch == '$') && ((next == '[') || (next == '('))) {
-                        AppendRange(ref layoutEngine, state.GlyphSource ?? defaultGlyphSource, text, currentRangeStart, i);
+                        AppendRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, i);
                         var commandMode = next == '[';
                         var bracketed = ParseBracketedText(
                             text, ref i, ref currentRangeStart, 
@@ -279,7 +283,7 @@ namespace Squared.Render.Text {
 
                             var ok = true;
                             // HACK: The string processor may mess with layout state, so we want to restore it after
-                            var markedState = new RichTextLayoutState(ref layoutEngine) {
+                            var markedState = new RichTextLayoutState(ref layoutEngine, state.DefaultGlyphSource) {
                                 GlyphSource = state.GlyphSource
                             };
                             if (MarkedStringProcessor != null)
@@ -288,17 +292,17 @@ namespace Squared.Render.Text {
                                 var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + astr.Length - 1, bracketed, id);
                                 layoutEngine.Markers.Add(m);
                                 state.MarkedStrings.Add(bracketed);
-                                AppendRange(ref layoutEngine, markedState.GlyphSource ?? defaultGlyphSource, astr, 0, astr.Length);
+                                AppendRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, astr.Length);
                             }
                             if (MarkedStringProcessor != null)
                                 markedState.Reset(ref layoutEngine);
                         } else {
                             var close = (next == '[') ? ']' : ')';
-                            layoutEngine.AppendText(state.GlyphSource ?? defaultGlyphSource, "<invalid: $" + next + bracketed + close + ">");
+                            layoutEngine.AppendText(state.GlyphSource ?? state.DefaultGlyphSource, "<invalid: $" + next + bracketed + close + ">");
                         }
                     }
                 }
-                AppendRange(ref layoutEngine, state.GlyphSource ?? defaultGlyphSource, text, currentRangeStart, count);
+                AppendRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, count);
             } finally {
                 state.Reset(ref layoutEngine);
             }
@@ -311,6 +315,8 @@ namespace Squared.Render.Text {
             layoutEngine.overrideColor = style.Color ?? state.InitialColor;
             layoutEngine.scale = style.Scale * state.InitialScale ?? state.InitialScale;
             layoutEngine.spacing = style.Spacing ?? state.InitialSpacing;
+            if (style.Apply != null)
+                style.Apply(ref style, ref layoutEngine, ref state);
         }
 
         private void AppendImage (ref StringLayoutEngine layoutEngine, RichImage image) {

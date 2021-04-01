@@ -646,8 +646,8 @@ namespace Squared.Render.Text {
                     if (_RichText) {
                         var ka = _RichTextConfiguration.KerningAdjustments;
                         _RichTextConfiguration.KerningAdjustments = _KerningAdjustments ?? ka;
-                        rls = new RichTextLayoutState(ref le);
-                        _RichTextConfiguration.Append(ref le, ref rls, _GlyphSource, _Text, _StyleName);
+                        rls = new RichTextLayoutState(ref le, _GlyphSource);
+                        _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
                         _RichTextConfiguration.KerningAdjustments = ka;
                     } else
                         le.AppendText(_GlyphSource, _Text, _KerningAdjustments);

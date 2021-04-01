@@ -78,6 +78,7 @@ namespace Squared.PRGUI.Controls {
             if (settings.ConfigureLayout != null)
                 settings.ConfigureLayout(Content);
             LayoutFilter = settings.LayoutFilter;
+            Appearance.GlyphSource = settings.DefaultGlyphSource ?? Appearance.GlyphSource;
         }
     }
 }
@@ -96,6 +97,7 @@ namespace Squared.PRGUI {
 
     public struct TooltipSettings {
         public bool RichText;
+        public IGlyphSource DefaultGlyphSource;
         public Vector2? AnchorPoint, ControlAlignmentPoint;
         public Action<DynamicStringLayout> ConfigureLayout;
         public StringLayoutFilter LayoutFilter;
@@ -105,7 +107,8 @@ namespace Squared.PRGUI {
                 (AnchorPoint == rhs.AnchorPoint) &&
                 (ControlAlignmentPoint == rhs.ControlAlignmentPoint) &&
                 (ConfigureLayout == rhs.ConfigureLayout) &&
-                (LayoutFilter == rhs.LayoutFilter);
+                (LayoutFilter == rhs.LayoutFilter) &&
+                (DefaultGlyphSource == rhs.DefaultGlyphSource);
         }
 
         public override bool Equals (object obj) {

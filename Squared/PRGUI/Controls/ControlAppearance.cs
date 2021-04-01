@@ -85,7 +85,7 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Specifies a custom glyph source to use when rendering text.
         /// </summary>
-        public IGlyphSource Font;
+        public IGlyphSource GlyphSource;
         public ColorVariable BackgroundColor;
         public ColorVariable TextColor;
         /// <summary>

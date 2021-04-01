@@ -186,17 +186,6 @@ namespace Squared.PRGUI.Controls {
             return SetText(value, onlyIfTextChanged);
         }
 
-        private IGlyphSource _GlyphSource = null;
-        public IGlyphSource GlyphSource {
-            get => _GlyphSource;
-            set {
-                if (_GlyphSource == value)
-                    return;
-                _GlyphSource = value;
-                Invalidate();
-            }
-        }
-
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
 
@@ -548,7 +537,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected bool UpdateFont (UIOperationContext context, IDecorator textDecorations, IDecorator decorations) {
-            var font = _GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource;
+            var font = Appearance.GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource;
             if (font == null)
                 throw new NullReferenceException($"Decorators provided no font for control {this} ({textDecorations}, {decorations})");
             return SyncWithCurrentFont(font);
@@ -556,7 +545,7 @@ namespace Squared.PRGUI.Controls {
 
         protected bool GetTextSettings (UIOperationContext context, IDecorator textDecorations, IDecorator decorations, ControlStates state, out Material material, ref Color? color) {
             (textDecorations ?? decorations).GetTextSettings(context, state, out material, ref color);
-            SyncWithCurrentFont(_GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource);
+            SyncWithCurrentFont(Appearance.GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource);
             if (TextMaterial != null)
                 material = TextMaterial;
             return false;
