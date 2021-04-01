@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -200,10 +201,12 @@ namespace Squared.Threading {
         where TObject : class
     {
         public class EntryComparer : IEqualityComparer<Entry> {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool Equals (Entry x, Entry y) {
                 return x.Equals(y);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public int GetHashCode (Entry obj) {
                 return obj.HashCode;
             }
@@ -214,6 +217,7 @@ namespace Squared.Threading {
             public GCHandle Handle;
             public TObject Object;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool Equals (Entry rhs) {
                 if (HashCode != rhs.HashCode)
                     return false;
@@ -231,12 +235,14 @@ namespace Squared.Threading {
             Cache = new LocallyReplicatedCache<Entry>(new EntryComparer(), PrepareValueForStorage_Impl);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public LocalObjectCache<TObject> GetCurrentLocalCache () {
             return new LocalObjectCache<TObject> {
                 Table = Cache.GetCurrentLocalCache()
             };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TObject GetValue (Id id) {
             if (id <= 0)
                 return null;
@@ -246,6 +252,7 @@ namespace Squared.Threading {
             return (TObject)(entry.Object ?? entry.Handle.Target);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Id GetId (TObject obj) {
             if (obj == null)
                 return 0;

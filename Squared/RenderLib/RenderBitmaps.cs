@@ -1118,7 +1118,7 @@ namespace Squared.Render {
             return (HashCode == rhs.HashCode) && 
                 (Texture1 == rhs.Texture1) && 
                 (Texture2 == rhs.Texture2) &&
-                (object.ReferenceEquals(Texture1.Instance, rhs.Texture1.Instance));
+                (Texture1.Equals(rhs.Texture1));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
