@@ -308,6 +308,17 @@ namespace Squared.Render.Resources {
             return LoadSync(name, DefaultOptions, cached, optional);
         }
 
+        public void AddAllInstancesTo<U> (ICollection<U> result)
+            where U : T
+        {
+            lock (Cache)
+                foreach (var entry in Cache.Values) {
+                    if (!entry.Future.Completed || entry.Future.Failed)
+                        continue;
+                    result.Add((U)entry.Future.Result);
+                }
+        }
+
         public U Reduce<U> (Func<U, string, T, object, U> f, U initialValue = default(U)) {
             var result = initialValue;
             lock (Cache)

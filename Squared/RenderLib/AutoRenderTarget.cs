@@ -62,12 +62,17 @@ namespace Squared.Render {
         }
 
         protected RenderTarget2D CreateInstance () {
-            lock (Coordinator.CreateResourceLock)
-                return new RenderTarget2D(
+            lock (Coordinator.CreateResourceLock) {
+                var result = new RenderTarget2D(
                     Coordinator.Device, Width, Height, MipMap,
                     PreferredFormat, PreferredDepthFormat,
                     PreferredMultiSampleCount, RenderTargetUsage.PreserveContents
-                );
+                ) {
+                    Tag = $"AutoRenderTarget {GetHashCode().ToString("X8")}"
+                };
+                Coordinator.AutoAllocatedTextureResources.Add(result);
+                return result;
+            }
         }
 
         protected abstract void OnDispose ();

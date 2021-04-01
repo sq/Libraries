@@ -97,8 +97,8 @@ namespace Squared.Render.Text {
                 if (!foundRoom) {
                     var isFirstAtlas = (Atlases.Count == 0) && (_SizePoints < SmallFirstAtlasThreshold);
                     var newAtlas = new DynamicAtlas<Color>(
-                        Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight, 
-                        surfaceFormat, 4, Font.MipMapping ? PickMipGenerator(Font) : null
+                        Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight,
+                        surfaceFormat, 4, Font.MipMapping ? PickMipGenerator(Font) : null, tag: $"{Font.Face.FamilyName} {SizePoints}pt"
                     );
                     Atlases.Add(newAtlas);
                     if (!newAtlas.TryReserve(widthW, heightW, out result))

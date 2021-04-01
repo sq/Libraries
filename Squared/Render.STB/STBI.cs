@@ -207,8 +207,12 @@ namespace Squared.Render.STB {
             var height = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Height) : Height;
 
             Texture2D result;
-            lock (coordinator.CreateResourceLock)
-                result = new Texture2D(coordinator.Device, width, height, MipChain != null, Format);
+            lock (coordinator.CreateResourceLock) {
+                result = new Texture2D(coordinator.Device, width, height, MipChain != null, Format) {
+                    Tag = "STB.Image"
+                };
+                coordinator.AutoAllocatedTextureResources.Add(result);
+            }
 
             // FIXME: FP mips, 16bit mips
             if ((MipChain != null) && !IsFloatingPoint && !Is16Bit)
@@ -228,8 +232,12 @@ namespace Squared.Render.STB {
             var height = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Height) : Height;
 
             Texture2D tex;
-            lock (coordinator.CreateResourceLock)
-                tex = new Texture2D(coordinator.Device, width, height, MipChain != null, Format);
+            lock (coordinator.CreateResourceLock) {
+                tex = new Texture2D(coordinator.Device, width, height, MipChain != null, Format) {
+                    Tag = "STB.Image"
+                };
+                coordinator.AutoAllocatedTextureResources.Add(tex);
+            }
 
             // FIXME: FP mips, 16bit mips
             Future<Texture2D> result;

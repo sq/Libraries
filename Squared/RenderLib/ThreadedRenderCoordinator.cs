@@ -163,6 +163,8 @@ namespace Squared.Render {
 
         public string GraphicsBackendName { get; private set; }
 
+        public readonly HashSet<Texture2D> AutoAllocatedTextureResources = new HashSet<Texture2D>(new ReferenceComparer<Texture2D>());
+
         /// <summary>
         /// Constructs a render coordinator.
         /// </summary>
@@ -1148,6 +1150,10 @@ namespace Squared.Render {
         public void DisposeResource (IDisposable resource) {
             if (resource == null)
                 return;
+
+            if (resource is Texture2D tex)
+                lock (CreateResourceLock)
+                    AutoAllocatedTextureResources.Remove(tex);
 
             var tcd = resource as ITraceCapturingDisposable;
             tcd?.AutoCaptureTraceback();

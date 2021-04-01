@@ -183,6 +183,7 @@ namespace Squared.Render {
     public class DynamicAtlas<T> : IDisposable, IDynamicTexture
         where T : struct 
     {
+        public readonly object Tag = null;
         public bool DebugColors = false;
         private static int NextId = 0;
         private int Id;
@@ -247,7 +248,7 @@ namespace Squared.Render {
 
         public DynamicAtlas (
             RenderCoordinator coordinator, int width, int height, SurfaceFormat format, 
-            int spacing = 2, MipGenerator<T> mipGenerator = null
+            int spacing = 2, MipGenerator<T> mipGenerator = null, object tag = null
         ) {
             Id = NextId++;
             Coordinator = coordinator;
@@ -261,6 +262,7 @@ namespace Squared.Render {
             RowHeight = 0;
             _BeforeIssue = Flush;
             _BeforePrepare = QueueGenerateMips;
+            Tag = tag;
 
             GenerateMip = mipGenerator;
 
@@ -303,8 +305,12 @@ namespace Squared.Render {
             if (Texture != null)
                 return;
 
-            lock (Coordinator.CreateResourceLock)
-                Texture = new Texture2D(Coordinator.Device, Width, Height, GenerateMip != null, Format);
+            lock (Coordinator.CreateResourceLock) {
+                Texture = new Texture2D(Coordinator.Device, Width, Height, GenerateMip != null, Format) {
+                    Tag = $"DynamicAtlas<{typeof(T).Name}> {Tag ?? GetHashCode().ToString("X8")}"
+                };
+                Coordinator.AutoAllocatedTextureResources.Add(Texture);
+            }
         }
 
         public void Invalidate (Rectangle rect) {

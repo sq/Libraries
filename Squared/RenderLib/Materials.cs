@@ -254,8 +254,10 @@ namespace Squared.Render {
             if ((hint.VertexTextureFormats?.Length ?? 0) >= 1) {
                 for (int i = 0; i < hint.VertexTextureFormats.Length; i++) {
                     Texture2D tempTexture;
-                    lock (coordinator.CreateResourceLock)
+                    lock (coordinator.CreateResourceLock) {
                         tempTexture = new Texture2D(deviceManager.Device, 1, 1, false, hint.VertexTextureFormats[i]);
+                        coordinator.AutoAllocatedTextureResources.Add(tempTexture);
+                    }
                     deviceManager.Device.VertexTextures[i] = tempTexture;
                     deviceManager.Device.VertexSamplerStates[i] = SamplerState.PointClamp;
                     coordinator.DisposeResource(tempTexture);
