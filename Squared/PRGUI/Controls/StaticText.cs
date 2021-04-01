@@ -252,7 +252,7 @@ namespace Squared.PRGUI.Controls {
         private Margins _CachedPadding;
         private bool? _CachedContentIsSingleLine;
 
-        protected void ComputeAutoSize (UIOperationContext context) {
+        protected void ComputeAutoSize (UIOperationContext context, ref Margins computedPadding, ref Margins computedMargins) {
             // FIXME: If we start out constrained (by our parent size, etc) we will compute
             //  a compressed auto-size value here, and it will never be updated even if our parent
             //  gets bigger
@@ -265,8 +265,6 @@ namespace Squared.PRGUI.Controls {
             var textDecorations = GetTextDecorator(context.DecorationProvider, context.DefaultTextDecorator);
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             var fontChanged = UpdateFont(context, textDecorations, decorations);
-
-            ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
 
             var contentChanged = (ContentMeasurement?.IsValid == false) || !Content.IsValid;
             if (contentChanged || fontChanged)
@@ -340,10 +338,12 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            ComputeAutoSize(context);
-            UpdateLineBreak(context, GetDecorator(context.DecorationProvider, context.DefaultDecorator));
+            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
+            ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
+            ComputeAutoSize(context, ref computedPadding, ref computedMargins);
+            UpdateLineBreak(context, decorations, ref computedPadding, ref computedMargins);
             if (!Content.IsValid)
-                ComputeAutoSize(context);
+                ComputeAutoSize(context, ref computedPadding, ref computedMargins);
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             return result;
         }
@@ -352,12 +352,11 @@ namespace Squared.PRGUI.Controls {
             return provider?.StaticText ?? provider?.None;
         }
 
-        protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations) {
+        protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
             if (_ScaleToFitX)
                 return null;
 
             ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
-            ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
             float? constrainedWidth = null;
             var max = ((Width.Fixed ?? Width.Maximum) * sizeScale.X) - computedPadding.X;
             if (MostRecentContentBoxWidth.HasValue) {
@@ -435,7 +434,7 @@ namespace Squared.PRGUI.Controls {
             Vector2 textOffset = Vector2.Zero, textScale = Vector2.One;
             decorations?.GetContentAdjustment(context, settings.State, out textOffset, out textScale);
 
-            UpdateLineBreak(context, decorations);
+            UpdateLineBreak(context, decorations, ref computedPadding, ref computedMargins);
 
             var layout = GetCurrentLayout(false);
             textScale *= ComputeScaleToFit(layout.UnconstrainedSize, ref settings.Box, ref computedPadding);
@@ -514,8 +513,8 @@ namespace Squared.PRGUI.Controls {
             _LastDrawScale = textScale;
         }
 
-        protected void UpdateLineBreak (UIOperationContext context, IDecorator decorations) {
-            var textWidthLimit = ComputeTextWidthLimit(context, decorations);
+        protected void UpdateLineBreak (UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
+            var textWidthLimit = ComputeTextWidthLimit(context, decorations, ref computedPadding, ref computedMargins);
             if (textWidthLimit.HasValue && !_ScaleToFitX)
                 Content.LineBreakAtX = textWidthLimit;
             else
