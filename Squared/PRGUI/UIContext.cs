@@ -605,6 +605,12 @@ namespace Squared.PRGUI {
             return result;
         }
 
+        public void HideTooltip (Control control) {
+            if (PreviousTooltipAnchor != control)
+                return;
+            HideTooltip(true);
+        }
+
         public void HideTooltip () {
             HideTooltip(true);
         }

@@ -60,9 +60,16 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            var children = Children;
+
+            if (!Content.IsValid) {
+                // HACK: If our content has changed ensure no tooltips are currently attached to one of our children
+                foreach (var ht in children)
+                    Context.HideTooltip(ht);
+            }
+
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             var rm = Content.RichMarkers;
-            var children = Children;
 
             if (!existingKey.HasValue) {
                 if (Content.IsValid) {

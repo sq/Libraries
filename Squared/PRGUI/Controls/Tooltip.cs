@@ -78,7 +78,7 @@ namespace Squared.PRGUI.Controls {
             if (settings.ConfigureLayout != null)
                 settings.ConfigureLayout(Content);
             LayoutFilter = settings.LayoutFilter;
-            Appearance.GlyphSource = settings.DefaultGlyphSource ?? Appearance.GlyphSource;
+            Appearance.GlyphSource = settings.DefaultGlyphSource;
         }
     }
 }
