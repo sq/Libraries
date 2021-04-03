@@ -44,6 +44,7 @@ namespace Squared.Render.Text {
         private int _Alignment = (int)HorizontalAlignment.Left;
         private bool _ReverseOrder = false;
         private int _LineLimit = int.MaxValue;
+        private int _LineBreakLimit = int.MaxValue;
         private bool _MeasureOnly = false;
         private bool _RichText = false;
         private bool _HideOverflow = false;
@@ -285,6 +286,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// Skips one or more characters before beginning layout
+        /// </summary>
         public int CharacterSkipCount {
             get {
                 return _CharacterSkipCount;
@@ -294,6 +298,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// After this many characters are laid out (including non-printable characters), any further text will be hidden
+        /// </summary>
         public int CharacterLimit {
             get {
                 return _CharacterLimit;
@@ -303,6 +310,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// The first line in the layout will start at this X offset
+        /// </summary>
         public float XOffsetOfFirstLine {
             get {
                 return _XOffsetOfFirstLine;
@@ -312,6 +322,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// Each new line (after a line break, not wrapping) will start at this X offset
+        /// </summary>
         public float XOffsetOfNewLine {
             get {
                 return _XOffsetOfNewLine;
@@ -321,6 +334,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// Any characters with an X offset exceeding this value will either be wrapped or hidden
+        /// </summary>
         public float? LineBreakAtX {
             get {
                 return _LineBreakAtX;
@@ -330,6 +346,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// Any characters with a Y offset exceeding this value will be hidden
+        /// </summary>
         public float? StopAtY {
             get {
                 return _StopAtY;
@@ -339,12 +358,27 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// After this many lines (after wrapping) are laid out, any further text will be hidden
+        /// </summary>
         public int LineLimit {
             get {
                 return _LineLimit;
             }
             set {
                 InvalidatingValueAssignment(ref _LineLimit, value);
+            }
+        }
+
+        /// <summary>
+        /// After this many line breaks (i.e. \n) are encountered, any further text will be hidden
+        /// </summary>
+        public int LineBreakLimit {
+            get {
+                return _LineBreakLimit;
+            }
+            set {
+                InvalidatingValueAssignment(ref _LineBreakLimit, value);
             }
         }
 
@@ -375,6 +409,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// Any characters outside of the layout region will be hidden but still participate in layout/measurement
+        /// </summary>
         public bool HideOverflow {
             get {
                 return _HideOverflow;
@@ -384,6 +421,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// Attempt to wrap words to the next line when they extend past the wrap boundary
+        /// </summary>
         public bool WordWrap {
             get {
                 return _WordWrap;
@@ -393,6 +433,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// Attempt to wrap characters to the next line when they extend past the wrap boundary
+        /// </summary>
         public bool CharacterWrap {
             get {
                 // FIXME: Is this right?
@@ -403,6 +446,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// Does not generate a table of draw calls, only measures the text
+        /// </summary>
         public bool MeasureOnly {
             get {
                 return _MeasureOnly;
@@ -417,6 +463,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// Aligns the entire layout (not single lines) horizontally after layout is complete
+        /// </summary>
         public HorizontalAlignment Alignment {
             get {
                 return (HorizontalAlignment)_Alignment;
@@ -439,6 +488,7 @@ namespace Squared.Render.Text {
         }
 
         /// <summary>
+        /// When wrapping shifts text to a new line, it will have this X offset
         /// NOTE: Only valid if WordWrap is also true
         /// </summary>
         public float WrapIndentation {
@@ -450,6 +500,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// Inserts additional space between lines after a line break
+        /// </summary>
         public float ExtraLineBreakSpacing {
             get {
                 return _ExtraLineBreakSpacing;
@@ -486,6 +539,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// If set, all characters in the string will be replaced by this character. Useful for censoring.
+        /// </summary>
         public char? ReplacementCharacter {
             get {
                 return _ReplacementCharacter;
@@ -495,6 +551,9 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// If set, every texture used in the layout will be recorded so you can use it for tracking and lifetime management.
+        /// </summary>
         public bool RecordUsedTextures {
             get {
                 return _RecordUsedTextures;
@@ -546,6 +605,7 @@ namespace Squared.Render.Text {
                 alignment = (HorizontalAlignment)_Alignment,
                 reverseOrder = _ReverseOrder,
                 lineLimit = _LineLimit,
+                lineBreakLimit = _LineBreakLimit,
                 measureOnly = _MeasureOnly,
                 replacementCodepoint = _ReplacementCharacter,
                 recordUsedTextures = _RecordUsedTextures
@@ -579,6 +639,7 @@ namespace Squared.Render.Text {
             this.LineBreakAtX = source.LineBreakAtX;
             this.StopAtY = source.StopAtY;
             this.LineLimit = source.LineLimit;
+            this.LineBreakLimit = source.LineBreakLimit;
             this.Position = source.Position;
             this.ReverseOrder = source.ReverseOrder;
             this.Scale = source.Scale;

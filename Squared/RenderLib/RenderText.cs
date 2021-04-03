@@ -217,10 +217,12 @@ namespace Squared.Render.Text {
         public float               extraLineBreakSpacing;
         public bool                characterWrap;
         public bool                wordWrap;
+        // FIXME: This isn't implemented?
         public char                wrapCharacter;
         public bool                hideOverflow;
         public bool                reverseOrder;
         public int?                lineLimit;
+        public int?                lineBreakLimit;
         public bool                measureOnly;
         public bool                recordUsedTextures;
         public GlyphPixelAlignment alignToPixels;
@@ -717,10 +719,16 @@ namespace Squared.Render.Text {
                     lineBreak = true;
 
                 if (lineBreak) {
-                    if (lineLimit.HasValue)
+                    if (lineLimit.HasValue) {
                         lineLimit--;
-                    if (lineLimit.HasValue && lineLimit.Value <= 0)
-                        suppress = true;
+                        if (lineLimit.Value <= 0)
+                            suppress = true;
+                    }
+                    if (lineBreakLimit.HasValue) {
+                        lineBreakLimit--;
+                        if (lineBreakLimit.Value <= 0)
+                            suppress = true;
+                    }
                 } else if (lineLimit.HasValue && lineLimit.Value <= 0) {
                     suppress = true;
                 }
@@ -1107,7 +1115,8 @@ namespace Squared.Render.Text {
                 new Vector2(maxX, maxY), new Vector2(maxXUnconstrained, maxYUnconstrained),
                 maxLineSpacing,
                 firstCharacterBounds, lastCharacterBounds,
-                result, lineLimit.HasValue && (lineLimit.Value <= 0)
+                result, (lineLimit.HasValue && (lineLimit.Value <= 0)) || 
+                    (lineBreakLimit.HasValue && (lineBreakLimit.Value <= 0))
             ) {
                 UsedTextures = usedTextures
             };
