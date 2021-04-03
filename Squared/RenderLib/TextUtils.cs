@@ -22,7 +22,7 @@ namespace Squared.Render.Text {
         private string _StyleName;
         private Dictionary<char, KerningAdjustment> _KerningAdjustments; 
         private IGlyphSource _GlyphSource;
-        private AbstractString _Text;
+        private AbstractString _Text, _TruncatedIndicator;
         private Vector2 _Position = Vector2.Zero;
         private Color _DefaultColor = Microsoft.Xna.Framework.Color.White;
         private Color? _Color = null;
@@ -200,6 +200,15 @@ namespace Squared.Render.Text {
             }
             set {
                 InvalidatingValueAssignment(ref _Text, value);
+            }
+        }
+
+        public AbstractString TruncatedIndicator {
+            get {
+                return _TruncatedIndicator;
+            }
+            set {
+                InvalidatingValueAssignment(ref _TruncatedIndicator, value);
             }
         }
 
@@ -646,6 +655,7 @@ namespace Squared.Render.Text {
             this.Spacing = source.Spacing;
             this.SortKey = source.SortKey;
             this.Text = source.Text;
+            this.TruncatedIndicator = source.TruncatedIndicator;
             this.WordWrap = source.WordWrap;
             this.WrapCharacter = source.WrapCharacter;
             this.WrapIndentation = source.WrapIndentation;
@@ -709,9 +719,14 @@ namespace Squared.Render.Text {
                         _RichTextConfiguration.KerningAdjustments = _KerningAdjustments ?? ka;
                         rls = new RichTextLayoutState(ref le, _GlyphSource);
                         _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
+                        if (le.IsTruncated && (TruncatedIndicator != null))
+                            _RichTextConfiguration.Append(ref le, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
                         _RichTextConfiguration.KerningAdjustments = ka;
-                    } else
+                    } else {
                         le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
+                        if (le.IsTruncated && (TruncatedIndicator != null))
+                            le.AppendText(_GlyphSource, TruncatedIndicator, _KerningAdjustments, overrideSuppress: false);
+                    }
 
                     _CachedGlyphVersion = _GlyphSource.Version;
                     _CachedStringLayout = le.Finish();

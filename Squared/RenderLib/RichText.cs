@@ -189,10 +189,11 @@ namespace Squared.Render.Text {
         }
 
         public void Append (
-            ref StringLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, string styleName
+            ref StringLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, 
+            string styleName, bool? overrideSuppress = null
         ) {
             var state = new RichTextLayoutState(ref layoutEngine, defaultGlyphSource);
-            Append(ref layoutEngine, ref state, text, styleName);
+            Append(ref layoutEngine, ref state, text, styleName, overrideSuppress);
         }
 
         private static readonly HashSet<char>
@@ -200,7 +201,8 @@ namespace Squared.Render.Text {
             StringTerminators = new HashSet<char> { '$', '(' };
 
         public void Append (
-            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, string styleName
+            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
+            string styleName, bool? overrideSuppress = null
         ) {
             var count = text.Length;
             var currentRangeStart = 0;
@@ -216,7 +218,7 @@ namespace Squared.Render.Text {
                     var ch = text[i];
                     var next = (i < count - 2) ? text[i + 1] : '\0';
                     if ((ch == '$') && ((next == '[') || (next == '('))) {
-                        AppendRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, i);
+                        AppendRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, i, overrideSuppress);
                         var commandMode = next == '[';
                         var bracketed = ParseBracketedText(
                             text, ref i, ref currentRangeStart, 
@@ -292,7 +294,7 @@ namespace Squared.Render.Text {
                                 var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + astr.Length - 1, bracketed, id);
                                 layoutEngine.Markers.Add(m);
                                 state.MarkedStrings.Add(bracketed);
-                                AppendRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, astr.Length);
+                                AppendRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, astr.Length, overrideSuppress);
                             }
                             if (MarkedStringProcessor != null)
                                 markedState.Reset(ref layoutEngine);
@@ -302,7 +304,7 @@ namespace Squared.Render.Text {
                         }
                     }
                 }
-                AppendRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, count);
+                AppendRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, count, overrideSuppress);
             } finally {
                 state.Reset(ref layoutEngine);
             }
@@ -330,11 +332,11 @@ namespace Squared.Render.Text {
 
         private void AppendRange (
             ref StringLayoutEngine layoutEngine, IGlyphSource glyphSource, AbstractString text,
-            int rangeStart, int rangeEnd
+            int rangeStart, int rangeEnd, bool? overrideSuppress
         ) {
             if (rangeEnd <= rangeStart)
                 return;
-            layoutEngine.AppendText(glyphSource, text, KerningAdjustments, start: rangeStart, end: rangeEnd);
+            layoutEngine.AppendText(glyphSource, text, KerningAdjustments, start: rangeStart, end: rangeEnd, overrideSuppress: overrideSuppress);
         }
 
         private string ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart, HashSet<char> terminators, char close) {

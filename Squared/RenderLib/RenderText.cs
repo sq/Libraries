@@ -617,6 +617,12 @@ namespace Squared.Render.Text {
             }
         }
 
+        public bool IsTruncated =>
+            // FIXME: < 0 instead of <= 0?
+            ((lineLimit ?? int.MaxValue) <= 0) ||
+            ((lineBreakLimit ?? int.MaxValue) <= 0) ||
+            ((characterLimit ?? int.MaxValue) <= 0);
+
         public void AppendImage (
             Texture2D texture, Bounds? textureRegion = null,
             Vector2? margin = null, 
@@ -644,10 +650,16 @@ namespace Squared.Render.Text {
             AppendCharacter(ref dc, x, 1, false, lineSpacing, 0f, x, ref estimatedBounds, false, false);
         }
 
+        private bool ComputeSuppress (bool? overrideSuppress) {
+            if (suppressUntilNextLine)
+                return true;
+            return overrideSuppress ?? suppress;
+        }
+
         public ArraySegment<BitmapDrawCall> AppendText (
             IGlyphSource font, AbstractString text,
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
-            int? start = null, int? end = null
+            int? start = null, int? end = null, bool? overrideSuppress = null
         ) {
             if (!IsInitialized)
                 throw new InvalidOperationException("Call Initialize first");
@@ -837,13 +849,15 @@ namespace Squared.Render.Text {
                 if (lineBreak) {
                     if (!forcedWrap) {
                         var spacingForThisLineBreak = currentLineSpacing + extraLineBreakSpacing;
-                        characterOffset.X = xOffsetOfNewLine;
-                        // FIXME: didn't we already do this?
-                        characterOffset.Y += spacingForThisLineBreak;
+                        if (!suppress) {
+                            characterOffset.X = xOffsetOfNewLine;
+                            // FIXME: didn't we already do this?
+                            characterOffset.Y += spacingForThisLineBreak;
+                            maxX = Math.Max(maxX, currentLineMaxX);
+                        }
                         characterOffsetUnconstrained.X = xOffsetOfNewLine;
                         characterOffsetUnconstrained.Y += spacingForThisLineBreak;
 
-                        maxX = Math.Max(maxX, currentLineMaxX);
                         maxXUnconstrained = Math.Max(maxXUnconstrained, currentLineMaxXUnconstrained);
                         currentLineMaxXUnconstrained = 0;
                         initialLineSpacing = currentLineSpacing = 0;
@@ -853,9 +867,11 @@ namespace Squared.Render.Text {
                     }
 
                     initialLineXOffset = characterOffset.X;
-                    currentLineMaxX = 0;
-                    currentLineWhitespaceMaxX = 0;
-                    currentLineWhitespaceMaxXLeft = 0;
+                    if (!suppress) {
+                        currentLineMaxX = 0;
+                        currentLineWhitespaceMaxX = 0;
+                        currentLineWhitespaceMaxXLeft = 0;
+                    }
                     rowIndex += 1;
                     colIndex = 0;
                 }
@@ -899,7 +915,7 @@ namespace Squared.Render.Text {
                 else
                     previousGlyphWasDead = false;
 
-                if (!suppress && !suppressUntilNextLine)
+                if (!ComputeSuppress(overrideSuppress))
                     characterOffset.X += (glyph.CharacterSpacing * effectiveScale);
                 characterOffsetUnconstrained.X += (glyph.CharacterSpacing * effectiveScale);
 
@@ -909,7 +925,7 @@ namespace Squared.Render.Text {
                     glyph.LineSpacing
                 ) * effectiveScale;
 
-                if (!suppress && !suppressUntilNextLine)
+                if (!ComputeSuppress(overrideSuppress))
                     lastCharacterBounds = Bounds.FromPositionAndSize(
                         actualPosition + characterOffset + new Vector2(0, yOffset), scaledGlyphSize
                     );
@@ -922,7 +938,7 @@ namespace Squared.Render.Text {
                 if ((rowIndex == 0) && (colIndex == 0))
                     firstCharacterBounds = lastCharacterBounds;
 
-                if (!suppress && !suppressUntilNextLine)
+                if (!ComputeSuppress(overrideSuppress))
                     characterOffset.X += glyph.LeftSideBearing * effectiveScale;
                 characterOffsetUnconstrained.X += glyph.LeftSideBearing * effectiveScale;
 
@@ -941,10 +957,11 @@ namespace Squared.Render.Text {
                     ref drawCall, 
                     x, currentCodepointSize, 
                     isWhiteSpace, glyphLineSpacing, 
-                    yOffset, xUnconstrained, ref testBounds, lineBreak, didWrapWord
+                    yOffset, xUnconstrained, ref testBounds, 
+                    lineBreak, didWrapWord, overrideSuppress
                 );
 
-                if (!suppress && !suppressUntilNextLine)
+                if (!ComputeSuppress(overrideSuppress))
                     characterOffset.X += (glyph.Width + glyph.RightSideBearing) * effectiveScale;
                 characterOffsetUnconstrained.X += (glyph.Width + glyph.RightSideBearing) * effectiveScale;
                 ProcessLineSpacingChange(buffer, glyphLineSpacing, glyphBaseline);
@@ -968,7 +985,8 @@ namespace Squared.Render.Text {
             ref BitmapDrawCall drawCall, 
             float x, int currentCodepointSize, 
             bool isWhiteSpace, float glyphLineSpacing, float yOffset, 
-            float xUnconstrained, ref Bounds testBounds, bool splitMarker, bool didWrapWord
+            float xUnconstrained, ref Bounds testBounds, bool splitMarker, bool didWrapWord,
+            bool? overrideSuppress = null
         ) {
             if (recordUsedTextures && (drawCall.Textures.Texture1 != lastUsedTexture) && (drawCall.Textures.Texture1 != null)) {
                 lastUsedTexture = drawCall.Textures.Texture1;
@@ -1001,7 +1019,7 @@ namespace Squared.Render.Text {
                             drawCall.SortOrder += 1;
                     }
 
-                    if (!suppress && !suppressUntilNextLine) {
+                    if (!ComputeSuppress(overrideSuppress)) {
                         if (!measureOnly) {
                             buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
                             ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition, splitMarker || previousGlyphWasDead, didWrapWord);
