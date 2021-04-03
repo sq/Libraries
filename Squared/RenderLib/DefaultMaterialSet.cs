@@ -1094,7 +1094,9 @@ namespace Squared.Render {
         /// <param name="force">Forcibly applies it now to all materials instead of lazily</param>
         public void ApplyViewTransform (ref ViewTransform viewTransform, bool force) {
             ActiveViewTransform.ViewTransform = viewTransform;
-            ActiveViewTransform.Id++;
+            unchecked {
+                ActiveViewTransform.Id++;
+            }
             var am = ActiveViewTransform.ActiveMaterial;
 
             if (force || (am == null)) {

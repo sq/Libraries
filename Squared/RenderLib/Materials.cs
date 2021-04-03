@@ -155,7 +155,6 @@ namespace Squared.Render {
         // For debugging
         private void Begin_Internal (string shaderName, DeviceManager deviceManager) {
             CheckDevice(deviceManager);
-            // FIXME: This never runs because ActiveViewTransform is always null
             if (ActiveViewTransform != null)
                 ActiveViewTransform.ActiveMaterial = this;
 
