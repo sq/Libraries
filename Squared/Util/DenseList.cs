@@ -262,7 +262,7 @@ namespace Squared.Util {
             if (lazy && !_HasList) {
                 ListCapacity = Math.Max(capacity, ListCapacity.GetValueOrDefault(0));
             } else {
-                EnsureList();
+                EnsureList(capacity);
                 Items.EnsureCapacity(capacity);
             }
         }
@@ -737,7 +737,7 @@ namespace Squared.Util {
             where TComparer : IRefComparer<T>
         {
             if (_HasList) {
-                EnsureList ();
+                EnsureList();
                 if (indices != null)
                     Items.IndexedSortRef(comparer, indices);
                 else
