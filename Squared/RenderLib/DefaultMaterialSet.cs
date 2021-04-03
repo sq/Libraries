@@ -936,6 +936,7 @@ namespace Squared.Render {
         private FrameParams? LastAppliedFrameParams;
         private ViewTransform? LastAppliedViewTransform;
         private bool? LastIsOpenGL;
+        private bool FlushViewTransformForFrameParamsChange;
 
         /// <summary>
         /// Instantly sets the view transform of all material(s) owned by this material set to the ViewTransform field's current value.
@@ -947,6 +948,8 @@ namespace Squared.Render {
                 Seconds = (float)TimeProvider.Seconds,
                 FrameIndex = frameIndex
             };
+
+            FlushViewTransformForFrameParamsChange = true;
 
             if (!LastAppliedFrameParams.HasValue ||
                 !LastAppliedFrameParams.Value.Equals(@params) ||
@@ -1099,7 +1102,8 @@ namespace Squared.Render {
             }
             var am = ActiveViewTransform.ActiveMaterial;
 
-            if (force || (am == null)) {
+            if (force || (am == null) || FlushViewTransformForFrameParamsChange) {
+                FlushViewTransformForFrameParamsChange = false;
                 LastAppliedViewTransform = viewTransform;
                 ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
             } else if (am != null)
