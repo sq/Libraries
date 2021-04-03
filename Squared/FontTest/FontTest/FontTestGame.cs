@@ -18,7 +18,7 @@ namespace FontTest {
 
         public string TestText =
             "The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
-            // "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
+            "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
             "\r\n\r\nEmpty line before this one $(marked)";
 
         public string TestText2 =
