@@ -16,6 +16,7 @@ namespace Squared.Render {
     public interface IMaterialCollection {
         void ForEachMaterial<T> (Action<Material, T> action, T userData);
         void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData);
+        IEnumerable<Material> Materials { get; }
     }
 
     public delegate void RefMaterialAction<T> (Material material, ref T userData);
@@ -37,6 +38,8 @@ namespace Squared.Render {
 
             Clear();
         }
+
+        public IEnumerable<Material> Materials => this;
     }
 
     public class MaterialDictionary<TKey> : Dictionary<TKey, Material>, IDisposable, IMaterialCollection {
@@ -64,6 +67,8 @@ namespace Squared.Render {
             foreach (var material in Values)
                 action(material, ref userData);
         }
+
+        public IEnumerable<Material> Materials => this.Values;
     }
 
     public abstract class MaterialSetBase : IDisposable {
@@ -71,7 +76,6 @@ namespace Squared.Render {
         protected readonly MaterialList ExtraMaterials = new MaterialList();
 
         public readonly Func<Material>[] AllMaterialFields;
-        public readonly Func<IEnumerable<Material>>[] AllMaterialSequences;
         public readonly Func<IMaterialCollection>[] AllMaterialCollections;
 
         // Making a dictionary larger increases performance
@@ -89,14 +93,43 @@ namespace Squared.Render {
 
         public bool IsDisposed { get; private set; }
 
+        private UnorderedList<Material> MaterialCache = new UnorderedList<Material>();
+
         public MaterialSetBase() 
             : base() {
 
             OwningThread = Thread.CurrentThread;
-            BuildMaterialSets(out AllMaterialFields, out AllMaterialSequences, out AllMaterialCollections);
+            BuildMaterialSets(out AllMaterialFields, out AllMaterialCollections);
         }
 
         protected abstract void QueuePendingRegistrationHandler ();
+
+        protected void BuildMaterialCache () {
+            lock (Lock) {
+                MaterialCache.Clear();
+
+                foreach (var field in AllMaterialFields) {
+                    var material = field();
+                    if (material != null)
+                        MaterialCache.Add(material);
+                }
+
+                foreach (var coll in AllMaterialCollections) {
+                    var enumerable = coll()?.Materials;
+                    if (enumerable == null)
+                        continue;
+
+                    foreach (var material in enumerable)
+                        if (material != null)
+                            MaterialCache.Add(material);
+                }
+            }
+        }
+
+        protected void ReleaseMaterialCache () {
+            lock (Lock)
+                MaterialCache.Clear();
+        }
 
         internal void InitializeTypedUniformsForMaterial (Material m, List<ITypedUniform> uniforms) {
             foreach (var tu in uniforms)
@@ -117,11 +150,9 @@ namespace Squared.Render {
         }
 
         protected void BuildMaterialSets (
-            out Func<Material>[] materialFields, 
-            out Func<IEnumerable<Material>>[] materialSequences,
+            out Func<Material>[] materialFields,
             out Func<IMaterialCollection>[] materialCollections 
         ) {
-            var sequences = new List<Func<IEnumerable<Material>>>();
             var fields = new List<Func<Material>>();
             var collections = new List<Func<IMaterialCollection>>(); 
 
@@ -130,7 +161,6 @@ namespace Squared.Render {
 
             var tMaterialCollection = typeof(IMaterialCollection);
 
-            sequences.Add(() => this.ExtraMaterials);
             collections.Add(() => this.ExtraMaterials);
 
             foreach (var field in this.GetType().GetFields()) {
@@ -149,20 +179,6 @@ namespace Squared.Render {
                 ) {
                     var dictType = field.FieldType;
                     var valuesProperty = dictType.GetProperty("Values");
-
-                    sequences.Add(
-                        () => {
-                            var dict = f.GetValue(this);
-                            if (dict == null)
-                                return null;
-
-                            // Generics, bluhhhhh
-                            var values = valuesProperty.GetValue(dict, null)
-                                as IEnumerable<Material>;
-
-                            return values;
-                        }
-                    );
                     collections.Add(() => (IMaterialCollection)f.GetValue(this));
                 } else if (
                     tMaterialCollection.IsAssignableFrom(field.FieldType)
@@ -172,8 +188,23 @@ namespace Squared.Render {
             }
 
             materialFields = fields.ToArray();
-            materialSequences = sequences.ToArray();
             materialCollections = collections.ToArray();
+        }
+
+        private void ForEachMaterial_Slow<T> (Action<Material, T> action, T userData) {
+            foreach (var field in AllMaterialFields) {
+                var material = field();
+                if (material != null)
+                    action(material, userData);
+            }
+
+            foreach (var collection in AllMaterialCollections) {
+                var coll = collection();
+                if (coll == null)
+                    continue;
+
+                coll.ForEachMaterial(action, userData);
+            }
         }
 
         public void ForEachMaterial<T> (Action<Material, T> action, T userData) {
@@ -181,19 +212,28 @@ namespace Squared.Render {
                 return;
 
             lock (Lock) {
-                foreach (var field in AllMaterialFields) {
-                    var material = field();
-                    if (material != null)
-                        action(material, userData);
+                if (MaterialCache.Count > 0) {
+                    foreach (var m in MaterialCache)
+                        action(m, userData);
+                } else {
+                    ForEachMaterial_Slow(action, userData);
                 }
+            }
+        }
 
-                foreach (var collection in AllMaterialCollections) {
-                    var coll = collection();
-                    if (coll == null)
-                        continue;
+        private void ForEachMaterial_Slow<T> (RefMaterialAction<T> action, ref T userData) {
+            foreach (var field in AllMaterialFields) {
+                var material = field();
+                if (material != null)
+                    action(material, ref userData);
+            }
 
-                    coll.ForEachMaterial(action, userData);
-                }
+            foreach (var collection in AllMaterialCollections) {
+                var coll = collection();
+                if (coll == null)
+                    continue;
+
+                coll.ForEachMaterial(action, ref userData);
             }
         }
 
@@ -202,18 +242,11 @@ namespace Squared.Render {
                 return;
 
             lock (Lock) {
-                foreach (var field in AllMaterialFields) {
-                    var material = field();
-                    if (material != null)
-                        action(material, ref userData);
-                }
-
-                foreach (var collection in AllMaterialCollections) {
-                    var coll = collection();
-                    if (coll == null)
-                        continue;
-
-                    coll.ForEachMaterial(action, ref userData);
+                if (MaterialCache.Count > 0) {
+                    foreach (var m in MaterialCache)
+                        action(m, ref userData);
+                } else {
+                    ForEachMaterial_Slow(action, ref userData);
                 }
             }
         }
@@ -229,12 +262,12 @@ namespace Squared.Render {
                         yield return material;
                 }
 
-                foreach (var sequence in AllMaterialSequences) {
-                    var seq = sequence();
-                    if (seq == null)
+                foreach (var coll in AllMaterialCollections) {
+                    var enumerable = coll()?.Materials;
+                    if (enumerable == null)
                         continue;
 
-                    foreach (var material in seq)
+                    foreach (var material in enumerable)
                         if (material != null)
                             yield return material;
                 }

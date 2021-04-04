@@ -937,6 +937,7 @@ namespace Squared.Render {
         private ViewTransform? LastAppliedViewTransform;
         private bool? LastIsOpenGL;
         private bool FlushViewTransformForFrameParamsChange;
+        private int? LastAppliedFrameIndex;
 
         /// <summary>
         /// Instantly sets the view transform of all material(s) owned by this material set to the ViewTransform field's current value.
@@ -944,6 +945,11 @@ namespace Squared.Render {
         /// <param name="force">Overrides the LazyViewTransformChanges configuration variable if it's set</param>
         /// </summary>
         public void ApplyShaderVariables (bool force = true, int? frameIndex = null) {
+            if (LastAppliedFrameIndex != frameIndex) {
+                LastAppliedFrameIndex = frameIndex;
+                BuildMaterialCache();
+            }
+
             var @params = new FrameParams {
                 Seconds = (float)TimeProvider.Seconds,
                 FrameIndex = frameIndex
@@ -1049,7 +1055,6 @@ namespace Squared.Render {
                 ));
             }
         }
-
 
         private void ApplyParamsToMaterial (Material m, FrameParams @params) {
             m.Parameters?.Time?.SetValue(@params.Seconds);
