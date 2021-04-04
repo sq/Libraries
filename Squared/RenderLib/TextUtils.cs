@@ -125,6 +125,9 @@ namespace Squared.Render.Text {
                 return null;
         }
 
+        /// <summary>
+        /// Specifies additional codepoints that will be treated as valid word separators for word wrap
+        /// </summary>
         public uint[] WordWrapCharacters {
             get {
                 return _WordWrapCharacters;
@@ -719,12 +722,12 @@ namespace Squared.Render.Text {
                         _RichTextConfiguration.KerningAdjustments = _KerningAdjustments ?? ka;
                         rls = new RichTextLayoutState(ref le, _GlyphSource);
                         _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
-                        if (le.IsTruncated && (TruncatedIndicator != null))
+                        if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             _RichTextConfiguration.Append(ref le, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
                         _RichTextConfiguration.KerningAdjustments = ka;
                     } else {
                         le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
-                        if (le.IsTruncated && (TruncatedIndicator != null))
+                        if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             le.AppendText(_GlyphSource, TruncatedIndicator, _KerningAdjustments, overrideSuppress: false);
                     }
 
