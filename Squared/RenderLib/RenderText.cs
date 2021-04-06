@@ -253,6 +253,7 @@ namespace Squared.Render.Text {
         float          currentLineWhitespaceMaxXLeft, currentLineWhitespaceMaxX;
         float          maxX, maxY, maxXUnconstrained, maxYUnconstrained;
         float          initialLineSpacing, currentLineSpacing;
+        float          currentXOverhang;
         float          currentBaseline;
         float          maxLineSpacing;
         Vector2        wordStartOffset;
@@ -282,6 +283,7 @@ namespace Squared.Render.Text {
             currentBaseline = 0;
             currentLineSpacing = 0;
             maxLineSpacing = 0;
+            currentXOverhang = 0;
 
             HitTests.Sort(LayoutHitTest.Comparer.Instance);
             for (int i = 0; i < HitTests.Count; i++) {
@@ -792,6 +794,13 @@ namespace Squared.Render.Text {
                     glyph.RightSideBearing += kerningAdjustment.RightSideBearing;
                 }
 
+                // MonoGame#1355 rears its ugly head: If a character with negative left-side bearing is at the start of a line,
+                //  we need to compensate for the bearing to prevent the character from extending outside of the layout bounds
+                if (colIndex == 0) {
+                    if (glyph.LeftSideBearing < 0)
+                        glyph.LeftSideBearing = 0;
+                }
+
                 x =
                     characterOffset.X +
                     ((
@@ -847,6 +856,10 @@ namespace Squared.Render.Text {
                 }
 
                 if (lineBreak) {
+                    // FIXME: We also want to expand markers to enclose the overhang
+                    currentLineMaxX += currentXOverhang;
+                    currentLineMaxXUnconstrained += currentXOverhang;
+
                     if (!forcedWrap) {
                         var spacingForThisLineBreak = currentLineSpacing + extraLineBreakSpacing;
                         if (!suppress) {
@@ -941,6 +954,10 @@ namespace Squared.Render.Text {
                 if (!ComputeSuppress(overrideSuppress))
                     characterOffset.X += glyph.LeftSideBearing * effectiveScale;
                 characterOffsetUnconstrained.X += glyph.LeftSideBearing * effectiveScale;
+
+                // If a glyph has negative overhang on the right side we want to make a note of that,
+                //  so that if a line ends with negative overhang we can expand the layout to include it.
+                currentXOverhang = (glyph.RightSideBearing < 0) ? -glyph.RightSideBearing : 0;
 
                 if (!measureOnly && !isWhiteSpace) {
                     var glyphPosition = new Vector2(
@@ -1083,6 +1100,11 @@ namespace Squared.Render.Text {
         }
 
         public StringLayout Finish () {
+            if (currentXOverhang > 0) {
+                maxX += currentXOverhang;
+                maxXUnconstrained += currentXOverhang;
+            }
+
             var result = default(ArraySegment<BitmapDrawCall>);
             if (!measureOnly) {
                 if (buffer.Array != null)

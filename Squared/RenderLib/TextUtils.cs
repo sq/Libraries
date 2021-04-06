@@ -917,7 +917,7 @@ namespace Squared.Render.Text {
         public readonly TextUtils.FontFields Fields;
         public readonly int DefaultCharacterIndex;
 
-        public bool IsDisposed => (Texture?.IsDisposed == false);
+        public bool IsDisposed => (Texture?.IsDisposed == true);
 
         // Forward some SpriteFont methods and properties to make it easier to drop-in replace
         
