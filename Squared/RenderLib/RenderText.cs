@@ -1101,8 +1101,10 @@ namespace Squared.Render.Text {
 
         public StringLayout Finish () {
             if (currentXOverhang > 0) {
-                maxX += currentXOverhang;
-                maxXUnconstrained += currentXOverhang;
+                currentLineMaxX += currentXOverhang;
+                currentLineMaxXUnconstrained += currentXOverhang;
+                maxX = Math.Max(currentLineMaxX, maxX);
+                maxXUnconstrained = Math.Max(currentLineMaxXUnconstrained, maxXUnconstrained);
             }
 
             var result = default(ArraySegment<BitmapDrawCall>);
