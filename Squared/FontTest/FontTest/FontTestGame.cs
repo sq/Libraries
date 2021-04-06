@@ -22,9 +22,12 @@ namespace FontTest {
             "\r\n\r\nEmpty line before this one $(marked)";
 
         public string TestText2 =
+            "\r\n{Paradise ,Isle}        {Paradise Isle}" +
             "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +
             "\r\nはいはい！おつかれさまでした！" +
             "\r\n\tIndented\tText";
+
+        SpriteFont DutchAndHarley;
 
         IGlyphSource LatinFont, SmallLatinFont, UniFont, FallbackFont;
 
@@ -35,7 +38,7 @@ namespace FontTest {
 
         DynamicStringLayout Text, Text2;
 
-        const float TextScale = 2f;
+        float TextScale = 2f;
 
         public Vector2 TopLeft = new Vector2(24, 24);
         public Vector2 BottomRight = new Vector2(512, 512);
@@ -99,6 +102,19 @@ namespace FontTest {
                 Text.Invalidate();
                 Text2.Invalidate();
             };
+            FreeType.Pressed += (s, e) => {
+                if (ActiveFont == FallbackFont) {
+                    ActiveFont = new SpriteFontGlyphSource(DutchAndHarley);
+                    TextScale = 1f;
+                } else {
+                    ActiveFont = FallbackFont;
+                    TextScale = 2f;
+                }
+                Text.GlyphSource = ActiveFont;
+                Text2.GlyphSource = ActiveFont;
+                Text.Scale = TextScale;
+                Text2.Scale = TextScale;
+            };
         }
 
         protected override void OnLoadContent (bool isReloading) {
@@ -120,6 +136,9 @@ namespace FontTest {
             SmallLatinFont = new FreeTypeFont.FontSize((FreeTypeFont)LatinFont, 40 * 0.75f);
 
             ActiveFont = FallbackFont;
+
+            Content.RootDirectory = "";
+            DutchAndHarley = Content.Load<SpriteFont>("DutchAndHarley");
 
             Text = new DynamicStringLayout(ActiveFont, TestText) {
                 // Alignment = HorizontalAlignment.Right,

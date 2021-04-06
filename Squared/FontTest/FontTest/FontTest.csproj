@@ -83,6 +83,14 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\FontTestContent\DutchAndHarley.xnb">
+      <Link>DutchAndHarley.xnb</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\FontTestContent\DutchAndHarley_smaller.xnb">
+      <Link>DutchAndHarley_smaller.xnb</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="app.config" />
     <None Include="cambria.ttc">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -104,7 +112,7 @@
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="..\..\XNAFramework.targets" />
-<!--
+  <!--
       To modify your build process, add your task inside one of the targets below and uncomment it. 
       Other similar extension points exist, see Microsoft.Common.targets.
       <Target Name="BeforeBuild">
