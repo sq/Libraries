@@ -685,6 +685,7 @@ namespace Squared.Render.Text {
             if (!_CachedStringLayout.HasValue) {
                 if (_Text.IsNull) {
                     _CachedStringLayout = new StringLayout();
+                    _CachedGlyphVersion = _GlyphSource.Version;
                     return _CachedStringLayout.Value;
                 }
 
