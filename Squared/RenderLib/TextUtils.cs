@@ -604,7 +604,7 @@ namespace Squared.Render.Text {
                 characterSkipCount = _CharacterSkipCount,
                 characterLimit = _CharacterLimit,
                 xOffsetOfFirstLine = _XOffsetOfFirstLine,
-                xOffsetOfWrappedLine = _XOffsetOfNewLine + _WrapIndentation,
+                xOffsetOfWrappedLine = _WrapIndentation,
                 xOffsetOfNewLine = _XOffsetOfNewLine,
                 extraLineBreakSpacing = _ExtraLineBreakSpacing,
                 lineBreakAtX = _LineBreakAtX,
