@@ -443,7 +443,8 @@ namespace Squared.PRGUI {
                 MinimumSize = new Vector2(ScrollbarSize, ScrollbarSize),
                 Above = Scrollbar_Above,
                 OnMouseEvent = Scrollbar_OnMouseEvent,
-                OnHitTest = Scrollbar_OnHitTest
+                OnHitTest = Scrollbar_OnHitTest,
+                Padding = new Margins(1)
             };
 
             ShowMenu = new FadeAnimation {
@@ -1263,7 +1264,10 @@ namespace Squared.PRGUI {
             out Vector2 trackA, out Vector2 trackB,
             out Vector2 thumbA, out Vector2 thumbB
         ) {
-            var box = settings.Box;
+            var psize = PaddingScaleRatio * SpacingScaleRatio;
+            var padding = Scrollbar.Padding;
+            Margins.Scale(ref padding, ref psize);
+            settings.Box.SnapAndInset(out Vector2 ba, out Vector2 bb, padding + Scrollbar.UnscaledPadding);
 
             var vRadius = new Vector2(ScrollbarRadius);
             float min = 0, max = 0;
@@ -1296,9 +1300,9 @@ namespace Squared.PRGUI {
                 // divisor = Math.Max(0.1f, divisor - maxOffset);
             }
             trackA = data.Horizontal
-                ? new Vector2(box.Left, box.Extent.Y - effectiveScrollbarSize.Y)
-                : new Vector2(box.Extent.X - effectiveScrollbarSize.X, box.Top);
-            trackB = box.Extent;
+                ? new Vector2(ba.X, bb.Y - effectiveScrollbarSize.Y)
+                : new Vector2(bb.X - effectiveScrollbarSize.X, ba.Y);
+            trackB = bb;
 
             if (data.Horizontal) {
                 var b = trackB.X - maxOffset;

@@ -591,6 +591,18 @@ namespace Squared.PRGUI {
                 a.Y = b.Y = Top;
         }
 
+        public void SnapAndInset (out Vector2 a, out Vector2 b, Margins inset) {
+            a = new Vector2(Left + inset.Left, Top + inset.Top);
+            b = new Vector2(Left + Width - inset.Right, Top + Height - inset.Bottom);
+            // HACK: Snap to integral pixels so that edges don't look uneven
+            a = a.Floor();
+            b = b.Floor();
+            if (a.X > b.X)
+                a.X = b.X = Left;
+            if (a.Y > b.Y)
+                a.Y = b.Y = Top;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (RectF rhs) {
             return (Left == rhs.Left) &&
