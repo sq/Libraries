@@ -223,12 +223,14 @@ namespace Squared.PRGUI.Controls {
             var fill = context.DecorationProvider.Gauge;
             var originalCbox = settings.ContentBox;
             var value1 = ValueTween.Get(Context.NowL);
+            settings.UserData = value1;
 
             MakeContentBox(direction, 0f, value1, ref settings.ContentBox);
             base.OnRasterize(context, ref renderer, settings, decorations);
 
             if ((_Limit < 1.0f) && (context.Pass == RasterizePasses.Content)) {
                 settings.ContentBox = originalCbox;
+                settings.UserData = _Limit;
                 settings.Traits.Add("limit");
                 MakeContentBox(direction, _Limit, 1f, ref settings.ContentBox);
                 fill.Rasterize(context, ref renderer, settings);

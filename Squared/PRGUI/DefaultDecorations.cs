@@ -845,7 +845,6 @@ namespace Squared.PRGUI {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             var ca = a + (settings.ContentBox.Position - settings.Box.Position).Round();
             var cb = b - (settings.Box.Extent - settings.ContentBox.Extent).Round();
-            float x0, x1, x2;
             RasterFillMode fillMode;
 
             bool isCircular = false;
@@ -858,24 +857,16 @@ namespace Squared.PRGUI {
                 case "rtl":
                     if (ca.X >= cb.X)
                         return;
-                    x0 = ca.X;
-                    x1 = cb.X;
-                    x2 = cb.X;
                     fillMode = RasterFillMode.Angular + (direction == "rtl" ? 270 : 90);
                     break;
                 case "ttb":
                 case "btt":
                     if (ca.Y >= cb.Y)
                         return;
-                    x0 = ca.Y;
-                    x1 = cb.Y;
-                    x2 = cb.Y;
                     fillMode = RasterFillMode.Angular + (direction == "btt" ? 180 : 0);
                     break;
                 case "cw":
                 case "ccw":
-                    x0 = 0;
-                    x1 = x2 = 1;
                     fillMode = RasterFillMode.Along;
                     isCircular = true;
                     break;
@@ -905,7 +896,7 @@ namespace Squared.PRGUI {
 
             var alpha1 = 0.5f;
             // FIXME: Padding will make this slightly wrong
-            var alpha2 = Arithmetic.Saturate(alpha1 + (0.5f * ((x1 - x0) / (x2 - x0))));
+            var alpha2 = Arithmetic.Saturate(alpha1 + (0.5f * settings.UserData));
             var fillColor = settings.TextColor ?? ColorScheme.GaugeValueFill;
             if (settings.Traits.IndexOf("limit") >= 0) {
                 alpha1 = alpha2 = 0.7f;
