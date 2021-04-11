@@ -16,6 +16,8 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class StaticTextBase : Control, IPostLayoutListener, Accessibility.IReadingTarget {
+        public static GlyphPixelAlignment DefaultGlyphPixelAlignment = GlyphPixelAlignment.Default;
+
         /// <summary>
         /// Rasterizes boxes for each text control's box, content box, and text layout box
         /// Also rasterizes a yellow line for the wrap/break threshold
@@ -39,7 +41,8 @@ namespace Squared.PRGUI.Controls {
         public Material TextMaterial = null;
         protected DynamicStringLayout Content = new DynamicStringLayout {
             HideOverflow = true,
-            RecordUsedTextures = true
+            RecordUsedTextures = true,
+            AlignToPixels = DefaultGlyphPixelAlignment
         };
         private DynamicStringLayout ContentMeasurement = null;
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;

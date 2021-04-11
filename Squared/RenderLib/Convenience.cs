@@ -190,7 +190,7 @@ namespace Squared.Render.Convenience {
             AddressV = TextureAddressMode.Clamp,
             AddressW = TextureAddressMode.Clamp,
             Filter = TextureFilter.Linear,
-            MipMapLevelOfDetailBias = -0.75f
+            MipMapLevelOfDetailBias = -0.65f
         };
     }
 

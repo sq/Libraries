@@ -498,6 +498,9 @@ namespace Squared.Render.Text {
                 case PixelAlignmentMode.FloorHalf:
                     x = (float)Math.Floor(x * 2) / 2;
                     break;
+                case PixelAlignmentMode.FloorQuarter:
+                    x = (float)Math.Floor(x * 4) / 4;
+                    break;
             }
         }
 
@@ -510,6 +513,9 @@ namespace Squared.Render.Text {
                 case PixelAlignmentMode.FloorHalf:
                     result.X = (float)Math.Floor(pos.X * 2) / 2;
                     break;
+                case PixelAlignmentMode.FloorQuarter:
+                    result.X = (float)Math.Floor(pos.X * 4) / 4;
+                    break;
                 default:
                     result.X = pos.X;
                     break;
@@ -521,6 +527,9 @@ namespace Squared.Render.Text {
                     break;
                 case PixelAlignmentMode.FloorHalf:
                     result.Y = (float)Math.Floor(pos.Y * 2) / 2;
+                    break;
+                case PixelAlignmentMode.FloorQuarter:
+                    result.Y = (float)Math.Floor(pos.Y * 4) / 4;
                     break;
                 default:
                     result.Y = pos.Y;
@@ -1260,10 +1269,11 @@ namespace Squared.Render {
 
     namespace Text {
         public enum PixelAlignmentMode {
-            None,
-            Floor,
+            None = 0,
+            Floor = 1,
             // Like Floor but allows half-pixel values (x.5 in addition to x.0)
-            FloorHalf
+            FloorHalf = 2,
+            FloorQuarter = 4
         }
 
         public struct GlyphPixelAlignment : IEquatable<GlyphPixelAlignment> {
