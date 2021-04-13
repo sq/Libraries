@@ -64,6 +64,25 @@ namespace Squared.Render.Text {
 
             return richText.ToString();
         }
+
+        private static readonly Regex RuleRegex = new Regex(@"([\w\-_]+)(?:\s*):(?:\s*)([^;\]]*)(?:;|)", RegexOptions.Compiled);
+
+        public static IEnumerable<RichRule> ParseRules (AbstractString text) {
+            // FIXME: Optimize this
+            var tstr = text.ToString();
+            foreach (var _match in RuleRegex.Matches(tstr)) {
+                var match = (Match)_match;
+                if (!match.Success)
+                    continue;
+
+                var key = new AbstractString(tstr, match.Groups[1].Index, match.Groups[1].Length);
+                var value = new AbstractString(tstr, match.Groups[2].Index, match.Groups[2].Length);
+                yield return new RichRule {
+                    Key = key,
+                    Value = value
+                };
+            }
+        }
     }
 
     public delegate void RichStyleApplier (ref RichStyle style, ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state);
@@ -82,11 +101,12 @@ namespace Squared.Render.Text {
     }
 
     public struct AsyncRichImage {
-        public Future<RichImage> Future;
+        public Future<Texture2D> Future;
         public RichImage? Value;
         public int? Width, Height;
         public Vector2? Margin;
         public float? HardAlignment;
+        public float Scale;
         public bool DoNotAdjustLineSpacing, CreateBox;
 
         public AsyncRichImage (ref RichImage img) {
@@ -96,6 +116,7 @@ namespace Squared.Render.Text {
             Width = tex.Width;
             Height = tex.Height;
             Margin = img.Margin;
+            Scale = img.Scale;
             Value = img;
             Future = null;
             DoNotAdjustLineSpacing = img.DoNotAdjustLineSpacing;
@@ -107,17 +128,46 @@ namespace Squared.Render.Text {
             : this(ref img) {
         }
 
-        public AsyncRichImage (Future<RichImage> f, int? width = null, int? height = null, Vector2? margin = null, float? hardAlignment = null, bool doNotAdjustLineSpacing = false, bool createBox = false) {
+        public AsyncRichImage (Future<Texture2D> f, int? width = null, int? height = null, Vector2? margin = null, float? hardAlignment = null, float scale = 1f, bool doNotAdjustLineSpacing = false, bool createBox = false) {
             if (f == null)
                 throw new ArgumentNullException("f");
             Future = f;
             Width = width;
+            Scale = scale;
             Height = height;
             Margin = margin;
             HardAlignment = hardAlignment;
             Value = null;
             DoNotAdjustLineSpacing = doNotAdjustLineSpacing;
             CreateBox = createBox;
+        }
+
+        public bool TryGetValue (out RichImage result) {
+            if (Value.HasValue) {
+                result = Value.Value;
+                return true;
+            } else if ((Future == null) || !Future.Completed) {
+                result = default(RichImage);
+                return false;
+            } else {
+                result = new RichImage {
+                    Texture = Future.Result,
+                    CreateBox = CreateBox,
+                    DoNotAdjustLineSpacing = DoNotAdjustLineSpacing,
+                    Scale = Scale,
+                    HardAlignment = HardAlignment,
+                    Margin = Margin ?? Vector2.Zero,
+                    // FIXME
+                    // VerticalAlignment = VerticalAlignment
+                };
+                return true;
+            }
+        }
+
+        public bool HasValue {
+            get {
+                return Value.HasValue || (Future?.Completed ?? false);
+            }
         }
 
         public bool IsInitialized {
@@ -203,7 +253,6 @@ namespace Squared.Render.Text {
     public delegate bool MarkedStringProcessor (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
 
     public struct RichTextConfiguration : IEquatable<RichTextConfiguration> {
-        private static readonly Regex RuleRegex = new Regex(@"([\w\-_]+)(?:\s*):(?:\s*)([^;\]]*)(?:;|)", RegexOptions.Compiled);
         private static readonly Dictionary<string, Color?> SystemNamedColorCache = new Dictionary<string, Color?>();
 
         private int Version;
@@ -256,23 +305,6 @@ namespace Squared.Render.Text {
         private static readonly HashSet<char>
             CommandTerminators = new HashSet<char> { '\"', '\'', '$', '[' },
             StringTerminators = new HashSet<char> { '$', '(' };
-
-        public IEnumerable<RichRule> ParseRules (AbstractString text) {
-            // FIXME: Optimize this
-            var tstr = text.ToString();
-            foreach (var _match in RuleRegex.Matches(tstr)) {
-                var match = (Match)_match;
-                if (!match.Success)
-                    continue;
-
-                var key = new AbstractString(tstr, match.Groups[1].Index, match.Groups[1].Length);
-                var value = new AbstractString(tstr, match.Groups[2].Index, match.Groups[2].Length);
-                yield return new RichRule {
-                    Key = key,
-                    Value = value
-                };
-            }
-        }
 
         /// <returns>a list of rich images that were referenced</returns>
         public DenseList<AsyncRichImage> Append (
@@ -344,7 +376,7 @@ namespace Squared.Render.Text {
                             }
                             result.Add(ref ai);
                         } else if (commandMode && bracketed.Contains(":")) {
-                            foreach (var rule in ParseRules(bracketed)) {
+                            foreach (var rule in RichText.ParseRules(bracketed)) {
                                 var value = rule.Value.ToString();
                                 switch (rule.Key.ToString()) {
                                     case "color":

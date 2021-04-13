@@ -254,8 +254,8 @@ namespace Squared.Util.Text {
             String = text;
             StringBuilder = null;
             // HACK: Make this easy to use
-            SubstringOffset = Math.Min(substringOffset, text.Length);
-            SubstringLength = Math.Min(substringLength, text.Length);
+            SubstringOffset = Math.Min(substringOffset, text?.Length ?? 0);
+            SubstringLength = Math.Min(substringLength, text?.Length ?? 0);
             ArraySegment = default(ArraySegment<char>);
         }
 
