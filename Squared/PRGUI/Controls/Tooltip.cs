@@ -78,7 +78,10 @@ namespace Squared.PRGUI.Controls {
             if (settings.ConfigureLayout != null)
                 settings.ConfigureLayout(Content);
             LayoutFilter = settings.LayoutFilter;
-            Appearance.GlyphSource = settings.DefaultGlyphSource;
+            if (settings.DefaultGlyphSource?.IsDisposed == true)
+                throw new ObjectDisposedException("settings.DefaultGlyphSource");
+            else
+                Appearance.GlyphSource = settings.DefaultGlyphSource;
         }
     }
 }
@@ -97,10 +100,22 @@ namespace Squared.PRGUI {
 
     public struct TooltipSettings {
         public bool RichText;
-        public IGlyphSource DefaultGlyphSource;
+        private IGlyphSource _DefaultGlyphSource;
         public Vector2? AnchorPoint, ControlAlignmentPoint;
         public Action<DynamicStringLayout> ConfigureLayout;
         public StringLayoutFilter LayoutFilter;
+
+        public IGlyphSource DefaultGlyphSource {
+            get => _DefaultGlyphSource;
+            set {
+                if (value == null)
+                    _DefaultGlyphSource = value;
+                else if (value.IsDisposed)
+                    throw new ObjectDisposedException("DefaultGlyphSource");
+                else
+                    _DefaultGlyphSource = value;
+            }
+        }
 
         public bool Equals (TooltipSettings rhs) {
             return (RichText == rhs.RichText) &&
@@ -108,7 +123,7 @@ namespace Squared.PRGUI {
                 (ControlAlignmentPoint == rhs.ControlAlignmentPoint) &&
                 (ConfigureLayout == rhs.ConfigureLayout) &&
                 (LayoutFilter == rhs.LayoutFilter) &&
-                (DefaultGlyphSource == rhs.DefaultGlyphSource);
+                (_DefaultGlyphSource == rhs._DefaultGlyphSource);
         }
 
         public override bool Equals (object obj) {
@@ -130,6 +145,8 @@ namespace Squared.PRGUI {
             GetText = getText;
             Version = version;
             Settings = settings;
+            if (settings.DefaultGlyphSource?.IsDisposed == true)
+                throw new ObjectDisposedException("settings.DefaultGlyphSource");
         }
 
         public AbstractTooltipContent (AbstractString text, int version = 0, TooltipSettings settings = default(TooltipSettings)) {
@@ -137,6 +154,8 @@ namespace Squared.PRGUI {
             GetText = null;
             Version = version;
             Settings = settings;
+            if (settings.DefaultGlyphSource?.IsDisposed == true)
+                throw new ObjectDisposedException("settings.DefaultGlyphSource");
         }
 
         public AbstractString Get (Control target) {
