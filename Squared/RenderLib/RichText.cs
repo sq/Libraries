@@ -301,7 +301,7 @@ namespace Squared.Render.Text {
                                     Bounds box;
                                     if (ai.HardAlignment.HasValue) {
                                         var currentX1 = 0f;
-                                        var currentX2 = Math.Max(layoutEngine.lineBreakAtX ?? 0, layoutEngine.currentLineMaxX) - w;
+                                        var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX) - w;
                                         var boxX = Arithmetic.Lerp(currentX1, currentX2, ai.HardAlignment.Value);
                                         box = Bounds.FromPositionAndSize(boxX, layoutEngine.characterOffset.Y, w, h);
                                         layoutEngine.CreateBox(ref box);

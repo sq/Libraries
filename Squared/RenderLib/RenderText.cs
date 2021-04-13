@@ -252,6 +252,7 @@ namespace Squared.Render.Text {
         public int     colIndex { get; private set; }
         bool           wordWrapSuppressed;
         public float   currentLineMaxX, currentLineMaxXUnconstrained;
+        public float?  currentLineBreakAtX;
         float          currentLineWhitespaceMaxXLeft, currentLineWhitespaceMaxX;
         float          maxX, maxY, maxXUnconstrained, maxYUnconstrained;
         float          initialLineSpacing, currentLineSpacing;
@@ -307,6 +308,7 @@ namespace Squared.Render.Text {
             lastUsedTexture = null;
             usedTextures = default(DenseList<AbstractTextureReference>);
             boxes = default(DenseList<Bounds>);
+            ComputeLineBreakAtX();
 
             IsInitialized = true;
         }
@@ -402,6 +404,8 @@ namespace Squared.Render.Text {
 
             if (newLineSpacing > currentLineSpacing)
                 currentLineSpacing = newLineSpacing;
+
+            ComputeLineBreakAtX();
         }
 
         private void WrapWord (
@@ -514,9 +518,11 @@ namespace Squared.Render.Text {
                 if (!Bounds.Intersect(ref b, ref tempBounds))
                     continue;
                 var oldX = x;
-                // FIXME: Don't do this if we're moving past the wrap boundary
-                x = Math.Max(x, b.BottomRight.X);
-                result += (oldX - x);
+                var newX = Math.Max(x, b.BottomRight.X);
+                if (!currentLineBreakAtX.HasValue || (newX < currentLineBreakAtX.Value)) {
+                    x = newX;
+                    result += (oldX - x);
+                }
             }
             return result;
         }
@@ -580,8 +586,8 @@ namespace Squared.Render.Text {
             // FIXME: Boxes
 
             float whitespace;
-            if (lineBreakAtX.HasValue)
-                whitespace = lineBreakAtX.Value - lineWidth;
+            if (currentLineBreakAtX.HasValue)
+                whitespace = currentLineBreakAtX.Value - lineWidth;
             else
                 whitespace = maxX - lineWidth;
 
@@ -911,8 +917,7 @@ namespace Squared.Render.Text {
                         glyph.WidthIncludingBearing + glyph.CharacterSpacing
                     ) * effectiveScale);
 
-                // FIXME: Boxes
-                if (x >= lineBreakAtX) {
+                if (x >= currentLineBreakAtX) {
                     if (
                         !deadGlyph &&
                         (colIndex > 0) &&
@@ -924,8 +929,12 @@ namespace Squared.Render.Text {
                 if (forcedWrap) {
                     var currentWordSize = x - wordStartOffset.X;
 
-                    // FIXME: Boxes
-                    if (wordWrap && !wordWrapSuppressed && (currentWordSize <= lineBreakAtX)) {
+                    if (
+                        wordWrap && !wordWrapSuppressed && 
+                        // FIXME: If boxes shrink the current line too far, we want to just keep wrapping until we have enough room
+                        //  instead of giving up
+                        (currentWordSize <= currentLineBreakAtX)
+                    ) {
                         if (lineLimit.HasValue)
                             lineLimit--;
                         WrapWord(buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, glyphLineSpacing, glyphBaseline, currentWordSize);
@@ -988,6 +997,7 @@ namespace Squared.Render.Text {
                         suppressUntilNextLine = false;
                     }
 
+                    ComputeLineBreakAtX();
                     initialLineXOffset = characterOffset.X;
                     if (!suppress) {
                         currentLineMaxX = 0;
@@ -1111,6 +1121,29 @@ namespace Squared.Render.Text {
             maxX = Math.Max(maxX, currentLineMaxX);
 
             return segment;
+        }
+
+        private void ComputeLineBreakAtX () {
+            if (!lineBreakAtX.HasValue) {
+                currentLineBreakAtX = null;
+                return;
+            }
+            float maxX = 0f;
+            for (int i = 0, c = boxes.Count; i < c; i++) {
+                boxes.GetItem(i, out Bounds b);
+                maxX = Math.Max(b.BottomRight.X, maxX);
+            }
+            var row = Bounds.FromPositionAndSize(0f, characterOffset.Y, lineBreakAtX.Value, currentLineSpacing);
+            float centerX = row.Center.X, rightEdge = lineBreakAtX.Value;
+            for (int i = 0, c = boxes.Count; i < c; i++) {
+                boxes.GetItem(i, out Bounds b);
+                if (b.TopLeft.X <= centerX)
+                    continue;
+                if (!Bounds.Intersect(ref row, ref b))
+                    continue;
+                rightEdge = Math.Min(b.TopLeft.X - actualPosition.X, rightEdge);
+            }
+            currentLineBreakAtX = rightEdge;
         }
 
         private void AppendDrawCall (
