@@ -81,6 +81,7 @@ namespace Squared.Render.Text {
         public RichImage? Value;
         public int? Width, Height;
         public Vector2? Margin;
+        public float? HardAlignment;
         public bool DoNotAdjustLineSpacing, CreateBox;
 
         public AsyncRichImage (ref RichImage img) {
@@ -94,15 +95,17 @@ namespace Squared.Render.Text {
             Future = null;
             DoNotAdjustLineSpacing = img.DoNotAdjustLineSpacing;
             CreateBox = img.CreateBox;
+            HardAlignment = img.HardAlignment;
         }
 
-        public AsyncRichImage (Future<RichImage> f, int? width = null, int? height = null, Vector2? margin = null, bool doNotAdjustLineSpacing = false, bool createBox = false) {
+        public AsyncRichImage (Future<RichImage> f, int? width = null, int? height = null, Vector2? margin = null, float? hardAlignment = null, bool doNotAdjustLineSpacing = false, bool createBox = false) {
             if (f == null)
                 throw new ArgumentNullException("f");
             Future = f;
             Width = width;
             Height = height;
             Margin = margin;
+            HardAlignment = hardAlignment;
             Value = null;
             DoNotAdjustLineSpacing = doNotAdjustLineSpacing;
             CreateBox = createBox;
@@ -119,6 +122,7 @@ namespace Squared.Render.Text {
         public AbstractTextureReference Texture;
         public Bounds? Bounds;
         public Vector2 Margin;
+        public float? HardAlignment;
         public bool DoNotAdjustLineSpacing;
         public bool CreateBox;
         private float VerticalAlignmentMinusOne;
@@ -295,9 +299,19 @@ namespace Squared.Render.Text {
                                 var h = (ai.Height ?? 0) + m.Y;
                                 if (ai.CreateBox) {
                                     Bounds box;
-                                    layoutEngine.CreateBox(w, h, out box);
+                                    if (ai.HardAlignment.HasValue) {
+                                        var currentX1 = 0f;
+                                        var currentX2 = Math.Max(layoutEngine.lineBreakAtX ?? 0, layoutEngine.currentLineMaxX) - w;
+                                        var boxX = Arithmetic.Lerp(currentX1, currentX2, ai.HardAlignment.Value);
+                                        box = Bounds.FromPositionAndSize(boxX, layoutEngine.characterOffset.Y, w, h);
+                                        layoutEngine.CreateBox(ref box);
+                                    } else {
+                                        layoutEngine.CreateBox(w, h, out box);
+                                        layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
+                                    }
+                                } else {
+                                    layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
                                 }
-                                layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
                             }
                             result.Add(ref ai);
                         } else if (commandMode && bracketed.Contains(":")) {

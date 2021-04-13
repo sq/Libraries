@@ -251,7 +251,7 @@ namespace Squared.Render.Text {
         public int     rowIndex { get; private set; }
         public int     colIndex { get; private set; }
         bool           wordWrapSuppressed;
-        float          currentLineMaxX, currentLineMaxXUnconstrained;
+        public float   currentLineMaxX, currentLineMaxXUnconstrained;
         float          currentLineWhitespaceMaxXLeft, currentLineWhitespaceMaxX;
         float          maxX, maxY, maxXUnconstrained, maxYUnconstrained;
         float          initialLineSpacing, currentLineSpacing;
@@ -428,7 +428,7 @@ namespace Squared.Render.Text {
             var adjustment = Vector2.Zero;
 
             var xOffset = xOffsetOfWrappedLine;
-            AdjustCharacterOffsetForBoxes(ref xOffset, characterOffset.Y, previousLineSpacing);
+            AdjustCharacterOffsetForBoxes(ref xOffset, characterOffset.Y + yOffset, currentLineSpacing);
             var oldFirstGlyphBounds = (firstGlyphIndex > 0)
                 ? buffer.Array[buffer.Offset + firstGlyphIndex - 1].EstimateDrawBounds()
                 : default(Bounds);
@@ -453,8 +453,8 @@ namespace Squared.Render.Text {
             }
 
             characterOffset.X = xOffset + (characterOffset.X - firstOffset.X);
-            AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, previousLineSpacing);
             characterOffset.Y += previousLineSpacing;
+            AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing);
 
             // HACK: firstOffset may include whitespace so we want to pull the right edge in.
             //  Without doing this, the size rect for the string is too large.
