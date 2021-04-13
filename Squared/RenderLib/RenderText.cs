@@ -735,7 +735,7 @@ namespace Squared.Render.Text {
                 TextureRegion = textureRegion ?? Bounds.Unit,
                 ScaleF = scale * this.scale,
                 MultiplyColor = multiplyColor ?? overrideColor ?? Color.White,
-                Origin = new Vector2(0, verticalAlignment)
+                Origin = new Vector2(0, 0)
             };
             var estimatedBounds = dc.EstimateDrawBounds();
             estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
@@ -744,8 +744,10 @@ namespace Squared.Render.Text {
             float x = characterOffset.X;
             if (!doNotAdjustLineSpacing)
                 ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
+            float y1 = characterOffset.Y + (margin?.Y ?? 0),
+                y2 = characterOffset.Y + currentBaseline - estimatedBounds.Size.Y - (margin?.Y ?? 0);
             float adjustmentX = (overrideX.HasValue) ? actualPosition.X : 0f;
-            dc.Position = new Vector2((overrideX + adjustmentX) ?? characterOffset.X, characterOffset.Y + currentBaseline + (margin?.Y ?? 0));
+            dc.Position = new Vector2((overrideX + adjustmentX) ?? characterOffset.X, Arithmetic.Lerp(y1, y2, verticalAlignment));
             estimatedBounds = dc.EstimateDrawBounds();
             estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
             estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);

@@ -208,7 +208,8 @@ namespace PRGUI.Demo {
                             "ghost", new RichImage {
                                 Texture = TextureLoader.Load("ghost"),
                                 Scale = 0.4f,
-                                Margin = new Vector2(0, -2)
+                                Margin = new Vector2(0, -2),
+                                VerticalAlignment = 1f
                             }
                         }
                     },
