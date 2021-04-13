@@ -18,8 +18,8 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string TestText =
-            "$[img:left]$[img:right]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
-            "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
+            "$[img:topright]$[img:bottomright]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
+            "\r\n$[img:bottomleft]$[img:left]この体は、無限のチェイサーで出来ていた $(marked)" +
             "\r\n\r\nEmpty line before this one $(marked)";
             /*
             // "\r\n$({,Paradise ,Isle})" +
@@ -184,18 +184,26 @@ namespace FontTest {
         private AsyncRichImage Text_ImageProvider (string arg) {
             int i;
             float x;
+            float? y;
             switch (arg) {
                 case "img:left":
                     x = 0f;
+                    y = null;
                     i = 0;
                     break;
-                case "img:center":
-                    // FIXME: This is very buggy
-                    x = 0.5f;
+                case "img:bottomleft":
+                    x = 0f;
+                    y = 1f;
+                    i = 3;
+                    break;
+                case "img:bottomright":
+                    x = 1f;
+                    y = 1f;
                     i = 1;
                     break;
-                case "img:right":
+                case "img:topright":
                     x = 1f;
+                    y = 0f;
                     i = 2;
                     break;
                 default:
@@ -204,11 +212,12 @@ namespace FontTest {
             var tex = Images[i];
             var ri = new RichImage {
                 Texture = tex,
-                HardAlignment = x,
+                HardHorizontalAlignment = x,
+                HardVerticalAlignment = y,
                 DoNotAdjustLineSpacing = true,
                 Margin = Vector2.One * 3f,
                 CreateBox = true,
-                VerticalAlignment = 0f
+                VerticalAlignment = y ?? 0f
             };
             return new AsyncRichImage(ref ri);
         }

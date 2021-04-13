@@ -378,7 +378,7 @@ namespace Squared.Render.Text {
                 if (bufferWritePosition > baselineAdjustmentStart) {
                     var yOffset = newBaseline - currentBaseline;
                     for (int i = baselineAdjustmentStart; i < bufferWritePosition; i++) {
-                        buffer.Array[buffer.Offset + i].Position.Y += yOffset * buffer.Array[buffer.Offset + i].UserData.W;
+                        buffer.Array[buffer.Offset + i].Position.Y += yOffset * (1 - buffer.Array[buffer.Offset + i].UserData.W);
                     }
 
                     if (!measureOnly) {
@@ -442,6 +442,8 @@ namespace Squared.Render.Text {
 
             for (var i = firstGlyphIndex; i <= lastGlyphIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
+                if (dc.UserData.Y > 0)
+                    continue;
                 var newCharacterX = (xOffset) + (dc.Position.X - firstOffset.X);
                 if (i == firstGlyphIndex)
                     wordX1 = dc.Position.X;
@@ -608,6 +610,9 @@ namespace Squared.Render.Text {
             Snap(ref whitespace);
 
             for (var j = firstIndex; j <= lastIndex; j++) {
+                if (buffer.Array[buffer.Offset + j].UserData.X > 0)
+                    continue;
+
                 buffer.Array[buffer.Offset + j].Position.X += whitespace;
                 // We used the sortkey to store line numbers, now we put the right data there
                 var key = sortKey;
@@ -726,9 +731,16 @@ namespace Squared.Render.Text {
             Vector2? margin = null, 
             float scale = 1, float verticalAlignment = 1,
             Color? multiplyColor = null, bool doNotAdjustLineSpacing = false,
-            bool createBox = false, float? overrideX = null,
+            bool createBox = false, float? hardXAlignment = null, float? hardYAlignment = null,
             float? overrideWidth = null, float? overrideHeight = null
         ) {
+            // HACK
+            float x = characterOffset.X, y = characterOffset.Y;
+            if ((colIndex == 0) && (rowIndex == 0)) {
+                x += actualPosition.X;
+                y += actualPosition.Y;
+            }
+
             var dc = new BitmapDrawCall {
                 Position = Vector2.Zero,
                 Texture = texture,
@@ -738,31 +750,25 @@ namespace Squared.Render.Text {
                 MultiplyColor = multiplyColor ?? overrideColor ?? Color.White,
                 Origin = new Vector2(0, 0),
                 // HACK
-                UserData = new Vector4(0, 0, 0, verticalAlignment)
+                UserData = new Vector4(hardXAlignment.HasValue ? 1 : 0, hardYAlignment.HasValue ? 1 : 0, 0, 1 - verticalAlignment)
             };
             var estimatedBounds = dc.EstimateDrawBounds();
             estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
             estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
             var lineSpacing = estimatedBounds.Size.Y;
-            float x = characterOffset.X;
             if (!doNotAdjustLineSpacing)
                 ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
-            float y1 = characterOffset.Y,
-                y2 = characterOffset.Y + currentBaseline - estimatedBounds.Size.Y - (margin?.Y * 0.5f ?? 0);
+            float y1 = y,
+                y2 = y + currentBaseline - estimatedBounds.Size.Y - (margin?.Y * 0.5f ?? 0);
+            float? overrideX = null, overrideY = null;
+            if (hardXAlignment.HasValue)
+                overrideX = Arithmetic.Lerp(0, (lineBreakAtX ?? 0f) - estimatedBounds.Size.X, hardXAlignment.Value);
+            if (hardYAlignment.HasValue)
+                overrideY = Arithmetic.Lerp(0, (stopAtY ?? 0f) - estimatedBounds.Size.Y, hardYAlignment.Value);
             if (createBox)
                 y2 = Math.Max(y1, y2);
 
-            float adjustmentX = (overrideX.HasValue) ? actualPosition.X : 0f, adjustmentY = 0f;
-
-            // HACK
-            if ((colIndex == 0) && (rowIndex == 0)) {
-                x += actualPosition.X;
-                y1 += actualPosition.Y;
-                y2 += actualPosition.Y;
-                adjustmentY = actualPosition.Y;
-            }
-
-            dc.Position = new Vector2((overrideX + adjustmentX) ?? x, Arithmetic.Lerp(y1, y2, verticalAlignment));
+            dc.Position = new Vector2(overrideX + actualPosition.X ?? x, overrideY + actualPosition.Y ?? Arithmetic.Lerp(y1, y2, verticalAlignment));
             estimatedBounds = dc.EstimateDrawBounds();
             estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
             estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
@@ -770,20 +776,19 @@ namespace Squared.Render.Text {
             if (!overrideX.HasValue) {
                 characterOffset.X += sizeX;
                 characterOffsetUnconstrained.X += sizeX;
+                AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing);
+                AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, currentLineSpacing);
             }
             // FIXME: Margins and stuff
-            AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing);
-            AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, currentLineSpacing);
-            AppendDrawCall(ref dc, overrideX ?? x, 1, false, lineSpacing, 0f, x, ref estimatedBounds, false, false);
+            AppendDrawCall(ref dc, overrideX ?? x, 1, false, currentLineSpacing, 0f, x, ref estimatedBounds, false, false);
 
             if (createBox) {
                 var mx = (margin?.X ?? 0) / 2f;
                 var my = (margin?.Y ?? 0) / 2f;
-                // FIXME: Why is this needed?
-                estimatedBounds.TopLeft.X -= mx + adjustmentX;
-                estimatedBounds.TopLeft.Y -= my + adjustmentY;
-                estimatedBounds.BottomRight.X += mx - adjustmentX;
-                estimatedBounds.BottomRight.Y += my - adjustmentY;
+                estimatedBounds.TopLeft.X -= mx;
+                estimatedBounds.TopLeft.Y -= my;
+                estimatedBounds.BottomRight.X += mx;
+                estimatedBounds.BottomRight.Y += my;
                 CreateBox(ref estimatedBounds);
             }
         }
