@@ -751,8 +751,18 @@ namespace Squared.Render.Text {
                 y2 = characterOffset.Y + currentBaseline - estimatedBounds.Size.Y - (margin?.Y * 0.5f ?? 0);
             if (createBox)
                 y2 = Math.Max(y1, y2);
-            float adjustmentX = (overrideX.HasValue) ? actualPosition.X : 0f;
-            dc.Position = new Vector2((overrideX + adjustmentX) ?? characterOffset.X, Arithmetic.Lerp(y1, y2, verticalAlignment));
+
+            float adjustmentX = (overrideX.HasValue) ? actualPosition.X : 0f, adjustmentY = 0f;
+
+            // HACK
+            if ((colIndex == 0) && (rowIndex == 0)) {
+                x += actualPosition.X;
+                y1 += actualPosition.Y;
+                y2 += actualPosition.Y;
+                adjustmentY = actualPosition.Y;
+            }
+
+            dc.Position = new Vector2((overrideX + adjustmentX) ?? x, Arithmetic.Lerp(y1, y2, verticalAlignment));
             estimatedBounds = dc.EstimateDrawBounds();
             estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
             estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
@@ -769,10 +779,11 @@ namespace Squared.Render.Text {
             if (createBox) {
                 var mx = (margin?.X ?? 0) / 2f;
                 var my = (margin?.Y ?? 0) / 2f;
+                // FIXME: Why is this needed?
                 estimatedBounds.TopLeft.X -= mx + adjustmentX;
-                estimatedBounds.TopLeft.Y -= my;
+                estimatedBounds.TopLeft.Y -= my + adjustmentY;
                 estimatedBounds.BottomRight.X += mx - adjustmentX;
-                estimatedBounds.BottomRight.Y += my;
+                estimatedBounds.BottomRight.Y += my - adjustmentY;
                 CreateBox(ref estimatedBounds);
             }
         }
