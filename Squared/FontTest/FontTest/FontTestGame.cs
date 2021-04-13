@@ -303,7 +303,7 @@ namespace FontTest {
             m.Parameters.ShadowOffset.SetValue(new Vector2(1f, 1f));
 
             ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.Size), Color.Yellow * 0.75f);
-            ir.DrawMultiple(layout, material: m, samplerState: RenderStates.Text, userData: new Vector4(0, 0, 0, 0.66f));
+            ir.DrawMultiple(layout, material: m, blendState: BlendState.NonPremultiplied, samplerState: RenderStates.Text, userData: new Vector4(0, 0, 0, 0.66f));
 
             if (Which.Value) {
                 Text2.Position = TopLeft + new Vector2(0, layout.Size.Y + 20);

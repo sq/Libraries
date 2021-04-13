@@ -515,7 +515,7 @@ namespace Squared.Render.Text {
         private float AdjustCharacterOffsetForBoxes (ref float x, float y1, float h) {
             Bounds b;
             float result = 0;
-            var tempBounds = Bounds.FromPositionAndSize(x, y1, 1f, h);
+            var tempBounds = Bounds.FromPositionAndSize(x, y1, 1f, Math.Max(h, 1));
             for (int i = 0, c = boxes.Count; i < c; i++) {
                 boxes.GetItem(i, out b);
                 if (!Bounds.Intersect(ref b, ref tempBounds))
@@ -734,12 +734,7 @@ namespace Squared.Render.Text {
             bool createBox = false, float? hardXAlignment = null, float? hardYAlignment = null,
             float? overrideWidth = null, float? overrideHeight = null
         ) {
-            // HACK
             float x = characterOffset.X, y = characterOffset.Y;
-            if ((colIndex == 0) && (rowIndex == 0)) {
-                x += actualPosition.X;
-                y += actualPosition.Y;
-            }
 
             var dc = new BitmapDrawCall {
                 Position = Vector2.Zero,
@@ -750,7 +745,7 @@ namespace Squared.Render.Text {
                 MultiplyColor = multiplyColor ?? overrideColor ?? Color.White,
                 Origin = new Vector2(0, 0),
                 // HACK
-                UserData = new Vector4(hardXAlignment.HasValue ? 1 : 0, hardYAlignment.HasValue ? 1 : 0, 0, 1 - verticalAlignment)
+                UserData = new Vector4(hardXAlignment.HasValue ? 1 : 0, hardYAlignment.HasValue ? 1 : 0, 0, (hardYAlignment.HasValue ? 1 : 1 - verticalAlignment))
             };
             var estimatedBounds = dc.EstimateDrawBounds();
             estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
@@ -768,7 +763,10 @@ namespace Squared.Render.Text {
             if (createBox)
                 y2 = Math.Max(y1, y2);
 
-            dc.Position = new Vector2(overrideX + actualPosition.X ?? x, overrideY + actualPosition.Y ?? Arithmetic.Lerp(y1, y2, verticalAlignment));
+            dc.Position = new Vector2(
+                overrideX ?? x, 
+                overrideY ?? Arithmetic.Lerp(y1, y2, verticalAlignment)
+            );
             estimatedBounds = dc.EstimateDrawBounds();
             estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
             estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
@@ -779,6 +777,7 @@ namespace Squared.Render.Text {
                 AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing);
                 AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, currentLineSpacing);
             }
+            dc.Position += actualPosition;
             // FIXME: Margins and stuff
             AppendDrawCall(ref dc, overrideX ?? x, 1, false, currentLineSpacing, 0f, x, ref estimatedBounds, false, false);
 
@@ -1011,12 +1010,12 @@ namespace Squared.Render.Text {
                         var spacingForThisLineBreak = currentLineSpacing + extraLineBreakSpacing;
                         if (!suppress) {
                             characterOffset.X = xOffsetOfNewLine;
-                            AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, spacingForThisLineBreak);
                             // FIXME: didn't we already do this?
                             characterOffset.Y += spacingForThisLineBreak;
                             maxX = Math.Max(maxX, currentLineMaxX);
                         }
                         characterOffsetUnconstrained.X = xOffsetOfNewLine;
+                        AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, spacingForThisLineBreak);
                         AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, spacingForThisLineBreak);
                         characterOffsetUnconstrained.Y += spacingForThisLineBreak;
 
@@ -1174,7 +1173,7 @@ namespace Squared.Render.Text {
                     continue;
                 if (!Bounds.Intersect(ref row, ref b))
                     continue;
-                rightEdge = Math.Min(b.TopLeft.X - actualPosition.X, rightEdge);
+                rightEdge = Math.Min(b.TopLeft.X, rightEdge);
             }
             currentLineBreakAtX = rightEdge;
         }
@@ -1332,6 +1331,14 @@ namespace Squared.Render.Text {
             ProcessMarkers(ref endpointBounds, 1, null, false, false);
 
             FinishProcessingMarkers(result);
+
+            // HACK: Boxes are in local space so we have to offset them at the end
+            for (int i = 0, c = boxes.Count; i < c; i++) {
+                boxes.GetItem(i, out Bounds box);
+                box.TopLeft += actualPosition;
+                box.BottomRight += actualPosition;
+                boxes[i] = box;
+            }
 
             return new StringLayout(
                 position.GetValueOrDefault(), 
