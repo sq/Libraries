@@ -18,7 +18,7 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string TestText =
-            "$[img:1]$[img:2]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
+            "$[img:left]$[img:center]$[img:right]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
             "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
             "\r\n\r\nEmpty line before this one $(marked)";
             /*
@@ -176,16 +176,25 @@ namespace FontTest {
         }
 
         private AsyncRichImage Text_ImageProvider (string arg) {
-            if (arg.StartsWith("img:")) {
-                return new AsyncRichImage(
-                    new Future<RichImage>(), 64, 112, 
-                    doNotAdjustLineSpacing: true, createBox: true, 
-                    hardAlignment: arg.EndsWith("1") 
-                        ? 0f
-                        : 1f
-                );
-            } else
-                return default(AsyncRichImage);
+            float x;
+            switch (arg) {
+                case "img:left":
+                    x = 0f;
+                    break;
+                case "img:center":
+                    x = 0.5f;
+                    break;
+                case "img:right":
+                    x = 1f;
+                    break;
+                default:
+                    return default(AsyncRichImage);
+            }
+            return new AsyncRichImage(
+                new Future<RichImage>(), 64, 112, 
+                doNotAdjustLineSpacing: true, createBox: true, 
+                hardAlignment: x
+            );
         }
 
         private bool ProcessMarkedString (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {

@@ -1137,7 +1137,9 @@ namespace Squared.Render.Text {
             float centerX = row.Center.X, rightEdge = lineBreakAtX.Value;
             for (int i = 0, c = boxes.Count; i < c; i++) {
                 boxes.GetItem(i, out Bounds b);
-                if (b.TopLeft.X <= centerX)
+                var ls = (b.TopLeft.X <= centerX) && (b.BottomRight.X <= centerX);
+                var rs = (b.TopLeft.X >= centerX) && (b.BottomRight.X >= centerX);
+                if (!rs || ls)
                     continue;
                 if (!Bounds.Intersect(ref row, ref b))
                     continue;
