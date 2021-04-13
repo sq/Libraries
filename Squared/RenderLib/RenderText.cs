@@ -433,7 +433,7 @@ namespace Squared.Render.Text {
             var adjustment = Vector2.Zero;
 
             var xOffset = xOffsetOfWrappedLine;
-            AdjustCharacterOffsetForBoxes(ref xOffset, characterOffset.Y + yOffset, currentLineSpacing);
+            AdjustCharacterOffsetForBoxes(ref xOffset, characterOffset.Y + yOffset, currentLineSpacing, leftPad: 0f);
             var oldFirstGlyphBounds = (firstGlyphIndex > 0)
                 ? buffer.Array[buffer.Offset + firstGlyphIndex - 1].EstimateDrawBounds()
                 : default(Bounds);
@@ -512,12 +512,15 @@ namespace Squared.Render.Text {
             }
         }
 
-        private float AdjustCharacterOffsetForBoxes (ref float x, float y1, float h) {
+        private float AdjustCharacterOffsetForBoxes (ref float x, float y1, float h, float? leftPad = null) {
             Bounds b;
             float result = 0;
             var tempBounds = Bounds.FromPositionAndSize(x, y1, 1f, Math.Max(h, 1));
+            if ((rowIndex == 0) && (leftPad == null))
+                leftPad = xOffsetOfFirstLine;
             for (int i = 0, c = boxes.Count; i < c; i++) {
                 boxes.GetItem(i, out b);
+                b.BottomRight.X += (leftPad ?? 0f);
                 if (!Bounds.Intersect(ref b, ref tempBounds))
                     continue;
                 var oldX = x;
@@ -979,7 +982,7 @@ namespace Squared.Render.Text {
                         if (lineLimit.HasValue)
                             lineLimit--;
                         characterOffset.X = xOffsetOfWrappedLine;
-                        AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing);
+                        AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing, leftPad: xOffsetOfWrappedLine);
                         characterOffset.Y += currentLineSpacing;
                         initialLineSpacing = currentLineSpacing = glyphLineSpacing;
                         currentBaseline = glyphBaseline;
@@ -1015,8 +1018,8 @@ namespace Squared.Render.Text {
                             maxX = Math.Max(maxX, currentLineMaxX);
                         }
                         characterOffsetUnconstrained.X = xOffsetOfNewLine;
-                        AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, spacingForThisLineBreak);
-                        AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, spacingForThisLineBreak);
+                        AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, spacingForThisLineBreak, leftPad: xOffsetOfNewLine);
+                        AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, spacingForThisLineBreak, leftPad: xOffsetOfNewLine);
                         characterOffsetUnconstrained.Y += spacingForThisLineBreak;
 
                         maxXUnconstrained = Math.Max(maxXUnconstrained, currentLineMaxXUnconstrained);
