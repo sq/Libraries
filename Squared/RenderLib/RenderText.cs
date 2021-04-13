@@ -1158,18 +1158,12 @@ namespace Squared.Render.Text {
                 currentLineBreakAtX = null;
                 return;
             }
-            float maxX = 0f;
-            for (int i = 0, c = boxes.Count; i < c; i++) {
-                boxes.GetItem(i, out Bounds b);
-                maxX = Math.Max(b.BottomRight.X, maxX);
-            }
             var row = Bounds.FromPositionAndSize(0f, characterOffset.Y, lineBreakAtX.Value, currentLineSpacing);
-            float centerX = row.Center.X, rightEdge = lineBreakAtX.Value;
+            float rightEdge = lineBreakAtX.Value;
             for (int i = 0, c = boxes.Count; i < c; i++) {
                 boxes.GetItem(i, out Bounds b);
-                var ls = (b.TopLeft.X <= centerX) && (b.BottomRight.X <= centerX);
-                var rs = (b.TopLeft.X >= centerX) && (b.BottomRight.X >= centerX);
-                if (!rs || ls)
+                // HACK
+                if (b.BottomRight.X <= (rightEdge - 2f))
                     continue;
                 if (!Bounds.Intersect(ref row, ref b))
                     continue;

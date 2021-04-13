@@ -378,19 +378,20 @@ namespace Squared.Render.Text {
                                 AppendImage(ref layoutEngine, ri);
                             } else if (ai.Width.HasValue) {
                                 var m = ai.Margin ?? Vector2.Zero;
-                                var w = ai.Width.Value + m.X;
-                                var h = (ai.Height ?? 0) + m.Y;
+                                var halfM = m / 2f;
+                                var w = ai.Width.Value;
+                                var h = (ai.Height ?? 0);
                                 if (ai.CreateBox) {
                                     Bounds box;
                                     float boxX = layoutEngine.characterOffset.X,
                                         boxY = layoutEngine.characterOffset.Y;
                                     if (ai.HardHorizontalAlignment.HasValue)
                                         // FIXME
-                                        boxX = Arithmetic.Lerp(layoutEngine.actualPosition.X, layoutEngine.actualPosition.X + layoutEngine.currentLineBreakAtX ?? 0f, ai.HardHorizontalAlignment.Value);
+                                        boxX = Arithmetic.Lerp(layoutEngine.actualPosition.X, layoutEngine.actualPosition.X + layoutEngine.currentLineBreakAtX - w ?? 0f, ai.HardHorizontalAlignment.Value);
                                     if (ai.HardVerticalAlignment.HasValue)
                                         // FIXME
-                                        boxX = Arithmetic.Lerp(layoutEngine.actualPosition.Y, layoutEngine.actualPosition.Y + layoutEngine.stopAtY ?? 0f, ai.HardVerticalAlignment.Value);
-                                    box = Bounds.FromPositionAndSize(boxX, boxY, w, h);
+                                        boxY = Arithmetic.Lerp(layoutEngine.actualPosition.Y, layoutEngine.actualPosition.Y + layoutEngine.stopAtY - h ?? 0f, ai.HardVerticalAlignment.Value);
+                                    box = Bounds.FromPositionAndSize(boxX - halfM.X, boxY - halfM.Y, w + m.X, h + m.Y);
                                     layoutEngine.CreateBox(ref box);
                                     if (ai.HardHorizontalAlignment.HasValue || ai.HardVerticalAlignment.HasValue)
                                         ;

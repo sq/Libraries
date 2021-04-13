@@ -476,6 +476,11 @@ namespace Squared.PRGUI.Controls {
                     renderer.RasterizeLineSegment(la, lb, 1f, Color.Green, layer: 2);
                     renderer.RasterizeLineSegment(la, lc, 1f, Color.Green, layer: 2);
                 }
+                foreach (var contentBox in Content.Boxes)
+                    renderer.RasterizeRectangle(
+                        contentBox.TopLeft + textOffset + ca, contentBox.BottomRight + textOffset + ca, 1f, 1f, 
+                        Color.Transparent, Color.Transparent, Color.Red, layer: 3
+                    );
             }
 
             // FIXME: Why is this here?
