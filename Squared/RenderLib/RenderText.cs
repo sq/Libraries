@@ -1333,13 +1333,6 @@ namespace Squared.Render.Text {
 
             FinishProcessingMarkers(result);
 
-            // FIXME: Why?
-            Bounds box;
-            for (int i = 0, c = boxes.Count; i < c; i++) {
-                boxes.GetItem(i, out box);
-                boxes[i] = box.Translate(actualPosition);
-            }
-
             return new StringLayout(
                 position.GetValueOrDefault(), 
                 new Vector2(maxX, maxY), new Vector2(maxXUnconstrained, maxYUnconstrained),
