@@ -178,7 +178,7 @@ namespace FontTest {
         private AsyncRichImage Text_ImageProvider (string arg) {
             if (arg.StartsWith("img:")) {
                 return new AsyncRichImage(
-                    new Future<RichImage>(), 64, 118, 
+                    new Future<RichImage>(), 64, 112, 
                     doNotAdjustLineSpacing: true, createBox: true, 
                     hardAlignment: arg.EndsWith("1") 
                         ? 0f
