@@ -512,7 +512,7 @@ namespace Squared.Render.Text {
         private float AdjustCharacterOffsetForBoxes (ref float x, float y1, float h) {
             Bounds b;
             float result = 0;
-            var tempBounds = Bounds.FromPositionAndSize(x, y1, 1, h);
+            var tempBounds = Bounds.FromPositionAndSize(x, y1, 1f, h);
             for (int i = 0, c = boxes.Count; i < c; i++) {
                 boxes.GetItem(i, out b);
                 if (!Bounds.Intersect(ref b, ref tempBounds))
@@ -725,7 +725,7 @@ namespace Squared.Render.Text {
             Vector2? margin = null, 
             float scale = 1, float verticalAlignment = 1,
             Color? multiplyColor = null, bool doNotAdjustLineSpacing = false,
-            bool createBox = false
+            bool createBox = false, float? overrideX = null
         ) {
             var dc = new BitmapDrawCall {
                 Position = Vector2.Zero,
@@ -741,22 +741,25 @@ namespace Squared.Render.Text {
             float x = characterOffset.X;
             if (!doNotAdjustLineSpacing)
                 ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
-            dc.Position = new Vector2(characterOffset.X, characterOffset.Y + currentBaseline - (margin?.Y ?? 0));
+            float adjustmentX = (overrideX.HasValue) ? actualPosition.X : 0f;
+            dc.Position = new Vector2((overrideX + adjustmentX) ?? characterOffset.X, characterOffset.Y + currentBaseline - (margin?.Y ?? 0));
             estimatedBounds = dc.EstimateDrawBounds();
             var sizeX = estimatedBounds.Size.X + (margin?.X ?? 0);
-            characterOffset.X += sizeX;
-            characterOffsetUnconstrained.X += sizeX;
+            if (!overrideX.HasValue) {
+                characterOffset.X += sizeX;
+                characterOffsetUnconstrained.X += sizeX;
+            }
             // FIXME: Margins and stuff
             AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing);
             AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, currentLineSpacing);
-            AppendDrawCall(ref dc, x, 1, false, lineSpacing, 0f, x, ref estimatedBounds, false, false);
+            AppendDrawCall(ref dc, overrideX ?? x, 1, false, lineSpacing, 0f, x, ref estimatedBounds, false, false);
 
             if (createBox) {
                 var mx = (margin?.X ?? 0) / 2f;
                 var my = (margin?.Y ?? 0) / 2f;
-                estimatedBounds.TopLeft.X -= mx;
+                estimatedBounds.TopLeft.X -= mx + adjustmentX;
                 estimatedBounds.TopLeft.Y -= my;
-                estimatedBounds.BottomRight.X += mx;
+                estimatedBounds.BottomRight.X += mx - adjustmentX;
                 estimatedBounds.BottomRight.Y += my;
                 CreateBox(ref estimatedBounds);
             }

@@ -98,6 +98,10 @@ namespace Squared.Render.Text {
             HardAlignment = img.HardAlignment;
         }
 
+        public AsyncRichImage (RichImage img)
+            : this(ref img) {
+        }
+
         public AsyncRichImage (Future<RichImage> f, int? width = null, int? height = null, Vector2? margin = null, float? hardAlignment = null, bool doNotAdjustLineSpacing = false, bool createBox = false) {
             if (f == null)
                 throw new ArgumentNullException("f");
@@ -291,8 +295,13 @@ namespace Squared.Render.Text {
                             commandMode && (ImageProvider != null) && 
                             (ai = ImageProvider(bracketed)).IsInitialized
                         ) {
+                            var currentX1 = 0f;
+                            var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
                             if (ai.Value.HasValue) {
-                                AppendImage(ref layoutEngine, ai.Value.Value);
+                                float? overrideX = null;
+                                if (ai.HardAlignment.HasValue)
+                                    overrideX = Arithmetic.Lerp(currentX1, currentX2 - (ai.Value.Value.Texture.Instance.Width * layoutEngine.scale) - ai.Value.Value.Margin.X, ai.HardAlignment.Value);
+                                AppendImage(ref layoutEngine, ai.Value.Value, overrideX);
                             } else if (ai.Width.HasValue) {
                                 var m = ai.Margin ?? Vector2.Zero;
                                 var w = ai.Width.Value + m.X;
@@ -300,9 +309,7 @@ namespace Squared.Render.Text {
                                 if (ai.CreateBox) {
                                     Bounds box;
                                     if (ai.HardAlignment.HasValue) {
-                                        var currentX1 = 0f;
-                                        var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX) - w;
-                                        var boxX = Arithmetic.Lerp(currentX1, currentX2, ai.HardAlignment.Value);
+                                        var boxX = Arithmetic.Lerp(currentX1, currentX2 - w, ai.HardAlignment.Value);
                                         box = Bounds.FromPositionAndSize(boxX, layoutEngine.characterOffset.Y, w, h);
                                         layoutEngine.CreateBox(ref box);
                                     } else {
@@ -403,14 +410,14 @@ namespace Squared.Render.Text {
                 style.Apply(ref style, ref layoutEngine, ref state);
         }
 
-        private void AppendImage (ref StringLayoutEngine layoutEngine, RichImage image) {
+        private void AppendImage (ref StringLayoutEngine layoutEngine, RichImage image, float? overrideX = null) {
             layoutEngine.AppendImage(
                 image.Texture.Instance, scale: image.Scale, 
                 verticalAlignment: image.VerticalAlignment,
                 margin: image.Margin,
                 textureRegion: image.Bounds ?? Bounds.Unit,
                 doNotAdjustLineSpacing: image.DoNotAdjustLineSpacing,
-                createBox: image.CreateBox
+                createBox: image.CreateBox, overrideX: overrideX
             );
         }
 

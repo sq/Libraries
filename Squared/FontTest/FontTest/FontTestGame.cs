@@ -18,7 +18,7 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string TestText =
-            "$[img:left]$[img:center]$[img:right]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
+            "$[img:left]$[img:right]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
             "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
             "\r\n\r\nEmpty line before this one $(marked)";
             /*
@@ -57,6 +57,8 @@ namespace FontTest {
         PressableKey Margin = new PressableKey(Keys.M);
         PressableKey Indent = new PressableKey(Keys.I);
         PressableKey Monochrome = new PressableKey(Keys.R);
+
+        Texture2D[] Images = new Texture2D[4];
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
@@ -173,28 +175,42 @@ namespace FontTest {
                 Scale = TextScale,
                 ReverseOrder = true
             };
+
+            for (int i = 0; i < Images.Length; i++)
+                using (var s = File.OpenRead($"{i + 1}.png"))
+                    Images[i] = Texture2D.FromStream(Graphics.GraphicsDevice, s);
         }
 
         private AsyncRichImage Text_ImageProvider (string arg) {
+            int i;
             float x;
             switch (arg) {
                 case "img:left":
                     x = 0f;
+                    i = 0;
                     break;
                 case "img:center":
+                    // FIXME: This is very buggy
                     x = 0.5f;
+                    i = 1;
                     break;
                 case "img:right":
                     x = 1f;
+                    i = 2;
                     break;
                 default:
                     return default(AsyncRichImage);
             }
-            return new AsyncRichImage(
-                new Future<RichImage>(), 64, 112, 
-                doNotAdjustLineSpacing: true, createBox: true, 
-                hardAlignment: x
-            );
+            var tex = Images[i];
+            var ri = new RichImage {
+                Texture = tex,
+                HardAlignment = x,
+                DoNotAdjustLineSpacing = true,
+                Margin = Vector2.One * 3f,
+                CreateBox = true,
+                VerticalAlignment = 0f
+            };
+            return new AsyncRichImage(ref ri);
         }
 
         private bool ProcessMarkedString (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
