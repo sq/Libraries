@@ -662,13 +662,7 @@ namespace Squared.Render.Text {
         public void CreateBox (
             float width, float height, out Bounds box
         ) {
-            // HACK: Fix x position of box created before the very first character
-            float x = characterOffset.X, y = characterOffset.Y;
-            if ((colIndex == 0) && (rowIndex == 0)) {
-                x += actualPosition.X;
-                y += actualPosition.Y;
-            }
-            box = Bounds.FromPositionAndSize(x, y, width, height);
+            box = Bounds.FromPositionAndSize(characterOffset.X, characterOffset.Y, width, height);
             CreateBox(ref box);
         }
 
@@ -1262,6 +1256,13 @@ namespace Squared.Render.Text {
             ProcessMarkers(ref endpointBounds, 1, null, false, false);
 
             FinishProcessingMarkers(result);
+
+            // FIXME: Why?
+            Bounds box;
+            for (int i = 0, c = boxes.Count; i < c; i++) {
+                boxes.GetItem(i, out box);
+                boxes[i] = box.Translate(actualPosition);
+            }
 
             return new StringLayout(
                 position.GetValueOrDefault(), 
