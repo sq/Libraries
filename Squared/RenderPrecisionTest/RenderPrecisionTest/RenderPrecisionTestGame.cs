@@ -55,13 +55,13 @@ namespace RenderPrecisionTest {
             var rect2 = new Rectangle(1, 1, 30, 30);
 
             var drawSet = (Action<Rectangle, float>)((r, y) => {
-                DrawRow(ref ir, 0f, y + 0f, SamplerState.PointClamp, r);
-                DrawRow(ref ir, 0.5f, y + 1 + 64f, SamplerState.PointClamp, r);
-                DrawRow(ref ir, 0f, (y + 3 + 128) + 0.5f, SamplerState.PointClamp, r);
+                DrawRow(ref ir, 0f, y + 0f, SamplerState.PointClamp, r, false);
+                DrawRow(ref ir, 0.5f, y + 1 + 64f, SamplerState.PointClamp, r, true);
+                DrawRow(ref ir, 0f, (y + 3 + 128) + 0.5f, SamplerState.PointClamp, r, false);
 
-                DrawRow(ref ir, 0f, y + 5 + 192f, SamplerState.LinearClamp, r);
-                DrawRow(ref ir, 0.5f, y + 7 + 256f, SamplerState.LinearClamp, r);
-                DrawRow(ref ir, 0f, (y + 9 + 320) + 0.5f, SamplerState.LinearClamp, r);
+                DrawRow(ref ir, 0f, y + 5 + 192f, SamplerState.LinearClamp, r, true);
+                DrawRow(ref ir, 0.5f, y + 7 + 256f, SamplerState.LinearClamp, r, false);
+                DrawRow(ref ir, 0f, (y + 9 + 320) + 0.5f, SamplerState.LinearClamp, r, true);
             });
 
             drawSet(rect1, 0f);
@@ -74,18 +74,18 @@ namespace RenderPrecisionTest {
             ir.Draw(TestTexture, new Vector2(Graphics.PreferredBackBufferWidth - 1, 0), origin: new Vector2(1, 0), samplerState: cornerSamplers);
         }
 
-        private void DrawRow (ref ImperativeRenderer ir, float x, float y, SamplerState samplerState, Rectangle sourceRect) {
+        private void DrawRow (ref ImperativeRenderer ir, float x, float y, SamplerState samplerState, Rectangle sourceRect, bool mirror) {
             var tlState = samplerState;
             if ((x == 0) && (y == 0))
                 tlState = SamplerState.LinearClamp;
 
-            ir.Draw(TestTexture, x, y, sourceRect, samplerState: tlState);
+            ir.Draw(TestTexture, x, y, sourceRect, samplerState: tlState, mirrorX: mirror);
             x += 64f;
-            ir.Draw(TestTexture, x, y, sourceRect, scaleX: 2f, scaleY: 2f, samplerState: samplerState);
+            ir.Draw(TestTexture, x, y, sourceRect, scaleX: 2f, scaleY: 2f, samplerState: samplerState, mirrorX: mirror);
             x += 96f;
 
             for (float r = 0.1f; r < Math.PI / 2f; r += 0.2f) {
-                ir.Draw(TestTexture, x, y, sourceRect, rotation: r, samplerState: samplerState);
+                ir.Draw(TestTexture, x, y, sourceRect, rotation: r, samplerState: samplerState, mirrorX: mirror);
 
                 x += 64f;
             }

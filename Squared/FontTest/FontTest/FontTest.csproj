@@ -77,18 +77,17 @@
       <Project>{FE871F18-FD35-4124-AF8F-0021C9D4BA29}</Project>
       <Name>Squared.Render</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\Threading\Squared.Threading.csproj">
+      <Project>{ECCB8787-0FC6-43B2-ABD1-6CBB237916EC}</Project>
+      <Name>Squared.Threading</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Util\Squared.Util.csproj">
       <Project>{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}</Project>
       <Name>Squared.Util</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\FontTestContent\DutchAndHarley.xnb">
-      <Link>DutchAndHarley.xnb</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\FontTestContent\DutchAndHarley_smaller.xnb">
-      <Link>DutchAndHarley_smaller.xnb</Link>
+    <None Include="..\FontTestContent\*.*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="app.config" />

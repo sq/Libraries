@@ -33,6 +33,7 @@ namespace Squared.Render.Text {
         public readonly Bounds LastCharacterBounds;
         public ArraySegment<BitmapDrawCall> DrawCalls;
         public DenseList<AbstractTextureReference> UsedTextures;
+        public DenseList<Bounds> Boxes;
         public readonly bool WasLineLimited;
 
         public StringLayout (
@@ -48,6 +49,7 @@ namespace Squared.Render.Text {
             LastCharacterBounds = lastCharacter;
             DrawCalls = drawCalls;
             WasLineLimited = wasLineLimited;
+            Boxes = default(DenseList<Bounds>);
             UsedTextures = default(DenseList<AbstractTextureReference>);
         }
 
@@ -260,6 +262,7 @@ namespace Squared.Render.Text {
         private bool   ownsBuffer, suppress, suppressUntilNextLine, previousGlyphWasDead;
         private AbstractTextureReference lastUsedTexture;
         private DenseList<AbstractTextureReference> usedTextures;
+        private DenseList<Bounds> boxes;
 
         public int currentCharacterIndex { get; private set; }
 
@@ -303,6 +306,7 @@ namespace Squared.Render.Text {
             currentCharacterIndex = 0;
             lastUsedTexture = null;
             usedTextures = default(DenseList<AbstractTextureReference>);
+            boxes = default(DenseList<Bounds>);
 
             IsInitialized = true;
         }
@@ -423,13 +427,15 @@ namespace Squared.Render.Text {
             var suppressedByLineLimit = lineLimit.HasValue && (lineLimit.Value <= 0);
             var adjustment = Vector2.Zero;
 
+            var xOffset = xOffsetOfWrappedLine;
+            AdjustCharacterOffsetForBoxes(ref xOffset, characterOffset.Y, previousLineSpacing);
             var oldFirstGlyphBounds = (firstGlyphIndex > 0)
                 ? buffer.Array[buffer.Offset + firstGlyphIndex - 1].EstimateDrawBounds()
                 : default(Bounds);
 
             for (var i = firstGlyphIndex; i <= lastGlyphIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
-                var newCharacterX = (xOffsetOfWrappedLine) + (dc.Position.X - firstOffset.X);
+                var newCharacterX = (xOffset) + (dc.Position.X - firstOffset.X);
 
                 // FIXME: Baseline?
                 var newPosition = new Vector2(newCharacterX, dc.Position.Y + yOffset);
@@ -446,7 +452,8 @@ namespace Squared.Render.Text {
                     buffer.Array[buffer.Offset + i] = dc;
             }
 
-            characterOffset.X = xOffsetOfWrappedLine + (characterOffset.X - firstOffset.X);
+            characterOffset.X = xOffset + (characterOffset.X - firstOffset.X);
+            AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, previousLineSpacing);
             characterOffset.Y += previousLineSpacing;
 
             // HACK: firstOffset may include whitespace so we want to pull the right edge in.
@@ -487,6 +494,22 @@ namespace Squared.Render.Text {
 
                 Markers[i] = m;
             }
+        }
+
+        private float AdjustCharacterOffsetForBoxes (ref float x, float y1, float h) {
+            Bounds b;
+            float result = 0;
+            var tempBounds = Bounds.FromPositionAndSize(x - 1, y1, 2, h);
+            for (int i = 0, c = boxes.Count; i < c; i++) {
+                boxes.GetItem(i, out b);
+                if (!Bounds.Intersect(ref b, ref tempBounds))
+                    continue;
+                var oldX = x;
+                // FIXME: Don't do this if we're moving past the wrap boundary
+                x = Math.Max(x, b.BottomRight.X);
+                result += (oldX - x);
+            }
+            return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -544,6 +567,8 @@ namespace Squared.Render.Text {
             var firstDc = buffer.Array[buffer.Offset + firstIndex].EstimateDrawBounds();
             var endDc = buffer.Array[buffer.Offset + lastIndex].EstimateDrawBounds();
             var lineWidth = (endDc.BottomRight.X - firstDc.TopLeft.X);
+
+            // FIXME: Boxes
 
             float whitespace;
             if (lineBreakAtX.HasValue)
@@ -634,11 +659,64 @@ namespace Squared.Render.Text {
             ((lineBreakLimit ?? int.MaxValue) <= 0) ||
             ((characterLimit ?? int.MaxValue) <= 0);
 
+        public void CreateBox (
+            float width, float height, out Bounds box
+        ) {
+            // HACK: Fix x position of box created before the very first character
+            float x = characterOffset.X, y = characterOffset.Y;
+            if ((colIndex == 0) && (rowIndex == 0)) {
+                x += actualPosition.X;
+                y += actualPosition.Y;
+            }
+            box = Bounds.FromPositionAndSize(x, y, width, height);
+            CreateBox(ref box);
+        }
+
+        public void CreateBox (ref Bounds box) {
+            boxes.Add(ref box);
+        }
+
+        /// <summary>
+        /// Move the character offset forward as if an image of this size had been appended,
+        ///  without actually appending anything
+        /// </summary>
+        public void Advance (
+            float width, float height, bool doNotAdjustLineSpacing = false, bool considerBoxes = true
+        ) {
+            var lineSpacing = height;
+            float x = characterOffset.X;
+            if (!doNotAdjustLineSpacing)
+                ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
+            var position = new Vector2(characterOffset.X, characterOffset.Y + currentBaseline);
+            characterOffset.X += width;
+            characterOffsetUnconstrained.X += width;
+            if (colIndex == 0) {
+                characterOffset.X = Math.Max(characterOffset.X, 0);
+                characterOffsetUnconstrained.X = Math.Max(characterOffsetUnconstrained.X, 0);
+            }
+            if (considerBoxes) {
+                AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, Math.Max(lineSpacing, height));
+                AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffset.Y, Math.Max(lineSpacing, height));
+            }
+            currentLineMaxX = Math.Max(currentLineMaxX, x);
+            currentLineMaxXUnconstrained = Math.Max(currentLineMaxXUnconstrained, x);
+            if (characterSkipCount <= 0) {
+                characterLimit--;
+            } else {
+                characterSkipCount--;
+            }
+        }
+
+        /// <summary>
+        /// Append an image as if it were a character
+        /// </summary>
+        /// <param name="verticalAlignment">Specifies the image's Y origin relative to the baseline</param>
         public void AppendImage (
             Texture2D texture, Bounds? textureRegion = null,
             Vector2? margin = null, 
             float scale = 1, float verticalAlignment = 1,
-            Color? multiplyColor = null
+            Color? multiplyColor = null, bool doNotAdjustLineSpacing = false,
+            bool createBox = false
         ) {
             var dc = new BitmapDrawCall {
                 Position = Vector2.Zero,
@@ -652,13 +730,27 @@ namespace Squared.Render.Text {
             var estimatedBounds = dc.EstimateDrawBounds();
             var lineSpacing = estimatedBounds.Size.Y;
             float x = characterOffset.X;
-            ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
+            if (!doNotAdjustLineSpacing)
+                ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
             dc.Position = new Vector2(characterOffset.X, characterOffset.Y + currentBaseline - (margin?.Y ?? 0));
             estimatedBounds = dc.EstimateDrawBounds();
             var sizeX = estimatedBounds.Size.X + (margin?.X ?? 0);
             characterOffset.X += sizeX;
             characterOffsetUnconstrained.X += sizeX;
-            AppendCharacter(ref dc, x, 1, false, lineSpacing, 0f, x, ref estimatedBounds, false, false);
+            // FIXME: Margins and stuff
+            AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing);
+            AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffset.Y, currentLineSpacing);
+            AppendDrawCall(ref dc, x, 1, false, lineSpacing, 0f, x, ref estimatedBounds, false, false);
+
+            if (createBox) {
+                var mx = (margin?.X ?? 0) / 2f;
+                var my = (margin?.Y ?? 0) / 2f;
+                estimatedBounds.TopLeft.X -= mx;
+                estimatedBounds.TopLeft.Y -= my;
+                estimatedBounds.BottomRight.X += mx;
+                estimatedBounds.BottomRight.Y += my;
+                CreateBox(ref estimatedBounds);
+            }
         }
 
         private bool ComputeSuppress (bool? overrideSuppress) {
@@ -816,6 +908,7 @@ namespace Squared.Render.Text {
                         glyph.WidthIncludingBearing + glyph.CharacterSpacing
                     ) * effectiveScale);
 
+                // FIXME: Boxes
                 if (x >= lineBreakAtX) {
                     if (
                         !deadGlyph &&
@@ -828,6 +921,7 @@ namespace Squared.Render.Text {
                 if (forcedWrap) {
                     var currentWordSize = x - wordStartOffset.X;
 
+                    // FIXME: Boxes
                     if (wordWrap && !wordWrapSuppressed && (currentWordSize <= lineBreakAtX)) {
                         if (lineLimit.HasValue)
                             lineLimit--;
@@ -843,6 +937,7 @@ namespace Squared.Render.Text {
                         if (lineLimit.HasValue)
                             lineLimit--;
                         characterOffset.X = xOffsetOfWrappedLine;
+                        AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing);
                         characterOffset.Y += currentLineSpacing;
                         initialLineSpacing = currentLineSpacing = glyphLineSpacing;
                         currentBaseline = glyphBaseline;
@@ -873,6 +968,7 @@ namespace Squared.Render.Text {
                         var spacingForThisLineBreak = currentLineSpacing + extraLineBreakSpacing;
                         if (!suppress) {
                             characterOffset.X = xOffsetOfNewLine;
+                            AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, spacingForThisLineBreak);
                             // FIXME: didn't we already do this?
                             characterOffset.Y += spacingForThisLineBreak;
                             maxX = Math.Max(maxX, currentLineMaxX);
@@ -940,6 +1036,9 @@ namespace Squared.Render.Text {
                 if (!ComputeSuppress(overrideSuppress))
                     characterOffset.X += (glyph.CharacterSpacing * effectiveScale);
                 characterOffsetUnconstrained.X += (glyph.CharacterSpacing * effectiveScale);
+                // FIXME: Is this y/h right
+                AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, glyph.LineSpacing * effectiveScale);
+                AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffset.Y, glyph.LineSpacing * effectiveScale);
 
                 // FIXME: Shift this stuff below into the append function
                 var scaledGlyphSize = new Vector2(
@@ -954,6 +1053,7 @@ namespace Squared.Render.Text {
 
                 var testBounds = lastCharacterBounds;
                 var centerX = (characterOffset.X + scaledGlyphSize.X) * 0.5f;
+                // FIXME: boxes
 
                 ProcessHitTests(ref testBounds, testBounds.Center.X);
 
@@ -979,7 +1079,7 @@ namespace Squared.Render.Text {
                     drawCall.MultiplyColor = overrideColor ?? glyph.DefaultColor ?? defaultColor;
                 }
 
-                AppendCharacter(
+                AppendDrawCall(
                     ref drawCall, 
                     x, currentCodepointSize, 
                     isWhiteSpace, glyphLineSpacing, 
@@ -990,6 +1090,8 @@ namespace Squared.Render.Text {
                 if (!ComputeSuppress(overrideSuppress))
                     characterOffset.X += (glyph.Width + glyph.RightSideBearing) * effectiveScale;
                 characterOffsetUnconstrained.X += (glyph.Width + glyph.RightSideBearing) * effectiveScale;
+                AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing);
+                AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffset.Y, currentLineSpacing);
                 ProcessLineSpacingChange(buffer, glyphLineSpacing, glyphBaseline);
                 maxLineSpacing = Math.Max(maxLineSpacing, currentLineSpacing);
 
@@ -1007,7 +1109,7 @@ namespace Squared.Render.Text {
             return segment;
         }
 
-        private void AppendCharacter (
+        private void AppendDrawCall (
             ref BitmapDrawCall drawCall, 
             float x, int currentCodepointSize, 
             bool isWhiteSpace, float glyphLineSpacing, float yOffset, 
@@ -1169,6 +1271,7 @@ namespace Squared.Render.Text {
                 result, (lineLimit.HasValue && (lineLimit.Value <= 0)) || 
                     (lineBreakLimit.HasValue && (lineBreakLimit.Value <= 0))
             ) {
+                Boxes = boxes,
                 UsedTextures = usedTextures
             };
         }

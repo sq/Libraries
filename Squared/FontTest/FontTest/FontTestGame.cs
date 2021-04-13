@@ -9,6 +9,7 @@ using Squared.Game;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
+using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Text;
 
@@ -17,7 +18,7 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string TestText =
-            "The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
+            "$[img:1]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
             "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
             "\r\n\r\nEmpty line before this one $(marked)";
             /*
@@ -161,7 +162,8 @@ namespace FontTest {
                     GlyphSources = new Dictionary<string, IGlyphSource> {
                         {"large", LatinFont },
                         {"small", SmallLatinFont}
-                    }
+                    },
+                    ImageProvider = Text_ImageProvider 
                 }
             };
             Text2 = new DynamicStringLayout(ActiveFont, TestText2) {
@@ -171,6 +173,13 @@ namespace FontTest {
                 Scale = TextScale,
                 ReverseOrder = true
             };
+        }
+
+        private AsyncRichImage Text_ImageProvider (string arg) {
+            if (arg.StartsWith("img:")) {
+                return new AsyncRichImage(new Future<RichImage>(), 128, 128, doNotAdjustLineSpacing: true, createBox: true);
+            } else
+                return default(AsyncRichImage);
         }
 
         private bool ProcessMarkedString (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
@@ -266,6 +275,10 @@ namespace FontTest {
 
                 ir.OutlineRectangle(Bounds.FromPositionAndSize(Text2.Position, layout.Size), Color.Yellow * 0.75f);
                 ir.DrawMultiple(layout, material: m, samplerState: RenderStates.Text);
+            }
+
+            foreach (var b in Text.Boxes) {
+                ir.OutlineRectangle(b, Color.Orange);
             }
 
             foreach (var rm in Text.RichMarkers) {

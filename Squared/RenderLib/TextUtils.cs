@@ -55,6 +55,7 @@ namespace Squared.Render.Text {
         private Dictionary<Pair<int>, LayoutMarker> _Markers = null;
         private Dictionary<Vector2, LayoutHitTest> _HitTests = null;
         private List<LayoutMarker> _RichMarkers = null;
+        private List<Bounds> _Boxes = null;
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _GlyphSource = new SpriteFontGlyphSource(font);
@@ -140,11 +141,13 @@ namespace Squared.Render.Text {
         private static readonly Dictionary<Pair<int>, LayoutMarker> EmptyMarkers = new Dictionary<Pair<int>, LayoutMarker>();
         private static readonly Dictionary<Vector2, LayoutHitTest> EmptyHitTests = new Dictionary<Vector2, LayoutHitTest>();
         private static readonly List<LayoutMarker> EmptyRichMarkers = new List<LayoutMarker>();
+        private static readonly List<Bounds> EmptyBoxes = new List<Bounds>();
 
         // FIXME: Garbage
         public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Markers ?? EmptyMarkers;
         public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _HitTests ?? EmptyHitTests;
         public IReadOnlyList<LayoutMarker> RichMarkers => _RichMarkers ?? EmptyRichMarkers;
+        public IReadOnlyList<Bounds> Boxes => _Boxes ?? EmptyBoxes;
 
         public LayoutHitTest? HitTest (Vector2 position) {
             var ht = GetHitTests();
@@ -715,6 +718,8 @@ namespace Squared.Render.Text {
                 MakeLayoutEngine(out le);
                 if (_RichMarkers != null)
                     _RichMarkers.Clear();
+                if (_Boxes != null)
+                    _Boxes.Clear();
 
                 try {
                     le.Initialize();
@@ -757,7 +762,14 @@ namespace Squared.Render.Text {
                 }
             }
 
-            return _CachedStringLayout.Value;
+            var result = _CachedStringLayout.Value;
+            if (result.Boxes.Count > 0) {
+                if (_Boxes == null)
+                    _Boxes = new List<Bounds>(result.Boxes.Count);
+                for (int i = 0, c = result.Boxes.Count; i < c; i++)
+                    _Boxes.Add(result.Boxes[i]);
+            }
+            return result;
         }
     }
 

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Text;
 
@@ -75,10 +76,51 @@ namespace Squared.Render.Text {
         public RichStyleApplier Apply;
     }
 
+    public struct AsyncRichImage {
+        public Future<RichImage> Future;
+        public RichImage? Value;
+        public int? Width, Height;
+        public Vector2? Margin;
+        public bool DoNotAdjustLineSpacing, CreateBox;
+
+        public AsyncRichImage (ref RichImage img) {
+            var tex = img.Texture.Instance;
+            if (tex == null)
+                throw new ArgumentNullException("img.Texture");
+            Width = tex.Width;
+            Height = tex.Height;
+            Margin = img.Margin;
+            Value = img;
+            Future = null;
+            DoNotAdjustLineSpacing = img.DoNotAdjustLineSpacing;
+            CreateBox = img.CreateBox;
+        }
+
+        public AsyncRichImage (Future<RichImage> f, int? width = null, int? height = null, Vector2? margin = null, bool doNotAdjustLineSpacing = false, bool createBox = false) {
+            if (f == null)
+                throw new ArgumentNullException("f");
+            Future = f;
+            Width = width;
+            Height = height;
+            Margin = margin;
+            Value = null;
+            DoNotAdjustLineSpacing = doNotAdjustLineSpacing;
+            CreateBox = createBox;
+        }
+
+        public bool IsInitialized {
+            get {
+                return (Future != null) || Value.HasValue;
+            }
+        }
+    }
+
     public struct RichImage {
         public AbstractTextureReference Texture;
         public Bounds? Bounds;
         public Vector2 Margin;
+        public bool DoNotAdjustLineSpacing;
+        public bool CreateBox;
         private float VerticalAlignmentMinusOne;
         private float ScaleMinusOne;
 
@@ -156,6 +198,7 @@ namespace Squared.Render.Text {
         public Dictionary<string, IGlyphSource> GlyphSources;
         public Dictionary<string, RichStyle> Styles;
         public Dictionary<string, RichImage> Images;
+        public Func<string, AsyncRichImage> ImageProvider;
         public Dictionary<char, KerningAdjustment> KerningAdjustments;
         public MarkedStringProcessor MarkedStringProcessor;
 
@@ -188,26 +231,30 @@ namespace Squared.Render.Text {
             }
         }
 
-        public void Append (
+        /// <returns>a list of rich images that were referenced</returns>
+        public DenseList<AsyncRichImage> Append (
             ref StringLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, 
             string styleName, bool? overrideSuppress = null
         ) {
             var state = new RichTextLayoutState(ref layoutEngine, defaultGlyphSource);
-            Append(ref layoutEngine, ref state, text, styleName, overrideSuppress);
+            return Append(ref layoutEngine, ref state, text, styleName, overrideSuppress);
         }
 
         private static readonly HashSet<char>
             CommandTerminators = new HashSet<char> { '\"', '\'', '$', '[' },
             StringTerminators = new HashSet<char> { '$', '(' };
 
-        public void Append (
+        /// <returns>a list of rich images that were referenced</returns>
+        public DenseList<AsyncRichImage> Append (
             ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
             string styleName, bool? overrideSuppress = null
         ) {
+            var result = new DenseList<AsyncRichImage>();
             var count = text.Length;
             var currentRangeStart = 0;
             RichStyle style;
             RichImage image;
+            AsyncRichImage ai;
 
             try {
                 styleName = styleName ?? DefaultStyle;
@@ -234,6 +281,25 @@ namespace Squared.Render.Text {
                             ApplyStyle(ref layoutEngine, ref state, ref style);
                         } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
                             AppendImage(ref layoutEngine, image);
+                            ai = new AsyncRichImage(ref image);
+                            result.Add(ref ai);
+                        } else if (
+                            commandMode && (ImageProvider != null) && 
+                            (ai = ImageProvider(bracketed)).IsInitialized
+                        ) {
+                            if (ai.Value.HasValue) {
+                                AppendImage(ref layoutEngine, ai.Value.Value);
+                            } else if (ai.Width.HasValue) {
+                                var m = ai.Margin ?? Vector2.Zero;
+                                var w = ai.Width.Value + m.X;
+                                var h = (ai.Height ?? 0) + m.Y;
+                                if (ai.CreateBox) {
+                                    Bounds box;
+                                    layoutEngine.CreateBox(w, h, out box);
+                                }
+                                layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
+                            }
+                            result.Add(ref ai);
                         } else if (commandMode && bracketed.Contains(":")) {
                             foreach (var _match in RuleRegex.Matches(bracketed)) {
                                 var match = (Match)_match;
@@ -308,6 +374,8 @@ namespace Squared.Render.Text {
             } finally {
                 state.Reset(ref layoutEngine);
             }
+
+            return result;
         }
 
         private static void ApplyStyle (
@@ -326,7 +394,9 @@ namespace Squared.Render.Text {
                 image.Texture.Instance, scale: image.Scale, 
                 verticalAlignment: image.VerticalAlignment,
                 margin: image.Margin,
-                textureRegion: image.Bounds ?? Bounds.Unit
+                textureRegion: image.Bounds ?? Bounds.Unit,
+                doNotAdjustLineSpacing: image.DoNotAdjustLineSpacing,
+                createBox: image.CreateBox
             );
         }
 
