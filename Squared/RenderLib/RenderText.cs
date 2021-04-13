@@ -377,8 +377,9 @@ namespace Squared.Render.Text {
             if (newBaseline > currentBaseline) {
                 if (bufferWritePosition > baselineAdjustmentStart) {
                     var yOffset = newBaseline - currentBaseline;
-                    for (int i = baselineAdjustmentStart; i < bufferWritePosition; i++)
-                        buffer.Array[buffer.Offset + i].Position.Y += yOffset;
+                    for (int i = baselineAdjustmentStart; i < bufferWritePosition; i++) {
+                        buffer.Array[buffer.Offset + i].Position.Y += yOffset * buffer.Array[buffer.Offset + i].UserData.W;
+                    }
 
                     if (!measureOnly) {
                         for (int i = 0; i < Markers.Count; i++) {
@@ -735,7 +736,9 @@ namespace Squared.Render.Text {
                 TextureRegion = textureRegion ?? Bounds.Unit,
                 ScaleF = scale * this.scale,
                 MultiplyColor = multiplyColor ?? overrideColor ?? Color.White,
-                Origin = new Vector2(0, 0)
+                Origin = new Vector2(0, 0),
+                // HACK
+                UserData = new Vector4(0, 0, 0, verticalAlignment)
             };
             var estimatedBounds = dc.EstimateDrawBounds();
             estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
@@ -744,8 +747,10 @@ namespace Squared.Render.Text {
             float x = characterOffset.X;
             if (!doNotAdjustLineSpacing)
                 ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
-            float y1 = characterOffset.Y + (margin?.Y ?? 0),
-                y2 = characterOffset.Y + currentBaseline - estimatedBounds.Size.Y - (margin?.Y ?? 0);
+            float y1 = characterOffset.Y,
+                y2 = characterOffset.Y + currentBaseline - estimatedBounds.Size.Y - (margin?.Y * 0.5f ?? 0);
+            if (createBox)
+                y2 = Math.Max(y1, y2);
             float adjustmentX = (overrideX.HasValue) ? actualPosition.X : 0f;
             dc.Position = new Vector2((overrideX + adjustmentX) ?? characterOffset.X, Arithmetic.Lerp(y1, y2, verticalAlignment));
             estimatedBounds = dc.EstimateDrawBounds();

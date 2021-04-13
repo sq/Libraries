@@ -107,6 +107,7 @@ namespace Squared.Render.Text {
         public Vector2? Margin;
         public float? HardAlignment;
         public float Scale;
+        public float VerticalAlignment;
         public bool DoNotAdjustLineSpacing, CreateBox;
 
         public AsyncRichImage (ref RichImage img) {
@@ -122,13 +123,18 @@ namespace Squared.Render.Text {
             DoNotAdjustLineSpacing = img.DoNotAdjustLineSpacing;
             CreateBox = img.CreateBox;
             HardAlignment = img.HardAlignment;
+            VerticalAlignment = img.VerticalAlignment;
         }
 
         public AsyncRichImage (RichImage img)
             : this(ref img) {
         }
 
-        public AsyncRichImage (Future<Texture2D> f, float? width = null, float? height = null, Vector2? margin = null, float? hardAlignment = null, float scale = 1f, bool doNotAdjustLineSpacing = false, bool createBox = false) {
+        public AsyncRichImage (
+            Future<Texture2D> f, float? width = null, float? height = null, 
+            Vector2? margin = null, float? hardAlignment = null, float scale = 1f, 
+            float verticalAlignment = 1f, bool doNotAdjustLineSpacing = false, bool createBox = false
+        ) {
             if (f == null)
                 throw new ArgumentNullException("f");
             Future = f;
@@ -137,6 +143,7 @@ namespace Squared.Render.Text {
             Height = height;
             Margin = margin;
             HardAlignment = hardAlignment;
+            VerticalAlignment = verticalAlignment;
             Value = null;
             DoNotAdjustLineSpacing = doNotAdjustLineSpacing;
             CreateBox = createBox;
@@ -170,8 +177,7 @@ namespace Squared.Render.Text {
                     Margin = Margin ?? Vector2.Zero,
                     OverrideHeight = Height * Scale,
                     OverrideWidth = Width * Scale,
-                    // FIXME
-                    VerticalAlignment = CreateBox ? 0f : 1f
+                    VerticalAlignment = VerticalAlignment
                 };
                 return true;
             }
