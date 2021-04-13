@@ -23,7 +23,7 @@ namespace Squared.Render.Text {
             char? closer = null;
             for (int i = firstDollarOffset, l = richText.Length; i < l; i++) {
                 var ch = richText[i];
-                var next = (i < richText.Length - 1) ? richText[i + 1] : '\0';
+                var next = (i < l - 1) ? richText[i + 1] : '\0';
                 if (closer != null) {
                     if (ch == closer) {
                         if (closer == ')') {
@@ -395,10 +395,11 @@ namespace Squared.Render.Text {
                             if (MarkedStringProcessor != null)
                                 ok = MarkedStringProcessor(ref astr, id, ref markedState, ref layoutEngine);
                             if (ok) {
-                                var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + astr.Length - 1, bracketed, id);
+                                var l = astr.Length;
+                                var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + l - 1, bracketed, id);
                                 layoutEngine.Markers.Add(m);
                                 state.MarkedStrings.Add(bracketed);
-                                AppendRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, astr.Length, overrideSuppress);
+                                AppendRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
                             }
                             if (MarkedStringProcessor != null)
                                 markedState.Reset(ref layoutEngine);

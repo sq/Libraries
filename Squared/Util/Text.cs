@@ -253,8 +253,9 @@ namespace Squared.Util.Text {
         public AbstractString (string text, int substringOffset = 0, int substringLength = 0) {
             String = text;
             StringBuilder = null;
-            SubstringOffset = substringOffset;
-            SubstringLength = substringLength;
+            // HACK: Make this easy to use
+            SubstringOffset = Math.Min(substringOffset, text.Length);
+            SubstringLength = Math.Min(substringLength, text.Length);
             ArraySegment = default(ArraySegment<char>);
         }
 

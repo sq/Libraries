@@ -805,7 +805,7 @@ namespace Squared.Render.Text {
                     suppress = true;
 
                 char ch1 = text[i],
-                    ch2 = i < (text.Length - 1)
+                    ch2 = i < (l - 1)
                         ? text[i + 1]
                         : '\0';
 
