@@ -68,6 +68,11 @@ namespace Squared.Render.Text {
 
     public delegate void RichStyleApplier (ref RichStyle style, ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state);
 
+    public struct RichRule {
+        public AbstractString Key;
+        public AbstractString Value;
+    }
+
     public struct RichStyle {
         public IGlyphSource GlyphSource;
         public Color? Color;
@@ -252,6 +257,23 @@ namespace Squared.Render.Text {
             CommandTerminators = new HashSet<char> { '\"', '\'', '$', '[' },
             StringTerminators = new HashSet<char> { '$', '(' };
 
+        public IEnumerable<RichRule> ParseRules (AbstractString text) {
+            // FIXME: Optimize this
+            var tstr = text.ToString();
+            foreach (var _match in RuleRegex.Matches(tstr)) {
+                var match = (Match)_match;
+                if (!match.Success)
+                    continue;
+
+                var key = new AbstractString(tstr, match.Groups[1].Index, match.Groups[1].Length);
+                var value = new AbstractString(tstr, match.Groups[2].Index, match.Groups[2].Length);
+                yield return new RichRule {
+                    Key = key,
+                    Value = value
+                };
+            }
+        }
+
         /// <returns>a list of rich images that were referenced</returns>
         public DenseList<AsyncRichImage> Append (
             ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
@@ -322,14 +344,9 @@ namespace Squared.Render.Text {
                             }
                             result.Add(ref ai);
                         } else if (commandMode && bracketed.Contains(":")) {
-                            foreach (var _match in RuleRegex.Matches(bracketed)) {
-                                var match = (Match)_match;
-                                if (!match.Success)
-                                    continue;
-
-                                var key = match.Groups[1].Value;
-                                var value = match.Groups[2].Value;
-                                switch (key) {
+                            foreach (var rule in ParseRules(bracketed)) {
+                                var value = rule.Value.ToString();
+                                switch (rule.Key.ToString()) {
                                     case "color":
                                     case "c":
                                         layoutEngine.overrideColor = ParseColor(value) ?? state.InitialColor;

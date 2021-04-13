@@ -742,7 +742,7 @@ namespace Squared.Render.Text {
             if (!doNotAdjustLineSpacing)
                 ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
             float adjustmentX = (overrideX.HasValue) ? actualPosition.X : 0f;
-            dc.Position = new Vector2((overrideX + adjustmentX) ?? characterOffset.X, characterOffset.Y + currentBaseline - (margin?.Y ?? 0));
+            dc.Position = new Vector2((overrideX + adjustmentX) ?? characterOffset.X, characterOffset.Y + currentBaseline + (margin?.Y ?? 0));
             estimatedBounds = dc.EstimateDrawBounds();
             var sizeX = estimatedBounds.Size.X + (margin?.X ?? 0);
             if (!overrideX.HasValue) {

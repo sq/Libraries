@@ -230,6 +230,7 @@ namespace Squared.Util.Text {
         private readonly string String;
         private readonly StringBuilder StringBuilder;
         private readonly ArraySegment<char> ArraySegment;
+        private readonly int SubstringOffset, SubstringLength;
 
         public bool IsArraySegment {
             get {
@@ -249,27 +250,35 @@ namespace Squared.Util.Text {
             }
         }
 
-        public AbstractString (string text) {
+        public AbstractString (string text, int substringOffset = 0, int substringLength = 0) {
             String = text;
             StringBuilder = null;
+            SubstringOffset = substringOffset;
+            SubstringLength = substringLength;
             ArraySegment = default(ArraySegment<char>);
         }
 
-        public AbstractString (StringBuilder stringBuilder) {
+        public AbstractString (StringBuilder stringBuilder, int substringOffset = 0, int substringLength = 0) {
             String = null;
             StringBuilder = stringBuilder;
+            SubstringOffset = substringOffset;
+            SubstringLength = substringLength;
             ArraySegment = default(ArraySegment<char>);
         }
 
         public AbstractString (char[] array) {
             String = null;
             StringBuilder = null;
+            SubstringOffset = 0;
+            SubstringLength = 0;
             ArraySegment = new ArraySegment<char>(array);
         }
 
         public AbstractString (ArraySegment<char> array) {
             String = null;
             StringBuilder = null;
+            SubstringOffset = 0;
+            SubstringLength = 0;
             ArraySegment = array;
         }
 
@@ -293,6 +302,8 @@ namespace Squared.Util.Text {
             return (
                 object.ReferenceEquals(String, other.String) &&
                 object.ReferenceEquals(StringBuilder, other.StringBuilder) &&
+                (SubstringOffset == other.SubstringOffset) &&
+                (SubstringLength == other.SubstringLength) &&
                 (ArraySegment == other.ArraySegment)
             );
         }
@@ -318,6 +329,21 @@ namespace Squared.Util.Text {
             return string.Equals(ToString(), other.ToString(), comparison);
         }
 
+        public override int GetHashCode () {
+            return (String?.GetHashCode() ?? 0) ^
+                (StringBuilder?.GetHashCode() ?? 0) ^
+                (ArraySegment.Array?.GetHashCode() ?? 0);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is string)
+                return TextEquals((string)obj);
+            else if (obj is AbstractString)
+                return Equals((AbstractString)obj);
+            else
+                return false;
+        }
+
         // FIXME: Should these be TextEquals?
         public static bool operator == (AbstractString lhs, AbstractString rhs) {
             return lhs.Equals(rhs);
@@ -338,9 +364,9 @@ namespace Squared.Util.Text {
         public char this[int index] {
             get {
                 if (String != null)
-                    return String[index];
+                    return String[index + SubstringOffset];
                 else if (StringBuilder != null)
-                    return StringBuilder[index];
+                    return StringBuilder[index + SubstringOffset];
                 else if (ArraySegment.Array != null) {
                     if ((index < 0) || (index >= ArraySegment.Count))
                         throw new ArgumentOutOfRangeException("index");
@@ -354,9 +380,9 @@ namespace Squared.Util.Text {
         public int Length {
             get {
                 if (String != null)
-                    return String.Length;
+                    return (SubstringLength > 0) ? SubstringLength : (String.Length - SubstringOffset);
                 else if (StringBuilder != null)
-                    return StringBuilder.Length;
+                    return (SubstringLength > 0) ? SubstringLength : (StringBuilder.Length - SubstringOffset);
                 else // Default fallback to 0 characters
                     return ArraySegment.Count;
             }
@@ -371,11 +397,29 @@ namespace Squared.Util.Text {
             }
         }
 
+        private string ConvertStringInternal () {
+            if ((SubstringOffset <= 0) && (SubstringLength <= 0))
+                return String;
+            else if (SubstringLength <= 0)
+                return String.Substring(SubstringOffset);
+            else
+                return String.Substring(SubstringOffset, SubstringLength);
+        }
+
+        private string ConvertBuilderInternal () {
+            if ((SubstringOffset <= 0) && (SubstringLength <= 0))
+                return StringBuilder.ToString();
+            else if (SubstringLength <= 0)
+                return StringBuilder.ToString(SubstringOffset, StringBuilder.Length - SubstringOffset);
+            else
+                return StringBuilder.ToString(SubstringOffset, SubstringLength);
+        }
+
         public override string ToString () {
             if (String != null)
-                return String;
+                return ConvertStringInternal();
             else if (StringBuilder != null)
-                return StringBuilder.ToString();
+                return ConvertBuilderInternal();
             else if (ArraySegment.Array != null)
                 return new string(ArraySegment.Array, ArraySegment.Offset, ArraySegment.Count);
             else
@@ -384,7 +428,7 @@ namespace Squared.Util.Text {
 
         public bool Contains (char ch) {
             if (String != null)
-                return String.IndexOf(ch) >= 0;
+                return String.IndexOf(ch, SubstringOffset, Length) >= 0;
 
             for (int i = 0, l = Length; i < l; i++) {
                 if (this[i] == ch)
@@ -407,10 +451,13 @@ namespace Squared.Util.Text {
 
         public void CopyTo (StringBuilder output) {
             if (String != null)
-                output.Append(String);
-            else if (StringBuilder != null)
-                StringBuilder.CopyTo(output);
-            else if (ArraySegment.Array != null)
+                output.Append(ConvertStringInternal());
+            else if (StringBuilder != null) {
+                if ((SubstringOffset <= 0) && (SubstringLength <= 0))
+                    StringBuilder.CopyTo(output);
+                else
+                    StringBuilder.Append(ConvertBuilderInternal());
+            } else if (ArraySegment.Array != null)
                 output.Append(ArraySegment.Array, ArraySegment.Offset, ArraySegment.Count);
             else
                 throw new ArgumentNullException("this");
