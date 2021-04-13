@@ -103,7 +103,7 @@ namespace Squared.Render.Text {
     public struct AsyncRichImage {
         public Future<Texture2D> Future;
         public RichImage? Value;
-        public int? Width, Height;
+        public float? Width, Height;
         public Vector2? Margin;
         public float? HardAlignment;
         public float Scale;
@@ -128,7 +128,7 @@ namespace Squared.Render.Text {
             : this(ref img) {
         }
 
-        public AsyncRichImage (Future<Texture2D> f, int? width = null, int? height = null, Vector2? margin = null, float? hardAlignment = null, float scale = 1f, bool doNotAdjustLineSpacing = false, bool createBox = false) {
+        public AsyncRichImage (Future<Texture2D> f, float? width = null, float? height = null, Vector2? margin = null, float? hardAlignment = null, float scale = 1f, bool doNotAdjustLineSpacing = false, bool createBox = false) {
             if (f == null)
                 throw new ArgumentNullException("f");
             Future = f;
@@ -150,15 +150,28 @@ namespace Squared.Render.Text {
                 result = default(RichImage);
                 return false;
             } else {
+                var tex = Future.Result;
+                float? autoScaleX = Width / tex.Width,
+                    autoScaleY = Height / tex.Height;
+                float scale = Scale;
+                if (autoScaleX.HasValue && autoScaleY.HasValue)
+                    scale *= Math.Min(autoScaleX.Value, autoScaleY.Value);
+                else if (autoScaleX.HasValue)
+                    scale *= autoScaleX.Value;
+                else if (autoScaleY.HasValue)
+                    scale *= autoScaleY.Value;
+
                 result = new RichImage {
-                    Texture = Future.Result,
+                    Texture = tex,
                     CreateBox = CreateBox,
                     DoNotAdjustLineSpacing = DoNotAdjustLineSpacing,
-                    Scale = Scale,
+                    Scale = scale,
                     HardAlignment = HardAlignment,
                     Margin = Margin ?? Vector2.Zero,
+                    OverrideHeight = Height * Scale,
+                    OverrideWidth = Width * Scale,
                     // FIXME
-                    // VerticalAlignment = VerticalAlignment
+                    VerticalAlignment = CreateBox ? 0f : 1f
                 };
                 return true;
             }
@@ -181,6 +194,7 @@ namespace Squared.Render.Text {
         public AbstractTextureReference Texture;
         public Bounds? Bounds;
         public Vector2 Margin;
+        public float? OverrideWidth, OverrideHeight;
         public float? HardAlignment;
         public bool DoNotAdjustLineSpacing;
         public bool CreateBox;
@@ -351,11 +365,12 @@ namespace Squared.Render.Text {
                         ) {
                             var currentX1 = 0f;
                             var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
-                            if (ai.Value.HasValue) {
+                            if (ai.TryGetValue(out RichImage ri)) {
                                 float? overrideX = null;
-                                if (ai.HardAlignment.HasValue)
-                                    overrideX = Arithmetic.Lerp(currentX1, currentX2 - (ai.Value.Value.Texture.Instance.Width * layoutEngine.scale) - ai.Value.Value.Margin.X, ai.HardAlignment.Value);
-                                AppendImage(ref layoutEngine, ai.Value.Value, overrideX);
+                                if (ri.HardAlignment.HasValue)
+                                    // FIXME: Scale
+                                    overrideX = Arithmetic.Lerp(currentX1, currentX2 - (ri.Texture.Instance.Width * layoutEngine.scale) - ri.Margin.X, ai.HardAlignment.Value);
+                                AppendImage(ref layoutEngine, ri, overrideX);
                             } else if (ai.Width.HasValue) {
                                 var m = ai.Margin ?? Vector2.Zero;
                                 var w = ai.Width.Value + m.X;
@@ -373,8 +388,10 @@ namespace Squared.Render.Text {
                                 } else {
                                     layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
                                 }
+                                result.Add(ref ai);
+                            } else {
+                                result.Add(ref ai);
                             }
-                            result.Add(ref ai);
                         } else if (commandMode && bracketed.Contains(":")) {
                             foreach (var rule in RichText.ParseRules(bracketed)) {
                                 var value = rule.Value.ToString();
@@ -467,7 +484,8 @@ namespace Squared.Render.Text {
                 margin: image.Margin,
                 textureRegion: image.Bounds ?? Bounds.Unit,
                 doNotAdjustLineSpacing: image.DoNotAdjustLineSpacing,
-                createBox: image.CreateBox, overrideX: overrideX
+                createBox: image.CreateBox, overrideX: overrideX,
+                overrideWidth: image.OverrideWidth, overrideHeight: image.OverrideHeight
             );
         }
 

@@ -725,7 +725,8 @@ namespace Squared.Render.Text {
             Vector2? margin = null, 
             float scale = 1, float verticalAlignment = 1,
             Color? multiplyColor = null, bool doNotAdjustLineSpacing = false,
-            bool createBox = false, float? overrideX = null
+            bool createBox = false, float? overrideX = null,
+            float? overrideWidth = null, float? overrideHeight = null
         ) {
             var dc = new BitmapDrawCall {
                 Position = Vector2.Zero,
@@ -737,6 +738,8 @@ namespace Squared.Render.Text {
                 Origin = new Vector2(0, verticalAlignment)
             };
             var estimatedBounds = dc.EstimateDrawBounds();
+            estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
+            estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
             var lineSpacing = estimatedBounds.Size.Y;
             float x = characterOffset.X;
             if (!doNotAdjustLineSpacing)
@@ -744,7 +747,9 @@ namespace Squared.Render.Text {
             float adjustmentX = (overrideX.HasValue) ? actualPosition.X : 0f;
             dc.Position = new Vector2((overrideX + adjustmentX) ?? characterOffset.X, characterOffset.Y + currentBaseline + (margin?.Y ?? 0));
             estimatedBounds = dc.EstimateDrawBounds();
-            var sizeX = estimatedBounds.Size.X + (margin?.X ?? 0);
+            estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
+            estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
+            var sizeX = (overrideWidth ?? estimatedBounds.Size.X) + (margin?.X ?? 0);
             if (!overrideX.HasValue) {
                 characterOffset.X += sizeX;
                 characterOffsetUnconstrained.X += sizeX;

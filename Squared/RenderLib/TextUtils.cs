@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Text;
 
@@ -51,7 +52,9 @@ namespace Squared.Render.Text {
         private bool _RecordUsedTextures = false;
         private char? _ReplacementCharacter = null;
         private uint[] _WordWrapCharacters = null;
+        private bool _AwaitingDependencies = false;
 
+        private List<AsyncRichImage> _Dependencies = null;
         private Dictionary<Pair<int>, LayoutMarker> _Markers = null;
         private Dictionary<Vector2, LayoutHitTest> _HitTests = null;
         private List<LayoutMarker> _RichMarkers = null;
@@ -142,12 +145,14 @@ namespace Squared.Render.Text {
         private static readonly Dictionary<Vector2, LayoutHitTest> EmptyHitTests = new Dictionary<Vector2, LayoutHitTest>();
         private static readonly List<LayoutMarker> EmptyRichMarkers = new List<LayoutMarker>();
         private static readonly List<Bounds> EmptyBoxes = new List<Bounds>();
+        private static readonly List<AsyncRichImage> EmptyDependencies = new List<AsyncRichImage>();
 
         // FIXME: Garbage
         public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Markers ?? EmptyMarkers;
         public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _HitTests ?? EmptyHitTests;
         public IReadOnlyList<LayoutMarker> RichMarkers => _RichMarkers ?? EmptyRichMarkers;
         public IReadOnlyList<Bounds> Boxes => _Boxes ?? EmptyBoxes;
+        public IReadOnlyList<AsyncRichImage> Dependencies => _Dependencies ?? EmptyDependencies;
 
         public LayoutHitTest? HitTest (Vector2 position) {
             var ht = GetHitTests();
@@ -685,6 +690,20 @@ namespace Squared.Render.Text {
             )
                 Invalidate();
 
+            if (_AwaitingDependencies) {
+                bool stillWaiting = false;
+                foreach (var d in _Dependencies) {
+                    if (!d.HasValue) {
+                        stillWaiting = true;
+                        break;
+                    }
+                }
+
+                if (!stillWaiting) {
+                    Invalidate();
+                }
+            }
+
             if (!_CachedStringLayout.HasValue) {
                 if (_Text.IsNull) {
                     _CachedStringLayout = new StringLayout();
@@ -720,6 +739,8 @@ namespace Squared.Render.Text {
                     _RichMarkers.Clear();
                 if (_Boxes != null)
                     _Boxes.Clear();
+                if (_Dependencies != null)
+                    _Dependencies.Clear();
 
                 try {
                     le.Initialize();
@@ -727,7 +748,19 @@ namespace Squared.Render.Text {
                         var ka = _RichTextConfiguration.KerningAdjustments;
                         _RichTextConfiguration.KerningAdjustments = _KerningAdjustments ?? ka;
                         rls = new RichTextLayoutState(ref le, _GlyphSource);
-                        _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
+                        var dependencies = _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
+                        if (dependencies.Count > 0) {
+                            if (_Dependencies == null)
+                                _Dependencies = new List<AsyncRichImage>();
+
+                            for (int i = 0, c = dependencies.Count; i < c; i++) {
+                                var d = dependencies[i];
+                                if (!d.HasValue)
+                                    _AwaitingDependencies = true;
+                                _Dependencies.Add(d);
+                            }
+                        } else
+                            _AwaitingDependencies = false;
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             _RichTextConfiguration.Append(ref le, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
                         _RichTextConfiguration.KerningAdjustments = ka;
