@@ -142,10 +142,9 @@ namespace Squared.PRGUI {
             if (control == null)
                 return;
 
-            Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
-            control.UnsetParent(Host);
-
             if (IndexTable.TryGetValue(control, out int deleteAtIndex)) {
+                Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
+                control.UnsetParent(Host);
                 Items.RemoveAt(deleteAtIndex);
                 IndexTable.Remove(control);
                 UpdateIndexTable(deleteAtIndex);
