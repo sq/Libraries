@@ -106,11 +106,22 @@ namespace Squared.PRGUI.Controls {
             Wrap = false;
         }
 
-        protected override bool OnEvent<T> (string name, T args) {
-            if ((name == UIEvents.Click) && (Menu != null)) {
-                Menu.Show(Context, this);
+        private bool AutoShowMenu () {
+            if (Menu == null)
+                return false;
+            // HACK: Detect whether the menu is open
+            if (!Menu.Intangible)
                 return true;
-            }
+
+            var box = GetRect(contentRect: true);
+            Menu.Width.Minimum = box.Width;
+            Menu.Show(Context, this);
+            return true;
+        }
+
+        protected override bool OnEvent<T> (string name, T args) {
+            if ((name == UIEvents.Click) && AutoShowMenu())
+                return true;
 
             if (args is MouseEventArgs)
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
@@ -119,12 +130,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
-            if ((name == UIEvents.MouseDown) && (Menu != null)) {
-                var box = GetRect(contentRect: true);
-                Menu.Width.Minimum = box.Width;
-                Menu.Show(Context, this);
+            if ((name == UIEvents.MouseDown) && AutoShowMenu())
                 return true;
-            }
 
             return false;
         }

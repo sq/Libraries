@@ -28,7 +28,7 @@ namespace Squared.PRGUI.Controls {
         public bool DisableItemHitTests = true;
         public bool DefaultToggleOnClick = false;
 
-        public static bool SelectOnMouseDown = false;
+        public bool SelectOnMouseDown = false;
 
         public float ItemSpacing = 1;
 
@@ -536,12 +536,17 @@ namespace Squared.PRGUI.Controls {
                             TryToggleItemSelected(ref newItem, true);
                         else
                             SetSelectedItem(newItem, true);
+                    } else {
+                        ;
                     }
 
                     return isClick;
                 } else {
                     // Console.WriteLine($"Selection not valid");
+                    ;
                 }
+            } else {
+                ;
             }
 
             // Console.WriteLine($"Discarding event");

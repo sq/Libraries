@@ -1463,14 +1463,21 @@ namespace Squared.PRGUI {
 
         private void MenuSelection_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
-            var fillColor = (pSRGBColor)ColorScheme.SelectionFill * Arithmetic.Pulse(context.Now / 2f, 0.9f, 1f);
+            var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
+                settings.State.IsFlagged(ControlStates.ContainsFocus);
+            var fillColor = (pSRGBColor)(
+                 isFocused
+                    ? ColorScheme.SelectionFill
+                    : Color.Lerp(ColorScheme.SelectionFill, ColorScheme.SelectionFill.ToGrayscale(0.65f), 0.5f)
+                );
+            fillColor *= Arithmetic.Pulse(context.Now / 2f, 0.9f, 1f);
 
             renderer.RasterizeRectangle(
                 a, b,
                 radius: MenuSelectionCornerRadius,
                 outlineRadius: 0.9f, outlineColor: fillColor,
-                innerColor: fillColor, outerColor: fillColor * 0.6f,
-                fillMode: RasterFillMode.Horizontal
+                innerColor: fillColor, outerColor: fillColor * 0.75f,
+                fillMode: RasterFillMode.RadialEnclosing
             );
         }
 

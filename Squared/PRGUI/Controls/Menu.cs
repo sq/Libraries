@@ -64,6 +64,8 @@ namespace Squared.PRGUI.Controls {
         public bool CloseWhenItemChosen { get; set; } = true;
         public bool CloseOnEscapePress { get; set; } = true;
         public bool CloseOnClickOutside { get; set; } = true;
+        public bool BlockInput { get; set; } = true;
+        public bool RetainFocus { get; set; } = true;
 
         public override int ColumnCount {
             get => base.ColumnCount;
@@ -128,6 +130,7 @@ namespace Squared.PRGUI.Controls {
             // HACK: If we don't do this, alignment will be broken when a global scale is set
             Appearance.AutoScaleMetrics = false;
             Visible = false;
+            Intangible = true;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
             ContainerFlags = ControlFlags.Container_Column | ControlFlags.Container_Align_Start;
@@ -251,7 +254,8 @@ namespace Squared.PRGUI.Controls {
                 // Normally an event like mouseup would release our capture and close the menu,
                 //  but since the user was interacting with the scrollbar we want to retain
                 //  capture so that mouse movement events will still update the selected item
-                Context.RetainCapture(this);
+                // if (((IModal)this).BlockInput)
+                    Context.RetainCapture(this);
                 return true;
             }
 
@@ -412,9 +416,12 @@ namespace Squared.PRGUI.Controls {
                 context.Pass = RasterizePasses.Content;
                 var selectionSettings = new DecorationSettings {
                     Box = selectionBox,
-                    ContentBox = selectionBox,
-                    State = ControlStates.Hovering | ControlStates.Focused
+                    ContentBox = selectionBox
                 };
+                if (settings.State.IsFlagged(ControlStates.ContainsFocus))
+                    selectionSettings.State = ControlStates.Hovering | ControlStates.Focused;
+                else
+                    selectionSettings.State = ControlStates.Hovering;
                 context.DecorationProvider.MenuSelection?.Rasterize(context, ref passSet.Below, selectionSettings);
                 context.Pass = oldPass;
 
@@ -462,7 +469,7 @@ namespace Squared.PRGUI.Controls {
             if (CloseWhenItemChosen) {
                 SetResult(item);
                 Close(true);
-            } else {
+            } else if (((IModal)this).BlockInput) {
                 Context.RetainCapture(this);
             }
             return true;
@@ -525,7 +532,8 @@ namespace Squared.PRGUI.Controls {
             SelectedItem = selectedItem;
             Visible = true;
             Intangible = false;
-            context.CaptureMouse(this, out _FocusDonor);
+            if (((IModal)this).BlockInput)
+                context.CaptureMouse(this, out _FocusDonor);
             context.NotifyModalShown(this);
             Listener?.Shown(this);
             if (Shown != null)
@@ -637,8 +645,10 @@ namespace Squared.PRGUI.Controls {
             AcceptsFocus = false;
             _FocusDonor = null;
             Context.NotifyControlBecomingInvalidFocusTarget(this, false);
-            if (fd != null)
-                Context.TrySetFocus(fd, false, false); // FIXME
+            if (Context.Focused == this) {
+                if (fd != null)
+                    Context.TrySetFocus(fd, false, false); // FIXME
+            }
             Listener?.Closed(this);
             if (Closed != null)
                 Closed(this);
@@ -718,8 +728,8 @@ namespace Squared.PRGUI.Controls {
         public void Add (Control child) => Children.Add(child);
 
         bool IModal.BlockHitTests => false;
-        bool IModal.BlockInput => !CloseOnClickOutside;
-        bool IModal.RetainFocus => !CloseOnClickOutside && !CloseWhenFocusLost;
+        bool IModal.BlockInput => !CloseOnClickOutside && BlockInput;
+        bool IModal.RetainFocus => !CloseOnClickOutside && !CloseWhenFocusLost && RetainFocus;
         bool IModal.OnUnhandledEvent (string name, Util.Event.IEventInfo args) => false;
         bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) => false;
 
