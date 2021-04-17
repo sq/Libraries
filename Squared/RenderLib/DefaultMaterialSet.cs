@@ -607,56 +607,7 @@ namespace Squared.Render {
 
             LoadHSLMaterials(hslShader);
 
-            var bitmapMaterials = new[] {
-                Bitmap,
-                ScreenSpaceBitmapToSRGB,
-                WorldSpaceBitmapToSRGB,
-                ScreenSpaceShadowedBitmap,
-                WorldSpaceShadowedBitmap,
-                ScreenSpaceShadowedBitmapWithDiscard,
-                WorldSpaceShadowedBitmapWithDiscard,
-                BitmapWithDiscard,
-                CrossfadeBitmap,
-                UnderBitmap,
-                OverBitmap
-            };
-
             LoadBlurMaterials();
-
-            var filterMaterials = new[] {
-                ScreenSpaceBitmapWithLUT,
-                WorldSpaceBitmapWithLUT,
-                ScreenSpaceStippledBitmap,
-                WorldSpaceStippledBitmap,
-                ScreenSpacePalettedBitmap,
-                WorldSpacePalettedBitmap,
-                ScreenSpacePalettedBitmapWithDiscard,
-                WorldSpacePalettedBitmapWithDiscard,
-                ScreenSpaceHueBitmap,
-                WorldSpaceHueBitmap,
-                ScreenSpaceHueBitmapWithDiscard,
-                WorldSpaceHueBitmapWithDiscard,
-                ScreenSpaceSepiaBitmap,
-                WorldSpaceSepiaBitmap,
-                HighlightColorBitmap,
-                ScreenSpaceLightmappedBitmap,
-                ScreenSpaceLightmappedsRGBBitmap,
-                ScreenSpaceHorizontalGaussianBlur,
-                ScreenSpaceVerticalGaussianBlur,
-                ScreenSpaceRadialGaussianBlur,
-                WorldSpaceLightmappedBitmap,
-                WorldSpaceLightmappedsRGBBitmap,
-                WorldSpaceHorizontalGaussianBlur,
-                WorldSpaceVerticalGaussianBlur,
-                WorldSpaceRadialGaussianBlur,
-            };
-
-            foreach (var m in bitmapMaterials)
-                m.HintPipeline = bitmapHint;
-
-            if (PreloadFilterShaders || PreloadAllShaders)
-                foreach (var m in filterMaterials)
-                    m.HintPipeline = bitmapHint;
 
             ScreenSpaceGeometry = NewMaterial(
                 geometryShader,
@@ -702,6 +653,55 @@ namespace Squared.Render {
                 "WorldSpaceLightmappedsRGBBitmap"
             );
 
+
+            var bitmapMaterials = new[] {
+                Bitmap,
+                ScreenSpaceBitmapToSRGB,
+                WorldSpaceBitmapToSRGB,
+                ScreenSpaceShadowedBitmap,
+                WorldSpaceShadowedBitmap,
+                ScreenSpaceShadowedBitmapWithDiscard,
+                WorldSpaceShadowedBitmapWithDiscard,
+                BitmapWithDiscard,
+                CrossfadeBitmap,
+                UnderBitmap,
+                OverBitmap
+            };
+
+            var filterMaterials = new[] {
+                ScreenSpaceBitmapWithLUT,
+                WorldSpaceBitmapWithLUT,
+                ScreenSpaceStippledBitmap,
+                WorldSpaceStippledBitmap,
+                ScreenSpacePalettedBitmap,
+                WorldSpacePalettedBitmap,
+                ScreenSpacePalettedBitmapWithDiscard,
+                WorldSpacePalettedBitmapWithDiscard,
+                ScreenSpaceHueBitmap,
+                WorldSpaceHueBitmap,
+                ScreenSpaceHueBitmapWithDiscard,
+                WorldSpaceHueBitmapWithDiscard,
+                ScreenSpaceSepiaBitmap,
+                WorldSpaceSepiaBitmap,
+                HighlightColorBitmap,
+                ScreenSpaceLightmappedBitmap,
+                ScreenSpaceLightmappedsRGBBitmap,
+                ScreenSpaceHorizontalGaussianBlur,
+                ScreenSpaceVerticalGaussianBlur,
+                ScreenSpaceRadialGaussianBlur,
+                WorldSpaceLightmappedBitmap,
+                WorldSpaceLightmappedsRGBBitmap,
+                WorldSpaceHorizontalGaussianBlur,
+                WorldSpaceVerticalGaussianBlur,
+                WorldSpaceRadialGaussianBlur,
+            };
+
+            foreach (var m in bitmapMaterials)
+                m.HintPipeline = bitmapHint;
+
+            if (PreloadFilterShaders || PreloadAllShaders)
+                foreach (var m in filterMaterials)
+                    m.HintPipeline = bitmapHint;
 
             AutoSetViewTransform();
         }
