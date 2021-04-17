@@ -115,11 +115,12 @@ namespace Squared.PRGUI {
             }
 
             if (result.UsedRectangles.Count == 0) {
-                var group = BatchGroup.ForRenderTarget(prepass, 0, result.Instance, name: "Scratch Prepass");
-                result.Renderer = new ImperativeRenderer(group, Materials);
-                result.Renderer.DepthStencilState = DepthStencilState.None;
-                result.Renderer.BlendState = BlendState.AlphaBlend;
-                result.Renderer.Clear(-9999, color: Color.Transparent /* FrameColors[FrameIndex % FrameColors.Length] * 0.5f */, stencil: 0);
+                using (var group = BatchGroup.ForRenderTarget(prepass, 0, result.Instance, name: "Scratch Prepass")) {
+                    result.Renderer = new ImperativeRenderer(group, Materials);
+                    result.Renderer.DepthStencilState = DepthStencilState.None;
+                    result.Renderer.BlendState = BlendState.AlphaBlend;
+                    result.Renderer.Clear(-9999, color: Color.Transparent /* FrameColors[FrameIndex % FrameColors.Length] * 0.5f */, stencil: 0);
+                }
             }
 
             result.UsedRectangles.Add(ref rectangle);

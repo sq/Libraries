@@ -141,13 +141,14 @@ namespace Squared.PRGUI.Controls {
 
             // FIXME
             var layer = 0;
-            var container = BatchGroup.ForRenderTarget(
+            using (var container = BatchGroup.ForRenderTarget(
                 context.Prepass, layer, Buffer, materialSet: context.Materials,
                 viewTransform: ViewTransform.CreateOrthographic(w, h)
-            );
-            var contentRenderer = new ImperativeRenderer(container, context.Materials);
-            contentRenderer.BlendState = BlendState.NonPremultiplied;
-            Paint(ref contentRenderer, ref box);
+            )) {
+                var contentRenderer = new ImperativeRenderer(container, context.Materials);
+                contentRenderer.BlendState = BlendState.NonPremultiplied;
+                Paint(ref contentRenderer, ref box);
+            }
         }
 
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
