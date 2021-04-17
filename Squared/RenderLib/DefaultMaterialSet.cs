@@ -865,6 +865,8 @@ namespace Squared.Render {
             ));
         }
 
+        public int ViewTransformStackDepth => ViewTransformStack.Count;
+
         public ViewTransform ViewTransform {
             get {
                 return ViewTransformStack.Peek();
@@ -944,35 +946,35 @@ namespace Squared.Render {
         /// <summary>
         /// Immediately changes the view transform of the material set, without waiting for a clear.
         /// </summary>
-        public void PushViewTransform (ViewTransform viewTransform) {
+        public void PushViewTransform (ViewTransform viewTransform, bool force = false) {
             ViewTransformStack.Push(viewTransform);
-            ApplyViewTransform(ref viewTransform, !LazyViewTransformChanges);
+            ApplyViewTransform(ref viewTransform, force || !LazyViewTransformChanges);
         }
 
         /// <summary>
         /// Immediately changes the view transform of the material set, without waiting for a clear.
         /// </summary>
-        public void PushViewTransform (ref ViewTransform viewTransform) {
+        public void PushViewTransform (ref ViewTransform viewTransform, bool force = false) {
             ViewTransformStack.Push(viewTransform);
-            ApplyViewTransform(ref viewTransform, !LazyViewTransformChanges);
+            ApplyViewTransform(ref viewTransform, force || !LazyViewTransformChanges);
         }
 
         /// <summary>
         /// Immediately restores the previous view transform of the material set, without waiting for a clear.
         /// </summary>
-        public void PopViewTransform (out ViewTransform previous) {
+        public void PopViewTransform (out ViewTransform previous, bool force = false) {
             previous = ViewTransformStack.Pop();
             var current = ViewTransformStack.Peek();
-            ApplyViewTransform(ref current, !LazyViewTransformChanges);
+            ApplyViewTransform(ref current, force || !LazyViewTransformChanges);
         }
 
         /// <summary>
         /// Immediately restores the previous view transform of the material set, without waiting for a clear.
         /// </summary>
-        public void PopViewTransform () {
+        public void PopViewTransform (bool force = false) {
             ViewTransformStack.Pop();
             var current = ViewTransformStack.Peek();
-            ApplyViewTransform(ref current, !LazyViewTransformChanges);
+            ApplyViewTransform(ref current, force || !LazyViewTransformChanges);
         }
 
         private FrameParams? LastAppliedFrameParams;

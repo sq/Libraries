@@ -338,7 +338,7 @@ namespace PRGUI.Demo {
             var window = new ContainerBuilder(new Window {
                 Appearance = {
                     BackgroundColor = new Color(70, 86, 90),
-                    Compositor = new WindowCompositor(Materials)
+                    Compositor = new WindowCompositor(Materials),
                 },
                 Title = "Floating Panel",
                 DisplayOrder = 1,
