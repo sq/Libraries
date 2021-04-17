@@ -165,12 +165,8 @@ namespace Squared.Render.Text {
             public float LineSpacing {
                 get {
                     if (!_LineSpacing.HasValue) {
-                        Font.Face.SetCharSize(
-                            0, _SizePoints, 
-                            BaseDPI, BaseDPI
-                        );
-
-                        _LineSpacing = Font.Face.Size.Metrics.Height.ToSingle();
+                        var size = Font.GetFTSize(_SizePoints, BaseDPI);
+                        _LineSpacing = size.Metrics.Height.ToSingle();
                     }
 
                     return _LineSpacing.Value + ExtraLineSpacing;
@@ -237,10 +233,8 @@ namespace Squared.Render.Text {
             }
 
             private bool PopulateGlyphCache (uint ch, out Glyph glyph, Color? defaultColor) {
-                Font.Face.SetCharSize(
-                    0, _SizePoints, 
-                    (uint)(BaseDPI * Font.DPIPercent / 100), (uint)(BaseDPI * Font.DPIPercent / 100)
-                );
+                var resolution = (uint)(BaseDPI * Font.DPIPercent / 100);
+                var size = Font.GetFTSize(_SizePoints, resolution);
 
                 uint index;
 
@@ -269,15 +263,15 @@ namespace Squared.Render.Text {
                 );
 
                 var ftgs = Font.Face.Glyph;
-                var scaleX = Font.Face.Size.Metrics.ScaleX;
-                var scaleY = Font.Face.Size.Metrics.ScaleY;
+                var scaleX = size.Metrics.ScaleX;
+                var scaleY = size.Metrics.ScaleY;
                 var bitmap = ftgs.Bitmap;
 
                 DynamicAtlas<Color>.Reservation texRegion = default(DynamicAtlas<Color>.Reservation);
                 if ((bitmap.Width > 0) && (bitmap.Rows > 0))
                     texRegion = Upload(bitmap);
 
-                var ascender = Font.Face.Size.Metrics.Ascender.ToSingle();
+                var ascender = size.Metrics.Ascender.ToSingle();
                 var metrics = ftgs.Metrics;
                 var advance = metrics.HorizontalAdvance.ToSingle();
                 if (ch == '\t')
@@ -304,9 +298,9 @@ namespace Squared.Render.Text {
                     RectInTexture = rect,
                     // FIXME: This will become invalid if the extra spacing changes
                     // FIXME: Scale the spacing appropriately based on ratios
-                    LineSpacing = Font.Face.Size.Metrics.Height.ToSingle() + ExtraLineSpacing,
+                    LineSpacing = size.Metrics.Height.ToSingle() + ExtraLineSpacing,
                     DefaultColor = defaultColor,
-                    Baseline = Font.Face.Size.Metrics.Ascender.ToSingle()
+                    Baseline = size.Metrics.Ascender.ToSingle()
                 };
 
                 if (texRegion.Atlas != null) {
@@ -367,6 +361,26 @@ namespace Squared.Render.Text {
                 foreach (var atlas in Atlases)
                     atlas.Dispose();
             }
+        }
+
+        private float _CachedSizePoints;
+        private uint _CachedResolution;
+        private Face _CachedFace;
+        private FTSize _CachedSize;
+
+        private FTSize GetFTSize (float sizePoints, uint resolution) {
+            if (
+                (_CachedSizePoints != sizePoints) || 
+                (_CachedResolution != resolution) ||
+                (_CachedFace != Face)
+            ) {
+                Face.SetCharSize(0, sizePoints, resolution, resolution);
+                _CachedSizePoints = sizePoints;
+                _CachedResolution = resolution;
+                _CachedFace = Face;
+                _CachedSize = Face.Size;
+            }
+            return _CachedSize;
         }
 
         internal RenderCoordinator RenderCoordinator;
