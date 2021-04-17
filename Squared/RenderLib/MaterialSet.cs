@@ -93,7 +93,8 @@ namespace Squared.Render {
 
         public bool IsDisposed { get; private set; }
 
-        private UnorderedList<Material> MaterialCache = new UnorderedList<Material>();
+        protected HashSet<Material> MaterialCache = new HashSet<Material>(1024, new ReferenceComparer<Material>());
+        protected HashSet<Material> OldMaterialCache = null;
 
         public MaterialSetBase() 
             : base() {
@@ -106,6 +107,9 @@ namespace Squared.Render {
 
         protected void BuildMaterialCache () {
             lock (Lock) {
+                var temp = OldMaterialCache;
+                OldMaterialCache = MaterialCache;
+                MaterialCache = temp ?? new HashSet<Material>(1024, new ReferenceComparer<Material>());
                 MaterialCache.Clear();
 
                 foreach (var field in AllMaterialFields) {
@@ -123,6 +127,13 @@ namespace Squared.Render {
                         if (material != null)
                             MaterialCache.Add(material);
                 }
+
+                foreach (var m in ExtraMaterials)
+                    MaterialCache.Add(m);
+
+                foreach (var old in OldMaterialCache)
+                    if (!MaterialCache.Contains(old))
+                        throw new Exception("A material disappeared when building the material cache");
             }
         }
 
@@ -158,12 +169,9 @@ namespace Squared.Render {
 
             var tMaterial = typeof(Material);
             var tMaterialDictionary = typeof(MaterialDictionary<>);
-
             var tMaterialCollection = typeof(IMaterialCollection);
 
-            collections.Add(() => this.ExtraMaterials);
-
-            foreach (var field in this.GetType().GetFields()) {
+            foreach (var field in GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)) {
                 var f = field;
 
                 if (field.FieldType == tMaterial ||
@@ -171,7 +179,8 @@ namespace Squared.Render {
                     field.FieldType.IsSubclassOf(tMaterial)
                 ) {
                     fields.Add(
-                        () => f.GetValue(this) as Material
+                        () => 
+                            (Material)f.GetValue(this)
                     );
                 } else if (
                     field.FieldType.IsGenericType && 
@@ -179,11 +188,19 @@ namespace Squared.Render {
                 ) {
                     var dictType = field.FieldType;
                     var valuesProperty = dictType.GetProperty("Values");
-                    collections.Add(() => (IMaterialCollection)f.GetValue(this));
+                    collections.Add(
+                        () => 
+                            (IMaterialCollection)f.GetValue(this)
+                    );
                 } else if (
                     tMaterialCollection.IsAssignableFrom(field.FieldType)
                 ) {
-                    collections.Add(() => (IMaterialCollection)f.GetValue(this));
+                    collections.Add(
+                        () => 
+                            (IMaterialCollection)f.GetValue(this)
+                    );
+                } else {
+                    ;
                 }
             }
 
@@ -191,49 +208,16 @@ namespace Squared.Render {
             materialCollections = collections.ToArray();
         }
 
-        private void ForEachMaterial_Slow<T> (Action<Material, T> action, T userData) {
-            foreach (var field in AllMaterialFields) {
-                var material = field();
-                if (material != null)
-                    action(material, userData);
-            }
-
-            foreach (var collection in AllMaterialCollections) {
-                var coll = collection();
-                if (coll == null)
-                    continue;
-
-                coll.ForEachMaterial(action, userData);
-            }
-        }
-
         public void ForEachMaterial<T> (Action<Material, T> action, T userData) {
             if (IsDisposed)
                 return;
 
             lock (Lock) {
-                if (MaterialCache.Count > 0) {
-                    foreach (var m in MaterialCache)
-                        action(m, userData);
-                } else {
-                    ForEachMaterial_Slow(action, userData);
-                }
-            }
-        }
+                if (MaterialCache.Count == 0)
+                    BuildMaterialCache();
 
-        private void ForEachMaterial_Slow<T> (RefMaterialAction<T> action, ref T userData) {
-            foreach (var field in AllMaterialFields) {
-                var material = field();
-                if (material != null)
-                    action(material, ref userData);
-            }
-
-            foreach (var collection in AllMaterialCollections) {
-                var coll = collection();
-                if (coll == null)
-                    continue;
-
-                coll.ForEachMaterial(action, ref userData);
+                foreach (var m in MaterialCache)
+                    action(m, userData);
             }
         }
 
@@ -242,12 +226,11 @@ namespace Squared.Render {
                 return;
 
             lock (Lock) {
-                if (MaterialCache.Count > 0) {
-                    foreach (var m in MaterialCache)
-                        action(m, ref userData);
-                } else {
-                    ForEachMaterial_Slow(action, ref userData);
-                }
+                if (MaterialCache.Count == 0)
+                    BuildMaterialCache();
+
+                foreach (var m in MaterialCache)
+                    action(m, ref userData);
             }
         }
 
@@ -256,21 +239,9 @@ namespace Squared.Render {
                 if (IsDisposed)
                     throw new ObjectDisposedException("MaterialSetBase");
 
-                foreach (var field in AllMaterialFields) {
-                    var material = field();
-                    if (material != null)
-                        yield return material;
-                }
-
-                foreach (var coll in AllMaterialCollections) {
-                    var enumerable = coll()?.Materials;
-                    if (enumerable == null)
-                        continue;
-
-                    foreach (var material in enumerable)
-                        if (material != null)
-                            yield return material;
-                }
+                if (MaterialCache.Count == 0)
+                    BuildMaterialCache();
+                return MaterialCache;
             }
         }
 

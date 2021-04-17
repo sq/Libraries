@@ -298,6 +298,9 @@ namespace Squared.Render {
                 SamplerState samplerState, SamplerState samplerState2,
                 LocalObjectCache<object> textureCache
             ) {
+                if (material == null)
+                    throw new ArgumentNullException("material");
+
                 Material = material;
                 SamplerState = samplerState;
                 SamplerState2 = samplerState2;
@@ -464,6 +467,9 @@ namespace Squared.Render {
             Material material, SamplerState samplerState1, SamplerState samplerState2, LocalObjectCache<object> textureCache,
             out bool failed
         ) {
+            if (material == null)
+                throw new ArgumentNullException("material");
+
             int totalVertCount = 0;
             int vertCount = 0, vertOffset = 0;
             int nativeBatchSizeLimit = NativeBatchSize;
@@ -484,6 +490,7 @@ namespace Squared.Render {
 
             bool result = true;
             failed = false;
+            var worldSpace = WorldSpace;
 
             fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset]) {
                 for (int i = drawCallsPrepared; i < count; i++) {
@@ -519,7 +526,7 @@ namespace Squared.Render {
 
                     FillOneBitmapVertex(
                         softwareBuffer, ref callArray[callIndex + drawCalls.Offset], out pVertices[vertexWritePosition],
-                        zBufferFactor
+                        worldSpace, zBufferFactor
                     );
 
                     vertexWritePosition += 1;
@@ -546,9 +553,9 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void FillOneBitmapVertex (
             BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref BitmapDrawCall call, out BitmapVertex result, 
-            float zBufferFactor
+            bool worldSpace, float zBufferFactor
         ) {
-            var ws = (short)((call.WorldSpace ?? WorldSpace) ? 1 : 0);
+            var ws = (short)((call.WorldSpace ?? worldSpace) ? 1 : 0);
             result = new BitmapVertex {
                 Texture1Region = call.TextureRegion.ToVector4(),
                 MultiplyColor = call.MultiplyColor,
@@ -1232,8 +1239,8 @@ namespace Squared.Render {
             }
         }
 
-#if DEBUG
-        public const bool ValidateFields = false;
+#if DEBUG && PARANOID
+        public const bool ValidateFields = true;
 #else
         public const bool ValidateFields = false;
 #endif

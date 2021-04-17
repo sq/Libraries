@@ -33,7 +33,7 @@ namespace Squared.Render {
         private readonly Effect BaseEffect;
 
         public readonly Effect Effect;
-        public readonly bool   OwnsEffect;
+        public          bool   OwnsEffect;
 
         public readonly Thread OwningThread;
 
@@ -48,10 +48,14 @@ namespace Squared.Render {
         private static int _NextMaterialID;
         public readonly int MaterialID;
 
-        internal DefaultMaterialSet.ActiveViewTransformInfo ActiveViewTransform;
+        public ActiveViewTransformInfo ActiveViewTransform { get; set; }
         internal uint ActiveViewTransformId;
 
         public string Name;
+
+#if DEBUG
+        public StackTrace AllocationStackTrace { get; private set; }
+#endif
 
         private bool _IsDisposed;
 
@@ -59,6 +63,9 @@ namespace Squared.Render {
             MaterialID = Interlocked.Increment(ref _NextMaterialID);
             
             _IsDisposed = false;
+#if DEBUG
+            AllocationStackTrace = new StackTrace(true);
+#endif
         }
 
         public Material (
@@ -80,9 +87,8 @@ namespace Squared.Render {
                 
                 if (technique != null)
                     Effect.CurrentTechnique = technique;
-                else {
+                else
                     throw new ArgumentException("No technique named " + techniqueName, "techniqueName");
-                }
             } else {
                 Effect = effect;
             }
@@ -120,7 +126,9 @@ namespace Squared.Render {
             var result = new Material(
                 Effect, null,
                 newBeginHandlers, newEndHandlers
-            );
+            ) {
+                ActiveViewTransform = ActiveViewTransform,
+            };
             result.DelegatedHintPipeline = this;
             return result;
         }
@@ -134,7 +142,11 @@ namespace Squared.Render {
             var result = new Material(
                 newEffect, null,
                 BeginHandlers, EndHandlers
-            ) { HintPipeline = HintPipeline };
+            ) {
+                HintPipeline = HintPipeline,
+                OwnsEffect = true,
+                ActiveViewTransform = ActiveViewTransform,
+            };
             return result;
         }
 

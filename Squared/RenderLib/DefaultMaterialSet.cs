@@ -141,6 +141,31 @@ namespace Squared.Render {
         }
     }
 
+    public class ActiveViewTransformInfo {
+        public readonly DefaultMaterialSet MaterialSet;
+        public ViewTransform ViewTransform;
+        public uint Id = 0;
+        public Material ActiveMaterial;
+
+        internal ActiveViewTransformInfo (DefaultMaterialSet materialSet) {
+            MaterialSet = materialSet;
+        }
+
+        public bool AutoApply (Material m) {
+            bool hasChanged = false;
+            if (m.ActiveViewTransform != this) {
+                m.ActiveViewTransform = this;
+                hasChanged = true;
+            } else {
+                hasChanged = m.ActiveViewTransformId != Id;
+            }
+
+            MaterialSet.ApplyViewTransformToMaterial(m, ref ViewTransform);
+            m.ActiveViewTransformId = Id;
+            return hasChanged;
+        }
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct DitheringSettings {
         private Vector4 StrengthUnitAndIndex;
@@ -229,6 +254,14 @@ namespace Squared.Render {
         /// Enables preloading for common raster shape shaders. This is... less expensive.
         /// </summary>
         public static bool PreloadCommonRasterShapeShaders = false;
+        /// <summary>
+        /// Enables preloading for filter shaders (blurs, dithering, etc.)
+        /// </summary>
+        public static bool PreloadFilterShaders = false;
+        /// <summary>
+        /// Enables preloading all shaders.
+        /// </summary>
+        public static bool PreloadAllShaders = false;
 
         public struct RasterShaderKey {
             public class Comparer : IEqualityComparer<RasterShaderKey> {
@@ -264,31 +297,6 @@ namespace Squared.Render {
             }
         }
 
-        internal class ActiveViewTransformInfo {
-            public readonly DefaultMaterialSet MaterialSet;
-            public ViewTransform ViewTransform;
-            public uint Id = 0;
-            public Material ActiveMaterial;
-
-            internal ActiveViewTransformInfo (DefaultMaterialSet materialSet) {
-                MaterialSet = materialSet;
-            }
-
-            public bool AutoApply (Material m) {
-                bool hasChanged = false;
-                if (m.ActiveViewTransform != this) {
-                    m.ActiveViewTransform = this;
-                    hasChanged = true;
-                } else {
-                    hasChanged = m.ActiveViewTransformId != Id;
-                }
-
-                MaterialSet.ApplyViewTransformToMaterial(m, ref ViewTransform);
-                m.ActiveViewTransformId = Id;
-                return hasChanged;
-            }
-        }
-
         protected struct MaterialCacheKey {
             public readonly Material Material;
             public readonly RasterizerState RasterizerState;
@@ -302,11 +310,11 @@ namespace Squared.Render {
                 BlendState = blendState;
             }
 
-            private static int HashNullable<T> (T o) where T : class {
+            private static int HashNullable<T> (T o, int shift) where T : class {
                 if (o == null)
                     return 0;
                 else
-                    return o.GetHashCode();
+                    return o.GetHashCode() << shift;
             }
 
             public bool Equals (ref MaterialCacheKey rhs) {
@@ -326,9 +334,9 @@ namespace Squared.Render {
 
             public override int GetHashCode () {
                 return Material.GetHashCode() ^
-                    HashNullable(RasterizerState) ^
-                    HashNullable(DepthStencilState) ^
-                    HashNullable(BlendState);
+                    HashNullable(RasterizerState, 2) ^
+                    HashNullable(DepthStencilState, 4) ^
+                    HashNullable(BlendState, 6);
             }
         }
 
@@ -345,7 +353,7 @@ namespace Squared.Render {
         public readonly EffectProvider BuiltInShaders;
         public readonly ITimeProvider  TimeProvider;
 
-        protected readonly MaterialDictionary<MaterialCacheKey> MaterialCache = new MaterialDictionary<MaterialCacheKey>(
+        protected readonly MaterialDictionary<MaterialCacheKey> MaterialDictionary = new MaterialDictionary<MaterialCacheKey>(
             new MaterialCacheKeyComparer()
         );
 
@@ -395,7 +403,7 @@ namespace Squared.Render {
         /// </summary>
         public DitheringSettings DefaultDitheringSettings;
 
-        internal readonly ActiveViewTransformInfo ActiveViewTransform;
+        public readonly ActiveViewTransformInfo ActiveViewTransform;
 
         internal readonly TypedUniform<ViewTransform> uViewport;
         internal readonly TypedUniform<DitheringSettings> uDithering;
@@ -438,6 +446,13 @@ namespace Squared.Render {
 
                 return Equals((FrameParams)obj);
             }
+        }
+
+        private Material NewMaterial (Effect effect, string techniqueName) {
+            var result = new Material(effect, techniqueName) {
+                ActiveViewTransform = ActiveViewTransform
+            };
+            return result;
         }
 
         public DefaultMaterialSet (RenderCoordinator coordinator, ITimeProvider timeProvider = null) {
@@ -486,106 +501,106 @@ namespace Squared.Render {
             var hslShader = BuiltInShaders.Load("HueBitmap");
             var stippledShader = BuiltInShaders.Load("StippledBitmap");
 
-            Bitmap = new Material(
+            Bitmap = NewMaterial(
                 bitmapShader,
                 "BitmapTechnique"
             );
 
-            HighlightColorBitmap = new Material(
+            HighlightColorBitmap = NewMaterial(
                 bitmapShader,
                 "HighlightColorBitmapTechnique"
             );
 
-            CrossfadeBitmap = new Material(
+            CrossfadeBitmap = NewMaterial(
                 bitmapShader,
                 "CrossfadeBitmapTechnique"
             );
 
-            OverBitmap = new Material(
+            OverBitmap = NewMaterial(
                 bitmapShader,
                 "OverBitmapTechnique"
             );
 
-            UnderBitmap = new Material(
+            UnderBitmap = NewMaterial(
                 bitmapShader,
                 "UnderBitmapTechnique"
             );
 
-            ScreenSpaceBitmapWithLUT = new Material(
+            ScreenSpaceBitmapWithLUT = NewMaterial(
                 bitmapShader,
                 "ScreenSpaceBitmapWithLUTTechnique"
             );
 
-            WorldSpaceBitmapWithLUT = new Material(
+            WorldSpaceBitmapWithLUT = NewMaterial(
                 bitmapShader,
                 "WorldSpaceBitmapWithLUTTechnique"
             );
 
-            ScreenSpaceBitmapToSRGB = new Material(
+            ScreenSpaceBitmapToSRGB = NewMaterial(
                 bitmapShader,
                 "ScreenSpaceBitmapToSRGBTechnique"
             );
 
-            WorldSpaceBitmapToSRGB = new Material(
+            WorldSpaceBitmapToSRGB = NewMaterial(
                 bitmapShader,
                 "WorldSpaceBitmapToSRGBTechnique"
             );
 
-            ScreenSpaceShadowedBitmap = new Material(
+            ScreenSpaceShadowedBitmap = NewMaterial(
                 bitmapShader,
                 "ScreenSpaceShadowedBitmapTechnique"
             );
             ScreenSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
 
-            WorldSpaceShadowedBitmap = new Material(
+            WorldSpaceShadowedBitmap = NewMaterial(
                 bitmapShader,
                 "WorldSpaceShadowedBitmapTechnique"
             );
             WorldSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
 
-            ScreenSpaceShadowedBitmapWithDiscard = new Material(
+            ScreenSpaceShadowedBitmapWithDiscard = NewMaterial(
                 bitmapShader,
                 "ScreenSpaceShadowedBitmapWithDiscardTechnique"
             );
             ScreenSpaceShadowedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
 
-            WorldSpaceShadowedBitmapWithDiscard = new Material(
+            WorldSpaceShadowedBitmapWithDiscard = NewMaterial(
                 bitmapShader,
                 "WorldSpaceShadowedBitmapWithDiscardTechnique"
             );
             WorldSpaceShadowedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
 
-            BitmapWithDiscard = new Material(
+            BitmapWithDiscard = NewMaterial(
                 bitmapShader,
                 "BitmapWithDiscardTechnique"
             );
 
-            ScreenSpaceStippledBitmap = new Material(
+            ScreenSpaceStippledBitmap = NewMaterial(
                 stippledShader,
                 "ScreenSpaceStippledBitmapTechnique"
             );
 
-            WorldSpaceStippledBitmap = new Material(
+            WorldSpaceStippledBitmap = NewMaterial(
                 stippledShader,
                 "WorldSpaceStippledBitmapTechnique"
             );
 
-            ScreenSpacePalettedBitmap = new Material(
+            ScreenSpacePalettedBitmap = NewMaterial(
                 palettedShader,
                 "ScreenSpacePalettedBitmapTechnique"
             );
 
-            WorldSpacePalettedBitmap = new Material(
+            WorldSpacePalettedBitmap = NewMaterial(
                 palettedShader,
                 "WorldSpacePalettedBitmapTechnique"
             );
 
-            ScreenSpacePalettedBitmapWithDiscard = new Material(
+            ScreenSpacePalettedBitmapWithDiscard = NewMaterial(
                 palettedShader,
                 "ScreenSpacePalettedBitmapWithDiscardTechnique"
             );
 
-            WorldSpacePalettedBitmapWithDiscard = new Material(
+            WorldSpacePalettedBitmapWithDiscard = NewMaterial(
                 palettedShader,
                 "WorldSpacePalettedBitmapWithDiscardTechnique"
             );
@@ -594,8 +609,6 @@ namespace Squared.Render {
 
             var bitmapMaterials = new[] {
                 Bitmap,
-                ScreenSpaceBitmapWithLUT,
-                WorldSpaceBitmapWithLUT,
                 ScreenSpaceBitmapToSRGB,
                 WorldSpaceBitmapToSRGB,
                 ScreenSpaceShadowedBitmap,
@@ -603,6 +616,16 @@ namespace Squared.Render {
                 ScreenSpaceShadowedBitmapWithDiscard,
                 WorldSpaceShadowedBitmapWithDiscard,
                 BitmapWithDiscard,
+                CrossfadeBitmap,
+                UnderBitmap,
+                OverBitmap
+            };
+
+            LoadBlurMaterials();
+
+            var filterMaterials = new[] {
+                ScreenSpaceBitmapWithLUT,
+                WorldSpaceBitmapWithLUT,
                 ScreenSpaceStippledBitmap,
                 WorldSpaceStippledBitmap,
                 ScreenSpacePalettedBitmap,
@@ -616,30 +639,41 @@ namespace Squared.Render {
                 ScreenSpaceSepiaBitmap,
                 WorldSpaceSepiaBitmap,
                 HighlightColorBitmap,
-                CrossfadeBitmap,
-                UnderBitmap,
-                OverBitmap
+                ScreenSpaceLightmappedBitmap,
+                ScreenSpaceLightmappedsRGBBitmap,
+                ScreenSpaceHorizontalGaussianBlur,
+                ScreenSpaceVerticalGaussianBlur,
+                ScreenSpaceRadialGaussianBlur,
+                WorldSpaceLightmappedBitmap,
+                WorldSpaceLightmappedsRGBBitmap,
+                WorldSpaceHorizontalGaussianBlur,
+                WorldSpaceVerticalGaussianBlur,
+                WorldSpaceRadialGaussianBlur,
             };
 
             foreach (var m in bitmapMaterials)
                 m.HintPipeline = bitmapHint;
 
-            ScreenSpaceGeometry = new Material(
+            if (PreloadFilterShaders || PreloadAllShaders)
+                foreach (var m in filterMaterials)
+                    m.HintPipeline = bitmapHint;
+
+            ScreenSpaceGeometry = NewMaterial(
                 geometryShader,
                 "ScreenSpaceUntextured"
             );
 
-            WorldSpaceGeometry = new Material(
+            WorldSpaceGeometry = NewMaterial(
                 geometryShader,
                 "WorldSpaceUntextured"
             );
 
-            ScreenSpaceTexturedGeometry = new Material(
+            ScreenSpaceTexturedGeometry = NewMaterial(
                 geometryShader,
                 "ScreenSpaceTextured"
             );
 
-            WorldSpaceTexturedGeometry = new Material(
+            WorldSpaceTexturedGeometry = NewMaterial(
                 geometryShader,
                 "WorldSpaceTextured"
             );
@@ -648,68 +682,67 @@ namespace Squared.Render {
 
             var lightmapShader = BuiltInShaders.Load("Lightmap");
 
-            ScreenSpaceLightmappedBitmap = new Material(
+            ScreenSpaceLightmappedBitmap = NewMaterial(
                 lightmapShader,
                 "ScreenSpaceLightmappedBitmap"
             );
 
-            WorldSpaceLightmappedBitmap = new Material(
+            WorldSpaceLightmappedBitmap = NewMaterial(
                 lightmapShader,
                 "WorldSpaceLightmappedBitmap"
             );
 
-            ScreenSpaceLightmappedsRGBBitmap = new Material(
+            ScreenSpaceLightmappedsRGBBitmap = NewMaterial(
                 lightmapShader,
                 "ScreenSpaceLightmappedsRGBBitmap"
             );
 
-            WorldSpaceLightmappedsRGBBitmap = new Material(
+            WorldSpaceLightmappedsRGBBitmap = NewMaterial(
                 lightmapShader,
                 "WorldSpaceLightmappedsRGBBitmap"
             );
 
-            LoadBlurMaterials();
 
             AutoSetViewTransform();
         }
 
         private void LoadHSLMaterials (Effect hslShader) {
-            ScreenSpaceHueBitmap = new Material(
+            ScreenSpaceHueBitmap = NewMaterial(
                             hslShader,
                             "ScreenSpaceHueBitmapTechnique"
                         );
 
-            WorldSpaceHueBitmap = new Material(
+            WorldSpaceHueBitmap = NewMaterial(
                 hslShader,
                 "WorldSpaceHueBitmapTechnique"
             );
 
-            ScreenSpaceHueBitmapWithDiscard = new Material(
+            ScreenSpaceHueBitmapWithDiscard = NewMaterial(
                 hslShader,
                 "ScreenSpaceHueBitmapWithDiscardTechnique"
             );
 
-            WorldSpaceHueBitmapWithDiscard = new Material(
+            WorldSpaceHueBitmapWithDiscard = NewMaterial(
                 hslShader,
                 "WorldSpaceHueBitmapWithDiscardTechnique"
             );
 
-            ScreenSpaceSepiaBitmap = new Material(
+            ScreenSpaceSepiaBitmap = NewMaterial(
                 hslShader,
                 "ScreenSpaceSepiaBitmapTechnique"
             );
 
-            WorldSpaceSepiaBitmap = new Material(
+            WorldSpaceSepiaBitmap = NewMaterial(
                 hslShader,
                 "WorldSpaceSepiaBitmapTechnique"
             );
 
-            ScreenSpaceSepiaBitmapWithDiscard = new Material(
+            ScreenSpaceSepiaBitmapWithDiscard = NewMaterial(
                 hslShader,
                 "ScreenSpaceSepiaBitmapWithDiscardTechnique"
             );
 
-            WorldSpaceSepiaBitmapWithDiscard = new Material(
+            WorldSpaceSepiaBitmapWithDiscard = NewMaterial(
                 hslShader,
                 "WorldSpaceSepiaBitmapWithDiscardTechnique"
             );
@@ -718,32 +751,32 @@ namespace Squared.Render {
         private void LoadBlurMaterials () {
             var blurShader = BuiltInShaders.Load("GaussianBlur");
 
-            ScreenSpaceHorizontalGaussianBlur = new Material(
+            ScreenSpaceHorizontalGaussianBlur = NewMaterial(
                 blurShader,
                 "ScreenSpaceHorizontalGaussianBlur"
             );
 
-            ScreenSpaceVerticalGaussianBlur = new Material(
+            ScreenSpaceVerticalGaussianBlur = NewMaterial(
                 blurShader,
                 "ScreenSpaceVerticalGaussianBlur"
             );
 
-            ScreenSpaceRadialGaussianBlur = new Material(
+            ScreenSpaceRadialGaussianBlur = NewMaterial(
                 blurShader,
                 "ScreenSpaceRadialGaussianBlur"
             );
 
-            WorldSpaceHorizontalGaussianBlur = new Material(
+            WorldSpaceHorizontalGaussianBlur = NewMaterial(
                 blurShader,
                 "WorldSpaceHorizontalGaussianBlur"
             );
 
-            WorldSpaceVerticalGaussianBlur = new Material(
+            WorldSpaceVerticalGaussianBlur = NewMaterial(
                 blurShader,
                 "WorldSpaceVerticalGaussianBlur"
             );
 
-            WorldSpaceRadialGaussianBlur = new Material(
+            WorldSpaceRadialGaussianBlur = NewMaterial(
                 blurShader,
                 "WorldSpaceRadialGaussianBlur"
             );
@@ -762,7 +795,7 @@ namespace Squared.Render {
                 Simple = simple,
                 HasRamp = ramp
             };
-            var material = new Material(shader, techniqueName);
+            var material = NewMaterial(shader, techniqueName);
             var shapeHint = new Material.PipelineHint {
                 HasIndices = true,
                 VertexFormats = new Type[] {
@@ -772,6 +805,7 @@ namespace Squared.Render {
             };
             if (
                 PreloadAllRasterShapeShaders ||
+                PreloadAllShaders ||
                 (PreloadCommonRasterShapeShaders && !textured && !ramp)
             )
                 material.HintPipeline = shapeHint;
@@ -1074,16 +1108,17 @@ namespace Squared.Render {
             // This breaks lighting
             // m.ActiveViewTransform = ActiveViewTransform;
 
+/*
+#if DEBUG
+            var ep = m.Parameters;
+            ep?.ModelViewMatrix?.SetValue(viewTransform.ModelView);
+            ep?.ProjectionMatrix?.SetValue(viewTransform.Projection);
+            ep?.ScaleAndPosition?.SetValue(new Vector4(viewTransform.Scale.X, viewTransform.Scale.Y, viewTransform.Position.X, viewTransform.Position.Y));
+            ep?.InputAndOutputZRanges?.SetValue(viewTransform.InputAndOutputZRanges);
+#else
+*/
             uViewport.TrySet(m, ref viewTransform);
-
-            /*
-            // HACK: Compatibility with shaders that are compensating for FNA's struct uniform bugs
-            var ep = m.Effect?.Parameters;
-            ep?["ViewportModelView"]?.SetValue(viewTransform.ModelView);
-            ep?["ViewportProjection"]?.SetValue(viewTransform.Projection);
-            ep?["ViewportScale"]?.SetValue(viewTransform.Scale);
-            ep?["ViewportPosition"]?.SetValue(viewTransform.Position);
-            */
+//#endif
         }
 
         /// <summary>
@@ -1134,9 +1169,10 @@ namespace Squared.Render {
 
             var key = new MaterialCacheKey(baseMaterial, rasterizerState, depthStencilState, blendState);
             Material result;
-            if (!MaterialCache.TryGetValue(key, out result)) {
+            if (!MaterialDictionary.TryGetValue(key, out result)) {
                 result = baseMaterial.SetStates(blendState: blendState, depthStencilState: depthStencilState, rasterizerState: rasterizerState);
-                MaterialCache.Add(key, result);
+                MaterialDictionary.Add(key, result);
+                MaterialCache.Add(result);
             }
             return result;
         }
@@ -1163,12 +1199,12 @@ namespace Squared.Render {
             base.Dispose();
 
             BuiltInShaders.Dispose();
-            MaterialCache.Clear();
+            MaterialDictionary.Clear();
         }
     }
 
     public class DefaultMaterialSetEffectParameters {
-        public readonly EffectParameter ViewportPosition, ViewportScale;
+        public readonly EffectParameter ScaleAndPosition, InputAndOutputZRanges;
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
         public readonly EffectParameter BitmapTextureSize, HalfTexel;
         public readonly EffectParameter BitmapTextureSize2, HalfTexel2;
@@ -1182,8 +1218,8 @@ namespace Squared.Render {
             var viewport = effect.Parameters["Viewport"];
 
             if (viewport != null) {
-                ViewportPosition = viewport.StructureMembers["Position"];
-                ViewportScale = viewport.StructureMembers["Scale"];
+                ScaleAndPosition = viewport.StructureMembers["ScaleAndPosition"];
+                InputAndOutputZRanges = viewport.StructureMembers["InputAndOutputZRanges"];
                 ProjectionMatrix = viewport.StructureMembers["Projection"];
                 ModelViewMatrix = viewport.StructureMembers["ModelView"];
             }
