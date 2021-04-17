@@ -286,7 +286,8 @@ namespace Squared.Render {
             var _userData = userData ?? default(Vector4);
             var _opacity = multiplyOpacity ?? 1.0f;
 
-            _DrawCalls.EnsureCapacity(_DrawCalls.Count + count);
+            var newCount = _DrawCalls.Count + count;
+            _DrawCalls.EnsureCapacity(newCount);
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];
                 if (!BitmapDrawCall.CheckValid(ref item))

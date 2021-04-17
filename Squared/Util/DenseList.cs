@@ -292,13 +292,15 @@ namespace Squared.Util {
         }
 
         private void CreateList (int? capacity = null) {
-            const int absoluteMinimum = 16;
+            const int absoluteMinimum = 64;
 
             if (capacity.HasValue)
                 capacity = Math.Max(capacity.Value, absoluteMinimum);
             else if (!capacity.HasValue && ListCapacity.HasValue)
                 // Sensible minimum
                 capacity = Math.Max(ListCapacity.Value, absoluteMinimum);
+            else
+                ;
 
             _HasList = true;
             if (ListPool != null)

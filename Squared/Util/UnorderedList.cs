@@ -269,16 +269,11 @@ namespace Squared.Util {
             if (targetCapacity <= FirstGrowTarget) {
                 newBuffer = _Allocator.Resize(oldBuffer, FirstGrowTarget);
             } else {
-                // Intended behavior:
-                // Start at X (128), first grow after that goes to Y (2048),
-                //  any growths after that double up to the 'slow threshold' Z (102400),
-                //  at which point we grow incrementally by fixed amounts instead of doubling
-                //  because doubling will exhaust available memory (especially in 32-bit processes)
-                const int slowThreshold = 102400;
-                const int slowSize = 65536;
-                var newCapacity = 1 << (int)Math.Ceiling(Math.Log(targetCapacity, 2));
-                if (newCapacity >= slowThreshold)
-                    newCapacity = ((targetCapacity + slowSize - 1) / slowSize) * slowSize;
+                var newCapacity = _BufferSize;
+
+                while (newCapacity < targetCapacity)
+                    // 1.45 growth ratio is better than 2.0, and linear growth ratio is Bad
+                    newCapacity = (newCapacity * 145 / 100);
 
                 newBuffer = _Allocator.Resize(oldBuffer,  newCapacity);
             }
