@@ -1223,7 +1223,7 @@ namespace PRGUI.Demo {
             if ((opacity >= 1) && (control.Context.TopLevelFocused == control))
                 renderer.Draw(ref drawCall, blendState: RenderStates.PorterDuffOver);
             else
-                renderer.Draw(ref drawCall, material: Material, blendState: RenderStates.PorterDuffOver);
+                renderer.Draw(ref drawCall, material: Material);
         }
 
         public bool WillComposite (Control control, float opacity) {

@@ -1172,7 +1172,6 @@ namespace Squared.Render {
             if (!MaterialDictionary.TryGetValue(key, out result)) {
                 result = baseMaterial.SetStates(blendState: blendState, depthStencilState: depthStencilState, rasterizerState: rasterizerState);
                 MaterialDictionary.Add(key, result);
-                MaterialCache.Add(result);
             }
             return result;
         }
