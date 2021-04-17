@@ -16,6 +16,8 @@ namespace Squared.Util {
         }
 
         public class DefaultAllocator : Allocator {
+            public static DefaultAllocator Instance = new DefaultAllocator();
+
             public override ArraySegment<T> Allocate (int minimumSize) {
                 return new ArraySegment<T>(new T[minimumSize]);
             }
@@ -264,17 +266,24 @@ namespace Squared.Util {
             return new Enumerator(this, _BufferOffset, _Count);
         }
 
+        public static int PickGrowthSize (int currentSize, int targetSize) {
+            var newCapacity = currentSize;
+            if (newCapacity < 8)
+                newCapacity = 8;
+
+            while (newCapacity < targetSize)
+                // 1.45 growth ratio is better than 2.0, and linear growth ratio is Bad
+                newCapacity = (newCapacity * 145 / 100);
+
+            return newCapacity;
+        }
+
         private void Grow (int targetCapacity) {
             ArraySegment<T> newBuffer, oldBuffer = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
             if (targetCapacity <= FirstGrowTarget) {
                 newBuffer = _Allocator.Resize(oldBuffer, FirstGrowTarget);
             } else {
-                var newCapacity = _BufferSize;
-
-                while (newCapacity < targetCapacity)
-                    // 1.45 growth ratio is better than 2.0, and linear growth ratio is Bad
-                    newCapacity = (newCapacity * 145 / 100);
-
+                var newCapacity = PickGrowthSize(_BufferSize, targetCapacity);
                 newBuffer = _Allocator.Resize(oldBuffer,  newCapacity);
             }
 

@@ -602,6 +602,7 @@ namespace Squared.Render.Text {
         /// </summary>
         public void MakeLayoutEngine (out StringLayoutEngine result) {
             result = new StringLayoutEngine {
+                allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
                 buffer = _Buffer,
                 position = _Position,
                 overrideColor = _Color,
@@ -714,23 +715,10 @@ namespace Squared.Render.Text {
                 int length = _Text.Length;
 
                 int capacity = length + StringLayoutEngine.DefaultBufferPadding;
-                // HACK: Make room for parse error messages
-                if (_RichText)
-                    capacity += 1024;
 
-                if ((_Buffer.Array != null) && (_Buffer.Count < capacity))
-                    _Buffer = default(ArraySegment<BitmapDrawCall>);
-
-                if (_Buffer.Array == null) {
-                    var newCapacity = 1 << (int)Math.Ceiling(Math.Log(capacity, 2));
-                    var array = new BitmapDrawCall[newCapacity];
-                    _Buffer = new ArraySegment<BitmapDrawCall>(array);
+                if (_Buffer.Array != null) {
+                    Array.Clear(_Buffer.Array, _Buffer.Offset, _Buffer.Count);
                 }
-
-                if (_Buffer.Count < capacity)
-                    throw new InvalidOperationException("Buffer too small");
-
-                Array.Clear(_Buffer.Array, _Buffer.Offset, _Buffer.Count);
 
                 StringLayoutEngine le;
                 var rls = default(RichTextLayoutState);
@@ -790,6 +778,8 @@ namespace Squared.Render.Text {
                         foreach (var kvp in le.HitTests) 
                             ht[kvp.Position] = kvp;
                     }
+
+                    _Buffer = le.buffer;
                 } finally {
                     le.Dispose();
                 }

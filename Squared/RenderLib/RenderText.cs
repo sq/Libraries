@@ -202,6 +202,7 @@ namespace Squared.Render.Text {
         public const int DefaultBufferPadding = 4;
 
         // Parameters
+        public UnorderedList<BitmapDrawCall>.Allocator allocator;
         public ArraySegment<BitmapDrawCall> buffer;
         public Vector2?            position;
         public Color?              overrideColor;
@@ -658,19 +659,23 @@ namespace Squared.Render.Text {
 
             if (buffer.Array == null) {
                 ownsBuffer = true;
-                buffer = new ArraySegment<BitmapDrawCall>(
-                    new BitmapDrawCall[paddedCount]
-                );
+                buffer = allocator?.Allocate(paddedCount) ??
+                    new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[paddedCount]);
             } else if (buffer.Count < paddedCount) {
-                if (ownsBuffer) {
+                if (ownsBuffer || (allocator != null)) {
                     var oldBuffer = buffer;
-                    var newSize = Math.Min(paddedCount + 256, oldBuffer.Count * 2);
-                    buffer = new ArraySegment<BitmapDrawCall>(
-                        new BitmapDrawCall[newSize]
-                    );
-                    Array.Copy(oldBuffer.Array, buffer.Array, oldBuffer.Count);
+                    var newSize = UnorderedList<BitmapDrawCall>.PickGrowthSize(buffer.Count, paddedCount);
+                    if (allocator != null)
+                        buffer = allocator.Resize(buffer, newSize);
+                    else {
+                        buffer = new ArraySegment<BitmapDrawCall>(
+                            new BitmapDrawCall[newSize]
+                        );
+                        Array.Copy(oldBuffer.Array, buffer.Array, oldBuffer.Count);
+                    }
                 } else if (buffer.Count >= count) {
                     // This is OK, there should be enough room...
+                    ;
                 } else {
                     throw new InvalidOperationException("Buffer too small");
                 }
@@ -1146,9 +1151,12 @@ namespace Squared.Render.Text {
                 colIndex += 1;
             }
 
-            var segment = new ArraySegment<BitmapDrawCall>(
-                buffer.Array, buffer.Offset, drawCallsWritten
-            );
+            var segment = 
+                measureOnly
+                    ? default(ArraySegment<BitmapDrawCall>)
+                    : new ArraySegment<BitmapDrawCall>(
+                        buffer.Array, buffer.Offset, drawCallsWritten
+                    );
 
             maxXUnconstrained = Math.Max(maxXUnconstrained, currentLineMaxXUnconstrained);
             maxX = Math.Max(maxX, currentLineMaxX);
@@ -1369,6 +1377,7 @@ namespace Squared.Render {
             bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null
         ) {
             var state = new StringLayoutEngine {
+                allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
                 position = position,
                 defaultColor = color ?? Color.White,
                 scale = scale,
@@ -1413,6 +1422,7 @@ namespace Squared.Render {
             bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null
         ) {
             var state = new StringLayoutEngine {
+                allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
                 position = position,
                 defaultColor = color ?? Color.White,
                 scale = scale,

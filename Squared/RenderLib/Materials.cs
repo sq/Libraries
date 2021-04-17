@@ -54,6 +54,7 @@ namespace Squared.Render {
         public string Name;
 
 #if DEBUG
+        public bool CaptureStackTraces = false;
         public StackTrace AllocationStackTrace { get; private set; }
 #endif
 
@@ -64,7 +65,8 @@ namespace Squared.Render {
             
             _IsDisposed = false;
 #if DEBUG
-            AllocationStackTrace = new StackTrace(true);
+            if (CaptureStackTraces)
+                AllocationStackTrace = new StackTrace(true);
 #endif
         }
 
