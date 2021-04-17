@@ -44,12 +44,16 @@ namespace Squared.Render {
             if (OcclusionQuery != null)
                 OcclusionQuery.Begin();
 
-            if (MaterialSet != null) {
-                if (ViewTransform.HasValue)
-                    MaterialSet.PushViewTransform(ref ViewTransform);
+            bool popViewTransform = false;
 
-                if (ViewTransformModifier != null)
-                    MaterialSet.PushViewTransform(ViewTransformModifier(MaterialSet.ViewTransform, _UserData));
+            if (MaterialSet != null) {
+                if (ViewTransform.HasValue || ViewTransformModifier != null) {
+                    var vt = ViewTransform ?? MaterialSet.ViewTransform;
+                    if (ViewTransformModifier != null)
+                        vt = ViewTransformModifier(vt, _UserData);
+                    MaterialSet.PushViewTransform(ref vt);
+                    popViewTransform = true;
+                }
             }
 
             if (_Before != null)
@@ -71,8 +75,8 @@ namespace Squared.Render {
 
                 base.Issue(manager);
 
-                if (ViewTransform.HasValue || ViewTransformModifier != null)
-                    MaterialSet?.PopViewTransform();
+                if (popViewTransform)
+                    MaterialSet.PopViewTransform();
 
                 manager.BatchGroupStack.Pop();
             }

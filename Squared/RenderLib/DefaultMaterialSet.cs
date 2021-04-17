@@ -960,11 +960,19 @@ namespace Squared.Render {
         /// <summary>
         /// Immediately restores the previous view transform of the material set, without waiting for a clear.
         /// </summary>
-        public ViewTransform PopViewTransform () {
-            var result = ViewTransformStack.Pop();
+        public void PopViewTransform (out ViewTransform previous) {
+            previous = ViewTransformStack.Pop();
             var current = ViewTransformStack.Peek();
             ApplyViewTransform(ref current, !LazyViewTransformChanges);
-            return result;
+        }
+
+        /// <summary>
+        /// Immediately restores the previous view transform of the material set, without waiting for a clear.
+        /// </summary>
+        public void PopViewTransform () {
+            ViewTransformStack.Pop();
+            var current = ViewTransformStack.Peek();
+            ApplyViewTransform(ref current, !LazyViewTransformChanges);
         }
 
         private FrameParams? LastAppliedFrameParams;
