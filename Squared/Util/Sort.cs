@@ -68,8 +68,10 @@ namespace Squared.Util {
         )
             where TComparer : IComparer<TElement>
         {
-            var adapter = new RefComparerAdapter<TComparer, TElement>(comparer);
-            FastCLRSortRef(data, adapter, offset, count);
+            int actualOffset = offset.GetValueOrDefault(0),
+                actualCount = count.GetValueOrDefault(data.Count - actualOffset);
+            var sorter = new FastCLRSorter<TElement, IComparer<TElement>>(data, comparer);
+            sorter.Sort(actualOffset, actualCount);
         }
 
         public static void IndexedSort<TElement, TComparer>(
@@ -89,9 +91,14 @@ namespace Squared.Util {
             int actualOffset = offset.GetValueOrDefault(0),
                 actualCount = count.GetValueOrDefault(data.Count - actualOffset);
 
-            var sorter = new FastCLRSorter<TElement, TComparer>(data, comparer);
-
-            sorter.Sort(actualOffset, actualCount);
+            if (comparer is IRefComparerAdapter<TElement> wrapper) {
+                // FIXME: Devirtualize somehow
+                var sorter = new FastCLRSorter<TElement, IComparer<TElement>>(data, wrapper.Comparer);
+                sorter.Sort(actualOffset, actualCount);
+            } else {
+                var sorter = new FastCLRSorterRef<TElement, TComparer>(data, comparer);
+                sorter.Sort(actualOffset, actualCount);
+            }
         }
 
         public static void IndexedSortRef<TElement, TComparer>(

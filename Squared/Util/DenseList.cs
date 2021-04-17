@@ -703,6 +703,7 @@ namespace Squared.Util {
             public int Index;
             public T Value;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public IndexAndValue (ref DenseList<T> list, int[] indices, int index) {
                 if (indices != null) {
                     if (index >= indices.Length) {
@@ -717,6 +718,7 @@ namespace Squared.Util {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int CompareValues<TComparer> (TComparer comparer, ref IndexAndValue a, ref IndexAndValue b) 
             where TComparer : IRefComparer<T>
         {
@@ -730,24 +732,9 @@ namespace Squared.Util {
                 field = value.Value;
         }
 
-        /// <summary>
-        /// Performs an in-place sort of the DenseList.
-        /// NOTE: If the list is small this method may sort the values instead of the indices.
-        /// </summary>
-        /// <param name="indices">The element indices to use for sorting.</param>
-        public void Sort<TComparer> (TComparer comparer, int[] indices = null)
+        private void Sort_Small<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IRefComparer<T>
         {
-            if (_HasList) {
-                EnsureList();
-                if (indices != null)
-                    Items.IndexedSortRef(comparer, indices);
-                else
-                    Items.FastCLRSortRef(comparer);
-
-                return;
-            }
-
             var count = Storage.Count;
             if (count <= 1)
                 return;
@@ -825,6 +812,31 @@ namespace Squared.Util {
                 FlushValueOrIndex(ref v3, 2, ref Storage.Item3, indices);
             if (count > 3)
                 FlushValueOrIndex(ref v4, 3, ref Storage.Item4, indices);
+        }
+
+        private void Sort_Large<TComparer> (TComparer comparer, int[] indices)
+            where TComparer : IRefComparer<T> 
+        {
+            if (indices != null)
+                Items.IndexedSortRef(comparer, indices);
+            else
+                Items.FastCLRSortRef(comparer);
+        }
+
+        /// <summary>
+        /// Performs an in-place sort of the DenseList.
+        /// NOTE: If the list is small this method may sort the values instead of the indices.
+        /// </summary>
+        /// <param name="indices">The element indices to use for sorting.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Sort<TComparer> (TComparer comparer, int[] indices = null)
+            where TComparer : IRefComparer<T>
+        {
+            if (_HasList) {
+                Sort_Large(comparer, indices);
+            } else {
+                Sort_Small(comparer, indices);
+            }
         }
 
         public void Dispose () {

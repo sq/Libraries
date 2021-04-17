@@ -20,9 +20,9 @@ namespace Squared.Render {
             else if (y == null)
                 return 1;
 
-            var typeResult = x.TypeId.CompareTo(y.TypeId);
+            var typeResult = x.TypeId - y.TypeId;
             if (typeResult == 0)
-                return x.Layer.CompareTo(y.Layer);
+                return x.Layer - y.Layer;
             else
                 return typeResult;
         }
@@ -34,7 +34,7 @@ namespace Squared.Render {
     }
 
     public static class BatchCombiner {
-        public static readonly IRefComparer<Batch> BatchTypeSorter = new BatchTypeSorter();
+        public static readonly BatchTypeSorter BatchTypeSorter = new BatchTypeSorter();
         public static readonly List<IBatchCombiner> Combiners = new List<IBatchCombiner>();
 
         /// <summary>
