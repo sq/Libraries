@@ -16,6 +16,7 @@ namespace Squared.Render {
     public interface IMaterialCollection {
         void ForEachMaterial<T> (Action<Material, T> action, T userData);
         void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData);
+        void AddToSet (HashSet<Material> set);
         IEnumerable<Material> Materials { get; }
     }
 
@@ -37,6 +38,11 @@ namespace Squared.Render {
                 material.Dispose();
 
             Clear();
+        }
+
+        public void AddToSet (HashSet<Material> set) {
+            for (int i = 0, c = Count; i < c; i++)
+                set.Add(this[i]);
         }
 
         public IEnumerable<Material> Materials => this;
@@ -68,7 +74,12 @@ namespace Squared.Render {
                 action(material, ref userData);
         }
 
-        public IEnumerable<Material> Materials => this.Values;
+        public void AddToSet (HashSet<Material> set) {
+            foreach (var material in Values)
+                set.Add(material);
+        }
+
+        public IEnumerable<Material> Materials => Values;
     }
 
     public abstract class MaterialSetBase : IDisposable {
@@ -114,15 +125,8 @@ namespace Squared.Render {
                         MaterialCache.Add(material);
                 }
 
-                foreach (var coll in AllMaterialCollections) {
-                    var enumerable = coll()?.Materials;
-                    if (enumerable == null)
-                        continue;
-
-                    foreach (var material in enumerable)
-                        if (material != null)
-                            MaterialCache.Add(material);
-                }
+                foreach (var coll in AllMaterialCollections)
+                    coll()?.AddToSet(MaterialCache);
 
                 foreach (var m in ExtraMaterials)
                     MaterialCache.Add(m);

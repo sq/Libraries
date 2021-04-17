@@ -876,10 +876,16 @@ namespace Squared.Render {
             public void Execute () {
                 Context.Validate(Batch, false);
 
-                if (!Batch.State.IsCombined)
+                var isCombined = false;
+                if (Batch is Batch b)
+                    b.GetState(out bool temp, out isCombined, out bool temp2, out bool temp3, out bool temp4);
+                else
+                    b = null;
+
+                if (!isCombined)
                     Batch.Prepare(Context);
 
-                Batch.State.IsPrepareQueued = false;
+                b?.SetPrepareQueued(false);
             }
         };
 
@@ -941,28 +947,29 @@ namespace Squared.Render {
         }
 
         internal void ValidateBatch (IBatch batch, bool enqueuing) {
-            var state = batch.State;
+            var b = (Batch)batch;
+            b.GetState(out bool isInitialized, out bool isCombined, out bool isPrepareQueued, out bool isPrepared, out bool isIssued);
             Thread.MemoryBarrier();
 
-            if (!state.IsInitialized)
+            if (!isInitialized)
                 throw new Exception("Uninitialized batch");
             /*
             else if (state.IsCombined)
                 throw new Exception("Batch combined");
             */
-            else if (state.IsPrepared)
+            else if (isPrepared)
                 throw new Exception("Batch already prepared");
-            else if (state.IsIssued)
+            else if (isIssued)
                 throw new Exception("Batch already issued");
 
             Thread.MemoryBarrier();
             if (enqueuing) {
-                if (state.IsPrepareQueued)
+                if (isPrepareQueued)
                     throw new Exception("Batch already queued for prepare");
 
                 Thread.MemoryBarrier();
 
-                state.IsPrepareQueued = true;
+                b.SetPrepareQueued(true);
             }
         }
 
@@ -1023,15 +1030,15 @@ namespace Squared.Render {
             } else {
 #endif
 
-            var state = batch.State;
-            if (!state.IsInitialized)
+            batch.GetState(out bool isInitialized, out bool isCombined, out bool isPrepareQueued, out bool isPrepared, out bool temp1);
+            if (!isInitialized)
                 throw new BatchIssueFailedException(batch, new Exception("Batch not initialized"));
-            else if (state.IsCombined)
+            else if (isCombined)
                 // HACK
                 return;
-            else if (state.IsPrepareQueued)
+            else if (isPrepareQueued)
                 throw new BatchIssueFailedException(batch, new Exception("Batch in prepare queue"));
-            else if (!state.IsPrepared)
+            else if (!isPrepared)
                 throw new BatchIssueFailedException(batch, new Exception("Batch not prepared"));
 
             try {

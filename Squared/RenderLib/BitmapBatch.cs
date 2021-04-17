@@ -96,7 +96,7 @@ namespace Squared.Render {
                 }
 
                 br._DrawCalls.Clear();
-                rhs.State.IsCombined = true;
+                rhs.SetCombined(true);
                 if (CaptureStackTraces) {
                     if (lhs.BatchesCombinedIntoThisOne == null)
                         lhs.BatchesCombinedIntoThisOne = new UnorderedList<Batch>();

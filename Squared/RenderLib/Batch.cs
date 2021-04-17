@@ -11,7 +11,6 @@ using Squared.Util;
 
 namespace Squared.Render {
     public interface IBatch : IDisposable {
-        Batch.PrepareState State { get; }
         void Prepare (Batch.PrepareContext context);
         void Suspend ();
     }
@@ -48,7 +47,7 @@ namespace Squared.Render {
             }
         }
 
-        public class PrepareState {
+        public struct PrepareState {
             public volatile bool IsInitialized, IsPrepareQueued, IsPrepared, IsIssued, IsCombined;
         }
 
@@ -79,7 +78,7 @@ namespace Squared.Render {
 
         protected static long _BatchCount = 0;
 
-        public PrepareState State { get; private set; }
+        protected PrepareState State;
 
         internal int TimesIssued = 0;
 
@@ -344,6 +343,24 @@ namespace Squared.Render {
                 return string.Format("{0} '{5}' #{1} {2} layer={4} material={3}", GetType().Name, Index, StateString, Material, Layer, Name);
             else
                 return string.Format("{0} #{1} {2} layer={4} material={3}", GetType().Name, Index, StateString, Material, Layer);
+        }
+
+        internal bool IsPrepareQueued => State.IsPrepareQueued;
+
+        internal void SetCombined (bool newState) {
+            State.IsCombined = newState;
+        }
+
+        internal void SetPrepareQueued (bool newState) {
+            State.IsPrepareQueued = newState;
+        }
+
+        internal void GetState (out bool isInitialized, out bool isCombined, out bool isPrepareQueued, out bool isPrepared, out bool isIssued) {
+            isInitialized = State.IsInitialized;
+            isCombined = State.IsCombined;
+            isPrepareQueued = State.IsPrepareQueued;
+            isPrepared = State.IsPrepared;
+            isIssued = State.IsIssued;
         }
     }
 

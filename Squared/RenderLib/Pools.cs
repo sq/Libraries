@@ -31,7 +31,7 @@ namespace Squared.Render {
         }
 
         void IBatchPool.Release (Batch batch) {
-            if (batch.State.IsPrepareQueued)
+            if (batch.IsPrepareQueued)
                 throw new Exception("Queued for prepare");
 
             Release((T)batch);
