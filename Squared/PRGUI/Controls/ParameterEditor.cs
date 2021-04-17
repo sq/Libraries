@@ -195,8 +195,8 @@ namespace Squared.PRGUI.Controls {
             SetText(ValueEncoder(_Value), true);
         }
 
-        protected override void ComputeScaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeScaledPadding(context, decorations, out result);
+        protected override void ComputeScaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputeScaledPadding(ref context, decorations, out result);
             var gauge = context.DecorationProvider.ParameterGauge;
             if ((gauge != null) && Minimum.HasValue && Maximum.HasValue) {
                 if (gauge.Padding.Top > 0)
@@ -206,8 +206,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeUnscaledPadding(context, decorations, out result);
+        protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputeUnscaledPadding(ref context, decorations, out result);
 
             if (Increment.HasValue) {
                 result.Left += ArrowPadding;
@@ -311,8 +311,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
 
             var gauge = context.DecorationProvider.ParameterGauge;
             if (
@@ -334,7 +334,7 @@ namespace Squared.PRGUI.Controls {
                 gaugeBox.Height -= 1;
                 tempSettings.Box = settings.ContentBox;
                 tempSettings.ContentBox = gaugeBox;
-                gauge.Rasterize(context, ref renderer, tempSettings);
+                gauge.Rasterize(ref context, ref renderer, tempSettings);
             }
 
             // Draw in the "Above" pass to ensure it is not clipped (better batching)

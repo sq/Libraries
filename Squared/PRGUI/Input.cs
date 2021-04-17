@@ -86,7 +86,7 @@ namespace Squared.PRGUI.Input {
         void SetContext (UIContext context);
         void Update (ref InputState previous, ref InputState current);
         void SetTextInputState (bool enabled);
-        void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer);
+        void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer);
     }
 
     public struct KeyboardModifiers {
@@ -259,7 +259,7 @@ namespace Squared.PRGUI.Input {
             Context.UpdateComposition(text, cursorPosition, length);
         }
 
-        public void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer) {
+        public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer) {
         }
     }
 
@@ -324,7 +324,7 @@ namespace Squared.PRGUI.Input {
         public void SetTextInputState (bool enabled) {
         }
 
-        public void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer) {
+        public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer) {
         }
     }
 
@@ -719,7 +719,7 @@ namespace Squared.PRGUI.Input {
             };
         }
 
-        public void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer) {
+        public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer) {
             if (!Context.IsPriorityInputSource(this))
                 return;
 
@@ -732,10 +732,10 @@ namespace Squared.PRGUI.Input {
 
             var unsnapped = CurrentUnsnappedPosition ?? pos;
             MakeSettingsForPosition(unsnapped, total, padding, out DecorationSettings settings);
-            decorator.Rasterize(context, ref renderer, settings);
+            decorator.Rasterize(ref context, ref renderer, settings);
 
             settings.Box = new RectF(unsnapped, pos - unsnapped);
-            context.DecorationProvider.VirtualCursorAnchor?.Rasterize(context, ref renderer, settings);
+            context.DecorationProvider.VirtualCursorAnchor?.Rasterize(ref context, ref renderer, settings);
 
             if (SnapToControl != null)
                 return;

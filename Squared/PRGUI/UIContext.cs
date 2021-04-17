@@ -221,7 +221,7 @@ namespace Squared.PRGUI {
                 RetainCaptureRequested = null;
         }
 
-        private void DoUpdateLayoutInternal (UIOperationContext context, bool secondTime) {
+        private void DoUpdateLayoutInternal (ref UIOperationContext context, bool secondTime) {
             Layout.CanvasSize = CanvasSize;
             Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row | ControlFlags.Container_Constrain_Size);
 
@@ -237,14 +237,14 @@ namespace Squared.PRGUI {
                 );
         }
 
-        private bool NotifyLayoutListeners (UIOperationContext context) {
+        private bool NotifyLayoutListeners (ref UIOperationContext context) {
             bool relayoutRequested = context.RelayoutRequestedForVisibilityChange;
             if (relayoutRequested && LogRelayoutRequests)
                 Log($"Relayout requested due to visibility change");
 
             foreach (var listener in context.PostLayoutListeners) {
                 var wasRequested = relayoutRequested;
-                listener.OnLayoutComplete(context, ref relayoutRequested);
+                listener.OnLayoutComplete(ref context, ref relayoutRequested);
                 if (relayoutRequested != wasRequested) {
                     var ctl = (Control)listener;
                     if (LogRelayoutRequests)
@@ -268,13 +268,13 @@ namespace Squared.PRGUI {
             try {
                 Layout.Clear();
 
-                DoUpdateLayoutInternal(context, false);
+                DoUpdateLayoutInternal(ref context, false);
                 Layout.Update();
 
-                if (NotifyLayoutListeners(context)) {
-                    DoUpdateLayoutInternal(context, true);
+                if (NotifyLayoutListeners(ref context)) {
+                    DoUpdateLayoutInternal(ref context, true);
                     Layout.Update();
-                    NotifyLayoutListeners(context);
+                    NotifyLayoutListeners(ref context);
                 }
             } finally {
                 Interlocked.CompareExchange(ref _PostLayoutListeners, pll, null);
@@ -728,12 +728,12 @@ namespace Squared.PRGUI {
             var wasUpdatingSubtreeLayout = IsUpdatingSubtreeLayout;
             try {
                 IsUpdatingSubtreeLayout = true;
-                UpdateSubtreeLayout(tempCtx, subtreeRoot);
+                UpdateSubtreeLayout(ref tempCtx, subtreeRoot);
 
-                if (NotifyLayoutListeners(tempCtx)) {
-                    DoUpdateLayoutInternal(tempCtx, true);
-                    UpdateSubtreeLayout(tempCtx, subtreeRoot);
-                    NotifyLayoutListeners(tempCtx);
+                if (NotifyLayoutListeners(ref tempCtx)) {
+                    DoUpdateLayoutInternal(ref tempCtx, true);
+                    UpdateSubtreeLayout(ref tempCtx, subtreeRoot);
+                    NotifyLayoutListeners(ref tempCtx);
                 }
             } finally {
                 IsUpdatingSubtreeLayout = wasUpdatingSubtreeLayout;
@@ -741,7 +741,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        private void UpdateSubtreeLayout (UIOperationContext context, Control subtreeRoot) {
+        private void UpdateSubtreeLayout (ref UIOperationContext context, Control subtreeRoot) {
             ControlKey parentKey;
             Control parent;
             if (!subtreeRoot.TryGetParent(out parent))
@@ -750,7 +750,7 @@ namespace Squared.PRGUI {
                 parentKey = parent.LayoutKey;
             else {
                 // Just in case for some reason the control's parent also hasn't had layout happen...
-                UpdateSubtreeLayout(context, parent);
+                UpdateSubtreeLayout(ref context, parent);
                 return;
             }
 
@@ -854,6 +854,8 @@ namespace Squared.PRGUI {
     }
 
     public struct UIOperationContext {
+        public static UIOperationContext Default = default(UIOperationContext);
+
         public UIContext UIContext;
         public DefaultMaterialSet Materials => UIContext?.Materials;
         public LayoutContext Layout => UIContext?.Layout;

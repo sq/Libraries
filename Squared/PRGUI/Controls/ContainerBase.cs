@@ -271,7 +271,7 @@ namespace Squared.PRGUI.Controls {
                 (ControlFlags)Container;
         }
 
-        protected virtual ControlKey CreateColumn (UIOperationContext context, ControlKey parent, int columnIndex) {
+        protected virtual ControlKey CreateColumn (ref UIOperationContext context, ControlKey parent, int columnIndex) {
             var result = context.Layout.CreateItem();
             var cf = ComputeContainerFlags();
             var resultFlags = cf | ControlFlags.Container_Prevent_Crush_Y;
@@ -321,7 +321,7 @@ namespace Squared.PRGUI.Controls {
             if (multiColumn) {
                 if (!existingKey.HasValue)
                     for (int i = 0; i < ColumnCount; i++)
-                        ColumnKeys[i] = CreateColumn(context, result, i);
+                        ColumnKeys[i] = CreateColumn(ref context, result, i);
             } else {
                 ColumnKeys[0] = result;
             }
@@ -355,7 +355,7 @@ namespace Squared.PRGUI.Controls {
                 child.AbsoluteDisplayOffset = adoc;
         }
 
-        protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
+        protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             if (HideChildren)
                 return;
 

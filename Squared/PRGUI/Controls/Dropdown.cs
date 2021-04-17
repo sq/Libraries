@@ -126,8 +126,8 @@ namespace Squared.PRGUI.Controls {
             DefaultCreateControlForValue = _DefaultCreateControlForValue;
         }
 
-        protected override void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeUnscaledPadding(context, decorations, out result);
+        protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputeUnscaledPadding(ref context, decorations, out result);
             ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
             var width = (context.DecorationProvider.DropdownArrow.Padding.X * paddingScale.X) +
                 (context.DecorationProvider.DropdownArrow.UnscaledPadding.X);
@@ -256,12 +256,12 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             if (ItemsMenu.IsActive)
                 settings.State |= ControlStates.Pressed;
-            base.OnRasterize(context, ref renderer, settings, decorations);
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
 
-            context.DecorationProvider.DropdownArrow?.Rasterize(context, ref renderer, settings);
+            context.DecorationProvider.DropdownArrow?.Rasterize(ref context, ref renderer, settings);
 
             // FIXME: There is probably a better place to clear this flag
             MenuJustClosed = false;

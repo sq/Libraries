@@ -34,7 +34,7 @@ namespace Squared.PRGUI.Controls {
             return true;
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
         }
     }
 
@@ -66,7 +66,7 @@ namespace Squared.PRGUI.Controls {
             return true;
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
         }
     }
 
@@ -202,10 +202,10 @@ namespace Squared.PRGUI.Controls {
             sb.Append(Checked ? "Yes" : "No");
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             if (Checked)
                 settings.State |= ControlStates.Checked;
-            base.OnRasterize(context, ref renderer, settings, decorations);
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
         }
 
         protected override bool OnEvent<T> (string name, T args) {
@@ -316,10 +316,10 @@ namespace Squared.PRGUI.Controls {
                 sb.Append("Selected");
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             if (Checked)
                 settings.State |= ControlStates.Checked;
-            base.OnRasterize(context, ref renderer, settings, decorations);
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
         }
 
         protected override bool OnEvent<T> (string name, T args) {
@@ -348,7 +348,7 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             return;
         }
 

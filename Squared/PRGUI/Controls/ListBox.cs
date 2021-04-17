@@ -389,8 +389,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
-            base.OnLayoutComplete(context, ref relayoutRequested);
+        protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
+            base.OnLayoutComplete(ref context, ref relayoutRequested);
 
             var children = Children;
             if (children.Count > 0) {
@@ -673,7 +673,7 @@ namespace Squared.PRGUI.Controls {
             SetSelectedIndex(-1, true);
         }
 
-        protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
+        protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             var selectionDecorator = context.DecorationProvider.ListSelection;
             if (selectionDecorator != null) {
                 var oldPass = context.Pass;
@@ -706,13 +706,13 @@ namespace Squared.PRGUI.Controls {
                         State = settings.State
                     };
                     // FIXME
-                    selectionDecorator.Rasterize(context, ref passSet.Below, selectionSettings);
+                    selectionDecorator.Rasterize(ref context, ref passSet.Below, selectionSettings);
                 }
                 context.Pass = oldPass;
                 passSet.Below.Layer += 1;
             }
 
-            base.OnRasterizeChildren(context, ref passSet, settings);
+            base.OnRasterizeChildren(ref context, ref passSet, settings);
         }
 
         private int lastOffset1 = -1,

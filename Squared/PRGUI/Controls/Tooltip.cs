@@ -65,8 +65,8 @@ namespace Squared.PRGUI.Controls {
             Aligner.AlignmentPending = true;
         }
 
-        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
-            Aligner.EnsureAligned(context, ref relayoutRequested);
+        void IPostLayoutListener.OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
+            Aligner.EnsureAligned(ref context, ref relayoutRequested);
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {

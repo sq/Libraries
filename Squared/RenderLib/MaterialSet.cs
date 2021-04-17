@@ -94,7 +94,6 @@ namespace Squared.Render {
         public bool IsDisposed { get; private set; }
 
         protected HashSet<Material> MaterialCache = new HashSet<Material>(1024, new ReferenceComparer<Material>());
-        protected HashSet<Material> OldMaterialCache = null;
 
         public MaterialSetBase() 
             : base() {
@@ -107,9 +106,6 @@ namespace Squared.Render {
 
         protected void BuildMaterialCache () {
             lock (Lock) {
-                var temp = OldMaterialCache;
-                OldMaterialCache = MaterialCache;
-                MaterialCache = temp ?? new HashSet<Material>(1024, new ReferenceComparer<Material>());
                 MaterialCache.Clear();
 
                 foreach (var field in AllMaterialFields) {
@@ -130,10 +126,6 @@ namespace Squared.Render {
 
                 foreach (var m in ExtraMaterials)
                     MaterialCache.Add(m);
-
-                foreach (var old in OldMaterialCache)
-                    if (!MaterialCache.Contains(old))
-                        throw new Exception("A material disappeared when building the material cache");
             }
         }
 

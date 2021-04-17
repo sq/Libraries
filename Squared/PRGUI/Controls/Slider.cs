@@ -295,15 +295,15 @@ namespace Squared.PRGUI.Controls {
             return thumbSize;
         }
 
-        protected override void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeUnscaledPadding(context, decorations, out result);
+        protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputeUnscaledPadding(ref context, decorations, out result);
             var thumbSize = ComputeThumbSize();
             result.Left += thumbSize.X * 0.5f;
             result.Right += thumbSize.X * 0.5f;
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
 
             renderer.Layer += 1;
 
@@ -313,10 +313,10 @@ namespace Squared.PRGUI.Controls {
                 var hasInterval = (interval > float.Epsilon) && (interval < rangeSize) && ((rangeSize / interval) < MaxNotchCount);
 
                 if (hasInterval)
-                    DrawNotches(context, ref renderer, settings, decorations, interval, rangeSize);
+                    DrawNotches(ref context, ref renderer, settings, decorations, interval, rangeSize);
 
                 if ((Maximum > 0) && (Minimum < 0))
-                    DrawCenterMark(context, ref renderer, settings, decorations, rangeSize);
+                    DrawCenterMark(ref context, ref renderer, settings, decorations, rangeSize);
 
                 renderer.Layer += 1;
             }
@@ -334,12 +334,12 @@ namespace Squared.PRGUI.Controls {
             thumbSettings.State = (thumbSettings.State & ~ControlStates.Hovering);
             if (hoveringThumb)
                 thumbSettings.State |= ControlStates.Hovering;
-            thumb.Rasterize(context, ref renderer, thumbSettings);
+            thumb.Rasterize(ref context, ref renderer, thumbSettings);
             // renderer.RasterizeRectangle(thumbSettings.Box.Position, thumbSettings.Box.Extent, 1f, Color.Red * 0.5f);
         }
 
         private void DrawNotches (
-            UIOperationContext context, ref ImperativeRenderer renderer, 
+            ref UIOperationContext context, ref ImperativeRenderer renderer, 
             DecorationSettings settings, IDecorator decorations, 
             float interval, float rangeSize
         ) {
@@ -357,7 +357,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void DrawCenterMark (
-            UIOperationContext context, ref ImperativeRenderer renderer, 
+            ref UIOperationContext context, ref ImperativeRenderer renderer, 
             DecorationSettings settings, IDecorator decorations, 
             float rangeSize
         ) {

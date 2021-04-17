@@ -251,8 +251,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
 
             if (context.Pass == Pass) {
                 if (Image.IsDisposedOrNull)
@@ -292,10 +292,10 @@ namespace Squared.PRGUI.Controls {
             }
 
             if (ShowLoadingSpinner)
-                context.DecorationProvider.LoadingSpinner?.Rasterize(context, ref renderer, settings);
+                context.DecorationProvider.LoadingSpinner?.Rasterize(ref context, ref renderer, settings);
         }
 
-        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+        void IPostLayoutListener.OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
             if ((LayoutKey.IsInvalid) || (_Image.Instance == null)) {
                 AreRecentRectsValid = false;
                 return;

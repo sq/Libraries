@@ -388,10 +388,10 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
-            base.OnLayoutComplete(context, ref relayoutRequested);
+        protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
+            base.OnLayoutComplete(ref context, ref relayoutRequested);
 
-            Aligner.EnsureAligned(context, ref relayoutRequested);
+            Aligner.EnsureAligned(ref context, ref relayoutRequested);
 
             // Remove ourselves from the top-level context if we've just finished fading out.
             // While this isn't strictly necessary, it's worth doing for many reasons
@@ -400,7 +400,7 @@ namespace Squared.PRGUI.Controls {
                 context.UIContext.Controls.Remove(this);
         }
 
-        protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
+        protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             // HACK
             if (!MouseInsideWhenShown.HasValue)
                 MouseInsideWhenShown = GetRect().Contains(MousePositionWhenShown);
@@ -422,13 +422,13 @@ namespace Squared.PRGUI.Controls {
                     selectionSettings.State = ControlStates.Hovering | ControlStates.Focused;
                 else
                     selectionSettings.State = ControlStates.Hovering;
-                context.DecorationProvider.MenuSelection?.Rasterize(context, ref passSet.Below, selectionSettings);
+                context.DecorationProvider.MenuSelection?.Rasterize(ref context, ref passSet.Below, selectionSettings);
                 context.Pass = oldPass;
 
                 passSet.Below.Layer += 1;
             }
 
-            base.OnRasterizeChildren(context, ref passSet, settings);
+            base.OnRasterizeChildren(ref context, ref passSet, settings);
         }
 
         private int lastOffset1 = -1,
@@ -550,7 +550,7 @@ namespace Squared.PRGUI.Controls {
 
             // HACK city: Need an operation context to compute margins
             var tempContext = context.MakeOperationContext();
-            ComputeEffectiveSpacing(tempContext, decorator, out Margins computedPadding, out Margins computedMargins);
+            ComputeEffectiveSpacing(ref tempContext, decorator, out Margins computedPadding, out Margins computedMargins);
             // Shift ourself up/left to compensate for our decoration margins and align perfectly
             //  with any anchor point
             desiredPosition -= new Vector2(computedMargins.Left, computedMargins.Top);
@@ -742,11 +742,11 @@ namespace Squared.PRGUI.Controls {
 
         Vector2? IAlignedControl.AlignedPosition => Aligner.MostRecentAlignedPosition;
 
-        void IAlignedControl.EnsureAligned (UIOperationContext context, ref bool relayoutRequested) {
+        void IAlignedControl.EnsureAligned (ref UIOperationContext context, ref bool relayoutRequested) {
             if (!Aligner.AlignmentPending) {
                 return;
             } else {
-                Aligner.EnsureAligned(context, ref relayoutRequested);
+                Aligner.EnsureAligned(ref context, ref relayoutRequested);
             }
         }
 

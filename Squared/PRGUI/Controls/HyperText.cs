@@ -119,7 +119,7 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
+        protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             foreach (var child in Children)
                 child.Rasterize(ref context, ref passSet, 1);
         }
@@ -250,7 +250,7 @@ namespace Squared.PRGUI.Controls {
             return base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             var outerBox = settings.ContentBox;
             foreach (var b in Rects) {
                 var r = new RectF(b.TopLeft - RectBase + outerBox.Position, b.Size);
@@ -258,7 +258,7 @@ namespace Squared.PRGUI.Controls {
                 r.Position = r.Position - new Vector2(decorations.Margins.Left, decorations.Margins.Top);
                 r.Size = r.Size + decorations.Margins.Size;
                 settings.Box = r;
-                decorations?.Rasterize(context, ref renderer, settings);
+                decorations?.Rasterize(ref context, ref renderer, settings);
             }
         }
 

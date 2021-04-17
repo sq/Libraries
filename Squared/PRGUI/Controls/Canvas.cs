@@ -125,8 +125,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnPreRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
-            base.OnPreRasterize(context, settings, decorations);
+        protected override void OnPreRasterize (ref UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+            base.OnPreRasterize(ref context, settings, decorations);
             AutoDisposeBuffer(context.Prepass.Container.Coordinator);
             int w = (int)Math.Ceiling(settings.ContentBox.Width),
                 h = (int)Math.Ceiling(settings.ContentBox.Height);
@@ -150,8 +150,8 @@ namespace Squared.PRGUI.Controls {
             Paint(ref contentRenderer, ref box);
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
 
             if (context.Pass != RasterizePasses.Content)
                 return;

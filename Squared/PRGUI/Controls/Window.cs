@@ -16,7 +16,7 @@ namespace Squared.PRGUI.Controls {
     public interface IAlignedControl {
         Control AlignmentAnchor { get; }
         Vector2? AlignedPosition { get; }
-        void EnsureAligned (UIOperationContext context, ref bool relayoutRequested);
+        void EnsureAligned (ref UIOperationContext context, ref bool relayoutRequested);
     }
 
     public class ControlAlignmentHelper {
@@ -180,7 +180,7 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        public void EnsureAligned (UIOperationContext context, ref bool relayoutRequested) {
+        public void EnsureAligned (ref UIOperationContext context, ref bool relayoutRequested) {
             if (!Enabled)
                 return;
 
@@ -195,7 +195,7 @@ namespace Squared.PRGUI.Controls {
 
             if (Anchor != null) {
                 if (Anchor is IAlignedControl iac)
-                    iac.EnsureAligned(context, ref relayoutRequested);
+                    iac.EnsureAligned(ref context, ref relayoutRequested);
 
                 var anchorRect = Anchor.GetRect();
                 if (anchorRect != _LastAnchorRect) {
@@ -358,10 +358,10 @@ namespace Squared.PRGUI.Controls {
             return provider?.WindowTitle ?? base.GetTitleDecorator(provider);
         }
         
-        protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
-            base.OnLayoutComplete(context, ref relayoutRequested);
+        protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
+            base.OnLayoutComplete(ref context, ref relayoutRequested);
 
-            Aligner.EnsureAligned(context, ref relayoutRequested);
+            Aligner.EnsureAligned(ref context, ref relayoutRequested);
 
             // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
             if (!Maximized && MostRecentFullSize.HasValue)
@@ -385,12 +385,12 @@ namespace Squared.PRGUI.Controls {
             return changed;
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             // HACK: We don't want collapsing to be enabled the first time a window is clicked
             if (!context.MouseButtonHeld)
                 CollapsingEnabled = settings.State.IsFlagged(ControlStates.ContainsFocus);
 
-            base.OnRasterize(context, ref renderer, settings, decorations);
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
         }
 
         protected override bool OnMouseEvent (string name, MouseEventArgs args) {
@@ -465,11 +465,11 @@ namespace Squared.PRGUI.Controls {
 
         Vector2? IAlignedControl.AlignedPosition => Aligner.MostRecentAlignedPosition;
 
-        void IAlignedControl.EnsureAligned (UIOperationContext context, ref bool relayoutRequested) {
+        void IAlignedControl.EnsureAligned (ref UIOperationContext context, ref bool relayoutRequested) {
             if (!Aligner.AlignmentPending) {
                 return;
             } else {
-                Aligner.EnsureAligned(context, ref relayoutRequested);
+                Aligner.EnsureAligned(ref context, ref relayoutRequested);
             }
         }
     }

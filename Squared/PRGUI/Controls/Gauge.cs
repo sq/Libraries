@@ -129,7 +129,7 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             var decorations = GetDefaultDecorator(Context.Decorations);
             Color? color = null;
-            decorations.GetTextSettings(default(UIOperationContext), default(ControlStates), out Render.Material temp, ref color);
+            decorations.GetTextSettings(ref UIOperationContext.Default, default(ControlStates), out Render.Material temp, ref color);
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             if ((Direction == GaugeDirection.Clockwise) || (Direction == GaugeDirection.CounterClockwise)) {
                 var m = Math.Max(ControlMinimumLength, ControlMinimumHeight);
@@ -218,7 +218,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             var direction = PickDirection(ref settings.Box);
             var fill = context.DecorationProvider.Gauge;
             var originalCbox = settings.ContentBox;
@@ -226,14 +226,14 @@ namespace Squared.PRGUI.Controls {
             settings.UserData = value1;
 
             MakeContentBox(direction, 0f, value1, ref settings.ContentBox);
-            base.OnRasterize(context, ref renderer, settings, decorations);
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
 
             if ((_Limit < 1.0f) && (context.Pass == RasterizePasses.Content)) {
                 settings.ContentBox = originalCbox;
                 settings.UserData = _Limit;
                 settings.Traits.Add("limit");
                 MakeContentBox(direction, _Limit, 1f, ref settings.ContentBox);
-                fill.Rasterize(context, ref renderer, settings);
+                fill.Rasterize(ref context, ref renderer, settings);
             }
         }
     }

@@ -667,31 +667,31 @@ namespace Squared.PRGUI {
                 size = Vector2.One;
         }
 
-        protected virtual void ComputeScaledMargins (UIOperationContext context, IDecorator decorations, out Margins result) {
+        protected virtual void ComputeScaledMargins (ref UIOperationContext context, IDecorator decorations, out Margins result) {
             if (!Appearance.SuppressDecorationMargins && (decorations != null))
                 Margins.Add(ref Margins, decorations.Margins, out result);
             else
                 result = Margins;
         }
 
-        protected virtual void ComputeScaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+        protected virtual void ComputeScaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
             if (!Appearance.SuppressDecorationPadding && (decorations != null))
                 Margins.Add(ref Padding, decorations.Padding, out result);
             else
                 result = Padding;
         }
 
-        protected virtual void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+        protected virtual void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
             if (!Appearance.SuppressDecorationPadding && (decorations != null))
                 result = decorations.UnscaledPadding;
             else
                 result = default(Margins);
         }
 
-        protected void ComputeEffectiveSpacing (UIOperationContext context, IDecorator decorations, out Margins padding, out Margins margins) {
-            ComputeScaledMargins(context, decorations, out Margins scaledMargins);
-            ComputeScaledPadding(context, decorations, out Margins scaledPadding);
-            ComputeUnscaledPadding(context, decorations, out Margins unscaledPadding);
+        protected void ComputeEffectiveSpacing (ref UIOperationContext context, IDecorator decorations, out Margins padding, out Margins margins) {
+            ComputeScaledMargins(ref context, decorations, out Margins scaledMargins);
+            ComputeScaledPadding(ref context, decorations, out Margins scaledPadding);
+            ComputeUnscaledPadding(ref context, decorations, out Margins unscaledPadding);
             ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
             Margins.Scale(ref scaledPadding, ref paddingScale);
             Margins.Add(ref scaledPadding, unscaledPadding, out padding);
@@ -721,7 +721,7 @@ namespace Squared.PRGUI {
             var result = existingKey ?? context.Layout.CreateItem();
 
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
-            ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
+            ComputeEffectiveSpacing(ref context, decorations, out Margins computedPadding, out Margins computedMargins);
 
             MostRecentComputedMargins = computedMargins;
 
@@ -774,7 +774,7 @@ namespace Squared.PRGUI {
             return Appearance.TextDecorator ?? (over ?? GetDefaultDecorator(provider));
         }
 
-        protected ControlStates GetCurrentState (UIOperationContext context) {
+        protected ControlStates GetCurrentState (ref UIOperationContext context) {
             var result = default(ControlStates);
 
             if (!Enabled) {
@@ -807,18 +807,18 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        protected virtual void OnPreRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+        protected virtual void OnPreRasterize (ref UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
             UpdateAnimation(context.NowL);
         }
 
-        protected virtual void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            decorations?.Rasterize(context, ref renderer, settings);
+        protected virtual void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            decorations?.Rasterize(ref context, ref renderer, settings);
         }
 
-        protected virtual void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
+        protected virtual void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
         }
 
-        protected virtual void ApplyClipMargins (UIOperationContext context, ref RectF box) {
+        protected virtual void ApplyClipMargins (ref UIOperationContext context, ref RectF box) {
         }
 
         protected virtual DecorationSettings MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state, bool compositing) {
@@ -890,19 +890,19 @@ namespace Squared.PRGUI {
             }
 
             if (HasPreRasterizeHandler && (pass == RasterizePasses.Content))
-                OnPreRasterize(contentContext, settings, decorations);
+                OnPreRasterize(ref contentContext, settings, decorations);
 
             if (hasNestedContext)
-                OnRasterize(contentContext, ref contentRenderer, settings, decorations);
+                OnRasterize(ref contentContext, ref contentRenderer, settings, decorations);
             else
-                OnRasterize(contentContext, ref renderer, settings, decorations);
+                OnRasterize(ref contentContext, ref renderer, settings, decorations);
 
             if ((pass == RasterizePasses.Content) && HasChildren) {
                 if (hasNestedContext)
-                    OnRasterizeChildren(contentContext, ref childrenPassSet, settings);
+                    OnRasterizeChildren(ref contentContext, ref childrenPassSet, settings);
                 else
                     // FIXME: Save/restore layers?
-                    OnRasterizeChildren(contentContext, ref passSet, settings);
+                    OnRasterizeChildren(ref contentContext, ref passSet, settings);
             }
 
             if (hasNestedContext) {
@@ -926,12 +926,12 @@ namespace Squared.PRGUI {
 
                         // FIXME
                         var temp = settings;
-                        ApplyClipMargins(contentContext, ref temp.Box);
+                        ApplyClipMargins(ref contentContext, ref temp.Box);
 
                         var crLayer = contentRenderer.Layer;
                         contentRenderer.Layer = -999;
                         settings.State = default(ControlStates);
-                        decorations?.Rasterize(contentContext, ref contentRenderer, temp);
+                        decorations?.Rasterize(ref contentContext, ref contentRenderer, temp);
 
                         contentRenderer.Layer = crLayer;
 
@@ -952,7 +952,7 @@ namespace Squared.PRGUI {
 
                 var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
                 var contentBox = GetRect(contentRect: true);
-                var state = GetCurrentState(context);
+                var state = GetCurrentState(ref context);
                 var settings = MakeDecorationSettings(ref box, ref contentBox, state, compositing);
                 if (!IsPassDisabled(RasterizePasses.Below, decorations))
                     RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
@@ -1112,9 +1112,9 @@ namespace Squared.PRGUI {
                 //  may be doing something important like updating animations or repainting a buffer
                 if (HasPreRasterizeHandler) {
                     var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
-                    var state = GetCurrentState(context) | ControlStates.Invisible;
+                    var state = GetCurrentState(ref context) | ControlStates.Invisible;
                     var settings = MakeDecorationSettings(ref box, ref box, state, false);
-                    OnPreRasterize(context, settings, decorations);
+                    OnPreRasterize(ref context, settings, decorations);
                 }
                 return false;
             }

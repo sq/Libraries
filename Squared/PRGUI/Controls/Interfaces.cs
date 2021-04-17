@@ -104,7 +104,7 @@ namespace Squared.PRGUI {
         ///  its parent, and its children will all have valid boxes.
         /// </summary>
         /// <param name="relayoutRequested">Request a second layout pass (if you've changed constraints, etc)</param>
-        void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested);
+        void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested);
     }
 
     public interface ISelectionBearer {

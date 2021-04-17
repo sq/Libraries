@@ -122,7 +122,7 @@ namespace Squared.PRGUI.Controls {
                 material = null;
                 return null;
             }
-            decorations.GetTextSettings(context, state, out material, ref color);
+            decorations.GetTextSettings(ref context, state, out material, ref color);
             TitleLayout.Text = Title;
             TitleLayout.GlyphSource = decorations.GlyphSource;
             TitleLayout.DefaultColor = color ?? Color.White;
@@ -189,8 +189,8 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeUnscaledPadding(context, decorations, out result);
+        protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputeUnscaledPadding(ref context, decorations, out result);
             var titleDecorations = context.DecorationProvider?.WindowTitle;
             if (titleDecorations == null)
                 return;
@@ -198,7 +198,7 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             Color? color = null;
-            titleDecorations.GetTextSettings(context, default(ControlStates), out Material temp, ref color);
+            titleDecorations.GetTextSettings(ref context, default(ControlStates), out Material temp, ref color);
             var height = titleDecorations.Margins.Bottom +
                 // FIXME: Scale this?
                 titleDecorations.Padding.Y +
@@ -275,8 +275,8 @@ namespace Squared.PRGUI.Controls {
             height.Maximum = ComputeDisclosureHeight(ref context, height.Maximum);
         }
 
-        protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
-            base.OnLayoutComplete(context, ref relayoutRequested);
+        protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
+            base.OnLayoutComplete(ref context, ref relayoutRequested);
 
             var actuallyCollapsed = !_CollapsePending && _Collapsed && Collapsible;
 
@@ -289,8 +289,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
 
             IDecorator titleDecorator;
             Color? titleColor = null;
@@ -341,7 +341,7 @@ namespace Squared.PRGUI.Controls {
 
                 if (layout.DrawCalls.Count > 0) {
                     renderer.Layer += 1;
-                    titleDecorator.Rasterize(context, ref renderer, subSettings);
+                    titleDecorator.Rasterize(ref context, ref renderer, subSettings);
 
                     var textPosition = new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top);
 

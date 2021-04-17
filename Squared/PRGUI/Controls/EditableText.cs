@@ -452,7 +452,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected StringLayout UpdateLayout (
-            UIOperationContext context, DecorationSettings settings, IDecorator decorations, out Material material
+            ref UIOperationContext context, DecorationSettings settings, IDecorator decorations, out Material material
         ) {
             // HACK: Avoid accumulating too many extra hit tests from previous mouse positions
             // This will invalidate the layout periodically as the mouse moves, but whatever
@@ -463,8 +463,8 @@ namespace Squared.PRGUI.Controls {
 
             Color? color = null;
             var font = decorations.GlyphSource;
-            decorations.GetTextSettings(context, settings.State, out material, ref color);
-            ComputeEffectiveSpacing(context, decorations, out CachedPadding, out Margins computedMargins);
+            decorations.GetTextSettings(ref context, settings.State, out material, ref color);
+            ComputeEffectiveSpacing(ref context, decorations, out CachedPadding, out Margins computedMargins);
 
             if (font != null)
                 DynamicLayout.GlyphSource = font;
@@ -493,7 +493,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             // HACK: Populate various fields that we will use to compute minimum size
-            UpdateLayout(context, new DecorationSettings(), context.DecorationProvider.EditableText, out Material temp);
+            UpdateLayout(ref context, new DecorationSettings(), context.DecorationProvider.EditableText, out Material temp);
             return base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
@@ -1041,7 +1041,7 @@ namespace Squared.PRGUI.Controls {
             UIOperationContext context, ControlStates state, IMetricsProvider selectionDecorator
         ) {
             Color? selectedColor = DynamicLayout.Color;
-            selectionDecorator.GetTextSettings(context, state, out Material temp, ref selectedColor);
+            selectionDecorator.GetTextSettings(ref context, state, out Material temp, ref selectedColor);
             var selectedColorC = (selectedColor ?? Color.Black);
             var nonSelectedColorC = (DynamicLayout.Color ?? Color.White);
             var noColorizing = (selection == null) || 
@@ -1158,14 +1158,14 @@ namespace Squared.PRGUI.Controls {
             return LastLocalCursorPosition;
         }
 
-        private void RasterizeDescription (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, float textExtentX) {
+        private void RasterizeDescription (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, float textExtentX) {
             var decorator = context.DecorationProvider.Description;
             if (decorator == null)
                 return;
 
             var color = default(Color?);
             var font = decorator.GlyphSource;
-            decorator.GetTextSettings(context, settings.State, out Material material, ref color);
+            decorator.GetTextSettings(ref context, settings.State, out Material material, ref color);
             if (material == null)
                 return;
             if (font == null)
@@ -1199,13 +1199,13 @@ namespace Squared.PRGUI.Controls {
             renderer.Layer += 1;
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
 
             MarkSelection();
 
             var selectionDecorator = context.DecorationProvider.Selection;
-            var layout = UpdateLayout(context, settings, decorations, out Material textMaterial);
+            var layout = UpdateLayout(ref context, settings, decorations, out Material textMaterial);
 
             AlignmentOffset = Vector2.Zero;
             if (
@@ -1232,7 +1232,7 @@ namespace Squared.PRGUI.Controls {
             // Draw in the Below pass for better batching
             if (context.Pass == RasterizePasses.Below) {
                 if (Description != null)
-                    RasterizeDescription(context, ref renderer, settings, layout.Size.X);
+                    RasterizeDescription(ref context, ref renderer, settings, layout.Size.X);
             }
 
             if (context.Pass != RasterizePasses.Content)
@@ -1260,7 +1260,7 @@ namespace Squared.PRGUI.Controls {
                     ContentBox = selBox
                 };
 
-                selectionDecorator.Rasterize(context, ref renderer, selSettings);
+                selectionDecorator.Rasterize(ref context, ref renderer, selSettings);
                 renderer.Layer += 1;
 
                 // HACK to ensure that we don't provide a null rect for the cursor if there's no selection

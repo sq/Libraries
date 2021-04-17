@@ -239,7 +239,7 @@ namespace Squared.PRGUI {
 
             if (AcceleratorOverlayVisible) {
                 renderer.Layer += 1;
-                RasterizeAcceleratorOverlay(context, ref renderer);
+                RasterizeAcceleratorOverlay(ref context, ref renderer);
             }
 
             {
@@ -249,16 +249,16 @@ namespace Squared.PRGUI {
                 context.Pass = RasterizePasses.Below;
                 foreach (var isrc in InputSources) {
                     isrc.SetContext(this);
-                    isrc.Rasterize(context, ref subRenderer);
+                    isrc.Rasterize(ref context, ref subRenderer);
                 }
                 subRenderer.Layer += 1;
                 context.Pass = RasterizePasses.Content;
                 foreach (var isrc in InputSources)
-                    isrc.Rasterize(context, ref subRenderer);
+                    isrc.Rasterize(ref context, ref subRenderer);
                 subRenderer.Layer += 1;
                 context.Pass = RasterizePasses.Above;
                 foreach (var isrc in InputSources)
-                    isrc.Rasterize(context, ref subRenderer);
+                    isrc.Rasterize(ref context, ref subRenderer);
             }
 
             // Now that we have a dependency graph for the scratch targets, use it to

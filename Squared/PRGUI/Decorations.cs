@@ -78,20 +78,20 @@ namespace Squared.PRGUI.Decorations {
         Margins Padding { get; }
         Margins UnscaledPadding { get; }
         IGlyphSource GlyphSource { get; }
-        void GetContentAdjustment (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
-        bool GetTextSettings (UIOperationContext context, ControlStates state, out Material material, ref Color? color);
+        void GetContentAdjustment (ref UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
+        bool GetTextSettings (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color);
     }
 
     public interface IWidgetDecorator<TData> : IMetricsProvider {
         Vector2 MinimumSize { get; }
         bool OnMouseEvent (DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args);
         bool HitTest (DecorationSettings settings, ref TData data, Vector2 position);
-        void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data);
+        void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data);
     }
 
     public interface IDecorator : IMetricsProvider {
         bool IsPassDisabled (RasterizePasses pass);
-        void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
+        void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
     }
 
     public interface IAnimationProvider {
@@ -181,7 +181,7 @@ namespace Squared.PRGUI.Decorations {
         IGlyphSource IMetricsProvider.GlyphSource => 
             (GetFont != null) ? GetFont() : Font;
 
-        bool IMetricsProvider.GetTextSettings (UIOperationContext context, ControlStates state, out Material material, ref Color? color) {
+        bool IMetricsProvider.GetTextSettings (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color) {
             if (GetTextSettings != null) {
                 return GetTextSettings(context, state, out material, ref color);
             } else {
@@ -190,7 +190,7 @@ namespace Squared.PRGUI.Decorations {
             }
         }
 
-        void IMetricsProvider.GetContentAdjustment (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale) {
+        void IMetricsProvider.GetContentAdjustment (ref UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale) {
             if (GetContentAdjustment != null)
                 GetContentAdjustment(context, state, out offset, out scale);
             else {
@@ -234,7 +234,7 @@ namespace Squared.PRGUI.Decorations {
             }
         }
 
-        void IDecorator.Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+        void IDecorator.Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             switch (context.Pass) {
                 case RasterizePasses.Below:
                     if (Below != null)
@@ -267,7 +267,7 @@ namespace Squared.PRGUI.Decorations {
         public WidgetDecoratorHitTestHandler<TData> OnHitTest;
         public WidgetDecoratorMouseEventHandler<TData> OnMouseEvent;
 
-        public void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data) {
+        public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data) {
             switch (context.Pass) {
                 case RasterizePasses.Below:
                     if (Below != null)

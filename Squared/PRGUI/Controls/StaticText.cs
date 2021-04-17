@@ -255,7 +255,7 @@ namespace Squared.PRGUI.Controls {
         private Margins _CachedPadding;
         private bool? _CachedContentIsSingleLine;
 
-        protected void ComputeAutoSize (UIOperationContext context, ref Margins computedPadding, ref Margins computedMargins) {
+        protected void ComputeAutoSize (ref UIOperationContext context, ref Margins computedPadding, ref Margins computedMargins) {
             // FIXME: If we start out constrained (by our parent size, etc) we will compute
             //  a compressed auto-size value here, and it will never be updated even if our parent
             //  gets bigger
@@ -267,7 +267,7 @@ namespace Squared.PRGUI.Controls {
 
             var textDecorations = GetTextDecorator(context.DecorationProvider, context.DefaultTextDecorator);
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
-            var fontChanged = UpdateFont(context, textDecorations, decorations);
+            var fontChanged = UpdateFont(ref context, textDecorations, decorations);
 
             var contentChanged = (ContentMeasurement?.IsValid == false) || !Content.IsValid;
             if (contentChanged || fontChanged)
@@ -342,11 +342,11 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
-            ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
-            ComputeAutoSize(context, ref computedPadding, ref computedMargins);
-            UpdateLineBreak(context, decorations, ref computedPadding, ref computedMargins);
+            ComputeEffectiveSpacing(ref context, decorations, out Margins computedPadding, out Margins computedMargins);
+            ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
+            UpdateLineBreak(ref context, decorations, ref computedPadding, ref computedMargins);
             if (!Content.IsValid)
-                ComputeAutoSize(context, ref computedPadding, ref computedMargins);
+                ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             return result;
         }
@@ -355,7 +355,7 @@ namespace Squared.PRGUI.Controls {
             return provider?.StaticText ?? provider?.None;
         }
 
-        protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
+        protected float? ComputeTextWidthLimit (ref UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
             if (_ScaleToFitX)
                 return null;
 
@@ -410,13 +410,13 @@ namespace Squared.PRGUI.Controls {
         protected Vector2 _LastDrawOffset, _LastDrawScale;
         protected BitmapDrawCall[] _LayoutFilterScratchBuffer;
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
 
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            ComputeEffectiveSpacing(context, decorations, out Margins computedPadding, out Margins computedMargins);
+            ComputeEffectiveSpacing(ref context, decorations, out Margins computedPadding, out Margins computedMargins);
 
             var overrideColor = GetTextColor(context.NowL);
             Color? defaultColor = 
@@ -427,7 +427,7 @@ namespace Squared.PRGUI.Controls {
                 overrideColor = null;
             Material material;
             var textDecorations = GetTextDecorator(context.DecorationProvider, context.DefaultTextDecorator);
-            GetTextSettings(context, textDecorations, decorations, settings.State, out material, ref defaultColor);
+            GetTextSettings(ref context, textDecorations, decorations, settings.State, out material, ref defaultColor);
 
             Content.DefaultColor = defaultColor ?? Color.White;
 
@@ -435,9 +435,9 @@ namespace Squared.PRGUI.Controls {
             settings.ContentBox.SnapAndInset(out Vector2 ca, out Vector2 cb);
 
             Vector2 textOffset = Vector2.Zero, textScale = Vector2.One;
-            decorations?.GetContentAdjustment(context, settings.State, out textOffset, out textScale);
+            decorations?.GetContentAdjustment(ref context, settings.State, out textOffset, out textScale);
 
-            UpdateLineBreak(context, decorations, ref computedPadding, ref computedMargins);
+            UpdateLineBreak(ref context, decorations, ref computedPadding, ref computedMargins);
 
             var layout = GetCurrentLayout(false);
             textScale *= ComputeScaleToFit(layout.UnconstrainedSize, ref settings.Box, ref computedPadding);
@@ -521,8 +521,8 @@ namespace Squared.PRGUI.Controls {
             _LastDrawScale = textScale;
         }
 
-        protected void UpdateLineBreak (UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
-            var textWidthLimit = ComputeTextWidthLimit(context, decorations, ref computedPadding, ref computedMargins);
+        protected void UpdateLineBreak (ref UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
+            var textWidthLimit = ComputeTextWidthLimit(ref context, decorations, ref computedPadding, ref computedMargins);
             if (textWidthLimit.HasValue && !_ScaleToFitX)
                 Content.LineBreakAtX = textWidthLimit;
             else
@@ -543,15 +543,15 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected bool UpdateFont (UIOperationContext context, IDecorator textDecorations, IDecorator decorations) {
+        protected bool UpdateFont (ref UIOperationContext context, IDecorator textDecorations, IDecorator decorations) {
             var font = Appearance.GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource;
             if (font == null)
                 throw new NullReferenceException($"Decorators provided no font for control {this} ({textDecorations}, {decorations})");
             return SyncWithCurrentFont(font);
         }
 
-        protected bool GetTextSettings (UIOperationContext context, IDecorator textDecorations, IDecorator decorations, ControlStates state, out Material material, ref Color? color) {
-            (textDecorations ?? decorations).GetTextSettings(context, state, out material, ref color);
+        protected bool GetTextSettings (ref UIOperationContext context, IDecorator textDecorations, IDecorator decorations, ControlStates state, out Material material, ref Color? color) {
+            (textDecorations ?? decorations).GetTextSettings(ref context, state, out material, ref color);
             SyncWithCurrentFont(Appearance.GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource);
             if (TextMaterial != null)
                 material = TextMaterial;
@@ -598,7 +598,7 @@ namespace Squared.PRGUI.Controls {
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) => FormatValueInto(sb);
 
         void IPostLayoutListener.OnLayoutComplete (
-            UIOperationContext context, ref bool relayoutRequested
+            ref UIOperationContext context, ref bool relayoutRequested
         ) {
             if (_NeedRelayout) {
                 relayoutRequested = true;

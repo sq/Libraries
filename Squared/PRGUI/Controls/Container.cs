@@ -212,8 +212,8 @@ namespace Squared.PRGUI.Controls {
                 return provider?.Container;
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
 
             if (Scrollable && (settings.Box.Height > MostRecentHeaderHeight)) {
                 settings.Box.Top += MostRecentHeaderHeight;
@@ -223,14 +223,14 @@ namespace Squared.PRGUI.Controls {
 
                 var scrollbar = context.DecorationProvider?.Scrollbar;
                 if (ShouldShowHorizontalScrollbar)
-                    scrollbar?.Rasterize(context, ref renderer, settings, ref HScrollbar);
+                    scrollbar?.Rasterize(ref context, ref renderer, settings, ref HScrollbar);
                 if (ShouldShowVerticalScrollbar)
-                    scrollbar?.Rasterize(context, ref renderer, settings, ref VScrollbar);
+                    scrollbar?.Rasterize(ref context, ref renderer, settings, ref VScrollbar);
             }
         }
 
-        protected override void ComputeUnscaledPadding (UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeUnscaledPadding(context, decorations, out result);
+        protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputeUnscaledPadding(ref context, decorations, out result);
             if (!Scrollable)
                 return;
             var scrollbar = context.DecorationProvider?.Scrollbar;
@@ -274,7 +274,7 @@ namespace Squared.PRGUI.Controls {
             return ok;
         }
 
-        protected override void ApplyClipMargins (UIOperationContext context, ref RectF box) {
+        protected override void ApplyClipMargins (ref UIOperationContext context, ref RectF box) {
             // Scrollbars are already part of computed padding, so just clip out the header (if any)
             box.Top += MostRecentHeaderHeight;
             box.Height -= MostRecentHeaderHeight;
@@ -292,7 +292,7 @@ namespace Squared.PRGUI.Controls {
             return success;
         }
 
-        protected virtual void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+        protected virtual void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
             // FIXME: This should be done somewhere else
             if (Scrollable) {
                 context.Layout.TryGetContentRect(LayoutKey, out RectF contentBox);
@@ -344,8 +344,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
-            OnLayoutComplete(context, ref relayoutRequested);
+        void IPostLayoutListener.OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
+            OnLayoutComplete(ref context, ref relayoutRequested);
         }
 
         bool IPartiallyIntangibleControl.IsIntangibleAtPosition (Vector2 position) {
