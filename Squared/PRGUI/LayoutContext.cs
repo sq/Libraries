@@ -436,7 +436,7 @@ namespace Squared.PRGUI.Layout {
             maximumSize = pItem->MaximumSize;
         }
 
-        public unsafe bool TryMeasureContent (ControlKey container, out RectF result) {
+        public unsafe bool TryMeasureContent (ControlKey container, bool includeMargins, out RectF result) {
             var pItem = LayoutPtr(container);
             float minX = 999999, minY = 999999,
                 maxX = -999999, maxY = -999999;
@@ -458,10 +458,22 @@ namespace Squared.PRGUI.Layout {
                 if (pChild->Flags.IsFlagged(ControlFlags.Internal_FixedHeight))
                     childRect.Height = pChild->FixedSize.Y;
 
-                minX = Math.Min(minX, childRect.Left - pChild->Margins.Left);
-                maxX = Math.Max(maxX, childRect.Left + childRect.Width + pChild->Margins.Right);
-                minY = Math.Min(minY, childRect.Top - pChild->Margins.Top);
-                maxY = Math.Max(maxY, childRect.Top + childRect.Height + pChild->Margins.Bottom);
+                float x1m = childRect.Left - pChild->Margins.Left,
+                    y1m = childRect.Top - pChild->Margins.Top,
+                    x2m = childRect.Left + childRect.Width + pChild->Margins.Right,
+                    y2m = childRect.Top + childRect.Height + pChild->Margins.Bottom;
+
+                if (includeMargins) {
+                    minX = Math.Min(minX, x1m);
+                    maxX = Math.Max(maxX, x2m);
+                    minY = Math.Min(minY, y1m);
+                    maxY = Math.Max(maxY, y2m);
+                } else {
+                    minX = Math.Min(minX, childRect.Left);
+                    maxX = Math.Max(maxX, childRect.Extent.X);
+                    minY = Math.Min(minY, childRect.Top);
+                    maxY = Math.Max(maxY, childRect.Extent.Y);
+                }
             }
 
             result = new RectF(minX, minY, maxX - minX, maxY - minY);
@@ -563,7 +575,7 @@ namespace Squared.PRGUI.Layout {
                 var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
 
                 TryGetRect(child, out childRect);
-                var childMargin = pChild->Margins[wdim];
+                var childMargin = pChild->Margins[idim] + pChild->Margins[wdim];
                 var childMinimum = CalcMinimumSize(pChild, idim) + childMargin;
                 if (isFloating) {
                     minimum = Math.Max(childMinimum, minimum);
@@ -594,7 +606,7 @@ namespace Squared.PRGUI.Layout {
                 var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
 
                 TryGetRect(child, out childRect);
-                var childMargin = pChild->Margins[wdim];
+                var childMargin = pChild->Margins[idim] + pChild->Margins[wdim];
                 var childMinimum = CalcMinimumSize(pChild, idim) + childMargin;
                 if (pItem->Flags.IsFlagged(rowFlag) && !isFloating)
                     minimum += childMinimum;
@@ -631,7 +643,7 @@ namespace Squared.PRGUI.Layout {
                     continue;
 
                 TryGetRect(child, out childRect);
-                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
+                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[idim] + pChild->Margins[wdim];
 
                 if (
                     (!forcedBreakOnly && pChild->Flags.IsBreak()) ||
@@ -942,6 +954,7 @@ namespace Squared.PRGUI.Layout {
 
                     float constrainedSize = Constrain(computedSize, childMinimum.GetElement(idim), childMaximum.GetElement(idim));
                     if (wrap)
+                        // FIXME: Include left/top margin in this calculation?
                         constrainedSize = Constrain(Math.Min(max_x2 - childMargins[wdim] - x, constrainedSize), childMinimum.GetElement(idim), childMaximum.GetElement(idim));
                     if (pass == 0) {
                         float constraintDelta = (computedSize - constrainedSize);
@@ -987,6 +1000,7 @@ namespace Squared.PRGUI.Layout {
                         x = originalX;
                     }
 
+                    // FIXME: Include left/top margin here?
                     x = x + constrainedSize + childMargins[wdim];
                     child = pChild->NextSibling;
                     extraMargin = spacer;
@@ -1230,7 +1244,7 @@ namespace Squared.PRGUI.Layout {
                 }
 
                 TryGetRect(child, out childRect);
-                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
+                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[idim] + pChild->Margins[wdim];
                 needSize = Math.Max(needSize, childSize);
             }
 
