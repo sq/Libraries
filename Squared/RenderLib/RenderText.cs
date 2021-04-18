@@ -254,7 +254,7 @@ namespace Squared.Render.Text {
         bool           wordWrapSuppressed;
         public float   currentLineMaxX, currentLineMaxXUnconstrained;
         public float?  currentLineBreakAtX;
-        float          currentLineWhitespaceMaxXLeft, currentLineWhitespaceMaxX;
+        float          currentLineWrapPointLeft, currentLineWhitespaceMaxX;
         float          maxX, maxY, maxXUnconstrained, maxYUnconstrained;
         float          initialLineSpacing, currentLineSpacing;
         float          currentXOverhang;
@@ -419,7 +419,7 @@ namespace Squared.Render.Text {
             if (currentLineWhitespaceMaxX <= 0)
                 maxX = Math.Max(maxX, currentLineMaxX);
             else
-                maxX = Math.Max(maxX, currentLineWhitespaceMaxXLeft);
+                maxX = Math.Max(maxX, currentLineWrapPointLeft);
 
             var previousLineSpacing = currentLineSpacing;
             var previousBaseline = currentBaseline;
@@ -896,6 +896,7 @@ namespace Squared.Render.Text {
                 }
 
                 if (isWordWrapPoint) {
+                    currentLineWrapPointLeft = Math.Max(currentLineWrapPointLeft, characterOffset.X);
                     if (isWhiteSpace)
                         wordStartWritePosition = -1;
                     else
@@ -1044,7 +1045,7 @@ namespace Squared.Render.Text {
                     if (!suppress) {
                         currentLineMaxX = 0;
                         currentLineWhitespaceMaxX = 0;
-                        currentLineWhitespaceMaxXLeft = 0;
+                        currentLineWrapPointLeft = 0;
                     }
                     rowIndex += 1;
                     colIndex = 0;
@@ -1241,7 +1242,7 @@ namespace Squared.Render.Text {
                     currentLineMaxXUnconstrained = Math.Max(currentLineMaxXUnconstrained, xUnconstrained);
                     maxYUnconstrained = Math.Max(maxYUnconstrained, (characterOffsetUnconstrained.Y + glyphLineSpacing));
                 } else {
-                    currentLineWhitespaceMaxXLeft = Math.Max(currentLineWhitespaceMaxXLeft, characterOffset.X);
+                    currentLineWrapPointLeft = Math.Max(currentLineWrapPointLeft, characterOffset.X);
                     currentLineWhitespaceMaxX = Math.Max(currentLineWhitespaceMaxX, x);
 
                     ProcessMarkers(ref testBounds, currentCodepointSize, null, splitMarker || previousGlyphWasDead, didWrapWord);
