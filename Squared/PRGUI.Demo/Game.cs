@@ -301,8 +301,6 @@ namespace PRGUI.Demo {
                 Text = "$[ghost] Hide",
                 Margins = default(Margins),
                 Layout = {
-                    Anchor = { Right = true },
-                    Fill = { Column = true },
                     ForceBreak = true
                 },
                 Appearance = {
@@ -357,11 +355,13 @@ namespace PRGUI.Demo {
                 volumeSlider,
                 // FIXME: If we don't group these into a container, the last two get vertically centered.
                 // Is that right? It might be
+                /*
                 new ControlGroup (forceBreak: true) {
+                */
                     hideButton,
                     toppleButton,
-                    LoginButton
-                },
+                    LoginButton,
+                // },
                 // FIXME: We need this spacer to fill the empty space at the bottom of the window when it's maximized.
                 // Should it really work this way?
                 new Spacer {
