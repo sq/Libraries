@@ -975,7 +975,9 @@ namespace Squared.PRGUI.Layout {
                         predictedRect[idim] = ix0;
                         predictedRect[wdim] = finalSize;
                         var predictedExtent = predictedRect.Extent.GetElement(idim);
-                        if (predictedExtent > max_x2)
+                        var predictedOverflow = predictedExtent - max_x2;
+                        // HACK :-(
+                        if (predictedOverflow >= 0.5f)
                             pChild->Flags |= ControlFlags.Internal_Break;
                     } else if (pass == 1) {
                         // FIXME: Is this correct?
@@ -1083,7 +1085,9 @@ namespace Squared.PRGUI.Layout {
                     extend += computedSize;
                 }
 
-                var overflowed = (extend > space);
+                var overflowAmount = extend - space;
+                // HACK :-(
+                var overflowed = overflowAmount >= 0.5f;
                 if (
                     wrap &&
                     (total != 0) && (

@@ -104,7 +104,8 @@ namespace Squared.Render {
 
         public bool IsDisposed { get; private set; }
 
-        protected HashSet<Material> MaterialCache = new HashSet<Material>(1024, new ReferenceComparer<Material>());
+        protected UnorderedList<Material> MaterialCache = new UnorderedList<Material>(1024);
+        private HashSet<Material> MaterialCacheScratchSet = new HashSet<Material>(1024, new ReferenceComparer<Material>());
 
         public MaterialSetBase() 
             : base() {
@@ -117,25 +118,31 @@ namespace Squared.Render {
 
         protected void BuildMaterialCache () {
             lock (Lock) {
-                MaterialCache.Clear();
+                MaterialCacheScratchSet.Clear();
 
                 foreach (var field in AllMaterialFields) {
                     var material = field();
                     if (material != null)
-                        MaterialCache.Add(material);
+                        MaterialCacheScratchSet.Add(material);
                 }
 
                 foreach (var coll in AllMaterialCollections)
-                    coll()?.AddToSet(MaterialCache);
+                    coll()?.AddToSet(MaterialCacheScratchSet);
 
                 foreach (var m in ExtraMaterials)
+                    MaterialCacheScratchSet.Add(m);
+
+                MaterialCache.Clear();
+                foreach (var m in MaterialCacheScratchSet)
                     MaterialCache.Add(m);
             }
         }
 
         protected void ReleaseMaterialCache () {
-            lock (Lock)
+            lock (Lock) {
                 MaterialCache.Clear();
+                MaterialCacheScratchSet.Clear();
+            }
         }
 
         internal void InitializeTypedUniformsForMaterial (Material m, List<ITypedUniform> uniforms) {

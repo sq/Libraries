@@ -63,6 +63,10 @@ namespace Squared.PRGUI.Flags {
         /// If set, this control will be laid out as if its parent has no other children
         /// </summary>
         public bool Floating;
+        /// <summary>
+        /// If set, this control does not contribute to its siblings' layout.
+        /// </summary>
+        public bool Stacked;
 
         public ControlFlags Mask =>
             (
@@ -88,7 +92,8 @@ namespace Squared.PRGUI.Flags {
                 (ControlFlags)lf.Anchor |
                 (ControlFlags)lf.Fill |
                 (lf.ForceBreak ? ControlFlags.Layout_ForceBreak : none) |
-                (lf.Floating ? ControlFlags.Layout_Floating : none);
+                (lf.Floating ? ControlFlags.Layout_Floating : none) |
+                (lf.Stacked ? ControlFlags.Layout_Stacked : none);
         }
     }
 
