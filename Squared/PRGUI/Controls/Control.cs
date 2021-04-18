@@ -140,7 +140,7 @@ namespace Squared.PRGUI {
 
         public static bool ShowDebugBoxes = false,
             ShowDebugBreakMarkers = false,
-            ShowDebugMargins = true,
+            ShowDebugMargins = false,
             ShowDebugPadding = false;
 
         public static readonly Controls.NullControl None = new Controls.NullControl();

@@ -563,7 +563,8 @@ namespace Squared.PRGUI.Layout {
                 var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
 
                 TryGetRect(child, out childRect);
-                var childMargin = pChild->Margins[idim] + pChild->Margins[wdim];
+                var childRightMargin = pChild->Margins[wdim];
+                var childMargin = pChild->Margins[idim] + childRightMargin;
                 var childMinimum = CalcMinimumSize(pChild, idim) + childMargin;
                 if (isFloating) {
                     minimum = Math.Max(childMinimum, minimum);
@@ -572,8 +573,8 @@ namespace Squared.PRGUI.Layout {
                     minimum += childMinimum;
                 else
                     minimum = Math.Max(childMinimum, minimum);
-                // FIXME: Is this a bug?
-                var childSize = childRect[idim] + childRect[wdim] + childMargin;
+                // HACK: childRect[idim] already has our left margin applied
+                var childSize = childRect[idim] + childRect[wdim] + childRightMargin;
                 result = Math.Max(result, childSize);
             }
             minimum += outerPadding;
@@ -594,14 +595,15 @@ namespace Squared.PRGUI.Layout {
                 var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
 
                 TryGetRect(child, out childRect);
-                var childMargin = pChild->Margins[idim] + pChild->Margins[wdim];
+                var childRightMargin = pChild->Margins[wdim];
+                var childMargin = pChild->Margins[idim] + childRightMargin;
                 var childMinimum = CalcMinimumSize(pChild, idim) + childMargin;
                 if (pItem->Flags.IsFlagged(rowFlag) && !isFloating)
                     minimum += childMinimum;
                 else
                     minimum = Math.Max(childMinimum, minimum);
 
-                var sum = childRect[idim] + childRect[wdim] + childMargin;
+                var sum = childRect[idim] + childRect[wdim] + childRightMargin;
                 if (isFloating)
                     ;
                 else if (isStacked)
@@ -631,7 +633,8 @@ namespace Squared.PRGUI.Layout {
                     continue;
 
                 TryGetRect(child, out childRect);
-                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[idim] + pChild->Margins[wdim];
+                var childRightMargin = pChild->Margins[wdim];
+                var childSize = childRect[idim] + childRect[wdim] + childRightMargin;
 
                 if (
                     (!forcedBreakOnly && pChild->Flags.IsBreak()) ||
@@ -942,7 +945,6 @@ namespace Squared.PRGUI.Layout {
 
                     float constrainedSize = Constrain(computedSize, childMinimum.GetElement(idim), childMaximum.GetElement(idim));
                     if (wrap)
-                        // FIXME: Include left/top margin in this calculation?
                         constrainedSize = Constrain(Math.Min(max_x2 - childMargins[wdim] - x, constrainedSize), childMinimum.GetElement(idim), childMaximum.GetElement(idim));
                     if (pass == 0) {
                         float constraintDelta = (computedSize - constrainedSize);
@@ -988,7 +990,6 @@ namespace Squared.PRGUI.Layout {
                         x = originalX;
                     }
 
-                    // FIXME: Include left/top margin here?
                     x = x + constrainedSize + childMargins[wdim];
                     child = pChild->NextSibling;
                     extraMargin = spacer;
@@ -1190,11 +1191,12 @@ namespace Squared.PRGUI.Layout {
                 if (pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size)) {
                     // rect[idim] = Constrain(rect[idim], parentRect[idim], parentRect[wdim]);
                     var temp = parentRect.Extent - rect.Position;
-                    var spacing = pItem->Margins + pParent->Padding;
-                    // FIXME: bottom/right padding only?
-                    temp.X = Math.Max(0, temp.X - spacing.Right);
-                    temp.Y = Math.Max(0, temp.Y - spacing.Bottom);
-                    parentConstraint = temp;
+                    var spacing = pParent->Padding;
+                    // FIXME: This previously included margins, but that breaks listbox autosize
+                    parentConstraint = new Vector2(
+                        Math.Max(0, temp.X - spacing.Right),
+                        Math.Max(0, temp.Y - spacing.Bottom)
+                    );
                 }
 
                 GetComputedMinimumSize(pItem, out Vector2 minimum);
@@ -1232,9 +1234,7 @@ namespace Squared.PRGUI.Layout {
                 }
 
                 TryGetRect(child, out childRect);
-                // FIXME: This seems correct, but causes margins to double-apply sometimes
-                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[idim] + pChild->Margins[wdim];
-                // var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
+                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
                 needSize = Math.Max(needSize, childSize);
             }
 

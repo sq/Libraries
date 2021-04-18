@@ -765,6 +765,10 @@ namespace Squared.PRGUI {
         public static implicit operator Vector4 (Margins margins) {
             return new Vector4(margins.Left, margins.Top, margins.Right, margins.Bottom);
         }
+
+        public override string ToString () {
+            return $"Margins (L{Left}, T{Top}, R{Right}, B{Bottom})";
+        }
     }
 
     public struct NameAndIndex {
