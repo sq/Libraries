@@ -1232,7 +1232,9 @@ namespace Squared.PRGUI.Layout {
                 }
 
                 TryGetRect(child, out childRect);
+                // FIXME: This seems correct, but causes margins to double-apply sometimes
                 var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[idim] + pChild->Margins[wdim];
+                // var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
                 needSize = Math.Max(needSize, childSize);
             }
 
