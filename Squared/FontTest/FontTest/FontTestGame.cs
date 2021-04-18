@@ -17,6 +17,7 @@ namespace FontTest {
     public class FontTestGame : MultithreadedGame {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
+#if ORIG
         public string TestText =
             "$[img:topright]$[img:bottomright]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
             "\r\n$[img:bottomleft]$[img:left]この体は、無限のチェイサーで出来ていた $(marked)" +
@@ -25,6 +26,11 @@ namespace FontTest {
             // "\r\n$({,Paradise ,Isle})" +
             "\r\n$({,Paradise ,Isle})";
             */
+#else
+        public string TestText =
+            "The quick brown fox jumped over the lazy dogs. Sphinx of black quartz, judge my vow. Welcome to the circus, " +
+            "we've got fun and games, here's\\a\\very-long-path\\without-spaces\\that-should-get-broken\\ok";
+#endif
 
         public string TestText2 =
             "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +
@@ -45,7 +51,7 @@ namespace FontTest {
         float TextScale = 2f;
 
         public Vector2 TopLeft = new Vector2(24, 24);
-        public Vector2 BottomRight = new Vector2(512, 512);
+        public Vector2 BottomRight = new Vector2(1012, 512);
 
         PressableKey Alignment = new PressableKey(Keys.A);
         PressableKey CharacterWrap = new PressableKey(Keys.C);
@@ -149,7 +155,7 @@ namespace FontTest {
             Text = new DynamicStringLayout(ActiveFont, TestText) {
                 // Alignment = HorizontalAlignment.Right,
                 AlignToPixels = GlyphPixelAlignment.FloorXY,
-                CharacterWrap = true,
+                CharacterWrap = false,
                 WordWrap = true,
                 Scale = TextScale,
                 ReverseOrder = true,
@@ -166,6 +172,9 @@ namespace FontTest {
                         {"small", SmallLatinFont}
                     },
                     ImageProvider = Text_ImageProvider 
+                },
+                WordWrapCharacters = new uint[] {
+                    '\\', '/', ':', ','
                 }
             };
             Text2 = new DynamicStringLayout(ActiveFont, TestText2) {

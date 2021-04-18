@@ -896,7 +896,11 @@ namespace Squared.Render.Text {
                 }
 
                 if (isWordWrapPoint) {
-                    wordStartWritePosition = -1;
+                    if (isWhiteSpace)
+                        wordStartWritePosition = -1;
+                    else
+                        wordStartWritePosition = bufferWritePosition;
+                    wordStartOffset = characterOffset;
                     wordWrapSuppressed = false;
                 } else {
                     if (wordStartWritePosition < 0) {
@@ -959,7 +963,7 @@ namespace Squared.Render.Text {
                     if (
                         !deadGlyph &&
                         (colIndex > 0) &&
-                        !isWordWrapPoint
+                        !isWhiteSpace
                     )
                         forcedWrap = true;
                 }
