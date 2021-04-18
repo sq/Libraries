@@ -272,5 +272,9 @@ namespace Squared.PRGUI.Controls {
             }
             return true;
         }
+
+        public override string ToString () {
+            return $"HotSpot '{MarkedID}' '{MarkedString}'";
+        }
     }
 }

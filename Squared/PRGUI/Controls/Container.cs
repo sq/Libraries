@@ -213,20 +213,43 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            var scrollingActive = Scrollable && (settings.Box.Height > MostRecentHeaderHeight);
+
             base.OnRasterize(ref context, ref renderer, settings, decorations);
 
-            if (Scrollable && (settings.Box.Height > MostRecentHeaderHeight)) {
+            if (scrollingActive) {
                 settings.Box.Top += MostRecentHeaderHeight;
                 settings.ContentBox.Top += MostRecentHeaderHeight;
                 settings.Box.Height -= MostRecentHeaderHeight;
                 settings.ContentBox.Height -= MostRecentHeaderHeight;
-
                 var scrollbar = context.DecorationProvider?.Scrollbar;
                 if (ShouldShowHorizontalScrollbar)
                     scrollbar?.Rasterize(ref context, ref renderer, settings, ref HScrollbar);
                 if (ShouldShowVerticalScrollbar)
                     scrollbar?.Rasterize(ref context, ref renderer, settings, ref VScrollbar);
             }
+        }
+
+        protected override void ApplyClipMargins (ref UIOperationContext context, ref RectF box) {
+            base.ApplyClipMargins(ref context, ref box);
+
+            // If we have a title bar, clip it out
+            box.Top += MostRecentHeaderHeight;
+            box.Height -= MostRecentHeaderHeight;
+
+            if (!Scrollable)
+                return;
+
+            var scrollbar = context.DecorationProvider?.Scrollbar;
+            if (scrollbar == null)
+                return;
+
+            // Also push the clip region inward so that content doesn't get drawn behind the scrollbars
+            var sizeScale = context.DecorationProvider?.SizeScaleRatio ?? Vector2.One;
+            if (ShouldShowHorizontalScrollbar)
+                box.Height -= scrollbar.MinimumSize.Y * sizeScale.Y;
+            if (ShouldShowVerticalScrollbar)
+                box.Width -= scrollbar.MinimumSize.X * sizeScale.X;
         }
 
         protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
@@ -272,12 +295,6 @@ namespace Squared.PRGUI.Controls {
             }
             HasContentBounds = ok;
             return ok;
-        }
-
-        protected override void ApplyClipMargins (ref UIOperationContext context, ref RectF box) {
-            // Scrollbars are already part of computed padding, so just clip out the header (if any)
-            box.Top += MostRecentHeaderHeight;
-            box.Height -= MostRecentHeaderHeight;
         }
 
         protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
