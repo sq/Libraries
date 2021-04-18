@@ -436,7 +436,7 @@ namespace Squared.PRGUI.Layout {
             maximumSize = pItem->MaximumSize;
         }
 
-        public unsafe bool TryMeasureContent (ControlKey container, bool includeMargins, out RectF result) {
+        public unsafe bool TryMeasureContent (ControlKey container, out RectF result) {
             var pItem = LayoutPtr(container);
             float minX = 999999, minY = 999999,
                 maxX = -999999, maxY = -999999;
@@ -458,22 +458,10 @@ namespace Squared.PRGUI.Layout {
                 if (pChild->Flags.IsFlagged(ControlFlags.Internal_FixedHeight))
                     childRect.Height = pChild->FixedSize.Y;
 
-                float x1m = childRect.Left - pChild->Margins.Left,
-                    y1m = childRect.Top - pChild->Margins.Top,
-                    x2m = childRect.Left + childRect.Width + pChild->Margins.Right,
-                    y2m = childRect.Top + childRect.Height + pChild->Margins.Bottom;
-
-                if (includeMargins) {
-                    minX = Math.Min(minX, x1m);
-                    maxX = Math.Max(maxX, x2m);
-                    minY = Math.Min(minY, y1m);
-                    maxY = Math.Max(maxY, y2m);
-                } else {
-                    minX = Math.Min(minX, childRect.Left);
-                    maxX = Math.Max(maxX, childRect.Extent.X);
-                    minY = Math.Min(minY, childRect.Top);
-                    maxY = Math.Max(maxY, childRect.Extent.Y);
-                }
+                minX = Math.Min(minX, childRect.Left - pChild->Margins.Left);
+                maxX = Math.Max(maxX, childRect.Left + childRect.Width + pChild->Margins.Right);
+                minY = Math.Min(minY, childRect.Top - pChild->Margins.Top);
+                maxY = Math.Max(maxY, childRect.Top + childRect.Height + pChild->Margins.Bottom);
             }
 
             result = new RectF(minX, minY, maxX - minX, maxY - minY);

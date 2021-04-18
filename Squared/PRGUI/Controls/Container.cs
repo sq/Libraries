@@ -267,7 +267,7 @@ namespace Squared.PRGUI.Controls {
                 result.Bottom += scrollbar.MinimumSize.Y * sizeScale.Y;
         }
 
-        protected bool GetContentBounds (UIContext context, bool includeMargins, out Vector2 contentBounds) {
+        protected bool GetContentBounds (UIContext context, out Vector2 contentBounds) {
             contentBounds = default(Vector2);
             if (LayoutKey.IsInvalid)
                 return false;
@@ -277,7 +277,7 @@ namespace Squared.PRGUI.Controls {
             if (ColumnCount > 1) {
                 for (int i = 0; i < ColumnCount; i++) {
                     var ckey = ColumnKeys[i];
-                    context.Layout.TryMeasureContent(ckey, includeMargins, out RectF columnBounds);
+                    context.Layout.TryMeasureContent(ckey, out RectF columnBounds);
                     if (i == 0) {
                         contentRect = columnBounds;
                     } else {
@@ -287,7 +287,7 @@ namespace Squared.PRGUI.Controls {
                     ok = true;
                 }
             } else {
-                ok = context.Layout.TryMeasureContent(LayoutKey, includeMargins, out contentRect);
+                ok = context.Layout.TryMeasureContent(LayoutKey, out contentRect);
             }
             if (ok) {
                 contentRect = contentRect;
@@ -317,7 +317,7 @@ namespace Squared.PRGUI.Controls {
                 float viewportWidth = contentBox.Width,
                     viewportHeight = contentBox.Height;
 
-                GetContentBounds(context.UIContext, false, out Vector2 contentBounds);
+                GetContentBounds(context.UIContext, out Vector2 contentBounds);
 
                 float maxScrollX = 0, maxScrollY = 0, contentSizeX = 0, contentSizeY = 0;
                 if (HasContentBounds) {
