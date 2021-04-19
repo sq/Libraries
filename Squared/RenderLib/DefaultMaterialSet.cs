@@ -981,6 +981,7 @@ namespace Squared.Render {
         private ViewTransform? LastAppliedViewTransform;
         private bool? LastIsOpenGL;
         private bool FlushViewTransformForFrameParamsChange;
+        private int LastRenderTargetChangeIndex;
         private int? LastAppliedFrameIndex;
 
         /// <summary>
@@ -1151,10 +1152,12 @@ namespace Squared.Render {
                 ActiveViewTransform.Id++;
             }
             var am = ActiveViewTransform.ActiveMaterial;
+            var rtci = Coordinator.Manager.DeviceManager.RenderTargetChangeIndex;
 
-            if (force || (am == null) || FlushViewTransformForFrameParamsChange) {
+            if (force || (am == null) || FlushViewTransformForFrameParamsChange || (rtci != LastRenderTargetChangeIndex)) {
                 FlushViewTransformForFrameParamsChange = false;
                 LastAppliedViewTransform = viewTransform;
+                LastRenderTargetChangeIndex = rtci;
                 ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
             } else if (am != null)
                 am.Flush();

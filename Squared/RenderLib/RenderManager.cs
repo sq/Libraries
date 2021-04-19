@@ -72,6 +72,8 @@ namespace Squared.Render {
         /// </summary>
         public static bool CaptureRenderTargetTransitionStacks = false;
 
+        internal int RenderTargetChangeIndex = 0;
+
         private struct RenderTargetStackEntry {
             public static readonly RenderTargetStackEntry None = new RenderTargetStackEntry((RenderTarget2D)null);
 
@@ -314,12 +316,14 @@ namespace Squared.Render {
         }
 
         public void SetRenderTarget (RenderTarget2D newRenderTarget, bool setParams = true, bool isPushPop = false) {
+            unchecked { RenderTargetChangeIndex++; }
             Device.SetRenderTarget(newRenderTarget);
             CachedCurrentRenderTarget = new RenderTargetStackEntry(newRenderTarget);
             ResetDeviceState(newRenderTarget, setParams);
         }
 
         private void SetRenderTargets (RenderTargetStackEntry entry, bool setParams = true, bool isPushPop = false) {
+            unchecked { RenderTargetChangeIndex++; }
             CachedCurrentRenderTarget = entry;
             if (entry.Count <= 1) {
                 Device.SetRenderTarget(entry.First);
