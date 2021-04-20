@@ -146,7 +146,7 @@ namespace Squared.PRGUI {
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
         public string DebugLabel = null;
-
+        internal int ControlIndex;
         internal int TypeID;
 
         public Accessibility.IReadingTarget DelegatedReadingTarget;
@@ -309,7 +309,10 @@ namespace Squared.PRGUI {
         protected long ActiveAnimationEndWhen;
         private PendingAnimationRecord PendingAnimation;
 
+        private static int NextControlIndex = 1;
+
         public Control () {
+            ControlIndex = System.Threading.Interlocked.Increment(ref NextControlIndex);
             TypeID = GetType().GetHashCode();
         }
 

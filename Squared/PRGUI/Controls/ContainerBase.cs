@@ -511,6 +511,9 @@ namespace Squared.PRGUI.Controls {
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
             var sorted = Children.InDisplayOrder(Context.FrameIndex);
+            if (sorted.Count <= 0)
+                return false;
+
             for (int i = sorted.Count - 1; i >= 0; i--) {
                 var item = sorted[i];
                 var newResult = item.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible);
@@ -543,7 +546,7 @@ namespace Squared.PRGUI.Controls {
         }
         new public bool DisableSelfHitTests {
             get => base.DisableSelfHitTests;
-            set => base.DisableSelfHitTests = true;
+            set => base.DisableSelfHitTests = value;
         }
         new public bool DisableChildHitTests {
             get => base.DisableChildHitTests;
