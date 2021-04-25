@@ -139,6 +139,7 @@ namespace Squared.PRGUI {
         }
 
         public static bool ShowDebugBoxes = false,
+            ShowDebugBoxesForLeavesOnly = false,
             ShowDebugBreakMarkers = false,
             ShowDebugMargins = false,
             ShowDebugPadding = false;
@@ -146,7 +147,7 @@ namespace Squared.PRGUI {
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
         public string DebugLabel = null;
-        internal int ControlIndex;
+        protected int ControlIndex { get; private set; }
         internal int TypeID;
 
         public Accessibility.IReadingTarget DelegatedReadingTarget;
@@ -976,7 +977,7 @@ namespace Squared.PRGUI {
         }
 
         protected virtual pSRGBColor GetDebugBoxColor (int depth) {
-            return Color.Lerp(Color.Red, Color.Orange, depth / 16f);
+            return Color.Lerp(Color.Red, Color.Yellow, depth / 24f);
         }
 
         private void RasterizeDebugMargins (ref UIOperationContext context, ref RasterizePassSet passSet, ref RectF rect, Margins margins, float direction, Color color) {
@@ -1042,13 +1043,15 @@ namespace Squared.PRGUI {
         }
 
         private void RasterizeDebugOverlays (ref UIOperationContext context, ref RasterizePassSet passSet, RectF rect) {
-            if (!ShowDebugBoxes && !ShowDebugBreakMarkers && !ShowDebugMargins && !ShowDebugPadding)
+            if (!ShowDebugBoxes && !ShowDebugBreakMarkers && !ShowDebugMargins && !ShowDebugPadding && !ShowDebugBoxesForLeavesOnly)
                 return;
 
             var mouseIsOver = rect.Contains(context.MousePosition);
             var alpha = mouseIsOver ? 1.0f : 0.5f;
+            // HACK: Show outlines for controls that don't have any children or contain the mouse position
+            var isLeaf = (((this as IControlContainer)?.Children?.Count ?? 0) == 0) || mouseIsOver;
 
-            if (ShowDebugBoxes)
+            if (ShowDebugBoxes || (ShowDebugBoxesForLeavesOnly && isLeaf))
                 passSet.Above.RasterizeRectangle(
                     rect.Position, rect.Extent, 0f, 1f, Color.Transparent, Color.Transparent, 
                     GetDebugBoxColor(context.Depth) * alpha

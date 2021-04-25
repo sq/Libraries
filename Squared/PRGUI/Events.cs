@@ -39,7 +39,8 @@ namespace Squared.PRGUI {
             BackgroundColorTweenEnded = "BackgroundColorTweenEnded",
             TextColorTweenEnded = "TextColorTweenEnded",
             ControlFixated = "ControlFixated",
-            HotspotClick = "HotspotClick";
+            HotspotClick = "HotspotClick",
+            SelectedTabChanged = "SelectedTabChanged";
     }
 
     public struct MouseEventArgs {

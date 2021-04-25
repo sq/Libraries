@@ -60,10 +60,11 @@ namespace Squared.PRGUI.Controls {
                     : null;
             set {
                 var idx = Children.IndexOf(value);
-                if (idx <= 0)
-                    SelectedTabIndex = 0;
-                else
-                    SelectedTabIndex = idx - 1;
+                var newIndex = Math.Max(0, idx - 1);
+                if (newIndex == SelectedTabIndex)
+                    return;
+                SelectedTabIndex = newIndex;
+                FireEvent(UIEvents.SelectedTabChanged);
             }
         }
 
@@ -72,14 +73,20 @@ namespace Squared.PRGUI.Controls {
             set {
                 var children = Children;
                 var c = children.Count - 2;
-                SelectedTabIndex = Arithmetic.Clamp(value, 0, c);
-                if ((TabStrip == null) || (TabStrip.Children.Count != children.Count - 1))
-                    return;
+                var newIndex = Arithmetic.Clamp(value, 0, c);
+                var changed = (newIndex != SelectedTabIndex);
+                SelectedTabIndex = newIndex;
 
-                for (var i = 0; i <= c; i++) {
-                    var btn = TabStrip.Children[i] as RadioButton;
-                    btn.Checked = i == SelectedTabIndex;
+                if ((TabStrip == null) || (TabStrip.Children.Count != children.Count - 1)) {
+                } else {
+                    for (var i = 0; i <= c; i++) {
+                        var btn = TabStrip.Children[i] as RadioButton;
+                        btn.Checked = i == SelectedTabIndex;
+                    }
                 }
+
+                if (changed)
+                    FireEvent(UIEvents.SelectedTabChanged);
             }
         }
 
@@ -311,15 +318,21 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void UpdateSelectedTab () {
+            var oldIndex = SelectedTabIndex;
             IdentifySelectedTabFromUIState = false;
             foreach (var tab in TabStrip.Children) {
                 var rb = (RadioButton)tab;
                 if (rb.Checked) {
                     SelectedTabIndex = TabStrip.Children.IndexOf(rb);
+                    if (oldIndex != SelectedTabIndex)
+                        FireEvent(UIEvents.SelectedTabChanged);
                     return;
                 }
             }
+
             SelectedTabIndex = 0;
+            if (oldIndex != SelectedTabIndex)
+                FireEvent(UIEvents.SelectedTabChanged);
         }
 
         bool IControlEventFilter.OnEvent (Control target, string name) {
