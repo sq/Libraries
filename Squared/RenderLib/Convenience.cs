@@ -150,6 +150,15 @@ namespace Squared.Render.Convenience {
             ColorWriteChannels = ColorWriteChannels.None
         };
 
+        public static readonly BlendState MultiplyColor2x = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.SourceColor,
+            ColorSourceBlend = Blend.DestinationColor
+        };
+
         public static readonly RasterizerState ScissorOnly = new RasterizerState {
             CullMode = CullMode.None,
             ScissorTestEnable = true
