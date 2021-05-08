@@ -98,7 +98,8 @@ namespace Squared.Threading {
             public volatile int NumWaitingForDrain = 0;
             public SignalFuture DrainCompleteFuture;
             public readonly AutoResetEvent DrainedSignal = new AutoResetEvent(false);
-            public readonly ReaderWriterLockSlim ItemsLock = new ReaderWriterLockSlim();
+            // HACK: Recursion needs to be enabled so that we don't break if a thread is aborted while it holds the lock
+            public readonly ReaderWriterLockSlim ItemsLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
             public readonly Queue<InternalWorkItem<T>> Items = new Queue<InternalWorkItem<T>>();
 
             public SubQueue (WorkQueue<T> owner) {
@@ -149,7 +150,7 @@ namespace Squared.Threading {
         private volatile int InFlightTasks = 0;
         private readonly List<WorkQueueDrainListener> DrainListeners = new List<WorkQueueDrainListener>();
         private readonly Queue<SubQueue> UnusedQueues = new Queue<SubQueue>();
-        private readonly ReaderWriterLockSlim QueuesLock = new ReaderWriterLockSlim();
+        private readonly ReaderWriterLockSlim QueuesLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         private readonly List<SubQueue> Queues = new List<SubQueue>();
         private SignalFuture NextDrainCompleteFuture = new SignalFuture();
         private SubQueue CurrentSubQueue;
@@ -367,9 +368,6 @@ namespace Squared.Threading {
         public bool IsEmpty {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                if (InFlightTasks > 0)
-                    return false;
-
                 QueuesLock.EnterReadLock();
                 try {
                     foreach (var q in Queues) {
@@ -459,6 +457,7 @@ namespace Squared.Threading {
                 sq.ItemsLock.ExitReadLock();
                 if (doWait)
                     sq.DrainedSignal.WaitOne(timeoutMs);
+                AssertEmpty();
             } finally {
                 Interlocked.Decrement(ref sq.NumWaitingForDrain);
 

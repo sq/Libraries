@@ -91,6 +91,9 @@ namespace Squared.Threading {
             strongSelf.Owner.ThreadBeganWorking();
 
             for (int i = 0; i < queueCount; i++) {
+                if (strongSelf.IsDisposed)
+                    return false;
+
                 // We round-robin select a queue from our pool every tick and then step it
                 IWorkQueue queue = null;
                 if (queueIndex < queueCount)
@@ -118,6 +121,11 @@ namespace Squared.Threading {
         public void Dispose () {
             IsDisposed = true;
             WakeEvent.Set();
+            // HACK: This shouldn't be necessary, but without this tests hang
+            /*
+            if (Thread.IsBackground)
+                Thread.Abort();
+            */
         }
     }
 }
