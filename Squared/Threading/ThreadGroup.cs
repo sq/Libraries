@@ -277,7 +277,7 @@ namespace Squared.Threading {
                 return;
 
             Interlocked.Exchange(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
-            var thread = new GroupThread(this);
+            var thread = new GroupThread(this, Threads.Count);
             Threads.Add(thread);
 
             Thread.MemoryBarrier();

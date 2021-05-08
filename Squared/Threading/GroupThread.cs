@@ -17,8 +17,9 @@ namespace Squared.Threading {
 
         public bool IsDisposed { get; private set; }
 
-        public GroupThread (ThreadGroup owner) {
+        internal GroupThread (ThreadGroup owner, int nextQueueIndex) {
             Owner = owner;
+            NextQueueIndex = nextQueueIndex;
             WakeEvent = new ManualResetEventSlim(true);
             Thread = new Thread(ThreadMain);
             Thread.Name = string.Format("ThreadGroup {0} {1} worker #{2}", owner.GetHashCode(), owner.Name, owner.Count);

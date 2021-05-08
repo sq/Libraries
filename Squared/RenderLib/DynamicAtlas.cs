@@ -246,6 +246,11 @@ namespace Squared.Render {
         private readonly MipGenerator<T> GenerateMip;
         private Rectangle DirtyRegion;
 
+        static DynamicAtlas () {
+            // Avoid blocking the threadgroups by generating a bunch of mips at once
+            WorkQueue<GenerateMipsWorkItem>.Configuration.MaxStepCount = 1;
+        }
+
         public DynamicAtlas (
             RenderCoordinator coordinator, int width, int height, SurfaceFormat format, 
             int spacing = 2, MipGenerator<T> mipGenerator = null, object tag = null
