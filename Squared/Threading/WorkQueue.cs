@@ -112,14 +112,6 @@ namespace Squared.Threading {
                 DrainedSignal.Set();
             }
 
-            public void Reset () {
-                ItemsLock.EnterWriteLock();
-                Items.Clear();
-                NumWaitingForDrain = 0;
-                ItemsLock.ExitWriteLock();
-                DrainedSignal.Set();
-            }
-
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void AssertCanEnqueue () {
                 if (Configuration.BlockEnqueuesWhileDraining && (NumWaitingForDrain > 0))
@@ -237,12 +229,14 @@ namespace Squared.Threading {
 
                     if (running) {
                         isInFlight = true;
-                        InFlightTasks++;
+                        Interlocked.Increment(ref InFlightTasks);
 
                         sq.ItemsLock.EnterWriteLock();
                         inWriteLock = true;
 
                         item = sq.Items.Dequeue();
+                        if (sq.Items.Count == 0)
+                            signalDrained = true;
 
                         sq.ItemsLock.ExitWriteLock();
                         inWriteLock = false;
@@ -255,13 +249,18 @@ namespace Squared.Threading {
                         inReadLock = false;
                     }
 
-                    if (running) {
-                        numProcessed++;
-                        item.Data.Execute();
-                        if (item.OnComplete != null)
-                            item.OnComplete(ref item.Data);
+                    try {
+                        if (running) {
+                            numProcessed++;
+                            item.Data.Execute();
+                            if (item.OnComplete != null)
+                                item.OnComplete(ref item.Data);
 
-                        result++;
+                            result++;
+                        }
+                    } finally {
+                        if (isInFlight)
+                            Interlocked.Decrement(ref InFlightTasks);
                     }
                 } catch (Exception exc) {
                     UnhandledException = ExceptionDispatchInfo.Capture(exc);
@@ -270,21 +269,6 @@ namespace Squared.Threading {
                 } finally {
                     if (inWriteLock)
                         sq.ItemsLock.ExitWriteLock();
-
-                    if (running) {
-                        if (!inReadLock) {
-                            sq.ItemsLock.EnterUpgradeableReadLock();
-                            inReadLock = true;
-                        }
-
-                        if (isInFlight)
-                            InFlightTasks--;
-
-                        if (inReadLock) {
-                            sq.ItemsLock.ExitUpgradeableReadLock();
-                            inReadLock = false;
-                        }
-                    }
                 }
             } while (running);
 
@@ -331,7 +315,7 @@ namespace Squared.Threading {
                 var q = CurrentSubQueue;
                 q.ItemsLock.EnterReadLock();
                 try {
-                    return q.Items.Count == 0;
+                    return (q.Items.Count == 0) && (InFlightTasks <= 0);
                 } finally {
                     q.ItemsLock.ExitReadLock();
                 }
@@ -365,15 +349,15 @@ namespace Squared.Threading {
                         var now = Time.Ticks;
                         if (now > endWhen)
                             break;
-                        var maxWait = (int)(Math.Max(0, endWhen - now) / Time.MillisecondInTicks);
+                        var maxWait = (timeoutMs <= 0)
+                            ? timeoutMs
+                            : (int)(Math.Max(0, endWhen - now) / Time.MillisecondInTicks);
                         if (!sq.DrainedSignal.WaitOne(maxWait))
                             ;
                     } else {
+                        AssertEmpty();
                         return true;
                     }
-
-                    if (timeoutMs == -1)
-                        AssertEmpty();
                 } while (true);
             } finally {
                 Interlocked.Decrement(ref sq.NumWaitingForDrain);
