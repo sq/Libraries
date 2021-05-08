@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Squared.Util;
 using NUnit.Framework;
+using System.Threading;
 
 namespace Squared.Threading {
     public class TestWorkItem : IWorkItem {
@@ -26,6 +27,14 @@ namespace Squared.Threading {
 
     public struct VoidWorkItem : IWorkItem {
         public void Execute () {
+        }
+    }
+
+    public struct BlockingWorkItem : IWorkItem {
+        public AutoResetEvent Signal;
+
+        public void Execute () {
+            Signal?.WaitOne();
         }
     }
 
@@ -183,6 +192,37 @@ namespace Squared.Threading {
                     TimeSpan.FromTicks(afterWait - beforeWait).TotalMilliseconds,
                     group.Count
                 );
+            }
+        }
+
+        [Test]
+        public void WaitUntilDrainedSplitsQueue () {
+            const int count = 50;
+            Task drain1, drain2;
+
+            using (var group = new ThreadGroup(1)) {
+                var queue = group.GetQueueForType<BlockingWorkItem>();
+                var item = new BlockingWorkItem();
+                for (int i = 0; i < count; i++)
+                    queue.Enqueue(ref item);
+                drain1 = queue.WaitUntilDrainedAsync();
+                var barrier = new BlockingWorkItem {
+                    Signal = new AutoResetEvent(false)
+                };
+                queue.Enqueue(ref barrier);
+                group.NotifyQueuesChanged();
+
+                for (int i = 0; i < count; i++)
+                    queue.Enqueue(ref item);
+                drain2 = queue.WaitUntilDrainedAsync();
+                group.NotifyQueuesChanged();
+
+                Assert.True(drain1.Wait(5000));
+
+                barrier.Signal.Set();
+                Assert.True(drain2.Wait(5000));
+
+                ;
             }
         }
     }
