@@ -94,17 +94,25 @@ namespace Squared.Threading {
         }
 
         internal class SubQueue {
+            public readonly WorkQueue<T> Owner;
             public volatile int NumWaitingForDrain = 0;
             public SignalFuture DrainCompleteFuture;
             public readonly AutoResetEvent DrainedSignal = new AutoResetEvent(false);
             public readonly ReaderWriterLockSlim ItemsLock = new ReaderWriterLockSlim();
             public readonly Queue<InternalWorkItem<T>> Items = new Queue<InternalWorkItem<T>>();
 
+            public SubQueue (WorkQueue<T> owner) {
+                Owner = owner;
+            }
+
             public void NotifyDrained () {
                 DrainCompleteFuture?.TrySetResult(NoneType.None, null);
                 // FIXME: Should we do this first? Assumption is that in a very bad case, the future's
                 //  complete handler might begin waiting
                 DrainedSignal.Set();
+                Owner.QueuesLock.EnterWriteLock();
+                Owner.UnusedQueues.Enqueue(this);
+                Owner.QueuesLock.ExitWriteLock();
             }
 
             public void Reset () {
@@ -150,7 +158,7 @@ namespace Squared.Threading {
         private readonly bool IsMainThreadWorkItem;
 
         public WorkQueue () {
-            CurrentSubQueue = new SubQueue();
+            CurrentSubQueue = new SubQueue(this);
             Queues.Add(CurrentSubQueue);
             IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
         }
@@ -394,7 +402,7 @@ namespace Squared.Threading {
             if (UnusedQueues.Count > 0)
                 newSq = UnusedQueues.Dequeue();
             else
-                newSq = new SubQueue();
+                newSq = new SubQueue(this);
             CurrentSubQueue = newSq;
             Queues.Add(newSq);
             QueuesLock.ExitWriteLock();
@@ -437,7 +445,7 @@ namespace Squared.Threading {
             if (UnusedQueues.Count > 0)
                 newSq = UnusedQueues.Dequeue();
             else
-                newSq = new SubQueue();
+                newSq = new SubQueue(this);
             CurrentSubQueue = newSq;
             Queues.Add(newSq);
             QueuesLock.ExitWriteLock();
@@ -450,7 +458,7 @@ namespace Squared.Threading {
                 // FIXME: Do we need to do this after waiting to avoid a race on the item count?
                 sq.ItemsLock.ExitReadLock();
                 if (doWait)
-                    sq.DrainedSignal.WaitOne();
+                    sq.DrainedSignal.WaitOne(timeoutMs);
             } finally {
                 Interlocked.Decrement(ref sq.NumWaitingForDrain);
 

@@ -43,7 +43,7 @@ namespace Squared.Threading {
         [Test]
         public void MinimumThreadCount () {
             using (var group = new ThreadGroup(
-                minimumThreads: 2
+                minimumThreads: 2, createBackgroundThreads: true
             )) {
                 Assert.GreaterOrEqual(group.Count, 2);
             }
@@ -51,7 +51,7 @@ namespace Squared.Threading {
 
         [Test]
         public void ManuallyStep () {
-            using (var group = new ThreadGroup(0, 0)) {
+            using (var group = new ThreadGroup(0, 0, createBackgroundThreads: true)) {
                 var queue = group.GetQueueForType<TestWorkItem>();
 
                 var item = new TestWorkItem();
@@ -69,7 +69,7 @@ namespace Squared.Threading {
 
         [Test]
         public void ForciblySpawnThread () {
-            using (var group = new ThreadGroup(0, 0)) {
+            using (var group = new ThreadGroup(0, 0, createBackgroundThreads: true)) {
                 var queue = group.GetQueueForType<TestWorkItem>();
 
                 var item = new TestWorkItem();
@@ -91,7 +91,7 @@ namespace Squared.Threading {
 
         [Test]
         public void AutoSpawnThread () {
-            using (var group = new ThreadGroup(0, 1)) {
+            using (var group = new ThreadGroup(0, 1, createBackgroundThreads: true)) {
                 var queue = group.GetQueueForType<TestWorkItem>();
 
                 var item = new TestWorkItem();
@@ -113,7 +113,7 @@ namespace Squared.Threading {
 
         [Test]
         public void AutoSpawnMoreThreads () {
-            using (var group = new ThreadGroup(0, 2)) {
+            using (var group = new ThreadGroup(0, 2, createBackgroundThreads: true)) {
                 var queue = group.GetQueueForType<SleepyWorkItem>();
 
                 queue.Enqueue(new SleepyWorkItem());
@@ -135,7 +135,7 @@ namespace Squared.Threading {
             const int count = 500000;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(1, 1)) {
+            using (var group = new ThreadGroup(1, 1, createBackgroundThreads: true)) {
                 var queue = group.GetQueueForType<VoidWorkItem>();
 
                 var item = new VoidWorkItem();
@@ -165,7 +165,7 @@ namespace Squared.Threading {
             const int count = 500000;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(1)) {
+            using (var group = new ThreadGroup(1, createBackgroundThreads: true)) {
                 var queue = group.GetQueueForType<VoidWorkItem>();
 
                 var item = new VoidWorkItem();
@@ -200,7 +200,7 @@ namespace Squared.Threading {
             const int count = 50;
             Task drain1, drain2;
 
-            using (var group = new ThreadGroup(1)) {
+            using (var group = new ThreadGroup(1, createBackgroundThreads: true)) {
                 var queue = group.GetQueueForType<BlockingWorkItem>();
                 var item = new BlockingWorkItem();
                 for (int i = 0; i < count; i++)
