@@ -198,31 +198,23 @@ namespace Squared.Threading {
         [Test]
         public void WaitUntilDrainedSplitsQueue () {
             const int count = 50;
-            Task drain1, drain2;
 
             using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "WaitUntilDrainedSplitsQueue")) {
                 var queue = group.GetQueueForType<BlockingWorkItem>();
                 var item = new BlockingWorkItem();
                 for (int i = 0; i < count; i++)
                     queue.Enqueue(ref item);
-                drain1 = queue.WaitUntilDrainedAsync();
                 var barrier = new BlockingWorkItem {
                     Signal = new AutoResetEvent(false)
                 };
                 queue.Enqueue(ref barrier);
+                var drain = queue.WaitUntilDrainedAsync();
                 group.NotifyQueuesChanged();
 
-                for (int i = 0; i < count; i++)
-                    queue.Enqueue(ref item);
-                drain2 = queue.WaitUntilDrainedAsync();
-                group.NotifyQueuesChanged();
-
-                Assert.True(drain1.Wait(5000));
+                Assert.False(drain.Wait(50));
 
                 barrier.Signal.Set();
-                Assert.True(drain2.Wait(5000));
-
-                ;
+                Assert.True(drain.Wait(5000));
             }
         }
     }
