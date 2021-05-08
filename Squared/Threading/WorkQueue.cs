@@ -257,7 +257,7 @@ namespace Squared.Threading {
             return null;
         }
 
-        private void StepQueue (SubQueue sq, ref int result, ref bool exhausted, ref int actualMaximumCount) {
+        private void StepQueue (SubQueue sq, ref int result, out bool exhausted, int actualMaximumCount) {
             InternalWorkItem<T> item = default(InternalWorkItem<T>);
             int count = 0, numProcessed = 0;
             bool running = true, inReadLock = false, signalDrained = false;
@@ -333,8 +333,7 @@ namespace Squared.Threading {
                 inReadLock = true;
             }
 
-            if (sq.Items.Count > 0)
-                exhausted = false;
+            exhausted = sq.Items.Count <= 0;
 
             if (inReadLock)
                 sq.ItemsLock.ExitUpgradeableReadLock();
@@ -351,13 +350,9 @@ namespace Squared.Threading {
             );
             exhausted = true;
 
-            do {
-                var sq = GetNextQueue();
-                if (sq == null)
-                    break;
-
-                StepQueue(sq, ref result, ref exhausted, ref actualMaximumCount);
-            } while ((actualMaximumCount > 0) && !exhausted);
+            var sq = GetNextQueue();
+            if (sq != null)
+                StepQueue(sq, ref result, out exhausted, actualMaximumCount);
 
             if ((result > 0) && (HasAnyListeners != 0)) {
                 lock (DrainListeners)
@@ -460,7 +455,8 @@ namespace Squared.Threading {
                 sq.ItemsLock.ExitReadLock();
                 if (doWait)
                     sq.DrainedSignal.WaitOne(timeoutMs);
-                AssertEmpty();
+                if (timeoutMs == -1)
+                    AssertEmpty();
             } finally {
                 Interlocked.Decrement(ref sq.NumWaitingForDrain);
 

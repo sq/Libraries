@@ -13,6 +13,7 @@ namespace Squared.Threading {
         private readonly UnorderedList<IWorkQueue> Queues = new UnorderedList<IWorkQueue>();
 
         private const int IdleWaitDurationMs = 100;
+        private int NextQueueIndex;
 
         public bool IsDisposed { get; private set; }
 
@@ -46,7 +47,7 @@ namespace Squared.Threading {
                 bool moreWorkRemains;
                 // HACK: We retain a strong reference to our GroupThread while we're running,
                 //  and if our owner GroupThread has been collected, we abort
-                if (!ThreadMainStep(weakSelf, ref queueIndex, out moreWorkRemains))
+                if (!ThreadMainStep(weakSelf, out moreWorkRemains))
                     break;
                 // The strong reference is released here so we can wait to be woken up
 
@@ -68,7 +69,7 @@ namespace Squared.Threading {
             return weakSelf;
         }
 
-        private static bool ThreadMainStep (WeakReference<GroupThread> weakSelf, ref int queueIndex, out bool moreWorkRemains) {
+        private static bool ThreadMainStep (WeakReference<GroupThread> weakSelf, out bool moreWorkRemains) {
             // We hold the strong reference at method scope so we can be sure it doesn't get held too long
             GroupThread strongSelf = null;
             moreWorkRemains = false;
@@ -90,16 +91,15 @@ namespace Squared.Threading {
 
             strongSelf.Owner.ThreadBeganWorking();
 
+            var nqi = strongSelf.NextQueueIndex++;
             for (int i = 0; i < queueCount; i++) {
                 if (strongSelf.IsDisposed)
                     return false;
 
                 // We round-robin select a queue from our pool every tick and then step it
                 IWorkQueue queue = null;
-                if (queueIndex < queueCount)
-                    queue = queues[queueIndex];
-
-                queueIndex = (queueIndex + 1) % queueCount;
+                int queueIndex = (i + nqi) % queueCount;
+                queue = queues[queueIndex];
 
                 if (queue != null) {
                     bool exhausted;
