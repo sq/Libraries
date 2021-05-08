@@ -43,7 +43,7 @@ namespace Squared.Threading {
         [Test]
         public void MinimumThreadCount () {
             using (var group = new ThreadGroup(
-                minimumThreads: 2, createBackgroundThreads: true
+                minimumThreads: 2, createBackgroundThreads: true, name: "MinimumThreadCount"
             )) {
                 Assert.GreaterOrEqual(group.Count, 2);
             }
@@ -51,7 +51,7 @@ namespace Squared.Threading {
 
         [Test]
         public void ManuallyStep () {
-            using (var group = new ThreadGroup(0, 0, createBackgroundThreads: true)) {
+            using (var group = new ThreadGroup(0, 0, createBackgroundThreads: true, name: "ManuallyStep")) {
                 var queue = group.GetQueueForType<TestWorkItem>();
 
                 var item = new TestWorkItem();
@@ -69,7 +69,7 @@ namespace Squared.Threading {
 
         [Test]
         public void ForciblySpawnThread () {
-            using (var group = new ThreadGroup(0, 0, createBackgroundThreads: true)) {
+            using (var group = new ThreadGroup(0, 0, createBackgroundThreads: true, name: "ForciblySpawnThread")) {
                 var queue = group.GetQueueForType<TestWorkItem>();
 
                 var item = new TestWorkItem();
@@ -83,7 +83,7 @@ namespace Squared.Threading {
                 group.ForciblySpawnThread();
                 Assert.AreEqual(1, group.Count);
 
-                queue.WaitUntilDrained();
+                queue.WaitUntilDrained(5000);
 
                 Assert.IsTrue(item.Ran);
             }
@@ -91,7 +91,7 @@ namespace Squared.Threading {
 
         [Test]
         public void AutoSpawnThread () {
-            using (var group = new ThreadGroup(0, 1, createBackgroundThreads: true)) {
+            using (var group = new ThreadGroup(0, 1, createBackgroundThreads: true, name: "AutoSpawnThread")) {
                 var queue = group.GetQueueForType<TestWorkItem>();
 
                 var item = new TestWorkItem();
@@ -100,20 +100,20 @@ namespace Squared.Threading {
                 queue.Enqueue(item);
 
                 Assert.AreEqual(0, group.Count);
-                Assert.IsFalse(item.Ran);
+                Assert.IsFalse(item.Ran, "!item.Ran");
 
                 group.NotifyQueuesChanged();
                 Assert.AreEqual(1, group.Count);
 
-                queue.WaitUntilDrained();
+                queue.WaitUntilDrained(5000);
 
-                Assert.IsTrue(item.Ran);
+                Assert.IsTrue(item.Ran, "item.Ran");
             }
         }
 
         [Test]
         public void AutoSpawnMoreThreads () {
-            using (var group = new ThreadGroup(0, 2, createBackgroundThreads: true)) {
+            using (var group = new ThreadGroup(0, 2, createBackgroundThreads: true, name: "AutoSpawnMoreThreads")) {
                 var queue = group.GetQueueForType<SleepyWorkItem>();
 
                 queue.Enqueue(new SleepyWorkItem());
@@ -126,7 +126,7 @@ namespace Squared.Threading {
 
                 Assert.GreaterOrEqual(2, group.Count);
 
-                queue.WaitUntilDrained();
+                queue.WaitUntilDrained(5000);
             }
         }
 
@@ -135,7 +135,7 @@ namespace Squared.Threading {
             const int count = 500000;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(1, 1, createBackgroundThreads: true)) {
+            using (var group = new ThreadGroup(1, 1, createBackgroundThreads: true, name: "SingleThreadPerformanceTest")) {
                 var queue = group.GetQueueForType<VoidWorkItem>();
 
                 var item = new VoidWorkItem();
@@ -147,7 +147,7 @@ namespace Squared.Threading {
                 var afterEnqueue = timeProvider.Ticks;
 
                 var beforeWait = timeProvider.Ticks;
-                queue.WaitUntilDrained();
+                queue.WaitUntilDrained(5000);
 
                 var afterWait = timeProvider.Ticks;
 
@@ -165,7 +165,7 @@ namespace Squared.Threading {
             const int count = 500000;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(1, createBackgroundThreads: true)) {
+            using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "MultipleThreadPerformanceTest")) {
                 var queue = group.GetQueueForType<VoidWorkItem>();
 
                 var item = new VoidWorkItem();
@@ -182,7 +182,7 @@ namespace Squared.Threading {
                 var afterEnqueue = timeProvider.Ticks;
 
                 var beforeWait = timeProvider.Ticks;
-                queue.WaitUntilDrained();
+                queue.WaitUntilDrained(5000);
 
                 var afterWait = timeProvider.Ticks;
 
@@ -200,7 +200,7 @@ namespace Squared.Threading {
             const int count = 50;
             Task drain1, drain2;
 
-            using (var group = new ThreadGroup(1, createBackgroundThreads: true)) {
+            using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "WaitUntilDrainedSplitsQueue")) {
                 var queue = group.GetQueueForType<BlockingWorkItem>();
                 var item = new BlockingWorkItem();
                 for (int i = 0; i < count; i++)

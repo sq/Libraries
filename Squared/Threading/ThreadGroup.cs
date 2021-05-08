@@ -49,13 +49,17 @@ namespace Squared.Threading {
         private long LastTimeThreadWasIdle = long.MaxValue;
         private bool CanMakeNewThreads, HasNoThreads;
 
+        public string Name;
+
         public ThreadGroup (
             int? minimumThreads = null,
             int? maximumThreads = null,
             bool createBackgroundThreads = false,
             ITimeProvider timeProvider = null,
-            ApartmentState comThreadingModel = ApartmentState.Unknown
+            ApartmentState comThreadingModel = ApartmentState.Unknown,
+            string name = null
         ) {
+            Name = name;
             MaximumThreadCount = maximumThreads.GetValueOrDefault(Environment.ProcessorCount + 1);
             MinimumThreadCount = Math.Min(minimumThreads.GetValueOrDefault(1), MaximumThreadCount);
             CreateBackgroundThreads = createBackgroundThreads;
@@ -294,6 +298,9 @@ namespace Squared.Threading {
                 return;
 
             IsDisposed = true;
+
+            foreach (var queue in Queues.Values)
+                queue.AssertEmpty();
 
             lock (Threads) {
                 foreach (var thread in Threads) {

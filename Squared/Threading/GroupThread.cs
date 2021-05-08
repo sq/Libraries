@@ -20,7 +20,7 @@ namespace Squared.Threading {
             Owner = owner;
             WakeEvent = new ManualResetEventSlim(true);
             Thread = new Thread(ThreadMain);
-            Thread.Name = string.Format("ThreadGroup {0} worker #{1}", owner.GetHashCode(), owner.Count);
+            Thread.Name = string.Format("ThreadGroup {0} {1} worker #{2}", owner.GetHashCode(), owner.Name, owner.Count);
             Thread.IsBackground = owner.CreateBackgroundThreads;
             if (owner.COMThreadingModel != ApartmentState.Unknown)
                 Thread.SetApartmentState(owner.COMThreadingModel);
@@ -122,10 +122,8 @@ namespace Squared.Threading {
             IsDisposed = true;
             WakeEvent.Set();
             // HACK: This shouldn't be necessary, but without this tests hang
-            /*
-            if (Thread.IsBackground)
+            if (false && Thread.IsBackground)
                 Thread.Abort();
-            */
         }
     }
 }

@@ -47,6 +47,7 @@ namespace Squared.Threading {
         /// Registers a listener to be invoked any time a group of work items is processed by a thread.
         /// </summary>
         void RegisterDrainListener (WorkQueueDrainListener listener);
+        void AssertEmpty ();
     }
 
     // This job must be run on the main thread
@@ -233,7 +234,9 @@ namespace Squared.Threading {
                         if (q.Items.Count == 0) {
                             if (Queues.Count > 1) {
                                 q.NotifyDrained();
+                                QueuesLock.EnterWriteLock();
                                 Queues.RemoveAt(i);
+                                QueuesLock.ExitWriteLock();
                                 i--;
                             } else {
                                 return q;
@@ -354,7 +357,7 @@ namespace Squared.Threading {
                     break;
 
                 StepQueue(sq, ref result, ref exhausted, ref actualMaximumCount);
-            } while (actualMaximumCount > 0);
+            } while ((actualMaximumCount > 0) && !exhausted);
 
             if ((result > 0) && (HasAnyListeners != 0)) {
                 lock (DrainListeners)
