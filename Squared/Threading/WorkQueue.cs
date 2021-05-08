@@ -97,7 +97,6 @@ namespace Squared.Threading {
         internal class SubQueue {
             public readonly WorkQueue<T> Owner;
             public volatile int NumWaitingForDrain = 0;
-            public SignalFuture DrainCompleteFuture;
             public readonly AutoResetEvent DrainedSignal = new AutoResetEvent(false);
             // HACK: Recursion needs to be enabled so that we don't break if a thread is aborted while it holds the lock
             public readonly ReaderWriterLockSlim ItemsLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
@@ -108,20 +107,15 @@ namespace Squared.Threading {
             }
 
             public void NotifyDrained () {
-                DrainCompleteFuture?.TrySetResult(NoneType.None, null);
                 // FIXME: Should we do this first? Assumption is that in a very bad case, the future's
                 //  complete handler might begin waiting
                 DrainedSignal.Set();
-                Owner.QueuesLock.EnterWriteLock();
-                Owner.UnusedQueues.Enqueue(this);
-                Owner.QueuesLock.ExitWriteLock();
             }
 
             public void Reset () {
                 ItemsLock.EnterWriteLock();
                 Items.Clear();
                 NumWaitingForDrain = 0;
-                DrainCompleteFuture = null;
                 ItemsLock.ExitWriteLock();
                 DrainedSignal.Set();
             }
@@ -150,10 +144,6 @@ namespace Squared.Threading {
         private volatile int HasAnyListeners = 0;
         private volatile int InFlightTasks = 0;
         private readonly List<WorkQueueDrainListener> DrainListeners = new List<WorkQueueDrainListener>();
-        private readonly Queue<SubQueue> UnusedQueues = new Queue<SubQueue>();
-        private readonly ReaderWriterLockSlim QueuesLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
-        private readonly List<SubQueue> Queues = new List<SubQueue>();
-        private SignalFuture NextDrainCompleteFuture = new SignalFuture();
         private SubQueue CurrentSubQueue;
 
         private ExceptionDispatchInfo UnhandledException;
@@ -161,7 +151,6 @@ namespace Squared.Threading {
 
         public WorkQueue () {
             CurrentSubQueue = new SubQueue(this);
-            Queues.Add(CurrentSubQueue);
             IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
         }
 
@@ -223,38 +212,9 @@ namespace Squared.Threading {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private SubQueue GetNextQueue () {
-            bool didUpgrade = false;
-            QueuesLock.EnterUpgradeableReadLock();
-            try {
-                for (int i = 0; i < Queues.Count; i++) {
-                    var q = Queues[i];
-                    q.ItemsLock.EnterReadLock();
-                    try {
-                        if (q.Items.Count == 0) {
-                            if (Queues.Count > 1) {
-                                q.NotifyDrained();
-                                QueuesLock.EnterWriteLock();
-                                Queues.RemoveAt(i);
-                                QueuesLock.ExitWriteLock();
-                                i--;
-                            } else {
-                                return q;
-                            }
-                        } else {
-                            return q;
-                        }
-                    } finally {
-                        q.ItemsLock.ExitReadLock();
-                    }
-                }
-            } finally {
-                if (didUpgrade)
-                    QueuesLock.ExitWriteLock();
-                QueuesLock.ExitUpgradeableReadLock();
-            }
-
-            return null;
+            return CurrentSubQueue;
         }
 
         private void StepQueue (SubQueue sq, ref int result, out bool exhausted, int actualMaximumCount) {
@@ -286,6 +246,8 @@ namespace Squared.Threading {
 
                         sq.ItemsLock.ExitWriteLock();
                         inWriteLock = false;
+                    } else if (count == 0) {
+                        signalDrained = true;
                     }
 
                     if (inReadLock) {
@@ -366,21 +328,13 @@ namespace Squared.Threading {
         public bool IsEmpty {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                QueuesLock.EnterReadLock();
+                var q = CurrentSubQueue;
+                q.ItemsLock.EnterReadLock();
                 try {
-                    foreach (var q in Queues) {
-                        q.ItemsLock.EnterReadLock();
-                        var count = q.Items.Count;
-                        q.ItemsLock.ExitReadLock();
-
-                        if (count > 0)
-                            return false;
-                    }
+                    return q.Items.Count == 0;
                 } finally {
-                    QueuesLock.ExitReadLock();
+                    q.ItemsLock.ExitReadLock();
                 }
-
-                return true;
             }
         }
 
@@ -389,74 +343,38 @@ namespace Squared.Threading {
                 throw new Exception("Queue is not fully drained");
         }
 
-        public async Task WaitUntilDrainedAsync (int timeoutMs = -1) {
+        public bool WaitUntilDrained (int timeoutMs = -1) {
             if (IsEmpty)
-                return;
+                return true;
 
-            QueuesLock.EnterWriteLock();
-            SubQueue sq = CurrentSubQueue, newSq;
-            if (UnusedQueues.Count > 0)
-                newSq = UnusedQueues.Dequeue();
-            else
-                newSq = new SubQueue(this);
-            CurrentSubQueue = newSq;
-            Queues.Add(newSq);
-            QueuesLock.ExitWriteLock();
+            var sq = CurrentSubQueue;
             var resultCount = Interlocked.Increment(ref sq.NumWaitingForDrain);
-
-            bool doWait = false, inReadLock = true;
-            sq.ItemsLock.EnterUpgradeableReadLock();
-            try {
-                doWait = (sq.Items.Count > 0) || (InFlightTasks > 0);
-                var fWait = sq.DrainCompleteFuture;
-                if (doWait) {
-                    if (fWait == null) {
-                        sq.ItemsLock.EnterWriteLock();
-                        sq.DrainCompleteFuture = fWait = Interlocked.Exchange(ref NextDrainCompleteFuture, new SignalFuture());
-                        sq.ItemsLock.ExitWriteLock();
-                    }
-
-                    sq.ItemsLock.ExitUpgradeableReadLock();
-                    inReadLock = false;
-                    
-                    await fWait;
-                }
-            } finally {
-                if (inReadLock)
-                    sq.ItemsLock.ExitUpgradeableReadLock();
-                Interlocked.Decrement(ref sq.NumWaitingForDrain);
-
-                var uhe = Interlocked.Exchange(ref UnhandledException, null);
-                if (uhe != null)
-                    uhe.Throw();
-            }
-        }
-
-        public void WaitUntilDrained (int timeoutMs = -1) {
-            if (IsEmpty)
-                return;
-
-            QueuesLock.EnterWriteLock();
-            SubQueue sq = CurrentSubQueue, newSq;
-            if (UnusedQueues.Count > 0)
-                newSq = UnusedQueues.Dequeue();
-            else
-                newSq = new SubQueue(this);
-            CurrentSubQueue = newSq;
-            Queues.Add(newSq);
-            QueuesLock.ExitWriteLock();
-            var resultCount = Interlocked.Increment(ref sq.NumWaitingForDrain);
+            long endWhen =
+                timeoutMs >= 0
+                    ? Time.Ticks + (Time.MillisecondInTicks * timeoutMs)
+                    : long.MaxValue - 1;
 
             bool doWait = false;
             try {
-                sq.ItemsLock.EnterReadLock();
-                doWait = (sq.Items.Count > 0) || (InFlightTasks > 0);
-                // FIXME: Do we need to do this after waiting to avoid a race on the item count?
-                sq.ItemsLock.ExitReadLock();
-                if (doWait)
-                    sq.DrainedSignal.WaitOne(timeoutMs);
-                if (timeoutMs == -1)
-                    AssertEmpty();
+                do {
+                    sq.ItemsLock.EnterReadLock();
+                    doWait = (sq.Items.Count > 0) || (InFlightTasks > 0);
+                    // FIXME: Do we need to do this after waiting to avoid a race on the item count?
+                    sq.ItemsLock.ExitReadLock();
+                    if (doWait) {
+                        var now = Time.Ticks;
+                        if (now > endWhen)
+                            break;
+                        var maxWait = (int)(Math.Max(0, endWhen - now) / Time.MillisecondInTicks);
+                        if (!sq.DrainedSignal.WaitOne(maxWait))
+                            ;
+                    } else {
+                        return true;
+                    }
+
+                    if (timeoutMs == -1)
+                        AssertEmpty();
+                } while (true);
             } finally {
                 Interlocked.Decrement(ref sq.NumWaitingForDrain);
 
@@ -464,6 +382,8 @@ namespace Squared.Threading {
                 if (uhe != null)
                     uhe.Throw();
             }
+
+            return false;
         }
     }
 }

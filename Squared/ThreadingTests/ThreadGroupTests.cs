@@ -196,7 +196,7 @@ namespace Squared.Threading {
         }
 
         [Test]
-        public void WaitUntilDrainedSplitsQueue () {
+        public void WaitUntilDrained () {
             const int count = 50;
 
             using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "WaitUntilDrainedSplitsQueue")) {
@@ -208,13 +208,11 @@ namespace Squared.Threading {
                     Signal = new AutoResetEvent(false)
                 };
                 queue.Enqueue(ref barrier);
-                var drain = queue.WaitUntilDrainedAsync();
+                Assert.IsFalse(queue.WaitUntilDrained(5), "waitUntilDrained 1");
                 group.NotifyQueuesChanged();
-
-                Assert.False(drain.Wait(50));
-
+                Assert.IsFalse(queue.WaitUntilDrained(5), "waitUntilDrained 2");
                 barrier.Signal.Set();
-                Assert.True(drain.Wait(5000));
+                Assert.IsTrue(queue.WaitUntilDrained(500), "waitUntilDrained 3");
             }
         }
     }
