@@ -804,7 +804,7 @@ namespace Squared.Threading {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool SetResultPrologue () {
+        private bool SetResultPrologue (bool throwOnFailure = true) {
             int iterations = 1;
 
             while (true) {
@@ -812,9 +812,12 @@ namespace Squared.Threading {
 
                 if ((oldState == State_Disposed) || (oldState == State_Disposing)) {
                     return false;
-                } else if ((oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError))
-                    throw new FutureAlreadyHasResultException(this);
-                else if (oldState == State_Empty)
+                } else if ((oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError)) {
+                    if (throwOnFailure)
+                        throw new FutureAlreadyHasResultException(this);
+                    else
+                        return false;
+                } else if (oldState == State_Empty)
                     break;
 
                 SpinWait(iterations++);
@@ -907,6 +910,24 @@ namespace Squared.Threading {
             _ErrorInfo = null;
 
             SetResultEpilogue(newState);
+        }
+
+        /// <summary>
+        /// Sets the result of this future along with the responsible exception (if any).
+        /// The exception will be wrapped instead of being rethrown.
+        /// If the future already has a result or has been disposed, this method will return false.
+        /// </summary>
+        public bool TrySetResult (T result, Exception error) {
+            if (!SetResultPrologue())
+                return false;
+
+            int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
+            _Result = result;
+            _Error = error;
+            _ErrorInfo = null;
+
+            SetResultEpilogue(newState);
+            return true;
         }
 
         /// <summary>
