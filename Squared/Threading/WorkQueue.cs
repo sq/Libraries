@@ -140,7 +140,10 @@ namespace Squared.Threading {
         private ExceptionDispatchInfo UnhandledException;
         private readonly bool IsMainThreadWorkItem;
 
-        public WorkQueue () {
+        public readonly ThreadGroup Owner;
+
+        public WorkQueue (ThreadGroup owner) {
+            Owner = owner;
             CurrentSubQueue = new SubQueue(this);
             IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
         }
@@ -162,6 +165,7 @@ namespace Squared.Threading {
         }
 
         private void NotifyChanged () {
+            Owner.ConsiderNewThread(false);
             lock (WakeSignalLock)
                 foreach (var s in WakeSignals)
                     s.Set();

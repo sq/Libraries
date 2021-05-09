@@ -42,7 +42,6 @@ namespace Squared.Threading {
 
         private static void WaitForWork (AutoResetEvent wakeSignal) {
             wakeSignal.WaitOne(IdleWaitDurationMs);
-            wakeSignal.Reset();
             ;
         }
 

@@ -180,9 +180,6 @@ namespace Squared.Threading {
                 // We lost a race to create the new work queue
                 if (!queues.TryAdd(type, result)) {
                     result = (WorkQueue<T>)queues[type];
-                } else {
-                    lock (QueueList)
-                        QueueList.Add(result);
                 }
 
                 if (isMainThreadOnly) {
@@ -199,13 +196,19 @@ namespace Squared.Threading {
         private WorkQueue<T> CreateQueueForType<T> (bool isMainThreadOnly)
             where T : IWorkItem
         {
-            var result = new WorkQueue<T>() {
+            var result = new WorkQueue<T>(this) {
                 IsMainThreadQueue = isMainThreadOnly
             };
+            lock (QueueList)
+                QueueList.Add(result);
             lock (Threads)
             foreach (var thread in Threads)
                 thread.RegisterQueue(result);
-            NotifyQueuesChanged();
+
+            // HACK: Do this manually to avoid spawning a new thread
+            lock (Threads)
+                foreach (var thread in Threads)
+                    thread.WakeSignal.Set();
             return result;
         }
 
@@ -229,7 +232,7 @@ namespace Squared.Threading {
         /// </summary>
         /// <param name="assumeBusy">If true, it is assumed that many tasks are waiting.</param>
         /// <returns>true if a thread was created.</returns>
-        private bool ConsiderNewThread (bool assumeBusy = false) {
+        internal bool ConsiderNewThread (bool assumeBusy = false) {
             if (!CanMakeNewThreads)
                 return false;
 
