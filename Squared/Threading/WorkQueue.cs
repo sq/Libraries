@@ -47,6 +47,7 @@ namespace Squared.Threading {
         /// Registers a listener to be invoked any time a group of work items is processed by a thread.
         /// </summary>
         void RegisterDrainListener (WorkQueueDrainListener listener);
+        void RegisterWakeSignal (AutoResetEvent wakeSignal);
         void AssertEmpty ();
     }
 
@@ -125,7 +126,8 @@ namespace Squared.Threading {
             }
         }
 
-        internal object WakeSignal;
+        private object WakeSignalLock = new object();
+        private List<AutoResetEvent> WakeSignals = new List<AutoResetEvent>();
 
         // For debugging
         internal bool IsMainThreadQueue = false;
@@ -138,10 +140,14 @@ namespace Squared.Threading {
         private ExceptionDispatchInfo UnhandledException;
         private readonly bool IsMainThreadWorkItem;
 
-        public WorkQueue (object wakeSignal) {
-            WakeSignal = wakeSignal;
+        public WorkQueue () {
             CurrentSubQueue = new SubQueue(this);
             IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
+        }
+
+        public void RegisterWakeSignal (AutoResetEvent wakeSignal) {
+            lock (WakeSignalLock)
+                WakeSignals.Add(wakeSignal);
         }
 
         public void RegisterDrainListener (WorkQueueDrainListener listener) {
@@ -155,6 +161,12 @@ namespace Squared.Threading {
                 DrainListeners.Add(listener);
         }
 
+        private void NotifyChanged () {
+            lock (WakeSignalLock)
+                foreach (var s in WakeSignals)
+                    s.Set();
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null, bool notifyChanged = true) {
 #if DEBUG
@@ -166,8 +178,7 @@ namespace Squared.Threading {
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
             sq.Add(ref wi);
             if (notifyChanged)
-                lock (WakeSignal)
-                    Monitor.PulseAll(WakeSignal);
+                NotifyChanged();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -181,8 +192,7 @@ namespace Squared.Threading {
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
             sq.Add(ref wi);
             if (notifyChanged)
-                lock (WakeSignal)
-                    Monitor.PulseAll(WakeSignal);
+                NotifyChanged();
         }
 
         public void EnqueueMany (ArraySegment<T> data, bool notifyChanged = true) {
@@ -205,8 +215,7 @@ namespace Squared.Threading {
             }
 
             if (notifyChanged)
-                lock (WakeSignal)
-                    Monitor.PulseAll(WakeSignal);
+                NotifyChanged();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

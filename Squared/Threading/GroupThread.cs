@@ -8,7 +8,7 @@ namespace Squared.Threading {
     public class GroupThread : IDisposable {
         public readonly ThreadGroup      Owner;
         public readonly Thread           Thread;
-        public readonly object           WakeSignal;
+        public readonly AutoResetEvent   WakeSignal = new AutoResetEvent(true);
 
         private readonly UnorderedList<IWorkQueue> Queues = new UnorderedList<IWorkQueue>();
 
@@ -25,7 +25,6 @@ namespace Squared.Threading {
         internal GroupThread (ThreadGroup owner, int nextQueueIndex) {
             Owner = owner;
             NextQueueIndex = nextQueueIndex;
-            WakeSignal = owner.WakeSignal;
             Thread = new Thread(ThreadMain);
             Thread.Name = string.Format("ThreadGroup {0} {1} worker #{2}", owner.GetHashCode(), owner.Name, owner.Count);
             Thread.IsBackground = owner.CreateBackgroundThreads;
@@ -38,11 +37,11 @@ namespace Squared.Threading {
         internal void RegisterQueue (IWorkQueue queue) {
             lock (Queues)
                 Queues.Add(queue);
+            queue.RegisterWakeSignal(WakeSignal);
         }
 
         private static void ThreadMain (object _self) {
-            ManualResetEventSlim wakeEvent;
-            var weakSelf = ThreadMainSetup(ref _self, out object wakeSignal);
+            var weakSelf = ThreadMainSetup(ref _self, out AutoResetEvent wakeSignal);
 
             // On thread termination we release our event.
             // If we did this in Dispose there'd be no clean way to deal with this.
@@ -56,14 +55,13 @@ namespace Squared.Threading {
 
                 if (!moreWorkRemains) {
                     // We only wait if no work remains
-                    lock (wakeSignal)
-                        Monitor.Wait(wakeSignal, IdleWaitDurationMs);
+                    wakeSignal.WaitOne(IdleWaitDurationMs);
                 }
             }
         }
 
         private static WeakReference<GroupThread> ThreadMainSetup (
-            ref object _self, out object wakeSignal
+            ref object _self, out AutoResetEvent wakeSignal
         ) {
             var self = (GroupThread)_self;
             var weakSelf = new WeakReference<GroupThread>(self);
@@ -122,12 +120,7 @@ namespace Squared.Threading {
 
         public void Dispose () {
             IsDisposed = true;
-            var taken = false;
-            Monitor.TryEnter(WakeSignal, 1, ref taken);
-            if (taken) {
-                Monitor.PulseAll(WakeSignal);
-                Monitor.Exit(WakeSignal);
-            }
+            WakeSignal.Set();
             // HACK: This shouldn't be necessary, but without this tests hang
             if (false && Thread.IsBackground)
                 Thread.Abort();

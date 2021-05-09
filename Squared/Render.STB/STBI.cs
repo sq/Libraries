@@ -279,6 +279,7 @@ namespace Squared.Render.STB {
                     pin = GCHandle.Alloc(MipChain[level - 1], GCHandleType.Pinned);
                     pLevelData = (void*)pin.AddrOfPinnedObject();
 
+                    // FIXME: Do this one step at a time in a list of work items
                     MipGenerator.Color(pPreviousLevelData, previousLevelWidth, previousLevelHeight, pLevelData, levelWidth, levelHeight);
                 }
 
@@ -392,7 +393,6 @@ namespace Squared.Render.STB {
                         throw new Exception("Image has no data");
                 }
 
-                // FIXME: Create a work item for each mip to avoid blocking the main thread for too long
                 lock (Coordinator.UseResourceLock)
                     Evil.TextureUtils.SetDataFast(Texture, Level, pData, new Rectangle(0, 0, LevelWidth, LevelHeight), MipPitch);
 

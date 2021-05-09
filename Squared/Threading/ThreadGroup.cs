@@ -31,8 +31,6 @@ namespace Squared.Threading {
         public readonly int MinimumThreadCount;
         public readonly int MaximumThreadCount;
         public readonly ApartmentState COMThreadingModel;
-
-        internal object WakeSignal = new object();
         
         // A lock-free dictionary for looking up queues by work item type
         private readonly ConcurrentDictionary<Type, IWorkQueue> Queues = 
@@ -187,13 +185,6 @@ namespace Squared.Threading {
                 } else {
                     lock (QueueList)
                         QueueList.Add(result);
-
-                    if (!isMainThreadOnly) {
-                        // FIXME: Can this deadlock somehow?
-                        lock (Threads)
-                        foreach (var thread in Threads)
-                            thread.RegisterQueue(result);
-                    }
                 }
 
                 if (isMainThreadOnly) {
@@ -210,9 +201,13 @@ namespace Squared.Threading {
         private WorkQueue<T> CreateQueueForType<T> (bool isMainThreadOnly)
             where T : IWorkItem
         {
-            return new WorkQueue<T>(WakeSignal) {
+            var result = new WorkQueue<T>() {
                 IsMainThreadQueue = isMainThreadOnly
             };
+            lock (Threads)
+            foreach (var thread in Threads)
+                thread.RegisterQueue(result);
+            return result;
         }
 
         /// <summary>
@@ -223,8 +218,10 @@ namespace Squared.Threading {
         public void NotifyQueuesChanged (bool assumeBusy = false) {
             ConsiderNewThread(assumeBusy);
 
-            lock (WakeSignal)
-                Monitor.PulseAll(WakeSignal);
+            // FIXME: Race condition?
+            lock (Threads)
+                foreach (var thread in Threads)
+                    thread.WakeSignal.Set();
         }
 
         /// <summary>
@@ -293,8 +290,9 @@ namespace Squared.Threading {
 
             IsDisposed = true;
 
-            foreach (var queue in Queues.Values)
-                queue.AssertEmpty();
+            if (false)
+                foreach (var queue in Queues.Values)
+                    queue.AssertEmpty();
 
             lock (Threads) {
                 foreach (var thread in Threads) {
