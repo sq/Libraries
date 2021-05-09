@@ -31,6 +31,8 @@ namespace Squared.Threading {
         public readonly int MinimumThreadCount;
         public readonly int MaximumThreadCount;
         public readonly ApartmentState COMThreadingModel;
+
+        internal object WakeSignal = new object();
         
         // A lock-free dictionary for looking up queues by work item type
         private readonly ConcurrentDictionary<Type, IWorkQueue> Queues = 
@@ -208,7 +210,7 @@ namespace Squared.Threading {
         private WorkQueue<T> CreateQueueForType<T> (bool isMainThreadOnly)
             where T : IWorkItem
         {
-            return new WorkQueue<T>() {
+            return new WorkQueue<T>(WakeSignal) {
                 IsMainThreadQueue = isMainThreadOnly
             };
         }
@@ -221,16 +223,8 @@ namespace Squared.Threading {
         public void NotifyQueuesChanged (bool assumeBusy = false) {
             ConsiderNewThread(assumeBusy);
 
-            // Skip locking 'Threads' here since it's expensive.
-            // This means we might fail to wake a brand new thread,
-            //  but that's fine.
-            var threads = Threads.GetBufferArray();
-            for (int i = 0; i < CurrentThreadCount; i++) {
-                var thread = threads[i];
-
-                if (thread != null)
-                    thread.WakeEvent.Set();
-            }
+            lock (WakeSignal)
+                Monitor.PulseAll(WakeSignal);
         }
 
         /// <summary>

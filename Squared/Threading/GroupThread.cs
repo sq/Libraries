@@ -8,11 +8,16 @@ namespace Squared.Threading {
     public class GroupThread : IDisposable {
         public readonly ThreadGroup      Owner;
         public readonly Thread           Thread;
-        public readonly ManualResetEventSlim WakeEvent;
+        public readonly object           WakeSignal;
 
         private readonly UnorderedList<IWorkQueue> Queues = new UnorderedList<IWorkQueue>();
 
-        private const int IdleWaitDurationMs = 100;
+#if DEBUG
+        // For troubleshooting
+        public static int IdleWaitDurationMs = 10000;
+#else
+        public static int IdleWaitDurationMs = 100;
+#endif
         private int NextQueueIndex;
 
         public bool IsDisposed { get; private set; }
@@ -20,7 +25,7 @@ namespace Squared.Threading {
         internal GroupThread (ThreadGroup owner, int nextQueueIndex) {
             Owner = owner;
             NextQueueIndex = nextQueueIndex;
-            WakeEvent = new ManualResetEventSlim(true);
+            WakeSignal = owner.WakeSignal;
             Thread = new Thread(ThreadMain);
             Thread.Name = string.Format("ThreadGroup {0} {1} worker #{2}", owner.GetHashCode(), owner.Name, owner.Count);
             Thread.IsBackground = owner.CreateBackgroundThreads;
@@ -37,13 +42,10 @@ namespace Squared.Threading {
 
         private static void ThreadMain (object _self) {
             ManualResetEventSlim wakeEvent;
-            var weakSelf = ThreadMainSetup(ref _self, out wakeEvent);
-
-            int queueIndex = 0;
+            var weakSelf = ThreadMainSetup(ref _self, out object wakeSignal);
 
             // On thread termination we release our event.
             // If we did this in Dispose there'd be no clean way to deal with this.
-            using (wakeEvent)
             while (true) {
                 bool moreWorkRemains;
                 // HACK: We retain a strong reference to our GroupThread while we're running,
@@ -54,19 +56,18 @@ namespace Squared.Threading {
 
                 if (!moreWorkRemains) {
                     // We only wait if no work remains
-                    
-                    if (wakeEvent.Wait(IdleWaitDurationMs))
-                        wakeEvent.Reset();
+                    lock (wakeSignal)
+                        Monitor.Wait(wakeSignal, IdleWaitDurationMs);
                 }
             }
         }
 
         private static WeakReference<GroupThread> ThreadMainSetup (
-            ref object _self, out ManualResetEventSlim wakeEvent
+            ref object _self, out object wakeSignal
         ) {
             var self = (GroupThread)_self;
             var weakSelf = new WeakReference<GroupThread>(self);
-            wakeEvent = self.WakeEvent;
+            wakeSignal = self.WakeSignal;
             return weakSelf;
         }
 
@@ -121,7 +122,12 @@ namespace Squared.Threading {
 
         public void Dispose () {
             IsDisposed = true;
-            WakeEvent.Set();
+            var taken = false;
+            Monitor.TryEnter(WakeSignal, 1, ref taken);
+            if (taken) {
+                Monitor.PulseAll(WakeSignal);
+                Monitor.Exit(WakeSignal);
+            }
             // HACK: This shouldn't be necessary, but without this tests hang
             if (false && Thread.IsBackground)
                 Thread.Abort();

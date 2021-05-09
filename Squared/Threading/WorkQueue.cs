@@ -98,8 +98,7 @@ namespace Squared.Threading {
             public readonly WorkQueue<T> Owner;
             public volatile int NumWaitingForDrain = 0;
             public readonly AutoResetEvent DrainedSignal = new AutoResetEvent(false);
-            // HACK: Recursion needs to be enabled so that we don't break if a thread is aborted while it holds the lock
-            public readonly ReaderWriterLockSlim ItemsLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+            public readonly object ItemsLock = new object();
             public readonly Queue<InternalWorkItem<T>> Items = new Queue<InternalWorkItem<T>>();
 
             public SubQueue (WorkQueue<T> owner) {
@@ -121,14 +120,12 @@ namespace Squared.Threading {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Add (ref InternalWorkItem<T> item) {
                 AssertCanEnqueue();
-                ItemsLock.EnterWriteLock();
-                try {
+                lock (ItemsLock)
                     Items.Enqueue(item);
-                } finally {
-                    ItemsLock.ExitWriteLock();
-                }
             }
         }
+
+        internal object WakeSignal;
 
         // For debugging
         internal bool IsMainThreadQueue = false;
@@ -141,7 +138,8 @@ namespace Squared.Threading {
         private ExceptionDispatchInfo UnhandledException;
         private readonly bool IsMainThreadWorkItem;
 
-        public WorkQueue () {
+        public WorkQueue (object wakeSignal) {
+            WakeSignal = wakeSignal;
             CurrentSubQueue = new SubQueue(this);
             IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
         }
@@ -158,7 +156,7 @@ namespace Squared.Threading {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null) {
+        public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null, bool notifyChanged = true) {
 #if DEBUG
             if (IsMainThreadWorkItem && !IsMainThreadQueue)
                 throw new InvalidOperationException("This work item must be queued on the main thread");
@@ -167,10 +165,13 @@ namespace Squared.Threading {
             var sq = CurrentSubQueue;
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
             sq.Add(ref wi);
+            if (notifyChanged)
+                lock (WakeSignal)
+                    Monitor.PulseAll(WakeSignal);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null) {
+        public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null, bool notifyChanged = true) {
 #if DEBUG
             if (IsMainThreadWorkItem && !IsMainThreadQueue)
                 throw new InvalidOperationException("This work item must be queued on the main thread");
@@ -179,17 +180,19 @@ namespace Squared.Threading {
             var sq = CurrentSubQueue;
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
             sq.Add(ref wi);
+            if (notifyChanged)
+                lock (WakeSignal)
+                    Monitor.PulseAll(WakeSignal);
         }
 
-        public void EnqueueMany (ArraySegment<T> data) {
+        public void EnqueueMany (ArraySegment<T> data, bool notifyChanged = true) {
 #if DEBUG
             if (IsMainThreadWorkItem && !IsMainThreadQueue)
                 throw new InvalidOperationException("This work item must be queued on the main thread");
 #endif
 
             var sq = CurrentSubQueue;
-            sq.ItemsLock.EnterWriteLock();
-            try {
+            lock (sq.ItemsLock) {
                 sq.AssertCanEnqueue();
 
                 var wi = new InternalWorkItem<T>();
@@ -199,9 +202,11 @@ namespace Squared.Threading {
                     wi.Data = data.Array[data.Offset + i];
                     sq.Items.Enqueue(wi);
                 }
-            } finally {
-                sq.ItemsLock.ExitWriteLock();
             }
+
+            if (notifyChanged)
+                lock (WakeSignal)
+                    Monitor.PulseAll(WakeSignal);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -212,16 +217,16 @@ namespace Squared.Threading {
         private void StepQueue (SubQueue sq, ref int result, out bool exhausted, int actualMaximumCount) {
             InternalWorkItem<T> item = default(InternalWorkItem<T>);
             int count = 0, numProcessed = 0;
-            bool running = true, inReadLock = false, signalDrained = false;
+            bool running = true, inLock = false, signalDrained = false;
 
             do {
-                bool isInFlight = false, inWriteLock = false;
+                bool isInFlight = false;
 
                 try {
                     // FIXME: Find a way to not acquire this every step
-                    if (!inReadLock) {
-                        sq.ItemsLock.EnterUpgradeableReadLock();
-                        inReadLock = true;
+                    if (!inLock) {
+                        Monitor.Enter(sq.ItemsLock);
+                        inLock = true;
                     }
 
                     running = ((count = sq.Items.Count) > 0) &&
@@ -231,22 +236,16 @@ namespace Squared.Threading {
                         isInFlight = true;
                         Interlocked.Increment(ref InFlightTasks);
 
-                        sq.ItemsLock.EnterWriteLock();
-                        inWriteLock = true;
-
                         item = sq.Items.Dequeue();
                         if (sq.Items.Count == 0)
                             signalDrained = true;
-
-                        sq.ItemsLock.ExitWriteLock();
-                        inWriteLock = false;
                     } else if (count == 0) {
                         signalDrained = true;
                     }
 
-                    if (inReadLock) {
-                        sq.ItemsLock.ExitUpgradeableReadLock();
-                        inReadLock = false;
+                    if (inLock) {
+                        Monitor.Exit(sq.ItemsLock);
+                        inLock = false;
                     }
 
                     try {
@@ -267,22 +266,18 @@ namespace Squared.Threading {
                     signalDrained = true;
                     break;
                 } finally {
-                    if (inWriteLock)
-                        sq.ItemsLock.ExitWriteLock();
+                    exhausted = sq.Items.Count <= 0;
+                    if (inLock) {
+                        Monitor.Exit(sq.ItemsLock);
+                        inLock = false;
+                    }
                 }
             } while (running);
 
             actualMaximumCount -= numProcessed;
 
-            if (!inReadLock) {
-                sq.ItemsLock.EnterUpgradeableReadLock();
-                inReadLock = true;
-            }
-
-            exhausted = sq.Items.Count <= 0;
-
-            if (inReadLock)
-                sq.ItemsLock.ExitUpgradeableReadLock();
+            if (inLock)
+                Monitor.Exit(sq.ItemsLock);
 
             if (signalDrained)
                 sq.NotifyDrained();
@@ -313,12 +308,8 @@ namespace Squared.Threading {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 var q = CurrentSubQueue;
-                q.ItemsLock.EnterReadLock();
-                try {
+                lock (q.ItemsLock)
                     return (q.Items.Count == 0) && (InFlightTasks <= 0);
-                } finally {
-                    q.ItemsLock.ExitReadLock();
-                }
             }
         }
 
@@ -341,10 +332,8 @@ namespace Squared.Threading {
             bool doWait = false;
             try {
                 do {
-                    sq.ItemsLock.EnterReadLock();
-                    doWait = (sq.Items.Count > 0) || (InFlightTasks > 0);
-                    // FIXME: Do we need to do this after waiting to avoid a race on the item count?
-                    sq.ItemsLock.ExitReadLock();
+                    lock (sq.ItemsLock)
+                        doWait = (sq.Items.Count > 0) || (InFlightTasks > 0);
                     if (doWait) {
                         var now = Time.Ticks;
                         if (now > endWhen)
