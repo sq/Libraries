@@ -40,6 +40,12 @@ namespace Squared.Threading {
             queue.RegisterWakeSignal(WakeSignal);
         }
 
+        private static void WaitForWork (AutoResetEvent wakeSignal) {
+            wakeSignal.WaitOne(IdleWaitDurationMs);
+            wakeSignal.Reset();
+            ;
+        }
+
         private static void ThreadMain (object _self) {
             var weakSelf = ThreadMainSetup(ref _self, out AutoResetEvent wakeSignal);
 
@@ -53,10 +59,11 @@ namespace Squared.Threading {
                     break;
                 // The strong reference is released here so we can wait to be woken up
 
-                if (!moreWorkRemains) {
-                    // We only wait if no work remains
-                    wakeSignal.WaitOne(IdleWaitDurationMs);
-                }
+                // We only wait if no work remains
+                if (!moreWorkRemains)
+                    WaitForWork(wakeSignal);
+                else
+                    Thread.Yield();
             }
         }
 

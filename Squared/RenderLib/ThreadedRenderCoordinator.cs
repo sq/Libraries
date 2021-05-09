@@ -696,7 +696,6 @@ namespace Squared.Render {
                             return;
 
                         DrawQueue.Enqueue(new DrawTask(ThreadedDraw, newFrame));
-                        ThreadGroup.NotifyQueuesChanged();
                     } else {
                         ThreadedDraw(newFrame);
                     }

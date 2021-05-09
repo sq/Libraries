@@ -217,7 +217,6 @@ namespace Squared.Render {
                 _ClearQueue.Enqueue(new ListClearWorkItem {
                     List = list
                 });
-                ThreadGroup.NotifyQueuesChanged();
                 return;
             }
 

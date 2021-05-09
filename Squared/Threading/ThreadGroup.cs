@@ -135,7 +135,6 @@ namespace Squared.Threading {
         {
             var queue = GetQueueForType<T>();
             queue.Enqueue(ref item, onComplete);
-            NotifyQueuesChanged();
         }
 
         public void Enqueue<T> (ref T item, OnWorkItemComplete<T> onComplete = null)
@@ -143,7 +142,6 @@ namespace Squared.Threading {
         {
             var queue = GetQueueForType<T>();
             queue.Enqueue(ref item, onComplete);
-            NotifyQueuesChanged();
         }
 
         internal void ThreadBecameIdle () {
@@ -207,6 +205,7 @@ namespace Squared.Threading {
             lock (Threads)
             foreach (var thread in Threads)
                 thread.RegisterQueue(result);
+            NotifyQueuesChanged();
             return result;
         }
 

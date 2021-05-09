@@ -986,8 +986,6 @@ namespace Squared.Render {
 
             if (context.Async) {
                 Queue.Enqueue(task);
-                // FIXME: Is this too often?
-                Group.NotifyQueuesChanged();
             } else {
                 task.Execute();
             }

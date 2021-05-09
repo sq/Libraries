@@ -350,8 +350,10 @@ namespace Squared.Threading {
                         var maxWait = (timeoutMs <= 0)
                             ? timeoutMs
                             : (int)(Math.Max(0, endWhen - now) / Time.MillisecondInTicks);
+                        NotifyChanged();
                         if (!sq.DrainedSignal.WaitOne(maxWait))
                             ;
+                        ;
                     } else {
                         AssertEmpty();
                         return true;

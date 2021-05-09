@@ -97,7 +97,7 @@ namespace Squared.Threading {
                 var item = new TestWorkItem();
                 Assert.IsFalse(item.Ran);
 
-                queue.Enqueue(item);
+                queue.Enqueue(item, notifyChanged: false);
 
                 Assert.AreEqual(0, group.Count);
                 Assert.IsFalse(item.Ran, "!item.Ran");
@@ -117,12 +117,10 @@ namespace Squared.Threading {
                 var queue = group.GetQueueForType<SleepyWorkItem>();
 
                 queue.Enqueue(new SleepyWorkItem());
-                group.NotifyQueuesChanged();
 
                 Assert.GreaterOrEqual(1, group.Count);
 
                 queue.Enqueue(new SleepyWorkItem());
-                group.NotifyQueuesChanged();
 
                 Assert.GreaterOrEqual(2, group.Count);
 
@@ -142,9 +140,11 @@ namespace Squared.Threading {
 
                 var beforeEnqueue = timeProvider.Ticks;
                 for (int i = 0; i < count; i++)
-                    queue.Enqueue(ref item);
+                    queue.Enqueue(ref item, notifyChanged: false);
 
                 var afterEnqueue = timeProvider.Ticks;
+
+                group.NotifyQueuesChanged();
 
                 var beforeWait = timeProvider.Ticks;
                 queue.WaitUntilDrained(50000);
@@ -166,14 +166,14 @@ namespace Squared.Threading {
             const int count = 500000;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "MultipleThreadPerformanceTest")) {
+            using (var group = new ThreadGroup(4, 4, createBackgroundThreads: true, name: "MultipleThreadPerformanceTest")) {
                 var queue = group.GetQueueForType<VoidWorkItem>();
 
                 var item = new VoidWorkItem();
 
                 var beforeEnqueue = timeProvider.Ticks;
                 for (int i = 0; i < count; i++) {
-                    queue.Enqueue(ref item);
+                    queue.Enqueue(ref item, notifyChanged: false);
 
                     // Notify the group periodically that we've added new work items.
                     // This ensures it spins up a reasonable number of threads.
@@ -204,11 +204,12 @@ namespace Squared.Threading {
                 var queue = group.GetQueueForType<BlockingWorkItem>();
                 var item = new BlockingWorkItem();
                 for (int i = 0; i < count; i++)
-                    queue.Enqueue(ref item);
+                    queue.Enqueue(ref item, notifyChanged: false);
+                group.NotifyQueuesChanged();
                 var barrier = new BlockingWorkItem {
                     Signal = new AutoResetEvent(false)
                 };
-                queue.Enqueue(ref barrier);
+                queue.Enqueue(ref barrier, notifyChanged: false);
                 Assert.IsFalse(queue.WaitUntilDrained(5), "waitUntilDrained 1");
                 group.NotifyQueuesChanged();
                 Assert.IsFalse(queue.WaitUntilDrained(5), "waitUntilDrained 2");
