@@ -11,10 +11,16 @@ namespace Squared.Threading {
         public readonly AutoResetEvent   WakeSignal = new AutoResetEvent(true);
 
 #if DEBUG
-        // For troubleshooting
+        // HACK: Set the delay to EXTREMELY LONG so that we will get nasty pauses
+        //  in debug builds if we hit a latent bug, so that it will be obvious
+        //  they are there and we can debug them
         public static int IdleWaitDurationMs = 10000;
 #else
-        public static int IdleWaitDurationMs = 100;
+        // HACK: Set a long enough time to avoid churning the thread scheduler
+        //  (this will improve efficiency on battery-powered devices, etc)
+        // But not TOO long in order to avoid completely collapsing in the event
+        //  that a latent bug in our signaling manifests itself
+        public static int IdleWaitDurationMs = 500;
 #endif
         private int NextQueueIndex;
 
@@ -28,6 +34,9 @@ namespace Squared.Threading {
             Thread.IsBackground = owner.CreateBackgroundThreads;
             if (owner.COMThreadingModel != ApartmentState.Unknown)
                 Thread.SetApartmentState(owner.COMThreadingModel);
+            // HACK: Ensure the thread-local list has been allocated before we return
+            //  since our caller has the threads lock held.
+            var queueList = owner.QueueLists.Value;
             Thread.Start(this);
         }
 
@@ -81,9 +90,11 @@ namespace Squared.Threading {
 
             int queueCount;
             IWorkQueue[] queues;
-            var ql = strongSelf.Owner.QueueList;
+            var ql = strongSelf.Owner.QueueLists.Value;
             lock (ql) {
                 queueCount = ql.Count;
+                // Since we only ever add new queues, the worst outcome of a race here
+                //  is that we miss the new queue(s) for this step
                 queues = ql.GetBufferArray();
             }
 

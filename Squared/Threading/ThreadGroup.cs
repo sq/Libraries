@@ -33,18 +33,19 @@ namespace Squared.Threading {
         public readonly ApartmentState COMThreadingModel;
         
         // A lock-free dictionary for looking up queues by work item type
-        private readonly ConcurrentDictionary<Type, IWorkQueue> Queues = 
-            new ConcurrentDictionary<Type, IWorkQueue>(new ReferenceComparer<Type>());
-        private readonly ConcurrentDictionary<Type, IWorkQueue> MainThreadQueues = 
-            new ConcurrentDictionary<Type, IWorkQueue>(new ReferenceComparer<Type>());
+        private readonly Dictionary<Type, IWorkQueue> Queues = 
+            new Dictionary<Type, IWorkQueue>(new ReferenceComparer<Type>());
+        private readonly Dictionary<Type, IWorkQueue> MainThreadQueues = 
+            new Dictionary<Type, IWorkQueue>(new ReferenceComparer<Type>());
         private readonly UnorderedList<IWorkQueue> MainThreadQueueList = 
             new UnorderedList<IWorkQueue>();
 
-        // We keep a separate iterable copy of the queue list for thread spawning purposes
-        internal readonly UnorderedList<IWorkQueue> QueueList = new UnorderedList<IWorkQueue>();
+        // We keep separate iterable copies of the queue list for thread spawning purposes
+        // Each thread has its own so that it is unlikely to not experience lock contention
+        internal readonly ThreadLocal<UnorderedList<IWorkQueue>> QueueLists;
 
         private int CurrentThreadCount;
-        private readonly UnorderedList<GroupThread> Threads = new UnorderedList<GroupThread>(256);
+        private readonly UnorderedList<GroupThread> Threads = new UnorderedList<GroupThread>(64);
 
         private long LastTimeThreadWasIdle = long.MaxValue;
         private bool CanMakeNewThreads, HasNoThreads;
@@ -65,6 +66,7 @@ namespace Squared.Threading {
             CreateBackgroundThreads = createBackgroundThreads;
             TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
             COMThreadingModel = comThreadingModel;
+            QueueLists = new ThreadLocal<UnorderedList<IWorkQueue>>(CreateNewQueue, true);
 
             lock (Threads)
             while ((Count < MinimumThreadCount) && (Count < MaximumThreadCount))
@@ -72,6 +74,14 @@ namespace Squared.Threading {
 
             HasNoThreads = (Count == 0);
             CanMakeNewThreads = (Count < MaximumThreadCount);
+        }
+
+        private UnorderedList<IWorkQueue> CreateNewQueue () {
+            var result = new UnorderedList<IWorkQueue>();
+            lock (Queues)
+                foreach (var item in Queues.Values)
+                    result.Add(item);
+            return result;
         }
 
         /// <summary>
@@ -163,6 +173,7 @@ namespace Squared.Threading {
             where T : IWorkItem 
         {
             var type = typeof(T);
+            bool resultIsNew;
             IWorkQueue existing;
             WorkQueue<T> result;
 
@@ -174,20 +185,34 @@ namespace Squared.Threading {
             if (isMainThreadOnly)
                 queues = MainThreadQueues;
 
-            if (!queues.TryGetValue(type, out existing)) {
-                result = CreateQueueForType<T>(isMainThreadOnly);
-                
-                // We lost a race to create the new work queue
-                if (!queues.TryAdd(type, result)) {
-                    result = (WorkQueue<T>)queues[type];
+            lock (queues) {
+                if (!queues.TryGetValue(type, out existing)) {
+                    result = CreateQueueForType<T>(isMainThreadOnly);
+                    queues.Add(type, result);
+                    resultIsNew = true;
+                } else {
+                    result = (WorkQueue<T>)existing;
+                    resultIsNew = false;
                 }
+            }
 
-                if (isMainThreadOnly) {
-                    lock (MainThreadQueueList)
-                        MainThreadQueueList.Add(result);
+            if (isMainThreadOnly) {
+                lock (MainThreadQueueList)
+                    MainThreadQueueList.Add(result);
+            }
+
+            if (resultIsNew) {
+                // Hold the threads lock to ensure we don't race on thread
+                //  creation and accidentally miss a thread to add queues to
+                lock (Threads) {
+                    foreach (var value in QueueLists.Values)
+                        lock (value)
+                            value.Add(result);
+
+                    // HACK: Do this manually to avoid spawning a new thread
+                    foreach (var thread in Threads)
+                        thread.WakeSignal.Set();
                 }
-            } else {
-                result = (WorkQueue<T>)existing;
             }
 
             return result;
@@ -196,17 +221,9 @@ namespace Squared.Threading {
         private WorkQueue<T> CreateQueueForType<T> (bool isMainThreadOnly)
             where T : IWorkItem
         {
-            var result = new WorkQueue<T>(this) {
+            return new WorkQueue<T>(this) {
                 IsMainThreadQueue = isMainThreadOnly
             };
-            lock (QueueList)
-                QueueList.Add(result);
-
-            // HACK: Do this manually to avoid spawning a new thread
-            lock (Threads)
-                foreach (var thread in Threads)
-                    thread.WakeSignal.Set();
-            return result;
         }
 
         /// <summary>
@@ -217,7 +234,6 @@ namespace Squared.Threading {
         public void NotifyQueuesChanged (bool assumeBusy = false) {
             ConsiderNewThread(assumeBusy);
 
-            // FIXME: Race condition?
             lock (Threads)
                 foreach (var thread in Threads)
                     thread.WakeSignal.Set();
@@ -270,13 +286,9 @@ namespace Squared.Threading {
             var thread = new GroupThread(this, Threads.Count);
             Threads.Add(thread);
 
-            Thread.MemoryBarrier();
-
             HasNoThreads = false;
             CanMakeNewThreads = Threads.Count < MaximumThreadCount;
             CurrentThreadCount = Threads.Count;
-
-            Thread.MemoryBarrier();
         }
 
         public void Dispose () {
@@ -288,10 +300,6 @@ namespace Squared.Threading {
                 return;
 
             IsDisposed = true;
-
-            if (false)
-                foreach (var queue in Queues.Values)
-                    queue.AssertEmpty();
 
             lock (Threads) {
                 foreach (var thread in Threads) {

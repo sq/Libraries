@@ -148,6 +148,7 @@ namespace Squared.Threading {
                 DrainListeners.Add(listener);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void NotifyChanged () {
             Owner.ConsiderNewThread(false);
             Owner.WakeAllThreads();
@@ -291,6 +292,7 @@ namespace Squared.Threading {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AssertEmpty () {
             if (IsEmpty)
                 return;
