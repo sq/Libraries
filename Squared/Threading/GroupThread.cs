@@ -10,8 +10,6 @@ namespace Squared.Threading {
         public readonly Thread           Thread;
         public readonly AutoResetEvent   WakeSignal = new AutoResetEvent(true);
 
-        private readonly UnorderedList<IWorkQueue> Queues = new UnorderedList<IWorkQueue>();
-
 #if DEBUG
         // For troubleshooting
         public static int IdleWaitDurationMs = 10000;
@@ -30,14 +28,7 @@ namespace Squared.Threading {
             Thread.IsBackground = owner.CreateBackgroundThreads;
             if (owner.COMThreadingModel != ApartmentState.Unknown)
                 Thread.SetApartmentState(owner.COMThreadingModel);
-            owner.RegisterQueuesForNewThread(this);
             Thread.Start(this);
-        }
-
-        internal void RegisterQueue (IWorkQueue queue) {
-            lock (Queues)
-                Queues.Add(queue);
-            queue.RegisterWakeSignal(WakeSignal);
         }
 
         private static void WaitForWork (AutoResetEvent wakeSignal) {
@@ -90,9 +81,10 @@ namespace Squared.Threading {
 
             int queueCount;
             IWorkQueue[] queues;
-            lock (strongSelf.Queues) {
-                queueCount = strongSelf.Queues.Count;
-                queues = strongSelf.Queues.GetBufferArray();
+            var ql = strongSelf.Owner.QueueList;
+            lock (ql) {
+                queueCount = ql.Count;
+                queues = ql.GetBufferArray();
             }
 
             strongSelf.Owner.ThreadBeganWorking();
@@ -127,9 +119,6 @@ namespace Squared.Threading {
         public void Dispose () {
             IsDisposed = true;
             WakeSignal.Set();
-            // HACK: This shouldn't be necessary, but without this tests hang
-            if (false && Thread.IsBackground)
-                Thread.Abort();
         }
     }
 }

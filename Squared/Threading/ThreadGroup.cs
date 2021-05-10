@@ -41,7 +41,7 @@ namespace Squared.Threading {
             new UnorderedList<IWorkQueue>();
 
         // We keep a separate iterable copy of the queue list for thread spawning purposes
-        private readonly List<IWorkQueue> QueueList = new List<IWorkQueue>();
+        internal readonly UnorderedList<IWorkQueue> QueueList = new UnorderedList<IWorkQueue>();
 
         private int CurrentThreadCount;
         private readonly UnorderedList<GroupThread> Threads = new UnorderedList<GroupThread>(256);
@@ -201,9 +201,6 @@ namespace Squared.Threading {
             };
             lock (QueueList)
                 QueueList.Add(result);
-            lock (Threads)
-            foreach (var thread in Threads)
-                thread.RegisterQueue(result);
 
             // HACK: Do this manually to avoid spawning a new thread
             lock (Threads)
@@ -253,15 +250,15 @@ namespace Squared.Threading {
             return false;
         }
 
+        internal void WakeAllThreads () {
+            lock (Threads)
+                foreach (var t in Threads)
+                    t.WakeSignal.Set();
+        }
+
         public void ForciblySpawnThread () {
             lock (Threads)
                 SpawnThread(true);
-        }
-
-        internal void RegisterQueuesForNewThread (GroupThread newThread) {
-            lock (QueueList)
-            foreach (var queue in QueueList)
-                newThread.RegisterQueue(queue);
         }
 
         private void SpawnThread (bool force) {

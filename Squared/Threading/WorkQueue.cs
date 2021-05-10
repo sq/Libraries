@@ -47,7 +47,6 @@ namespace Squared.Threading {
         /// Registers a listener to be invoked any time a group of work items is processed by a thread.
         /// </summary>
         void RegisterDrainListener (WorkQueueDrainListener listener);
-        void RegisterWakeSignal (AutoResetEvent wakeSignal);
         bool IsEmpty { get; }
         void AssertEmpty ();
     }
@@ -127,9 +126,6 @@ namespace Squared.Threading {
             }
         }
 
-        private object WakeSignalLock = new object();
-        private List<AutoResetEvent> WakeSignals = new List<AutoResetEvent>();
-
         // For debugging
         internal bool IsMainThreadQueue = false;
 
@@ -149,11 +145,6 @@ namespace Squared.Threading {
             IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
         }
 
-        public void RegisterWakeSignal (AutoResetEvent wakeSignal) {
-            lock (WakeSignalLock)
-                WakeSignals.Add(wakeSignal);
-        }
-
         public void RegisterDrainListener (WorkQueueDrainListener listener) {
             if (listener == null)
                 throw new ArgumentNullException("listener");
@@ -167,9 +158,7 @@ namespace Squared.Threading {
 
         private void NotifyChanged () {
             Owner.ConsiderNewThread(false);
-            lock (WakeSignalLock)
-                foreach (var s in WakeSignals)
-                    s.Set();
+            Owner.WakeAllThreads();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
