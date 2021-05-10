@@ -130,7 +130,7 @@ namespace Squared.Threading {
 
         [Test]
         public void SingleThreadPerformanceTest () {
-            const int count = 50000;
+            const int count = 500000;
 
             var timeProvider = Time.DefaultTimeProvider;
             using (var group = new ThreadGroup(1, 1, createBackgroundThreads: true, name: "SingleThreadPerformanceTest")) {
@@ -147,13 +147,13 @@ namespace Squared.Threading {
                 group.NotifyQueuesChanged();
 
                 var beforeWait = timeProvider.Ticks;
-                queue.WaitUntilDrained(50000);
+                queue.WaitUntilDrained(5000);
 
                 var afterWait = timeProvider.Ticks;
                 var perItem = (afterWait - beforeWait) / (double)count / Time.MillisecondInTicks;
 
                 Console.WriteLine(
-                    "Enqueue took {0:0000.00}ms, Wait took {1:0000.00}ms. Est speed {3}ms/item Final thread count: {2}",
+                    "Enqueue took {0:0000.00}ms, Wait took {1:0000.00}ms. Est speed {3:0.000000}ms/item Final thread count: {2}",
                     TimeSpan.FromTicks(afterEnqueue - beforeEnqueue).TotalMilliseconds,
                     TimeSpan.FromTicks(afterWait - beforeWait).TotalMilliseconds,
                     group.Count, perItem
@@ -186,12 +186,13 @@ namespace Squared.Threading {
                 queue.WaitUntilDrained(5000);
 
                 var afterWait = timeProvider.Ticks;
+                var perItem = (afterWait - beforeWait) / (double)count / Time.MillisecondInTicks;
 
                 Console.WriteLine(
-                    "Enqueue took {0:0000.00}ms, Wait took {1:0000.00}ms. Final thread count: {2}",
+                    "Enqueue took {0:0000.00}ms, Wait took {1:0000.00}ms. Est speed {3:0.000000}ms/item Final thread count: {2}",
                     TimeSpan.FromTicks(afterEnqueue - beforeEnqueue).TotalMilliseconds,
                     TimeSpan.FromTicks(afterWait - beforeWait).TotalMilliseconds,
-                    group.Count
+                    group.Count, perItem
                 );
             }
         }

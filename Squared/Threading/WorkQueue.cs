@@ -95,44 +95,17 @@ namespace Squared.Threading {
             public static int DefaultStepCount = 64;
         }
 
-        internal class SubQueue {
-            public readonly WorkQueue<T> Owner;
-            public volatile int NumWaitingForDrain = 0;
-            public readonly AutoResetEvent DrainedSignal = new AutoResetEvent(false);
-            public readonly object ItemsLock = new object();
-            public readonly Queue<InternalWorkItem<T>> Items = new Queue<InternalWorkItem<T>>();
-
-            public SubQueue (WorkQueue<T> owner) {
-                Owner = owner;
-            }
-
-            public void NotifyDrained () {
-                // FIXME: Should we do this first? Assumption is that in a very bad case, the future's
-                //  complete handler might begin waiting
-                DrainedSignal.Set();
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void AssertCanEnqueue () {
-                if (Configuration.BlockEnqueuesWhileDraining && (NumWaitingForDrain > 0))
-                    throw new Exception("Draining");
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Add (ref InternalWorkItem<T> item) {
-                AssertCanEnqueue();
-                lock (ItemsLock)
-                    Items.Enqueue(item);
-            }
-        }
-
         // For debugging
         internal bool IsMainThreadQueue = false;
 
+        private volatile int ItemsQueued = 0, ItemsProcessed = 0;
         private volatile int HasAnyListeners = 0;
-        private volatile int InFlightTasks = 0;
         private readonly List<WorkQueueDrainListener> DrainListeners = new List<WorkQueueDrainListener>();
-        private SubQueue CurrentSubQueue;
+        private volatile int NumWaitingForDrain = 0;
+        private readonly AutoResetEvent DrainedSignal = new AutoResetEvent(false);
+
+        private readonly object ItemsLock = new object();
+        private readonly Queue<InternalWorkItem<T>> Items = new Queue<InternalWorkItem<T>>();
 
         private ExceptionDispatchInfo UnhandledException;
         private readonly bool IsMainThreadWorkItem;
@@ -141,8 +114,27 @@ namespace Squared.Threading {
 
         public WorkQueue (ThreadGroup owner) {
             Owner = owner;
-            CurrentSubQueue = new SubQueue(this);
             IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
+        }
+
+        private void NotifyDrained () {
+            // FIXME: Should we do this first? Assumption is that in a very bad case, the future's
+            //  complete handler might begin waiting
+            DrainedSignal.Set();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void AssertCanEnqueue () {
+            if (Configuration.BlockEnqueuesWhileDraining && (NumWaitingForDrain > 0))
+                throw new Exception("Draining");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void AddInternal (ref InternalWorkItem<T> item) {
+            AssertCanEnqueue();
+            Interlocked.Increment(ref ItemsQueued);
+            lock (ItemsLock)
+                Items.Enqueue(item);
         }
 
         public void RegisterDrainListener (WorkQueueDrainListener listener) {
@@ -168,9 +160,8 @@ namespace Squared.Threading {
                 throw new InvalidOperationException("This work item must be queued on the main thread");
 #endif
 
-            var sq = CurrentSubQueue;
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
-            sq.Add(ref wi);
+            AddInternal(ref wi);
             if (notifyChanged)
                 NotifyChanged();
         }
@@ -182,9 +173,8 @@ namespace Squared.Threading {
                 throw new InvalidOperationException("This work item must be queued on the main thread");
 #endif
 
-            var sq = CurrentSubQueue;
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
-            sq.Add(ref wi);
+            AddInternal(ref wi);
             if (notifyChanged)
                 NotifyChanged();
         }
@@ -195,16 +185,15 @@ namespace Squared.Threading {
                 throw new InvalidOperationException("This work item must be queued on the main thread");
 #endif
 
-            var sq = CurrentSubQueue;
-            lock (sq.ItemsLock) {
-                sq.AssertCanEnqueue();
+            lock (ItemsLock) {
+                AssertCanEnqueue();
 
                 var wi = new InternalWorkItem<T>();
                 wi.Queue = this;
                 wi.OnComplete = null;
                 for (var i = 0; i < data.Count; i++) {
                     wi.Data = data.Array[data.Offset + i];
-                    sq.Items.Enqueue(wi);
+                    AddInternal(ref wi);
                 }
             }
 
@@ -212,66 +201,55 @@ namespace Squared.Threading {
                 NotifyChanged();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private SubQueue GetNextQueue () {
-            return CurrentSubQueue;
-        }
-
-        private void StepQueue (SubQueue sq, ref int result, out bool exhausted, int actualMaximumCount) {
+        private void StepInternal (ref int result, out bool exhausted, int actualMaximumCount) {
             InternalWorkItem<T> item = default(InternalWorkItem<T>);
             int count = 0, numProcessed = 0;
             bool running = true, inLock = false, signalDrained = false;
 
             do {
-                bool isInFlight = false;
-
                 try {
                     // FIXME: Find a way to not acquire this every step
                     if (!inLock) {
-                        Monitor.Enter(sq.ItemsLock);
+                        Monitor.Enter(ItemsLock);
                         inLock = true;
                     }
 
-                    running = ((count = sq.Items.Count) > 0) &&
+                    running = ((count = Items.Count) > 0) &&
                         (actualMaximumCount > 0);
 
                     if (running) {
-                        isInFlight = true;
-                        Interlocked.Increment(ref InFlightTasks);
-
-                        item = sq.Items.Dequeue();
-                        if (sq.Items.Count == 0)
+                        item = Items.Dequeue();
+                        if (Items.Count == 0)
                             signalDrained = true;
                     } else if (count == 0) {
                         signalDrained = true;
                     }
 
                     if (inLock) {
-                        Monitor.Exit(sq.ItemsLock);
+                        Monitor.Exit(ItemsLock);
                         inLock = false;
                     }
 
-                    try {
-                        if (running) {
+                    if (running) {
+                        try {
                             numProcessed++;
                             item.Data.Execute();
                             if (item.OnComplete != null)
                                 item.OnComplete(ref item.Data);
 
                             result++;
+                        } finally {
+                            Interlocked.Increment(ref ItemsProcessed);
                         }
-                    } finally {
-                        if (isInFlight)
-                            Interlocked.Decrement(ref InFlightTasks);
                     }
                 } catch (Exception exc) {
                     UnhandledException = ExceptionDispatchInfo.Capture(exc);
                     signalDrained = true;
                     break;
                 } finally {
-                    exhausted = sq.Items.Count <= 0;
+                    exhausted = Items.Count <= 0;
                     if (inLock) {
-                        Monitor.Exit(sq.ItemsLock);
+                        Monitor.Exit(ItemsLock);
                         inLock = false;
                     }
                 }
@@ -280,10 +258,10 @@ namespace Squared.Threading {
             actualMaximumCount -= numProcessed;
 
             if (inLock)
-                Monitor.Exit(sq.ItemsLock);
+                Monitor.Exit(ItemsLock);
 
             if (signalDrained)
-                sq.NotifyDrained();
+                NotifyDrained();
         }
 
         public int Step (out bool exhausted, int? maximumCount = null) {
@@ -294,9 +272,7 @@ namespace Squared.Threading {
             );
             exhausted = true;
 
-            var sq = GetNextQueue();
-            if (sq != null)
-                StepQueue(sq, ref result, out exhausted, actualMaximumCount);
+            StepInternal(ref result, out exhausted, actualMaximumCount);
 
             if ((result > 0) && (HasAnyListeners != 0)) {
                 lock (DrainListeners)
@@ -310,9 +286,8 @@ namespace Squared.Threading {
         public bool IsEmpty {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                var q = CurrentSubQueue;
-                lock (q.ItemsLock)
-                    return (q.Items.Count == 0) && (InFlightTasks <= 0);
+                lock (ItemsLock)
+                    return (Items.Count == 0) && (ItemsProcessed >= ItemsQueued);
             }
         }
 
@@ -330,18 +305,18 @@ namespace Squared.Threading {
             if (IsEmpty)
                 return true;
 
-            var sq = CurrentSubQueue;
-            var resultCount = Interlocked.Increment(ref sq.NumWaitingForDrain);
+            var resultCount = Interlocked.Increment(ref NumWaitingForDrain);
             long endWhen =
                 timeoutMs >= 0
                     ? Time.Ticks + (Time.MillisecondInTicks * timeoutMs)
                     : long.MaxValue - 1;
 
             bool doWait = false;
+            var waterMark = ItemsQueued;
             try {
                 do {
-                    lock (sq.ItemsLock)
-                        doWait = (sq.Items.Count > 0) || (InFlightTasks > 0);
+                    lock (ItemsLock)
+                        doWait = (Items.Count > 0) || (ItemsProcessed < ItemsQueued);
                     if (doWait) {
                         var now = Time.Ticks;
                         if (now > endWhen)
@@ -350,16 +325,21 @@ namespace Squared.Threading {
                             ? timeoutMs
                             : (int)(Math.Max(0, endWhen - now) / Time.MillisecondInTicks);
                         NotifyChanged();
-                        if (!sq.DrainedSignal.WaitOne(maxWait))
+                        if (!DrainedSignal.WaitOne(maxWait))
                             ;
-                        ;
+                        else
+                            ;
                     } else {
                         AssertEmpty();
-                        return true;
+#if DEBUG
+                        if (ItemsProcessed < waterMark)
+                            throw new Exception("AssertDrained returned before reaching watermark");
+#endif
+                        return (ItemsProcessed >= waterMark);
                     }
                 } while (true);
             } finally {
-                Interlocked.Decrement(ref sq.NumWaitingForDrain);
+                Interlocked.Decrement(ref NumWaitingForDrain);
 
                 var uhe = Interlocked.Exchange(ref UnhandledException, null);
                 if (uhe != null)
