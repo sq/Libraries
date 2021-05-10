@@ -30,6 +30,23 @@ namespace Squared.PRGUI.Controls {
             return (T)existingValue;
         }
 
+        public bool TryGet<T> (string name, out T result) {
+            if (Data == null) {
+                result = default(T);
+                return false;
+            }
+
+            var key = new ControlDataKey { Type = typeof(T), Key = name };
+            object existingValue;
+            if (!Data.TryGetValue(key, out existingValue)) {
+                result = default(T);
+                return false;
+            }
+
+            result = (T)existingValue;
+            return true;
+        }
+
         public bool Set<T> (T value) {
             return Set(null, value);
         }

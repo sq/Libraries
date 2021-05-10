@@ -799,7 +799,13 @@ namespace Squared.Render.Text {
     public class FallbackGlyphSource : IGlyphSource, IDisposable, IEnumerable<IGlyphSource> {
         public bool IsDisposed { get; private set; }
         public bool MaxLineSpacing = true;
+        public bool OwnsSources = true;
         private readonly IGlyphSource[] Sources = null;
+
+        public FallbackGlyphSource (bool ownsSources, params IGlyphSource[] sources) {
+            OwnsSources = ownsSources;
+            Sources = sources;
+        }
 
         public FallbackGlyphSource (params IGlyphSource[] sources) {
             Sources = sources;
@@ -853,9 +859,10 @@ namespace Squared.Render.Text {
         
         public void Dispose () {
             IsDisposed = true;
-            foreach (var item in Sources) {
-                if (item is IDisposable)
-                    ((IDisposable)item).Dispose();
+            if (OwnsSources) {
+                foreach (var item in Sources)
+                    if (item is IDisposable id)
+                        id.Dispose();
             }
         }
 

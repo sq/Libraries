@@ -356,10 +356,12 @@ namespace Squared.Render.Text {
 
                 IsDisposed = true;
 
+                Font.Sizes.Remove(this);
                 Array.Clear(LowCache, 0, LowCacheSize);
                 Cache.Clear();
                 foreach (var atlas in Atlases)
                     atlas.Dispose();
+                Atlases.Clear();
             }
         }
 

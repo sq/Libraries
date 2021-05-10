@@ -424,13 +424,18 @@ namespace Squared.PRGUI.Controls {
     }
 
     public class ItemList<T> : IEnumerable<T> {
+        private struct ValueToken {
+            public T Value;
+        }
+
+        private IEqualityComparer<T> Comparer;
         private List<T> Items = new List<T>();
         private readonly Dictionary<T, Control> ControlForValue;
-        private readonly Dictionary<Control, T> ValueForControl =
-            new Dictionary<Control, T>(new ReferenceComparer<Control>());
+        private HashSet<Control> InvalidatedControls = new HashSet<Control>(new ReferenceComparer<Control>());
 
         public ItemList (IEqualityComparer<T> comparer) 
             : base () {
+            Comparer = comparer;
             ControlForValue = new Dictionary<T, Control>(comparer);
         }
 
@@ -447,8 +452,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public Dictionary<Control, T>.KeyCollection Controls => ValueForControl.Keys;
-        private HashSet<Control> InvalidatedControls = new HashSet<Control>();
+        public Dictionary<T, Control>.ValueCollection Controls => ControlForValue.Values;
 
         /// <summary>
         /// Forces all child controls to be re-created from scratch
@@ -538,7 +542,13 @@ namespace Squared.PRGUI.Controls {
                 result = default(T);
                 return false;
             }
-            return ValueForControl.TryGetValue(control, out result);
+            if (control.Data.TryGet<ValueToken>(null, out ValueToken vt)) {
+                result = vt.Value;
+                return true;
+            } else {
+                result = default(T);
+                return false;
+            }
         }
 
         public int IndexOf (T value, IEqualityComparer<T> comparer) {
@@ -576,7 +586,9 @@ namespace Squared.PRGUI.Controls {
             if (value != null)
                 ControlForValue[value] = newControl;
 
-            ValueForControl[newControl] = value;
+            if (!GetValueForControl(newControl, out T existingValue) || !Comparer.Equals(existingValue, value))
+                newControl.Data.Set(new ValueToken { Value = value });
+
             return newControl;
         }
 
@@ -588,7 +600,7 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             foreach (var ic in InvalidatedControls) {
-                if (!ValueForControl.TryGetValue(ic, out T value))
+                if (!GetValueForControl(ic, out T value))
                     // FIXME
                     continue;
                 if (createControlForValue(ref value, ic) != ic)
@@ -618,9 +630,8 @@ namespace Squared.PRGUI.Controls {
 
             while (output.Count > count) {
                 var ctl = output[output.Count - 1];
-                if (ValueForControl.TryGetValue(ctl, out T temp))
+                if (GetValueForControl(ctl, out T temp))
                     ControlForValue.Remove(temp);
-                ValueForControl.Remove(ctl);
                 output.RemoveAt(output.Count - 1);
             }
 

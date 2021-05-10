@@ -48,6 +48,7 @@ namespace Squared.Threading {
         /// </summary>
         void RegisterDrainListener (WorkQueueDrainListener listener);
         void RegisterWakeSignal (AutoResetEvent wakeSignal);
+        bool IsEmpty { get; }
         void AssertEmpty ();
     }
 
@@ -327,8 +328,13 @@ namespace Squared.Threading {
         }
 
         public void AssertEmpty () {
-            if (!IsEmpty)
-                throw new Exception("Queue is not fully drained");
+            if (IsEmpty)
+                return;
+#if DEBUG
+            throw new Exception("Queue is not fully drained");
+#else
+            Console.Error.WriteLine("WorkQueue of type {0} was not fully drained", typeof(T).FullName);
+#endif
         }
 
         public bool WaitUntilDrained (int timeoutMs = -1) {
