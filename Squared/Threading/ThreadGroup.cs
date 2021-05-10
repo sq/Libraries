@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -140,6 +141,7 @@ namespace Squared.Threading {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue<T> (T item, OnWorkItemComplete<T> onComplete = null)
             where T : IWorkItem
         {
@@ -147,6 +149,7 @@ namespace Squared.Threading {
             queue.Enqueue(ref item, onComplete);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue<T> (ref T item, OnWorkItemComplete<T> onComplete = null)
             where T : IWorkItem
         {
@@ -154,10 +157,12 @@ namespace Squared.Threading {
             queue.Enqueue(ref item, onComplete);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void ThreadBecameIdle () {
             Interlocked.Exchange(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void ThreadBeganWorking () {
             Interlocked.Exchange(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
         }

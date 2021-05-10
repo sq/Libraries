@@ -20,13 +20,19 @@ namespace Squared.Threading {
         public bool Ran;
 
         public void Execute () {
-            System.Threading.Thread.Sleep(200);
+            Thread.Sleep(200);
             Ran = true;
         }
     }
 
     public struct VoidWorkItem : IWorkItem {
         public void Execute () {
+        }
+    }
+
+    public struct SlightlySlowWorkItem : IWorkItem {
+        public void Execute () {
+            Thread.Sleep(1);
         }
     }
 
@@ -130,13 +136,13 @@ namespace Squared.Threading {
 
         [Test]
         public void SingleThreadPerformanceTest () {
-            const int count = 500000;
+            const int count = 400;
 
             var timeProvider = Time.DefaultTimeProvider;
             using (var group = new ThreadGroup(1, 1, createBackgroundThreads: true, name: "SingleThreadPerformanceTest")) {
-                var queue = group.GetQueueForType<VoidWorkItem>();
+                var queue = group.GetQueueForType<SlightlySlowWorkItem>();
 
-                var item = new VoidWorkItem();
+                var item = new SlightlySlowWorkItem();
 
                 var beforeEnqueue = timeProvider.Ticks;
                 for (int i = 0; i < count; i++)
@@ -163,13 +169,13 @@ namespace Squared.Threading {
 
         [Test]
         public void MultipleThreadPerformanceTest () {
-            const int count = 500000;
+            const int count = 3000;
 
             var timeProvider = Time.DefaultTimeProvider;
             using (var group = new ThreadGroup(4, 4, createBackgroundThreads: true, name: "MultipleThreadPerformanceTest")) {
-                var queue = group.GetQueueForType<VoidWorkItem>();
+                var queue = group.GetQueueForType<SlightlySlowWorkItem>();
 
-                var item = new VoidWorkItem();
+                var item = new SlightlySlowWorkItem();
 
                 var beforeEnqueue = timeProvider.Ticks;
                 for (int i = 0; i < count; i++) {
@@ -177,7 +183,7 @@ namespace Squared.Threading {
 
                     // Notify the group periodically that we've added new work items.
                     // This ensures it spins up a reasonable number of threads.
-                    if ((i % 20000) == 0)
+                    if ((i % 500) == 0)
                         group.NotifyQueuesChanged();
                 }
                 var afterEnqueue = timeProvider.Ticks;
