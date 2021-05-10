@@ -216,7 +216,7 @@ namespace Squared.Threading {
 
                     // HACK: Do this manually to avoid spawning a new thread
                     foreach (var thread in Threads)
-                        thread.WakeSignal.Set();
+                        thread.Wake();
                 }
             }
 
@@ -241,7 +241,7 @@ namespace Squared.Threading {
 
             lock (Threads)
                 foreach (var thread in Threads)
-                    thread.WakeSignal.Set();
+                    thread.Wake();
         }
 
         /// <summary>
@@ -273,8 +273,8 @@ namespace Squared.Threading {
 
         internal void WakeAllThreads () {
             lock (Threads)
-                foreach (var t in Threads)
-                    t.WakeSignal.Set();
+                foreach (var thread in Threads)
+                    thread.Wake();
         }
 
         public void ForciblySpawnThread () {
