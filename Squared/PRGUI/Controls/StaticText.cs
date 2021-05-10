@@ -304,8 +304,6 @@ namespace Squared.PRGUI.Controls {
             }
 
             if (_CachedContentIsSingleLine == true) {
-                if (contentChanged)
-                    GetCurrentLayout(true);
                 AutoSizeComputedContentHeight = (Content.GlyphSource.LineSpacing * Content.Scale);
                 AutoSizeComputedHeight = (float)Math.Ceiling(AutoSizeComputedContentHeight + computedPadding.Y);
                 return;
