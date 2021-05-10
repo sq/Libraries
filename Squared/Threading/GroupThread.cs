@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Squared.Util;
@@ -8,7 +9,7 @@ namespace Squared.Threading {
     public class GroupThread : IDisposable {
         public  readonly ThreadGroup          Owner;
         public  readonly Thread               Thread;
-        private readonly ManualResetEventSlim WakeSignal = new ManualResetEventSlim(true);
+        private readonly AutoResetEventSlim WakeSignal = new AutoResetEventSlim(true);
 
 #if DEBUG
         // HACK: Set the delay to EXTREMELY LONG so that we will get nasty pauses
@@ -22,9 +23,7 @@ namespace Squared.Threading {
         //  that a latent bug in our signaling manifests itself
         public static int IdleWaitDurationMs = 500;
 #endif
-        private object WakeCountLock = new object();
         private int NextQueueIndex;
-        private int WakeCount, LastWakeCount;
 
         public bool IsDisposed { get; private set; }
 
@@ -42,27 +41,13 @@ namespace Squared.Threading {
             Thread.Start(this);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Wake () {
-            lock (WakeCountLock)
-                WakeCount++;
             WakeSignal.Set();
         }
 
-        private static void AutoReset (WeakReference<GroupThread> weakSelf) {
-            if (!weakSelf.TryGetTarget(out GroupThread self))
-                return;
-
-            // HACK: We only want to clear our wake signal's state if we're sure we haven't
-            //  received another wake request since we were last woken up.
-            lock (self.WakeCountLock) {
-                if (self.WakeCount <= self.LastWakeCount)
-                    self.WakeSignal.Reset();
-                self.LastWakeCount = self.WakeCount;
-            }
-        }
-
         private static void ThreadMain (object _self) {
-            var weakSelf = ThreadMainSetup(ref _self, out UnorderedList<IWorkQueue> queueList, out ManualResetEventSlim wakeSignal);
+            var weakSelf = ThreadMainSetup(ref _self, out UnorderedList<IWorkQueue> queueList, out AutoResetEventSlim wakeSignal);
 
             // On thread termination we release our event.
             // If we did this in Dispose there'd be no clean way to deal with this.
@@ -75,16 +60,15 @@ namespace Squared.Threading {
                 // The strong reference is released here so we can wait to be woken up
 
                 // We only wait if no work remains
-                if (!moreWorkRemains) {
+                if (!moreWorkRemains)
                     wakeSignal.Wait(IdleWaitDurationMs);
-                    AutoReset(weakSelf);
-                } else
+                else
                     Thread.Yield();
             }
         }
 
         private static WeakReference<GroupThread> ThreadMainSetup (
-            ref object _self, out UnorderedList<IWorkQueue> queueList, out ManualResetEventSlim wakeSignal
+            ref object _self, out UnorderedList<IWorkQueue> queueList, out AutoResetEventSlim wakeSignal
         ) {
             var self = (GroupThread)_self;
             var weakSelf = new WeakReference<GroupThread>(self);

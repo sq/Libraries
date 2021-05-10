@@ -102,7 +102,7 @@ namespace Squared.Threading {
         private volatile int HasAnyListeners = 0;
         private readonly List<WorkQueueDrainListener> DrainListeners = new List<WorkQueueDrainListener>();
         private volatile int NumWaitingForDrain = 0;
-        private readonly AutoResetEvent DrainedSignal = new AutoResetEvent(false);
+        private readonly AutoResetEventSlim DrainedSignal = new AutoResetEventSlim(false);
 
         private readonly object ItemsLock = new object();
         private readonly Queue<InternalWorkItem<T>> Items = new Queue<InternalWorkItem<T>>();
@@ -327,7 +327,7 @@ namespace Squared.Threading {
                             ? timeoutMs
                             : (int)(Math.Max(0, endWhen - now) / Time.MillisecondInTicks);
                         NotifyChanged();
-                        if (!DrainedSignal.WaitOne(maxWait))
+                        if (!DrainedSignal.Wait(maxWait))
                             ;
                         else
                             ;
