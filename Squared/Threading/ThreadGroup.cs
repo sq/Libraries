@@ -12,14 +12,6 @@ namespace Squared.Threading {
     public class ThreadGroup : IDisposable {
         public bool IsDisposed { get; private set; }
 
-        public event Action<double> NewThreadCreated;
-
-        /// <summary>
-        /// If all worker threads are busy for this long (in milliseconds),
-        ///  a new thread will be spawned if possible
-        /// </summary>
-        public float    NewThreadBusyThresholdMs = 5;
-
         /// <summary>
         /// If set to a value above 0, the amount of time spent stepping on the main thread
         ///  in one invocation will be limited to this duration.
@@ -29,8 +21,7 @@ namespace Squared.Threading {
 
         public readonly ITimeProvider TimeProvider;
         public readonly bool CreateBackgroundThreads;
-        public readonly int MinimumThreadCount;
-        public readonly int MaximumThreadCount;
+        public readonly int ThreadCount;
         public readonly ApartmentState COMThreadingModel;
         
         // A lock-free dictionary for looking up queues by work item type
@@ -45,36 +36,27 @@ namespace Squared.Threading {
         // Each thread has its own so that it is unlikely to not experience lock contention
         internal readonly ThreadLocal<UnorderedList<IWorkQueue>> QueueLists;
 
-        private int CurrentThreadCount;
-        private readonly UnorderedList<GroupThread> Threads = new UnorderedList<GroupThread>(64);
-
-        private long LastTimeThreadWasIdle = long.MaxValue;
-        private bool CanMakeNewThreads, HasNoThreads;
+        public readonly GroupThread[] Threads;
 
         public string Name;
 
         public ThreadGroup (
-            int? minimumThreads = null,
-            int? maximumThreads = null,
+            int? threadCount = null,
             bool createBackgroundThreads = false,
             ITimeProvider timeProvider = null,
             ApartmentState comThreadingModel = ApartmentState.Unknown,
             string name = null
         ) {
             Name = name;
-            MaximumThreadCount = maximumThreads.GetValueOrDefault(Environment.ProcessorCount + 1);
-            MinimumThreadCount = Math.Min(minimumThreads.GetValueOrDefault(2), MaximumThreadCount);
+            ThreadCount = Math.Min(threadCount.GetValueOrDefault(Environment.ProcessorCount + 1), 8);
             CreateBackgroundThreads = createBackgroundThreads;
             TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
             COMThreadingModel = comThreadingModel;
             QueueLists = new ThreadLocal<UnorderedList<IWorkQueue>>(CreateNewQueue, true);
 
-            lock (Threads)
-            while ((Count < MinimumThreadCount) && (Count < MaximumThreadCount))
-                SpawnThread(true);
-
-            HasNoThreads = (Count == 0);
-            CanMakeNewThreads = (Count < MaximumThreadCount);
+            Threads = new GroupThread[ThreadCount];
+            for (int i = 0; i < Threads.Length; i++)
+                Threads[i] = new GroupThread(this, i);
         }
 
         private UnorderedList<IWorkQueue> CreateNewQueue () {
@@ -136,8 +118,7 @@ namespace Squared.Threading {
 
         public int Count {
             get {
-                lock (Threads)
-                    return Threads.Count;
+                return Threads.Length;
             }
         }
 
@@ -155,17 +136,6 @@ namespace Squared.Threading {
         {
             var queue = GetQueueForType<T>();
             queue.Enqueue(ref item, onComplete);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void ThreadBecameIdle () {
-            Volatile.Write(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void ThreadBeganWorking () {
-            // FIXME
-            Volatile.Write(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
         }
 
         /// <summary>
@@ -208,17 +178,11 @@ namespace Squared.Threading {
             }
 
             if (resultIsNew) {
-                // Hold the threads lock to ensure we don't race on thread
-                //  creation and accidentally miss a thread to add queues to
-                lock (Threads) {
-                    foreach (var value in QueueLists.Values)
-                        lock (value)
-                            value.Add(result);
+                foreach (var value in QueueLists.Values)
+                    lock (value)
+                        value.Add(result);
 
-                    // HACK: Do this manually to avoid spawning a new thread
-                    foreach (var thread in Threads)
-                        thread.Wake();
-                }
+                NotifyQueuesChanged();
             }
 
             return result;
@@ -237,66 +201,14 @@ namespace Squared.Threading {
         /// This ensures that any sleeping worker threads wake up, and that
         ///  new threads are created if necessary
         /// </summary>
-        public void NotifyQueuesChanged (bool assumeBusy = false) {
-            ConsiderNewThread(assumeBusy);
-
-            // HACK: This is a race, but acquiring this lock is way too slow. The only failure scenario is
-            //  that we would fail to wake up a brand new thread
-            // lock (Threads)
+        public void NotifyQueuesChanged () {
             foreach (var thread in Threads)
-                thread.Wake();
-        }
-
-        /// <summary>
-        /// Checks to see whether an additional worker thread is needed, and if so, creates one.
-        /// If you've just enqueued many work items it's advised to invoke this once with assumeBusy: true.
-        /// </summary>
-        /// <param name="assumeBusy">If true, it is assumed that many tasks are waiting.</param>
-        /// <returns>true if a thread was created.</returns>
-        internal bool ConsiderNewThread (bool assumeBusy = false) {
-            if (!CanMakeNewThreads)
-                return false;
-
-            var timeSinceLastIdle = TimeProvider.Ticks - Interlocked.Read(ref LastTimeThreadWasIdle);
-            var timeSinceLastIdleMs = TimeSpan.FromTicks(timeSinceLastIdle).TotalMilliseconds;
-
-            if (HasNoThreads || (timeSinceLastIdleMs >= NewThreadBusyThresholdMs)) {
-                lock (Threads) {
-                    SpawnThread(false);
-
-                    if (NewThreadCreated != null)
-                        NewThreadCreated(timeSinceLastIdleMs);
-
-                    return true;
-                }
-            }
-
-            return false;
+                thread?.Wake();
         }
 
         internal void WakeAllThreads () {
-            lock (Threads)
-                foreach (var thread in Threads)
-                    thread.Wake();
-        }
-
-        public void ForciblySpawnThread () {
-            lock (Threads)
-                SpawnThread(true);
-        }
-
-        private void SpawnThread (bool force) {
-            // Just in case thread state gets out of sync...
-            if ((Threads.Count >= MaximumThreadCount) && !force)
-                return;
-
-            Interlocked.Exchange(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
-            var thread = new GroupThread(this, Threads.Count);
-            Threads.Add(thread);
-
-            HasNoThreads = false;
-            CanMakeNewThreads = Threads.Count < MaximumThreadCount;
-            CurrentThreadCount = Threads.Count;
+            foreach (var thread in Threads)
+                thread?.Wake();
         }
 
         public void Dispose () {
@@ -309,11 +221,9 @@ namespace Squared.Threading {
 
             IsDisposed = true;
 
-            lock (Threads) {
-                foreach (var thread in Threads) {
-                    thread.Dispose();
-                }
-                Threads.Clear();
+            for (int i = 0; i < Threads.Length; i++) {
+                var thread = Interlocked.Exchange(ref Threads[i], null);
+                thread?.Dispose();
             }
 
             if (!finalizing)

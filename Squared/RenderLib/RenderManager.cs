@@ -608,19 +608,19 @@ namespace Squared.Render {
         }
 
         internal void SynchronousPrepareBatches (Frame frame) {
-            ThreadGroup.NotifyQueuesChanged(false);
+            ThreadGroup.NotifyQueuesChanged();
 
             var context = new Batch.PrepareContext(PrepareManager, false);
             context.PrepareMany(frame.Batches);
 
-            ThreadGroup.NotifyQueuesChanged(false);
+            ThreadGroup.NotifyQueuesChanged();
             PrepareManager.AssertEmpty();
             frame.BatchesToRelease.AddRange(ref context.BatchesToRelease);
         }
 
         internal void ParallelPrepareBatches (Frame frame) {
             // HACK: We want to make sure all our list pools get flushed periodically
-            ThreadGroup.NotifyQueuesChanged(false);
+            ThreadGroup.NotifyQueuesChanged();
 
             var context = new Batch.PrepareContext(PrepareManager, true);
             context.PrepareMany(frame.Batches);
@@ -912,7 +912,7 @@ namespace Squared.Render {
         }
 
         public void Wait () {
-            Group.NotifyQueuesChanged(true);
+            Group.NotifyQueuesChanged();
             Queue.WaitUntilDrained();
         }
         

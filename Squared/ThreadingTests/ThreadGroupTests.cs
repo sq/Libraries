@@ -49,7 +49,7 @@ namespace Squared.Threading {
         [Test]
         public void MinimumThreadCount () {
             using (var group = new ThreadGroup(
-                minimumThreads: 2, createBackgroundThreads: true, name: "MinimumThreadCount"
+                threadCount: 2, createBackgroundThreads: true, name: "MinimumThreadCount"
             )) {
                 Assert.GreaterOrEqual(group.Count, 2);
             }
@@ -57,7 +57,7 @@ namespace Squared.Threading {
 
         [Test]
         public void ManuallyStep () {
-            using (var group = new ThreadGroup(0, 0, createBackgroundThreads: true, name: "ManuallyStep")) {
+            using (var group = new ThreadGroup(0, createBackgroundThreads: true, name: "ManuallyStep")) {
                 var queue = group.GetQueueForType<TestWorkItem>();
 
                 var item = new TestWorkItem();
@@ -74,72 +74,11 @@ namespace Squared.Threading {
         }
 
         [Test]
-        public void ForciblySpawnThread () {
-            using (var group = new ThreadGroup(0, 0, createBackgroundThreads: true, name: "ForciblySpawnThread")) {
-                var queue = group.GetQueueForType<TestWorkItem>();
-
-                var item = new TestWorkItem();
-                Assert.IsFalse(item.Ran);
-
-                queue.Enqueue(item);
-
-                Assert.AreEqual(0, group.Count);
-                Assert.IsFalse(item.Ran);
-
-                group.ForciblySpawnThread();
-                Assert.AreEqual(1, group.Count);
-
-                queue.WaitUntilDrained(5000);
-
-                Assert.IsTrue(item.Ran);
-            }
-        }
-
-        [Test]
-        public void AutoSpawnThread () {
-            using (var group = new ThreadGroup(0, 1, createBackgroundThreads: true, name: "AutoSpawnThread")) {
-                var queue = group.GetQueueForType<TestWorkItem>();
-
-                var item = new TestWorkItem();
-                Assert.IsFalse(item.Ran);
-
-                queue.Enqueue(item, notifyChanged: false);
-
-                Assert.AreEqual(0, group.Count);
-                Assert.IsFalse(item.Ran, "!item.Ran");
-
-                group.NotifyQueuesChanged();
-                Assert.AreEqual(1, group.Count);
-
-                queue.WaitUntilDrained(5000);
-
-                Assert.IsTrue(item.Ran, "item.Ran");
-            }
-        }
-
-        [Test]
-        public void AutoSpawnMoreThreads () {
-            using (var group = new ThreadGroup(0, 2, createBackgroundThreads: true, name: "AutoSpawnMoreThreads")) {
-                var queue = group.GetQueueForType<SleepyWorkItem>();
-
-                queue.Enqueue(new SleepyWorkItem());
-
-                Assert.GreaterOrEqual(1, group.Count);
-
-                queue.Enqueue(new SleepyWorkItem());
-
-                Assert.GreaterOrEqual(2, group.Count);
-
-                queue.WaitUntilDrained(5000);
-            }
-        }
-
-        [Test]
         public void SingleThreadPerformanceTest () {
             const int count = 400;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(1, 1, createBackgroundThreads: true, name: "SingleThreadPerformanceTest")) {
+            using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "SingleThreadPerformanceTest")) {
                 var queue = group.GetQueueForType<SlightlySlowWorkItem>();
 
                 var item = new SlightlySlowWorkItem();
@@ -172,7 +111,7 @@ namespace Squared.Threading {
             const int count = 3000;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(4, 4, createBackgroundThreads: true, name: "MultipleThreadPerformanceTest")) {
+            using (var group = new ThreadGroup(4, createBackgroundThreads: true, name: "MultipleThreadPerformanceTest")) {
                 var queue = group.GetQueueForType<SlightlySlowWorkItem>();
 
                 var item = new SlightlySlowWorkItem();

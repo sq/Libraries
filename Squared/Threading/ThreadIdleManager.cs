@@ -9,9 +9,8 @@ namespace Squared.Threading {
     public class ThreadIdleManager : IDisposable {
         const int State_Sleeping = 0,
             State_WakeRequested = 1,
-            State_Awake = 2,
-            State_Running = 3,
-            State_Disposed = 4;
+            State_Running = 2,
+            State_Disposed = 3;
 
         private volatile int State = State_WakeRequested;
         private ManualResetEventSlim Event = new ManualResetEventSlim(true, 1);
@@ -22,11 +21,6 @@ namespace Squared.Threading {
             Event.Reset();
             var previousState = Interlocked.Exchange(ref State, State_Running);
             return (previousState != State_Disposed);
-        }
-
-        /// <returns>true if the thread is allowed to stop running, false if it has been asked to wake up again</returns>
-        public bool StopRunning () {
-            return Interlocked.CompareExchange(ref State, State_Awake, State_Running) == State_Running;
         }
 
         /// <summary>
@@ -48,15 +42,18 @@ namespace Squared.Threading {
         /// </summary>
         /// <returns>true if a wake was requested, false if the timeout expired</returns>
         public bool Wait (int timeoutMs = -1) {
-            if (Interlocked.CompareExchange(ref State, State_Sleeping, State_Running) != State_Running)
+            var oldState = Interlocked.CompareExchange(ref State, State_Sleeping, State_Running);
+            if (oldState != State_Running)
                 return true;
 
             Thread.Yield();
-            if (Volatile.Read(ref State) != State_Sleeping)
+            if (Volatile.Read(ref State) != State_Sleeping) {
+                Volatile.Write(ref State, State_Running);
                 return true;
+            }
 
             var result = Event.Wait(timeoutMs);
-            Interlocked.CompareExchange(ref State, State_Awake, State_Sleeping);
+            Interlocked.CompareExchange(ref State, State_Running, State_Sleeping);
             return result;
         }
 

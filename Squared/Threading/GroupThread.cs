@@ -49,16 +49,13 @@ namespace Squared.Threading {
         private static void ThreadMain (object _self) {
             var weakSelf = ThreadMainSetup(ref _self, out UnorderedList<IWorkQueue> queueList);
 
-            // On thread termination we release our event.
-            // If we did this in Dispose there'd be no clean way to deal with this.
-            while (true) {
+            bool running = true;
+            while (running) {
                 // HACK: We retain a strong reference to our GroupThread while we're running,
                 //  and if our owner GroupThread has been collected, we abort
-                var idleManager = ThreadMainStep(weakSelf, queueList);
+                var idleManager = ThreadMainStep(weakSelf, queueList, ref running);
                 if (idleManager != null)
                     idleManager.Wait(IdleWaitDurationMs);
-                else
-                    break;
             }
         }
 
@@ -71,19 +68,17 @@ namespace Squared.Threading {
             return weakSelf;
         }
 
-        private static ThreadIdleManager ThreadMainStep (WeakReference<GroupThread> weakSelf, UnorderedList<IWorkQueue> queueList) {
+        private static ThreadIdleManager ThreadMainStep (WeakReference<GroupThread> weakSelf, UnorderedList<IWorkQueue> queueList, ref bool running) {
             // We hold the strong reference at method scope so we can be sure it doesn't get held too long
             GroupThread strongSelf = null;
 
-            // If our owner object has been collected, abort
-            if (!weakSelf.TryGetTarget(out strongSelf))
+            // If our owner object has been collected or disposed, abort
+            if (!weakSelf.TryGetTarget(out strongSelf) || strongSelf.IsDisposed) {
+                running = false;
                 return null;
+            }
 
-            // If our owner object has been disposed, abort
-            if (strongSelf.IsDisposed)
-                return null;
-
-            if (strongSelf.PerformWork(queueList))
+            if (strongSelf.IdleManager.BeginRunning() && strongSelf.PerformWork(queueList))
                 return strongSelf.IdleManager;
             else
                 return null;
@@ -98,7 +93,6 @@ namespace Squared.Threading {
                 //  is that we miss the new queue(s) for this step
                 queues = queueList.GetBufferArray();
             }
-            Owner.ThreadBeganWorking();
 
             bool moreWorkRemains = false;
             var nqi = Interlocked.Increment(ref NextQueueIndex);
@@ -122,7 +116,6 @@ namespace Squared.Threading {
                 }
             }
 
-            Owner.ThreadBecameIdle();
             return !moreWorkRemains;
         }
 

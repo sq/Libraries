@@ -159,7 +159,6 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void NotifyChanged () {
-            Owner.ConsiderNewThread(false);
             Owner.WakeAllThreads();
         }
 
@@ -170,14 +169,11 @@ namespace Squared.Threading {
                     return;
                 default:
                 case WorkQueueNotifyMode.Always:
-                    Owner.ConsiderNewThread(false);
-                    Owner.WakeAllThreads();
+                    Owner.NotifyQueuesChanged();
                     return;
                 case WorkQueueNotifyMode.Stochastically:
-                    if ((newCount % StochasticNotifyInterval) == 0) {
-                        Owner.ConsiderNewThread(false);
-                        Owner.WakeAllThreads();
-                    }
+                    if ((newCount % StochasticNotifyInterval) == 0)
+                        Owner.NotifyQueuesChanged();
                     return;
             }
         }
