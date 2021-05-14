@@ -76,7 +76,7 @@ namespace Squared.Task {
 
         private bool _Disposed = false;
 
-        private readonly ManualResetEventSlim _WaiterSignal = new ManualResetEventSlim(false);
+        private readonly System.Threading.ManualResetEventSlim _WaiterSignal = new System.Threading.ManualResetEventSlim(false);
         private int _WaiterCount = 0;
 
         private readonly ConcurrentQueue<Action> _Queue = new ConcurrentQueue<Action>();

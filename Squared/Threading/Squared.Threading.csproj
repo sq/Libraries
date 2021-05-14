@@ -36,7 +36,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AsyncAwait.cs" />
-    <Compile Include="AutoResetEventSlim.cs" />
     <Compile Include="CancellationScope.cs" />
     <Compile Include="Future.cs" />
     <Compile Include="GroupThread.cs" />

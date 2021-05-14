@@ -77,9 +77,17 @@ namespace Squared.Threading {
         }
     }
 
+    public enum WorkQueueNotifyMode : int {
+        Never = 0,
+        Always = 1,
+        Stochastically = 2
+    }
+
     public class WorkQueue<T> : IWorkQueue
         where T : IWorkItem 
     {
+        public static int StochasticNotifyInterval = 32;
+
         public static class Configuration {
             public static int? MaxStepCount = null;
 
@@ -102,7 +110,7 @@ namespace Squared.Threading {
         private volatile int HasAnyListeners = 0;
         private readonly List<WorkQueueDrainListener> DrainListeners = new List<WorkQueueDrainListener>();
         private volatile int NumWaitingForDrain = 0;
-        private readonly AutoResetEventSlim DrainedSignal = new AutoResetEventSlim(false);
+        private readonly ManualResetEventSlim DrainedSignal = new ManualResetEventSlim(false);
 
         private readonly object ItemsLock = new object();
         private readonly Queue<InternalWorkItem<T>> Items = new Queue<InternalWorkItem<T>>();
@@ -130,11 +138,12 @@ namespace Squared.Threading {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void AddInternal (ref InternalWorkItem<T> item) {
+        private int AddInternal (ref InternalWorkItem<T> item) {
             AssertCanEnqueue();
-            Interlocked.Increment(ref ItemsQueued);
+            var result = Interlocked.Increment(ref ItemsQueued);
             lock (ItemsLock)
                 Items.Enqueue(item);
+            return result;
         }
 
         public void RegisterDrainListener (WorkQueueDrainListener listener) {
@@ -155,29 +164,66 @@ namespace Squared.Threading {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null, bool notifyChanged = true) {
-#if DEBUG
-            if (IsMainThreadWorkItem && !IsMainThreadQueue)
-                throw new InvalidOperationException("This work item must be queued on the main thread");
-#endif
-
-            var wi = new InternalWorkItem<T>(this, ref data, onComplete);
-            AddInternal(ref wi);
-            if (notifyChanged)
-                NotifyChanged();
+        private void NotifyChanged (WorkQueueNotifyMode mode, int newCount) {
+            switch (mode) {
+                case WorkQueueNotifyMode.Never:
+                    return;
+                default:
+                case WorkQueueNotifyMode.Always:
+                    Owner.ConsiderNewThread(false);
+                    Owner.WakeAllThreads();
+                    return;
+                case WorkQueueNotifyMode.Stochastically:
+                    if ((newCount % StochasticNotifyInterval) == 0) {
+                        Owner.ConsiderNewThread(false);
+                        Owner.WakeAllThreads();
+                    }
+                    return;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null, bool notifyChanged = true) {
+        public void Enqueue (T data, bool notifyChanged) {
+            Enqueue(ref data, null, notifyChanged ? WorkQueueNotifyMode.Always : WorkQueueNotifyMode.Never);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Enqueue (ref T data, bool notifyChanged) {
+            Enqueue(ref data, null, notifyChanged ? WorkQueueNotifyMode.Always : WorkQueueNotifyMode.Never);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Enqueue (T data, OnWorkItemComplete<T> onComplete, bool notifyChanged) {
+            Enqueue(ref data, onComplete, notifyChanged ? WorkQueueNotifyMode.Always : WorkQueueNotifyMode.Never);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete, bool notifyChanged) {
+            Enqueue(ref data, onComplete, notifyChanged ? WorkQueueNotifyMode.Always : WorkQueueNotifyMode.Never);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null, WorkQueueNotifyMode notifyChanged = WorkQueueNotifyMode.Always) {
 #if DEBUG
             if (IsMainThreadWorkItem && !IsMainThreadQueue)
                 throw new InvalidOperationException("This work item must be queued on the main thread");
 #endif
 
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
-            AddInternal(ref wi);
-            if (notifyChanged)
-                NotifyChanged();
+            var newCount = AddInternal(ref wi);
+            NotifyChanged(notifyChanged, newCount);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null, WorkQueueNotifyMode notifyChanged = WorkQueueNotifyMode.Always) {
+#if DEBUG
+            if (IsMainThreadWorkItem && !IsMainThreadQueue)
+                throw new InvalidOperationException("This work item must be queued on the main thread");
+#endif
+
+            var wi = new InternalWorkItem<T>(this, ref data, onComplete);
+            var newCount = AddInternal(ref wi);
+            NotifyChanged(notifyChanged, newCount);
         }
 
         public void EnqueueMany (ArraySegment<T> data, bool notifyChanged = true) {

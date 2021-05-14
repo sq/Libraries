@@ -1104,7 +1104,7 @@ namespace Squared.Threading {
         /// Creates a ManualResetEventSlim that will become set when this future is completed.
         /// </summary>
         public static ManualResetEventSlim GetCompletionEvent (this IFuture future) {
-            ManualResetEventSlim evt = new ManualResetEventSlim(false);
+            System.Threading.ManualResetEventSlim evt = new System.Threading.ManualResetEventSlim(false);
             OnFutureResolved handler = (f) => evt.Set();
             future.RegisterOnComplete(handler);
             return evt;

@@ -107,6 +107,8 @@ namespace Squared.Render {
 
         public UnorderedList<T>.Allocator Allocator = UnorderedList<T>.Allocator.Default;
 
+        public static int DeferredClearSizeThreshold = 128;
+
         public          int SmallPoolCapacity;
         public          int LargePoolCapacity;
         public readonly int InitialItemSize;
@@ -212,11 +214,11 @@ namespace Squared.Render {
             _ClearQueue?.WaitUntilDrained(timeoutMs);
         }
 
-        private void ClearAndReturn (UnorderedList<T> list, UnorderedList<UnorderedList<T>> pool, int limit) {
-            if (_ClearQueue != null) {
+        private void ClearAndReturn (UnorderedList<T> list, UnorderedList<UnorderedList<T>> pool, int limit, WorkQueueNotifyMode notifyMode = WorkQueueNotifyMode.Stochastically) {
+            if ((list.Count > DeferredClearSizeThreshold) && (_ClearQueue != null)) {
                 _ClearQueue.Enqueue(new ListClearWorkItem {
                     List = list
-                });
+                }, notifyChanged: notifyMode);
                 return;
             }
 
@@ -236,7 +238,14 @@ namespace Squared.Render {
             }
         }
 
-        public void Release (ref UnorderedList<T> _list) {
+        void IListPool<T>.Release (ref UnorderedList<T> _list) {
+            // HACK: Render manager wakes the thread pool before waiting so at worst 
+            //  we will wait until the end of the frame to clear and return lists, which
+            //  is way better than constantly burning cycles waking the thread group
+            Release(ref _list, WorkQueueNotifyMode.Never);
+        }
+
+        public void Release (ref UnorderedList<T> _list, WorkQueueNotifyMode notifyMode) {
             var list = _list;
             _list = null;
 
@@ -250,7 +259,7 @@ namespace Squared.Render {
                             return;
                     }
 
-                    ClearAndReturn(list, _LargePool, LargePoolCapacity);
+                    ClearAndReturn(list, _LargePool, LargePoolCapacity, notifyMode);
                 }
 
                 return;
@@ -261,7 +270,7 @@ namespace Squared.Render {
                     return;
             }
 
-            ClearAndReturn(list, _Pool, SmallPoolCapacity);
+            ClearAndReturn(list, _Pool, SmallPoolCapacity, notifyMode);
         }
     }
 

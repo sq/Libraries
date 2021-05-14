@@ -403,7 +403,7 @@ namespace Squared.Task {
             _JobQueue.QueueWorkItemForNextStep(workItem);
         }
 
-        internal void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, ManualResetEventSlim newSleepEvent) {
+        internal void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, System.Threading.ManualResetEventSlim newSleepEvent) {
             while (true) {
                 long now = TimeProvider.Ticks;
 

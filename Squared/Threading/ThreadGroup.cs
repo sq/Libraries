@@ -239,9 +239,11 @@ namespace Squared.Threading {
         public void NotifyQueuesChanged (bool assumeBusy = false) {
             ConsiderNewThread(assumeBusy);
 
-            lock (Threads)
-                foreach (var thread in Threads)
-                    thread.Wake();
+            // HACK: This is a race, but acquiring this lock is way too slow. The only failure scenario is
+            //  that we would fail to wake up a brand new thread
+            // lock (Threads)
+            foreach (var thread in Threads)
+                thread.Wake();
         }
 
         /// <summary>

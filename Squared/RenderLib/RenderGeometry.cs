@@ -255,7 +255,7 @@ namespace Squared.Render {
                     hwb.TrySetInactive();
             }
 
-            _DrawArgumentsListPool.Release(ref _DrawArguments);
+            _DrawArgumentsListPool.Release(ref _DrawArguments, Threading.WorkQueueNotifyMode.Never);
             _SoftwareBuffer = null;
 
             base.Issue(manager);
@@ -264,7 +264,7 @@ namespace Squared.Render {
         protected override void OnReleaseResources () {
             foreach (var kvp in Lists) {
                 var l = kvp.Value;
-                _ListPool.Release(ref l);
+                _ListPool.Release(ref l, Threading.WorkQueueNotifyMode.Never);
             }
 
             Lists.Clear();

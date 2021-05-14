@@ -9,7 +9,8 @@ namespace Squared.Threading {
     public class GroupThread : IDisposable {
         public  readonly ThreadGroup          Owner;
         public  readonly Thread               Thread;
-        private readonly AutoResetEventSlim WakeSignal = new AutoResetEventSlim(true);
+        private readonly ManualResetEventSlim WakeSignal = new ManualResetEventSlim(true);
+        private volatile int                  IsSleeping = 0;
 
 #if DEBUG
         // HACK: Set the delay to EXTREMELY LONG so that we will get nasty pauses
@@ -43,11 +44,12 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Wake () {
-            WakeSignal.Set();
+            if (Interlocked.Exchange(ref IsSleeping, 0) == 1)
+                WakeSignal.Set();
         }
 
         private static void ThreadMain (object _self) {
-            var weakSelf = ThreadMainSetup(ref _self, out UnorderedList<IWorkQueue> queueList, out AutoResetEventSlim wakeSignal);
+            var weakSelf = ThreadMainSetup(ref _self, out UnorderedList<IWorkQueue> queueList, out ManualResetEventSlim wakeSignal);
 
             // On thread termination we release our event.
             // If we did this in Dispose there'd be no clean way to deal with this.
@@ -60,15 +62,16 @@ namespace Squared.Threading {
                 // The strong reference is released here so we can wait to be woken up
 
                 // We only wait if no work remains
-                if (!moreWorkRemains)
+                if (!moreWorkRemains) {
                     wakeSignal.Wait(IdleWaitDurationMs);
-                else
+                    wakeSignal.Reset();
+                } else
                     Thread.Yield();
             }
         }
 
         private static WeakReference<GroupThread> ThreadMainSetup (
-            ref object _self, out UnorderedList<IWorkQueue> queueList, out AutoResetEventSlim wakeSignal
+            ref object _self, out UnorderedList<IWorkQueue> queueList, out ManualResetEventSlim wakeSignal
         ) {
             var self = (GroupThread)_self;
             var weakSelf = new WeakReference<GroupThread>(self);
@@ -123,6 +126,7 @@ namespace Squared.Threading {
             }
 
             strongSelf.Owner.ThreadBecameIdle();
+            Volatile.Write(ref strongSelf.IsSleeping, 1);
             GC.KeepAlive(strongSelf);
             return true;
         }

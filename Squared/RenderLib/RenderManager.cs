@@ -608,14 +608,20 @@ namespace Squared.Render {
         }
 
         internal void SynchronousPrepareBatches (Frame frame) {
+            ThreadGroup.NotifyQueuesChanged(false);
+
             var context = new Batch.PrepareContext(PrepareManager, false);
             context.PrepareMany(frame.Batches);
 
+            ThreadGroup.NotifyQueuesChanged(false);
             PrepareManager.AssertEmpty();
             frame.BatchesToRelease.AddRange(ref context.BatchesToRelease);
         }
 
         internal void ParallelPrepareBatches (Frame frame) {
+            // HACK: We want to make sure all our list pools get flushed periodically
+            ThreadGroup.NotifyQueuesChanged(false);
+
             var context = new Batch.PrepareContext(PrepareManager, true);
             context.PrepareMany(frame.Batches);
 
@@ -934,7 +940,7 @@ namespace Squared.Render {
                         totalAdded += 1;
 
                         if (j == (blockSize - 1)) {
-                            Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j));
+                            Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j), false);
                             j = 0;
                         }
                     } else {
@@ -943,7 +949,7 @@ namespace Squared.Render {
                 }
 
                 if (context.Async && (j > 0))
-                    Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j));
+                    Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j), false);
             }
 
             if (context.Async)

@@ -146,7 +146,7 @@ namespace PRGUI.Demo {
         }
 
         protected override void OnLoadContent (bool isReloading) {
-            RenderCoordinator.EnableThreading = false;
+            // RenderCoordinator.EnableThreading = false;
 
             TextureLoader = new Texture2DProvider(Assembly.GetExecutingAssembly(), RenderCoordinator) {
                 DefaultOptions = new TextureLoadOptions {
