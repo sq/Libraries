@@ -107,6 +107,37 @@ namespace Squared.Threading {
         }
 
         [Test]
+        public void MainThreadPerformanceTest () {
+            const int count = 400;
+
+            var timeProvider = Time.DefaultTimeProvider;
+            using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "MainThreadPerformanceTest")) {
+                var queue = group.GetQueueForType<SlightlySlowWorkItem>(forMainThread: true);
+
+                var item = new SlightlySlowWorkItem();
+
+                var beforeEnqueue = timeProvider.Ticks;
+                for (int i = 0; i < count; i++)
+                    queue.Enqueue(ref item, notifyChanged: false);
+
+                var afterEnqueue = timeProvider.Ticks;
+
+                while (!queue.IsEmpty)
+                    group.StepMainThread();
+                var beforeWait = timeProvider.Ticks;
+                var afterWait = timeProvider.Ticks;
+                var perItem = (afterWait - beforeWait) / (double)count / Time.MillisecondInTicks;
+
+                Console.WriteLine(
+                    "Enqueue took {0:0000.00}ms, Wait took {1:0000.00}ms. Est speed {3:0.000000}ms/item Final thread count: {2}",
+                    TimeSpan.FromTicks(afterEnqueue - beforeEnqueue).TotalMilliseconds,
+                    TimeSpan.FromTicks(afterWait - beforeWait).TotalMilliseconds,
+                    group.Count, perItem
+                );
+            }
+        }
+
+        [Test]
         public void MultipleThreadPerformanceTest () {
             const int count = 3000;
 

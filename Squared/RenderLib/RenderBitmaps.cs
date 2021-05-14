@@ -129,11 +129,13 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
-            Buffer.F1 = x.SortOrder; Buffer.F2 = y.SortOrder;
-            var result = FastMath.CompareF(ref Buffer);
-            if (result == 0)
-                result = (x.Textures.HashCode - y.Textures.HashCode);
-            return result;
+            unchecked {
+                Buffer.F1 = x.SortOrder; Buffer.F2 = y.SortOrder;
+                var result = FastMath.CompareF(ref Buffer);
+                if (result == 0)
+                    result = (x.Textures.HashCode - y.Textures.HashCode);
+                return result;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -147,12 +149,14 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
-            var result = (x.Textures.HashCode - y.Textures.HashCode);
-            if (result == 0) {
-                Buffer.F1 = y.SortOrder; Buffer.F2 = x.SortOrder;
-                result = FastMath.CompareF(ref Buffer);
+            unchecked {
+                var result = (x.Textures.HashCode - y.Textures.HashCode);
+                if (result == 0) {
+                    Buffer.F1 = y.SortOrder; Buffer.F2 = x.SortOrder;
+                    result = FastMath.CompareF(ref Buffer);
+                }
+                return result;
             }
-            return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -164,7 +168,9 @@ namespace Squared.Render {
     public sealed class BitmapDrawCallTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
-            return (x.Textures.HashCode - y.Textures.HashCode);
+            unchecked {
+                return (x.Textures.HashCode - y.Textures.HashCode);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
