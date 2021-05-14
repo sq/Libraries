@@ -20,6 +20,8 @@ namespace Squared.Threading {
             // FIXME: Is this right?
             Event.Reset();
             var previousState = Interlocked.Exchange(ref State, State_Running);
+            if (previousState == State_Disposed)
+                Volatile.Write(ref State, State_Disposed);
             return (previousState != State_Disposed);
         }
 
@@ -29,8 +31,13 @@ namespace Squared.Threading {
         /// </summary>
         public void Wake () {
             var oldState = Interlocked.Exchange(ref State, State_WakeRequested);
+            if (oldState == State_Disposed) {
+                Volatile.Write(ref State, State_Disposed);
+                return;
+            }
             if (oldState == State_Sleeping) {
                 Thread.Yield();
+                // FIXME: It might be faster to check for State_Sleeping here, but I think that may be a race?
                 if (Volatile.Read(ref State) != State_Running)
                     Event.Set();
             }
@@ -47,8 +54,10 @@ namespace Squared.Threading {
                 return true;
 
             Thread.Yield();
-            if (Volatile.Read(ref State) != State_Sleeping) {
-                Volatile.Write(ref State, State_Running);
+            var newState = Volatile.Read(ref State);
+            if (newState != State_Sleeping) {
+                if (newState != State_Disposed)
+                    Volatile.Write(ref State, State_Running);
                 return true;
             }
 
