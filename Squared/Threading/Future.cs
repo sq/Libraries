@@ -393,15 +393,14 @@ namespace Squared.Threading {
 
         private volatile int _State = State_Empty;
         private DenseList<Delegate> _OnCompletes, _OnDisposes;
-        private ExceptionDispatchInfo _ErrorInfo = null;
-        private Exception _Error = null;
+        private object _Error = null;
         private Action _OnErrorChecked = null;
         private T _Result = default(T);
 
         public override string ToString () {
             int state = _State;
             var result = _Result;
-            var error = (_ErrorInfo != null) ? _ErrorInfo.SourceException : _Error;
+            var error = InternalError;
             string stateText = "??";
             switch (state) {
                 case State_Empty:
@@ -481,12 +480,9 @@ namespace Squared.Threading {
         }
 
         void OnErrorCheck () {
-            var ec = _OnErrorChecked;
-            if (ec != null) {
-                ec = Interlocked.Exchange(ref _OnErrorChecked, null);
-                if (ec != null)
-                    ec();
-            }
+            var ec = Interlocked.Exchange(ref _OnErrorChecked, null);
+            if (ec != null)
+                ec();
         }
 
         /// <summary>
@@ -671,6 +667,14 @@ namespace Squared.Threading {
             }
         }
 
+        private Exception InternalError {
+            get {
+                return (_Error is ExceptionDispatchInfo edi) 
+                    ? edi.SourceException 
+                    : (Exception)_Error;
+            }
+        }
+
         /// <summary>
         /// Returns the exception that caused the future to fail, if it has failed.
         /// </summary>
@@ -681,7 +685,7 @@ namespace Squared.Threading {
                     return null;
                 } else if (state == State_CompletedWithError) {
                     OnErrorCheck();
-                    return (_ErrorInfo != null) ? _ErrorInfo.SourceException : _Error;
+                    return InternalError;
                 } else if ((state == State_Disposed) || (state == State_Disposing)) {
                     return null;
                 } else
@@ -700,7 +704,7 @@ namespace Squared.Threading {
                     return _Result;
                 } else if (state == State_CompletedWithError) {
                     OnErrorCheck();
-                    throw new FutureException("Future's result was an error", (_ErrorInfo != null) ? _ErrorInfo.SourceException : _Error);
+                    throw new FutureException("Future's result was an error", InternalError);
                 } else if ((state == State_Disposed) || (state == State_Disposing)) {
                     throw new FutureDisposedException(this);
                 } else
@@ -719,11 +723,11 @@ namespace Squared.Threading {
                     return _Result;
                 } else if (state == State_CompletedWithError) {
                     OnErrorCheck();
-                    if (_ErrorInfo != null) {
-                        _ErrorInfo.Throw();
+                    if (_Error is ExceptionDispatchInfo edi) {
+                        edi.Throw();
                         throw new InvalidOperationException();
                     } else
-                        throw new FutureException("Future's result was an error", _Error);
+                        throw new FutureException("Future's result was an error", (Exception)_Error);
                 } else if ((state == State_Disposed) || (state == State_Disposing)) {
                     throw new FutureDisposedException(this);
                 } else
@@ -767,7 +771,6 @@ namespace Squared.Threading {
 
             _Result = source._Result;
             _Error = source._Error;
-            _ErrorInfo = source._ErrorInfo;
 
             SetResultEpilogue(state);
             return true;
@@ -846,11 +849,10 @@ namespace Squared.Threading {
                 return;
 
             int newState = task.IsFaulted ? State_CompletedWithError : State_CompletedWithValue;
-            _Error = null;
             if (newState == State_CompletedWithError) {
-                _ErrorInfo = ExceptionDispatchInfo.Capture(task.Exception.InnerExceptions.Count == 1 ? task.Exception.InnerException : task.Exception);
+                _Error = ExceptionDispatchInfo.Capture(task.Exception.InnerExceptions.Count == 1 ? task.Exception.InnerException : task.Exception);
             } else {
-                _ErrorInfo = null;
+                _Error = null;
             }
 
             SetResultEpilogue(newState);
@@ -871,10 +873,10 @@ namespace Squared.Threading {
             _Error = null;
             if (newState == State_CompletedWithError) {
                 // FIXME: Assign result here?
-                _ErrorInfo = ExceptionDispatchInfo.Capture(task.Exception.InnerExceptions.Count == 1 ? task.Exception.InnerException : task.Exception);
+                _Error = ExceptionDispatchInfo.Capture(task.Exception.InnerExceptions.Count == 1 ? task.Exception.InnerException : task.Exception);
             } else {
                 _Result = task.Result;
-                _ErrorInfo = null;
+                _Error = null;
             }
 
             SetResultEpilogue(newState);
@@ -890,8 +892,7 @@ namespace Squared.Threading {
 
             int newState = (errorInfo != null) ? State_CompletedWithError : State_CompletedWithValue;
             _Result = result;
-            _Error = null;
-            _ErrorInfo = errorInfo;
+            _Error = errorInfo;
 
             SetResultEpilogue(newState);
         }
@@ -907,7 +908,6 @@ namespace Squared.Threading {
             int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
             _Result = result;
             _Error = error;
-            _ErrorInfo = null;
 
             SetResultEpilogue(newState);
         }
@@ -924,7 +924,6 @@ namespace Squared.Threading {
             int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
             _Result = result;
             _Error = error;
-            _ErrorInfo = null;
 
             SetResultEpilogue(newState);
             return true;
@@ -1009,7 +1008,7 @@ namespace Squared.Threading {
                 if (_State == State_CompletedWithError) {
                     OnErrorCheck();
                     result = default(T);
-                    error = (_ErrorInfo != null) ? _ErrorInfo.SourceException : _Error;
+                    error = InternalError;
                     return true;
                 }
             }
