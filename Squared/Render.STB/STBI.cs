@@ -382,7 +382,7 @@ namespace Squared.Render.STB {
             public int LevelWidth { get; internal set; }
 
             static UploadMipWorkItem () {
-                WorkQueue<UploadMipWorkItem>.Configuration.MaxConcurrency = 2;
+                WorkQueue<UploadMipWorkItem>.Configuration.MaxConcurrency = 1;
             }
 
             public void Execute () {

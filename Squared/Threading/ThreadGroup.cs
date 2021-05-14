@@ -10,6 +10,8 @@ using Squared.Util;
 
 namespace Squared.Threading {
     public class ThreadGroup : IDisposable {
+        public static int MaximumThreadCount = 12;
+
         public bool IsDisposed { get; private set; }
 
         /// <summary>
@@ -48,7 +50,7 @@ namespace Squared.Threading {
             string name = null
         ) {
             Name = name;
-            ThreadCount = Math.Min(threadCount.GetValueOrDefault(Environment.ProcessorCount + 1), 8);
+            ThreadCount = Math.Min(threadCount.GetValueOrDefault(Environment.ProcessorCount + 1), MaximumThreadCount);
             CreateBackgroundThreads = createBackgroundThreads;
             TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
             COMThreadingModel = comThreadingModel;

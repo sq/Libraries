@@ -192,7 +192,7 @@ namespace Squared.Render {
             public DynamicAtlas<T> Atlas;
 
             static GenerateMipsWorkItem () {
-                WorkQueue<GenerateMipsWorkItem>.Configuration.MaxConcurrency = 2;
+                WorkQueue<GenerateMipsWorkItem>.Configuration.ConcurrencyPadding = 2;
             }
 
             public void Execute () {

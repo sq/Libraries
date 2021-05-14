@@ -44,7 +44,7 @@ namespace Squared.Render {
         public MultithreadedGame()
             : base() {
 
-            var threadCount = Math.Min(Math.Max(2, Environment.ProcessorCount + 1), 6);
+            var threadCount = Math.Min(Math.Max(2, Environment.ProcessorCount + 1), 8);
             ThreadGroup = new ThreadGroup(threadCount, true, comThreadingModel: ApartmentState.MTA, name: "MultithreadedGame") {
                 MainThreadStepLengthLimitMs = 4
             };

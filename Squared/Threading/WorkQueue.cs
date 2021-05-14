@@ -106,7 +106,12 @@ namespace Squared.Threading {
             /// Configures the maximum number of items that can be processed at once. If a single work
             ///  item is likely to block a thread for a long period of time, you should make this value small.
             /// </summary>
-            public static int MaxConcurrency = 6;
+            public static int MaxConcurrency = 8;
+            /// <summary>
+            /// Configures the maximum number of items that can be processed at once. The total number of 
+            ///  threads is reduced by this much to compute a limit.
+            /// </summary>
+            public static int ConcurrencyPadding = 1;
         }
 
         // For debugging
@@ -257,7 +262,10 @@ namespace Squared.Threading {
             int count = 0, numProcessed = 0;
             bool running = true, inLock = false, signalDrained = false, setProcessingFlag = false;
 
-            var maxConcurrency = Math.Max(Math.Min(Configuration.MaxConcurrency, Owner.Count - 1), 1);
+            var padded = Owner.Count - Configuration.ConcurrencyPadding;
+            var lesser = Math.Min(Configuration.MaxConcurrency, padded);
+            var maxConcurrency = Math.Max(lesser, 1);
+
             do {
                 try {
                     // FIXME: Find a way to not acquire this every step
