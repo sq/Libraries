@@ -159,12 +159,13 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void ThreadBecameIdle () {
-            Interlocked.Exchange(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
+            Volatile.Write(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void ThreadBeganWorking () {
-            Interlocked.Exchange(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
+            // FIXME
+            Volatile.Write(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
         }
 
         /// <summary>

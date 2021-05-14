@@ -42,6 +42,7 @@
     <Compile Include="LocallyReplicatedCache.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ThreadGroup.cs" />
+    <Compile Include="ThreadIdleManager.cs" />
     <Compile Include="WorkQueue.cs" />
   </ItemGroup>
   <ItemGroup>
