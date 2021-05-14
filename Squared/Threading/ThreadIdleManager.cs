@@ -14,10 +14,12 @@ namespace Squared.Threading {
             State_Disposed = 4;
 
         private volatile int State = State_WakeRequested;
-        private object Lock = new object();
+        private ManualResetEventSlim Event = new ManualResetEventSlim(true, 1);
 
         /// <returns>true if the thread is allowed to begin running, false if it has been disposed</returns>
         public bool BeginRunning () {
+            // FIXME: Is this right?
+            Event.Reset();
             var previousState = Interlocked.Exchange(ref State, State_Running);
             return (previousState != State_Disposed);
         }
@@ -33,9 +35,11 @@ namespace Squared.Threading {
         /// </summary>
         public void Wake () {
             var oldState = Interlocked.Exchange(ref State, State_WakeRequested);
-            if (oldState == State_Sleeping)
-                lock (Lock)
-                    Monitor.PulseAll(Lock);
+            if (oldState == State_Sleeping) {
+                Thread.Yield();
+                if (Volatile.Read(ref State) != State_Running)
+                    Event.Set();
+            }
         }
 
         /// <summary>
@@ -47,14 +51,11 @@ namespace Squared.Threading {
             if (Interlocked.CompareExchange(ref State, State_Sleeping, State_Running) != State_Running)
                 return true;
 
-            bool result;
-            lock (Lock) {
-                if (timeoutMs >= 0)
-                    result = Monitor.Wait(Lock, timeoutMs);
-                else
-                    result = Monitor.Wait(Lock);
-            }
+            Thread.Yield();
+            if (Volatile.Read(ref State) != State_Sleeping)
+                return true;
 
+            var result = Event.Wait(timeoutMs);
             Interlocked.CompareExchange(ref State, State_Awake, State_Sleeping);
             return result;
         }
