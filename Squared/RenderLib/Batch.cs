@@ -29,7 +29,7 @@ namespace Squared.Render {
             }
 
             public void Prepare (IBatch batch) {
-                Manager.Prepare(batch, this);
+                Manager.Prepare(batch, ref this);
             }
 
             internal void InvokeBasePrepare (Batch b) {
@@ -40,10 +40,8 @@ namespace Squared.Render {
                 Manager.ValidateBatch(batch, enqueuing);
             }
 
-            internal void PrepareMany<T> (DenseList<T> batches)
-                where T : IBatch 
-            {
-                Manager.PrepareMany(batches, this);
+            internal void PrepareMany (ref DenseList<Batch> batches) {
+                Manager.PrepareMany(ref batches, this);
             }
         }
 

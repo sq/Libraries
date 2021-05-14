@@ -111,7 +111,7 @@ namespace Squared.Render {
             if (Interlocked.Exchange(ref State, (int)States.Preparing) != (int)States.Initialized)
                 throw new InvalidOperationException("Frame was not in initialized state when prepare operation began ");
 
-            var numRemoved = BatchCombiner.CombineBatches(Batches, ref BatchesToRelease);
+            var numRemoved = BatchCombiner.CombineBatches(ref Batches, ref BatchesToRelease);
             // Batch combining shuffles the batches around to group by type. Once it's done,
             //  we need to do the final sort to preserve layer and material ordering.
             Batches.Sort(BatchComparer);

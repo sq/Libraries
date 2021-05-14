@@ -611,7 +611,7 @@ namespace Squared.Render {
             ThreadGroup.NotifyQueuesChanged();
 
             var context = new Batch.PrepareContext(PrepareManager, false);
-            context.PrepareMany(frame.Batches);
+            context.PrepareMany(ref frame.Batches);
 
             ThreadGroup.NotifyQueuesChanged();
             PrepareManager.AssertEmpty();
@@ -623,7 +623,7 @@ namespace Squared.Render {
             ThreadGroup.NotifyQueuesChanged();
 
             var context = new Batch.PrepareContext(PrepareManager, true);
-            context.PrepareMany(frame.Batches);
+            context.PrepareMany(ref frame.Batches);
 
             PrepareManager.Wait();
             PrepareManager.AssertEmpty();
@@ -874,86 +874,78 @@ namespace Squared.Render {
     }
 
     public class PrepareManager {
-        public struct Task : IWorkItem {
-            public IBatch Batch;
+        public struct ManyTask : IWorkItem {
+            public DenseList<Batch> Batches;
             public Batch.PrepareContext Context;
 
-            public Task (IBatch batch, Batch.PrepareContext context) {
-                Batch = batch;
+            public ManyTask (ref DenseList<Batch> batches, ref Batch.PrepareContext context) {
+                Batches = batches;
                 Context = context;
             }
 
             public void Execute () {
-                Context.Validate(Batch, false);
+                foreach (var b in Batches)
+                    Task.Execute(b, ref Context);
+            }
+        }
+
+        public struct Task : IWorkItem {
+            public IBatch Batch;
+            public Batch.PrepareContext Context;
+
+            public Task (IBatch batch, ref Batch.PrepareContext context) {
+                Batch = batch;
+                Context = context;
+            }
+
+            internal static void Execute (IBatch batch, ref Batch.PrepareContext context) {
+                context.Validate(batch, false);
 
                 var isCombined = false;
-                if (Batch is Batch b)
+                if (batch is Batch b)
                     b.GetState(out bool temp, out isCombined, out bool temp2, out bool temp3, out bool temp4);
                 else
                     b = null;
 
                 if (!isCombined)
-                    Batch.Prepare(Context);
+                    batch.Prepare(context);
 
                 b?.SetPrepareQueued(false);
             }
+
+            public void Execute () {
+                Execute(Batch, ref Context);
+            }
         };
 
-        public  readonly ThreadGroup     Group;
-        private readonly WorkQueue<Task> Queue;
+        public  readonly ThreadGroup         Group;
+        private readonly WorkQueue<Task>     Queue;
+        private readonly WorkQueue<ManyTask> ManyQueue;
 
         public PrepareManager (ThreadGroup threadGroup) {
             Group = threadGroup;
             Queue = threadGroup.GetQueueForType<Task>();
+            ManyQueue = threadGroup.GetQueueForType<ManyTask>();
         }
 
         public void AssertEmpty () {
             Queue.AssertEmpty();
+            ManyQueue.AssertEmpty();
         }
 
         public void Wait () {
             Group.NotifyQueuesChanged();
             Queue.WaitUntilDrained();
+            ManyQueue.WaitUntilDrained();
         }
         
-        public void PrepareMany<T> (DenseList<T> batches, Batch.PrepareContext context)
-            where T : IBatch 
-        {
-            int totalAdded = 0;
-
-            const int blockSize = 128;
-            using (var buffer = BufferPool<Task>.Allocate(blockSize)) {
-                var task = new Task(null, context);
-                int j = 0, c = batches.Count;
-
-                T batch;
-                for (int i = 0; i < c; i++) {
-                    batches.GetItem(i, out batch);
-                    if (batch == null)
-                        continue;
-
-                    ValidateBatch(batch, true);
-                    task.Batch = batch;
-
-                    if (context.Async) {
-                        buffer.Data[j++] = task;
-                        totalAdded += 1;
-
-                        if (j == (blockSize - 1)) {
-                            Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j), false);
-                            j = 0;
-                        }
-                    } else {
-                        task.Execute();
-                    }
-                }
-
-                if (context.Async && (j > 0))
-                    Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j), false);
-            }
+        public void PrepareMany (ref DenseList<Batch> batches, Batch.PrepareContext context) {
+            var task = new ManyTask(ref batches, ref context);
 
             if (context.Async)
-                Group.NotifyQueuesChanged();
+                Group.Enqueue(ref task);
+            else
+                task.Execute();
         }
 
         internal void ValidateBatch (IBatch batch, bool enqueuing) {
@@ -983,12 +975,12 @@ namespace Squared.Render {
             }
         }
 
-        public void Prepare (IBatch batch, Batch.PrepareContext context) {
+        public void Prepare (IBatch batch, ref Batch.PrepareContext context) {
             if (batch == null)
                 return;
 
             ValidateBatch(batch, true);
-            var task = new Task(batch, context);
+            var task = new Task(batch, ref context);
 
             if (context.Async) {
                 Queue.Enqueue(task);

@@ -43,7 +43,7 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="batches">The list of batches to perform a combination pass over.</param>
         /// <returns>The number of batches eliminated.</returns>
-        public static int CombineBatches (DenseList<Batch> batches, ref DenseList<Batch> batchesToRelease) {
+        public static int CombineBatches (ref DenseList<Batch> batches, ref DenseList<Batch> batchesToRelease) {
             batches.Sort(BatchTypeSorter);
 
             int i = 0, j = i + 1, l = batches.Count, eliminatedCount = 0;
