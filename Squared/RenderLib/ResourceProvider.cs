@@ -172,6 +172,8 @@ namespace Squared.Render.Resources {
                     break;
             }
 
+            WorkQueue<PreloadWorkItem>.Configuration.MaxConcurrency = 2;
+            WorkQueue<CreateWorkItem>.Configuration.MaxConcurrency = 2;
             PreloadQueue = coordinator.ThreadGroup.GetQueueForType<PreloadWorkItem>(forMainThread: !EnableThreadedPreload);
             CreateQueue = coordinator.ThreadGroup.GetQueueForType<CreateWorkItem>(forMainThread: !EnableThreadedCreate);
         }

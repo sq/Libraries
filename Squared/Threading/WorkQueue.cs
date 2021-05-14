@@ -86,8 +86,6 @@ namespace Squared.Threading {
     public class WorkQueue<T> : IWorkQueue
         where T : IWorkItem 
     {
-        public static int StochasticNotifyInterval = 32;
-
         public static class Configuration {
             public static int? MaxStepCount = null;
 
@@ -101,6 +99,14 @@ namespace Squared.Threading {
             ///  by a single queue.
             /// </summary>
             public static int DefaultStepCount = 64;
+
+            public static int StochasticNotifyInterval = 32;
+
+            /// <summary>
+            /// Configures the maximum number of items that can be processed at once. If a single work
+            ///  item is likely to block a thread for a long period of time, you should make this value small.
+            /// </summary>
+            public static int MaxConcurrency = 6;
         }
 
         // For debugging
@@ -115,6 +121,7 @@ namespace Squared.Threading {
         private readonly object ItemsLock = new object();
         private readonly Queue<InternalWorkItem<T>> Items = new Queue<InternalWorkItem<T>>();
 
+        private int NumProcessing = 0;
         private ExceptionDispatchInfo UnhandledException;
         private readonly bool IsMainThreadWorkItem;
 
@@ -172,7 +179,7 @@ namespace Squared.Threading {
                     Owner.NotifyQueuesChanged();
                     return;
                 case WorkQueueNotifyMode.Stochastically:
-                    if ((newCount % StochasticNotifyInterval) == 0)
+                    if ((newCount % Configuration.StochasticNotifyInterval) == 0)
                         Owner.NotifyQueuesChanged();
                     return;
             }
@@ -230,13 +237,14 @@ namespace Squared.Threading {
 
             lock (ItemsLock) {
                 AssertCanEnqueue();
+                Interlocked.Add(ref ItemsQueued, data.Count);
 
                 var wi = new InternalWorkItem<T>();
                 wi.Queue = this;
                 wi.OnComplete = null;
                 for (var i = 0; i < data.Count; i++) {
                     wi.Data = data.Array[data.Offset + i];
-                    AddInternal(ref wi);
+                    Items.Enqueue(wi);
                 }
             }
 
@@ -247,14 +255,23 @@ namespace Squared.Threading {
         private void StepInternal (ref int result, out bool exhausted, int actualMaximumCount) {
             InternalWorkItem<T> item = default(InternalWorkItem<T>);
             int count = 0, numProcessed = 0;
-            bool running = true, inLock = false, signalDrained = false;
+            bool running = true, inLock = false, signalDrained = false, setProcessingFlag = false;
 
+            var maxConcurrency = Math.Max(Math.Min(Configuration.MaxConcurrency, Owner.Count - 1), 1);
             do {
                 try {
                     // FIXME: Find a way to not acquire this every step
                     if (!inLock) {
                         Monitor.Enter(ItemsLock);
                         inLock = true;
+                    }
+
+                    if (NumProcessing >= maxConcurrency)
+                        break;
+
+                    if (!setProcessingFlag) {
+                        NumProcessing++;
+                        setProcessingFlag = true;
                     }
 
                     running = ((count = Items.Count) > 0) &&
@@ -299,6 +316,14 @@ namespace Squared.Threading {
             } while (running);
 
             actualMaximumCount -= numProcessed;
+
+            if (setProcessingFlag) {
+                if (!inLock) {
+                    Monitor.Enter(ItemsLock);
+                    inLock = true;
+                }
+                NumProcessing--;
+            }
 
             if (inLock)
                 Monitor.Exit(ItemsLock);

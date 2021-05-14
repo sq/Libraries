@@ -381,6 +381,10 @@ namespace Squared.Render.STB {
             public object Mip { get; set; }
             public int LevelWidth { get; internal set; }
 
+            static UploadMipWorkItem () {
+                WorkQueue<UploadMipWorkItem>.Configuration.MaxConcurrency = 2;
+            }
+
             public void Execute () {
                 var pin = default(GCHandle);
                 void* pData;

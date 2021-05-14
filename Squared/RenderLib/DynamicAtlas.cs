@@ -191,6 +191,10 @@ namespace Squared.Render {
         private struct GenerateMipsWorkItem : IWorkItem {
             public DynamicAtlas<T> Atlas;
 
+            static GenerateMipsWorkItem () {
+                WorkQueue<GenerateMipsWorkItem>.Configuration.MaxConcurrency = 2;
+            }
+
             public void Execute () {
                 Atlas.GenerateMips();
             }

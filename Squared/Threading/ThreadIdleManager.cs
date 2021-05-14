@@ -6,6 +6,10 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace Squared.Threading {
+    /// <summary>
+    /// Manages the sleep/wake state of a single worker thread, and tracks whether the thread
+    ///  has received another wake request since the last time it woke up.
+    /// </summary>
     public class ThreadIdleManager : IDisposable {
         const int RunState_Sleeping = 0,
             RunState_WakeRequested = 1,
