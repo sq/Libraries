@@ -874,27 +874,20 @@ namespace Squared.Render {
     }
 
     public class PrepareManager {
-        public struct ManyTask : IWorkItem {
-            public DenseList<Batch> Batches;
-            public Batch.PrepareContext Context;
-
-            public ManyTask (ref DenseList<Batch> batches, ref Batch.PrepareContext context) {
-                Batches = batches;
-                Context = context;
-            }
-
-            public void Execute () {
-                foreach (var b in Batches)
-                    Task.Execute(b, ref Context);
-            }
-        }
-
         public struct Task : IWorkItem {
+            public DenseList<Batch> Batches;
             public IBatch Batch;
             public Batch.PrepareContext Context;
 
             public Task (IBatch batch, ref Batch.PrepareContext context) {
+                Batches = default(DenseList<Batch>);
                 Batch = batch;
+                Context = context;
+            }
+
+            public Task (ref DenseList<Batch> batches, ref Batch.PrepareContext context) {
+                Batches = batches;
+                Batch = null;
                 Context = context;
             }
 
@@ -914,36 +907,44 @@ namespace Squared.Render {
             }
 
             public void Execute () {
-                Execute(Batch, ref Context);
+                if (Batch != null) {
+                    Execute(Batch, ref Context);
+                    return;
+                }
+
+                foreach (var batch in Batches)
+                    Execute(batch, ref Context);
             }
         };
 
         public  readonly ThreadGroup         Group;
         private readonly WorkQueue<Task>     Queue;
-        private readonly WorkQueue<ManyTask> ManyQueue;
 
         public PrepareManager (ThreadGroup threadGroup) {
             Group = threadGroup;
             Queue = threadGroup.GetQueueForType<Task>();
-            ManyQueue = threadGroup.GetQueueForType<ManyTask>();
         }
 
         public void AssertEmpty () {
             Queue.AssertEmpty();
-            ManyQueue.AssertEmpty();
         }
 
         public void Wait () {
             Group.NotifyQueuesChanged();
             Queue.WaitUntilDrained();
-            ManyQueue.WaitUntilDrained();
         }
         
-        public void PrepareMany (ref DenseList<Batch> batches, Batch.PrepareContext context) {
-            var task = new ManyTask(ref batches, ref context);
+        public void PrepareMany (ref DenseList<Batch> batches, ref Batch.PrepareContext context) {
+            if (batches.Count < 2) {
+                if (batches.Count == 1)
+                    Prepare(batches[0], ref context);
 
+                return;
+            }
+
+            var task = new Task(ref batches, ref context);
             if (context.Async)
-                Group.Enqueue(ref task);
+                Queue.Enqueue(ref task);
             else
                 task.Execute();
         }

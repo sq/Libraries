@@ -407,7 +407,6 @@ namespace Squared.Threading {
                         else
                             ;
                     } else {
-                        AssertEmpty();
 #if DEBUG
                         if (ItemsProcessed < waterMark)
                             throw new Exception("AssertDrained returned before reaching watermark");

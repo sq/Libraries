@@ -41,7 +41,7 @@ namespace Squared.Render {
             }
 
             internal void PrepareMany (ref DenseList<Batch> batches) {
-                Manager.PrepareMany(ref batches, this);
+                Manager.PrepareMany(ref batches, ref this);
             }
         }
 
