@@ -875,45 +875,28 @@ namespace Squared.Render {
 
     public class PrepareManager {
         public struct Task : IWorkItem {
-            public DenseList<Batch> Batches;
-            public IBatch Batch;
+            public Batch Batch;
             public Batch.PrepareContext Context;
 
-            public Task (IBatch batch, ref Batch.PrepareContext context) {
-                Batches = default(DenseList<Batch>);
+            public Task (Batch batch, ref Batch.PrepareContext context) {
                 Batch = batch;
                 Context = context;
             }
 
-            public Task (ref DenseList<Batch> batches, ref Batch.PrepareContext context) {
-                Batches = batches;
-                Batch = null;
-                Context = context;
-            }
-
-            internal static void Execute (IBatch batch, ref Batch.PrepareContext context) {
+            internal static void Execute (Batch batch, ref Batch.PrepareContext context) {
                 context.Validate(batch, false);
 
                 var isCombined = false;
-                if (batch is Batch b)
-                    b.GetState(out bool temp, out isCombined, out bool temp2, out bool temp3, out bool temp4);
-                else
-                    b = null;
+                batch.GetState(out bool temp, out isCombined, out bool temp2, out bool temp3, out bool temp4);
 
                 if (!isCombined)
                     batch.Prepare(context);
 
-                b?.SetPrepareQueued(false);
+                batch.SetPrepareQueued(false);
             }
 
             public void Execute () {
-                if (Batch != null) {
-                    Execute(Batch, ref Context);
-                    return;
-                }
-
-                foreach (var batch in Batches)
-                    Execute(batch, ref Context);
+                Execute(Batch, ref Context);
             }
         };
 
@@ -942,11 +925,19 @@ namespace Squared.Render {
                 return;
             }
 
-            var task = new Task(ref batches, ref context);
+            var task = default(Task);
+            task.Context = context;
+            foreach (var b in batches) {
+                task.Batch = b;
+                if (context.Async)
+                    Queue.Enqueue(ref task, false);
+                else
+                    task.Execute();
+                task = new Task(b, ref context);
+            }
+
             if (context.Async)
-                Queue.Enqueue(ref task);
-            else
-                task.Execute();
+                Queue.Owner.NotifyQueuesChanged();
         }
 
         internal void ValidateBatch (IBatch batch, bool enqueuing) {
@@ -976,7 +967,7 @@ namespace Squared.Render {
             }
         }
 
-        public void Prepare (IBatch batch, ref Batch.PrepareContext context) {
+        public void Prepare (Batch batch, ref Batch.PrepareContext context) {
             if (batch == null)
                 return;
 

@@ -52,7 +52,7 @@ namespace Squared.Threading {
             string name = null
         ) {
             Name = name;
-            ThreadCount = Math.Min(threadCount.GetValueOrDefault(Environment.ProcessorCount + 1), MaximumThreadCount);
+            ThreadCount = Math.Min(threadCount.GetValueOrDefault(Environment.ProcessorCount), MaximumThreadCount);
             CreateBackgroundThreads = createBackgroundThreads;
             TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
             COMThreadingModel = comThreadingModel;

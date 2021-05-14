@@ -28,7 +28,7 @@ namespace Squared.Render {
                 BatchesToRelease = new DenseList<Batch>();
             }
 
-            public void Prepare (IBatch batch) {
+            public void Prepare (Batch batch) {
                 Manager.Prepare(batch, ref this);
             }
 
