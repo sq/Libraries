@@ -385,7 +385,7 @@ namespace Squared.Render {
             IBatchContainer container, int layer, Material material,
             bool addToContainer, int? capacity = null
         ) {
-            _DrawCalls.ListPool = _ListPool;
+            _DrawCalls.ListPoolOrAllocator = _ListPool;
             _DrawCalls.Clear();
             base.Initialize(container, layer, material, addToContainer);
         }

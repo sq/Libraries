@@ -544,7 +544,7 @@ namespace Squared.Render.RasterShape {
             var count = _DrawCalls.Count;
             var vertexCount = count;
             if (count > 0) {
-                _SubBatches.ListPool = _SubListPool;
+                _SubBatches.ListPoolOrAllocator = _SubListPool;
                 _SubBatches.Clear();
                 _SubBatches.EnsureCapacity(count, true);
 

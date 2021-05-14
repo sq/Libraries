@@ -433,7 +433,7 @@ namespace Squared.Render {
                 nativeBatchCapacity = Math.Min(NativeBatchCapacityLimit + 2, _DrawCalls.Count / 8);
 
             _NativeBatches.Clear();
-            _NativeBatches.ListPool = _NativePool;
+            _NativeBatches.ListPoolOrAllocator = _NativePool;
             _NativeBatches.ListCapacity = nativeBatchCapacity;
         }
 
