@@ -174,6 +174,36 @@ namespace Squared.Threading {
         }
 
         [Test]
+        public void NotifyOverheadTest () {
+            const int count = 3000;
+
+            var timeProvider = Time.DefaultTimeProvider;
+            using (var group = new ThreadGroup(4, createBackgroundThreads: true, name: "MultipleThreadPerformanceTest")) {
+                var queue = group.GetQueueForType<SlightlySlowWorkItem>();
+
+                var item = new SlightlySlowWorkItem();
+
+                var beforeEnqueue = timeProvider.Ticks;
+                for (int i = 0; i < count; i++)
+                    queue.Enqueue(ref item, notifyChanged: true);
+                var afterEnqueue = timeProvider.Ticks;
+
+                var beforeWait = timeProvider.Ticks;
+                queue.WaitUntilDrained(7500);
+
+                var afterWait = timeProvider.Ticks;
+                var perItem = (afterWait - beforeWait) / (double)count / Time.MillisecondInTicks;
+
+                Console.WriteLine(
+                    "Enqueue took {0:0000.00}ms, Wait took {1:0000.00}ms. Est speed {3:0.000000}ms/item Final thread count: {2}",
+                    TimeSpan.FromTicks(afterEnqueue - beforeEnqueue).TotalMilliseconds,
+                    TimeSpan.FromTicks(afterWait - beforeWait).TotalMilliseconds,
+                    group.Count, perItem
+                );
+            }
+        }
+
+        [Test]
         public void WaitUntilDrained () {
             const int count = 50;
 
@@ -192,6 +222,7 @@ namespace Squared.Threading {
                 Assert.IsFalse(queue.WaitUntilDrained(5), "waitUntilDrained 2");
                 barrier.Signal.Set();
                 Assert.IsTrue(queue.WaitUntilDrained(500), "waitUntilDrained 3");
+                Assert.IsTrue(queue.WaitUntilDrained(5), "waitUntilDrained 4");
             }
         }
     }

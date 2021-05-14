@@ -171,7 +171,7 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void NotifyChanged () {
-            Owner.WakeAllThreads();
+            Owner.NotifyQueuesChanged();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

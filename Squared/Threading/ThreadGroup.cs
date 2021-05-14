@@ -38,6 +38,8 @@ namespace Squared.Threading {
         // Each thread has its own so that it is unlikely to not experience lock contention
         internal readonly ThreadLocal<UnorderedList<IWorkQueue>> QueueLists;
 
+        private readonly Thread OrchestratorThread;
+        private readonly ThreadIdleManager OrchestratorIdleManager;
         public readonly GroupThread[] Threads;
 
         public string Name;
@@ -59,6 +61,20 @@ namespace Squared.Threading {
             Threads = new GroupThread[ThreadCount];
             for (int i = 0; i < Threads.Length; i++)
                 Threads[i] = new GroupThread(this, i);
+
+            OrchestratorIdleManager = new ThreadIdleManager();
+            OrchestratorThread = new Thread(OrchestratorThreadMain) {
+                Name = $"ThreadGroup #{GetHashCode()} {Name} orchestrator",
+                IsBackground = true
+            };
+            OrchestratorThread.Start();
+        }
+
+        private void OrchestratorThreadMain () {
+            while (!IsDisposed) {
+                WakeAllThreads();
+                OrchestratorIdleManager.Wait(GroupThread.IdleWaitDurationMs);
+            }
         }
 
         private UnorderedList<IWorkQueue> CreateNewQueue () {
@@ -204,11 +220,10 @@ namespace Squared.Threading {
         ///  new threads are created if necessary
         /// </summary>
         public void NotifyQueuesChanged () {
-            foreach (var thread in Threads)
-                thread?.Wake();
+            OrchestratorIdleManager.Wake();
         }
 
-        internal void WakeAllThreads () {
+        private void WakeAllThreads () {
             foreach (var thread in Threads)
                 thread?.Wake();
         }
