@@ -609,8 +609,6 @@ namespace Squared.Render {
         }
 
         internal void SynchronousPrepareBatches (Frame frame) {
-            ThreadGroup.NotifyQueuesChanged();
-
             var context = new Batch.PrepareContext(PrepareManager, false);
             context.PrepareMany(ref frame.Batches);
 
@@ -979,7 +977,7 @@ namespace Squared.Render {
             var task = new Task(batch, ref context);
 
             if (context.Async) {
-                Queue.Enqueue(task);
+                Queue.Enqueue(task, false);
             } else {
                 task.Execute();
             }
