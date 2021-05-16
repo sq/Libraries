@@ -618,9 +618,6 @@ namespace Squared.Render {
         }
 
         internal void ParallelPrepareBatches (Frame frame) {
-            // HACK: We want to make sure all our list pools get flushed periodically
-            ThreadGroup.NotifyQueuesChanged();
-
             var context = new Batch.PrepareContext(PrepareManager, true);
             context.PrepareMany(ref frame.Batches);
 
