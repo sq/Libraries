@@ -75,7 +75,7 @@ namespace Squared.Threading {
 
         [Test]
         public void SingleThreadPerformanceTest () {
-            const int count = 400;
+            const int count = 200;
 
             var timeProvider = Time.DefaultTimeProvider;
             using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "SingleThreadPerformanceTest")) {
@@ -108,7 +108,7 @@ namespace Squared.Threading {
 
         [Test]
         public void MainThreadPerformanceTest () {
-            const int count = 400;
+            const int count = 200;
 
             var timeProvider = Time.DefaultTimeProvider;
             using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "MainThreadPerformanceTest")) {
@@ -122,9 +122,9 @@ namespace Squared.Threading {
 
                 var afterEnqueue = timeProvider.Ticks;
 
+                var beforeWait = timeProvider.Ticks;
                 while (!queue.IsEmpty)
                     group.StepMainThread();
-                var beforeWait = timeProvider.Ticks;
                 var afterWait = timeProvider.Ticks;
                 var perItem = (afterWait - beforeWait) / (double)count / Time.MillisecondInTicks;
 
@@ -139,7 +139,7 @@ namespace Squared.Threading {
 
         [Test]
         public void MultipleThreadPerformanceTest () {
-            const int count = 3000;
+            const int count = 800;
 
             var timeProvider = Time.DefaultTimeProvider;
             using (var group = new ThreadGroup(4, createBackgroundThreads: true, name: "MultipleThreadPerformanceTest")) {
@@ -159,7 +159,7 @@ namespace Squared.Threading {
                 var afterEnqueue = timeProvider.Ticks;
 
                 var beforeWait = timeProvider.Ticks;
-                queue.WaitUntilDrained(5000);
+                queue.WaitUntilDrained(10000);
 
                 var afterWait = timeProvider.Ticks;
                 var perItem = (afterWait - beforeWait) / (double)count / Time.MillisecondInTicks;
@@ -175,10 +175,10 @@ namespace Squared.Threading {
 
         [Test]
         public void NotifyOverheadTest () {
-            const int count = 3000;
+            const int count = 800;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(4, createBackgroundThreads: true, name: "MultipleThreadPerformanceTest")) {
+            using (var group = new ThreadGroup(4, createBackgroundThreads: true, name: "NotifyOverheadTest")) {
                 var queue = group.GetQueueForType<SlightlySlowWorkItem>();
 
                 var item = new SlightlySlowWorkItem();
@@ -189,7 +189,7 @@ namespace Squared.Threading {
                 var afterEnqueue = timeProvider.Ticks;
 
                 var beforeWait = timeProvider.Ticks;
-                queue.WaitUntilDrained(7500);
+                queue.WaitUntilDrained(10000);
 
                 var afterWait = timeProvider.Ticks;
                 var perItem = (afterWait - beforeWait) / (double)count / Time.MillisecondInTicks;
