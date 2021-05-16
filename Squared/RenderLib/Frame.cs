@@ -107,6 +107,10 @@ namespace Squared.Render {
             }
         }
 
+        void IBatchContainer.PrepareChildren (ref Batch.PrepareContext context) {
+            throw new InvalidOperationException("This should never be invoked on a Frame");
+        }
+
         public void Prepare (bool parallel) {
             if (Interlocked.Exchange(ref State, (int)States.Preparing) != (int)States.Initialized)
                 throw new InvalidOperationException("Frame was not in initialized state when prepare operation began ");

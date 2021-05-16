@@ -29,12 +29,13 @@ namespace Squared.Render {
         Action<DeviceManager, object> _Before, _After;
         private object _UserData;
 
-        public override void Prepare (PrepareContext context) {
+        void IBatchContainer.PrepareChildren (ref PrepareContext context) {
             BatchCombiner.CombineBatches(ref _DrawCalls, ref context.BatchesToRelease);
-
             _DrawCalls.Sort(Frame.BatchComparer);
             context.PrepareMany(ref _DrawCalls);
+        }
 
+        public override void Prepare (PrepareContext context) {
             OnPrepareDone();
         }
 

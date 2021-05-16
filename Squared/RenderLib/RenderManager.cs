@@ -56,6 +56,7 @@ namespace Squared.Render {
         Frame Frame { get; }
         RenderCoordinator Coordinator { get; }
         RenderManager RenderManager { get; }
+        void PrepareChildren (ref Batch.PrepareContext context);
         bool IsEmpty { get; }
         bool IsReleased { get; }
     }
@@ -884,8 +885,6 @@ namespace Squared.Render {
             }
 
             internal static void Execute (Batch batch, ref Batch.PrepareContext context) {
-                context.Validate(batch, false);
-
                 var isCombined = false;
                 batch.GetState(out bool temp, out isCombined, out bool temp2, out bool temp3, out bool temp4);
 
@@ -928,6 +927,11 @@ namespace Squared.Render {
             var task = default(Task);
             task.Context = context;
             foreach (var b in batches) {
+                ValidateBatch(b, true);
+
+                if (b is IBatchContainer container)
+                    container.PrepareChildren(ref context);
+
                 task.Batch = b;
                 if (context.Async)
                     Queue.Enqueue(ref task, false);
@@ -935,9 +939,6 @@ namespace Squared.Render {
                     task.Execute();
                 task = new Task(b, ref context);
             }
-
-            if (context.Async)
-                Queue.Owner.NotifyQueuesChanged();
         }
 
         internal void ValidateBatch (IBatch batch, bool enqueuing) {
@@ -972,6 +973,9 @@ namespace Squared.Render {
                 return;
 
             ValidateBatch(batch, true);
+            if (batch is IBatchContainer container)
+                container.PrepareChildren(ref context);
+
             var task = new Task(batch, ref context);
 
             if (context.Async) {
