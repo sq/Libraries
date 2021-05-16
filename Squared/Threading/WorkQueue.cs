@@ -314,24 +314,19 @@ namespace Squared.Threading {
                     UnhandledException = ExceptionDispatchInfo.Capture(exc);
                     signalDrained = true;
                     break;
-                } finally {
-                    exhausted = Items.Count <= 0;
-                    if (inLock) {
-                        Monitor.Exit(ItemsLock);
-                        inLock = false;
-                    }
                 }
             } while (running);
 
             actualMaximumCount -= numProcessed;
 
-            if (setProcessingFlag) {
-                if (!inLock) {
-                    Monitor.Enter(ItemsLock);
-                    inLock = true;
-                }
-                NumProcessing--;
+            if (!inLock) {
+                Monitor.Enter(ItemsLock);
+                inLock = true;
             }
+
+            if (setProcessingFlag)
+                NumProcessing--;
+            exhausted = Items.Count <= 0;
 
             if (inLock)
                 Monitor.Exit(ItemsLock);

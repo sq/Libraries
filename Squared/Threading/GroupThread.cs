@@ -95,7 +95,7 @@ namespace Squared.Threading {
             }
 
             bool moreWorkRemains = false;
-            var nqi = Interlocked.Increment(ref NextQueueIndex);
+            var nqi = NextQueueIndex++;
             for (int i = 0; i < queueCount; i++) {
                 if (IsDisposed)
                     return false;
