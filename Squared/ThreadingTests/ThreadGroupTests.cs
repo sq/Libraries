@@ -279,5 +279,31 @@ namespace Squared.Threading {
                 Assert.IsTrue(ok, "once high priority items are done the low priority ones should run");
             }
         }
+
+        [Test]
+        public void PaddingTest () {
+            using (var group = new ThreadGroup(2, createBackgroundThreads: true, name: "PaddingTest") { DefaultConcurrencyPadding = 1 }) {
+                var queue = group.GetQueueForType<HighPriorityBlockingWorkItem>();
+                var barrier1 = new HighPriorityBlockingWorkItem {
+                    Signal = new AutoResetEvent(false)
+                };
+                queue.Enqueue(barrier1);
+                var barrier2 = new HighPriorityBlockingWorkItem {
+                    Signal = new AutoResetEvent(false)
+                };
+                queue.Enqueue(barrier2);
+                group.NotifyQueuesChanged();
+
+                Thread.Sleep(300);
+                Assert.AreEqual(1, queue.ItemsInFlight);
+
+                barrier1.Signal.Set();
+                Assert.IsFalse(queue.WaitUntilDrained(150));
+                Assert.AreEqual(1, queue.ItemsInFlight);
+
+                barrier2.Signal.Set();
+                Assert.IsTrue(queue.WaitUntilDrained(150));
+            }
+        }
     }
 }
