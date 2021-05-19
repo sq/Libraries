@@ -28,6 +28,11 @@ namespace Squared.Render.Resources {
         }
 
         protected class CreateWorkItem : IWorkItem {
+            public static WorkItemConfiguration Configuration =>
+                new WorkItemConfiguration {
+                    MaxConcurrency = 2
+                };
+
             public Future<T> Future;
             public ResourceProvider<T> Provider;
             public Stream Stream;
@@ -67,6 +72,11 @@ namespace Squared.Render.Resources {
         }
 
         protected class PreloadWorkItem : IWorkItem {
+            public static WorkItemConfiguration Configuration =>
+                new WorkItemConfiguration {
+                    ConcurrencyPadding = 2
+                };
+
             public Future<T> Future;
             public ResourceProvider<T> Provider;
             public string Name;
@@ -172,8 +182,6 @@ namespace Squared.Render.Resources {
                     break;
             }
 
-            WorkQueue<PreloadWorkItem>.Configuration.ConcurrencyPadding = 2;
-            WorkQueue<CreateWorkItem>.Configuration.MaxConcurrency = 2;
             PreloadQueue = coordinator.ThreadGroup.GetQueueForType<PreloadWorkItem>(forMainThread: !EnableThreadedPreload);
             CreateQueue = coordinator.ThreadGroup.GetQueueForType<CreateWorkItem>(forMainThread: !EnableThreadedCreate);
         }

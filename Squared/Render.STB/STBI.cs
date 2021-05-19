@@ -371,6 +371,11 @@ namespace Squared.Render.STB {
         }
 
         private unsafe struct UploadMipWorkItem : IWorkItem {
+            public static WorkItemConfiguration Configuration =>
+                new WorkItemConfiguration {
+                    MaxConcurrency = 1
+                };
+
             internal uint MipPitch;
             internal Image Image;
             internal Texture2D Texture;
@@ -380,10 +385,6 @@ namespace Squared.Render.STB {
 
             public object Mip { get; set; }
             public int LevelWidth { get; internal set; }
-
-            static UploadMipWorkItem () {
-                WorkQueue<UploadMipWorkItem>.Configuration.MaxConcurrency = 1;
-            }
 
             public void Execute () {
                 var pin = default(GCHandle);

@@ -90,6 +90,11 @@ namespace Squared.Render {
 
     public class ListPool<T> : IDrainable, IListPool<T> {
         private struct ListClearWorkItem : IWorkItem {
+            public static WorkItemConfiguration Configuration =>
+                new WorkItemConfiguration {
+                    Priority = -1
+                };
+
             public UnorderedList<T> List;
 
             public void Execute () {
@@ -211,6 +216,7 @@ namespace Squared.Render {
         }
 
         void IDrainable.WaitForWorkItems (int timeoutMs) {
+            // FIXME: Priority inversion
             _ClearQueue?.WaitUntilDrained(timeoutMs);
         }
 

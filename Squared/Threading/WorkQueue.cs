@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Remoting.Messaging;
@@ -47,8 +48,40 @@ namespace Squared.Threading {
         /// Registers a listener to be invoked any time a group of work items is processed by a thread.
         /// </summary>
         void RegisterDrainListener (WorkQueueDrainListener listener);
-        bool IsEmpty { get; }
         void AssertEmpty ();
+        bool IsEmpty { get; }
+        int Priority { get; }
+    }
+
+    public class WorkItemConfiguration {
+        /// <summary>
+        /// Work items with higher priority values have their queues stepped before queues
+        ///  with lower priority
+        /// </summary>
+        public int Priority = 0;
+
+        public int? MaxStepCount = null;
+
+        /// <summary>
+        /// Configures the number of steps taken each time this queue is visited by a worker thread.
+        /// Low values increase the overhead of individual work items.
+        /// High values reduce the overhead of work items but increase the odds that all worker threads can get bogged down
+        ///  by a single queue.
+        /// </summary>
+        public int DefaultStepCount = 64;
+
+        public int StochasticNotifyInterval = 32;
+
+        /// <summary>
+        /// Configures the maximum number of items that can be processed at once. If a single work
+        ///  item is likely to block a thread for a long period of time, you should make this value small.
+        /// </summary>
+        public int MaxConcurrency = 8;
+        /// <summary>
+        /// Configures the maximum number of items that can be processed at once. The total number of 
+        ///  threads is reduced by this much to compute a limit.
+        /// </summary>
+        public int ConcurrencyPadding = 1;
     }
 
     // This job must be run on the main thread
@@ -86,33 +119,8 @@ namespace Squared.Threading {
     public class WorkQueue<T> : IWorkQueue
         where T : IWorkItem 
     {
-        public static class Configuration {
-            public static int? MaxStepCount = null;
-
-            // For debugging
-            public static bool BlockEnqueuesWhileDraining = false;
-
-            /// <summary>
-            /// Configures the number of steps taken each time this queue is visited by a worker thread.
-            /// Low values increase the overhead of individual work items.
-            /// High values reduce the overhead of work items but increase the odds that all worker threads can get bogged down
-            ///  by a single queue.
-            /// </summary>
-            public static int DefaultStepCount = 64;
-
-            public static int StochasticNotifyInterval = 32;
-
-            /// <summary>
-            /// Configures the maximum number of items that can be processed at once. If a single work
-            ///  item is likely to block a thread for a long period of time, you should make this value small.
-            /// </summary>
-            public static int MaxConcurrency = 8;
-            /// <summary>
-            /// Configures the maximum number of items that can be processed at once. The total number of 
-            ///  threads is reduced by this much to compute a limit.
-            /// </summary>
-            public static int ConcurrencyPadding = 1;
-        }
+        // For debugging
+        public static bool BlockEnqueuesWhileDraining = false;
 
         // For debugging
         internal bool IsMainThreadQueue = false;
@@ -130,11 +138,14 @@ namespace Squared.Threading {
         private ExceptionDispatchInfo UnhandledException;
         private readonly bool IsMainThreadWorkItem;
 
+        public readonly WorkItemConfiguration Configuration;
         public readonly ThreadGroup Owner;
 
         public WorkQueue (ThreadGroup owner) {
             Owner = owner;
             IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
+            Configuration = (WorkItemConfiguration)typeof(T).GetProperty("Configuration", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)?.GetValue(null)
+                ?? new WorkItemConfiguration();
         }
 
         private void NotifyDrained () {
@@ -145,8 +156,8 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AssertCanEnqueue () {
-            if (Configuration.BlockEnqueuesWhileDraining && (NumWaitingForDrain > 0))
-                throw new Exception("Draining");
+            if (BlockEnqueuesWhileDraining && (NumWaitingForDrain > 0))
+                throw new Exception("Cannot enqueue items while the queue is draining");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -267,19 +278,14 @@ namespace Squared.Threading {
             var maxConcurrency = Math.Max(lesser, 1);
 
             do {
+                if (Interlocked.Increment(ref NumProcessing) >= maxConcurrency)
+                    break;
+
                 try {
                     // FIXME: Find a way to not acquire this every step
                     if (!inLock) {
                         Monitor.Enter(ItemsLock);
                         inLock = true;
-                    }
-
-                    if (NumProcessing >= maxConcurrency)
-                        break;
-
-                    if (!setProcessingFlag) {
-                        NumProcessing++;
-                        setProcessingFlag = true;
                     }
 
                     running = ((count = Items.Count) > 0) &&
@@ -318,14 +324,13 @@ namespace Squared.Threading {
             } while (running);
 
             actualMaximumCount -= numProcessed;
+            Interlocked.Decrement(ref NumProcessing);
 
             if (!inLock) {
                 Monitor.Enter(ItemsLock);
                 inLock = true;
             }
 
-            if (setProcessingFlag)
-                NumProcessing--;
             exhausted = Items.Count <= 0;
 
             if (inLock)
@@ -353,6 +358,8 @@ namespace Squared.Threading {
 
             return result;
         }
+
+        int IWorkQueue.Priority => Configuration.Priority;
 
         public bool IsEmpty {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

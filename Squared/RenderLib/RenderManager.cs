@@ -679,12 +679,18 @@ namespace Squared.Render {
                 RequiredDrainListPools.CopyTo(CollectAllocatorsBuffer, 0, Math.Min(RequiredDrainListPools.Count, CollectAllocatorsBuffer.Length));
             }
 
+            const int minWaitTimeMs = 0, maxWaitTimeMs = 3;
+
             var elapsedTimeMs = 0.0;
             foreach (var lp in CollectAllocatorsBuffer) {
                 if (lp == null)
                     break;
+                var waitTime = Math.Max(minWaitTimeMs, (int)(maxWaitTimeMs - elapsedTimeMs));
+                if (waitTime <= 0)
+                    break;
+
                 CollectAllocatorsTimer.Restart();
-                lp.WaitForWorkItems(Math.Max(1, (int)(5 - elapsedTimeMs)));
+                lp.WaitForWorkItems();
                 CollectAllocatorsTimer.Stop();
                 elapsedTimeMs += CollectAllocatorsTimer.Elapsed.TotalMilliseconds;
             }
@@ -871,6 +877,11 @@ namespace Squared.Render {
 
     public class PrepareManager {
         public struct Task : IWorkItem {
+            public static WorkItemConfiguration Configuration =>
+                new WorkItemConfiguration {
+                    Priority = 1
+                };
+
             public Batch Batch;
             public Batch.PrepareContext Context;
 

@@ -54,6 +54,11 @@ namespace Squared.Render {
         }
 
         struct DrawTask : IWorkItem {
+            public static WorkItemConfiguration Configuration =>
+                new WorkItemConfiguration {
+                    Priority = 1
+                };
+
             public readonly Action<Frame> Callback;
             public readonly Frame Frame;
 

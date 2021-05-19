@@ -189,11 +189,12 @@ namespace Squared.Render {
         private int Id;
 
         private struct GenerateMipsWorkItem : IWorkItem {
-            public DynamicAtlas<T> Atlas;
+            public static WorkItemConfiguration Configuration =>
+                new WorkItemConfiguration {
+                    ConcurrencyPadding = 2
+                };
 
-            static GenerateMipsWorkItem () {
-                WorkQueue<GenerateMipsWorkItem>.Configuration.ConcurrencyPadding = 2;
-            }
+            public DynamicAtlas<T> Atlas;
 
             public void Execute () {
                 Atlas.GenerateMips();

@@ -7,9 +7,64 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Squared.Util;
+using System.Linq;
 
 namespace Squared.Threading {
     public class ThreadGroup : IDisposable {
+        internal class PriorityOrderedQueueList {
+            internal class ListForPriority : UnorderedList<IWorkQueue> {
+                public readonly int Priority;
+
+                public ListForPriority (int priority)
+                    : base () {
+                    Priority = priority;
+                }
+
+                public IWorkQueue this [int index] => DangerousGetItem(index);
+            }
+
+            internal Dictionary<int, ListForPriority> ListsByPriority =
+                new Dictionary<int, ListForPriority>();
+            internal UnorderedList<IWorkQueue[]> Items = 
+                new UnorderedList<IWorkQueue[]>();
+
+            public PriorityOrderedQueueList () {
+            }
+
+            public void FillFrom (Dictionary<Type, IWorkQueue> queues) {
+                Clear();
+                foreach (var q in queues.Values)
+                    Add(q, false);
+                UpdateItems();
+            }
+
+            public void UpdateItems () {
+                var items = (from kvp in ListsByPriority orderby kvp.Key descending select kvp.Value);
+                Items.Clear();
+                foreach (var l in items) {
+                    var buf = new IWorkQueue[l.Count];
+                    l.CopyTo(buf, 0, l.Count);
+                    Items.Add(buf);
+                }
+            }
+
+            public void Add (IWorkQueue queue, bool autoUpdate) {
+                if (!ListsByPriority.TryGetValue(queue.Priority, out ListForPriority lfp))
+                    ListsByPriority[queue.Priority] = lfp = new ListForPriority(queue.Priority);
+                lfp.Add(queue);
+
+                if (autoUpdate)
+                    UpdateItems();
+            }
+
+            public void Clear () {
+                foreach (var v in ListsByPriority.Values)
+                    v.Clear();
+
+                Items.Clear();
+            }
+        }
+
         public static int MaximumThreadCount = 12;
 
         public bool IsDisposed { get; private set; }
@@ -34,9 +89,10 @@ namespace Squared.Threading {
         private readonly UnorderedList<IWorkQueue> MainThreadQueueList = 
             new UnorderedList<IWorkQueue>();
 
-        // We keep separate iterable copies of the queue list for thread spawning purposes
-        // Each thread has its own so that it is unlikely to not experience lock contention
-        internal readonly ThreadLocal<UnorderedList<IWorkQueue>> QueueLists;
+        // This list is immutable and will be swapped out using CompareExchange
+        //  when the set of queues changes, so that workers don't need to lock it
+        internal volatile PriorityOrderedQueueList QueuesForWorkers = 
+            new PriorityOrderedQueueList();
 
         public readonly GroupThread[] Threads;
 
@@ -54,19 +110,17 @@ namespace Squared.Threading {
             CreateBackgroundThreads = createBackgroundThreads;
             TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
             COMThreadingModel = comThreadingModel;
-            QueueLists = new ThreadLocal<UnorderedList<IWorkQueue>>(CreateNewQueue, true);
 
             Threads = new GroupThread[ThreadCount];
             for (int i = 0; i < Threads.Length; i++)
                 Threads[i] = new GroupThread(this, i);
         }
 
-        private UnorderedList<IWorkQueue> CreateNewQueue () {
-            var result = new UnorderedList<IWorkQueue>();
+        private void NewQueueCreated () {
+            var result = new PriorityOrderedQueueList();
             lock (Queues)
-                foreach (var item in Queues.Values)
-                    result.Add(item);
-            return result;
+                result.FillFrom(Queues);
+            Volatile.Write(ref QueuesForWorkers, result);
         }
 
         /// <summary>
@@ -180,10 +234,7 @@ namespace Squared.Threading {
             }
 
             if (resultIsNew) {
-                foreach (var value in QueueLists.Values)
-                    lock (value)
-                        value.Add(result);
-
+                NewQueueCreated();
                 NotifyQueuesChanged();
             }
 
