@@ -65,9 +65,21 @@ namespace Squared.Threading {
             }
         }
 
-        public static int MaximumThreadCount = 12;
+        /// <summary>
+        /// By default, the number of threads actively processing a given work item type will be
+        ///  limited to the number of threads minus this amount. This ensures that a given work item
+        ///  will not saturate all threads and prevent other work from being processed.
+        /// In some cases you want to be able to saturate threads with one work item type, so you can
+        ///  change the default instead of setting it per-work-item by changing this value.
+        /// </summary>
+        public int DefaultConcurrencyPadding = 1;
 
-        public bool IsDisposed { get; private set; }
+        /// <summary>
+        /// Thread groups will create no more than this many threads, no matter how many processors
+        ///  the machine has and no matter how many threads were requested. You must set this
+        ///  before creating any thread groups.
+        /// </summary>
+        public static int MaximumThreadCount = 12;
 
         /// <summary>
         /// If set to a value above 0, the amount of time spent stepping on the main thread
@@ -80,6 +92,8 @@ namespace Squared.Threading {
         public readonly bool CreateBackgroundThreads;
         public readonly int ThreadCount;
         public readonly ApartmentState COMThreadingModel;
+
+        public bool IsDisposed { get; private set; }
         
         // A lock-free dictionary for looking up queues by work item type
         private readonly Dictionary<Type, IWorkQueue> Queues = 
@@ -98,6 +112,11 @@ namespace Squared.Threading {
 
         public string Name;
 
+        /// <param name="threadCount">The desired number of threads to create. If not specified, the default is based on the number of processors available.</param>
+        /// <param name="createBackgroundThreads">Whether to create background threads for processing work. Non-background threads will block the program from exiting until their work is complete.</param>
+        /// <param name="timeProvider">The time provider used to measure elapsed times during work item processing.</param>
+        /// <param name="comThreadingModel">If you don't already know what this is, you probably don't care about it.</param>
+        /// <param name="name">A name used to identify the threads owned by this group for debugging purposes.</param>
         public ThreadGroup (
             int? threadCount = null,
             bool createBackgroundThreads = false,

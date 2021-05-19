@@ -44,20 +44,33 @@ namespace Squared.Threading {
         }
     }
 
+    public struct HighPriorityBlockingWorkItem : IWorkItem {
+        public static WorkItemConfiguration Configuration =>
+            new WorkItemConfiguration {
+                Priority = 1
+            };
+
+        public AutoResetEvent Signal;
+
+        public void Execute () {
+            Signal?.WaitOne();
+        }
+    }
+
     [TestFixture]
     public class ThreadGroupTests {
         [Test]
         public void MinimumThreadCount () {
             using (var group = new ThreadGroup(
                 threadCount: 2, createBackgroundThreads: true, name: "MinimumThreadCount"
-            )) {
+            ) { DefaultConcurrencyPadding = 0 }) {
                 Assert.GreaterOrEqual(group.Count, 2);
             }
         }
 
         [Test]
         public void ManuallyStep () {
-            using (var group = new ThreadGroup(0, createBackgroundThreads: true, name: "ManuallyStep")) {
+            using (var group = new ThreadGroup(0, createBackgroundThreads: true, name: "ManuallyStep") { DefaultConcurrencyPadding = 0 }) {
                 var queue = group.GetQueueForType<TestWorkItem>();
 
                 var item = new TestWorkItem();
@@ -78,7 +91,7 @@ namespace Squared.Threading {
             const int count = 200;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "SingleThreadPerformanceTest")) {
+            using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "SingleThreadPerformanceTest") { DefaultConcurrencyPadding = 0 }) {
                 var queue = group.GetQueueForType<SlightlySlowWorkItem>();
 
                 var item = new SlightlySlowWorkItem();
@@ -111,7 +124,7 @@ namespace Squared.Threading {
             const int count = 200;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "MainThreadPerformanceTest")) {
+            using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "MainThreadPerformanceTest") { DefaultConcurrencyPadding = 0 }) {
                 var queue = group.GetQueueForType<SlightlySlowWorkItem>(forMainThread: true);
 
                 var item = new SlightlySlowWorkItem();
@@ -142,7 +155,7 @@ namespace Squared.Threading {
             const int count = 800;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(4, createBackgroundThreads: true, name: "MultipleThreadPerformanceTest")) {
+            using (var group = new ThreadGroup(4, createBackgroundThreads: true, name: "MultipleThreadPerformanceTest") { DefaultConcurrencyPadding = 0 }) {
                 var queue = group.GetQueueForType<SlightlySlowWorkItem>();
 
                 var item = new SlightlySlowWorkItem();
@@ -178,7 +191,7 @@ namespace Squared.Threading {
             const int count = 800;
 
             var timeProvider = Time.DefaultTimeProvider;
-            using (var group = new ThreadGroup(4, createBackgroundThreads: true, name: "NotifyOverheadTest")) {
+            using (var group = new ThreadGroup(4, createBackgroundThreads: true, name: "NotifyOverheadTest") { DefaultConcurrencyPadding = 0 }) {
                 var queue = group.GetQueueForType<SlightlySlowWorkItem>();
 
                 var item = new SlightlySlowWorkItem();
@@ -207,7 +220,7 @@ namespace Squared.Threading {
         public void WaitUntilDrained () {
             const int count = 50;
 
-            using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "WaitUntilDrainedSplitsQueue")) {
+            using (var group = new ThreadGroup(1, createBackgroundThreads: true, name: "WaitUntilDrainedSplitsQueue") { DefaultConcurrencyPadding = 0 }) {
                 var queue = group.GetQueueForType<BlockingWorkItem>();
                 var item = new BlockingWorkItem();
                 for (int i = 0; i < count; i++)
@@ -223,6 +236,47 @@ namespace Squared.Threading {
                 barrier.Signal.Set();
                 Assert.IsTrue(queue.WaitUntilDrained(500), "waitUntilDrained 3");
                 Assert.IsTrue(queue.WaitUntilDrained(5), "waitUntilDrained 4");
+            }
+        }
+
+        [Test]
+        public void PriorityTest () {
+            using (var group = new ThreadGroup(2, createBackgroundThreads: true, name: "PriorityTest") { DefaultConcurrencyPadding = 0 }) {
+                var queue = group.GetQueueForType<HighPriorityBlockingWorkItem>();
+                var barrier1 = new HighPriorityBlockingWorkItem {
+                    Signal = new AutoResetEvent(false)
+                };
+                queue.Enqueue(barrier1);
+                var barrier2 = new HighPriorityBlockingWorkItem {
+                    Signal = new AutoResetEvent(false)
+                };
+                queue.Enqueue(barrier2);
+                var barrier3 = new HighPriorityBlockingWorkItem {
+                    Signal = new AutoResetEvent(false)
+                };
+                queue.Enqueue(barrier3);
+                group.NotifyQueuesChanged();
+
+                // HACK: Give the thread group time to start processing high priority items
+                while (queue.ItemsInFlight < group.ThreadCount)
+                    Thread.Sleep(1);
+
+                var voidQueue = group.GetQueueForType<VoidWorkItem>();
+                var testItem = new VoidWorkItem();
+                for (int i = 0; i < 10; i++)
+                    voidQueue.Enqueue(testItem);
+                group.NotifyQueuesChanged();
+
+                var ok = voidQueue.WaitUntilDrained(50);
+                Assert.IsFalse(ok, "wait for low priority queue to drain while threads are blocked on high priority");
+                barrier1.Signal.Set();
+
+                Assert.IsFalse(voidQueue.WaitUntilDrained(50), "ensure new high priority item is claimed by thread that finished previous one");
+                barrier2.Signal.Set();
+                barrier3.Signal.Set();
+
+                ok = voidQueue.WaitUntilDrained(500);
+                Assert.IsTrue(ok, "once high priority items are done the low priority ones should run");
             }
         }
     }

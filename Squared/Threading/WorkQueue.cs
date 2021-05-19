@@ -76,12 +76,13 @@ namespace Squared.Threading {
         /// Configures the maximum number of items that can be processed at once. If a single work
         ///  item is likely to block a thread for a long period of time, you should make this value small.
         /// </summary>
-        public int MaxConcurrency = 8;
+        public int? MaxConcurrency;
         /// <summary>
         /// Configures the maximum number of items that can be processed at once. The total number of 
         ///  threads is reduced by this much to compute a limit.
+        /// The default is 1 unless the thread group has been configured with a different default.
         /// </summary>
-        public int ConcurrencyPadding = 1;
+        public int? ConcurrencyPadding = null;
     }
 
     // This job must be run on the main thread
@@ -134,12 +135,14 @@ namespace Squared.Threading {
         private readonly object ItemsLock = new object();
         private readonly Queue<InternalWorkItem<T>> Items = new Queue<InternalWorkItem<T>>();
 
-        private int NumProcessing = 0;
+        private volatile int _NumProcessing = 0;
         private ExceptionDispatchInfo UnhandledException;
         private readonly bool IsMainThreadWorkItem;
 
         public readonly WorkItemConfiguration Configuration;
         public readonly ThreadGroup Owner;
+
+        public int ItemsInFlight => _NumProcessing;
 
         public WorkQueue (ThreadGroup owner) {
             Owner = owner;
@@ -273,12 +276,12 @@ namespace Squared.Threading {
             int count = 0, numProcessed = 0;
             bool running = true, inLock = false, signalDrained = false, setProcessingFlag = false;
 
-            var padded = Owner.Count - Configuration.ConcurrencyPadding;
-            var lesser = Math.Min(Configuration.MaxConcurrency, padded);
+            var padded = Owner.Count - (Configuration.ConcurrencyPadding ?? Owner.DefaultConcurrencyPadding);
+            var lesser = Math.Min(Configuration.MaxConcurrency ?? 9999, padded);
             var maxConcurrency = Math.Max(lesser, 1);
 
-            if (Interlocked.Increment(ref NumProcessing) > maxConcurrency) {
-                Interlocked.Decrement(ref NumProcessing);
+            if (Interlocked.Increment(ref _NumProcessing) > maxConcurrency) {
+                Interlocked.Decrement(ref _NumProcessing);
                 exhausted = false;
                 return;
             }
@@ -327,7 +330,7 @@ namespace Squared.Threading {
             } while (running);
 
             actualMaximumCount -= numProcessed;
-            Interlocked.Decrement(ref NumProcessing);
+            Interlocked.Decrement(ref _NumProcessing);
 
             if (!inLock) {
                 Monitor.Enter(ItemsLock);
