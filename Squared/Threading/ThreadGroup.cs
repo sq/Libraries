@@ -117,10 +117,27 @@ namespace Squared.Threading {
         }
 
         private void NewQueueCreated () {
-            var result = new PriorityOrderedQueueList();
-            lock (Queues)
-                result.FillFrom(Queues);
-            Volatile.Write(ref QueuesForWorkers, result);
+            bool waitLonger = false;
+            while (true) {
+                var prev = Volatile.Read(ref QueuesForWorkers);
+                var result = new PriorityOrderedQueueList();
+                lock (Queues)
+                    result.FillFrom(Queues);
+                // Prevent a race condition where somehow two queues are created rapidly and
+                //  one of the NewQueueCreated calls loses the race and overwrites the longer list
+                //  with a shorter one
+                if (Interlocked.CompareExchange(ref QueuesForWorkers, result, prev) != prev) {
+                    if (waitLonger)
+                        Thread.Sleep(1);
+                    else {
+                        Thread.Yield();
+                        waitLonger = true;
+                    }
+                    continue;
+                } else {
+                    break; 
+                }
+            }
         }
 
         /// <summary>
