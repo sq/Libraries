@@ -99,8 +99,6 @@ namespace Squared.Threading {
                     var queue = pq[index];
                     if (queue == null)
                         continue;
-                    else if (queue.IsEmpty)
-                        continue;
 
                     int processedItemCount = queue.Step(out bool exhausted);
                     if (processedItemCount > 0) {

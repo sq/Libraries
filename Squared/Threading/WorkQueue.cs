@@ -137,7 +137,7 @@ namespace Squared.Threading {
     public class WorkQueue<T> : IWorkQueue
         where T : IWorkItem 
     {
-        const int DefaultBufferSize = 4;
+        const int DefaultBufferSize = 512;
 
         // For debugging
         public static bool BlockEnqueuesWhileDraining = false;
@@ -214,6 +214,7 @@ namespace Squared.Threading {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsureCapacityLocked (int capacity) {
             if (_Items.Length < capacity)
                 GrowLocked(capacity);
@@ -235,6 +236,7 @@ namespace Squared.Threading {
             _Tail = (_Count == capacity) ? 0 : _Count;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AdvanceLocked (ref int index) {
             var temp = index + 1;
             if (temp >= _Items.Length)
@@ -341,7 +343,14 @@ namespace Squared.Threading {
                 NotifyChanged();
         }
 
-        private void StepInternal (ref int result, out bool exhausted, int actualMaximumCount) {
+        private void StepInternal (out int result, out bool exhausted, int actualMaximumCount) {
+            // We eat an extra lock acquisition this way, but it skips a lot of extra work
+            if (IsEmpty) {
+                result = 0;
+                exhausted = true;
+                return;
+            }
+
             InternalWorkItem<T> item = default(InternalWorkItem<T>);
             int numProcessed = 0;
             bool running = true, signalDrained = false;
@@ -351,8 +360,8 @@ namespace Squared.Threading {
             var maxConcurrency = Math.Max(lesser, 1);
 
             exhausted = false;
+            result = 0;
             if (Interlocked.Increment(ref _NumProcessing) > maxConcurrency) {
-                // FIXME: Set exhausted if empty here? Probably not appropriate
                 Interlocked.Decrement(ref _NumProcessing);
                 return;
             }
@@ -392,14 +401,12 @@ namespace Squared.Threading {
         }
 
         public int Step (out bool exhausted, int? maximumCount = null) {
-            int result = 0;
             int actualMaximumCount = Math.Min(
                 maximumCount ?? Configuration.DefaultStepCount, 
                 Configuration.MaxStepCount ?? Configuration.DefaultStepCount
             );
-            exhausted = true;
 
-            StepInternal(ref result, out exhausted, actualMaximumCount);
+            StepInternal(out int result, out exhausted, actualMaximumCount);
 
             if ((result > 0) && (HasAnyListeners != 0)) {
                 lock (DrainListeners)
@@ -460,12 +467,12 @@ namespace Squared.Threading {
                         else
                             ;
                     } else {
+#if DEBUG
                         if (!IsEmpty)
-                            throw new Exception();
+                            throw new ThreadStateException();
                         Thread.Yield();
                         if (!IsEmpty)
-                            throw new Exception();
-#if DEBUG
+                            throw new ThreadStateException();
                         if (ItemsProcessed < waterMark)
                             throw new Exception("AssertDrained returned before reaching watermark");
 #endif
