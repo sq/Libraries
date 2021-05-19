@@ -277,10 +277,13 @@ namespace Squared.Threading {
             var lesser = Math.Min(Configuration.MaxConcurrency, padded);
             var maxConcurrency = Math.Max(lesser, 1);
 
-            do {
-                if (Interlocked.Increment(ref NumProcessing) >= maxConcurrency)
-                    break;
+            if (Interlocked.Increment(ref NumProcessing) > maxConcurrency) {
+                Interlocked.Decrement(ref NumProcessing);
+                exhausted = false;
+                return;
+            }
 
+            do {
                 try {
                     // FIXME: Find a way to not acquire this every step
                     if (!inLock) {
