@@ -36,13 +36,7 @@ namespace Squared.Util {
         }
 
         static Time () {
-            if (Type.GetType("Mono.Runtime") != null) {
-                // Mono
-                DefaultTimeProvider = new DotNetTimeProvider();
-            } else {
-                // MS CLR
-                DefaultTimeProvider = new Win32TimeProvider();
-            }
+            DefaultTimeProvider = new DotNetTimeProvider();
         }
     }
 

@@ -879,7 +879,8 @@ namespace Squared.Render {
         public struct Task : IWorkItem {
             public static WorkItemConfiguration Configuration =>
                 new WorkItemConfiguration {
-                    Priority = 1
+                    Priority = 1,
+                    ConcurrencyPadding = 0
                 };
 
             public Batch Batch;
