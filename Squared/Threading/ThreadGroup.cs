@@ -78,6 +78,9 @@ namespace Squared.Threading {
         /// Thread groups will create no more than this many threads, no matter how many processors
         ///  the machine has and no matter how many threads were requested. You must set this
         ///  before creating any thread groups.
+        /// This threshold is placed in effect because having a large number of threads contending
+        ///  to pull items off of work queues creates enough overhead to reduce the overall efficiency
+        ///  of the worker threads (and make queueing new work items more expensive).
         /// </summary>
         public static int MaximumThreadCount = 12;
 
