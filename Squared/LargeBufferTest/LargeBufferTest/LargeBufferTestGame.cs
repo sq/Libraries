@@ -117,8 +117,8 @@ namespace LargeBufferTest {
 
             ClearBatch.AddNew(frame, -1, Materials.Clear, clearColor: ClearColor);
 
-            var white = new AbstractTextureReference(WhitePixel);
-            var gray = new AbstractTextureReference(GrayPixel);
+            var white = new TextureSet(WhitePixel);
+            var gray = new TextureSet(GrayPixel);
             const int width = 1280;
             const int height = 720;
             var options = new ParallelOptions {
@@ -146,7 +146,7 @@ namespace LargeBufferTest {
                     var offset = range.Offset;
 
                     for (int x = 0; x < width; x++, fx++) {
-                        drawCall.Texture1 = ((x % 2) == 0) ? white : gray;
+                        drawCall.Textures = ((x % 2) == 0) ? white : gray;
                         drawCall.Position.X = fx;
                         drawCall.MultiplyColor = new Color(255, x % 255, y % 255);
 

@@ -146,9 +146,10 @@ namespace PRGUI.Demo {
         }
 
         protected override void OnLoadContent (bool isReloading) {
-            // FIXME: If we don't do this, the outline of the tab container flickers. Something wrong with each
-            //  prepare thread having its own VB
-            // RenderCoordinator.EnableThreading = false;
+            // HACK: On my machine this makes release mode faster, but that's probably just because
+            //  at 1ms/frame the overhead of the thread scheduling swamps any advantages from parallelism
+            //  and the video driver is multithreaded anyway
+            RenderCoordinator.EnableThreading = false;
 
             TextureLoader = new Texture2DProvider(Assembly.GetExecutingAssembly(), RenderCoordinator) {
                 DefaultOptions = new TextureLoadOptions {

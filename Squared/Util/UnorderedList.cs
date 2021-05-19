@@ -497,6 +497,35 @@ namespace Squared.Util {
             return true;
         }
 
+        /// <summary>
+        /// WARNING: This will not preserve the order of the list! If you want that, use the Ordered version
+        /// </summary>
+        public bool TryPopFront (out T result, out bool empty) {
+            if (_Count == 0) {
+                result = default(T);
+                empty = true;
+                return false;
+            }
+
+            result = _Items[_BufferOffset + 0];
+            DangerousRemoveAt(0);
+            empty = _Count == 0;
+            return true;
+        }
+
+        public bool TryPopFrontOrdered (out T result, out bool empty) {
+            if (_Count == 0) {
+                result = default(T);
+                empty = true;
+                return false;
+            }
+
+            result = _Items[_BufferOffset + 0];
+            RemoveAtOrdered(0);
+            empty = _Count == 0;
+            return true;
+        }
+
         public int Count {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {

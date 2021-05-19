@@ -187,9 +187,11 @@ namespace Squared.Render.RasterShape {
         }
 
         public override int GetHashCode () {
+            // HACK: Vector4.GetHashCode is so slow that it's probably not worth using the placement value
+            //  as part of the hashcode
             return (SamplerState?.GetHashCode() ?? 0) |
-                ShadowMode.GetHashCode() |
-                Placement.GetHashCode();
+                ShadowMode.GetHashCode() /* |
+                Placement.GetHashCode() */;
         }
 
         public bool Equals (RasterTextureSettings rhs) {

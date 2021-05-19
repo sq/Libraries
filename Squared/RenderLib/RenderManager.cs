@@ -690,12 +690,12 @@ namespace Squared.Render {
                     break;
 
                 CollectAllocatorsTimer.Restart();
-                lp.WaitForWorkItems();
+                lp.WaitForWorkItems(waitTime);
                 CollectAllocatorsTimer.Stop();
                 elapsedTimeMs += CollectAllocatorsTimer.Elapsed.TotalMilliseconds;
             }
             if (elapsedTimeMs >= 5)
-                Debug.Write($"Collecting allocators took {elapsedTimeMs}ms");
+                Debug.Write($"Collecting allocators took {elapsedTimeMs}ms\r\n");
         }
 
         public bool TrySetPoolCapacity<T> (int newCapacity)

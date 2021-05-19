@@ -99,6 +99,9 @@ namespace Squared.Threading {
     internal struct InternalWorkItem<T>
         where T : IWorkItem
     {
+#if DEBUG
+        public bool                  Valid;
+#endif
         public WorkQueue<T>          Queue;
         public OnWorkItemComplete<T> OnComplete;
         public T                     Data;
@@ -108,6 +111,20 @@ namespace Squared.Threading {
             Queue = queue;
             Data = data;
             OnComplete = onComplete;
+#if DEBUG
+            Valid = true;
+#endif
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Execute (ref InternalWorkItem<T> item) {
+#if DEBUG
+            if (!item.Valid)
+                throw new ThreadStateException();
+#endif
+            item.Data.Execute();
+            if (item.OnComplete != null)
+                item.OnComplete(ref item.Data);
         }
     }
 
@@ -120,6 +137,8 @@ namespace Squared.Threading {
     public class WorkQueue<T> : IWorkQueue
         where T : IWorkItem 
     {
+        const int DefaultBufferSize = 4;
+
         // For debugging
         public static bool BlockEnqueuesWhileDraining = false;
 
@@ -133,7 +152,8 @@ namespace Squared.Threading {
         private readonly ManualResetEventSlim DrainedSignal = new ManualResetEventSlim(false);
 
         private readonly object ItemsLock = new object();
-        private readonly Queue<InternalWorkItem<T>> Items = new Queue<InternalWorkItem<T>>();
+        private InternalWorkItem<T>[] _Items;
+        private int _Head, _Tail, _Count;
 
         private volatile int _NumProcessing = 0;
         private ExceptionDispatchInfo UnhandledException;
@@ -149,6 +169,7 @@ namespace Squared.Threading {
             IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
             Configuration = (WorkItemConfiguration)typeof(T).GetProperty("Configuration", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)?.GetValue(null)
                 ?? new WorkItemConfiguration();
+            _Items = new InternalWorkItem<T>[DefaultBufferSize];
         }
 
         private void NotifyDrained () {
@@ -167,9 +188,58 @@ namespace Squared.Threading {
         private int AddInternal (ref InternalWorkItem<T> item) {
             AssertCanEnqueue();
             var result = Interlocked.Increment(ref ItemsQueued);
-            lock (ItemsLock)
-                Items.Enqueue(item);
+            lock (ItemsLock) {
+                EnsureCapacityLocked(_Count + 1);
+                _Items[_Tail] = item;
+                AdvanceLocked(ref _Tail);
+                _Count++;
+            }
             return result;
+        }
+
+        private bool TryDequeue (out InternalWorkItem<T> item, out bool empty) {
+            lock (ItemsLock) {
+                if (_Count <= 0) {
+                    item = default(InternalWorkItem<T>);
+                    empty = true;
+                    return false;
+                }
+
+                item = _Items[_Head];
+                _Items[_Head] = default(InternalWorkItem<T>);
+                AdvanceLocked(ref _Head);
+                _Count--;
+                empty = _Count <= 0;
+                return true;
+            }
+        }
+
+        private void EnsureCapacityLocked (int capacity) {
+            if (_Items.Length < capacity)
+                GrowLocked(capacity);
+        }
+
+        private void GrowLocked (int capacity) {
+            var newSize = UnorderedList<T>.PickGrowthSize(_Items.Length, capacity);
+            var newItems = new InternalWorkItem<T>[newSize];
+            if (_Count > 0) {
+                if (_Head < _Tail) {
+                    Array.Copy(_Items, _Head, newItems, 0, _Count);
+                } else {
+                    Array.Copy(_Items, _Head, newItems, 0, _Items.Length - _Head);
+                    Array.Copy(_Items, 0, newItems, _Items.Length - _Head, _Tail);
+                }
+            }
+            _Items = newItems;
+            _Head = 0;
+            _Tail = (_Count == capacity) ? 0 : _Count;
+        }
+
+        private void AdvanceLocked (ref int index) {
+            var temp = index + 1;
+            if (temp >= _Items.Length)
+                temp = 0;
+            index = temp;
         }
 
         public void RegisterDrainListener (WorkQueueDrainListener listener) {
@@ -263,7 +333,7 @@ namespace Squared.Threading {
                 wi.OnComplete = null;
                 for (var i = 0; i < data.Count; i++) {
                     wi.Data = data.Array[data.Offset + i];
-                    Items.Enqueue(wi);
+                    AddInternal(ref wi);
                 }
             }
 
@@ -273,50 +343,35 @@ namespace Squared.Threading {
 
         private void StepInternal (ref int result, out bool exhausted, int actualMaximumCount) {
             InternalWorkItem<T> item = default(InternalWorkItem<T>);
-            int count = 0, numProcessed = 0;
-            bool running = true, inLock = false, signalDrained = false, setProcessingFlag = false;
+            int numProcessed = 0;
+            bool running = true, signalDrained = false;
 
             var padded = Owner.Count - (Configuration.ConcurrencyPadding ?? Owner.DefaultConcurrencyPadding);
             var lesser = Math.Min(Configuration.MaxConcurrency ?? 9999, padded);
             var maxConcurrency = Math.Max(lesser, 1);
 
+            exhausted = false;
             if (Interlocked.Increment(ref _NumProcessing) > maxConcurrency) {
+                // FIXME: Set exhausted if empty here? Probably not appropriate
                 Interlocked.Decrement(ref _NumProcessing);
-                exhausted = false;
                 return;
             }
 
             do {
                 try {
-                    // FIXME: Find a way to not acquire this every step
-                    if (!inLock) {
-                        Monitor.Enter(ItemsLock);
-                        inLock = true;
-                    }
+                    bool empty = false;
+                    running = (actualMaximumCount > 0) &&
+                        TryDequeue(out item, out empty);
 
-                    running = ((count = Items.Count) > 0) &&
-                        (actualMaximumCount > 0);
-
-                    if (running) {
-                        item = Items.Dequeue();
-                        if (Items.Count == 0)
-                            signalDrained = true;
-                    } else if (count == 0) {
+                    if (empty) {
                         signalDrained = true;
-                    }
-
-                    if (inLock) {
-                        Monitor.Exit(ItemsLock);
-                        inLock = false;
+                        exhausted = true;
                     }
 
                     if (running) {
                         try {
                             numProcessed++;
-                            item.Data.Execute();
-                            if (item.OnComplete != null)
-                                item.OnComplete(ref item.Data);
-
+                            InternalWorkItem<T>.Execute(ref item);
                             result++;
                         } finally {
                             Interlocked.Increment(ref ItemsProcessed);
@@ -331,16 +386,6 @@ namespace Squared.Threading {
 
             actualMaximumCount -= numProcessed;
             Interlocked.Decrement(ref _NumProcessing);
-
-            if (!inLock) {
-                Monitor.Enter(ItemsLock);
-                inLock = true;
-            }
-
-            exhausted = Items.Count <= 0;
-
-            if (inLock)
-                Monitor.Exit(ItemsLock);
 
             if (signalDrained)
                 NotifyDrained();
@@ -371,7 +416,7 @@ namespace Squared.Threading {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 lock (ItemsLock)
-                    return (Items.Count == 0) && (ItemsProcessed >= ItemsQueued);
+                    return (_Count <= 0) && (ItemsProcessed >= ItemsQueued);
             }
         }
 
@@ -401,7 +446,7 @@ namespace Squared.Threading {
             try {
                 do {
                     lock (ItemsLock)
-                        doWait = (Items.Count > 0) || (ItemsProcessed < ItemsQueued);
+                        doWait = (_Count > 0) || (ItemsProcessed < ItemsQueued);
                     if (doWait) {
                         var now = Time.Ticks;
                         if (now > endWhen)
