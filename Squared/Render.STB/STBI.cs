@@ -373,7 +373,8 @@ namespace Squared.Render.STB {
         private unsafe struct UploadMipWorkItem : IWorkItem {
             public static WorkItemConfiguration Configuration =>
                 new WorkItemConfiguration {
-                    MaxConcurrency = 1
+                    MaxConcurrency = 1,
+                    DefaultStepCount = 4
                 };
 
             internal uint MipPitch;

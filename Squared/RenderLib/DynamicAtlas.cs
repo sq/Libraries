@@ -191,7 +191,8 @@ namespace Squared.Render {
         private struct GenerateMipsWorkItem : IWorkItem {
             public static WorkItemConfiguration Configuration =>
                 new WorkItemConfiguration {
-                    ConcurrencyPadding = 2
+                    ConcurrencyPadding = 2,
+                    DefaultStepCount = 2
                 };
 
             public DynamicAtlas<T> Atlas;

@@ -53,6 +53,8 @@ namespace Squared.PRGUI.Controls {
         bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => true;
         bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
         bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
+        // FIXME: Attach to the menu item?
+        Control ICustomTooltipTarget.Anchor => null;
 
         public string Description { get; set; }
 

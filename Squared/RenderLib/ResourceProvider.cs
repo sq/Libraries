@@ -30,7 +30,8 @@ namespace Squared.Render.Resources {
         protected class CreateWorkItem : IWorkItem {
             public static WorkItemConfiguration Configuration =>
                 new WorkItemConfiguration {
-                    MaxConcurrency = 2
+                    MaxConcurrency = 2,
+                    DefaultStepCount = 1
                 };
 
             public Future<T> Future;
@@ -74,7 +75,8 @@ namespace Squared.Render.Resources {
         protected class PreloadWorkItem : IWorkItem {
             public static WorkItemConfiguration Configuration =>
                 new WorkItemConfiguration {
-                    ConcurrencyPadding = 2
+                    ConcurrencyPadding = 2,
+                    DefaultStepCount = 1
                 };
 
             public Future<T> Future;

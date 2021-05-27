@@ -96,6 +96,7 @@ namespace Squared.PRGUI {
         bool ShowTooltipWhileFocus { get; }
         bool ShowTooltipWhileKeyboardFocus { get; }
         bool HideTooltipOnMousePress { get; }
+        Control Anchor { get; }
     }
 
     public struct TooltipSettings {

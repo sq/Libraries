@@ -192,6 +192,7 @@ namespace Squared.PRGUI.Controls {
         bool ICustomTooltipTarget.ShowTooltipWhileFocus => true;
         bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
         bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
+        Control ICustomTooltipTarget.Anchor => null;
 
         public HyperText Parent {
             get {

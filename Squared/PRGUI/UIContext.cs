@@ -649,7 +649,7 @@ namespace Squared.PRGUI {
                     (hoveringFor >= (cttt?.TooltipAppearanceDelay ?? TooltipAppearanceDelay)) || 
                     (disappearTimeout < disappearDelay)
                 ) {
-                    ShowTooltip(target, tooltipText, tooltipContent, CurrentTooltipContentVersion != version);
+                    ShowTooltip(cttt?.Anchor ?? target, tooltipText, tooltipContent, CurrentTooltipContentVersion != version);
                     CurrentTooltipContentVersion = version;
                 }
             } else {

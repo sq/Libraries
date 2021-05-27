@@ -21,7 +21,7 @@ namespace Squared.PRGUI.Controls {
     }
 
     public class ListBox<T> : 
-        Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, 
+        Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, 
         IValueControl<T>, ISelectionBearer, IListBox,
         IPartiallyIntangibleControl, IFuzzyHitTestTarget, IHasDescription
     {
@@ -126,6 +126,13 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private bool MouseOverItemNeedsUpdate = false;
+        private Vector2 LastMouseOverPosition;
+        public Control MouseOverItem { get; private set; }
+
+        protected AbstractTooltipContent MouseOverItemTooltip =>
+            MouseOverItem?.TooltipContent ?? TooltipContent;
+
         public bool GenerateControlsWhenHidden = true;
 
         private int VirtualItemOffset = 0;
@@ -145,6 +152,20 @@ namespace Squared.PRGUI.Controls {
                 base.ColumnCount = value;
             }
         }
+
+        AbstractTooltipContent ICustomTooltipTarget.GetContent () => MouseOverItemTooltip;
+        float? ICustomTooltipTarget.TooltipDisappearDelay => null;
+        float? ICustomTooltipTarget.TooltipAppearanceDelay => TooltipContent.Equals(MouseOverItemTooltip) && 
+            (MouseOverItem != null) &&
+            !MouseOverItem.TooltipContent.Equals(default(AbstractTooltipContent))
+                ? 0f
+                : (float?)null;
+        bool ICustomTooltipTarget.ShowTooltipWhileFocus => false;
+        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => false;
+        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => true;
+        bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
+        bool ICustomTooltipTarget.HideTooltipOnMousePress => true;
+        Control ICustomTooltipTarget.Anchor => MouseOverItem;
 
         public ListBox ()
             : this (null) {
@@ -331,9 +352,11 @@ namespace Squared.PRGUI.Controls {
                     // HACK: Without doing this, old content bounds can be kept that are too big/too small
                     HasContentBounds = false;
                     NeedsUpdate = false;
+                    MouseOverItemNeedsUpdate = true;
                 }
             } else if (generatingEnabled) {
                 Items.GenerateInvalidatedControls(CreateControlForValue ?? DefaultCreateControlForValue);
+                MouseOverItemNeedsUpdate = true;
             }
 
             if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection)
@@ -418,6 +441,11 @@ namespace Squared.PRGUI.Controls {
             VirtualScrollRegion.Y = (EffectiveCount * VirtualYMultiplier);
             if (Virtual)
                 VirtualScrollRegion.Y += partialItemScrollOffset;
+
+            if (MouseOverItemNeedsUpdate) {
+                MouseOverItemNeedsUpdate = false;
+                MouseOverItem = ChildFromGlobalPosition(context.Layout, LastMouseOverPosition);
+            }
         }
 
         public void Invalidate (T item) {
@@ -513,6 +541,8 @@ namespace Squared.PRGUI.Controls {
                 return true;
 
             var control = ChildFromGlobalPosition(Context.Layout, args.RelativeGlobalPosition);
+            LastMouseOverPosition = args.RelativeGlobalPosition;
+            MouseOverItem = control;
             // Console.WriteLine($"ChildFromGlobalPosition == {control}");
             // FIXME: If we handle Click then drag-to-scroll won't select an item,
             //  but having it not select on mousedown feels bad
