@@ -649,7 +649,10 @@ namespace Squared.PRGUI {
                     (hoveringFor >= (cttt?.TooltipAppearanceDelay ?? TooltipAppearanceDelay)) || 
                     (disappearTimeout < disappearDelay)
                 ) {
-                    ShowTooltip(cttt?.Anchor ?? target, tooltipText, tooltipContent, CurrentTooltipContentVersion != version);
+                    ShowTooltip(
+                        target, cttt, tooltipText, 
+                        tooltipContent, CurrentTooltipContentVersion != version
+                    );
                     CurrentTooltipContentVersion = version;
                 }
             } else {
@@ -763,15 +766,29 @@ namespace Squared.PRGUI {
             Layout.UpdateSubtree(subtreeRoot.LayoutKey);
         }
 
-        private void ShowTooltip (Control anchor, AbstractString text, AbstractTooltipContent content, bool textIsInvalidated) {
+        private void ShowTooltip (
+            Control target, ICustomTooltipTarget cttt, AbstractString text, 
+            AbstractTooltipContent content, bool textIsInvalidated
+        ) {
             var instance = GetTooltipInstance();
 
             var textChanged = !instance.Text.TextEquals(text, StringComparison.Ordinal) || 
                 textIsInvalidated;
 
+            var anchor = cttt?.Anchor ?? target;
             // HACK: Copy the target's decoration provider so the tooltip matches
-            instance.Appearance.DecorationProvider = (anchor.Appearance.DecorationProvider ?? Decorations);
-            instance.Move(anchor, content.Settings.AnchorPoint, content.Settings.ControlAlignmentPoint);
+            instance.Appearance.DecorationProvider = (
+                anchor.Appearance.DecorationProvider ?? 
+                target.Appearance.DecorationProvider ?? 
+                Decorations
+            );
+            // FIXME: For menus and perhaps list boxes, keyboard navigation sets the tooltip target
+            //  to be the selected item instead of the list/menu and this ignores the container's settings
+            instance.Move(
+                anchor, 
+                cttt?.AnchorPoint ?? content.Settings.AnchorPoint, 
+                cttt?.ControlAlignmentPoint ?? content.Settings.ControlAlignmentPoint
+            );
 
             instance.Visible = true;
             instance.DisplayOrder = int.MaxValue;

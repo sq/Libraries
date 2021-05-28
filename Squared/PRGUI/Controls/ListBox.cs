@@ -166,6 +166,8 @@ namespace Squared.PRGUI.Controls {
         bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
         bool ICustomTooltipTarget.HideTooltipOnMousePress => true;
         Control ICustomTooltipTarget.Anchor => MouseOverItem;
+        Vector2? ICustomTooltipTarget.AnchorPoint => null;
+        Vector2? ICustomTooltipTarget.ControlAlignmentPoint => null;
 
         public ListBox ()
             : this (null) {

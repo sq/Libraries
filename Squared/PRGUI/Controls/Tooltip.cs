@@ -97,6 +97,8 @@ namespace Squared.PRGUI {
         bool ShowTooltipWhileKeyboardFocus { get; }
         bool HideTooltipOnMousePress { get; }
         Control Anchor { get; }
+        Vector2? AnchorPoint { get; }
+        Vector2? ControlAlignmentPoint { get; }
     }
 
     public struct TooltipSettings {

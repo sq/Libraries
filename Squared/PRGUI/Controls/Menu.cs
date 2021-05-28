@@ -55,6 +55,8 @@ namespace Squared.PRGUI.Controls {
         bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
         // FIXME: Attach to the menu item?
         Control ICustomTooltipTarget.Anchor => null;
+        Vector2? ICustomTooltipTarget.AnchorPoint => null;
+        Vector2? ICustomTooltipTarget.ControlAlignmentPoint => null;
 
         public string Description { get; set; }
 
