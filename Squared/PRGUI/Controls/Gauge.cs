@@ -30,9 +30,7 @@ namespace Squared.PRGUI.Controls {
 
         public float Value {
             get => _Value;
-            set {
-                SetValue(value, true);
-            }
+            set => SetValue(value, true);
         }
 
         public float Limit {
@@ -76,7 +74,7 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = false;
         }
 
-        public void FormatValue (StringBuilder sb) {
+        public virtual void FormatValue (StringBuilder sb) {
             SmartAppend(sb, (float)Math.Round(Value * 100, 2, MidpointRounding.AwayFromZero));
             sb.Append("%");
         }

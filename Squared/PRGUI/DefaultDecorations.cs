@@ -542,6 +542,10 @@ namespace Squared.PRGUI {
             ScrollbarRadius = 3f,
             ScrollbarMinThumbSize = 24f;
 
+        public float GaugeFillAlpha1 = 0.5f, GaugeFillAlpha2 = 1.0f,
+            GaugeLimitAlpha = 0.7f,
+            GaugeFillBrightness1 = 1.0f, GaugeFillBrightness2 = 1.0f;
+
         public RasterShadowSettings? InteractableShadow, 
             ContainerShadow,
             FloatingContainerShadow,
@@ -894,14 +898,21 @@ namespace Squared.PRGUI {
                     break;
             }
 
-            var alpha1 = 0.5f;
+            float alpha1 = GaugeFillAlpha1,
+                alphaDelta = GaugeFillAlpha2 - GaugeFillAlpha1,
+                alpha2 = Arithmetic.Saturate(alpha1 + (alphaDelta * settings.UserData));
+            float brightness1 = GaugeFillBrightness1,
+                brightnessDelta = GaugeFillBrightness2 - GaugeFillBrightness1,
+                brightness2 = brightness1 + (brightnessDelta * settings.UserData);
             // FIXME: Padding will make this slightly wrong
-            var alpha2 = Arithmetic.Saturate(alpha1 + (0.5f * settings.UserData));
-            var fillColor = settings.TextColor ?? ColorScheme.GaugeValueFill;
+            pSRGBColor fillColor = settings.TextColor ?? ColorScheme.GaugeValueFill, 
+                fillColor1, fillColor2;
             if (settings.Traits.IndexOf("limit") >= 0) {
-                alpha1 = alpha2 = 0.7f;
+                alpha1 = alpha2 = GaugeLimitAlpha;
                 fillColor = new Color(64, 64, 64);
             }
+            fillColor1 = fillColor.AdjustBrightness(brightness1) * alpha1;
+            fillColor2 = fillColor.AdjustBrightness(brightness2) * alpha2;
 
             var outlineRadius = GetOutlineSize(1f);
             if (isCircular) {
@@ -923,8 +934,8 @@ namespace Squared.PRGUI {
                     ringRadius: settings.ContentBox.Width, fillRadius: settings.ContentBox.Height,
                     outlineRadius: outlineRadius, outlineColor: fillColor * 0.5f,
                     fillMode: RasterFillMode.Along,
-                    innerColor: fillColor * alpha1, 
-                    outerColor: fillColor * alpha2,
+                    innerColor: fillColor1, 
+                    outerColor: fillColor2,
                     shadow: GaugeValueShadow,
                     texture: settings.GetTexture(),
                     textureRegion: settings.GetTextureRegion(),
@@ -936,8 +947,8 @@ namespace Squared.PRGUI {
                     radius: SliderCornerRadius,
                     outlineRadius: outlineRadius, outlineColor: fillColor * 0.5f,
                     fillMode: fillMode,
-                    innerColor: fillColor * alpha1, 
-                    outerColor: fillColor * alpha2,
+                    innerColor: fillColor1, 
+                    outerColor: fillColor2,
                     shadow: GaugeValueShadow,
                     texture: settings.GetTexture(),
                     textureRegion: settings.GetTextureRegion(),

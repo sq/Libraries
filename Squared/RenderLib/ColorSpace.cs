@@ -180,11 +180,40 @@ namespace Squared.Render {
         }
 
         public pSRGBColor AdjustBrightness (float factor) {
-            var result = ToVector4();
-            result.X *= factor;
-            result.Y *= factor;
-            result.Z *= factor;
-            return new pSRGBColor(result, isPremultiplied: true);
+            var vec = ToVector4();
+            var newVec = vec * factor;
+
+            float newX = Arithmetic.Saturate(newVec.X),
+                newY = Arithmetic.Saturate(newVec.Y),
+                newZ = Arithmetic.Saturate(newVec.Z),
+                excess = Math.Abs(newVec.X - newX) +
+                    Math.Abs(newVec.Y - newY) +
+                    Math.Abs(newVec.Z - newZ);
+
+            int excessComponents = 3;
+            if (newX < newVec.X)
+                excessComponents--;
+            if (newY < newVec.Y)
+                excessComponents--;
+            if (newZ < newVec.Z)
+                excessComponents--;
+
+            if (excessComponents > 0)
+                excess /= excessComponents;
+            else
+                excess = 0f;
+
+            // HACK: If adjusting the brightness rammed up against the 1.0 limit,
+            //  distribute the remaining energy to the other channels and push the
+            //  result closer to white to try and approximate the desired increase
+            newX = Arithmetic.Saturate(newX + excess);
+            newY = Arithmetic.Saturate(newY + excess);
+            newZ = Arithmetic.Saturate(newZ + excess);
+
+            var result = new Vector4(newX, newY, newZ, vec.W);
+            return new pSRGBColor(
+                result, isPremultiplied: true
+            );
         }
 
         public static pSRGBColor FromPLinear (ref Vector4 pLinear) {
