@@ -12,6 +12,8 @@
 //  the atlas is high-DPI
 #define DefaultShadowedTopMipBias MIP_BIAS
 
+#define OutlineSumDivisor 1.45
+
 uniform const float4 GlobalShadowColor;
 uniform const float2 ShadowOffset;
 uniform const float  ShadowedTopMipBias, ShadowMipBias;
@@ -83,8 +85,50 @@ void ShadowedPixelShader (
     float2 shadowTexCoord = clamp2(texCoord - (ShadowOffset * HalfTexel * 2), texRgn.xy, texRgn.zw);
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
     float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias));
-    float shadowAlpha = 1 - texColor.a;
-    result = ((shadowColor * shadowAlpha) + (addColor * texColor.a)) * multiplyColor.a + (texColor * multiplyColor);
+    if (shadowColor.a > 1)
+        shadowColor = normalize(shadowColor);
+    float4 texColorSRGB = pSRGBToPLinear((texColor * multiplyColor) + (addColor * texColor.a)),
+        shadowColorSRGB = pSRGBToPLinear(shadowColor);
+    result = texColorSRGB + (shadowColorSRGB * (1 - texColorSRGB.a));
+    result = pLinearToPSRGB(result);
+}
+
+void OutlinedPixelShader(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float4 shadowColorIn : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    out float4 result : COLOR0
+) {
+    addColor.rgb *= addColor.a;
+    addColor.a = 0;
+
+    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
+
+    float4 shadowColor = texColor;
+    float2 offset = (ShadowOffset * HalfTexel * 2);
+    [flatten]
+    for (int i = 0; i < 4; i++) {
+        float x = (i % 2) == 0 ? 1 : -1,
+            y = (i / 2) == 0 ? 1 : -1;
+        float2 shadowTexCoord = clamp2(texCoord + float2(offset.x * x, offset.y * y), texRgn.xy, texRgn.zw);
+        shadowColor += tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias));
+    }
+
+    shadowColor = saturate(shadowColor / OutlineSumDivisor);
+    shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * shadowColor;
+    if (shadowColor.a > 1)
+        shadowColor = normalize(shadowColor);
+
+    float4 overColor = (texColor * multiplyColor);
+    overColor += (addColor * overColor.a);
+
+    // Significantly improves the appearance of colored outlines and/or colored text
+    float4 overSRGB = pSRGBToPLinear(overColor),
+        shadowSRGB = pSRGBToPLinear(shadowColor);
+    result = lerp(shadowSRGB, overSRGB, overColor.a);
+    result = pLinearToPSRGB(result);
 }
 
 void BasicPixelShaderWithDiscard (
@@ -112,14 +156,29 @@ void ShadowedPixelShaderWithDiscard (
     in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
-    addColor.rgb *= addColor.a;
-    addColor.a = 0;
+    ShadowedPixelShader(
+        multiplyColor, addColor,
+        shadowColorIn, texCoord, texRgn,
+        result
+    );
 
-    float2 shadowTexCoord = clamp2(texCoord - (ShadowOffset * HalfTexel * 2), texRgn.xy, texRgn.zw);
-    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
-    float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias));
-    float shadowAlpha = 1 - texColor.a;
-    result = ((shadowColor * shadowAlpha) + (addColor * texColor.a)) * multiplyColor.a + (texColor * multiplyColor);
+    const float discardThreshold = (1.0 / 255.0);
+    clip(result.a - discardThreshold);
+}
+
+void OutlinedPixelShaderWithDiscard(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float4 outlineColorIn : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    out float4 result : COLOR0
+) {
+    OutlinedPixelShader(
+        multiplyColor, addColor,
+        outlineColorIn, texCoord, texRgn,
+        result
+    );
 
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);
@@ -345,5 +404,23 @@ technique UnderBitmapTechnique
     {
         vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 UnderPixelShaderWithDiscard();
+    }
+}
+
+technique OutlinedBitmapTechnique
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 OutlinedPixelShader();
+    }
+}
+
+technique OutlinedBitmapWithDiscardTechnique
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 OutlinedPixelShaderWithDiscard();
     }
 }

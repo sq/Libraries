@@ -407,7 +407,7 @@ namespace Squared.Render.Text {
                 return _RichTextConfiguration;
             }
             set {
-                InvalidatingValueAssignment(ref _RichTextConfiguration, value);
+                InvalidatingReferenceAssignment(ref _RichTextConfiguration, value);
             }
         }
 

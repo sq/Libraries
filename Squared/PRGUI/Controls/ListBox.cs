@@ -168,6 +168,7 @@ namespace Squared.PRGUI.Controls {
         Control ICustomTooltipTarget.Anchor => MouseOverItem;
         Vector2? ICustomTooltipTarget.AnchorPoint => null;
         Vector2? ICustomTooltipTarget.ControlAlignmentPoint => null;
+        Vector2? ICustomTooltipTarget.MaxTooltipSize => null;
 
         public ListBox ()
             : this (null) {

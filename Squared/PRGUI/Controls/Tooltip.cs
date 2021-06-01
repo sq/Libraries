@@ -50,6 +50,11 @@ namespace Squared.PRGUI.Controls {
             return base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
+        RichTextConfiguration _RichTextConfiguration;
+
+        protected override RichTextConfiguration RichTextConfiguration =>
+            _RichTextConfiguration ?? base.RichTextConfiguration;
+
         new public AbstractString Text {
             get => base.Text;
             set => base.Text = value;
@@ -75,6 +80,7 @@ namespace Squared.PRGUI.Controls {
 
         public void ApplySettings (TooltipSettings settings) {
             RichText = settings.RichText;
+            _RichTextConfiguration = settings.RichTextConfiguration;
             if (settings.ConfigureLayout != null)
                 settings.ConfigureLayout(Content);
             LayoutFilter = settings.LayoutFilter;
@@ -99,12 +105,14 @@ namespace Squared.PRGUI {
         Control Anchor { get; }
         Vector2? AnchorPoint { get; }
         Vector2? ControlAlignmentPoint { get; }
+        Vector2? MaxTooltipSize { get; }
     }
 
     public struct TooltipSettings {
         public bool RichText;
+        public RichTextConfiguration RichTextConfiguration;
         private IGlyphSource _DefaultGlyphSource;
-        public Vector2? AnchorPoint, ControlAlignmentPoint;
+        public Vector2? AnchorPoint, ControlAlignmentPoint, MaxSize;
         public Action<DynamicStringLayout> ConfigureLayout;
         public StringLayoutFilter LayoutFilter;
 
@@ -122,6 +130,8 @@ namespace Squared.PRGUI {
 
         public bool Equals (TooltipSettings rhs) {
             return (RichText == rhs.RichText) &&
+                object.Equals(RichTextConfiguration, rhs.RichTextConfiguration) &&
+                (MaxSize == rhs.MaxSize) &&
                 (AnchorPoint == rhs.AnchorPoint) &&
                 (ControlAlignmentPoint == rhs.ControlAlignmentPoint) &&
                 (ConfigureLayout == rhs.ConfigureLayout) &&

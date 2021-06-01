@@ -275,7 +275,7 @@ namespace Squared.Render.Text {
     /// <returns>true if the string should be laid out, false if it should be omitted from the output entirely.</returns>
     public delegate bool MarkedStringProcessor (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
 
-    public struct RichTextConfiguration : IEquatable<RichTextConfiguration> {
+    public class RichTextConfiguration : IEquatable<RichTextConfiguration> {
         private static readonly Dictionary<string, Color?> SystemNamedColorCache = new Dictionary<string, Color?>();
 
         private int Version;
@@ -529,6 +529,31 @@ namespace Squared.Render.Text {
             return null;
         }
 
+        private static Dictionary<K, V> CloneDictionary<K, V> (bool deep, Dictionary<K, V> value) {
+            if (deep == false)
+                return value;
+            else if (value == null)
+                return value;
+
+            var result = new Dictionary<K, V>(value.Count, value.Comparer);
+            foreach (var kvp in value)
+                result.Add(kvp.Key, kvp.Value);
+            return result;
+        }
+
+        public RichTextConfiguration Clone (bool deep) {
+            return new RichTextConfiguration {
+                NamedColors = CloneDictionary(deep, NamedColors),
+                GlyphSources = CloneDictionary(deep, GlyphSources),
+                Styles = CloneDictionary(deep, Styles),
+                Images = CloneDictionary(deep, Images),
+                ImageProvider = ImageProvider,
+                KerningAdjustments = CloneDictionary(deep, KerningAdjustments),
+                MarkedStringProcessor = MarkedStringProcessor,
+                DefaultStyle = DefaultStyle
+            };
+        }
+
         public void Invalidate () {
             Version++;
         }
@@ -540,6 +565,13 @@ namespace Squared.Render.Text {
                 (Images == other.Images) &&
                 (KerningAdjustments == other.KerningAdjustments) &&
                 (Version == other.Version);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is RichTextConfiguration rtc)
+                return Equals(rtc);
+            else
+                return false;
         }
     }
 }

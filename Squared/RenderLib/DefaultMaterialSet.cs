@@ -369,6 +369,7 @@ namespace Squared.Render {
         public Material ScreenSpaceStippledBitmap, WorldSpaceStippledBitmap;
         public Material ScreenSpacePalettedBitmapWithDiscard, WorldSpacePalettedBitmapWithDiscard;
         public Material ScreenSpaceHueBitmapWithDiscard, WorldSpaceHueBitmapWithDiscard;
+        public Material OutlinedBitmap, OutlinedBitmapWithDiscard;
         public Material HighlightColorBitmap, CrossfadeBitmap;
         // Porter-duff compositing
         public Material UnderBitmap, OverBitmap;
@@ -546,29 +547,43 @@ namespace Squared.Render {
                 "WorldSpaceBitmapToSRGBTechnique"
             );
 
+            var defaultOffset = Vector2.One;
+
             ScreenSpaceShadowedBitmap = NewMaterial(
                 bitmapShader,
                 "ScreenSpaceShadowedBitmapTechnique"
             );
-            ScreenSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
+            ScreenSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(defaultOffset);
 
             WorldSpaceShadowedBitmap = NewMaterial(
                 bitmapShader,
                 "WorldSpaceShadowedBitmapTechnique"
             );
-            WorldSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
+            WorldSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(defaultOffset);
 
             ScreenSpaceShadowedBitmapWithDiscard = NewMaterial(
                 bitmapShader,
                 "ScreenSpaceShadowedBitmapWithDiscardTechnique"
             );
-            ScreenSpaceShadowedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
+            ScreenSpaceShadowedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(defaultOffset);
 
             WorldSpaceShadowedBitmapWithDiscard = NewMaterial(
                 bitmapShader,
                 "WorldSpaceShadowedBitmapWithDiscardTechnique"
             );
-            WorldSpaceShadowedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
+            WorldSpaceShadowedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(defaultOffset);
+
+            OutlinedBitmap = NewMaterial(
+                bitmapShader,
+                "OutlinedBitmapTechnique"
+            );
+            OutlinedBitmap.Parameters.ShadowOffset.SetValue(defaultOffset);
+
+            OutlinedBitmapWithDiscard = NewMaterial(
+                bitmapShader,
+                "OutlinedBitmapWithDiscardTechnique"
+            );
+            OutlinedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(defaultOffset);
 
             BitmapWithDiscard = NewMaterial(
                 bitmapShader,
@@ -665,7 +680,9 @@ namespace Squared.Render {
                 BitmapWithDiscard,
                 CrossfadeBitmap,
                 UnderBitmap,
-                OverBitmap
+                OverBitmap,
+                OutlinedBitmap,
+                OutlinedBitmapWithDiscard
             };
 
             var filterMaterials = new[] {

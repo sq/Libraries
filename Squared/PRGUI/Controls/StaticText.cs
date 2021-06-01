@@ -72,6 +72,8 @@ namespace Squared.PRGUI.Controls {
 
         bool _ScaleToFitX, _ScaleToFitY;
 
+        protected virtual RichTextConfiguration RichTextConfiguration => Context.RichTextConfiguration;
+
         protected bool ScaleToFitX {
             get => _ScaleToFitX;
             set {
@@ -228,7 +230,7 @@ namespace Squared.PRGUI.Controls {
             if (_RichText.HasValue)
                 Content.RichText = _RichText.Value;
             if (Content.RichText)
-                Content.RichTextConfiguration = Context.RichTextConfiguration;
+                Content.RichTextConfiguration = RichTextConfiguration;
 
             if (measurement) {
                 if (!Content.IsValid || (ContentMeasurement == null)) {

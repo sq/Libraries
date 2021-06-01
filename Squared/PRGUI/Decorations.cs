@@ -37,6 +37,12 @@ namespace Squared.PRGUI.Decorations {
         }
     }
 
+    public enum TextStyle {
+        Normal,
+        Selected,
+        Shaded
+    }
+
     public struct DecorationSettings {
         public RectF Box, ContentBox;
         public ControlStates State;

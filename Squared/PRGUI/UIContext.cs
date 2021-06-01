@@ -794,7 +794,7 @@ namespace Squared.PRGUI {
             instance.DisplayOrder = int.MaxValue;
 
             if (textChanged || !IsTooltipVisible) {
-                var idealMaxSize = CanvasSize * MaxTooltipSize;
+                var idealMaxSize = CanvasSize * (content.Settings.MaxSize ?? cttt?.MaxTooltipSize ?? MaxTooltipSize);
 
                 instance.Text = text;
                 instance.ApplySettings(content.Settings);

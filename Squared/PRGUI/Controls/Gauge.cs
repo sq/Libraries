@@ -248,8 +248,8 @@ namespace Squared.PRGUI.Controls {
                 if (context.Pass != RasterizePasses.Content)
                     continue;
 
-                DrawMarkedRange(ref context, ref renderer, settings, ref originalCbox, direction, fill, mr);
-                needBumpLayer = true;
+                if (DrawMarkedRange(ref context, ref renderer, settings, ref originalCbox, direction, fill, mr))
+                    needBumpLayer = true;
             }
 
             // FIXME: Do we need to do this?
@@ -284,13 +284,15 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private void DrawMarkedRange (
+        private bool DrawMarkedRange (
             ref UIOperationContext context, ref ImperativeRenderer renderer, 
             DecorationSettings settings, ref RectF originalCbox, GaugeDirection direction,
             IDecorator fill, MarkedRange mr
         ) {
             float value1 = mr.Start.Get(context.NowL),
                 value2 = mr.End.Get(context.NowL);
+            if (value2 <= value1)
+                return false;
             settings.ContentBox = originalCbox;
             settings.TextColor = mr.Color ?? settings.TextColor;
             settings.UserData = new Vector4(value1, value2, 0f, 0f);
@@ -299,6 +301,7 @@ namespace Squared.PRGUI.Controls {
                 settings.Traits.Add("static");
             MakeContentBox(direction, value1, value2, ref settings.ContentBox);
             fill.Rasterize(ref context, ref renderer, settings);
+            return true;
         }
     }
 

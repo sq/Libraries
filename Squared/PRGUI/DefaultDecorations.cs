@@ -140,12 +140,13 @@ namespace Squared.PRGUI {
         /// </summary>
         public float OutlineScaleRatio { get; set; }
 
-        private Material TextMaterial, SelectedTextMaterial;
+        public Material TextMaterial, ShadedTextMaterial, SelectedTextMaterial;
 
         public DefaultDecorations (DefaultMaterialSet materials, float defaultMargin = 6, float defaultMarginCollapsed = 4) {
             Materials = materials;
 
             TextMaterial = materials.Get(materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
+            ShadedTextMaterial = materials.Get(materials.ScreenSpaceBitmap, blendState: BlendState.AlphaBlend);
             SelectedTextMaterial = materials.Get(materials.ScreenSpaceBitmap, blendState: BlendState.AlphaBlend);
 
             GlobalDefaultMargin = defaultMargin;
@@ -1659,12 +1660,12 @@ namespace Squared.PRGUI {
             UIOperationContext context, ControlStates state, 
             out Material material, ref Color? color
         ) {
-            return GetTextSettings(context, state, out material, ref color, false);
+            return GetTextSettings(context, state, out material, ref color, TextStyle.Normal);
         }
 
         public bool GetTextSettings (
             UIOperationContext context, ControlStates state, 
-            out Material material, ref Color? color, bool selected
+            out Material material, ref Color? color, TextStyle style
         ) {
             if (!color.HasValue)
                 color = ColorScheme.Text;
@@ -1672,9 +1673,18 @@ namespace Squared.PRGUI {
             if (state.IsFlagged(ControlStates.Disabled))
                 color = color?.ToGrayscale(DisabledTextAlpha);
 
-            material = selected
-                ? SelectedTextMaterial
-                : TextMaterial;
+            switch (style) {
+                case TextStyle.Normal:
+                default:
+                    material = TextMaterial;
+                    break;
+                case TextStyle.Selected:
+                    material = SelectedTextMaterial;
+                    break;
+                case TextStyle.Shaded:
+                    material = ShadedTextMaterial;
+                    break;
+            }
             return true;
         }
 
@@ -1683,7 +1693,7 @@ namespace Squared.PRGUI {
             out Material material, ref Color? color
         ) {
             // HACK: Pass selected=true to get the unshadowed material
-            var result = GetTextSettings(context, state, out material, ref color, true);
+            var result = GetTextSettings(context, state, out material, ref color, TextStyle.Shaded);
             if (color.HasValue)
                 color = color.Value * 0.5f;
             return result;
@@ -1695,7 +1705,7 @@ namespace Squared.PRGUI {
         ) {
             state &= ~ControlStates.Focused;
             state &= ~ControlStates.Checked;
-            GetTextSettings(context, state, out material, ref color, false);
+            GetTextSettings(context, state, out material, ref color, TextStyle.Normal);
             return true;
         }
 
@@ -1750,7 +1760,7 @@ namespace Squared.PRGUI {
             UIOperationContext context, ControlStates state, 
             out Material material, ref Color? color
         ) {
-            GetTextSettings(context, state, out material, ref color, selected: true);
+            GetTextSettings(context, state, out material, ref color, TextStyle.Selected);
             color = ColorScheme.SelectedText;
             return true;
         }

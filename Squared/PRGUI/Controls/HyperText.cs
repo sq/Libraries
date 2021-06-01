@@ -196,6 +196,7 @@ namespace Squared.PRGUI.Controls {
         Control ICustomTooltipTarget.Anchor => null;
         Vector2? ICustomTooltipTarget.AnchorPoint => null;
         Vector2? ICustomTooltipTarget.ControlAlignmentPoint => null;
+        Vector2? ICustomTooltipTarget.MaxTooltipSize => null;
 
         public HyperText Parent {
             get {

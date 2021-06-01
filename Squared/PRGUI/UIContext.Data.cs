@@ -145,7 +145,7 @@ namespace Squared.PRGUI {
         public readonly List<IInputSource> InputSources = new List<IInputSource>();
 
         public DefaultMaterialSet Materials { get; private set; }
-        public RichTextConfiguration RichTextConfiguration;
+        public RichTextConfiguration RichTextConfiguration = new RichTextConfiguration();
 
         public event Action<string> OnLogMessage;
     }

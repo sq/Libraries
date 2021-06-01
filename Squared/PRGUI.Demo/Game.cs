@@ -45,6 +45,7 @@ namespace PRGUI.Demo {
         public GamepadVirtualKeyboardAndCursor GamePad = new GamepadVirtualKeyboardAndCursor();
 
         public Material TextMaterial { get; private set; }
+        public Material SelectedTextMaterial { get; private set; }
 
         public IGlyphSource Font;
         public AutoRenderTarget UIRenderTarget;
@@ -184,11 +185,18 @@ namespace PRGUI.Demo {
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
             TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
-            TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.66f));
+            TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.8f));
             TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.75f * DPIFactor);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1.33f);
 
-            Decorations = new Squared.PRGUI.DefaultDecorations(Materials) {
+            SelectedTextMaterial = Materials.Get(Materials.OutlinedBitmap, blendState: BlendState.AlphaBlend);
+            SelectedTextMaterial.Parameters.ShadowColor.SetValue(new Vector4(1, 1, 1, 1));
+            SelectedTextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.33f * DPIFactor);
+            SelectedTextMaterial.Parameters.ShadowMipBias.SetValue(1f);
+
+            Decorations = new DefaultDecorations(Materials) {
+                TextMaterial = TextMaterial,
+                SelectedTextMaterial = SelectedTextMaterial,
                 DefaultFont = Font,
                 TitleFont = TitleFont,
                 TooltipFont = tooltipFont,
