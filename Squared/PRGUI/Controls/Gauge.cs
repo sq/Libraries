@@ -8,12 +8,26 @@ using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class Gauge : Control, Accessibility.IReadingTarget, IValueControl<float>, IHasDescription {
+        public struct MarkedRange {
+            /// <summary>
+            /// If set, the range is drawn below the gauge's fill and limit, otherwise above
+            /// </summary>
+            public bool DrawBelow;
+            /// <summary>
+            /// If set, disables the default gradient applied to gauge fills
+            /// </summary>
+            public bool StaticColor;
+            public pSRGBColor? Color;
+            public Tween<float> Start, End;
+        }
+
         public GaugeDirection Direction = GaugeDirection.Auto;
 
         public const int ControlMinimumHeight = 30, ControlMinimumLength = 125;
@@ -25,6 +39,8 @@ namespace Squared.PRGUI.Controls {
             FastAnimationLength = 0.05f;
 
         private Tween<float> ValueTween = 0.5f;
+
+        public readonly List<MarkedRange> MarkedRanges = new List<MarkedRange>();
 
         public string Description { get; set; }
 
@@ -78,6 +94,8 @@ namespace Squared.PRGUI.Controls {
             SmartAppend(sb, (float)Math.Round(Value * 100, 2, MidpointRounding.AwayFromZero));
             sb.Append("%");
         }
+
+        public bool IsAnimating => !ValueTween.IsConstant && !ValueTween.IsOver(Context.NowL);
 
         private void AnimateTo (float to) {
             // HACK
@@ -221,18 +239,66 @@ namespace Squared.PRGUI.Controls {
             var fill = context.DecorationProvider.Gauge;
             var originalCbox = settings.ContentBox;
             var value1 = ValueTween.Get(Context.NowL);
-            settings.UserData = value1;
+            settings.UserData = new Vector4(0f, value1, 0, 0);
+
+            bool needBumpLayer = false;
+            foreach (var mr in MarkedRanges) {
+                if (!mr.DrawBelow)
+                    continue;
+                if (context.Pass != RasterizePasses.Content)
+                    continue;
+
+                DrawMarkedRange(ref context, ref renderer, settings, ref originalCbox, direction, fill, mr);
+                needBumpLayer = true;
+            }
+
+            // FIXME: Do we need to do this?
+            if (needBumpLayer)
+                renderer.Layer += 1;
 
             MakeContentBox(direction, 0f, value1, ref settings.ContentBox);
             base.OnRasterize(ref context, ref renderer, settings, decorations);
 
-            if ((_Limit < 1.0f) && (context.Pass == RasterizePasses.Content)) {
+            if (context.Pass != RasterizePasses.Content)
+                return;
+
+            if (_Limit < 1.0f) {
                 settings.ContentBox = originalCbox;
-                settings.UserData = _Limit;
+                settings.UserData = new Vector4(_Limit, 1f, 0, 0);
                 settings.Traits.Add("limit");
                 MakeContentBox(direction, _Limit, 1f, ref settings.ContentBox);
                 fill.Rasterize(ref context, ref renderer, settings);
             }
+
+            needBumpLayer = true;
+            foreach (var mr in MarkedRanges) {
+                if (mr.DrawBelow)
+                    continue;
+
+                if (needBumpLayer) {
+                    renderer.Layer += 1;
+                    needBumpLayer = false;
+                }
+
+                DrawMarkedRange(ref context, ref renderer, settings, ref originalCbox, direction, fill, mr);
+            }
+        }
+
+        private void DrawMarkedRange (
+            ref UIOperationContext context, ref ImperativeRenderer renderer, 
+            DecorationSettings settings, ref RectF originalCbox, GaugeDirection direction,
+            IDecorator fill, MarkedRange mr
+        ) {
+            float value1 = mr.Start.Get(context.NowL),
+                value2 = mr.End.Get(context.NowL);
+            settings.ContentBox = originalCbox;
+            settings.TextColor = mr.Color ?? settings.TextColor;
+            settings.UserData = new Vector4(value1, value2, 0f, 0f);
+            settings.Traits.Clear();
+            if (mr.StaticColor)
+                settings.Traits.Add("static");
+            MakeContentBox(direction, value1, value2, ref settings.ContentBox);
+            fill.Rasterize(ref context, ref renderer, settings);
         }
     }
 

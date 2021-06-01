@@ -43,7 +43,7 @@ namespace Squared.PRGUI.Decorations {
         public DenseList<string> Traits;
         public pSRGBColor? BackgroundColor, TextColor;
         public BackgroundImageSettings BackgroundImage;
-        public float UserData;
+        public Vector4 UserData;
         public bool IsCompositing;
 
         public bool HasTrait (string trait) {

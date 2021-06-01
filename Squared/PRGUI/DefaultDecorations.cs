@@ -34,6 +34,7 @@ namespace Squared.PRGUI {
             SliderFill = Color.Black * 0.1f,
             AcceleratorFill = Color.Black * 0.8f,
             GaugeFill = Color.Black * 0.1f,
+            GaugeLimitFill = new Color(64, 64, 64),
             GaugeValueFill = Color.Transparent;
 
         public Color SelectedText = new Color(0, 30, 55),
@@ -45,6 +46,10 @@ namespace Squared.PRGUI {
         public Color? FloatingContainerOutline, 
             FloatingContainerFill,
             WindowFill = new Color(60, 60, 60);
+
+        public float GaugeFillAlpha1 = 0.5f, GaugeFillAlpha2 = 1.0f,
+            GaugeLimitAlpha = 0.7f,
+            GaugeFillBrightness1 = 1.0f, GaugeFillBrightness2 = 1.0f;
 
         public DefaultDecorationColorScheme () {
             GaugeValueFill = SelectionFill;
@@ -542,10 +547,6 @@ namespace Squared.PRGUI {
             ScrollbarRadius = 3f,
             ScrollbarMinThumbSize = 24f;
 
-        public float GaugeFillAlpha1 = 0.5f, GaugeFillAlpha2 = 1.0f,
-            GaugeLimitAlpha = 0.7f,
-            GaugeFillBrightness1 = 1.0f, GaugeFillBrightness2 = 1.0f;
-
         public RasterShadowSettings? InteractableShadow, 
             ContainerShadow,
             FloatingContainerShadow,
@@ -898,18 +899,23 @@ namespace Squared.PRGUI {
                     break;
             }
 
-            float alpha1 = GaugeFillAlpha1,
-                alphaDelta = GaugeFillAlpha2 - GaugeFillAlpha1,
-                alpha2 = Arithmetic.Saturate(alpha1 + (alphaDelta * settings.UserData));
-            float brightness1 = GaugeFillBrightness1,
-                brightnessDelta = GaugeFillBrightness2 - GaugeFillBrightness1,
-                brightness2 = brightness1 + (brightnessDelta * settings.UserData);
+            float value1 = settings.UserData.X,
+                value2 = settings.UserData.Y,
+                alphaDelta = ColorScheme.GaugeFillAlpha2 - ColorScheme.GaugeFillAlpha1,
+                alpha1 = Arithmetic.Saturate(ColorScheme.GaugeFillAlpha1 + (alphaDelta * value1)),
+                alpha2 = Arithmetic.Saturate(ColorScheme.GaugeFillAlpha1 + (alphaDelta * value2));
+            float brightnessDelta = ColorScheme.GaugeFillBrightness2 - ColorScheme.GaugeFillBrightness1,
+                brightness1 = ColorScheme.GaugeFillBrightness1 + (brightnessDelta * value1),
+                brightness2 = ColorScheme.GaugeFillBrightness1 + (brightnessDelta * value2);
             // FIXME: Padding will make this slightly wrong
             pSRGBColor fillColor = settings.TextColor ?? ColorScheme.GaugeValueFill, 
                 fillColor1, fillColor2;
             if (settings.Traits.IndexOf("limit") >= 0) {
-                alpha1 = alpha2 = GaugeLimitAlpha;
-                fillColor = new Color(64, 64, 64);
+                alpha1 = alpha2 = ColorScheme.GaugeLimitAlpha;
+                fillColor = ColorScheme.GaugeLimitFill;
+            } else if (settings.Traits.IndexOf("static") >= 0) {
+                alpha1 = alpha2 = 1.0f;
+                brightness1 = brightness2 = 1.0f;
             }
             fillColor1 = fillColor.AdjustBrightness(brightness1) * alpha1;
             fillColor2 = fillColor.AdjustBrightness(brightness2) * alpha2;
