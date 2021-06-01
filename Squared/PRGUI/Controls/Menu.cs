@@ -729,7 +729,8 @@ namespace Squared.PRGUI.Controls {
         }
         public void RemoveAt (int index) => Children.RemoveAt(index);
         public void Clear () => Children.Clear();
-        public void Add (Control child) => Children.Add(child);
+        new public void Add (Control child) => Children.Add(child);
+        public void Add (string text) => Children.Add(new StaticText { Text = text });
 
         bool IModal.BlockHitTests => false;
         bool IModal.BlockInput => !CloseOnClickOutside && BlockInput;

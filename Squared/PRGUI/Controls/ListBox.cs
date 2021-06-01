@@ -456,10 +456,11 @@ namespace Squared.PRGUI.Controls {
             Items.Invalidate(item);
         }
 
-        public void Invalidate () {
+        public void Invalidate (bool purge = true) {
             NeedsUpdate = true;
             _Version++;
-            Items.Purge();
+            if (purge)
+                Items.Purge();
 
             foreach (var child in Children)
                 child.InvalidateLayout();
