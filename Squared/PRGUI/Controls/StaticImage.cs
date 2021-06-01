@@ -99,8 +99,9 @@ namespace Squared.PRGUI.Controls {
 
         public StaticImage ()
             : base () {
-            CanApplyOpacityWithoutCompositing = true;
         }
+
+        protected override bool CanApplyOpacityWithoutCompositing => Appearance.BackgroundColor.IsTransparent;
 
         public void SetFixedAxes (ImageDimensions axes) {
             ExpandAxes |= axes;

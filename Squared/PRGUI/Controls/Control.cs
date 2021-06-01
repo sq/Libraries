@@ -225,7 +225,12 @@ namespace Squared.PRGUI {
             }
         }
 
-        public virtual bool CanApplyOpacityWithoutCompositing { get; protected set; }
+        /// <summary>
+        /// If true, a temporary compositing surface will not be used when rasterizing
+        ///  this control when its opacity is below 1.0, and the control must apply the
+        ///  opacity value itself
+        /// </summary>
+        protected virtual bool CanApplyOpacityWithoutCompositing => false;
         /// <summary>
         /// Can receive focus via user input
         /// </summary>
@@ -1162,11 +1167,10 @@ namespace Squared.PRGUI {
                     (temp != Matrix.Identity)
                 );
 
+            var oldOpacity = context.Opacity;
             if (!needsComposition) {
-                var oldOpacity = context.Opacity;
                 context.Opacity *= opacity;
                 RasterizeAllPasses(ref context, ref box, ref passSet, false);
-                context.Opacity = oldOpacity;
             } else {
                 // HACK: Create padding around the element for drop shadows
                 box.SnapAndInset(out Vector2 tl, out Vector2 br, -Context.CompositorPaddingPx);
@@ -1188,6 +1192,7 @@ namespace Squared.PRGUI {
                     context.UIContext.ReleaseScratchRenderTarget(srt.Instance);
                 }
             }
+            context.Opacity = oldOpacity;
 
             return true;
         }
@@ -1227,6 +1232,7 @@ namespace Squared.PRGUI {
         ) {
             UIOperationContext compositionContext;
             context.Clone(out compositionContext);
+            compositionContext.Opacity = 1.0f;
             UpdateVisibleRegion(ref compositionContext, ref box);
 
             var newPassSet = new RasterizePassSet(ref rt.Renderer, 0, passSet.OverlayQueue);
@@ -1239,11 +1245,12 @@ namespace Squared.PRGUI {
                 (int)compositeBox.Left, (int)compositeBox.Top,
                 (int)compositeBox.Width, (int)compositeBox.Height
             );
+            var effectiveOpacity = context.Opacity * opacity;
             var dc = new BitmapDrawCall(
                 // FIXME
                 rt.Instance.Get(), pos,
                 GameExtensionMethods.BoundsFromRectangle((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y, ref sourceRect),
-                new Color(opacity, opacity, opacity, opacity), scale: 1.0f / Context.ScratchScaleFactor
+                new Color(effectiveOpacity, effectiveOpacity, effectiveOpacity, effectiveOpacity), scale: 1.0f / Context.ScratchScaleFactor
             );
 
             if (Appearance.HasTransformMatrix || enableCompositor) {

@@ -663,7 +663,8 @@ namespace Squared.PRGUI.Controls {
             : base () {
             Content.WordWrap = true;
             Content.CharacterWrap = false;
-            CanApplyOpacityWithoutCompositing = true;
         }
+
+        protected override bool CanApplyOpacityWithoutCompositing => Appearance.BackgroundColor.IsTransparent;
     }
 }

@@ -88,6 +88,11 @@ namespace Squared.PRGUI.Controls {
             return Set(name, replacement);
         }
 
+        // For compatibility with collection initializers
+        public void Add<T> (T value) {
+            Set(value);
+        }
+
         public void Add<T> (string name, T value) {
             Set(name, value);
         }

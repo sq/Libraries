@@ -15,6 +15,9 @@ namespace Squared.PRGUI {
 
         public bool HasValue => pLinear.HasValue;
 
+        public bool IsTransparent => !HasValue ||
+            (pLinear.Value.IsConstant && (pLinear.Value.From.W <= 0));
+
         public Tween<Color>? Color {
             set => Update(ref pLinear, value);
         }

@@ -38,10 +38,11 @@ namespace Squared.PRGUI.Controls {
 
         public HyperText ()
             : base () {
-            // HACK: Due to decorators
-            CanApplyOpacityWithoutCompositing = false;
             RichText = true;
         }
+
+        // HACK: Due to decorators
+        protected override bool CanApplyOpacityWithoutCompositing => false;
 
         protected override bool HasChildren => true;
         int IControlContainer.ChildrenToSkipWhenBuilding => 0;
