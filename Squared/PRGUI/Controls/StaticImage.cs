@@ -273,6 +273,8 @@ namespace Squared.PRGUI.Controls {
                     Arithmetic.Lerp(settings.Box.Left, settings.Box.Extent.X, Alignment.X),
                     Arithmetic.Lerp(settings.Box.Top, settings.Box.Extent.Y, Alignment.Y)
                 );
+                // HACK: Fix images overhanging by a pixel
+                position = position.Floor();
                 var origin = Alignment;
                 // FIXME: Always use context.Opacity?
                 var color = settings.IsCompositing 

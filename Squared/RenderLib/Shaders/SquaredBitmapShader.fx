@@ -12,7 +12,9 @@
 //  the atlas is high-DPI
 #define DefaultShadowedTopMipBias MIP_BIAS
 
-#define OutlineSumDivisor 1.45
+// FIXME: Make these adjustable uniforms
+#define OutlineSumDivisor 1.45 // HACK: Make the outline thicker than a normal drop shadow
+#define OutlineExponent 1.5 // HACK: Make the outlines sharper even if the texture edge is soft
 
 uniform const float4 GlobalShadowColor;
 uniform const float2 ShadowOffset;
@@ -106,20 +108,21 @@ void OutlinedPixelShader(
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
 
-    float4 shadowColor = texColor;
+    float shadowAlpha = texColor.a;
     float2 offset = (ShadowOffset * HalfTexel * 2);
     [flatten]
     for (int i = 0; i < 4; i++) {
         float x = (i % 2) == 0 ? 1 : -1,
             y = (i / 2) == 0 ? 1 : -1;
         float2 shadowTexCoord = clamp2(texCoord + float2(offset.x * x, offset.y * y), texRgn.xy, texRgn.zw);
-        shadowColor += tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias));
+        shadowAlpha += tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias)).a;
     }
 
-    shadowColor = saturate(shadowColor / OutlineSumDivisor);
-    shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * shadowColor;
-    if (shadowColor.a > 1)
-        shadowColor = normalize(shadowColor);
+    shadowAlpha = saturate(shadowAlpha / OutlineSumDivisor);
+    shadowAlpha = pow(shadowAlpha, OutlineExponent);
+    float4 shadowColor = float4(shadowColorIn.rgb, 1);
+    shadowColor = lerp(GlobalShadowColor, shadowColor, shadowColorIn.a > 0 ? 1 : 0);
+    shadowColor *= shadowAlpha;
 
     float4 overColor = (texColor * multiplyColor);
     overColor += (addColor * overColor.a);
