@@ -97,6 +97,10 @@ namespace Squared.PRGUI.Controls {
 
         public bool ShowLoadingSpinner;
 
+        public Color MultiplyColor = Color.White;
+        public Vector4 RasterizerUserData;
+        public Material Material;
+
         public StaticImage ()
             : base () {
         }
@@ -270,13 +274,15 @@ namespace Squared.PRGUI.Controls {
                     Arithmetic.Lerp(settings.Box.Top, settings.Box.Extent.Y, Alignment.Y)
                 );
                 var origin = Alignment;
+                // FIXME: Always use context.Opacity?
                 var color = settings.IsCompositing 
-                    ? Color.White 
-                    : Color.White * context.Opacity;
+                    ? MultiplyColor
+                    : MultiplyColor * context.Opacity;
                 var drawCall = new BitmapDrawCall(instance, position.Round(0)) {
                     Origin = Alignment,
                     ScaleF = scale,
                     MultiplyColor = color,
+                    UserData = RasterizerUserData
                 };
                 Material material = null;
 
@@ -289,7 +295,7 @@ namespace Squared.PRGUI.Controls {
                     material = GetMaterialForCompositing(renderer.Materials);
                 }
 
-                renderer.Draw(ref drawCall, material: material);
+                renderer.Draw(ref drawCall, material: Material ?? material);
             }
 
             if (ShowLoadingSpinner)
