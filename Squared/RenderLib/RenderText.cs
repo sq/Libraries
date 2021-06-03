@@ -119,7 +119,7 @@ namespace Squared.Render.Text {
     }
 
     public struct LayoutMarker {
-        public class Comparer : IRefComparer<LayoutMarker> {
+        public sealed class Comparer : IRefComparer<LayoutMarker> {
             public static readonly Comparer Instance = new Comparer();
 
             public int Compare (ref LayoutMarker lhs, ref LayoutMarker rhs) {
@@ -166,7 +166,7 @@ namespace Squared.Render.Text {
     }
 
     public struct LayoutHitTest {
-        public class Comparer : IRefComparer<LayoutHitTest> {
+        public sealed class Comparer : IRefComparer<LayoutHitTest> {
             public static readonly Comparer Instance = new Comparer();
 
             public int Compare (ref LayoutHitTest lhs, ref LayoutHitTest rhs) {

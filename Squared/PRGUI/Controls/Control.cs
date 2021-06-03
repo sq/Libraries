@@ -1103,7 +1103,9 @@ namespace Squared.PRGUI {
         public bool Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, float opacity = 1) {
             // HACK: Do this first since it fires opacity change events
             var hidden = false;
-            opacity *= GetOpacity(context.NowL);
+
+            var tweenOpacity = GetOpacity(context.NowL);
+            opacity *= tweenOpacity;
 
             if (opacity <= 0)
                 hidden = true;

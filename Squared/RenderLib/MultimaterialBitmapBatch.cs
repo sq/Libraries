@@ -40,7 +40,7 @@ namespace Squared.Render {
     }
 
     public class MultimaterialBitmapBatch : BitmapBatchBase<MaterialBitmapDrawCall>, IBitmapBatch  {
-        internal class MultimaterialComparer : IRefComparer<MaterialBitmapDrawCall>, IComparer<MaterialBitmapDrawCall> {
+        internal sealed class MultimaterialComparer : IRefComparer<MaterialBitmapDrawCall>, IComparer<MaterialBitmapDrawCall> {
             public IRefComparer<BitmapDrawCall> DrawCallComparer;
             public static readonly ReferenceComparer<Material> MaterialComparer = new ReferenceComparer<Material>();
 

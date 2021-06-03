@@ -60,7 +60,7 @@ namespace Squared.Util.Event {
         }
     }
 
-    public class EventFilterComparer : IEqualityComparer<EventFilter> {
+    public sealed class EventFilterComparer : IEqualityComparer<EventFilter> {
         public bool Equals (EventFilter x, EventFilter y) {
             if ((x.SourceHashCode != y.SourceHashCode) || (x.TypeHashCode != y.TypeHashCode) || (x.Type != y.Type))
                 return false;

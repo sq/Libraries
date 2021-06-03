@@ -268,7 +268,7 @@ namespace Squared.Util.DeclarativeSort {
     }
 
     public class Tag {
-        public class EqualityComparer : IEqualityComparer<Tag> {
+        public sealed class EqualityComparer : IEqualityComparer<Tag> {
             public static readonly EqualityComparer Instance = new EqualityComparer();
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)] 
@@ -283,7 +283,7 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         // Only for sorting within tag arrays to make equality comparisons of tag arrays valid
-        internal class Comparer : IComparer<Tag> {
+        internal sealed class Comparer : IComparer<Tag> {
             public static readonly Comparer Instance = new Comparer();
 
             public int Compare (Tag x, Tag y) {
@@ -460,7 +460,7 @@ namespace Squared.Util.DeclarativeSort {
     }
 
     public partial class TagSet {
-        private class TagArrayComparer : IEqualityComparer<Tag[]> {
+        private sealed class TagArrayComparer : IEqualityComparer<Tag[]> {
             public bool Equals (Tag[] x, Tag[] y) {
                 return x.SequenceEqual(y);
             }
@@ -601,7 +601,7 @@ namespace Squared.Util.DeclarativeSort {
         internal const bool Tracing = false;
 
         private struct DownwardEdge {
-            public class Comparer : IComparer<DownwardEdge> {
+            public sealed class Comparer : IComparer<DownwardEdge> {
                 public static readonly Comparer Instance = new Comparer();
 
                 public int Compare (DownwardEdge lhs, DownwardEdge rhs) {
@@ -1127,7 +1127,7 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
-        public class SorterComparer : IRefComparer<TValue>, IComparer<TValue> {
+        public sealed class SorterComparer : IRefComparer<TValue>, IComparer<TValue> {
             public const bool Tracing = false;
 
             public  readonly Sorter<TValue> Sorter;

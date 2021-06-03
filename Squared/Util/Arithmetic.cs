@@ -166,7 +166,7 @@ namespace Squared.Util {
             public Type T, U;
         }
 
-        private struct OperatorKeyComparer : IEqualityComparer<OperatorKey> {
+        private sealed class OperatorKeyComparer : IEqualityComparer<OperatorKey> {
             public bool Equals (OperatorKey x, OperatorKey y) {
                 return (x.Operator == y.Operator) &&
                     (x.T == y.T) &&

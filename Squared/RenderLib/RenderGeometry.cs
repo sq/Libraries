@@ -36,7 +36,7 @@ namespace Squared.Render {
         public float Scalar0, Scalar1;
     }
 
-    public class GeometryDrawCallSorter : IRefComparer<GeometryDrawCall> {
+    public sealed class GeometryDrawCallSorter : IRefComparer<GeometryDrawCall> {
         public int Compare (ref GeometryDrawCall lhs, ref GeometryDrawCall rhs) {
             return lhs.PreparerHash.CompareTo(rhs.PreparerHash);
         }

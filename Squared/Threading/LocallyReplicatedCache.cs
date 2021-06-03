@@ -200,7 +200,7 @@ namespace Squared.Threading {
     public class LocallyReplicatedObjectCache<TObject>
         where TObject : class
     {
-        public class EntryComparer : IEqualityComparer<Entry> {
+        public sealed class EntryComparer : IEqualityComparer<Entry> {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool Equals (Entry x, Entry y) {
                 return x.Equals(y);

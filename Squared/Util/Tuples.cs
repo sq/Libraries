@@ -16,7 +16,7 @@ namespace Squared.Util {
     public struct Pair<T> : IComparable<Pair<T>>, IEquatable<Pair<T>> 
         where T : IComparable<T> {
 
-        public class Comparer : IEqualityComparer<Pair<T>> {
+        public sealed class Comparer : IEqualityComparer<Pair<T>> {
             public static readonly Comparer Instance = new Comparer();
 
             public bool Equals (Pair<T> x, Pair<T> y) {
@@ -177,7 +177,7 @@ namespace Squared.Util {
     public struct Triplet<T> : IComparable<Triplet<T>>, IEquatable<Triplet<T>>
         where T : IComparable<T> {
 
-        public class Comparer : IEqualityComparer<Triplet<T>> {
+        public sealed class Comparer : IEqualityComparer<Triplet<T>> {
             public static readonly Comparer Instance = new Comparer();
 
             public bool Equals (Triplet<T> x, Triplet<T> y) {

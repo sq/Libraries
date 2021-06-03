@@ -889,7 +889,7 @@ namespace Squared.Task {
     }
 
     public class OwnedFutureSet : IEnumerable<IFuture>, IDisposable {
-        private class FutureComparer : IEqualityComparer<IFuture> {
+        private sealed class FutureComparer : IEqualityComparer<IFuture> {
             bool IEqualityComparer<IFuture>.Equals (IFuture x, IFuture y) {
                 return x == y;
             }

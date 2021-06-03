@@ -264,7 +264,7 @@ namespace Squared.Render {
         public static bool PreloadAllShaders = false;
 
         public struct RasterShaderKey {
-            public class Comparer : IEqualityComparer<RasterShaderKey> {
+            public sealed class Comparer : IEqualityComparer<RasterShaderKey> {
                 public bool Equals (RasterShaderKey x, RasterShaderKey y) {
                     return x.Equals(y);
                 }
@@ -340,7 +340,7 @@ namespace Squared.Render {
             }
         }
 
-        protected class MaterialCacheKeyComparer : IEqualityComparer<MaterialCacheKey> {
+        protected sealed class MaterialCacheKeyComparer : IEqualityComparer<MaterialCacheKey> {
             public bool Equals (MaterialCacheKey x, MaterialCacheKey y) {
                 return x.Equals(ref y);
             }

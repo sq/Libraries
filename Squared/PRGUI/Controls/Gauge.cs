@@ -252,12 +252,15 @@ namespace Squared.PRGUI.Controls {
                     needBumpLayer = true;
             }
 
-            // FIXME: Do we need to do this?
-            if (needBumpLayer)
-                renderer.Layer += 1;
-
             MakeContentBox(direction, 0f, value1, ref settings.ContentBox);
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+            // HACK
+            if ((value1 > 0) || (context.Pass != RasterizePasses.Content)) {
+                // FIXME: Do we need to do this?
+                if (needBumpLayer)
+                    renderer.Layer += 1;
+
+                base.OnRasterize(ref context, ref renderer, settings, decorations);
+            }
 
             if (context.Pass != RasterizePasses.Content)
                 return;

@@ -55,6 +55,8 @@ namespace Squared.PRGUI.Controls {
         private float AutoSizeComputedContentHeight;
         private float MostRecentXScaleFactor = 1, MostRecentYScaleFactor = 1;
 
+        protected Vector4? RasterizerUserData;
+
         public StaticTextBase ()
             : base () {
             // Multiline = false;
@@ -507,14 +509,14 @@ namespace Squared.PRGUI.Controls {
             if (CharacterLimit != null)
                 segment = new ArraySegment<BitmapDrawCall>(segment.Array, segment.Offset, Math.Min(CharacterLimit.Value, segment.Count));
 
-            var opacity = GetOpacity(context.NowL);
+            var opacity = context.Opacity;
             var multiplyOpacity = (opacity < 1) ? opacity : (float?)null;
 
             renderer.DrawMultiple(
                 segment, offset: (textOffset + ca).Floor(),
                 material: material, samplerState: RenderStates.Text,
                 scale: textScale, multiplyColor: overrideColor?.ToColor(),
-                multiplyOpacity: multiplyOpacity 
+                userData: RasterizerUserData, multiplyOpacity: multiplyOpacity 
             );
 
             _LastDrawOffset = textOffset.Floor();
@@ -597,9 +599,7 @@ namespace Squared.PRGUI.Controls {
         AbstractString Accessibility.IReadingTarget.Text => GetReadingText();
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) => FormatValueInto(sb);
 
-        void IPostLayoutListener.OnLayoutComplete (
-            ref UIOperationContext context, ref bool relayoutRequested
-        ) {
+        protected virtual void OnLayoutComplete( ref UIOperationContext context, ref bool relayoutRequested) {
             if (_NeedRelayout) {
                 relayoutRequested = true;
                 _NeedRelayout = false;
@@ -612,6 +612,12 @@ namespace Squared.PRGUI.Controls {
             // FIXME: This is probably wrong?
             if (!AutoSizeWidth && !Wrap && MostRecentContentBoxWidth.HasValue)
                 return;
+        }
+
+        void IPostLayoutListener.OnLayoutComplete (
+            ref UIOperationContext context, ref bool relayoutRequested
+        ) {
+            OnLayoutComplete(ref context, ref relayoutRequested);
         }
     }
 

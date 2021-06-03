@@ -9,7 +9,7 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class ItemListManager<T> {
-        private class IndexComparer : IRefComparer<int>, IEqualityComparer<int> {
+        private sealed class IndexComparer : IRefComparer<int>, IEqualityComparer<int> {
             public static IndexComparer Instance = new IndexComparer();
 
             public int Compare (ref int lhs, ref int rhs) {

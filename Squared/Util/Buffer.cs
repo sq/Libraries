@@ -95,7 +95,7 @@ namespace Squared.Util {
             }
         }
 
-        private class PoolEntryComparer : IRefComparer<T[]> {
+        private sealed class PoolEntryComparer : IRefComparer<T[]> {
             public static readonly PoolEntryComparer Instance = new PoolEntryComparer();
 
             public int Compare (ref T[] x, ref T[] y) {

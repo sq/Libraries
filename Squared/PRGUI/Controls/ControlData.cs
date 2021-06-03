@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 
 namespace Squared.PRGUI.Controls {
     public struct ControlDataCollection : IEnumerable<KeyValuePair<string, object>> {
+        // TODO: If we only have a 1-2 pieces of data, store them without
+        //  allocating an entire dictionary
+        // Maybe use DenseList all the time instead of a dict
         Dictionary<ControlDataKey, object> Data;
 
         public void Clear () {

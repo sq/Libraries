@@ -11,7 +11,7 @@ namespace Squared.Game {
         void RemovedFromCollection (WeakReference collection);
     }
 
-    public class IntPairComparer : IEqualityComparer<Pair<int>> {
+    public sealed class IntPairComparer : IEqualityComparer<Pair<int>> {
         public bool Equals (Pair<int> x, Pair<int> y) {
             return (x.First == y.First) && (x.Second == y.Second);
         }
@@ -388,7 +388,7 @@ namespace Squared.Game {
             }
         }
 
-        internal class ItemInfoComparer : IEqualityComparer<ItemInfo> {
+        internal sealed class ItemInfoComparer : IEqualityComparer<ItemInfo> {
             public bool Equals (ItemInfo x, ItemInfo y) {
                 return (x == y);
             }

@@ -292,7 +292,7 @@ namespace Squared.PRGUI {
         public Control Control;
     }
 
-    internal class TabOrderComparer : IComparer<IndexedControl> {
+    internal sealed class TabOrderComparer : IComparer<IndexedControl> {
         public static readonly TabOrderComparer Instance = new TabOrderComparer();
 
         public int Compare (IndexedControl x, IndexedControl y) {
@@ -303,7 +303,7 @@ namespace Squared.PRGUI {
         }
     }
 
-    internal class PaintOrderComparer : IComparer<Control> {
+    internal sealed class PaintOrderComparer : IComparer<Control> {
         public static readonly PaintOrderComparer Instance = new PaintOrderComparer();
 
         public int Compare (Control x, Control y) {

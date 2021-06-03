@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 
 namespace Squared.Game {
-    public class Vector2Comparer : IEqualityComparer<Vector2> {
+    public sealed class Vector2Comparer : IEqualityComparer<Vector2> {
         public bool Equals (Vector2 x, Vector2 y) {
             return (x.X == y.X) && (x.Y == y.Y);
         }

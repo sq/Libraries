@@ -72,7 +72,7 @@ namespace Squared.Util {
             public TData Data;
         }
 
-        public class PointPositionComparer : IComparer<Point> {
+        public sealed class PointPositionComparer : IComparer<Point> {
             public int Compare (Point x, Point y) {
                 return x.Position.CompareTo(y.Position);
             }

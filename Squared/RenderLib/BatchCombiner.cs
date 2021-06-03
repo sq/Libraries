@@ -12,7 +12,7 @@ namespace Squared.Render {
         Batch Combine (Batch lhs, Batch rhs);
     }
 
-    public class BatchTypeSorter : IRefComparer<Batch>, IComparer<Batch> {
+    public sealed class BatchTypeSorter : IRefComparer<Batch>, IComparer<Batch> {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref Batch x, ref Batch y) {
             if (x == null)

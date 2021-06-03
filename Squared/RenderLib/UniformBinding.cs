@@ -487,7 +487,7 @@ namespace Squared.Render {
     }
 
     internal struct UniformBindingKey {
-        public class EqualityComparer : IEqualityComparer<UniformBindingKey> {
+        public sealed class EqualityComparer : IEqualityComparer<UniformBindingKey> {
             public bool Equals (UniformBindingKey x, UniformBindingKey y) {
                 return x.Equals(y);
             }

@@ -42,7 +42,7 @@ namespace Squared.Util {
         }
     }
 
-    public class ReferenceComparer<T> : IEqualityComparer<T>
+    public sealed class ReferenceComparer<T> : IEqualityComparer<T>
         where T : class {
 
         public bool Equals (T x, T y) {
