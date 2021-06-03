@@ -634,7 +634,12 @@ namespace Squared.PRGUI {
 
             var disappearDelay = (cttt?.TooltipDisappearDelay ?? TooltipDisappearDelay);
 
-            if (!tooltipText.IsNull) {
+            if (
+                !tooltipText.IsNull && 
+                // HACK: Setting .Visible = false on the current tooltip target or one of its
+                //  parents will normally leave the tooltip open unless we do this
+                !Control.IsRecursivelyTransparent(target, true)
+            ) {
                 if (!FirstTooltipHoverTime.HasValue)
                     FirstTooltipHoverTime = now;
 
@@ -658,6 +663,7 @@ namespace Squared.PRGUI {
             } else {
                 var shouldDismissInstantly = (target != null) && IsTooltipActive && 
                     GetTooltipInstance().GetRect(context: this).Contains(LastMousePosition);
+
                 // TODO: Instead of instantly hiding, maybe just fade the tooltip out partially?
                 HideTooltip(shouldDismissInstantly);
 
