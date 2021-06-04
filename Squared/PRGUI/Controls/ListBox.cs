@@ -201,6 +201,7 @@ namespace Squared.PRGUI.Controls {
             SelectedItemHasChangedSinceLastUpdate = true;
             // FIXME: Should we defer this?
             FireEvent(UIEvents.ValueChanged, SelectedItem);
+            FireEvent(UIEvents.SelectionChanged, SelectedItem);
             if (forUserInput)
                 FireEvent(UIEvents.ValueChangedByUser, SelectedItem);
         }
