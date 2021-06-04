@@ -61,7 +61,7 @@ namespace Squared.PRGUI.Controls {
 
         public string Description { get; set; }
 
-        private Control _SelectedItem;
+        private Control _SelectedItem, _HoveringItem;
 
         public bool AllowProgrammaticClose { get; set; } = true;
         public bool DeselectOnMouseLeave { get; set; } = true;
@@ -108,7 +108,8 @@ namespace Squared.PRGUI.Controls {
 
         public bool IsActive { get; private set; }
 
-        private AbstractTooltipContent SelectedItemTooltip = new AbstractTooltipContent(GetTooltipForSelectedItem);
+        private AbstractTooltipContent SelectedItemTooltip = 
+            new AbstractTooltipContent(GetTooltipForSelectedItem);
 
         protected Control _FocusDonor;
         public Control FocusDonor => _FocusDonor;
@@ -119,8 +120,9 @@ namespace Squared.PRGUI.Controls {
                 return default(AbstractString);
 
             AbstractString result = default(AbstractString);
-            if (m._SelectedItem != null)
-                result = m._SelectedItem.TooltipContent.Get(m._SelectedItem);
+            var item = m._SelectedItem ?? m._HoveringItem;
+            if (item != null)
+                result = item.TooltipContent.Get(item);
             if (result == default(AbstractString))
                 result = m.TooltipContent.Get(m);
             return result;
@@ -267,6 +269,7 @@ namespace Squared.PRGUI.Controls {
             // Console.WriteLine($"menu.{name}");
 
             var item = ChildFromGlobalPosition(args.RelativeGlobalPosition);
+            _HoveringItem = item;
 
             if (name == UIEvents.MouseDown) {
                 if (!args.Box.Contains(args.RelativeGlobalPosition))
