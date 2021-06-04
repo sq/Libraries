@@ -41,11 +41,16 @@ namespace Squared.PRGUI.Controls {
 
         private Future<Control> NextResultFuture = null;
 
-        AbstractTooltipContent ICustomTooltipTarget.GetContent () => SelectedItemTooltip;
+        private Control TooltipTarget => _SelectedItem ?? _HoveringItem;
+
+        AbstractTooltipContent ICustomTooltipTarget.GetContent () => new AbstractTooltipContent(
+            GetTooltipForSelectedItem, settings: GetTooltipSettingsForSelectedItem()
+        );
+
         float? ICustomTooltipTarget.TooltipDisappearDelay => null;
-        float? ICustomTooltipTarget.TooltipAppearanceDelay => TooltipContent.Equals(SelectedItemTooltip) && 
-            (SelectedItem != null) &&
-            !SelectedItem.TooltipContent.Equals(default(AbstractTooltipContent))
+        float? ICustomTooltipTarget.TooltipAppearanceDelay => TooltipContent.Equals(default(AbstractTooltipContent)) && 
+            (TooltipTarget != null) &&
+            !TooltipTarget.TooltipContent.Equals(default(AbstractTooltipContent))
                 ? 0f
                 : (float?)null;
         bool ICustomTooltipTarget.ShowTooltipWhileFocus => false;
@@ -108,24 +113,30 @@ namespace Squared.PRGUI.Controls {
 
         public bool IsActive { get; private set; }
 
-        private AbstractTooltipContent SelectedItemTooltip = 
-            new AbstractTooltipContent(GetTooltipForSelectedItem);
+        private static Func<Control, AbstractString> GetTooltipForSelectedItem = _GetTooltipForSelectedItem;
 
         protected Control _FocusDonor;
         public Control FocusDonor => _FocusDonor;
 
-        private static AbstractString GetTooltipForSelectedItem (Control control) {
+        private static AbstractString _GetTooltipForSelectedItem (Control control) {
             var m = control as Menu;
             if (m == null)
                 return default(AbstractString);
 
             AbstractString result = default(AbstractString);
-            var item = m._SelectedItem ?? m._HoveringItem;
+            var item = m.TooltipTarget;
             if (item != null)
                 result = item.TooltipContent.Get(item);
             if (result == default(AbstractString))
                 result = m.TooltipContent.Get(m);
             return result;
+        }
+
+        private TooltipSettings GetTooltipSettingsForSelectedItem () {
+            if (TooltipContent != default(AbstractTooltipContent))
+                return TooltipContent.Settings;
+
+            return TooltipTarget?.TooltipContent.Settings ?? default(TooltipSettings);
         }
 
         public Menu ()
@@ -211,9 +222,6 @@ namespace Squared.PRGUI.Controls {
         private void OnSelectionChange (Control previous, Control newControl) {
             Listener?.ItemSelected(this, newControl);
             FireEvent(UIEvents.SelectionChanged, newControl);
-            // HACK
-            if (newControl != null)
-                SelectedItemTooltip.Settings = newControl.TooltipContent.Settings;
         }
 
         private Control LocateContainingChild (Control control) {
