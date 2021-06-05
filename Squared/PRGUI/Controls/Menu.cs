@@ -89,19 +89,21 @@ namespace Squared.PRGUI.Controls {
             ? Children.IndexOf(_SelectedItem)
             : -1;
 
+        public Control HoveringItem => _HoveringItem;
+
         public Control SelectedItem {
-            get {
-                return _SelectedItem;
-            }
-            set {
-                if (value?.Enabled == false)
-                    value = null;
-                if (_SelectedItem == value)
-                    return;
-                var oldSelection = _SelectedItem;
-                _SelectedItem = value;
-                OnSelectionChange(oldSelection, value);
-            }
+            get => _SelectedItem;
+            set => SetSelectedItem(value, true);
+        }
+
+        private void SetSelectedItem (Control value, bool fireEvents) {
+            if (value?.Enabled == false)
+                value = null;
+            if (_SelectedItem == value)
+                return;
+            var oldSelection = _SelectedItem;
+            _SelectedItem = value;
+            OnSelectionChange(oldSelection, value);
         }
 
         public Vector2 Position {
@@ -276,8 +278,15 @@ namespace Squared.PRGUI.Controls {
 
             // Console.WriteLine($"menu.{name}");
 
+            var fireSelectEvent = true;
+
             var item = ChildFromGlobalPosition(args.RelativeGlobalPosition);
-            _HoveringItem = item;
+            if (_HoveringItem != item) {
+                var previous = _HoveringItem;
+                _HoveringItem = item;
+                fireSelectEvent = false;
+                OnSelectionChange(previous, item);
+            }
 
             if (name == UIEvents.MouseDown) {
                 if (!args.Box.Contains(args.RelativeGlobalPosition))
@@ -296,10 +305,10 @@ namespace Squared.PRGUI.Controls {
 
             if ((Context.MouseOver != this) && (Context.MouseCaptured != this)) {
                 if (DeselectOnMouseLeave)
-                    SelectedItem = null;
+                    SetSelectedItem(null, fireSelectEvent);
             } else {
                 if (item != null)
-                    SelectedItem = item;
+                    SetSelectedItem(item, fireSelectEvent);
             }
 
             if (name == UIEvents.MouseUp) {
@@ -324,7 +333,7 @@ namespace Squared.PRGUI.Controls {
 
             if (name == UIEvents.MouseLeave) {
                 if (DeselectOnMouseLeave)
-                    SelectedItem = null;
+                    SetSelectedItem(null, true);
             } else if (args is MouseEventArgs)
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
             else if (name == UIEvents.LostFocus) {
@@ -339,7 +348,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void SelectItemViaKeyboard (Control item) {
-            SelectedItem = item;
+            SetSelectedItem(item, true);
             // HACK: Tell the context that the current item is the keyboard selection,
             //  so that autoscroll and tooltips will happen for it.
             Context.OverrideKeyboardSelection(item, true);
@@ -544,8 +553,8 @@ namespace Squared.PRGUI.Controls {
 
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
             InvalidateLayout();
-            SelectedItem = null;
-            SelectedItem = selectedItem;
+            SetSelectedItem(null, false);
+            SetSelectedItem(selectedItem, true);
             Visible = true;
             Intangible = false;
             if (((IModal)this).BlockInput)

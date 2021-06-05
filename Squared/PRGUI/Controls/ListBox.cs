@@ -453,6 +453,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void Invalidate (T item) {
+            if (item == null)
+                return;
+
             NeedsUpdate = true;
             _Version++;
             Items.Invalidate(item);

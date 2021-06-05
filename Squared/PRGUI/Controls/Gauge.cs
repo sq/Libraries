@@ -30,6 +30,8 @@ namespace Squared.PRGUI.Controls {
 
         public GaugeDirection Direction = GaugeDirection.Auto;
 
+        public float FillThicknessFactor = 0.15f;
+
         public const int ControlMinimumHeight = 30, ControlMinimumLength = 125;
 
         private float _Value = 0.5f, _Limit = 1.0f;
@@ -204,7 +206,10 @@ namespace Squared.PRGUI.Controls {
                         : 360f - (value2 * 360f) - 90f;
                     // FIXME: Shrink when the value is really small so that there isn't a fill dot
                     //  when the gauge's value is 0
-                    var fillRadius = (ControlMinimumHeight / 2f) - Padding.Size.Length();
+                    var fillRadius = Math.Min(
+                        (ControlMinimumHeight / 2f) - Padding.Size.Length(),
+                        (Math.Min(contentBox.Width, contentBox.Height) * FillThicknessFactor)
+                    );
                     var maxRad = Math.Min(contentBox.Width, contentBox.Height) / 2f;
                     contentBox = new RectF(
                         a1, fillSize * 360f,
@@ -292,14 +297,13 @@ namespace Squared.PRGUI.Controls {
             DecorationSettings settings, ref RectF originalCbox, GaugeDirection direction,
             IDecorator fill, MarkedRange mr
         ) {
-            float value1 = mr.Start.Get(context.NowL),
-                value2 = mr.End.Get(context.NowL);
+            float value1 = Arithmetic.Saturate(mr.Start.Get(context.NowL)),
+                value2 = Arithmetic.Saturate(mr.End.Get(context.NowL));
             if (value2 <= value1)
                 return false;
             settings.ContentBox = originalCbox;
             settings.TextColor = mr.Color ?? settings.TextColor;
             settings.UserData = new Vector4(value1, value2, 0f, 0f);
-            settings.Traits.Clear();
             if (mr.StaticColor)
                 settings.Traits.Add("static");
             MakeContentBox(direction, value1, value2, ref settings.ContentBox);
