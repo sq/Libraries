@@ -36,7 +36,8 @@ namespace Squared.PRGUI.Controls {
             LayoutFlags = ControlFlags.Layout_Floating;
             Wrap = true;
             Multiline = true;
-            ScaleToFitY = true;
+            // FIXME: This can cause a weird corner case where all tooltips are tiny
+            // ScaleToFitY = true;
         }
 
         new public void Invalidate () {

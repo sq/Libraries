@@ -911,10 +911,10 @@ namespace Squared.PRGUI {
             // FIXME: Padding will make this slightly wrong
             pSRGBColor fillColor = settings.TextColor ?? ColorScheme.GaugeValueFill, 
                 fillColor1, fillColor2;
-            if (settings.Traits.IndexOf("limit") >= 0) {
+            if (settings.HasTrait("limit")) {
                 alpha1 = alpha2 = ColorScheme.GaugeLimitAlpha;
                 fillColor = ColorScheme.GaugeLimitFill;
-            } else if (settings.Traits.IndexOf("static") >= 0) {
+            } else if (settings.HasTrait("static")) {
                 alpha1 = alpha2 = 1.0f;
                 brightness1 = brightness2 = 1.0f;
             }

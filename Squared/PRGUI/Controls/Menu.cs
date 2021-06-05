@@ -175,6 +175,9 @@ namespace Squared.PRGUI.Controls {
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             FreezeDynamicContent = Visible;
 
+            if (SelectedItem?.Enabled == false)
+                SetSelectedItem(null, true);
+
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
                 return result;

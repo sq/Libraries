@@ -26,6 +26,8 @@ namespace Squared.PRGUI.Controls {
             public bool StaticColor;
             public pSRGBColor? Color;
             public Tween<float> Start, End;
+            public IDecorator Decorator;
+            public DenseList<string> Traits;
         }
 
         public GaugeDirection Direction = GaugeDirection.Auto;
@@ -304,10 +306,12 @@ namespace Squared.PRGUI.Controls {
             settings.ContentBox = originalCbox;
             settings.TextColor = mr.Color ?? settings.TextColor;
             settings.UserData = new Vector4(value1, value2, 0f, 0f);
+            foreach (var trait in mr.Traits)
+                settings.Traits.Add(trait);
             if (mr.StaticColor)
                 settings.Traits.Add("static");
             MakeContentBox(direction, value1, value2, ref settings.ContentBox);
-            fill.Rasterize(ref context, ref renderer, settings);
+            (mr.Decorator ?? fill).Rasterize(ref context, ref renderer, settings);
             return true;
         }
     }
