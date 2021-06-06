@@ -968,7 +968,8 @@ namespace Squared.PRGUI {
                     shadow: GaugeValueShadow,
                     texture: settings.GetTexture(),
                     textureRegion: settings.GetTextureRegion(),
-                    textureSettings: settings.GetTextureSettings()
+                    textureSettings: settings.GetTextureSettings(),
+                    endRounding: 0f
                 );
             } else {
                 renderer.RasterizeRectangle(

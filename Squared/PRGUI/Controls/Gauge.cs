@@ -16,6 +16,7 @@ using Squared.Util.Text;
 namespace Squared.PRGUI.Controls {
     public class Gauge : Control, Accessibility.IReadingTarget, IValueControl<float>, IHasDescription {
         public struct MarkedRange {
+            public string Name;
             /// <summary>
             /// If set, the range is drawn below the gauge's fill and limit, otherwise above
             /// </summary>
@@ -25,9 +26,15 @@ namespace Squared.PRGUI.Controls {
             /// </summary>
             public bool StaticColor;
             public pSRGBColor? Color;
-            public Tween<float> Start, End;
+            public Tween<float> Start, End, ThicknessMinusOne;
             public IDecorator Decorator;
             public DenseList<string> Traits;
+
+            public float Thickness {
+                set {
+                    ThicknessMinusOne = value - 1.0f;
+                }
+            }
         }
 
         public GaugeDirection Direction = GaugeDirection.Auto;
@@ -119,6 +126,41 @@ namespace Squared.PRGUI.Controls {
             ValueTween = Tween.StartNow(from, to, seconds: length, now: Context.NowL);
         }
 
+        public bool GetMarkedRange (string name, out MarkedRange value) {
+            for (int i = 0; i < MarkedRanges.Count; i++) {
+                if (MarkedRanges[i].Name == name) {
+                    value = MarkedRanges[i];
+                    return true;
+                }
+            }
+
+            value = default(MarkedRange);
+            return false;
+        }
+
+        public void RemoveMarkedRange (string name) {
+            for (int i = 0; i < MarkedRanges.Count; i++) {
+                if (MarkedRanges[i].Name == name) {
+                    MarkedRanges.RemoveAt(i);
+                    return;
+                }
+            }
+        }
+
+        public void SetMarkedRange (string name, ref MarkedRange value) {
+            if (value.Name != name)
+                value.Name = name;
+
+            for (int i = 0; i < MarkedRanges.Count; i++) {
+                if (MarkedRanges[i].Name == name) {
+                    MarkedRanges[i] = value;
+                    return;
+                }
+            }
+
+            MarkedRanges.Add(value);
+        }
+
         private static void SmartAppend (StringBuilder sb, float value) {
             if ((int)value == value)
                 sb.Append((int)value);
@@ -186,7 +228,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void MakeContentBox (
-            GaugeDirection direction, float value1, float value2, ref RectF contentBox
+            GaugeDirection direction, float value1, float value2, ref RectF contentBox, float thicknessMultiplier
         ) {
             float extent;
 
@@ -211,7 +253,7 @@ namespace Squared.PRGUI.Controls {
                     var fillRadius = Math.Min(
                         (ControlMinimumHeight / 2f) - Padding.Size.Length(),
                         (Math.Min(contentBox.Width, contentBox.Height) * FillThicknessFactor)
-                    );
+                    ) * thicknessMultiplier;
                     var maxRad = Math.Min(contentBox.Width, contentBox.Height) / 2f;
                     contentBox = new RectF(
                         a1, fillSize * 360f,
@@ -225,18 +267,22 @@ namespace Squared.PRGUI.Controls {
                 case GaugeDirection.LeftToRight:
                     contentBox.Left += value1 * contentBox.Width;
                     contentBox.Width *= fillSize;
+                    contentBox.Height *= thicknessMultiplier;
                     break;
                 case GaugeDirection.RightToLeft:
                     contentBox.Left = extent - (value2 * contentBox.Width);
                     contentBox.Width *= fillSize;
+                    contentBox.Height *= thicknessMultiplier;
                     break;
                 case GaugeDirection.TopToBottom:
                     contentBox.Top += value1 * contentBox.Height;
                     contentBox.Height *= fillSize;
+                    contentBox.Width *= thicknessMultiplier;
                     break;
                 case GaugeDirection.BottomToTop:
                     contentBox.Top = extent - (value2 * contentBox.Height);
                     contentBox.Height *= fillSize;
+                    contentBox.Width *= thicknessMultiplier;
                     break;
             }
         }
@@ -259,12 +305,13 @@ namespace Squared.PRGUI.Controls {
                     needBumpLayer = true;
             }
 
-            MakeContentBox(direction, 0f, value1, ref settings.ContentBox);
+            MakeContentBox(direction, 0f, value1, ref settings.ContentBox, 1f);
             // HACK
             if ((value1 > 0) || (context.Pass != RasterizePasses.Content)) {
                 // FIXME: Do we need to do this?
                 if (needBumpLayer)
-                    renderer.Layer += 1;
+                    // renderer.Layer += 1;
+                    ;
 
                 base.OnRasterize(ref context, ref renderer, settings, decorations);
             }
@@ -276,7 +323,7 @@ namespace Squared.PRGUI.Controls {
                 settings.ContentBox = originalCbox;
                 settings.UserData = new Vector4(_Limit, 1f, 0, 0);
                 settings.Traits.Add("limit");
-                MakeContentBox(direction, _Limit, 1f, ref settings.ContentBox);
+                MakeContentBox(direction, _Limit, 1f, ref settings.ContentBox, 1f);
                 fill.Rasterize(ref context, ref renderer, settings);
             }
 
@@ -286,7 +333,7 @@ namespace Squared.PRGUI.Controls {
                     continue;
 
                 if (needBumpLayer) {
-                    renderer.Layer += 1;
+                    // renderer.Layer += 1;
                     needBumpLayer = false;
                 }
 
@@ -300,7 +347,8 @@ namespace Squared.PRGUI.Controls {
             IDecorator fill, MarkedRange mr
         ) {
             float value1 = Arithmetic.Saturate(mr.Start.Get(context.NowL)),
-                value2 = Arithmetic.Saturate(mr.End.Get(context.NowL));
+                value2 = Arithmetic.Saturate(mr.End.Get(context.NowL)),
+                thickness = Arithmetic.Saturate(mr.ThicknessMinusOne.Get(context.NowL) + 1f);
             if (value2 <= value1)
                 return false;
             settings.ContentBox = originalCbox;
@@ -310,7 +358,7 @@ namespace Squared.PRGUI.Controls {
                 settings.Traits.Add(trait);
             if (mr.StaticColor)
                 settings.Traits.Add("static");
-            MakeContentBox(direction, value1, value2, ref settings.ContentBox);
+            MakeContentBox(direction, value1, value2, ref settings.ContentBox, thickness);
             (mr.Decorator ?? fill).Rasterize(ref context, ref renderer, settings);
             return true;
         }
