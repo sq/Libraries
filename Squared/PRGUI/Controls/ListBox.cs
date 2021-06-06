@@ -130,8 +130,16 @@ namespace Squared.PRGUI.Controls {
         private Vector2 LastMouseOverPosition;
         public Control MouseOverItem { get; private set; }
 
-        protected AbstractTooltipContent MouseOverItemTooltip =>
-            MouseOverItem?.TooltipContent ?? TooltipContent;
+        protected AbstractTooltipContent MouseOverItemTooltip {
+            get {
+                var deep = MouseOverItem?.HitTest(LastMouseOverPosition, false, false, true);
+                var ttc = deep?.TooltipContent;
+                if ((ttc ?? default(AbstractTooltipContent)) != default(AbstractTooltipContent))
+                    return ttc.Value;
+                else
+                    return MouseOverItem?.TooltipContent ?? TooltipContent;
+            }
+        }
 
         public bool GenerateControlsWhenHidden = true;
 
