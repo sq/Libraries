@@ -187,7 +187,11 @@ namespace Squared.Threading {
         }
 
         public static Future<IFuture> WaitForFirst (IEnumerable<IFuture> futures) {
-            return WaitForFirst(futures.ToArray());
+            var arr = futures.ToArray();
+            if (arr.Length == 0)
+                return new Future<IFuture>(null);
+            else
+                return WaitForFirst(futures.ToArray());
         }
 
         public static Future<IFuture> WaitForFirst (params IFuture[] futures) {
@@ -195,7 +199,11 @@ namespace Squared.Threading {
         }
 
         public static IFuture WaitForAll (IEnumerable<IFuture> futures) {
-            return WaitForAll(futures.ToArray());
+            var arr = futures.ToArray();
+            if (arr.Length == 0)
+                return new SignalFuture(true);
+            else
+                return WaitForAll(futures.ToArray());
         }
 
         public static IFuture WaitForAll (params IFuture[] futures) {

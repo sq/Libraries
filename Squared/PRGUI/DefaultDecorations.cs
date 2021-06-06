@@ -847,28 +847,37 @@ namespace Squared.PRGUI {
             }
         }
 
-        private void Gauge_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
-            var ca = a + (settings.ContentBox.Position - settings.Box.Position).Round();
-            var cb = b - (settings.Box.Extent - settings.ContentBox.Extent).Round();
-            RasterFillMode fillMode;
+        public bool Gauge_Fill_Setup (
+            UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings,
+            out bool isCircular, out float outlineRadius, out float alpha1, out float alpha2, 
+            out string direction, out Vector2 ca, out Vector2 cb, 
+            out pSRGBColor fillColor1, out pSRGBColor fillColor2, out pSRGBColor outlineColor,
+            out RasterFillMode fillMode
+        ) {
+            isCircular = false;
+            outlineRadius = GetOutlineSize(1f);
+            alpha1 = alpha2 = 0f;
 
-            bool isCircular = false;
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            ca = a + (settings.ContentBox.Position - settings.Box.Position).Round();
+            cb = b - (settings.Box.Extent - settings.ContentBox.Extent).Round();
+            fillColor1 = fillColor2 = outlineColor = default(pSRGBColor);
+            fillMode = default(RasterFillMode);
 
             // Select fill mode and gradient direction based on orientation
-            var direction = settings.Traits.FirstOrDefault();
+            direction = settings.Traits.FirstOrDefault();
             switch (direction) {
                 default:
                 case "ltr":
                 case "rtl":
                     if (ca.X >= cb.X)
-                        return;
+                        return false;
                     fillMode = RasterFillMode.Angular + (direction == "rtl" ? 270 : 90);
                     break;
                 case "ttb":
                 case "btt":
                     if (ca.Y >= cb.Y)
-                        return;
+                        return false;
                     fillMode = RasterFillMode.Angular + (direction == "btt" ? 180 : 0);
                     break;
                 case "cw":
@@ -902,15 +911,17 @@ namespace Squared.PRGUI {
 
             float value1 = settings.UserData.X,
                 value2 = settings.UserData.Y,
-                alphaDelta = ColorScheme.GaugeFillAlpha2 - ColorScheme.GaugeFillAlpha1,
-                alpha1 = Arithmetic.Saturate(ColorScheme.GaugeFillAlpha1 + (alphaDelta * value1)),
-                alpha2 = Arithmetic.Saturate(ColorScheme.GaugeFillAlpha1 + (alphaDelta * value2));
+                alphaDelta = ColorScheme.GaugeFillAlpha2 - ColorScheme.GaugeFillAlpha1;
+
+            alpha1 = Arithmetic.Saturate(ColorScheme.GaugeFillAlpha1 + (alphaDelta * value1));
+            alpha2 = Arithmetic.Saturate(ColorScheme.GaugeFillAlpha1 + (alphaDelta * value2));
+
             float brightnessDelta = ColorScheme.GaugeFillBrightness2 - ColorScheme.GaugeFillBrightness1,
                 brightness1 = ColorScheme.GaugeFillBrightness1 + (brightnessDelta * value1),
                 brightness2 = ColorScheme.GaugeFillBrightness1 + (brightnessDelta * value2);
+
             // FIXME: Padding will make this slightly wrong
-            pSRGBColor fillColor = settings.TextColor ?? ColorScheme.GaugeValueFill, 
-                fillColor1, fillColor2;
+            pSRGBColor fillColor = settings.TextColor ?? ColorScheme.GaugeValueFill;
             if (settings.HasTrait("limit")) {
                 alpha1 = alpha2 = ColorScheme.GaugeLimitAlpha;
                 fillColor = ColorScheme.GaugeLimitFill;
@@ -920,8 +931,21 @@ namespace Squared.PRGUI {
             }
             fillColor1 = fillColor.AdjustBrightness(brightness1) * alpha1;
             fillColor2 = fillColor.AdjustBrightness(brightness2) * alpha2;
+            outlineColor = fillColor;
 
-            var outlineRadius = GetOutlineSize(1f);
+            return true;
+        }
+
+        private void Gauge_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            Gauge_Fill_Setup(
+                context, ref renderer, settings,
+                out bool isCircular, out float outlineRadius,
+                out float alpha1, out float alpha2, out string direction,
+                out Vector2 ca, out Vector2 cb,
+                out pSRGBColor fillColor1, out pSRGBColor fillColor2,
+                out pSRGBColor outlineColor, out RasterFillMode fillMode
+            );
+
             if (isCircular) {
                 // HACK: Ensure that the alpha values equalize as we approach a full circle, otherwise the 
                 //  gradient will glitch at the point where the ends meet
@@ -939,10 +963,8 @@ namespace Squared.PRGUI {
                     // HACK
                     startAngleDegrees: settings.ContentBox.Left, sizeDegrees: settings.ContentBox.Top,
                     ringRadius: settings.ContentBox.Width, fillRadius: settings.ContentBox.Height,
-                    outlineRadius: outlineRadius, outlineColor: fillColor * 0.5f,
-                    fillMode: RasterFillMode.Along,
-                    innerColor: fillColor1, 
-                    outerColor: fillColor2,
+                    outlineRadius: outlineRadius, outlineColor: outlineColor * 0.5f,
+                    fillMode: fillMode, innerColor: fillColor1, outerColor: fillColor2,
                     shadow: GaugeValueShadow,
                     texture: settings.GetTexture(),
                     textureRegion: settings.GetTextureRegion(),
@@ -952,10 +974,8 @@ namespace Squared.PRGUI {
                 renderer.RasterizeRectangle(
                     ca, cb,
                     radius: SliderCornerRadius,
-                    outlineRadius: outlineRadius, outlineColor: fillColor * 0.5f,
-                    fillMode: fillMode,
-                    innerColor: fillColor1, 
-                    outerColor: fillColor2,
+                    outlineRadius: outlineRadius, outlineColor: outlineColor * 0.5f,
+                    fillMode: fillMode, innerColor: fillColor1, outerColor: fillColor2,
                     shadow: GaugeValueShadow,
                     texture: settings.GetTexture(),
                     textureRegion: settings.GetTextureRegion(),
