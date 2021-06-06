@@ -107,6 +107,13 @@ float sdTriangle(in float2 p, in float2 p0, in float2 p1, in float2 p2) {
     return -sqrt(d.x)*sign(d.y);
 }
 
+float sdPie (in float2 p, in float2 c, in float r) {
+    p.x = abs(p.x);
+    float l = length(p) - r;
+    float m = length(p - c * clamp(dot(p,c), 0.0, r)); // c=sin/cos of aperture
+    return max(l, m * sign(c.y * p.x - c.x * p.y));
+}
+
 float sdArc (in float2 p, in float2 sca, in float2 scb, in float ra, float rb) {
     p = mul(p, float2x2(sca.x, sca.y, -sca.y, sca.x));
     p.x = abs(p.x);

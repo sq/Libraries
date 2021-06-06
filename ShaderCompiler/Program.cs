@@ -11,9 +11,16 @@ using System.Threading.Tasks;
 
 namespace ShaderCompiler {
     class Program {
+        private static readonly HashSet<string> Switches = new HashSet<string> {
+            "--rebuild", "--parallel", "--disassemble"
+        };
+
         public static void Main (string[] args) {
-            var shouldRebuild = args.Any(a => a.ToLower() == "--rebuild");
-            args = args.Where(a => a.ToLower() != "--rebuild").ToArray();
+            var switches = args.Where(a => Switches.Contains(a.ToLower())).ToArray();
+            bool shouldRebuild = switches.Contains("--rebuild"),
+                buildInParallel = switches.Contains("--parallel"),
+                outputDisassembly = switches.Contains("--disassemble");
+            args = args.Where(a => !Switches.Contains(a.ToLower())).ToArray();
             
             var fxcDir = args[0];
             var sourceDir = args[1];
@@ -43,6 +50,8 @@ namespace ShaderCompiler {
                 }
             }
 
+            var pending = new List<Task<int>>();
+
             Console.WriteLine("Compiling shaders from {0}...", sourceDir);
             foreach (var shader in Directory.GetFiles(sourceDir, "*.fx")) {
                 var destPath = Path.Combine(destDir, Path.GetFileName(shader) + ".bin");
@@ -61,12 +70,13 @@ namespace ShaderCompiler {
                     string.Format(" /T fx_2_0 {0} {1} ", localFxcParams, fxcPostParams);
 
                 string existingParams = null;
-                shouldRebuild = true;
+                shouldRebuild = switches.Contains("--rebuild");
                 if (File.Exists(paramsPath)) {
                     existingParams = File.ReadAllText(paramsPath, Encoding.UTF8).Trim();
-                    shouldRebuild = !existingParams.Equals(fullFxcParams.Trim());
-                    if (shouldRebuild)
+                    if (!existingParams.Equals(fullFxcParams.Trim())) {
+                        shouldRebuild = true;
                         Console.WriteLine(" params '{0}' -> '{1}'", existingParams, fullFxcParams.Trim());
+                    }
                 }
 
                 if (doesNotExist || isModified || shouldRebuild) {
@@ -75,14 +85,14 @@ namespace ShaderCompiler {
 
                     Console.ForegroundColor = ConsoleColor.White;
                     Console.WriteLine(
-                        " {0}{2}Compiling with params '{1}'...", 
-                        doesNotExist 
+                        " {0}{2}Compiling with params '{1}'...",
+                        doesNotExist
                             ? "output missing"
                             : (
                                 shouldRebuild
                                     ? "parameters changed"
                                     : "is outdated"
-                            ), 
+                            ),
                         localFxcParams,
                         Environment.NewLine
                     );
@@ -94,55 +104,12 @@ namespace ShaderCompiler {
                     } catch {
                     }
 
-                    int exitCode;
-                    {
-                        var arglist = "/nologo " + shader + fullFxcParams + "/Fo " + destPath;
-                        var psi = new ProcessStartInfo(
-                            fxcPath, arglist
-                        ) {
-                            UseShellExecute = false
-                        };
-
-                        Console.ForegroundColor = ConsoleColor.DarkCyan;
-                        using (var p = Process.Start(psi)) {
-                            p.WaitForExit();
-                            exitCode = p.ExitCode;
-                        }
-                    }
-
-                    {
-                        var arglist = "/nologo " + shader + " " + GetParamsForDefines(defines) + " /P " + destPath.Replace(".bin", ".p");
-                        var psi = new ProcessStartInfo(
-                            fxcPath, arglist
-                        ) {
-                            UseShellExecute = false
-                        };
-
-                        Console.ForegroundColor = ConsoleColor.DarkBlue;
-                        using (var p = Process.Start(psi)) {
-                            p.WaitForExit();
-                            exitCode += p.ExitCode;
-                        }
-                    }
-
-                    if (exitCode != 0) {
-                        errorCount += 1;
+                    if (buildInParallel) {
+                        pending.Add(CompileInParallel(fxcPath, testParsePath, defines, shader, destPath, paramsPath, fullFxcParams, outputDisassembly));
                     } else {
-                        File.WriteAllText(paramsPath, fullFxcParams.Trim(), Encoding.UTF8);
-                        if (!String.IsNullOrWhiteSpace(testParsePath)) {
-                            var psi = new ProcessStartInfo(
-                                testParsePath, string.Format("glsl120 \"{0}\"", destPath)
-                            ) {
-                                UseShellExecute = false,
-                                RedirectStandardOutput = true
-                            };
-                            using (var outStream = File.OpenWrite(destPath.Replace(".bin", ".glsl")))
-                            using (var p = Process.Start(psi)) {
-                                p.StandardOutput.BaseStream.CopyTo(outStream);
-                                p.StandardOutput.Close();
-                                p.WaitForExit();
-                            }
-                        }
+                        var exitCode = CompileShader(fxcPath, testParsePath, defines, shader, destPath, paramsPath, fullFxcParams, outputDisassembly);
+                        if (exitCode != 0)
+                            errorCount++;
                     }
 
                     Console.WriteLine();
@@ -155,12 +122,99 @@ namespace ShaderCompiler {
                 totalFileCount++;
             }
 
+            if (pending.Count > 0) {
+                Console.WriteLine($"Waiting for {pending.Count} parallel compile(s)...");
+                foreach (var t in pending) {
+                    t.Wait();
+                    if (t.Result != 0)
+                        errorCount++;
+                }
+            }
+
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("Compiled {0}/{1} shader(s) with {3} error(s) to '{2}'", updatedFileCount, totalFileCount, destDir, errorCount);
             Console.ResetColor();
 
             if (Debugger.IsAttached)
                 Console.ReadLine();
+        }
+
+        private static async Task<int> CompileInParallel (
+            string fxcPath, string testParsePath, Dictionary<string, string> defines, 
+            string shader, string destPath, string paramsPath, string fullFxcParams, 
+            bool outputDisassembly
+        ) {
+            var buf = new StringBuilder();
+            // FIXME: Redirecting in .net sucks ass
+            buf = null;
+            var compileWorker = Task.Run(
+                () => CompileShader(fxcPath, testParsePath, defines, shader, destPath, paramsPath, fullFxcParams, outputDisassembly, buf)
+            );
+            return await compileWorker;
+        }
+
+        private static int CompileShader (
+            string fxcPath, string testParsePath, Dictionary<string, string> defines, 
+            string shader, string destPath, string paramsPath, string fullFxcParams,
+            bool outputDisassembly, StringBuilder outputBuffer = null
+        ) {
+            int exitCode;
+            {
+                var arglist = "/nologo " + shader + fullFxcParams + "/Fo " + destPath;
+                var psi = new ProcessStartInfo(
+                    fxcPath, arglist
+                ) {
+                    UseShellExecute = false,
+                    RedirectStandardError = (outputBuffer != null),
+                    RedirectStandardOutput = (outputBuffer != null)
+                };
+
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                using (var p = Process.Start(psi)) {
+                    p.WaitForExit();
+                    exitCode = p.ExitCode;
+                }
+            }
+
+            if (outputDisassembly) {
+                var arglist = "/nologo " + shader + " " + GetParamsForDefines(defines) + " /P " + destPath.Replace(".bin", ".p");
+                var psi = new ProcessStartInfo(
+                    fxcPath, arglist
+                ) {
+                    UseShellExecute = false
+                };
+
+                Console.ForegroundColor = ConsoleColor.DarkBlue;
+                using (var p = Process.Start(psi)) {
+                    p.WaitForExit();
+                    exitCode += p.ExitCode;
+                }
+            } else {
+                try {
+                    File.Delete(destPath.Replace(".bin", ".p"));
+                } catch {
+                }
+            }
+
+            if (exitCode != 0) {
+                File.WriteAllText(paramsPath, fullFxcParams.Trim(), Encoding.UTF8);
+                if (!String.IsNullOrWhiteSpace(testParsePath)) {
+                    var psi = new ProcessStartInfo(
+                        testParsePath, string.Format("glsl120 \"{0}\"", destPath)
+                    ) {
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true
+                    };
+                    using (var outStream = File.OpenWrite(destPath.Replace(".bin", ".glsl")))
+                    using (var p = Process.Start(psi)) {
+                        p.StandardOutput.BaseStream.CopyTo(outStream);
+                        p.StandardOutput.Close();
+                        p.WaitForExit();
+                    }
+                }
+            }
+
+            return exitCode;
         }
 
         private static string GetParamsForDefines (Dictionary<string, string> defines) {

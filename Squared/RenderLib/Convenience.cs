@@ -1663,7 +1663,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            float endRounding = 1f, int sortKey = 0
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             var centerAngleDegrees = (startAngleDegrees + (sizeDegrees / 2)) % 360;
@@ -1671,8 +1671,8 @@ namespace Squared.Render.Convenience {
             startAngleDegrees = startAngleDegrees % 360;
             var centerAngleRadians = MathHelper.ToRadians(centerAngleDegrees);
             var sizeRadians = MathHelper.ToRadians(sizeDegrees);
-            Vector2 b = new Vector2(centerAngleRadians, sizeRadians / 2f), c = Vector2.Zero;
-            if (fillMode == RasterFillMode.Along) {
+            Vector2 b = new Vector2(centerAngleRadians, sizeRadians / 2f), c = new Vector2(0, 1.0f - endRounding);
+            if ((fillMode == RasterFillMode.Along) && (endRounding > 0)) {
                 // HACK: Bump the start and end angles out to account for the radius of the arc itself,
                 //  otherwise we get gross hard cut-offs at the start and end
                 var p1 = new Vector2(0, ringRadius);
@@ -1685,6 +1685,9 @@ namespace Squared.Render.Convenience {
                 fillSize *= fillSizeBias;
                 c.X = MathHelper.ToRadians(offsetAngleDegrees) - roundingOffsetRadians;
             }
+
+            if (b.Y >= MathHelper.ToRadians(179.9f))
+                c.Y = 0;
 
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture

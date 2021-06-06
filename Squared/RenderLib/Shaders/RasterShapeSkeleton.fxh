@@ -519,6 +519,8 @@ void evaluateTriangle (
     inout int gradientType, out float gradientWeight,
     out float2 tl, out float2 br
 ) {
+    // FIXME: This function makes fxc compiles INCREDIBLY slow.
+
     // length of the side opposite the vertex (between its neighbors)
     float sa = length(b - c), sb = length(c - a), sc = length(b - a);
     float perimeter = max(sa + sb + sc, 0.001);
@@ -685,10 +687,23 @@ void evaluateRasterShape (
 
 #ifdef INCLUDE_ARC
     else if (type == TYPE_Arc) {
-        float2 arcB, arcC;
+        float2 arcB, arcC, triA, triB;
         sincos(b.x, arcB.x, arcB.y);
         sincos(b.y, arcC.x, arcC.y);
+        float triBaseAngle = (-b.x - b.y) + (PI * 0.5);
+        sincos(triBaseAngle + (b.y * 2), triA.x, triA.y);
+        sincos(triBaseAngle, triB.x, triB.y);
         distance = sdArc(worldPosition - a, arcB, arcC, radius.x, radius.y);
+        // FIXME: this SDF is defined in a useless way AND has artifacts
+        // float hardDistance = sdPie(worldPosition - a, arcB, radius.x + radius.y);
+        float distant = 99999.0;
+        float2 triangleA = a,
+            triangleB = triangleA + (triA * distant),
+            triangleC = triangleA + (triB * distant);
+        float hardDistance = sdTriangle(worldPosition, triangleA, triangleB, triangleC);
+        if (b.y >= (PI * 0.5))
+            hardDistance = -hardDistance;
+        distance = lerp(distance, max(distance, hardDistance), c.y);
         if (gradientType == GRADIENT_TYPE_Natural) {
             gradientWeight = 1 - saturate(-distance / radius.y);
         } else if (gradientType == GRADIENT_TYPE_Along) {
