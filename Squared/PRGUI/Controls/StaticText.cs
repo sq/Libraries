@@ -317,7 +317,11 @@ namespace Squared.PRGUI.Controls {
 
             var layout = GetCurrentLayout(true);
             if (AutoSizeWidth) {
-                AutoSizeComputedWidth = (float)Math.Ceiling((layout.UnconstrainedSize.X) + computedPadding.X);
+                // HACK
+                float w = Wrap
+                    ? layout.Size.X
+                    : layout.UnconstrainedSize.X;
+                AutoSizeComputedWidth = (float)Math.Ceiling(w + computedPadding.X);
                 // FIXME: Something is wrong here if padding scale is active
                 /* if ((sr.X > 1) || (sr.Y > 1))
                     AutoSizeComputedWidth += 1;

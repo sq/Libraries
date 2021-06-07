@@ -97,7 +97,7 @@ namespace Squared.PRGUI.Controls {
 
         public bool ShowLoadingSpinner;
 
-        public Color MultiplyColor = Color.White;
+        public ColorVariable MultiplyColor;
         public Vector4 RasterizerUserData;
         public Material Material;
 
@@ -276,10 +276,11 @@ namespace Squared.PRGUI.Controls {
                 // HACK: Fix images overhanging by a pixel
                 position = position.Floor();
                 var origin = Alignment;
+                var color4 = MultiplyColor.pLinear?.Get(context.NowL) ?? Vector4.One;
                 // FIXME: Always use context.Opacity?
-                var color = settings.IsCompositing 
-                    ? MultiplyColor
-                    : MultiplyColor * context.Opacity;
+                if (!settings.IsCompositing)
+                    color4 *= context.Opacity;
+                var color = new Color(color4.X, color4.Y, color4.Z, color4.W);
                 var drawCall = new BitmapDrawCall(instance, position.Round(0)) {
                     Origin = Alignment,
                     ScaleF = scale,
