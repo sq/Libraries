@@ -473,6 +473,14 @@ namespace PRGUI.Demo {
                     ForceBreak = true
                 },
                 Width = { Fixed = 450 },
+                MarkedRanges = {
+                    new Gauge.MarkedRange {
+                        Start = 0.1f,
+                        End = 0.7f,
+                        Color = Color.Red,
+                        Thickness = 0.3f
+                    },
+                },
                 /*
                 Padding = new Margins(2, 2),
                 Direction = GaugeDirection.Clockwise

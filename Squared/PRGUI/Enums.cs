@@ -130,7 +130,9 @@ namespace Squared.PRGUI.Layout {
         /// <summary>
         /// Does not expand the container to hold its children.
         /// </summary>
-        Container_No_Expansion = (0x20 << 13),
+        Container_No_Expansion_X = (0x20 << 13),
+        Container_No_Expansion_Y = (0x20 << 14),
+        Container_No_Expansion = (Container_No_Expansion_X | Container_No_Expansion_Y),
     }
 
     public static class ControlFlagMask {

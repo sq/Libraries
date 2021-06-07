@@ -620,9 +620,9 @@ namespace Squared.PRGUI.Layout {
         private unsafe float CalcWrappedSizeImpl (
             LayoutItem * pItem, LayoutDimensions dim, bool overlaid, bool forcedBreakOnly
         ) {
-            var noExpand = pItem->Flags.IsFlagged(ControlFlags.Container_No_Expansion);
-
             int idim = (int)dim, wdim = idim + 2;
+            var noExpand = pItem->Flags.IsFlagged(ControlFlags.Container_No_Expansion) ||
+                pItem->Flags.IsFlagged((ControlFlags)((uint)ControlFlags.Container_No_Expansion_X << idim));
             float needSize = 0, needSize2 = 0;
             RectF childRect;
             foreach (var child in Children(pItem)) {

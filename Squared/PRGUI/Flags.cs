@@ -127,11 +127,11 @@ namespace Squared.PRGUI.Flags {
         /// <summary>
         /// Prevents children from being expanded to fit this container
         /// </summary>
-        public bool NoExpansion;
+        public bool NoExpansion, NoExpansionX, NoExpansionY;
         /// <summary>
         /// Prevents children from being shrunk to fit this container
         /// </summary>
-        public bool PreventCrushX, PreventCrushY, PreventCrush;
+        public bool PreventCrush, PreventCrushX, PreventCrushY;
 
         public bool Start {
             get => (Alignment == ChildAlignment.Start);
@@ -183,6 +183,8 @@ namespace Squared.PRGUI.Flags {
                 (ControlFlags)(uint)cf.Alignment |
                 (cf.Wrap ? ControlFlags.Container_Wrap : none) |
                 (cf.ConstrainSize ? ControlFlags.Container_Constrain_Size : none) |
+                (cf.NoExpansionX ? ControlFlags.Container_No_Expansion_X : none) |
+                (cf.NoExpansionY ? ControlFlags.Container_No_Expansion_Y : none) |
                 (cf.NoExpansion ? ControlFlags.Container_No_Expansion : none) |
                 (cf.PreventCrushX ? ControlFlags.Container_Prevent_Crush_X : none) |
                 (cf.PreventCrushY ? ControlFlags.Container_Prevent_Crush_Y : none) |

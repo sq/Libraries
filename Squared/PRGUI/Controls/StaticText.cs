@@ -168,6 +168,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        public float? MinScale = null;
+
         public AbstractString Text {
             get => Content.Text;
             protected set {
@@ -358,15 +360,19 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float? ComputeTextWidthLimit (ref UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
-            if (_ScaleToFitX)
+            if (_ScaleToFitX && !MinScale.HasValue)
                 return null;
 
             ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
+            var spaceExpansion = 1.0f;
+            if (MinScale.HasValue && _ScaleToFitX)
+                spaceExpansion = 1.0f / MinScale.Value;
+
             float? constrainedWidth = null;
-            var max = ((Width.Fixed ?? Width.Maximum) * sizeScale.X) - computedPadding.X;
+            var max = ((Width.Fixed ?? Width.Maximum) * sizeScale.X * spaceExpansion) - computedPadding.X;
             if (MostRecentContentBoxWidth.HasValue) {
                 // FIXME
-                float computed = MostRecentContentBoxWidth.Value;
+                float computed = MostRecentContentBoxWidth.Value * spaceExpansion;
                 if (max.HasValue)
                     constrainedWidth = Math.Min(computed, max.Value);
                 else
@@ -402,7 +408,9 @@ namespace Squared.PRGUI.Controls {
             } else {
                 MostRecentYScaleFactor = 1;
             }
-            return Math.Min(MostRecentXScaleFactor, MostRecentYScaleFactor);
+
+            var result = Math.Min(MostRecentXScaleFactor, MostRecentYScaleFactor);
+            return result;
         }
 
         protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
@@ -411,6 +419,16 @@ namespace Squared.PRGUI.Controls {
 
         protected Vector2 _LastDrawOffset, _LastDrawScale;
         protected BitmapDrawCall[] _LayoutFilterScratchBuffer;
+
+        protected Vector2 ApplyScaleConstraints (Vector2 scale) {
+            if (MinScale.HasValue) {
+                var sizeFactor = Math.Min(scale.X / MinScale.Value, scale.Y / MinScale.Value);
+                if (sizeFactor < 1)
+                    return scale * 1.0f / sizeFactor;
+            }
+
+            return scale;
+        }
 
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(ref context, ref renderer, settings, decorations);
@@ -443,6 +461,7 @@ namespace Squared.PRGUI.Controls {
 
             var layout = GetCurrentLayout(false);
             textScale *= ComputeScaleToFit(layout.UnconstrainedSize, ref settings.Box, ref computedPadding);
+            textScale = ApplyScaleConstraints(textScale);
 
             var scaledSize = layout.Size * textScale;
 
@@ -525,7 +544,7 @@ namespace Squared.PRGUI.Controls {
 
         protected void UpdateLineBreak (ref UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
             var textWidthLimit = ComputeTextWidthLimit(ref context, decorations, ref computedPadding, ref computedMargins);
-            if (textWidthLimit.HasValue && !_ScaleToFitX)
+            if (textWidthLimit.HasValue && (!_ScaleToFitX || MinScale.HasValue))
                 Content.LineBreakAtX = textWidthLimit;
             else
                 Content.LineBreakAtX = null;
