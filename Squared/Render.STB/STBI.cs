@@ -269,16 +269,15 @@ namespace Squared.Render.STB {
             int previousLevelWidth = Width, previousLevelHeight = Height;
             // FIXME
             MipChain = new byte[64][];
+            var pins = new List<GCHandle>();
 
-            var pin = default(GCHandle);
             for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
                 if (level > 0) {
-                    if (pin.IsAllocated)
-                        pin.Free();
-                    MipChain[level - 1] = new byte[levelWidth * levelHeight * SizeofPixel];
-                    pin = GCHandle.Alloc(MipChain[level - 1], GCHandleType.Pinned);
+                    var levelBuf = new byte[levelWidth * levelHeight * SizeofPixel];
+                    MipChain[level - 1] = levelBuf;
+                    var pin = GCHandle.Alloc(levelBuf, GCHandleType.Pinned);
+                    pins.Add(pin);
                     pLevelData = (void*)pin.AddrOfPinnedObject();
-
                     // FIXME: Do this one step at a time in a list of work items
                     MipGenerator.Color(pPreviousLevelData, previousLevelWidth, previousLevelHeight, pLevelData, levelWidth, levelHeight);
                 }
@@ -291,7 +290,8 @@ namespace Squared.Render.STB {
                 levelHeight = newHeight;
                 pPreviousLevelData = pLevelData;
             }
-            if (pin.IsAllocated)
+
+            foreach (var pin in pins)
                 pin.Free();
         }
 
