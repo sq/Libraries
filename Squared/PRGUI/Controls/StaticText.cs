@@ -575,7 +575,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected bool UpdateFont (ref UIOperationContext context, IDecorator textDecorations, IDecorator decorations) {
-            var font = Appearance.GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource;
+            IGlyphSource font = null;
+            if (Appearance.GlyphSourceProvider != null)
+                font = Appearance.GlyphSourceProvider();
+            font = font ?? Appearance.GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource;
             if (font == null)
                 throw new NullReferenceException($"Decorators provided no font for control {this} ({textDecorations}, {decorations})");
             return SyncWithCurrentFont(font);

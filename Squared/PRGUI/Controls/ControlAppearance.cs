@@ -89,10 +89,35 @@ namespace Squared.PRGUI {
         /// Specifies a custom list of traits to pass into the decorator during rendering.
         /// </summary>
         public DenseList<string> DecorationTraits;
+
+        private IGlyphSource _GlyphSource;
+        private Func<IGlyphSource> _GlyphSourceProvider;
+
         /// <summary>
         /// Specifies a custom glyph source to use when rendering text.
         /// </summary>
-        public IGlyphSource GlyphSource;
+        public IGlyphSource GlyphSource {
+            get {
+                if (_GlyphSourceProvider != null)
+                    return _GlyphSourceProvider();
+                else
+                    return _GlyphSource;
+            }
+            set {
+                _GlyphSourceProvider = null;
+                _GlyphSource = value;
+            }
+        }
+
+        public Func<IGlyphSource> GlyphSourceProvider {
+            get => _GlyphSourceProvider;
+            set {
+                if (value != null)
+                    GlyphSource = null;
+                _GlyphSourceProvider = value;
+            }
+        }
+
         public ColorVariable BackgroundColor;
         public ColorVariable TextColor;
         /// <summary>

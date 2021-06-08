@@ -760,6 +760,10 @@ namespace Squared.PRGUI.Imperative {
             Control.Appearance.GlyphSource = value;
             return this;
         }
+        public ControlBuilder<TControl> SetGlyphSource (Func<IGlyphSource> provider) {
+            Control.Appearance.GlyphSourceProvider = provider;
+            return this;
+        }
         public ControlBuilder<TControl> SetRichText (bool value) {
             if (Control is StaticTextBase stb)
                 stb.RichText = value;

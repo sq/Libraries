@@ -278,7 +278,8 @@ namespace Squared.PRGUI {
         /// <summary>
         /// PreRasterize handlers may be run while the control is invisible. If so, this will be set.
         /// </summary>
-        Invisible = 0b1000000
+        Invisible = 0b1000000,
+        AnchorForTooltip = 0b10000000
     }
 
     public enum RasterizePasses {

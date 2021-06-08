@@ -21,7 +21,8 @@ namespace Squared.Render.Text {
 
         private RichTextConfiguration _RichTextConfiguration;
         private string _StyleName;
-        private Dictionary<char, KerningAdjustment> _KerningAdjustments; 
+        private Dictionary<char, KerningAdjustment> _KerningAdjustments;
+        private Func<IGlyphSource> _GlyphSourceProvider;
         private IGlyphSource _GlyphSource;
         private AbstractString _Text, _TruncatedIndicator;
         private Vector2 _Position = Vector2.Zero;
@@ -234,6 +235,7 @@ namespace Squared.Render.Text {
                 if (value == null)
                     throw new ArgumentNullException("value");
 
+                _GlyphSourceProvider = null;
                 InvalidatingReferenceAssignment(
                     ref _GlyphSource, 
                     new SpriteFontGlyphSource(value)
@@ -241,13 +243,36 @@ namespace Squared.Render.Text {
             }
         }
 
+        public Func<IGlyphSource> GlyphSourceProvider {
+            get => _GlyphSourceProvider;
+            set {
+                if (value == _GlyphSourceProvider)
+                    return;
+
+                if (value != null) {
+                    _GlyphSourceProvider = value;
+                    _GlyphSource = value();
+                } else {
+                    _GlyphSourceProvider = null;
+                }
+            }
+        }
+
         public IGlyphSource GlyphSource {
             get {
-                return _GlyphSource;
+                if (
+                    (_GlyphSourceProvider != null) &&
+                    ((_GlyphSource == null) || (_GlyphSource.IsDisposed))
+                ) {
+                    Invalidate();
+                    return _GlyphSource = _GlyphSourceProvider();
+                } else
+                    return _GlyphSource;
             }
             set {
                 if (value == null)
                     throw new ArgumentNullException("value");
+                _GlyphSourceProvider = null;
                 InvalidatingReferenceAssignment(ref _GlyphSource, value);
             }
         }
@@ -586,7 +611,11 @@ namespace Squared.Render.Text {
         public bool IsValid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return (_CachedStringLayout.HasValue && (_CachedGlyphVersion >= _GlyphSource.Version) && !_GlyphSource.IsDisposed);
+                return (
+                    _CachedStringLayout.HasValue && 
+                    (_CachedGlyphVersion >= _GlyphSource.Version) && 
+                    !_GlyphSource.IsDisposed
+                );
             }
         }
 
@@ -686,7 +715,7 @@ namespace Squared.Render.Text {
         /// If the current state is invalid, computes a current layout. Otherwise, returns the cached layout.
         /// </summary>
         public StringLayout Get () {
-            if (_CachedStringLayout.HasValue && 
+            if (_CachedStringLayout.HasValue && (_GlyphSource != null) &&
                 ((_CachedGlyphVersion < _GlyphSource.Version) || _GlyphSource.IsDisposed)
             )
                 Invalidate();
@@ -706,9 +735,10 @@ namespace Squared.Render.Text {
             }
 
             if (!_CachedStringLayout.HasValue) {
+                var glyphSource = GlyphSource;
                 if (_Text.IsNull) {
                     _CachedStringLayout = new StringLayout();
-                    _CachedGlyphVersion = _GlyphSource.Version;
+                    _CachedGlyphVersion = glyphSource.Version;
                     return _CachedStringLayout.Value;
                 }
 
@@ -735,7 +765,7 @@ namespace Squared.Render.Text {
                     if (_RichText) {
                         var ka = _RichTextConfiguration.KerningAdjustments;
                         _RichTextConfiguration.KerningAdjustments = _KerningAdjustments ?? ka;
-                        rls = new RichTextLayoutState(ref le, _GlyphSource);
+                        rls = new RichTextLayoutState(ref le, glyphSource);
                         var dependencies = _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
                         if (dependencies.Count > 0) {
                             if (_Dependencies == null)
@@ -753,12 +783,12 @@ namespace Squared.Render.Text {
                             _RichTextConfiguration.Append(ref le, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
                         _RichTextConfiguration.KerningAdjustments = ka;
                     } else {
-                        le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
+                        le.AppendText(glyphSource, _Text, _KerningAdjustments);
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
-                            le.AppendText(_GlyphSource, TruncatedIndicator, _KerningAdjustments, overrideSuppress: false);
+                            le.AppendText(glyphSource, TruncatedIndicator, _KerningAdjustments, overrideSuppress: false);
                     }
 
-                    _CachedGlyphVersion = _GlyphSource.Version;
+                    _CachedGlyphVersion = glyphSource.Version;
                     _CachedStringLayout = le.Finish();
 
                     if (le.Markers.Count > 0) {
