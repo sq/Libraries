@@ -21,7 +21,8 @@ namespace Squared.PRGUI.Controls {
         void ItemChosen (Menu menu, Control item);
     }
 
-    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, 
+    public class Menu : Container, ICustomTooltipTarget, 
+        Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, 
         IModal, ISelectionBearer, IPartiallyIntangibleControl, 
         IFuzzyHitTestTarget, IHasDescription, IAlignedControl
     {
@@ -43,26 +44,31 @@ namespace Squared.PRGUI.Controls {
 
         private Control TooltipTarget => _SelectedItem ?? _HoveringItem;
 
+        protected TooltipTargetSettings TooltipSettings = new TooltipTargetSettings {
+            ShowWhileFocused = false,
+            ShowWhileMouseIsHeld = true,
+            ShowWhileMouseIsNotHeld = true,
+            ShowWhileKeyboardFocused = true,
+            HideOnMousePress = false,
+        };
+
+        TooltipTargetSettings ICustomTooltipTarget.TooltipSettings {
+            get {
+                TooltipSettings.AppearDelay = TooltipContent.Equals(default(AbstractTooltipContent)) &&
+                    (TooltipTarget != null) &&
+                    !TooltipTarget.TooltipContent.Equals(default(AbstractTooltipContent))
+                        ? 0f
+                        : (float?)null;
+                return TooltipSettings;
+            }
+        }
+
         AbstractTooltipContent ICustomTooltipTarget.GetContent () => new AbstractTooltipContent(
             GetTooltipForSelectedItem, settings: GetTooltipSettingsForSelectedItem()
         );
 
-        float? ICustomTooltipTarget.TooltipDisappearDelay => null;
-        float? ICustomTooltipTarget.TooltipAppearanceDelay => TooltipContent.Equals(default(AbstractTooltipContent)) && 
-            (TooltipTarget != null) &&
-            !TooltipTarget.TooltipContent.Equals(default(AbstractTooltipContent))
-                ? 0f
-                : (float?)null;
-        bool ICustomTooltipTarget.ShowTooltipWhileFocus => false;
-        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => true;
-        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => true;
-        bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
-        bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
         // FIXME: Attach to the menu item?
         Control ICustomTooltipTarget.Anchor => null;
-        Vector2? ICustomTooltipTarget.AnchorPoint => null;
-        Vector2? ICustomTooltipTarget.ControlAlignmentPoint => null;
-        Vector2? ICustomTooltipTarget.MaxTooltipSize => null;
 
         public string Description { get; set; }
 

@@ -96,17 +96,23 @@ namespace Squared.PRGUI.Controls {
 namespace Squared.PRGUI {
     public interface ICustomTooltipTarget {
         AbstractTooltipContent GetContent ();
-        float? TooltipAppearanceDelay { get; }
-        float? TooltipDisappearDelay { get; }
-        bool ShowTooltipWhileMouseIsHeld { get; }
-        bool ShowTooltipWhileMouseIsNotHeld { get; }
-        bool ShowTooltipWhileFocus { get; }
-        bool ShowTooltipWhileKeyboardFocus { get; }
-        bool HideTooltipOnMousePress { get; }
         Control Anchor { get; }
-        Vector2? AnchorPoint { get; }
-        Vector2? ControlAlignmentPoint { get; }
-        Vector2? MaxTooltipSize { get; }
+        TooltipTargetSettings TooltipSettings { get; }
+    }
+
+    public class TooltipTargetSettings {
+        public static TooltipTargetSettings Default = new TooltipTargetSettings();
+
+        public Vector2? AnchorPoint;
+        public Vector2? ControlAlignmentPoint;
+        public Vector2? MaxSize;
+        public bool ShowWhileMouseIsHeld = false;
+        public bool ShowWhileMouseIsNotHeld = true;
+        public bool ShowWhileFocused = false;
+        public bool ShowWhileKeyboardFocused = true;
+        public bool HideOnMousePress = true;
+        public float? AppearDelay;
+        public float? DisappearDelay;
     }
 
     public struct TooltipSettings {

@@ -791,6 +791,10 @@ namespace Squared.PRGUI {
             } else {
                 if (context.UIContext.Hovering == this)
                     result |= ControlStates.Hovering;
+                else if (context.UIContext.CurrentTooltipAnchor == this)
+                    // HACK
+                    result |= ControlStates.Hovering;
+
                 // HACK: If a modal has temporarily borrowed focus from us, we should still appear
                 //  to be focused.
                 var fm = context.UIContext.Focused as IModal;

@@ -478,7 +478,9 @@ namespace PRGUI.Demo {
                         Start = 0.1f,
                         End = 0.7f,
                         Color = Color.Red,
-                        Thickness = 0.3f
+                        Fill = {
+                            Thickness = 0.3f,
+                        },
                     },
                 },
                 /*

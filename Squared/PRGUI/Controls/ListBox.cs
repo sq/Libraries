@@ -130,17 +130,6 @@ namespace Squared.PRGUI.Controls {
         private Vector2 LastMouseOverPosition;
         public Control MouseOverItem { get; private set; }
 
-        protected AbstractTooltipContent MouseOverItemTooltip {
-            get {
-                var deep = MouseOverItem?.HitTest(LastMouseOverPosition, false, false, true);
-                var ttc = deep?.TooltipContent;
-                if ((ttc ?? default(AbstractTooltipContent)) != default(AbstractTooltipContent))
-                    return ttc.Value;
-                else
-                    return MouseOverItem?.TooltipContent ?? TooltipContent;
-            }
-        }
-
         public bool GenerateControlsWhenHidden = true;
 
         private int VirtualItemOffset = 0;
@@ -160,23 +149,6 @@ namespace Squared.PRGUI.Controls {
                 base.ColumnCount = value;
             }
         }
-
-        AbstractTooltipContent ICustomTooltipTarget.GetContent () => MouseOverItemTooltip;
-        float? ICustomTooltipTarget.TooltipDisappearDelay => null;
-        float? ICustomTooltipTarget.TooltipAppearanceDelay => TooltipContent.Equals(MouseOverItemTooltip) && 
-            (MouseOverItem != null) &&
-            !MouseOverItem.TooltipContent.Equals(default(AbstractTooltipContent))
-                ? 0f
-                : (float?)null;
-        bool ICustomTooltipTarget.ShowTooltipWhileFocus => false;
-        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => false;
-        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => true;
-        bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
-        bool ICustomTooltipTarget.HideTooltipOnMousePress => true;
-        Control ICustomTooltipTarget.Anchor => MouseOverItem;
-        Vector2? ICustomTooltipTarget.AnchorPoint => null;
-        Vector2? ICustomTooltipTarget.ControlAlignmentPoint => null;
-        Vector2? ICustomTooltipTarget.MaxTooltipSize => null;
 
         public ListBox ()
             : this (null) {
@@ -937,5 +909,48 @@ namespace Squared.PRGUI.Controls {
             List<FuzzyHitTest.Result> output, ref FuzzyHitTest.Result thisControl, Vector2 position, Func<Control, bool> predicate, float maxDistanceSquared
         ) => 0;
         bool IFuzzyHitTestTarget.WalkChildren => false;
+
+        protected void DetermineTooltip (out Control target, out AbstractTooltipContent result) {
+            // FIXME: Cache this for efficiency
+            var deep = MouseOverItem?.HitTest(LastMouseOverPosition, false, false, true);
+            var ttc = deep?.TooltipContent;
+            if ((ttc ?? default(AbstractTooltipContent)) != default(AbstractTooltipContent)) {
+                target = deep;
+                result = ttc.Value;
+            } else {
+                if ((MouseOverItem != null) && (MouseOverItem.TooltipContent != default(AbstractTooltipContent)))
+                    target = MouseOverItem;
+                else
+                    target = this;
+                result = MouseOverItem?.TooltipContent ?? TooltipContent;
+            }
+            // FIXME: What is this actually doing?
+            _TooltipSettings.AppearDelay = TooltipContent.Equals(result) &&
+                (MouseOverItem != null) &&
+                !MouseOverItem.TooltipContent.Equals(default)
+                    ? 0f
+                    : (float?)null;
+        }
+
+        AbstractTooltipContent ICustomTooltipTarget.GetContent () {
+            DetermineTooltip(out Control target, out AbstractTooltipContent content);
+            return content;
+        }
+
+        TooltipTargetSettings _TooltipSettings = new TooltipTargetSettings {
+            ShowWhileFocused = false,
+            ShowWhileMouseIsHeld = false,
+            ShowWhileMouseIsNotHeld = true,
+            ShowWhileKeyboardFocused = true,
+            HideOnMousePress = true,
+        };
+
+        TooltipTargetSettings ICustomTooltipTarget.TooltipSettings => _TooltipSettings;
+        Control ICustomTooltipTarget.Anchor {
+            get {
+                DetermineTooltip(out Control target, out AbstractTooltipContent content);
+                return target ?? MouseOverItem;
+            }
+        }
     }
 }

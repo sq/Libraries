@@ -86,18 +86,18 @@ namespace Squared.PRGUI.Controls {
 
         AbstractTooltipContent _GetDefaultTooltip = new AbstractTooltipContent(GetDefaultTooltip);
         AbstractTooltipContent ICustomTooltipTarget.GetContent () => _GetDefaultTooltip;
-
-        float? ICustomTooltipTarget.TooltipDisappearDelay => null;
-        float? ICustomTooltipTarget.TooltipAppearanceDelay => HasCustomTooltipContent ? (float?)null : 0f;
-        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => true;
-        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => HasCustomTooltipContent;
-        bool ICustomTooltipTarget.ShowTooltipWhileFocus => false;
-        bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
-        bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
+        TooltipTargetSettings _TooltipSettings = new TooltipTargetSettings {
+            ShowWhileMouseIsHeld = true,
+            HideOnMousePress = false
+        };
+        TooltipTargetSettings ICustomTooltipTarget.TooltipSettings {
+            get {
+                _TooltipSettings.AppearDelay = HasCustomTooltipContent ? (float?)null : 0f;
+                _TooltipSettings.ShowWhileMouseIsNotHeld = HasCustomTooltipContent;
+                return _TooltipSettings;
+            }
+        }
         Control ICustomTooltipTarget.Anchor => null;
-        Vector2? ICustomTooltipTarget.AnchorPoint => null;
-        Vector2? ICustomTooltipTarget.ControlAlignmentPoint => null;
-        Vector2? ICustomTooltipTarget.MaxTooltipSize => null;
 
         private string _TooltipFormat = null;
         /// <summary>

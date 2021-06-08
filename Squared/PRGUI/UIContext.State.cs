@@ -112,6 +112,8 @@ namespace Squared.PRGUI {
 
         private ConditionalWeakTable<Control, Control> TopLevelFocusMemory = new ConditionalWeakTable<Control, Control>();
 
+        public Control CurrentTooltipAnchor => IsTooltipActive ? PreviousTooltipAnchor : null;
+
         private Vector2 MousePositionWhenKeyboardSelectionWasLastUpdated;
         public IScrollableControl DragToScrollTarget { get; private set; }
         private Vector2? DragToScrollInitialOffset;

@@ -184,19 +184,17 @@ namespace Squared.PRGUI.Controls {
         internal void SetAcceptsFocus (bool value) {
             AcceptsFocus = value;
         }
-
-        float? ICustomTooltipTarget.TooltipAppearanceDelay => 0f;
-        float? ICustomTooltipTarget.TooltipDisappearDelay => null;
-
-        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => true;
-        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => true;
-        bool ICustomTooltipTarget.ShowTooltipWhileFocus => true;
-        bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
-        bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
+        
         Control ICustomTooltipTarget.Anchor => null;
-        Vector2? ICustomTooltipTarget.AnchorPoint => null;
-        Vector2? ICustomTooltipTarget.ControlAlignmentPoint => null;
-        Vector2? ICustomTooltipTarget.MaxTooltipSize => null;
+        TooltipTargetSettings ICustomTooltipTarget.TooltipSettings { get; } =
+            new TooltipTargetSettings {
+                AppearDelay = 0f,
+                ShowWhileMouseIsHeld = true,
+                ShowWhileMouseIsNotHeld = true,
+                ShowWhileFocused = true,
+                ShowWhileKeyboardFocused = true,
+                HideOnMousePress = false,
+            };
 
         public HyperText Parent {
             get {

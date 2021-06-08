@@ -575,8 +575,11 @@ namespace Squared.PRGUI {
             var ictt = control as ICustomTooltipTarget;
             if (ictt == null)
                 return false;
+            var tts = ictt.TooltipSettings;
+            if (tts == null)
+                return false;
 
-            return (ictt.ShowTooltipWhileFocus || ictt.ShowTooltipWhileKeyboardFocus) && (control == Focused);
+            return (tts.ShowWhileFocused || tts.ShowWhileKeyboardFocused) && (control == Focused);
         }
 
         private Control PickTooltipTarget (bool leftButtonPressed) {
@@ -591,17 +594,17 @@ namespace Squared.PRGUI {
         }
 
         private bool IsTooltipAllowedToAppear (Control target, bool leftButtonPressed) {
-            var cttt = target as ICustomTooltipTarget;
-            if (cttt == null)
+            var tts = (target as ICustomTooltipTarget)?.TooltipSettings;
+            if (tts == null)
                 return !leftButtonPressed;
 
-            var result = (leftButtonPressed
-                ? cttt.ShowTooltipWhileMouseIsHeld
-                : cttt.ShowTooltipWhileMouseIsNotHeld);
+            var result = leftButtonPressed
+                ? tts.ShowWhileMouseIsHeld
+                : tts.ShowWhileMouseIsNotHeld;
             if (target == KeyboardSelection)
-                result |= cttt.ShowTooltipWhileKeyboardFocus;
+                result |= tts.ShowWhileKeyboardFocused;
             if (target == Focused)
-                result |= cttt.ShowTooltipWhileFocus;
+                result |= tts.ShowWhileFocused;
             return result;
         }
 
@@ -621,6 +624,7 @@ namespace Squared.PRGUI {
                 return;
 
             var cttt = target as ICustomTooltipTarget;
+            var tts = cttt?.TooltipSettings;
 
             var now = Now;
             var tooltipContent = default(AbstractTooltipContent);
@@ -632,7 +636,7 @@ namespace Squared.PRGUI {
             }
             var tooltipText = tooltipContent.Get(target);
 
-            var disappearDelay = (cttt?.TooltipDisappearDelay ?? TooltipDisappearDelay);
+            var disappearDelay = (tts?.DisappearDelay ?? TooltipDisappearDelay);
 
             if (
                 !tooltipText.IsNull && 
@@ -651,7 +655,7 @@ namespace Squared.PRGUI {
                 var version = target.TooltipContentVersion + target.TooltipContent.Version;
 
                 if (
-                    (hoveringFor >= (cttt?.TooltipAppearanceDelay ?? TooltipAppearanceDelay)) || 
+                    (hoveringFor >= (tts?.AppearDelay ?? TooltipAppearanceDelay)) || 
                     (disappearTimeout < disappearDelay)
                 ) {
                     ShowTooltip(
@@ -695,8 +699,9 @@ namespace Squared.PRGUI {
 
         private void HideTooltipForMouseInput (bool isMouseDown) {
             var cttt = PickTooltipTarget(isMouseDown) as ICustomTooltipTarget;
-            if (cttt != null) {
-                if (!cttt.HideTooltipOnMousePress)
+            var tts = cttt?.TooltipSettings;
+            if (tts != null) {
+                if (!tts.HideOnMousePress)
                     return;
             }
 
@@ -781,6 +786,7 @@ namespace Squared.PRGUI {
             var textChanged = !instance.Text.TextEquals(text, StringComparison.Ordinal) || 
                 textIsInvalidated;
 
+            var tts = cttt?.TooltipSettings;
             var anchor = cttt?.Anchor ?? target;
             // HACK: Copy the target's decoration provider so the tooltip matches
             instance.Appearance.DecorationProvider = (
@@ -788,19 +794,21 @@ namespace Squared.PRGUI {
                 target.Appearance.DecorationProvider ?? 
                 Decorations
             );
+            var fireEvent = (anchor != PreviousTooltipAnchor) || !IsTooltipVisible;
+
             // FIXME: For menus and perhaps list boxes, keyboard navigation sets the tooltip target
             //  to be the selected item instead of the list/menu and this ignores the container's settings
             instance.Move(
                 anchor, 
-                cttt?.AnchorPoint ?? content.Settings.AnchorPoint, 
-                cttt?.ControlAlignmentPoint ?? content.Settings.ControlAlignmentPoint
+                tts?.AnchorPoint ?? content.Settings.AnchorPoint, 
+                tts?.ControlAlignmentPoint ?? content.Settings.ControlAlignmentPoint
             );
 
             instance.Visible = true;
             instance.DisplayOrder = int.MaxValue;
 
             if (textChanged || !IsTooltipVisible) {
-                var idealMaxSize = CanvasSize * (content.Settings.MaxSize ?? cttt?.MaxTooltipSize ?? MaxTooltipSize);
+                var idealMaxSize = CanvasSize * (content.Settings.MaxSize ?? tts?.MaxSize ?? MaxTooltipSize);
 
                 instance.Text = text;
                 instance.ApplySettings(content.Settings);
@@ -825,6 +833,9 @@ namespace Squared.PRGUI {
             PreviousTooltipAnchor = anchor;
             IsTooltipVisible = true;
             UpdateSubtreeLayout(instance);
+
+            if (fireEvent)
+                FireEvent(UIEvents.TooltipShown, anchor);
         }
 
         // Position is relative to the top-left corner of the canvas
