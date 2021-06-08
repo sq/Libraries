@@ -164,7 +164,7 @@ namespace Squared.PRGUI.Controls {
                 if (Content.Scale == value)
                     return;
                 Content.Scale = value;
-                AutoSizeComputedHeight = AutoSizeComputedWidth = null;
+                ResetAutoSize();
             }
         }
 
@@ -230,6 +230,14 @@ namespace Squared.PRGUI.Controls {
             Content.Get();
         }
 
+        protected void ResetAutoSize () {
+            AutoSizeComputedContentHeight = 0;
+            AutoSizeComputedHeight = AutoSizeComputedWidth = null;
+            // HACK: Ensure we do not erroneously wrap content that is intended to be used as an input for auto-size
+            if (AutoSizeWidth)
+                MostRecentContentBoxWidth = null;
+        }
+
         protected StringLayout GetCurrentLayout (bool measurement) {
             if (_RichText.HasValue)
                 Content.RichText = _RichText.Value;
@@ -238,11 +246,11 @@ namespace Squared.PRGUI.Controls {
 
             if (measurement) {
                 if (!Content.IsValid || (ContentMeasurement == null)) {
-                    AutoSizeComputedHeight = AutoSizeComputedWidth = null;
+                    ResetAutoSize();
                     ConfigureMeasurement();
                 }
                 if (!ContentMeasurement.IsValid) {
-                    AutoSizeComputedHeight = AutoSizeComputedWidth = null;
+                    ResetAutoSize();
                     _NeedRelayout = true;
                 }
                 return ContentMeasurement.Get();
@@ -267,7 +275,7 @@ namespace Squared.PRGUI.Controls {
             //  gets bigger
 
             if (!AutoSizeWidth && !AutoSizeHeight) {
-                AutoSizeComputedHeight = AutoSizeComputedWidth = null;
+                ResetAutoSize();
                 return;
             }
 
@@ -277,14 +285,14 @@ namespace Squared.PRGUI.Controls {
 
             var contentChanged = (ContentMeasurement?.IsValid == false) || !Content.IsValid;
             if (contentChanged || fontChanged)
-                AutoSizeComputedWidth = AutoSizeComputedHeight = null;
+                ResetAutoSize();
 
             if (
                 (_CachedTextDecorations != textDecorations) ||
                 (_CachedDecorations != decorations) ||
                 !_CachedPadding.Equals(ref computedPadding)
             ) {
-                AutoSizeComputedWidth = AutoSizeComputedHeight = null;
+                ResetAutoSize();
             }
 
             if (
@@ -340,12 +348,9 @@ namespace Squared.PRGUI.Controls {
 
         protected void Invalidate () {
             _NeedRelayout = true;
-            AutoSizeComputedHeight = AutoSizeComputedWidth = null;
+            ResetAutoSize();
             Content.Invalidate();
             ContentMeasurement?.Invalidate();
-            // HACK: Ensure we do not erroneously wrap content that is intended to be used as an input for auto-size
-            if (AutoSizeWidth)
-                MostRecentContentBoxWidth = null;
         }
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -558,6 +563,7 @@ namespace Squared.PRGUI.Controls {
         private bool SyncWithCurrentFont (IGlyphSource font) {
             var result = false;
             if (font != _MostRecentFont) {
+                ResetAutoSize();
                 if (Content.GlyphSource == _MostRecentFont) {
                     Content.GlyphSource = font;
                     result = true;
