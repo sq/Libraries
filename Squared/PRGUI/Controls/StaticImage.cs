@@ -276,7 +276,7 @@ namespace Squared.PRGUI.Controls {
                 // HACK: Fix images overhanging by a pixel
                 position = position.Floor();
                 var origin = Alignment;
-                var color4 = MultiplyColor.pLinear?.Get(context.NowL) ?? Vector4.One;
+                var color4 = MultiplyColor.Get(context.NowL) ?? Vector4.One;
                 // FIXME: Always use context.Opacity?
                 if (!settings.IsCompositing)
                     color4 *= context.Opacity;

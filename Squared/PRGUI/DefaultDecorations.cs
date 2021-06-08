@@ -849,13 +849,14 @@ namespace Squared.PRGUI {
 
         public bool Gauge_Fill_Setup (
             UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings,
-            out bool isCircular, out float outlineRadius, out float alpha1, out float alpha2, 
-            out string direction, out Vector2 ca, out Vector2 cb, 
+            out bool isCircular, out float outlineRadius, out Vector4 cornerRadiuses,
+            out float alpha1, out float alpha2, out string direction, out Vector2 ca, out Vector2 cb, 
             out pSRGBColor fillColor1, out pSRGBColor fillColor2, out pSRGBColor outlineColor,
             out RasterFillMode fillMode
         ) {
             isCircular = false;
             outlineRadius = GetOutlineSize(1f);
+            cornerRadiuses = Vector4.One;
             alpha1 = alpha2 = 0f;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
@@ -887,6 +888,9 @@ namespace Squared.PRGUI {
                     break;
             }
 
+            float radiusA = settings.HasTrait("hard-start") ? 0f : 1f,
+                radiusB = settings.HasTrait("hard-end") ? 0f : 1f;
+
             // HACK: Based on orientation, disable snapping for the growing edge of the fill
             //  along the growth axis so that it can shrink/expand smoothly while staying snapped
             //  at the other 3 edges
@@ -894,29 +898,36 @@ namespace Squared.PRGUI {
                 default:
                 case "ltr":
                     cb.X = settings.ContentBox.Extent.X;
+                    // TL, TR, BR, BL
+                    cornerRadiuses = new Vector4(radiusA, radiusB, radiusB, radiusA);
                     break;
                 case "rtl":
                     ca.X = settings.ContentBox.Position.X;
+                    cornerRadiuses = new Vector4(radiusA, radiusB, radiusB, radiusA);
                     break;
                 case "ttb":
                     cb.Y = settings.ContentBox.Extent.Y;
+                    cornerRadiuses = new Vector4(radiusA, radiusA, radiusB, radiusB);
                     break;
                 case "btt":
                     ca.Y = settings.ContentBox.Position.Y;
+                    cornerRadiuses = new Vector4(radiusA, radiusA, radiusB, radiusB);
                     break;
                 case "cw":
                 case "ccw":
                     break;
             }
 
-            float value1 = settings.UserData.X,
-                value2 = settings.UserData.Y,
+            var fixedValues = settings.HasTrait("fixed-endpoints");
+            float value1 = fixedValues ? 0 : settings.UserData.X,
+                value2 = fixedValues ? 1 : settings.UserData.Y,
                 alphaDelta = ColorScheme.GaugeFillAlpha2 - ColorScheme.GaugeFillAlpha1;
 
             alpha1 = Arithmetic.Saturate(ColorScheme.GaugeFillAlpha1 + (alphaDelta * value1));
             alpha2 = Arithmetic.Saturate(ColorScheme.GaugeFillAlpha1 + (alphaDelta * value2));
 
-            float brightnessDelta = ColorScheme.GaugeFillBrightness2 - ColorScheme.GaugeFillBrightness1,
+            var contrast = settings.HasTrait("high-contrast") ? 2f : 1f;
+            float brightnessDelta = (ColorScheme.GaugeFillBrightness2 - ColorScheme.GaugeFillBrightness1) * contrast,
                 brightness1 = ColorScheme.GaugeFillBrightness1 + (brightnessDelta * value1),
                 brightness2 = ColorScheme.GaugeFillBrightness1 + (brightnessDelta * value2);
 
@@ -939,7 +950,7 @@ namespace Squared.PRGUI {
         private void Gauge_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             Gauge_Fill_Setup(
                 context, ref renderer, settings,
-                out bool isCircular, out float outlineRadius,
+                out bool isCircular, out float outlineRadius, out Vector4 cornerRadiuses,
                 out float alpha1, out float alpha2, out string direction,
                 out Vector2 ca, out Vector2 cb,
                 out pSRGBColor fillColor1, out pSRGBColor fillColor2,
@@ -969,18 +980,21 @@ namespace Squared.PRGUI {
                     texture: settings.GetTexture(),
                     textureRegion: settings.GetTextureRegion(),
                     textureSettings: settings.GetTextureSettings(),
-                    endRounding: 0f
+                    endRounding: 0f, fillOffset: settings.UserData.Z, 
+                    fillSize: (settings.UserData.W != 0) ? settings.UserData.W : 1
                 );
             } else {
                 renderer.RasterizeRectangle(
                     ca, cb,
-                    radius: SliderCornerRadius,
+                    radiusCW: SliderCornerRadius * cornerRadiuses,
                     outlineRadius: outlineRadius, outlineColor: outlineColor * 0.5f,
                     fillMode: fillMode, innerColor: fillColor1, outerColor: fillColor2,
                     shadow: GaugeValueShadow,
                     texture: settings.GetTexture(),
                     textureRegion: settings.GetTextureRegion(),
-                    textureSettings: settings.GetTextureSettings()
+                    textureSettings: settings.GetTextureSettings(),
+                    fillOffset: settings.UserData.Z, 
+                    fillSize: (settings.UserData.W != 0) ? settings.UserData.W : 1
                 );
             }
         }

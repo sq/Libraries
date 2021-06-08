@@ -26,6 +26,10 @@ namespace Squared.PRGUI {
             set => Update(ref pLinear, value);
         }
 
+        public Vector4? Get (long now) {
+            return pLinear?.Get(now);
+        }
+
         internal static void Update (ref Tween<Vector4>? v4, Tween<Color>? value) {
             if (value == null) {
                 v4 = null;
