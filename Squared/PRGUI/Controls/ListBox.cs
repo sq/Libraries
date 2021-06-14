@@ -351,16 +351,9 @@ namespace Squared.PRGUI.Controls {
             if (scrollOffsetChanged)
                 OnDisplayOffsetChanged();
 
-            if (existingKey.HasValue) {
-                ;
-            }
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
                 return result;
-
-            var lc2 = context.Layout.Children(result).Count();
-            if (lc2 != Children.Count)
-                ;
 
             var hasPushedDecorator = false;
             var children = Children;
