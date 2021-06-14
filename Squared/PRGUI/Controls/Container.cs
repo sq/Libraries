@@ -269,7 +269,8 @@ namespace Squared.PRGUI.Controls {
 
         protected bool GetContentBounds (UIContext context, out Vector2 contentBounds) {
             contentBounds = default(Vector2);
-            if (LayoutKey.IsInvalid)
+            // FIXME: Only check for missing key instead?
+            if (IsLayoutInvalid)
                 return false;
 
             var contentRect = default(RectF);

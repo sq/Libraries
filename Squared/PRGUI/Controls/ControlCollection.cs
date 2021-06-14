@@ -246,6 +246,11 @@ namespace Squared.PRGUI {
             return TabOrderedItemsResult;
         }
 
+        public void Sort (IComparer<Control> comparer) {
+            Items.Sort(comparer);
+            Invalidate();
+        }
+
         internal List<Control> InDisplayOrder (int frameIndex) {
             return InDisplayOrder(frameIndex, out OrderRange temp);
         }

@@ -72,11 +72,16 @@ namespace Squared.PRGUI.Controls {
 
         public override void InvalidateLayout () {
             base.InvalidateLayout();
-            if (Context == null)
-                return;
             var children = Children;
             foreach (var ch in children)
                 ch.InvalidateLayout();
+        }
+        
+        public override void ClearLayoutKey () {
+            base.ClearLayoutKey();
+            var children = Children;
+            foreach (var ch in children)
+                ch.ClearLayoutKey();
         }
 
         bool IControlContainer.IsControlHidden (Control child) => false;
@@ -219,12 +224,6 @@ namespace Squared.PRGUI.Controls {
             DynamicContentIsInvalid = true;
         }
 
-        public override void InvalidateLayout () {
-            base.InvalidateLayout();
-            for (int i = 0, c = (ColumnKeys?.Length ?? 0); i < c; i++)
-                ColumnKeys[i] = ControlKey.Invalid;
-        }
-
         private bool IsGeneratingDynamicContent = false;
 
         internal void EnsureDynamicBuilderInitialized (out ContainerBuilder result) {
@@ -289,6 +288,7 @@ namespace Squared.PRGUI.Controls {
         protected bool NeedToInvalidateChildLayout;
         
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            var wasInvalid = IsLayoutInvalid;
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             var children = Children;
             if (result.IsInvalid || SuppressChildLayout) {

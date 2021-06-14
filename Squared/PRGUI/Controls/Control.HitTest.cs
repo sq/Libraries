@@ -44,7 +44,7 @@ namespace Squared.PRGUI {
         public Control HitTest (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible = false) {
             if (!Visible)
                 return null;
-            if (LayoutKey.IsInvalid)
+            if (IsLayoutInvalid)
                 return null;
             // FIXME: Is this right?
             if (GetOpacity(Context.NowL) <= 0)

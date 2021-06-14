@@ -351,9 +351,16 @@ namespace Squared.PRGUI.Controls {
             if (scrollOffsetChanged)
                 OnDisplayOffsetChanged();
 
+            if (existingKey.HasValue) {
+                ;
+            }
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
                 return result;
+
+            var lc2 = context.Layout.Children(result).Count();
+            if (lc2 != Children.Count)
+                ;
 
             var hasPushedDecorator = false;
             var children = Children;
@@ -532,12 +539,15 @@ namespace Squared.PRGUI.Controls {
             LastMouseOverPosition = args.RelativeGlobalPosition;
             MouseOverItem = control;
             // Console.WriteLine($"ChildFromGlobalPosition == {control}");
-            // FIXME: If we handle Click then drag-to-scroll won't select an item,
-            //  but having it not select on mousedown feels bad
-            if (
+            if ((args.Buttons == MouseButtons.Right) || (args.PreviousButtons == MouseButtons.Right)) {
+                // HACK: Enable passing right-click events through so items can have context menus
+                Context.FireEvent(name, control, args);
+            } else if (
                 ((name == UIEvents.MouseDown) && SelectOnMouseDown) ||
                 ((name == UIEvents.Click) && !args.IsSynthetic)
             ) {
+                // FIXME: If we handle Click then drag-to-scroll won't select an item,
+                //  but having it not select on mousedown feels bad
                 if (
                     args.Box.Contains(args.RelativeGlobalPosition) && 
                     Items.GetValueForControl(control, out T newItem)

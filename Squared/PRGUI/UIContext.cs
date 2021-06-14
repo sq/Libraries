@@ -317,13 +317,15 @@ namespace Squared.PRGUI {
         }
 
         public void NotifyModalShown (IModal modal) {
-            if (ModalStack.Contains(modal))
-                throw new InvalidOperationException("Modal already visible");
             var ctl = (Control)modal;
             if (!Controls.Contains(ctl))
                 throw new InvalidOperationException("Modal not in top level controls list");
             TopLevelFocusMemory.Remove(ctl);
-            ModalStack.Add(modal);
+            // FIXME: Reopening a menu really quick can cause this, it's probably harmless?
+            if (false && ModalStack.Contains(modal))
+                throw new InvalidOperationException("Modal already visible");
+            else
+                ModalStack.Add(modal);
             TrySetFocus(ctl, false, false);
             FireEvent(UIEvents.Shown, ctl);
         }

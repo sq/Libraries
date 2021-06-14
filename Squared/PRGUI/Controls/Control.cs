@@ -168,14 +168,19 @@ namespace Squared.PRGUI {
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
 
+        private bool _IsLayoutInvalid;
+        protected bool IsLayoutInvalid {
+            get => _IsLayoutInvalid || _LayoutKey.IsInvalid;
+            set {
+                _IsLayoutInvalid = value;
+            }
+        }
         private ControlKey _LayoutKey = ControlKey.Invalid;
         public ControlKey LayoutKey {
             get => _LayoutKey;
             private set {
                 if (value == _LayoutKey)
                     return;
-                if (!_LayoutKey.IsInvalid)
-                    ;
                 _LayoutKey = value;
             }
         }
@@ -573,7 +578,7 @@ namespace Squared.PRGUI {
 
         public bool GetRects (out RectF rect, out RectF contentRect, bool applyOffset = true, UIContext context = null) {
             context = context ?? Context;
-            if ((LayoutKey.IsInvalid) || (context == null)) {
+            if (IsLayoutInvalid || (context == null)) {
                 rect = contentRect = default(RectF);
                 return false;
             }
@@ -598,7 +603,7 @@ namespace Squared.PRGUI {
         /// <param name="contentRect">Insets the rectangle by the control's padding.</param>
         /// <param name="exteriorRect">Expands the rectangle to include the control's margin.</param>
         public RectF GetRect (bool applyOffset = true, bool contentRect = false, bool exteriorRect = false, UIContext context = null) {
-            if (LayoutKey.IsInvalid)
+            if (IsLayoutInvalid)
                 return default(RectF);
 
             context = context ?? Context;
@@ -722,6 +727,8 @@ namespace Squared.PRGUI {
         protected virtual ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             if (!Visible && !context.UIContext.IsUpdatingSubtreeLayout)
                 return ControlKey.Invalid;
+
+            IsLayoutInvalid = false;
 
 #if DETECT_DOUBLE_RASTERIZE
             RasterizeIsPending = true;
@@ -1118,7 +1125,7 @@ namespace Squared.PRGUI {
 
             var box = default(RectF);
             bool isZeroSized = false, isInvisible = false;
-            if (LayoutKey.IsInvalid) {
+            if (IsLayoutInvalid) {
                 hidden = true;
             } else {
                 box = GetRect();
@@ -1296,7 +1303,14 @@ namespace Squared.PRGUI {
         }
 
         public virtual void InvalidateLayout () {
+            IsLayoutInvalid = true;
+        }
+
+        // FIXME: It sucks that this has to be public
+        public virtual void ClearLayoutKey () {
             LayoutKey = ControlKey.Invalid;
+            // FIXME: Do we need to do this?
+            // IsLayoutInvalid = true;
         }
 
         internal void SetParent (Control parent) {
@@ -1313,13 +1327,13 @@ namespace Squared.PRGUI {
                     return;
             }
 
-            InvalidateLayout();
+            ClearLayoutKey();
             WeakParent = new WeakReference<Control>(parent, false);
             Context = parent.Context;
         }
 
         internal void UnsetParent (Control oldParent) {
-            InvalidateLayout();
+            ClearLayoutKey();
 
             CancelActiveAnimation();
 

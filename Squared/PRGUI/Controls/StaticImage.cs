@@ -306,7 +306,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         void IPostLayoutListener.OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
-            if ((LayoutKey.IsInvalid) || (_Image.Instance == null)) {
+            if (IsLayoutInvalid || (_Image.Instance == null)) {
                 AreRecentRectsValid = false;
                 return;
             }

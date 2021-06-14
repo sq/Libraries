@@ -195,7 +195,7 @@ namespace Squared.PRGUI.Controls {
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid) {
                 foreach (var item in children)
-                    item.InvalidateLayout();
+                    item.ClearLayoutKey();
 
                 return result;
             } else {
