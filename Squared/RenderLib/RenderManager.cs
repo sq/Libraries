@@ -154,7 +154,7 @@ namespace Squared.Render {
                 if (deviceManager.CurrentMaterial != material) {
                     Set_Slow(deviceManager, material);
                 } else {
-                    material.Flush();
+                    material.Flush(deviceManager);
                 }
             }
 
@@ -179,6 +179,8 @@ namespace Squared.Render {
         internal readonly Stack<BatchGroup> BatchGroupStack = new Stack<BatchGroup>(256);
 
         public readonly GraphicsDevice Device;
+        // HACK: This is gross
+        public ActiveViewTransformInfo ActiveViewTransform { get; internal set; }
         public Material CurrentMaterial { get; private set; }
         public int FrameIndex { get; internal set; }
 

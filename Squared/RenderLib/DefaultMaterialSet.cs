@@ -152,14 +152,7 @@ namespace Squared.Render {
         }
 
         public bool AutoApply (Material m) {
-            bool hasChanged = false;
-            if (m.ActiveViewTransform != this) {
-                m.ActiveViewTransform = this;
-                hasChanged = true;
-            } else {
-                hasChanged = m.ActiveViewTransformId != Id;
-            }
-
+            bool hasChanged = m.ActiveViewTransformId != Id;
             MaterialSet.ApplyViewTransformToMaterial(m, ref ViewTransform);
             m.ActiveViewTransformId = Id;
             return hasChanged;
@@ -396,7 +389,7 @@ namespace Squared.Render {
         /// If true, view transform changes are lazily applied at the point each material is activated
         ///  instead of being eagerly applied to all materials whenever you change the view transform
         /// </summary>
-        public bool LazyViewTransformChanges = true;
+        public bool LazyViewTransformChanges = false;
 
         /// <summary>
         /// Controls the strength of dithering applied to the result of the lightmapped bitmap materials, along with
@@ -450,15 +443,15 @@ namespace Squared.Render {
         }
 
         private Material NewMaterial (Effect effect, string techniqueName) {
-            var result = new Material(effect, techniqueName) {
-                ActiveViewTransform = ActiveViewTransform
-            };
+            var result = new Material(effect, techniqueName);
             return result;
         }
 
         public DefaultMaterialSet (RenderCoordinator coordinator, ITimeProvider timeProvider = null) {
             Coordinator = coordinator;
             ActiveViewTransform = new ActiveViewTransformInfo(this);
+            // HACK
+            coordinator.Manager.DeviceManager.ActiveViewTransform = ActiveViewTransform;
             _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
             _ApplyParamsDelegate = ApplyParamsToMaterial;
 
@@ -1132,21 +1125,7 @@ namespace Squared.Render {
         }
 
         public void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
-            // HACK: Ensure all materials have this instance for lazy transform updates
-            // This breaks lighting
-            // m.ActiveViewTransform = ActiveViewTransform;
-
-/*
-#if DEBUG
-            var ep = m.Parameters;
-            ep?.ModelViewMatrix?.SetValue(viewTransform.ModelView);
-            ep?.ProjectionMatrix?.SetValue(viewTransform.Projection);
-            ep?.ScaleAndPosition?.SetValue(new Vector4(viewTransform.Scale.X, viewTransform.Scale.Y, viewTransform.Position.X, viewTransform.Position.Y));
-            ep?.InputAndOutputZRanges?.SetValue(viewTransform.InputAndOutputZRanges);
-#else
-*/
             uViewport.TrySet(m, ref viewTransform);
-//#endif
         }
 
         /// <summary>
@@ -1177,7 +1156,7 @@ namespace Squared.Render {
                 LastRenderTargetChangeIndex = rtci;
                 ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
             } else if (am != null)
-                am.Flush();
+                am.Flush(Coordinator.Manager.DeviceManager);
         }
 
         /// <summary>

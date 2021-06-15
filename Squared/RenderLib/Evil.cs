@@ -542,6 +542,9 @@ namespace Squared.Render.Evil {
                 case SurfaceFormat.Vector4:
                     numComponents = 4;
                     return 16;
+                case SurfaceFormat.Rg32:
+                    numComponents = 2;
+                    return 4;
                 default:
                     throw new ArgumentException("Surface format " + format + " not implemented");
             }

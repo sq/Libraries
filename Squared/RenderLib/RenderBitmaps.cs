@@ -674,7 +674,7 @@ namespace Squared.Render {
                 cnbs.Parameters.HalfTexel2?.SetValue(nb.Texture2HalfTexel);
             }
 
-            manager.CurrentMaterial.Flush();
+            manager.CurrentMaterial.Flush(manager);
 
             if (cnbs.SamplerState1 != null)
                 manager.Device.SamplerStates[0] = cnbs.SamplerState1;
