@@ -389,7 +389,7 @@ namespace Squared.Render {
         /// If true, view transform changes are lazily applied at the point each material is activated
         ///  instead of being eagerly applied to all materials whenever you change the view transform
         /// </summary>
-        public bool LazyViewTransformChanges = false;
+        public bool LazyViewTransformChanges = true;
 
         /// <summary>
         /// Controls the strength of dithering applied to the result of the lightmapped bitmap materials, along with
@@ -1124,7 +1124,7 @@ namespace Squared.Render {
             uDithering.TrySet(m, ref ds);
         }
 
-        public void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
+        internal void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
             uViewport.TrySet(m, ref viewTransform);
         }
 
@@ -1155,8 +1155,10 @@ namespace Squared.Render {
                 LastAppliedViewTransform = viewTransform;
                 LastRenderTargetChangeIndex = rtci;
                 ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
-            } else if (am != null)
+            } else if (am != null) {
+                ActiveViewTransform.AutoApply(am);
                 am.Flush(Coordinator.Manager.DeviceManager);
+            }
         }
 
         /// <summary>

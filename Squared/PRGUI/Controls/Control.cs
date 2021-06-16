@@ -1329,7 +1329,8 @@ namespace Squared.PRGUI {
 
             ClearLayoutKey();
             WeakParent = new WeakReference<Control>(parent, false);
-            Context = parent.Context;
+            if (parent.Context != null)
+                Context = parent.Context;
         }
 
         internal void UnsetParent (Control oldParent) {

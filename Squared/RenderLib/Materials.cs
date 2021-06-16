@@ -159,17 +159,11 @@ namespace Squared.Render {
         // For debugging
         private void Begin_Internal (string shaderName, DeviceManager deviceManager) {
             CheckDevice(deviceManager);
-            if (deviceManager.ActiveViewTransform != null)
-                deviceManager.ActiveViewTransform.ActiveMaterial = this;
-
             Flush(deviceManager);
 
             if (BeginHandlers != null)
                 foreach (var handler in BeginHandlers)
                     handler(deviceManager);
-
-            if (deviceManager.ActiveViewTransform.AutoApply(this))
-                Flush(deviceManager, false);
         }
 
         public void Begin (DeviceManager deviceManager) {
@@ -177,22 +171,23 @@ namespace Squared.Render {
         }
 
         // For debugging
-        private void Flush_Internal (DeviceManager deviceManager, string shaderName, bool autoApplyViewTransform) {
-            if (autoApplyViewTransform && deviceManager.ActiveViewTransform != null)
-                deviceManager.ActiveViewTransform.AutoApply(this);
+        private void Flush_Internal (DeviceManager deviceManager, string shaderName) {
+            deviceManager.ActiveViewTransform?.AutoApply(this);
 
             if (Effect != null) {
                 UniformBinding.FlushEffect(Effect);
 
                 var currentTechnique = Effect.CurrentTechnique;
                 currentTechnique.Passes[0].Apply();
+
+                if (deviceManager.ActiveViewTransform != null)
+                    deviceManager.ActiveViewTransform.ActiveMaterial = this;
             }
         }
 
-        public void Flush (DeviceManager deviceManager, bool autoApplyViewTransform = true) {
+        public void Flush (DeviceManager deviceManager) {
             Flush_Internal(
-                deviceManager, Effect != null ? Effect.CurrentTechnique.Name : null, 
-                autoApplyViewTransform
+                deviceManager, Effect != null ? Effect.CurrentTechnique.Name : null
             );
         }
 
