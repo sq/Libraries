@@ -371,7 +371,8 @@ namespace Squared.Render {
             var dm = coordinator.Manager.DeviceManager;
 
             // HACK: Applying a shader does an on-demand compile
-            var tempIb = new IndexBuffer(dm.Device, IndexElementSize.SixteenBits, 6, BufferUsage.WriteOnly);
+            // HACK: We should really only need 6 indices but drivers seem to want more sometimes
+            var tempIb = new IndexBuffer(dm.Device, IndexElementSize.SixteenBits, 128, BufferUsage.WriteOnly);
             var count = 0;
             foreach (var m in AllMaterials) {
                 if (m.HintPipeline == null && m.DelegatedHintPipeline?.HintPipeline == null)
