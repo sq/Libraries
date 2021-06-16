@@ -298,20 +298,28 @@ namespace Squared.Render.Text {
                 uint.TryParse(text.Substring(1), System.Globalization.NumberStyles.HexNumber, null, out uint decoded)
             ) {
                 var result = new Color { PackedValue = decoded };
+                var temp = result.R;
+                result.R = result.B;
+                result.B = temp;
                 if (text.Length <= 7)
                     result.A = 255;
                 return result;
             } else if ((NamedColors != null) && NamedColors.TryGetValue(text, out Color namedColor)) {
                 return namedColor;
-            } else if (SystemNamedColorCache.TryGetValue(text, out Color? systemNamedColor)) {
-                return systemNamedColor;
             } else {
+                lock (SystemNamedColorCache) {
+                    if (SystemNamedColorCache.TryGetValue(text, out Color? systemNamedColor))
+                        return systemNamedColor;
+                }
+
                 var tColor = typeof(Color);
                 var prop = tColor.GetProperty(text, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
                 Color? result = null;
                 if (prop != null)
                     result = (Color)prop.GetValue(null);
-                SystemNamedColorCache[text] = result;
+                lock (SystemNamedColorCache)
+                    SystemNamedColorCache[text] = result;
+
                 return result;
             }
         }
