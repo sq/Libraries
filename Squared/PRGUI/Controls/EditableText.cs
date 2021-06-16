@@ -690,8 +690,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool OnEvent<T> (string name, T args) {
-            if (args is MouseEventArgs)
-                return OnMouseEvent(name, (MouseEventArgs)(object)args);
+            if (args is MouseEventArgs ma)
+                return OnMouseEvent(name, ma);
             else if (name == UIEvents.KeyPress)
                 return OnKeyPress((KeyEventArgs)(object)args);
             else if (name == UIEvents.LostFocus) {

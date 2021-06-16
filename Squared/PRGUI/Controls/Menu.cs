@@ -343,13 +343,13 @@ namespace Squared.PRGUI.Controls {
             if (name == UIEvents.MouseLeave) {
                 if (DeselectOnMouseLeave)
                     SetSelectedItem(null, true);
-            } else if (args is MouseEventArgs)
-                return OnMouseEvent(name, (MouseEventArgs)(object)args);
+            } else if (args is MouseEventArgs ma)
+                return OnMouseEvent(name, ma);
             else if (name == UIEvents.LostFocus) {
                 if (CloseWhenFocusLost)
                     Close(true);
-            } else if (args is KeyEventArgs)
-                return OnKeyEvent(name, (KeyEventArgs)(object)args);
+            } else if (args is KeyEventArgs ka)
+                return OnKeyEvent(name, ka);
             else
                 return base.OnEvent(name, args);
 

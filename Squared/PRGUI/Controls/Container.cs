@@ -147,8 +147,8 @@ namespace Squared.PRGUI.Controls {
         protected override bool OnEvent<T> (string name, T args) {
             if (name == UIEvents.Scroll)
                 return OnScroll(Convert.ToSingle(args));
-            else if (args is MouseEventArgs)
-                return ProcessMouseEventForScrollbar(name, (MouseEventArgs)(object)args);
+            else if (args is MouseEventArgs ma)
+                return ProcessMouseEventForScrollbar(name, ma);
 
             return false;
         }

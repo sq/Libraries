@@ -123,8 +123,8 @@ namespace Squared.PRGUI.Controls {
             if ((name == UIEvents.Click) && AutoShowMenu())
                 return true;
 
-            if (args is MouseEventArgs)
-                return OnMouseEvent(name, (MouseEventArgs)(object)args);
+            if (args is MouseEventArgs ma)
+                return OnMouseEvent(name, ma);
 
             return base.OnEvent(name, args);
         }
