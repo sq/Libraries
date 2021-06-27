@@ -154,6 +154,7 @@ namespace Squared.Threading {
         private readonly object ItemsLock = new object();
         private InternalWorkItem<T>[] _Items;
         private int _Head, _Tail, _Count;
+        private int _Semilock;
 
         private volatile int _NumProcessing = 0;
         private ExceptionDispatchInfo UnhandledException;
@@ -184,24 +185,61 @@ namespace Squared.Threading {
                 throw new Exception("Cannot enqueue items while the queue is draining");
         }
 
+        const int Semilock_Open = 0;
+        const int Semilock_Reading = 1;
+        const int Semilock_Dequeuing = 2;
+        const int Semilock_Adding = 3;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int AddInternal (ref InternalWorkItem<T> item) {
             AssertCanEnqueue();
             var result = Interlocked.Increment(ref ItemsQueued);
             lock (ItemsLock) {
+                // Any existing read operations are irrelevant, we're inside the lock so we own the semilock state
+                Volatile.Write(ref _Semilock, Semilock_Adding);
                 EnsureCapacityLocked(_Count + 1);
                 _Items[_Tail] = item;
                 AdvanceLocked(ref _Tail);
                 _Count++;
+                Interlocked.CompareExchange(ref _Semilock, Semilock_Open, Semilock_Adding);
             }
             return result;
         }
 
+#if INSTRUMENT_FAST_PATH
+        private static int EarlyOutCount = 0;
+        private static int SlowOutCount = 0;
+#endif
+
         private bool TryDequeue (out InternalWorkItem<T> item, out bool empty) {
-            lock (ItemsLock) {
-                if (_Count <= 0) {
+            // Attempt to transition the semilock into read mode, and as long as it wasn't in add mode,
+            if (Interlocked.CompareExchange(ref _Semilock, Semilock_Reading, Semilock_Open) != 3) {
+                // Determine whether we can early-out this dequeue operation because we successfully entered
+                //  the semilock either during an enqueue or when it wasn't held at all
+                // FIXME: Is it safe to do this check during a dequeue? I think so
+                empty = Volatile.Read(ref _Count) <= 0;
+                // We may have entered this block without acquiring the semilock in open mode, in which case
+                //  whoever has it (in dequeue mode) will release it when they're done
+                Interlocked.CompareExchange(ref _Semilock, Semilock_Open, Semilock_Reading);
+                if (empty) {
                     item = default(InternalWorkItem<T>);
+#if INSTRUMENT_FAST_PATH
+                    Interlocked.Increment(ref EarlyOutCount);
+#endif
+                    return false;
+                }
+            }
+
+            lock (ItemsLock) {
+                // We've successfully acquired the state lock, so we own the semilock state now
+                Volatile.Write(ref _Semilock, Semilock_Dequeuing);
+                if (_Count <= 0) {
                     empty = true;
+                    item = default(InternalWorkItem<T>);
+#if INSTRUMENT_FAST_PATH
+                    Interlocked.Increment(ref SlowOutCount);
+#endif
+                    Volatile.Write(ref _Semilock, Semilock_Open);
                     return false;
                 }
 
@@ -210,6 +248,7 @@ namespace Squared.Threading {
                 AdvanceLocked(ref _Head);
                 _Count--;
                 empty = _Count <= 0;
+                Volatile.Write(ref _Semilock, Semilock_Open);
                 return true;
             }
         }
