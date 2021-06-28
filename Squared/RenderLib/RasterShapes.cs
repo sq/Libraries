@@ -666,6 +666,8 @@ namespace Squared.Render.RasterShape {
         }
 
         public override void Issue (DeviceManager manager) {
+            base.Issue(manager);
+
             var count = _DrawCalls.Count;
             if (count > 0) {
                 // manager.Device.SetStringMarkerEXT(this.ToString());
@@ -770,8 +772,6 @@ namespace Squared.Render.RasterShape {
             }
 
             _SoftwareBuffer = null;
-
-            base.Issue(manager);
         }
 
         new public void Add (RasterShapeDrawCall dc) {

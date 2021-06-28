@@ -41,6 +41,7 @@ namespace Squared.Render {
 
         public override void Issue (DeviceManager manager) {
             manager.BatchGroupStack.Push(this);
+            base.Issue(manager);
 
             if (OcclusionQuery != null)
                 OcclusionQuery.Begin();
@@ -74,8 +75,6 @@ namespace Squared.Render {
                     _After(manager, _UserData);
                 if (OcclusionQuery != null)
                     OcclusionQuery.End();
-
-                base.Issue(manager);
 
                 if (pop)
                     MaterialSet.PopViewTransform(force: true);

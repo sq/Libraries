@@ -731,6 +731,8 @@ namespace Squared.Render {
         private static bool PrintedDPPWarning, PrintedMiscWarning;
 
         public override void Issue (DeviceManager manager) {
+            base.Issue(manager);
+
             if (PrepareSucceeded && (_DrawCalls.Count > 0)) {
                 StateTransition(BitmapBatchPrepareState.Prepared, BitmapBatchPrepareState.Issuing);
 
@@ -865,8 +867,6 @@ namespace Squared.Render {
 
                 StateTransition(BitmapBatchPrepareState.Issuing, BitmapBatchPrepareState.Issued);
             }
-
-            base.Issue(manager);
         }
 
         protected static DepthStencilState GetDepthPrePass (DepthStencilState dss) {

@@ -234,6 +234,8 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
+            base.Issue(manager);
+
             IHardwareBuffer hwb = null;
             try {
                 if (Count > 0) {
@@ -257,8 +259,6 @@ namespace Squared.Render {
 
             _DrawArgumentsListPool.Release(ref _DrawArguments, Threading.WorkQueueNotifyMode.Never);
             _SoftwareBuffer = null;
-
-            base.Issue(manager);
         }
 
         protected override void OnReleaseResources () {

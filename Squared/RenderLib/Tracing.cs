@@ -19,6 +19,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -179,9 +180,50 @@ namespace Squared.Render.Tracing {
         }
 
         public override void Issue(DeviceManager manager) {
-            RenderTrace.ImmediateMarker(manager.Device, Text);
-
             base.Issue(manager);
+
+            RenderTrace.ImmediateMarker(manager.Device, Text);
+        }
+    }
+
+    public static class RenderDoc {
+        [DllImport("renderdoc.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int RENDERDOC_GetAPI (Version version, out IntPtr apiPointers);
+
+        public enum Version : int {
+          eRENDERDOC_API_Version_1_0_0 = 10000,    // RENDERDOC_API_1_0_0 = 1 00 00
+          eRENDERDOC_API_Version_1_0_1 = 10001,    // RENDERDOC_API_1_0_1 = 1 00 01
+          eRENDERDOC_API_Version_1_0_2 = 10002,    // RENDERDOC_API_1_0_2 = 1 00 02
+          eRENDERDOC_API_Version_1_1_0 = 10100,    // RENDERDOC_API_1_1_0 = 1 01 00
+          eRENDERDOC_API_Version_1_1_1 = 10101,    // RENDERDOC_API_1_1_1 = 1 01 01
+          eRENDERDOC_API_Version_1_1_2 = 10102,    // RENDERDOC_API_1_1_2 = 1 01 02
+          eRENDERDOC_API_Version_1_2_0 = 10200,    // RENDERDOC_API_1_2_0 = 1 02 00
+          eRENDERDOC_API_Version_1_3_0 = 10300,    // RENDERDOC_API_1_3_0 = 1 03 00
+          eRENDERDOC_API_Version_1_4_0 = 10400,    // RENDERDOC_API_1_4_0 = 1 04 00
+          eRENDERDOC_API_Version_1_4_1 = 10401,    // RENDERDOC_API_1_4_1 = 1 04 01
+        };
+
+        private static IntPtr? _API;
+
+        public static IntPtr API {
+            get {
+                if (!_API.HasValue) {
+                    // HACK: This call will always fail under the debugger since RenderDoc can't *also* be attached, unless
+                    //  you attached a debugger after starting the app under renderdoc, which is kind of ridiculous.
+                    // Anyway, we don't want to annoy the developer with spurious DllNotFoundExceptions every run, do we?
+                    // If for some reason you want to attach a debugger after attaching renderdoc, use the --rendertrace command line argument
+                    if (Debugger.IsAttached)
+                        ;
+                    else
+                        try {
+                            RENDERDOC_GetAPI(Version.eRENDERDOC_API_Version_1_0_0, out IntPtr temp);
+                            _API = temp;
+                        } catch (DllNotFoundException) {
+                            _API = IntPtr.Zero;
+                        }
+                }
+                return _API.Value;
+            }
         }
     }
 
@@ -194,9 +236,14 @@ namespace Squared.Render.Tracing {
         public static bool EnableTracing {
             get {
                 if (!_EnableTracing.HasValue)
-                    _EnableTracing = Environment.GetCommandLineArgs().Any(arg => arg.Equals("--rendertrace", StringComparison.OrdinalIgnoreCase));
+                    _EnableTracing = Environment.GetCommandLineArgs().Any(arg => arg.Equals("--rendertrace", StringComparison.OrdinalIgnoreCase)) || 
+                        (RenderDoc.API != IntPtr.Zero);
 
                 return _EnableTracing.Value && (TracingBroken == 0);
+            }
+            set {
+                // You're the boss
+                _EnableTracing = true;
             }
         }
 

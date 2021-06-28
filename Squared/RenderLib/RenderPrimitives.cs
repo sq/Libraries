@@ -246,6 +246,8 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
+            base.Issue(manager);
+
             if (_DrawCalls.Count == 0)
                 return;
 
@@ -276,7 +278,6 @@ namespace Squared.Render {
                 }
             }
 
-            base.Issue(manager);
         }
 
         public static PrimitiveBatch<T> New (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup = null, object userData = null) {
@@ -491,6 +492,8 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
+            base.Issue(manager);
+
             if (_BatchSetup != null)
                 _BatchSetup(manager, _UserData);
 
@@ -512,8 +515,6 @@ namespace Squared.Render {
 
             if (_BatchTeardown != null)
                 _BatchTeardown(manager, _UserData);
-
-            base.Issue(manager);
         }
 
         public static NativeBatch New (

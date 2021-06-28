@@ -441,6 +441,7 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
+            base.Issue(manager);
             manager.ApplyMaterial(Material);
 
             var clearOptions = default(ClearOptions);
@@ -456,8 +457,6 @@ namespace Squared.Render {
                 clearOptions,
                 ClearColor.GetValueOrDefault(Color.Black), ClearZ.GetValueOrDefault(0), ClearStencil.GetValueOrDefault(0)
             );
-
-            base.Issue(manager);
         }
 
         public static void AddNew (IBatchContainer container, int layer, Material material, Color? clearColor = null, float? clearZ = null, int? clearStencil = null) {
@@ -483,6 +482,8 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
+            base.Issue(manager);
+
             var viewport = manager.Device.Viewport;
             var viewportRect = new Rectangle(viewport.X, viewport.Y, viewport.Width, viewport.Height);
             if (Scissor == null) {
@@ -491,8 +492,6 @@ namespace Squared.Render {
                 var intersected = Rectangle.Intersect(viewportRect, Scissor.Value);
                 manager.Device.ScissorRectangle = intersected;
             }
-
-            base.Issue(manager);
         }
 
         public static void AddNew (IBatchContainer container, int layer, Material material, Rectangle? scissor) {
@@ -521,6 +520,8 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
+            base.Issue(manager);
+
             Viewport newViewport;
             var rts = manager.Device.GetRenderTargets();
             if ((rts?.Length ?? 0) > 0) {
@@ -540,8 +541,6 @@ namespace Squared.Render {
 
             if (UpdateViewTransform)
                 MaterialSet.ViewTransform = ViewTransform.CreateOrthographic(newViewport);
-
-            base.Issue(manager);
         }
 
         public static void AddNew (IBatchContainer container, int layer, Material material, Rectangle? viewport, bool updateViewTransform = false, DefaultMaterialSet materialSet = null) {
@@ -585,10 +584,10 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
+            base.Issue(manager);
+
             manager.SetRenderTarget(RenderTarget);
             RenderManager.ResetDeviceState(manager.Device);
-
-            base.Issue(manager);
         }
 
         [Obsolete("Use BatchGroup.ForRenderTarget instead.")]
