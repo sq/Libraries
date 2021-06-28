@@ -213,7 +213,7 @@ namespace Squared.Render.Tracing {
                     // Anyway, we don't want to annoy the developer with spurious DllNotFoundExceptions every run, do we?
                     // If for some reason you want to attach a debugger after attaching renderdoc, use the --rendertrace command line argument
                     if (Debugger.IsAttached)
-                        ;
+                        _API = IntPtr.Zero;
                     else
                         try {
                             RENDERDOC_GetAPI(Version.eRENDERDOC_API_Version_1_0_0, out IntPtr temp);

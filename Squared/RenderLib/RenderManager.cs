@@ -382,7 +382,7 @@ namespace Squared.Render {
             UpdateTargetInfo(newRenderTargets.First, true, false);
         }
 
-        public DefaultMaterialSetEffectParameters CurrentParameters {
+        public MaterialEffectParameters CurrentParameters {
             get {
                 return CurrentMaterial.Parameters;
             }

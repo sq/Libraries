@@ -622,6 +622,11 @@ namespace Squared.Render.Convenience {
         /// </summary>
         public int? BitmapBatchInitialCapacity;
 
+        /// <summary>
+        /// All batches created by this renderer will have these material parameters applied
+        /// </summary>
+        public MaterialParameterValues Parameters;
+
         public ImperativeRenderer (
             IBatchContainer container,
             DefaultMaterialSet materials,
@@ -672,6 +677,7 @@ namespace Squared.Render.Convenience {
             UseDiscard = false;
             DefaultBitmapMaterial = null;
             BitmapBatchInitialCapacity = null;
+            Parameters = default(MaterialParameterValues);
         }
 
         /// <summary>

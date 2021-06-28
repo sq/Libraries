@@ -617,7 +617,7 @@ namespace Squared.Render {
 
         private struct CurrentNativeBatchState {
             public Material Material { get; private set; }
-            public DefaultMaterialSetEffectParameters Parameters { get; private set; }
+            public MaterialEffectParameters Parameters { get; private set; }
             public SamplerState SamplerState1, SamplerState2;
             public EffectParameter Texture1, Texture2;
             public TextureSet Textures;

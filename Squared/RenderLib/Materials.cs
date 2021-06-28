@@ -11,6 +11,7 @@ using Squared.Render.Convenience;
 using Squared.Util;
 using Squared.Render.Evil;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace Squared.Render {
     public sealed class Material : IDisposable {
@@ -37,7 +38,12 @@ namespace Squared.Render {
 
         public readonly Thread OwningThread;
 
-        public readonly DefaultMaterialSetEffectParameters Parameters;
+        /// <summary>
+        /// Default parameter values that will be applied each time you apply this material
+        /// </summary>
+        public MaterialParameterValues DefaultParameters;
+
+        public readonly MaterialEffectParameters Parameters;
 
         public readonly Action<DeviceManager>[] BeginHandlers;
         public readonly Action<DeviceManager>[] EndHandlers;
@@ -100,7 +106,7 @@ namespace Squared.Render {
 
             // FIXME: This should probably never be null.
             if (Effect != null) {
-                Parameters = new DefaultMaterialSetEffectParameters(Effect);
+                Parameters = new MaterialEffectParameters(Effect);
             }
 
             BeginHandlers = beginHandlers;
@@ -127,8 +133,10 @@ namespace Squared.Render {
             var result = new Material(
                 Effect, null,
                 newBeginHandlers, newEndHandlers
-            );
-            result.DelegatedHintPipeline = this;
+            ) {
+                DelegatedHintPipeline = this,
+                DefaultParameters = DefaultParameters
+            };
             return result;
         }
 
@@ -143,7 +151,8 @@ namespace Squared.Render {
                 BeginHandlers, EndHandlers
             ) {
                 HintPipeline = HintPipeline,
-                OwnsEffect = true
+                OwnsEffect = true,
+                DefaultParameters = DefaultParameters
             };
             return result;
         }
@@ -294,6 +303,186 @@ namespace Squared.Render {
 
             if (sw.ElapsedMilliseconds > 10)
                 Debug.WriteLine($"Preloading shader {Effect.CurrentTechnique.Name} took {sw.ElapsedMilliseconds}ms");
+        }
+    }
+    
+    public class MaterialEffectParameters {
+        internal readonly Effect Effect;
+        internal readonly Dictionary<string, EffectParameter> Cache = 
+            new Dictionary<string, EffectParameter>(StringComparer.Ordinal);
+
+        public readonly EffectParameter ScaleAndPosition, InputAndOutputZRanges;
+        public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
+        public readonly EffectParameter BitmapTextureSize, HalfTexel;
+        public readonly EffectParameter BitmapTextureSize2, HalfTexel2;
+        public readonly EffectParameter ShadowColor, ShadowOffset, ShadowMipBias, ShadowedTopMipBias, LightmapUVOffset;
+        public readonly EffectParameter Time, FrameIndex, DitherStrength;
+        public readonly EffectParameter HalfPixelOffset;
+        public readonly EffectParameter RenderTargetDimensions;
+        public readonly EffectParameter Palette, PaletteSize;
+
+        public MaterialEffectParameters (Effect effect) {
+            Effect = effect;
+            var viewport = this["Viewport"];
+
+            if (viewport != null) {
+                ScaleAndPosition = viewport.StructureMembers["ScaleAndPosition"];
+                InputAndOutputZRanges = viewport.StructureMembers["InputAndOutputZRanges"];
+                ProjectionMatrix = viewport.StructureMembers["Projection"];
+                ModelViewMatrix = viewport.StructureMembers["ModelView"];
+            }
+
+            BitmapTextureSize = this["BitmapTextureSize"];
+            HalfTexel = this["HalfTexel"];
+            BitmapTextureSize2 = this["BitmapTextureSize2"];
+            HalfTexel2 = this["HalfTexel2"];
+            Time = this["Time"];
+            FrameIndex = this["FrameIndex"];
+            ShadowColor = this["GlobalShadowColor"];
+            ShadowOffset = this["ShadowOffset"];
+            ShadowMipBias = this["ShadowMipBias"];
+            ShadowedTopMipBias = this["ShadowedTopMipBias"];
+            LightmapUVOffset = this["LightmapUVOffset"];
+            DitherStrength = this["DitherStrength"];
+            HalfPixelOffset = this["HalfPixelOffset"];
+            RenderTargetDimensions = this["__RenderTargetDimensions__"];
+            Palette = this["Palette"];
+            PaletteSize = this["PaletteSize"];
+        }
+
+        public void SetPalette (Texture2D palette) {
+            Palette?.SetValue(palette);
+            PaletteSize?.SetValue(new Vector2(palette.Width, palette.Height));
+        }
+
+        public EffectParameter this[string name] {
+            get {
+                if (!Cache.TryGetValue(name, out EffectParameter result))
+                    Cache[name] = result = Effect.Parameters[name];
+                return result;
+            }
+        }
+    }
+
+    public struct MaterialParameterValues {
+        private enum EntryValueType {
+            Tex2D,
+            Array,
+            B,
+            F,
+            I,
+            V2,
+            V3,
+            V4,
+            M
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct EntryUnion {
+            [FieldOffset(0)]
+            public bool B;
+            [FieldOffset(0)]
+            public float F;
+            [FieldOffset(0)]
+            public int I;
+            [FieldOffset(0)]
+            public Vector2 V2;
+            [FieldOffset(0)]
+            public Vector3 V3;
+            [FieldOffset(0)]
+            public Vector4 V4;
+            [FieldOffset(0)]
+            public Matrix M;
+        }
+
+        private struct Entry {
+            public string Name;
+            public EntryValueType ValueType;
+            public object ReferenceValue;
+            public EntryUnion PrimitiveValue;
+        }
+
+        private DenseList<Entry> Entries;
+
+        private int Find (string name) {
+            for (int i = 0, c = Entries.Count; i < c; i++)
+                if (Entries[i].Name == name)
+                    return i;
+
+            return -1;
+        }
+
+        public void Clear (string name) {
+            var index = Find(name);
+            if (index < 0)
+                return;
+            Entries.RemoveAt(index);
+        }
+
+        public void Set (string name, int value) {
+            Clear(name);
+            Entries.Add(new Entry {
+                Name = name,
+                ValueType = EntryValueType.I,
+                PrimitiveValue = {
+                    I = value
+                }
+            });
+        }
+
+        public void Set (string name, bool value) {
+            Clear(name);
+            Entries.Add(new Entry {
+                Name = name,
+                ValueType = EntryValueType.B,
+                PrimitiveValue = {
+                    B = value
+                }
+            });
+        }
+
+        public void Set (string name, float value) {
+            Clear(name);
+            Entries.Add(new Entry {
+                Name = name,
+                ValueType = EntryValueType.F,
+                PrimitiveValue = {
+                    F = value
+                }
+            });
+        }
+
+        public void Set (string name, Vector2 value) {
+            Clear(name);
+            Entries.Add(new Entry {
+                Name = name,
+                ValueType = EntryValueType.V2,
+                PrimitiveValue = {
+                    V2 = value
+                }
+            });
+        }
+
+        public void Set (string name, Vector3 value) {
+            Clear(name);
+            Entries.Add(new Entry {
+                Name = name,
+                ValueType = EntryValueType.V3,
+                PrimitiveValue = {
+                    V3 = value
+                }
+            });
+        }
+
+        public void Set (string name, Vector4 value) {
+            Clear(name);
+            Entries.Add(new Entry {
+                Name = name,
+                ValueType = EntryValueType.V4,
+                PrimitiveValue = {
+                    V4 = value
+                }
+            });
         }
     }
 }

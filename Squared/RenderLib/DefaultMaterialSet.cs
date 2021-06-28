@@ -1213,51 +1213,6 @@ namespace Squared.Render {
         }
     }
 
-    public class DefaultMaterialSetEffectParameters {
-        public readonly EffectParameter ScaleAndPosition, InputAndOutputZRanges;
-        public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
-        public readonly EffectParameter BitmapTextureSize, HalfTexel;
-        public readonly EffectParameter BitmapTextureSize2, HalfTexel2;
-        public readonly EffectParameter ShadowColor, ShadowOffset, ShadowMipBias, ShadowedTopMipBias, LightmapUVOffset;
-        public readonly EffectParameter Time, FrameIndex, DitherStrength;
-        public readonly EffectParameter HalfPixelOffset;
-        public readonly EffectParameter RenderTargetDimensions;
-        public readonly EffectParameter Palette, PaletteSize;
-
-        public DefaultMaterialSetEffectParameters (Effect effect) {
-            var viewport = effect.Parameters["Viewport"];
-
-            if (viewport != null) {
-                ScaleAndPosition = viewport.StructureMembers["ScaleAndPosition"];
-                InputAndOutputZRanges = viewport.StructureMembers["InputAndOutputZRanges"];
-                ProjectionMatrix = viewport.StructureMembers["Projection"];
-                ModelViewMatrix = viewport.StructureMembers["ModelView"];
-            }
-
-            BitmapTextureSize = effect.Parameters["BitmapTextureSize"];
-            HalfTexel = effect.Parameters["HalfTexel"];
-            BitmapTextureSize2 = effect.Parameters["BitmapTextureSize2"];
-            HalfTexel2 = effect.Parameters["HalfTexel2"];
-            Time = effect.Parameters["Time"];
-            FrameIndex = effect.Parameters["FrameIndex"];
-            ShadowColor = effect.Parameters["GlobalShadowColor"];
-            ShadowOffset = effect.Parameters["ShadowOffset"];
-            ShadowMipBias = effect.Parameters["ShadowMipBias"];
-            ShadowedTopMipBias = effect.Parameters["ShadowedTopMipBias"];
-            LightmapUVOffset = effect.Parameters["LightmapUVOffset"];
-            DitherStrength = effect.Parameters["DitherStrength"];
-            HalfPixelOffset = effect.Parameters["HalfPixelOffset"];
-            RenderTargetDimensions = effect.Parameters["__RenderTargetDimensions__"];
-            Palette = effect.Parameters["Palette"];
-            PaletteSize = effect.Parameters["PaletteSize"];
-        }
-
-        public void SetPalette (Texture2D palette) {
-            Palette?.SetValue(palette);
-            PaletteSize?.SetValue(new Vector2(palette.Width, palette.Height));
-        }
-    }
-
     public struct SquaredGeometryParameters {
         public Vector2   ViewportScale;
         public Vector2   ViewportPosition;
