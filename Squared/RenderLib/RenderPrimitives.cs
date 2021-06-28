@@ -254,7 +254,7 @@ namespace Squared.Render {
             if (_BatchSetup != null)
                 _BatchSetup(manager, _UserData);
 
-            manager.ApplyMaterial(Material);
+            manager.ApplyMaterial(Material, ref MaterialParameters);
             {
                 var device = manager.Device;
 
@@ -498,7 +498,7 @@ namespace Squared.Render {
                 _BatchSetup(manager, _UserData);
 
             if (_DrawCalls.Count > 0) {
-                manager.ApplyMaterial(Material);
+                manager.ApplyMaterial(Material, ref MaterialParameters);
                 {
                     var device = manager.Device;
 

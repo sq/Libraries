@@ -239,7 +239,7 @@ namespace Squared.Render {
             IHardwareBuffer hwb = null;
             try {
                 if (Count > 0) {
-                    manager.ApplyMaterial(Material);
+                    manager.ApplyMaterial(Material, ref MaterialParameters);
 
                     hwb = _SoftwareBuffer.HardwareBuffer;
                     if (hwb == null)

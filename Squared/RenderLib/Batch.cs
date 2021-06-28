@@ -13,6 +13,8 @@ namespace Squared.Render {
     public interface IBatch : IDisposable {
         void Prepare (Batch.PrepareContext context);
         void Suspend ();
+
+        bool AreParametersEqual (ref MaterialParameterValues rhs);
     }
 
     public abstract class Batch : IBatch {
@@ -64,6 +66,7 @@ namespace Squared.Render {
         public IBatchContainer Container;
         public int Layer;
         public Material Material;
+        public MaterialParameterValues MaterialParameters;
 
         internal long Index;
         internal bool ReleaseAfterDraw;
@@ -100,6 +103,10 @@ namespace Squared.Render {
             }
         }
 
+        bool IBatch.AreParametersEqual (ref MaterialParameterValues rhs) {
+            return MaterialParameters.Equals(ref rhs);
+        }
+
         protected void Initialize (IBatchContainer container, int layer, Material material, bool addToContainer) {
             if (State.IsPrepareQueued)
                 throw new Exception("Batch currently queued for prepare");
@@ -115,6 +122,7 @@ namespace Squared.Render {
             ReleaseAfterDraw = false;
             Layer = layer;
             Material = material;
+            MaterialParameters.Clear();
             TimesIssued = 0;
 
             Index = Interlocked.Increment(ref _BatchCount);
@@ -442,7 +450,7 @@ namespace Squared.Render {
 
         public override void Issue (DeviceManager manager) {
             base.Issue(manager);
-            manager.ApplyMaterial(Material);
+            manager.ApplyMaterial(Material, ref MaterialParameters);
 
             var clearOptions = default(ClearOptions);
 

@@ -689,7 +689,7 @@ namespace Squared.Render {
             var result = false;
 
             if (nb.Material != cnbs.Material) {
-                manager.ApplyMaterial(nb.Material);
+                manager.ApplyMaterial(nb.Material, ref MaterialParameters);
                 cnbs.SetMaterial(nb.Material);
                 result = true;
             }

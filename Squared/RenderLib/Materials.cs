@@ -165,8 +165,7 @@ namespace Squared.Render {
                 throw new InvalidOperationException();
         }
 
-        // For debugging
-        private void Begin_Internal (string shaderName, DeviceManager deviceManager) {
+        internal void Begin (DeviceManager deviceManager) {
             CheckDevice(deviceManager);
             Flush(deviceManager);
 
@@ -175,29 +174,43 @@ namespace Squared.Render {
                     handler(deviceManager);
         }
 
-        public void Begin (DeviceManager deviceManager) {
-            Begin_Internal(Effect != null ? Effect.CurrentTechnique.Name : null, deviceManager);
+        internal void Begin (DeviceManager deviceManager, ref MaterialParameterValues parameters) {
+            CheckDevice(deviceManager);
+            Flush(deviceManager, ref parameters);
+
+            if (BeginHandlers != null)
+                foreach (var handler in BeginHandlers)
+                    handler(deviceManager);
         }
 
-        // For debugging
-        private void Flush_Internal (DeviceManager deviceManager, string shaderName) {
-            deviceManager.ActiveViewTransform?.AutoApply(this);
-
+        private void Flush_Epilogue (DeviceManager deviceManager) {
             if (Effect != null) {
                 UniformBinding.FlushEffect(Effect);
 
                 var currentTechnique = Effect.CurrentTechnique;
                 currentTechnique.Passes[0].Apply();
-
-                if (deviceManager.ActiveViewTransform != null)
-                    deviceManager.ActiveViewTransform.ActiveMaterial = this;
             }
+
+            if (deviceManager.ActiveViewTransform != null)
+                deviceManager.ActiveViewTransform.ActiveMaterial = this;
         }
 
         public void Flush (DeviceManager deviceManager) {
-            Flush_Internal(
-                deviceManager, Effect != null ? Effect.CurrentTechnique.Name : null
-            );
+            deviceManager.ActiveViewTransform?.AutoApply(this);
+
+            DefaultParameters.Apply(this);
+
+            Flush_Epilogue(deviceManager);
+        }
+
+        public void Flush (DeviceManager deviceManager, ref MaterialParameterValues parameters) {
+            deviceManager.ActiveViewTransform?.AutoApply(this);
+
+            // FIXME: Avoid double-set for cases where there is a default + override, since it's wasteful
+            DefaultParameters.Apply(this);
+            parameters.Apply(this);
+
+            Flush_Epilogue(deviceManager);
         }
 
         public void End (DeviceManager deviceManager) {
@@ -365,8 +378,9 @@ namespace Squared.Render {
     }
 
     public struct MaterialParameterValues {
-        private enum EntryValueType {
-            Tex2D,
+        internal enum EntryValueType {
+            None,
+            Texture,
             Array,
             B,
             F,
@@ -374,11 +388,12 @@ namespace Squared.Render {
             V2,
             V3,
             V4,
+            Q,
             M
         }
 
         [StructLayout(LayoutKind.Explicit)]
-        private struct EntryUnion {
+        internal struct EntryUnion {
             [FieldOffset(0)]
             public bool B;
             [FieldOffset(0)]
@@ -392,14 +407,45 @@ namespace Squared.Render {
             [FieldOffset(0)]
             public Vector4 V4;
             [FieldOffset(0)]
+            public Quaternion Q;
+            [FieldOffset(0)]
             public Matrix M;
         }
 
-        private struct Entry {
+        internal struct Entry {
             public string Name;
             public EntryValueType ValueType;
             public object ReferenceValue;
             public EntryUnion PrimitiveValue;
+
+            public static bool Equals (ref Entry lhs, ref Entry rhs) {
+                if (lhs.ValueType != rhs.ValueType)
+                    return false;
+
+                if (lhs.ReferenceValue != rhs.ReferenceValue)
+                    return false;
+
+                switch (lhs.ValueType) {
+                    case EntryValueType.B:
+                        return lhs.PrimitiveValue.B == rhs.PrimitiveValue.B;
+                    case EntryValueType.F:
+                        return lhs.PrimitiveValue.F == rhs.PrimitiveValue.F;
+                    case EntryValueType.I:
+                        return lhs.PrimitiveValue.I == rhs.PrimitiveValue.I;
+                    case EntryValueType.V2:
+                        return lhs.PrimitiveValue.V2 == rhs.PrimitiveValue.V2;
+                    case EntryValueType.V3:
+                        return lhs.PrimitiveValue.V3 == rhs.PrimitiveValue.V3;
+                    case EntryValueType.V4:
+                        return lhs.PrimitiveValue.V4 == rhs.PrimitiveValue.V4;
+                    case EntryValueType.Q:
+                        return lhs.PrimitiveValue.Q == rhs.PrimitiveValue.Q;
+                    case EntryValueType.M:
+                        return lhs.PrimitiveValue.M == rhs.PrimitiveValue.M;
+                    default:
+                        throw new Exception();
+                }
+            }
         }
 
         private DenseList<Entry> Entries;
@@ -412,6 +458,10 @@ namespace Squared.Render {
             return -1;
         }
 
+        public void Clear () {
+            Entries.Clear();
+        }
+
         public void Clear (string name) {
             var index = Find(name);
             if (index < 0)
@@ -419,9 +469,26 @@ namespace Squared.Render {
             Entries.RemoveAt(index);
         }
 
+        internal bool TryGet (string name, out Entry result) {
+            var index = Find(name);
+            if (index < 0) {
+                result = default(Entry);
+                return false;
+            }
+            Entries.GetItem(index, out result);
+            return true;
+        }
+
+        private void Set (Entry entry) {
+            var index = Find(entry.Name);
+            if (index < 0)
+                Entries.Add(ref entry);
+            else
+                Entries[index] = entry;
+        }
+
         public void Set (string name, int value) {
-            Clear(name);
-            Entries.Add(new Entry {
+            Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.I,
                 PrimitiveValue = {
@@ -430,9 +497,18 @@ namespace Squared.Render {
             });
         }
 
+        public void Set (string name, Color value) {
+            Set(new Entry {
+                Name = name,
+                ValueType = EntryValueType.V4,
+                PrimitiveValue = {
+                    V4 = value.ToVector4()
+                }
+            });
+        }
+
         public void Set (string name, bool value) {
-            Clear(name);
-            Entries.Add(new Entry {
+            Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.B,
                 PrimitiveValue = {
@@ -442,8 +518,7 @@ namespace Squared.Render {
         }
 
         public void Set (string name, float value) {
-            Clear(name);
-            Entries.Add(new Entry {
+            Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.F,
                 PrimitiveValue = {
@@ -453,8 +528,7 @@ namespace Squared.Render {
         }
 
         public void Set (string name, Vector2 value) {
-            Clear(name);
-            Entries.Add(new Entry {
+            Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V2,
                 PrimitiveValue = {
@@ -464,8 +538,7 @@ namespace Squared.Render {
         }
 
         public void Set (string name, Vector3 value) {
-            Clear(name);
-            Entries.Add(new Entry {
+            Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V3,
                 PrimitiveValue = {
@@ -475,14 +548,145 @@ namespace Squared.Render {
         }
 
         public void Set (string name, Vector4 value) {
-            Clear(name);
-            Entries.Add(new Entry {
+            Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V4,
                 PrimitiveValue = {
                     V4 = value
                 }
             });
+        }
+
+        public void Set (string name, Quaternion value) {
+            Set(new Entry {
+                Name = name,
+                ValueType = EntryValueType.Q,
+                PrimitiveValue = {
+                    Q = value
+                }
+            });
+        }
+
+        public void Set (string name, ref Matrix value) {
+            Set(new Entry {
+                Name = name,
+                ValueType = EntryValueType.M,
+                PrimitiveValue = {
+                    M = value
+                }
+            });
+        }
+
+        public void Set (string name, Texture texture) {
+            Set(new Entry {
+                Name = name,
+                ValueType = EntryValueType.Texture,
+                ReferenceValue = texture
+            });
+        }
+
+        public void Set (string name, Array array) {
+            Set(new Entry {
+                Name = name,
+                ValueType = EntryValueType.Array,
+                ReferenceValue = array
+            });
+        }
+
+        public void Apply (Material material) {
+            if (material.Effect == null)
+                return;
+            Apply(material.Effect, material.Parameters);
+        }
+
+        private void Apply (Effect effect, MaterialEffectParameters cache) {
+            foreach (var entry in Entries) {
+                var p = cache[entry.Name];
+                if (p == null)
+                    continue;
+                ApplyEntry(entry, p);
+            }
+        }
+
+        private static void ApplyEntry (Entry entry, EffectParameter p) {
+            var r = entry.ReferenceValue;
+            switch (entry.ValueType) {
+                case EntryValueType.Texture:
+                    p.SetValue((Texture)r);
+                    break;
+                case EntryValueType.Array:
+                    if (r is float[] fa)
+                        p.SetValue(fa);
+                    else if (r is int[] ia)
+                        p.SetValue(ia);
+                    else if (r is bool[] ba)
+                        p.SetValue(ba);
+                    else if (r is Matrix[] ma)
+                        p.SetValue(ma);
+                    else if (r is Vector2[] v2a)
+                        p.SetValue(v2a);
+                    else if (r is Vector3[] v3a)
+                        p.SetValue(v3a);
+                    else if (r is Vector4[] v4a)
+                        p.SetValue(v4a);
+                    else if (r is Quaternion[] qa)
+                        p.SetValue(qa);
+                    else
+                        throw new ArgumentException("Unsupported array parameter type");
+                    break;
+                case EntryValueType.B:
+                    p.SetValue(entry.PrimitiveValue.B);
+                    break;
+                case EntryValueType.F:
+                    p.SetValue(entry.PrimitiveValue.F);
+                    break;
+                case EntryValueType.I:
+                    p.SetValue(entry.PrimitiveValue.I);
+                    break;
+                case EntryValueType.V2:
+                    p.SetValue(entry.PrimitiveValue.V2);
+                    break;
+                case EntryValueType.V3:
+                    p.SetValue(entry.PrimitiveValue.V3);
+                    break;
+                case EntryValueType.V4:
+                    p.SetValue(entry.PrimitiveValue.V4);
+                    break;
+                case EntryValueType.M:
+                    p.SetValue(entry.PrimitiveValue.M);
+                    break;
+                case EntryValueType.Q:
+                    p.SetValue(entry.PrimitiveValue.Q);
+                    break;
+                default:
+                    throw new Exception("Invalid entry");
+            }
+        }
+
+        public bool Equals (ref MaterialParameterValues pRhs) {
+            if (Entries.Count != pRhs.Entries.Count)
+                return false;
+            if (Entries.Count == 0)
+                return true;
+
+            for (int i = 0, c = Entries.Count; i < c; i++) {
+                Entries.TryGetItem(i, out Entry lhs);
+                var j = pRhs.Find(lhs.Name);
+                if (j < 0)
+                    return false;
+                pRhs.Entries.TryGetItem(j, out Entry rhs);
+                if (!Entry.Equals(ref lhs, ref rhs))
+                    return false;
+            }
+
+            return true;
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is MaterialParameterValues mpv)
+                return Equals(ref mpv);
+            else
+                return false;
         }
     }
 }

@@ -391,6 +391,7 @@ namespace Squared.Render.Convenience {
 
             public bool TryGet<T> (
                 out CachedBatch result,
+                ref MaterialParameterValues parameters,
                 CachedBatchType cbt,
                 IBatchContainer container, 
                 int layer, 
@@ -426,16 +427,16 @@ namespace Squared.Render.Convenience {
                 }
 
                 int i;
-                if (CachedBatch.KeysEqual(ref Batch0, ref result)) {
+                if (CachedBatch.KeysEqual(ref Batch0, ref result) && Batch0.Batch.AreParametersEqual(ref parameters)) {
                     result = Batch0;
                     i = 0;
-                } else if (CachedBatch.KeysEqual(ref Batch1, ref result)) {
+                } else if (CachedBatch.KeysEqual(ref Batch1, ref result) && Batch1.Batch.AreParametersEqual(ref parameters)) {
                     result = Batch1;
                     i = 1;
-                } else if (CachedBatch.KeysEqual(ref Batch2, ref result)) {
+                } else if (CachedBatch.KeysEqual(ref Batch2, ref result) && Batch2.Batch.AreParametersEqual(ref parameters)) {
                     result = Batch2;
                     i = 2;
-                } else if (CachedBatch.KeysEqual(ref Batch3, ref result)) {
+                } else if (CachedBatch.KeysEqual(ref Batch3, ref result) && Batch3.Batch.AreParametersEqual(ref parameters)) {
                     result = Batch3;
                     i = 3;
                 } else {
@@ -1746,6 +1747,7 @@ namespace Squared.Render.Convenience {
             CachedBatch cacheEntry;
             if (!Cache.TryGet<IBitmapBatch>(
                 out cacheEntry,
+                ref Parameters,
                 LowPriorityMaterialOrdering ? CachedBatchType.MultimaterialBitmap : CachedBatchType.Bitmap,
                 container: Container,
                 layer: actualLayer,
@@ -1775,19 +1777,23 @@ namespace Squared.Render.Convenience {
 
                 IBitmapBatch bb;
                 if (LowPriorityMaterialOrdering) {
-                    bb = MultimaterialBitmapBatch.New(
+                    var mmbb = MultimaterialBitmapBatch.New(
                         Container, actualLayer, Material.Null, 
                         useZBuffer: UseZBuffer, depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
                     );
+                    mmbb.MaterialParameters = Parameters;
+                    bb = mmbb;
                 } else {
-                    bb = BitmapBatch.New(
+                    var _bb = BitmapBatch.New(
                         Container, actualLayer, material, 
                         samplerState: desiredSamplerState1, samplerState2: desiredSamplerState2, 
                         useZBuffer: UseZBuffer, zBufferOnlySorting: ZBufferOnlySorting, 
                         depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
                     );
+                    _bb.MaterialParameters = Parameters;
                     if (BitmapBatchInitialCapacity.HasValue)
-                        ((BitmapBatch)bb).EnsureCapacity(BitmapBatchInitialCapacity.Value, true);
+                        _bb.EnsureCapacity(BitmapBatchInitialCapacity.Value, true);
+                    bb = _bb;
                 }
 
                 bb.Sorter = DeclarativeSorter;
@@ -1812,6 +1818,7 @@ namespace Squared.Render.Convenience {
             CachedBatch cacheEntry;
             if (!Cache.TryGet<GeometryBatch>(
                 out cacheEntry,
+                ref Parameters,
                 CachedBatchType.Geometry,
                 container: Container,
                 layer: actualLayer,
@@ -1840,8 +1847,10 @@ namespace Squared.Render.Convenience {
                         blendState: desiredBlendState
                     );
                 }
-                
-                cacheEntry.Batch = GeometryBatch.New(Container, actualLayer, material);
+
+                var b = GeometryBatch.New(Container, actualLayer, material);
+                b.MaterialParameters = Parameters;
+                cacheEntry.Batch = b;
                 Cache.InsertAtFront(ref cacheEntry, -1);
             }
 
@@ -1877,6 +1886,7 @@ namespace Squared.Render.Convenience {
             CachedBatch cacheEntry;
             if (!Cache.TryGet<RasterShapeBatch>(
                 out cacheEntry,
+                ref Parameters,
                 CachedBatchType.RasterShape,
                 container: Container,
                 layer: actualLayer,
@@ -1899,6 +1909,7 @@ namespace Squared.Render.Convenience {
                     Container, actualLayer, Materials, texture, desiredSamplerState,
                     RasterizerState, DepthStencilState, desiredBlendState, rampTexture
                 );
+                batch.MaterialParameters = Parameters;
                 // FIXME: why the hell
                 batch.UseUbershader = RasterUseUbershader;
                 cacheEntry.Batch = batch;

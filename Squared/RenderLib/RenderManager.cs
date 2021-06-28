@@ -168,6 +168,26 @@ namespace Squared.Render {
                 if (material != null)
                     material.Begin(deviceManager);
             }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void Set (DeviceManager deviceManager, Material material, ref MaterialParameterValues parameters) {
+                if (deviceManager.CurrentMaterial != material) {
+                    Set_Slow(deviceManager, material, ref parameters);
+                } else {
+                    material.Flush(deviceManager, ref parameters);
+                }
+            }
+
+            private static void Set_Slow (DeviceManager deviceManager, Material material, ref MaterialParameterValues parameters) {
+                if (deviceManager.CurrentMaterial != null)
+                    deviceManager.CurrentMaterial.End(deviceManager);
+                
+                deviceManager.CurrentMaterial = material;
+                deviceManager.UpdateTargetInfo(null, false, true);
+            
+                if (material != null)
+                    material.Begin(deviceManager, ref parameters);
+            }
         }
 
         private readonly Stack<BlendState>             BlendStateStack = new Stack<BlendState>(256);
@@ -397,6 +417,11 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ApplyMaterial (Material material) {
             ActiveMaterial.Set(this, material);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ApplyMaterial (Material material, ref MaterialParameterValues parameters) {
+            ActiveMaterial.Set(this, material, ref parameters);
         }
 
         public void Begin (bool changeRenderTargets) {

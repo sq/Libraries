@@ -732,7 +732,7 @@ namespace Squared.Render.RasterShape {
                     rasterShader.TextureModeAndSize?.SetValue(sb.TextureSettings.ModeAndSize);
                     rasterShader.TexturePlacement?.SetValue(sb.TextureSettings.Placement);
 
-                    manager.ApplyMaterial(rasterShader.Material);
+                    manager.ApplyMaterial(rasterShader.Material, ref MaterialParameters);
 
                     if (BlendState != null)
                         device.BlendState = BlendState;
