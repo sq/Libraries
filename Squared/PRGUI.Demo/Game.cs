@@ -673,7 +673,7 @@ namespace PRGUI.Demo {
                         Text = "A [order=2]",
                         DisplayOrder = 2,
                         Appearance = {
-                            BackgroundColor = Color.Red,
+                            BackgroundColor = Color.Red * 0.7f,
                         },
                         Layout = {
                             Floating = true
@@ -685,11 +685,11 @@ namespace PRGUI.Demo {
                         Text = "B [order=0]",
                         DisplayOrder = 0,
                         Appearance = {
-                            BackgroundColor = Color.Green,
+                            BackgroundColor = Color.Green * 0.7f,
                         },
                         Layout = {
                             Floating = true,
-                            FloatingPosition = new Vector2(96, 16)
+                            FloatingPosition = new Vector2(96, 64)
                         },
                         Width = 300,
                         Height = 300
@@ -698,11 +698,11 @@ namespace PRGUI.Demo {
                         Text = "C [order=1]",
                         DisplayOrder = 1,
                         Appearance = {
-                            BackgroundColor = Color.Blue,
+                            BackgroundColor = Color.Blue * 0.7f,
                         },
                         Layout = {
                             Floating = true,
-                            FloatingPosition = new Vector2(32, 120)
+                            FloatingPosition = new Vector2(32, 160)
                         },
                         Width = 300,
                         Height = 300
