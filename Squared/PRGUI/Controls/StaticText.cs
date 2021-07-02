@@ -384,9 +384,11 @@ namespace Squared.PRGUI.Controls {
                 float computed = MostRecentContentBoxWidth.Value * spaceExpansion;
                 if (max.HasValue)
                     constrainedWidth = Math.Min(computed, max.Value);
-                // HACK: Without this, static text with wrapping turned on (the default...) will by default end up too small
+                // FIXME: Without this, static text with wrapping turned on (the default...) will by default end up too small
                 //  if they start out with a small string of text and are never updated with new text to invalidate their layout
-                else if (spaceExpansion != 1.0)
+                // Ideal algorithm here is probably 'if there is no maximum or fixed width, use our most recent width as an approximation
+                //  of the size constraint from our parent'
+                else if (!AutoSizeWidth)
                     constrainedWidth = computed;
             } else
                 constrainedWidth = max;
