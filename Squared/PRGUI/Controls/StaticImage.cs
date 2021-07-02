@@ -98,6 +98,7 @@ namespace Squared.PRGUI.Controls {
         public bool ShowLoadingSpinner;
 
         public ColorVariable MultiplyColor;
+        public MaterialParameterValues MaterialParameters;
         public Vector4 RasterizerUserData;
         public Material Material;
 
@@ -298,7 +299,11 @@ namespace Squared.PRGUI.Controls {
                     material = GetMaterialForCompositing(renderer.Materials);
                 }
 
+                // HACK
+                var p = renderer.Parameters;
+                renderer.Parameters.AddRange(ref MaterialParameters);
                 renderer.Draw(ref drawCall, material: Material ?? material);
+                renderer.Parameters = p;
             }
 
             if (ShowLoadingSpinner)

@@ -1179,14 +1179,16 @@ namespace Squared.PRGUI {
         }
 
         private void Window_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            var fillColor = settings.BackgroundColor ?? ColorScheme.WindowFill ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill;
+
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
             renderer.RasterizeRectangle(
                 a, b,
                 radius: FloatingContainerCornerRadius ?? ContainerCornerRadius,
                 outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: ColorScheme.FloatingContainerOutline ?? ColorScheme.ContainerOutline,
-                innerColor: settings.BackgroundColor ?? ColorScheme.WindowFill ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill, 
-                outerColor: settings.BackgroundColor ?? ColorScheme.WindowFill ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill,
+                innerColor: fillColor, 
+                outerColor: fillColor,
                 shadow: FloatingContainerShadow ?? ContainerShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
@@ -1197,15 +1199,15 @@ namespace Squared.PRGUI {
         private void Tooltip_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
-            var color1 = (pSRGBColor)ColorScheme.TooltipFill;
+            var color1 = settings.BackgroundColor ?? ColorScheme.TooltipFill;
             var color2 = (color1.ToVector4() * 1.25f);
             color2.W = 1;
             renderer.RasterizeRectangle(
                 a, b,
                 radius: TooltipCornerRadius ?? FloatingContainerCornerRadius ?? ContainerCornerRadius,
                 outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: ColorScheme.TooltipOutline,
-                innerColor: settings.BackgroundColor ?? color2, 
-                outerColor: settings.BackgroundColor ?? color1,
+                innerColor: color2, 
+                outerColor: color1,
                 shadow: TooltipShadow ?? FloatingContainerShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),

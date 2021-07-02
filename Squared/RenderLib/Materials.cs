@@ -12,6 +12,7 @@ using Squared.Util;
 using Squared.Render.Evil;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Collections;
 
 namespace Squared.Render {
     public sealed class Material : IDisposable {
@@ -377,7 +378,7 @@ namespace Squared.Render {
         }
     }
 
-    public struct MaterialParameterValues {
+    public struct MaterialParameterValues : IEnumerable<KeyValuePair<string, object>> {
         internal enum EntryValueType {
             None,
             Texture,
@@ -469,6 +470,11 @@ namespace Squared.Render {
             Entries.RemoveAt(index);
         }
 
+        public void AddRange (ref MaterialParameterValues rhs) {
+            foreach (var entry in rhs.Entries)
+                Set(entry);
+        }
+
         internal bool TryGet (string name, out Entry result) {
             var index = Find(name);
             if (index < 0) {
@@ -487,7 +493,7 @@ namespace Squared.Render {
                 Entries[index] = entry;
         }
 
-        public void Set (string name, int value) {
+        public void Add (string name, int value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.I,
@@ -497,7 +503,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Set (string name, Color value) {
+        public void Add (string name, Color value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V4,
@@ -507,7 +513,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Set (string name, bool value) {
+        public void Add (string name, bool value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.B,
@@ -517,7 +523,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Set (string name, float value) {
+        public void Add (string name, float value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.F,
@@ -527,7 +533,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Set (string name, Vector2 value) {
+        public void Add (string name, Vector2 value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V2,
@@ -537,7 +543,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Set (string name, Vector3 value) {
+        public void Add (string name, Vector3 value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V3,
@@ -547,7 +553,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Set (string name, Vector4 value) {
+        public void Add (string name, Vector4 value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V4,
@@ -557,7 +563,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Set (string name, Quaternion value) {
+        public void Add (string name, Quaternion value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.Q,
@@ -567,7 +573,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Set (string name, ref Matrix value) {
+        public void Add (string name, ref Matrix value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.M,
@@ -577,7 +583,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Set (string name, Texture texture) {
+        public void Add (string name, Texture texture) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.Texture,
@@ -585,7 +591,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Set (string name, Array array) {
+        public void Add (string name, Array array) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.Array,
@@ -687,6 +693,14 @@ namespace Squared.Render {
                 return Equals(ref mpv);
             else
                 return false;
+        }
+
+        IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator () {
+            throw new NotImplementedException();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            throw new NotImplementedException();
         }
     }
 }

@@ -47,6 +47,12 @@ namespace Squared.Threading.AsyncAwait {
             }
 
             private void _OnComplete (IFuture f) {
+                if (Continuation.Method.Name.Contains("After"))
+                    ;
+                else if (Continuation.Method.Name.Contains("cctor"))
+                    ;
+                else
+                    ;
                 // FIXME: Is this right?
                 if ((Scheduler == null) && !StrictMode)
                     Continuation();
