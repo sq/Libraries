@@ -572,6 +572,106 @@ namespace PRGUI.Demo {
             Context.EventBus.Subscribe(canvas, UIEvents.MouseDown, Canvas_OnMouseEvent);
             Context.EventBus.Subscribe(canvas, UIEvents.MouseMove, Canvas_OnMouseEvent);
 
+            var textTab = new Container {
+                Scrollable = true,
+                ShowHorizontalScrollbar = false,
+                Width = { Maximum = 500 },
+                Appearance = {
+                    SuppressDecorationPadding = true,
+                },
+                Children = {
+                    new StaticText { 
+                        Layout = {
+                            ForceBreak = true,
+                        },
+                        AutoSizeWidth = false,
+                        AutoSizeHeight = true,
+                        Wrap = true,
+                        ScaleToFit = false,
+                        MinScale = 0f,
+                        Text = "StaticText 1: AutoSizeX = false, AutoSizeY = true, Wrap = true, ScaleToFit = false, MinScale = 0f",
+                    },
+                    new StaticText { 
+                        Layout = {
+                            ForceBreak = true,
+                        },
+                        AutoSize = true,
+                        Wrap = true,
+                        ScaleToFit = false,
+                        MinScale = 0f,
+                        Text = "StaticText 2: AutoSize = true, Wrap = true, ScaleToFit = false, MinScale = 0f",
+                    },
+                    new StaticText { 
+                        Layout = {
+                            ForceBreak = true,
+                        },
+                        AutoSizeWidth = false,
+                        AutoSizeHeight = true,
+                        Wrap = true,
+                        ScaleToFit = true,
+                        MinScale = 0f,
+                        Text = "StaticText 3: AutoSize = true, Wrap = true, ScaleToFit = true, MinScale = 0f",
+                    },
+                    new StaticText { 
+                        Layout = {
+                            ForceBreak = true,
+                        },
+                        AutoSizeWidth = false,
+                        AutoSizeHeight = true,
+                        Wrap = false,
+                        ScaleToFit = true,
+                        MinScale = 0f,
+                        Text = "StaticText 4: AutoSize = true, Wrap = false, ScaleToFit = true, MinScale = 0f",
+                    },
+                    new StaticText { 
+                        Layout = {
+                            ForceBreak = true,
+                        },
+                        AutoSizeWidth = false,
+                        AutoSizeHeight = true,
+                        Wrap = false,
+                        ScaleToFit = true,
+                        MinScale = 0.7f,
+                        Text = "StaticText 5: AutoSize = true, Wrap = false, ScaleToFit = true, MinScale = 0.7f",
+                    },
+                    new StaticText { 
+                        Layout = {
+                            ForceBreak = true,
+                        },
+                        AutoSizeWidth = false,
+                        AutoSizeHeight = true,
+                        Wrap = true,
+                        ScaleToFit = true,
+                        MinScale = 0.7f,
+                        Text = "StaticText 6: AutoSize = true, Wrap = true, ScaleToFit = true, MinScale = 0.7f",
+                    },
+                    new StaticText { 
+                        Layout = {
+                            ForceBreak = true,
+                        },
+                        AutoSizeWidth = false,
+                        AutoSizeHeight = true,
+                        Wrap = false,
+                        ScaleToFit = true,
+                        MinScale = 0.7f,
+                        Width = { Maximum = 450 },
+                        Text = "StaticText 7: AutoSize = true, Wrap = false, ScaleToFit = true, MinScale = 0.7f, MaxWidth = 450",
+                    },
+                    new StaticText { 
+                        Layout = {
+                            ForceBreak = true,
+                        },
+                        AutoSizeWidth = false,
+                        AutoSizeHeight = true,
+                        Wrap = true,
+                        ScaleToFit = true,
+                        MinScale = 0.7f,
+                        Width = { Maximum = 450 },
+                        Text = "StaticText 8: AutoSize = true, Wrap = true, ScaleToFit = true, MinScale = 0.7f, MaxWidth = 450",
+                    },
+                },
+            };
+
             var displayOrdering = new Container {
                 Children = {
                     new StaticText {
@@ -625,11 +725,12 @@ namespace PRGUI.Demo {
             };
 
             var tabs = new TabContainer {
-                { scrollableClipTest, "Scrollable" },
-                { listboxContainer, "Listbox" },
+                { scrollableClipTest, "Scroll" },
+                { listboxContainer, "List" },
                 { canvas, "Canvas" },
                 { displayOrdering, "Z-Order" },
                 { rich, "Rich Text" },
+                { textTab, "Text Size" },
             };
             tabs.SelectedIndex = 1;
             tabs.TabsOnLeft = false;
