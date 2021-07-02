@@ -649,9 +649,9 @@ namespace PRGUI.Demo {
                         AutoSizeHeight = true,
                         Wrap = false,
                         ScaleToFit = true,
-                        MinScale = 0.7f,
+                        MinScale = 0.6f,
                         Width = { Maximum = 450 },
-                        Text = "StaticText 7: AutoSize = true, Wrap = false, ScaleToFit = true, MinScale = 0.7f, MaxWidth = 450",
+                        Text = "StaticText 7: AutoSize = true, Wrap = false, ScaleToFit = true, MinScale = 0.6f, MaxWidth = 450",
                     },
                     new StaticText { 
                         Layout = lfb,
@@ -660,9 +660,9 @@ namespace PRGUI.Demo {
                         AutoSizeHeight = true,
                         Wrap = true,
                         ScaleToFit = true,
-                        MinScale = 0.7f,
+                        MinScale = 0.6f,
                         Width = { Maximum = 450 },
-                        Text = "StaticText 8: AutoSize = true, Wrap = true, ScaleToFit = true, MinScale = 0.7f, MaxWidth = 450",
+                        Text = "StaticText 8: AutoSize = true, Wrap = true, ScaleToFit = true, MinScale = 0.6f, MaxWidth = 450",
                     },
                 },
             };

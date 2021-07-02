@@ -377,11 +377,19 @@ namespace Squared.PRGUI.Controls {
 
             var maxPx = ((Width.Fixed ?? Width.Maximum) * sizeScale.X) - computedPadding.X;
 
+            if (Text.Contains("This button toggles"))
+                ;
+            else if (Text.Contains("Line 2"))
+                ;
+
             if (!MostRecentContentBoxWidth.HasValue && !maxPx.HasValue)
                 return null;
 
             if (maxPx.HasValue) {
-                return maxPx.Value * spaceExpansion;
+                if (hasMinScale || (!ScaleToFitX && !ScaleToFitY))
+                    return maxPx.Value * spaceExpansion;
+                else
+                    return null;
             } else if (!AutoSizeWidth && MostRecentContentBoxWidth.HasValue) {
                 if (ScaleToFitX || ScaleToFitY) {
                     if (!hasMinScale)

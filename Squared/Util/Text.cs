@@ -427,16 +427,42 @@ namespace Squared.Util.Text {
                 return null;
         }
 
-        public bool Contains (char ch) {
+        public int IndexOf (char ch) {
             if (String != null)
-                return String.IndexOf(ch, SubstringOffset, Length) >= 0;
+                return String.IndexOf(ch, SubstringOffset, Length);
 
             for (int i = 0, l = Length; i < l; i++) {
                 if (this[i] == ch)
-                    return true;
+                    return i;
             }
 
-            return false;
+            return -1;
+        }
+
+        public int IndexOf (string s) {
+            if (string.IsNullOrEmpty(s))
+                return 0;
+
+            if (String != null)
+                return String.IndexOf(s, SubstringOffset, Length);
+
+            var ch = s[0];
+            for (int i = 0, l = Length; i < l; i++) {
+                if (this[i] == ch) {
+                    // FIXME
+                    return ToString().IndexOf(s);
+                }
+            }
+
+            return -1;
+        }
+
+        public bool Contains (string s) {
+            return IndexOf(s) > -1;
+        }
+
+        public bool Contains (char ch) {
+            return IndexOf(ch) > -1;
         }
 
         public string Substring (int start, int count) {
