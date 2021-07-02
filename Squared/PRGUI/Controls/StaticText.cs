@@ -54,6 +54,7 @@ namespace Squared.PRGUI.Controls {
         private float? AutoSizeComputedWidth, AutoSizeComputedHeight;
         private float AutoSizeComputedContentHeight;
         private float MostRecentXScaleFactor = 1, MostRecentYScaleFactor = 1;
+        private ControlDimension MostRecentWidthConstraint;
 
         protected Vector4? RasterizerUserData;
 
@@ -209,6 +210,9 @@ namespace Squared.PRGUI.Controls {
                     height.Maximum = AutoSizeComputedHeight ?? height.Maximum;
                 height.Minimum = ControlDimension.Max(height.Minimum, AutoSizeComputedHeight);
             }
+
+            // HACK
+            MostRecentWidthConstraint = width;
 
             // FIXME: Do we need this? Should controls always do it?
             /*
@@ -375,7 +379,14 @@ namespace Squared.PRGUI.Controls {
             if (_ScaleToFitX && hasMinScale)
                 spaceExpansion = 1.0f / MinScale.Value;
 
-            var maxPx = ((Width.Fixed ?? Width.Maximum) * sizeScale.X) - computedPadding.X;
+            var width = Width;
+            var height = Height;
+            // HACK
+            ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
+            var maxPx = ((width.Fixed ?? width.Maximum) * sizeScale.X) - computedPadding.X;
+
+            if (Text.Contains("Support Fire"))
+                ;
 
             if (!MostRecentContentBoxWidth.HasValue && !maxPx.HasValue)
                 return null;
@@ -517,7 +528,20 @@ namespace Squared.PRGUI.Controls {
 
             // If a fallback glyph source's child sources are different heights, the autosize can end up producing
             //  a box that is too big for the content. In that case, we want to center it vertically
-            if ((AutoSizeComputedHeight.HasValue) && (AutoSizeComputedContentHeight > scaledSize.Y)) {
+            bool willCenterBasedOnAutoSize = (AutoSizeComputedHeight.HasValue) && (AutoSizeComputedContentHeight > scaledSize.Y),
+                heightGovernedByAutoSize = false;
+            if (willCenterBasedOnAutoSize) {
+                var width = Width;
+                var height = Height;
+                // FIXME: SizeScale
+                ComputeSizeConstraints(ref context, ref width, ref height, context.DecorationProvider.SizeScaleRatio);
+                // If the control's height is being set by a size constraint even though autosize is enabled (ugh, 
+                //  don't do this), then we don't want to do vertical centering based on the autosize value since
+                //  that will look completely wrong
+                heightGovernedByAutoSize = !height.Fixed.HasValue && ((height.Maximum ?? 0) > AutoSizeComputedHeight);
+            }
+
+            if (heightGovernedByAutoSize) {
                 var autoSizeYCentering = (AutoSizeComputedContentHeight - scaledSize.Y) * VerticalAlignment;
                 textOffset.Y += autoSizeYCentering;
             } else {

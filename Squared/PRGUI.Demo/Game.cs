@@ -687,6 +687,18 @@ namespace PRGUI.Demo {
                         TextAlignment = Squared.Render.Text.HorizontalAlignment.Center,
                         Text = "Revenge Capacitor",
                     },
+                    new StaticText {
+                        Appearance = la,
+                        Width = 105,
+                        Height = 75,
+                        Wrap = true,
+                        Multiline = true,
+                        MinScale = 0.3f,
+                        AutoSizeIsMaximum = false,
+                        ScaleToFit = true,
+                        TextAlignment = Squared.Render.Text.HorizontalAlignment.Center,
+                        Text = "Revenge Capacitor",
+                    },
                 },
             };
 
