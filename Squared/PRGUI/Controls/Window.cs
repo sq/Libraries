@@ -248,7 +248,7 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public class Window : TitledContainer, IPartiallyIntangibleControl, IAlignedControl {
+    public class Window : TitledContainer, IPartiallyIntangibleControl, IAlignedControl, IControlContainer {
         protected ControlAlignmentHelper Aligner;
 
         /// <summary>
@@ -292,6 +292,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        public bool ChildrenAcceptFocus { get; set; } = true;
+
         public bool AllowDrag = true;
         public bool AllowMaximize = false;
 
@@ -300,6 +302,11 @@ namespace Squared.PRGUI.Controls {
         private RectF MostRecentUnmaximizedRect;
 
         private bool _Maximized;
+
+        new public bool AcceptsFocus {
+            get => base.AcceptsFocus;
+            set => base.AcceptsFocus = value;
+        }
 
         public bool Maximized {
             get => _Maximized;

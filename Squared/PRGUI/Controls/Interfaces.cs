@@ -73,6 +73,7 @@ namespace Squared.PRGUI {
     public interface IControlContainer {
         int ChildrenToSkipWhenBuilding { get; }
         bool ClipChildren { get; set; }
+        bool ChildrenAcceptFocus { get; }
         Control DefaultFocusTarget { get; }
         ControlFlags ContainerFlags { get; }
         ControlCollection Children { get; }

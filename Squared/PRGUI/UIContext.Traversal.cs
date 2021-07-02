@@ -76,7 +76,7 @@ namespace Squared.PRGUI {
         private Control FindFocusableChildOfDefaultFocusTarget (Control defaultFocusTarget, TraverseSettings settings) {
             if (defaultFocusTarget.IsValidFocusTarget)
                 return defaultFocusTarget;
-            else if (defaultFocusTarget is IControlContainer icc)
+            else if ((defaultFocusTarget is IControlContainer icc) && icc.ChildrenAcceptFocus)
                 return TraverseChildren(icc.Children, settings).FirstOrDefault().Control;
             else
                 return null;

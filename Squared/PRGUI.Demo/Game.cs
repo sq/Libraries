@@ -915,6 +915,25 @@ namespace PRGUI.Demo {
 
             Context.Controls.Add(topLevelContainer);
             Context.Controls.Add(window.Control);
+
+            var floatingWindowWithText = new Window {
+                Alignment = new Vector2(0.5f, 0.5f),
+                DynamicContents = FloatingWindowWithText_Content,
+                AllowDrag = false,
+                Appearance = {
+                    Opacity = 1f,
+                    Decorator = Decorations.Tooltip,
+                },
+                AcceptsFocus = false,
+                Intangible = true,
+                DisplayOrder = 10,
+            };
+            // Context.Controls.Add(floatingWindowWithText);
+        }
+
+        private void FloatingWindowWithText_Content (ref ContainerBuilder builder) {
+            builder.Text("Test text")
+                .SetAutoSize(true, true);
         }
 
         Vector2? CanvasEllipsePosition;

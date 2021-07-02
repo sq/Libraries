@@ -169,7 +169,7 @@ namespace Squared.PRGUI {
                 // HACK
                 var inTabOrder = Controls.InTabOrder(FrameIndex, false)
                     .Where(c => 
-                        ((c is IControlContainer) || c.AcceptsFocus) &&
+                        (((c as IControlContainer)?.ChildrenAcceptFocus ?? false) || c.AcceptsFocus) &&
                         c.Enabled && !c.IsTransparent &&
                         !(c is FocusProxy)
                     )
@@ -370,7 +370,9 @@ namespace Squared.PRGUI {
         }
 
         private bool IsValidContainerToSearchForFocusableControls (Control control) {
-            if (!(control is IControlContainer))
+            if (!(control is IControlContainer ic))
+                return false;
+            else if (!ic.ChildrenAcceptFocus)
                 return false;
             return control.Enabled && control.Visible && !Control.IsRecursivelyTransparent(control);
         }

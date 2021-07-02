@@ -45,6 +45,8 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         protected bool ClipChildren { get; set; } = false;
 
+        bool IControlContainer.ChildrenAcceptFocus => true;
+
         bool IControlContainer.ClipChildren {
             get => ClipChildren;
             set => ClipChildren = value;

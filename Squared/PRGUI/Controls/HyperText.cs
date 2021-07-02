@@ -20,6 +20,7 @@ namespace Squared.PRGUI.Controls {
         public GetTooltipForMarkedStringHandler GetTooltipForString;
 
         Control IControlContainer.DefaultFocusTarget => null;
+        bool IControlContainer.ChildrenAcceptFocus => true;
 
         public bool HotspotsAcceptFocus = true;
         public ControlAppearance HotspotAppearance = new ControlAppearance {
