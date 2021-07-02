@@ -572,6 +572,9 @@ namespace PRGUI.Demo {
             Context.EventBus.Subscribe(canvas, UIEvents.MouseDown, Canvas_OnMouseEvent);
             Context.EventBus.Subscribe(canvas, UIEvents.MouseMove, Canvas_OnMouseEvent);
 
+            var lfb = new Squared.PRGUI.Flags.LayoutFlags { ForceBreak = true };
+            var la = new ControlAppearance { BackgroundColor = Color.DarkBlue };
+
             var textTab = new Container {
                 Scrollable = true,
                 ShowHorizontalScrollbar = false,
@@ -581,9 +584,8 @@ namespace PRGUI.Demo {
                 },
                 Children = {
                     new StaticText { 
-                        Layout = {
-                            ForceBreak = true,
-                        },
+                        Layout = lfb,
+                        Appearance = la,
                         AutoSizeWidth = false,
                         AutoSizeHeight = true,
                         Wrap = true,
@@ -592,9 +594,8 @@ namespace PRGUI.Demo {
                         Text = "StaticText 1: AutoSizeX = false, AutoSizeY = true, Wrap = true, ScaleToFit = false, MinScale = 0f",
                     },
                     new StaticText { 
-                        Layout = {
-                            ForceBreak = true,
-                        },
+                        Layout = lfb,
+                        Appearance = la,
                         AutoSize = true,
                         Wrap = true,
                         ScaleToFit = false,
@@ -602,9 +603,8 @@ namespace PRGUI.Demo {
                         Text = "StaticText 2: AutoSize = true, Wrap = true, ScaleToFit = false, MinScale = 0f",
                     },
                     new StaticText { 
-                        Layout = {
-                            ForceBreak = true,
-                        },
+                        Layout = lfb,
+                        Appearance = la,
                         AutoSizeWidth = false,
                         AutoSizeHeight = true,
                         Wrap = true,
@@ -613,9 +613,8 @@ namespace PRGUI.Demo {
                         Text = "StaticText 3: AutoSize = true, Wrap = true, ScaleToFit = true, MinScale = 0f",
                     },
                     new StaticText { 
-                        Layout = {
-                            ForceBreak = true,
-                        },
+                        Layout = lfb,
+                        Appearance = la,
                         AutoSizeWidth = false,
                         AutoSizeHeight = true,
                         Wrap = false,
@@ -624,9 +623,8 @@ namespace PRGUI.Demo {
                         Text = "StaticText 4: AutoSize = true, Wrap = false, ScaleToFit = true, MinScale = 0f",
                     },
                     new StaticText { 
-                        Layout = {
-                            ForceBreak = true,
-                        },
+                        Layout = lfb,
+                        Appearance = la,
                         AutoSizeWidth = false,
                         AutoSizeHeight = true,
                         Wrap = false,
@@ -635,9 +633,8 @@ namespace PRGUI.Demo {
                         Text = "StaticText 5: AutoSize = true, Wrap = false, ScaleToFit = true, MinScale = 0.7f",
                     },
                     new StaticText { 
-                        Layout = {
-                            ForceBreak = true,
-                        },
+                        Layout = lfb,
+                        Appearance = la,
                         AutoSizeWidth = false,
                         AutoSizeHeight = true,
                         Wrap = true,
@@ -646,9 +643,8 @@ namespace PRGUI.Demo {
                         Text = "StaticText 6: AutoSize = true, Wrap = true, ScaleToFit = true, MinScale = 0.7f",
                     },
                     new StaticText { 
-                        Layout = {
-                            ForceBreak = true,
-                        },
+                        Layout = lfb,
+                        Appearance = la,
                         AutoSizeWidth = false,
                         AutoSizeHeight = true,
                         Wrap = false,
@@ -658,9 +654,8 @@ namespace PRGUI.Demo {
                         Text = "StaticText 7: AutoSize = true, Wrap = false, ScaleToFit = true, MinScale = 0.7f, MaxWidth = 450",
                     },
                     new StaticText { 
-                        Layout = {
-                            ForceBreak = true,
-                        },
+                        Layout = lfb,
+                        Appearance = la,
                         AutoSizeWidth = false,
                         AutoSizeHeight = true,
                         Wrap = true,

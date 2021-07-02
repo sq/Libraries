@@ -371,7 +371,8 @@ namespace Squared.PRGUI.Controls {
         protected float? ComputeTextWidthLimit (ref UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
             ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
             var spaceExpansion = 1.0f;
-            if (ScaleToFitX && (MinScale ?? 0) > 0.01f)
+            var hasMinScale = (MinScale ?? 0) > 0.01f;
+            if (_ScaleToFitX && hasMinScale)
                 spaceExpansion = 1.0f / MinScale.Value;
 
             var maxPx = ((Width.Fixed ?? Width.Maximum) * sizeScale.X) - computedPadding.X;
@@ -381,7 +382,16 @@ namespace Squared.PRGUI.Controls {
 
             if (maxPx.HasValue) {
                 return maxPx.Value * spaceExpansion;
-            } else if (MostRecentContentBoxWidth.HasValue) {
+            } else if (!AutoSizeWidth && MostRecentContentBoxWidth.HasValue) {
+                if (ScaleToFitX || ScaleToFitY) {
+                    if (!hasMinScale)
+                        return null;
+                }
+                // FIXME: Handle MinScale
+                /*
+                if (!Wrap && ScaleToFitX)
+                    return null;
+                */
                 // FIXME: Should we do this?
                 return MostRecentContentBoxWidth.Value * spaceExpansion;
             } else {
@@ -423,7 +433,7 @@ namespace Squared.PRGUI.Controls {
             float availableWidth = Math.Max(box.Width - margins.X, 0);
             float availableHeight = Math.Max(box.Height - margins.Y, 0);
 
-            var size = Wrap ? constrainedSize : unconstrainedSize;
+            var size = (Wrap && _ScaleToFitX) ? constrainedSize : unconstrainedSize;
 
             if ((size.X > availableWidth) && _ScaleToFitX) {
                 MostRecentXScaleFactor = availableWidth / (size.X + 0.1f);
@@ -571,7 +581,7 @@ namespace Squared.PRGUI.Controls {
 
         protected void UpdateLineBreak (ref UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
             var textWidthLimit = ComputeTextWidthLimit(ref context, decorations, ref computedPadding, ref computedMargins);
-            if (textWidthLimit.HasValue && (!_ScaleToFitX || MinScale.HasValue))
+            if (textWidthLimit.HasValue)
                 Content.LineBreakAtX = textWidthLimit;
             else
                 Content.LineBreakAtX = null;
