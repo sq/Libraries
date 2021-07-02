@@ -18,8 +18,9 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
 #if TRUE
+        // FIXME: The bounding box for 'dogs' is wrong unless there's a trailing space inside the marked region
         public string TestText =
-            "$[img:topright]$[img:bottomright]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
+            "$[img:topright]$[img:bottomright]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs )" +
             "\r\n$[img:bottomleft]$[img:left]この体は、無限のチェイサーで出来ていた $(marked)" +
             "\r\n\r\nEmpty line before this one $(marked)";
             /*
@@ -153,7 +154,6 @@ namespace FontTest {
             DutchAndHarley = Content.Load<SpriteFont>("DutchAndHarley");
 
             Text = new DynamicStringLayout(ActiveFont, TestText) {
-                // Alignment = HorizontalAlignment.Right,
                 AlignToPixels = GlyphPixelAlignment.FloorXY,
                 CharacterWrap = true,
                 WordWrap = true,

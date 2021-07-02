@@ -587,8 +587,17 @@ namespace Squared.Render.Text {
             ArraySegment<BitmapDrawCall> buffer, HorizontalAlignment alignment,
             int firstIndex, int lastIndex, float originalMaxX
         ) {
-            var firstDc = buffer.Array[buffer.Offset + firstIndex].EstimateDrawBounds();
-            var endDc = buffer.Array[buffer.Offset + lastIndex].EstimateDrawBounds();
+            Bounds firstDc = default(Bounds), endDc = default(Bounds);
+            for (int i = firstIndex; i <= lastIndex; i++) {
+                var dc = buffer.Array[buffer.Offset + i];
+                if (dc.UserData.X > 0)
+                    continue;
+
+                if (firstDc == default(Bounds))
+                    firstDc = dc.EstimateDrawBounds();
+
+                endDc = dc.EstimateDrawBounds();
+            }
             var lineWidth = (endDc.BottomRight.X - firstDc.TopLeft.X);
 
             // FIXME: Boxes
