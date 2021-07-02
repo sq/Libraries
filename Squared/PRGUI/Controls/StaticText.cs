@@ -42,7 +42,8 @@ namespace Squared.PRGUI.Controls {
         protected DynamicStringLayout Content = new DynamicStringLayout {
             HideOverflow = true,
             RecordUsedTextures = true,
-            AlignToPixels = DefaultGlyphPixelAlignment
+            AlignToPixels = DefaultGlyphPixelAlignment,
+            ExpandHorizontallyWhenAligning = false
         };
         private DynamicStringLayout ContentMeasurement = null;
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
@@ -383,10 +384,8 @@ namespace Squared.PRGUI.Controls {
             var height = Height;
             // HACK
             ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
+            var hasWidthConstraint = (width.Fixed ?? width.Maximum).HasValue;
             var maxPx = ((width.Fixed ?? width.Maximum) * sizeScale.X) - computedPadding.X;
-
-            if (Text.Contains("Support Fire"))
-                ;
 
             if (!MostRecentContentBoxWidth.HasValue && !maxPx.HasValue)
                 return null;
@@ -404,6 +403,15 @@ namespace Squared.PRGUI.Controls {
                         return maxPx.Value;
                     } else
                         return maxPx.Value * spaceExpansion;
+                } else if (
+                    hasWidthConstraint && 
+                    (Content.WordWrap || Content.CharacterWrap) && 
+                    (_ScaleToFitX || _ScaleToFitY)
+                ) {
+                    // HACK: If the user has set word/character wrap along with a constraint and enabled
+                    //  auto scale, we want to suppress overflow so that the laid out text can overhang
+                    Content.HideOverflow = false;
+                    return maxPx.Value * spaceExpansion;
                 } else
                     return null;
             } else if (!AutoSizeWidth && MostRecentContentBoxWidth.HasValue) {
@@ -524,7 +532,7 @@ namespace Squared.PRGUI.Controls {
             textScale *= ComputeScaleToFit(layout.Size, layout.UnconstrainedSize, ref settings.Box, ref computedPadding);
             textScale = ApplyScaleConstraints(textScale);
 
-            var scaledSize = layout.Size * textScale;
+            var scaledSize = (layout.Size * textScale).Floor();
 
             // If a fallback glyph source's child sources are different heights, the autosize can end up producing
             //  a box that is too big for the content. In that case, we want to center it vertically
@@ -550,7 +558,8 @@ namespace Squared.PRGUI.Controls {
             }
 
             var cpx = computedPadding.X;
-            var xSpace = (b.X - a.X) - scaledSize.X - cpx;
+            var centeringWidth = scaledSize.X;
+            var xSpace = (b.X - a.X) - centeringWidth - cpx;
             switch (Content.Alignment) {
                 case HorizontalAlignment.Left:
                     break;
@@ -563,7 +572,7 @@ namespace Squared.PRGUI.Controls {
             }
 
             if (VisualizeLayout) {
-                renderer.RasterizeRectangle(textOffset + ca, textOffset + ca + layout.Size * textScale, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue, layer: 1);
+                renderer.RasterizeRectangle(textOffset + ca, textOffset + ca + scaledSize, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue, layer: 1);
                 if (Content.LineBreakAtX.HasValue) {
                     var la = new Vector2(ca.X, ca.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
                     var lb = new Vector2(ca.X, cb.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
@@ -619,7 +628,7 @@ namespace Squared.PRGUI.Controls {
         protected void UpdateLineBreak (ref UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
             var textWidthLimit = ComputeTextWidthLimit(ref context, decorations, ref computedPadding, ref computedMargins);
             if (textWidthLimit.HasValue)
-                Content.LineBreakAtX = textWidthLimit;
+                Content.LineBreakAtX = (float)Math.Ceiling(textWidthLimit.Value + 0.1f);
             else
                 Content.LineBreakAtX = null;
         }

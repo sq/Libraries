@@ -51,6 +51,7 @@ namespace Squared.Render.Text {
         private bool _RichText = false;
         private bool _HideOverflow = false;
         private bool _RecordUsedTextures = false;
+        private bool _ExpandHorizontallyWhenAligning = true;
         private char? _ReplacementCharacter = null;
         private uint[] _WordWrapCharacters = null;
         private bool _AwaitingDependencies = false;
@@ -600,12 +601,15 @@ namespace Squared.Render.Text {
         /// If set, every texture used in the layout will be recorded so you can use it for tracking and lifetime management.
         /// </summary>
         public bool RecordUsedTextures {
-            get {
-                return _RecordUsedTextures;
-            }
+            get => _RecordUsedTextures;
             set {
                 InvalidatingValueAssignment(ref _RecordUsedTextures, value);
             }
+        }
+
+        public bool ExpandHorizontallyWhenAligning {
+            get => _ExpandHorizontallyWhenAligning;
+            set => InvalidatingValueAssignment(ref _ExpandHorizontallyWhenAligning, value);
         }
 
         public bool IsValid {
@@ -658,7 +662,8 @@ namespace Squared.Render.Text {
                 lineBreakLimit = _LineBreakLimit,
                 measureOnly = _MeasureOnly,
                 replacementCodepoint = _ReplacementCharacter,
-                recordUsedTextures = _RecordUsedTextures
+                recordUsedTextures = _RecordUsedTextures,
+                expandHorizontallyWhenAligning = _ExpandHorizontallyWhenAligning,
             };
 
             if (_WordWrapCharacters != null)
@@ -709,6 +714,7 @@ namespace Squared.Render.Text {
             this.HideOverflow = source.HideOverflow;
             this.WordWrapCharacters = source.WordWrapCharacters;
             this.RecordUsedTextures = source.RecordUsedTextures;
+            this.ExpandHorizontallyWhenAligning = source.ExpandHorizontallyWhenAligning;
         }
 
         /// <summary>

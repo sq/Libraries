@@ -228,6 +228,7 @@ namespace Squared.Render.Text {
         public int?                lineBreakLimit;
         public bool                measureOnly;
         public bool                recordUsedTextures;
+        public bool                expandHorizontallyWhenAligning;
         public GlyphPixelAlignment alignToPixels;
         public HorizontalAlignment alignment;
         public uint?               replacementCodepoint;
@@ -584,7 +585,7 @@ namespace Squared.Render.Text {
 
         private void AlignLine (
             ArraySegment<BitmapDrawCall> buffer, HorizontalAlignment alignment,
-            int firstIndex, int lastIndex
+            int firstIndex, int lastIndex, float originalMaxX
         ) {
             var firstDc = buffer.Array[buffer.Offset + firstIndex].EstimateDrawBounds();
             var endDc = buffer.Array[buffer.Offset + lastIndex].EstimateDrawBounds();
@@ -593,10 +594,10 @@ namespace Squared.Render.Text {
             // FIXME: Boxes
 
             float whitespace;
-            if (currentLineBreakAtX.HasValue)
+            if (currentLineBreakAtX.HasValue && expandHorizontallyWhenAligning)
                 whitespace = currentLineBreakAtX.Value - lineWidth;
             else
-                whitespace = maxX - lineWidth;
+                whitespace = originalMaxX - lineWidth;
 
             // HACK: Don't do anything if the line is too big, just overflow to the right.
             //  Otherwise, the sizing info will be wrong and bad things happen.
@@ -635,18 +636,20 @@ namespace Squared.Render.Text {
             int lineStartIndex = 0;
             float currentLine = buffer.Array[buffer.Offset].SortOrder;
 
+            var originalMaxX = maxX;
+
             for (var i = 1; i < buffer.Count; i++) {
                 var line = buffer.Array[buffer.Offset + i].SortOrder;
 
                 if (line > currentLine) {
-                    AlignLine(buffer, alignment, lineStartIndex, i - 1);
+                    AlignLine(buffer, alignment, lineStartIndex, i - 1, originalMaxX);
 
                     lineStartIndex = i;
                     currentLine = line;
                 }
             }
 
-            AlignLine(buffer, alignment, lineStartIndex, buffer.Count - 1);
+            AlignLine(buffer, alignment, lineStartIndex, buffer.Count - 1, originalMaxX);
         }
 
         private void SnapPositions (ArraySegment<BitmapDrawCall> buffer) {
