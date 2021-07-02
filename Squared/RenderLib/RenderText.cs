@@ -598,15 +598,23 @@ namespace Squared.Render.Text {
 
                 endDc = dc.EstimateDrawBounds();
             }
-            var lineWidth = (endDc.BottomRight.X - firstDc.TopLeft.X);
+            float lineWidth = (endDc.BottomRight.X - firstDc.TopLeft.X),
+                localMinX = firstDc.TopLeft.X, localMaxX = originalMaxX - 2f;
 
-            // FIXME: Boxes
+            if (currentLineBreakAtX.HasValue && expandHorizontallyWhenAligning)
+                localMaxX = currentLineBreakAtX.Value;
+
+            // HACK: Attempt to ensure that alignment doesn't penetrate boxes
+            // FIXME: This doesn't work and I can't figure out why
+            /*
+            AdjustCharacterOffsetForBoxes(ref localMinX, firstDc.TopLeft.Y, Math.Max(firstDc.Size.Y, endDc.Size.Y));
+            AdjustCharacterOffsetForBoxes(ref localMaxX, firstDc.TopLeft.Y, Math.Max(firstDc.Size.Y, endDc.Size.Y));
+            */
 
             float whitespace;
-            if (currentLineBreakAtX.HasValue && expandHorizontallyWhenAligning)
-                whitespace = currentLineBreakAtX.Value - lineWidth;
-            else
-                whitespace = originalMaxX - lineWidth;
+            // Factor in text starting offset from the left side, if we don't the text
+            //  will overhang to the right after alignment. This is usually caused by boxes
+            whitespace = localMaxX - lineWidth - localMinX;
 
             // HACK: Don't do anything if the line is too big, just overflow to the right.
             //  Otherwise, the sizing info will be wrong and bad things happen.
