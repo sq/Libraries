@@ -377,18 +377,23 @@ namespace Squared.PRGUI.Controls {
 
             var maxPx = ((Width.Fixed ?? Width.Maximum) * sizeScale.X) - computedPadding.X;
 
-            if (Text.Contains("This button toggles"))
-                ;
-            else if (Text.Contains("Line 2"))
-                ;
-
             if (!MostRecentContentBoxWidth.HasValue && !maxPx.HasValue)
                 return null;
 
             if (maxPx.HasValue) {
-                if (hasMinScale || (!ScaleToFitX && !ScaleToFitY))
-                    return maxPx.Value * spaceExpansion;
-                else
+                if (hasMinScale || (!_ScaleToFitX && !_ScaleToFitY)) {
+                    if (Content.WordWrap && _ScaleToFitX) {
+                        // HACK: This set of properties ensures that when horizontal scale to fit
+                        //  is enabled, the text will prefer to word-wrap at its normal line boundaries,
+                        //  and if the words overhang the content will then shrink to prevent them from 
+                        //  overhanging the control's boundaries
+                        Content.CharacterWrap = false;
+                        Content.WordWrap = true;
+                        Content.HideOverflow = false;
+                        return maxPx.Value;
+                    } else
+                        return maxPx.Value * spaceExpansion;
+                } else
                     return null;
             } else if (!AutoSizeWidth && MostRecentContentBoxWidth.HasValue) {
                 if (ScaleToFitX || ScaleToFitY) {
