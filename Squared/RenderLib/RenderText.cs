@@ -612,7 +612,7 @@ namespace Squared.Render.Text {
             if (alignment == HorizontalAlignment.Center)
                 whitespace /= 2;
 
-            Snap(ref whitespace);
+            whitespace = (float)Math.Round(whitespace, 0, MidpointRounding.AwayFromZero);
 
             for (var j = firstIndex; j <= lastIndex; j++) {
                 if (buffer.Array[buffer.Offset + j].UserData.X > 0)
