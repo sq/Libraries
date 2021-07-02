@@ -86,6 +86,7 @@ namespace Squared.PRGUI.Controls {
                 settings.ConfigureLayout(Content);
             LayoutFilter = settings.LayoutFilter;
             Appearance.GlyphSourceProvider = settings.DefaultGlyphSource;
+            TextAlignment = settings.TextAlignment;
         }
     }
 }
@@ -119,6 +120,7 @@ namespace Squared.PRGUI {
         public Vector2? AnchorPoint, ControlAlignmentPoint, MaxSize;
         public Action<DynamicStringLayout> ConfigureLayout;
         public StringLayoutFilter LayoutFilter;
+        public HorizontalAlignment TextAlignment;
 
         public bool Equals (TooltipSettings rhs) {
             return (RichText == rhs.RichText) &&
@@ -128,7 +130,8 @@ namespace Squared.PRGUI {
                 (ControlAlignmentPoint == rhs.ControlAlignmentPoint) &&
                 (ConfigureLayout == rhs.ConfigureLayout) &&
                 (LayoutFilter == rhs.LayoutFilter) &&
-                (DefaultGlyphSource == rhs.DefaultGlyphSource);
+                (DefaultGlyphSource == rhs.DefaultGlyphSource) &&
+                (TextAlignment == rhs.TextAlignment);
         }
 
         public override bool Equals (object obj) {
