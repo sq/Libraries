@@ -369,16 +369,27 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float? ComputeTextWidthLimit (ref UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
-            if (_ScaleToFitX && !MinScale.HasValue)
-                return null;
-
             ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
             var spaceExpansion = 1.0f;
-            if (MinScale.HasValue && _ScaleToFitX)
+            if (ScaleToFitX && (MinScale ?? 0) > 0.01f)
                 spaceExpansion = 1.0f / MinScale.Value;
 
-            float? constrainedWidth = null;
-            var max = ((Width.Fixed ?? Width.Maximum) * sizeScale.X * spaceExpansion) - computedPadding.X;
+            var maxPx = ((Width.Fixed ?? Width.Maximum) * sizeScale.X) - computedPadding.X;
+
+            if (!MostRecentContentBoxWidth.HasValue && !maxPx.HasValue)
+                return null;
+
+            if (maxPx.HasValue) {
+                return maxPx.Value * spaceExpansion;
+            } else if (MostRecentContentBoxWidth.HasValue) {
+                // FIXME: Should we do this?
+                return MostRecentContentBoxWidth.Value * spaceExpansion;
+            } else {
+                return null;
+            }
+
+            /*
+
             if (MostRecentContentBoxWidth.HasValue) {
                 // FIXME
                 float computed = MostRecentContentBoxWidth.Value * spaceExpansion;
@@ -400,9 +411,10 @@ namespace Squared.PRGUI.Controls {
                 return (float)Math.Ceiling(constrainedWidth.Value) + AutoSizePadding;
             } else
                 return null;
+            */
         }
 
-        protected float ComputeScaleToFit (Vector2 unconstrainedSize, ref RectF box, ref Margins margins) {
+        protected float ComputeScaleToFit (Vector2 constrainedSize, Vector2 unconstrainedSize, ref RectF box, ref Margins margins) {
             if (!_ScaleToFitX && !_ScaleToFitY) {
                 MostRecentXScaleFactor = MostRecentYScaleFactor = 1;
                 return 1;
@@ -411,13 +423,15 @@ namespace Squared.PRGUI.Controls {
             float availableWidth = Math.Max(box.Width - margins.X, 0);
             float availableHeight = Math.Max(box.Height - margins.Y, 0);
 
-            if ((unconstrainedSize.X > availableWidth) && _ScaleToFitX) {
-                MostRecentXScaleFactor = availableWidth / (unconstrainedSize.X + 0.1f);
+            var size = Wrap ? constrainedSize : unconstrainedSize;
+
+            if ((size.X > availableWidth) && _ScaleToFitX) {
+                MostRecentXScaleFactor = availableWidth / (size.X + 0.1f);
             } else {
                 MostRecentXScaleFactor = 1;
             }
-            if ((unconstrainedSize.Y > availableHeight) && _ScaleToFitY) {
-                MostRecentYScaleFactor = availableHeight / (unconstrainedSize.Y + 0.1f);
+            if ((size.Y > availableHeight) && _ScaleToFitY) {
+                MostRecentYScaleFactor = availableHeight / (size.Y + 0.1f);
             } else {
                 MostRecentYScaleFactor = 1;
             }
@@ -473,7 +487,7 @@ namespace Squared.PRGUI.Controls {
             UpdateLineBreak(ref context, decorations, ref computedPadding, ref computedMargins);
 
             var layout = GetCurrentLayout(false);
-            textScale *= ComputeScaleToFit(layout.UnconstrainedSize, ref settings.Box, ref computedPadding);
+            textScale *= ComputeScaleToFit(layout.Size, layout.UnconstrainedSize, ref settings.Box, ref computedPadding);
             textScale = ApplyScaleConstraints(textScale);
 
             var scaledSize = layout.Size * textScale;
