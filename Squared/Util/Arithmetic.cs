@@ -936,10 +936,34 @@ namespace Squared.Util {
     }
 }
 
-namespace Squared.Util {
+namespace Squared.Util.Random {
+    public struct RandomNumberProvider {
+        private System.Random Random;
+        private CoreCLR.Xoshiro Xoshiro;
+
+        public int Next (int minValue, int maxValueExclusive) {
+            if (Xoshiro != null)
+                return Xoshiro.Next(minValue, maxValueExclusive);
+            else
+                return Random.Next(minValue, maxValueExclusive);
+        }
+
+        public static implicit operator RandomNumberProvider (CoreCLR.Xoshiro xoshiro) {
+            return new RandomNumberProvider {
+                Xoshiro = xoshiro
+            };
+        }
+
+        public static implicit operator RandomNumberProvider (System.Random random) {
+            return new RandomNumberProvider {
+                Random = random
+            };
+        }
+    }
+
     public static class FisherYates {
         public static void Shuffle<T> (
-            Random rng,
+            RandomNumberProvider rng,
             ArraySegment<T> values
         ) {
             var n = values.Count;
@@ -952,7 +976,7 @@ namespace Squared.Util {
         }
 
         public static void Shuffle<T> (
-            Random rng,
+            RandomNumberProvider rng,
             IList<T> values
         ) {
             var n = values.Count;

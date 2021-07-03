@@ -50,6 +50,28 @@ namespace Squared.CoreCLR
             }
         }
 
+        public Xoshiro (ulong[] state) {
+            if (state == null)
+                throw new ArgumentNullException(nameof(state));
+            else if (state.Length != 4)
+                throw new ArgumentOutOfRangeException(nameof(state));
+            _s0 = state[0];
+            _s1 = state[1];
+            _s2 = state[2];
+            _s3 = state[3];
+        }
+
+        public void Save (ulong[] result) {
+            if (result == null)
+                throw new ArgumentNullException(nameof(result));
+            else if (result.Length != 4)
+                throw new ArgumentOutOfRangeException(nameof(result));
+            result[0] = _s0;
+            result[1] = _s1;
+            result[2] = _s2;
+            result[3] = _s3;
+        }
+
         /// <summary>Produces a value in the range [0, uint.MaxValue].</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // small-ish hot path used by very few call sites
         public uint NextUInt32() => (uint)(NextUInt64() >> 32);
