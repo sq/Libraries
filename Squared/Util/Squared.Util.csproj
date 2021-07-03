@@ -16,7 +16,6 @@
     <OutputPath>bin\$(Platform)\$(Configuration)</OutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
-
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -27,7 +26,6 @@
     <Optimize>true</Optimize>
     <DefineConstants>TRACE;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
-
   <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' ">
     <DefineConstants>WINDOWS;MAYBE_X64;$(DefineConstants)</DefineConstants>
     <Prefer32Bit>false</Prefer32Bit>
@@ -37,7 +35,6 @@
     <PlatformTarget>x86</PlatformTarget>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
-
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -46,6 +43,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Arithmetic.cs" />
+    <Compile Include="CoreCLR\BitOperations.cs" />
+    <Compile Include="CoreCLR\Random.Xoshiro256StarStarImpl.cs" />
     <Compile Include="DenseList.cs" />
     <Compile Include="EmbeddedDLLLoader.cs" />
     <Compile Include="IndexedSort.cs" />

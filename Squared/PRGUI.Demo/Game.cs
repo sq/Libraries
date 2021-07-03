@@ -1145,8 +1145,9 @@ namespace PRGUI.Demo {
                 .SetTooltip("This menu item has a custom tooltip")
                 .SetBackgroundColor(Color.Blue)
                 .SetWrap(false);
-            var c = builder.NewContainer();
+            var c = builder.NewContainer<ControlGroup>();
             c.Text("Item 4A");
+            c.Spacer();
             c.Text("Item 4B");
         }
 
