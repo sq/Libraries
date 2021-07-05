@@ -847,12 +847,12 @@ namespace Squared.Util {
     public static class FastMath {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int FloorLog2 (int n) {
-            int result = 0;
-            while (n >= 1) {
-                result++;
-                n /= 2;
+            // FIXME
+            if (n < 0)
+                return 0;
+            unchecked {
+                return CoreCLR.BitOperations.Log2((uint)n);
             }
-            return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

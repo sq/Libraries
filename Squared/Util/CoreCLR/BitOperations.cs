@@ -12,8 +12,6 @@ namespace Squared.CoreCLR
 {
     /// <summary>
     /// Utility methods for intrinsic bit-twiddling operations.
-    /// The methods use hardware intrinsics when available on the underlying platform,
-    /// otherwise they use optimized software fallbacks.
     /// </summary>
     public static class BitOperations
     {
@@ -169,23 +167,25 @@ namespace Squared.CoreCLR
             // No AggressiveInlining due to large method size
             // Has conventional contract 0->0 (Log(0) is undefined)
 
-            // Fill trailing zeros with ones, eg 00010010 becomes 00011111
-            value |= value >> 01;
-            value |= value >> 02;
-            value |= value >> 04;
-            value |= value >> 08;
-            value |= value >> 16;
+            unchecked {
+                // Fill trailing zeros with ones, eg 00010010 becomes 00011111
+                value |= value >> 01;
+                value |= value >> 02;
+                value |= value >> 04;
+                value |= value >> 08;
+                value |= value >> 16;
 
-            /*
-            // uint.MaxValue >> 27 is always in range [0 - 31] so we use Unsafe.AddByteOffset to avoid bounds check
-            return Unsafe.AddByteOffset(
-                // Using deBruijn sequence, k=2, n=5 (2^5=32) : 0b_0000_0111_1100_0100_1010_1100_1101_1101u
-                ref MemoryMarshal.GetReference(Log2DeBruijn),
-                // uint|long -> IntPtr cast on 32-bit platforms does expensive overflow checks not needed here
-                (IntPtr)(int)((value * 0x07C4ACDDu) >> 27));
-            */
+                /*
+                // uint.MaxValue >> 27 is always in range [0 - 31] so we use Unsafe.AddByteOffset to avoid bounds check
+                return Unsafe.AddByteOffset(
+                    // Using deBruijn sequence, k=2, n=5 (2^5=32) : 0b_0000_0111_1100_0100_1010_1100_1101_1101u
+                    ref MemoryMarshal.GetReference(Log2DeBruijn),
+                    // uint|long -> IntPtr cast on 32-bit platforms does expensive overflow checks not needed here
+                    (IntPtr)(int)((value * 0x07C4ACDDu) >> 27));
+                */
 
-            return Log2DeBruijn[(int)((value * 0x07C4ACDDu) >> 27)];
+                return Log2DeBruijn[(int)((value * 0x07C4ACDDu) >> 27)];
+            }
         }
 
         /// <summary>Returns the integer (ceiling) log of the specified value, base 2.</summary>
@@ -222,16 +222,18 @@ namespace Squared.CoreCLR
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int PopCount(uint value)
         {
-            const uint c1 = 0x_55555555u;
-            const uint c2 = 0x_33333333u;
-            const uint c3 = 0x_0F0F0F0Fu;
-            const uint c4 = 0x_01010101u;
+            unchecked {
+                const uint c1 = 0x_55555555u;
+                const uint c2 = 0x_33333333u;
+                const uint c3 = 0x_0F0F0F0Fu;
+                const uint c4 = 0x_01010101u;
 
-            value -= (value >> 1) & c1;
-            value = (value & c2) + ((value >> 2) & c2);
-            value = (((value + (value >> 4)) & c3) * c4) >> 24;
+                value -= (value >> 1) & c1;
+                value = (value & c2) + ((value >> 2) & c2);
+                value = (((value + (value >> 4)) & c3) * c4) >> 24;
 
-            return (int)value;
+                return (int)value;
+            }
         }
 
         /// <summary>
@@ -242,16 +244,18 @@ namespace Squared.CoreCLR
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int PopCount(ulong value)
         {
-            const ulong c1 = 0x_55555555_55555555ul;
-            const ulong c2 = 0x_33333333_33333333ul;
-            const ulong c3 = 0x_0F0F0F0F_0F0F0F0Ful;
-            const ulong c4 = 0x_01010101_01010101ul;
+            unchecked {
+                const ulong c1 = 0x_55555555_55555555ul;
+                const ulong c2 = 0x_33333333_33333333ul;
+                const ulong c3 = 0x_0F0F0F0F_0F0F0F0Ful;
+                const ulong c4 = 0x_01010101_01010101ul;
 
-            value -= (value >> 1) & c1;
-            value = (value & c2) + ((value >> 2) & c2);
-            value = (((value + (value >> 4)) & c3) * c4) >> 56;
+                value -= (value >> 1) & c1;
+                value = (value & c2) + ((value >> 2) & c2);
+                value = (((value + (value >> 4)) & c3) * c4) >> 56;
 
-            return (int)value;
+                return (int)value;
+            }
         }
 
         /// <summary>
