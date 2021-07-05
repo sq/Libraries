@@ -858,10 +858,8 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe int SignF (float f) {
             unchecked {
-                uint u = *(uint*)&f;
-                int signBit = (int)(u >> 31);
-                int result = (signBit * -2) + 1;
-                return result;
+                int signBit = (int)((*(uint*)&f) >> 31);
+                return (signBit * -2) + 1;
             }
         }
 
@@ -910,24 +908,20 @@ namespace Squared.Util {
                     return (sign2 - sign1);
 
                 int multiplier = (sign1 * -2) + 1;
-                var delta = u1 - u2;
-                int result = (int)(delta) * multiplier;
-                return result;
+                return (int)(u1 - u2) * multiplier;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe bool EqualsF (float lhs, float rhs) {
             unchecked {
-                float* pLhs = &lhs;
-                float* pRhs = &rhs;
-                return *((UInt32*)pLhs) == *((UInt32*)pRhs);
+                return *((UInt32*)&lhs) == *((UInt32*)&rhs);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe int CompareF (float lhs, float rhs) {
-            U32F32 u = default(U32F32);
+            U32F32 u = default;
             u.F1 = lhs;
             u.F2 = rhs;
 

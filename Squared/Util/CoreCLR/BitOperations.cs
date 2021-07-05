@@ -15,7 +15,7 @@ namespace Squared.CoreCLR
     /// </summary>
     public static class BitOperations
     {
-        private static byte[] TrailingZeroCountDeBruijn => new byte[32]
+        private static byte[] TrailingZeroCountDeBruijn = new byte[32]
         {
             00, 01, 28, 02, 29, 14, 24, 03,
             30, 22, 20, 15, 25, 17, 04, 08,
@@ -23,7 +23,7 @@ namespace Squared.CoreCLR
             26, 12, 18, 06, 11, 05, 10, 09
         };
 
-        private static byte[] Log2DeBruijn => new byte[32]
+        private static byte[] Log2DeBruijn = new byte[32]
         {
             00, 09, 01, 10, 13, 21, 02, 29,
             11, 14, 16, 18, 22, 25, 03, 30,
@@ -289,7 +289,9 @@ namespace Squared.CoreCLR
                 (IntPtr)(int)(((value & (uint)-(int)value) * 0x077CB531u) >> 27)); // Multi-cast mitigates redundant conv.u8
             */
 
-            return TrailingZeroCountDeBruijn[(int)(((value & (uint)-(int)value) * 0x077CB531u) >> 27)];
+            unchecked {
+                return TrailingZeroCountDeBruijn[(int)(((value & (uint)-(int)value) * 0x077CB531u) >> 27)];
+            }
         }
 
         /// <summary>
