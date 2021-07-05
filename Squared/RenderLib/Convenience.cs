@@ -1027,13 +1027,15 @@ namespace Squared.Render.Convenience {
             Vector2 position, Color? color = null, float scale = 1, DrawCallSortKey? sortKey = null,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null, Material material = null
+            BlendState blendState = null, SamplerState samplerState = null, Material material = null,
+            Color? addColor = null
         ) {
             using (var buffer = BufferPool<BitmapDrawCall>.Allocate(text.Length)) {
                 var layout = font.LayoutString(
                     text, new ArraySegment<BitmapDrawCall>(buffer.Data),
                     position, color, scale, sortKey.GetValueOrDefault(NextSortKey),
-                    characterSkipCount, characterLimit, alignToPixels: true
+                    characterSkipCount, characterLimit, alignToPixels: true,
+                    addColor: addColor
                 );
 
                 DrawMultiple(
@@ -1052,13 +1054,14 @@ namespace Squared.Render.Convenience {
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null,
-            Material material = null
+            Material material = null, Color? addColor = null
         ) {
             using (var buffer = BufferPool<BitmapDrawCall>.Allocate(text.Length)) {
                 var layout = glyphSource.LayoutString(
                     text, new ArraySegment<BitmapDrawCall>(buffer.Data),
                     position, color, scale, sortKey.GetValueOrDefault(NextSortKey),
-                    characterSkipCount, characterLimit, alignToPixels: true
+                    characterSkipCount, characterLimit, alignToPixels: true,
+                    addColor: addColor
                 );
 
                 DrawMultiple(

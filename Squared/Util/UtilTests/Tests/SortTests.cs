@@ -56,7 +56,7 @@ namespace Squared.Util {
 
         private int[] MakeRandomSequence (int count, int seed) {
             // Fixed seed for reproducability
-            var rng = new Random(seed);
+            var rng = new System.Random(seed);
             var result = new int[count];
 
             for (var i = 0; i < count; i++)

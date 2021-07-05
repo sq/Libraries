@@ -15,7 +15,7 @@ namespace Squared.Util {
             return result;
         }
 
-        private int[] GenerateRandomInts (Random rng, int length) {
+        private int[] GenerateRandomInts (System.Random rng, int length) {
             var result = new int[length];
             for (int i = 0; i < length; i++)
                 result[i] = rng.Next(int.MinValue / 100, int.MaxValue / 100);
@@ -36,7 +36,7 @@ namespace Squared.Util {
         [Test, TestCaseSource("SequenceLengths")]
         public void SortRandomSequencesOfLength (int length) {
             var comparer = new RefComparerAdapter<Comparer<int>, int>(Comparer<int>.Default);
-            var r = new Random(37);
+            var r = new System.Random(37);
             int sequenceCount = (length >= 500) ? 128 : 1024;
 
             for (int i = 0; i < sequenceCount; i++) {
@@ -63,7 +63,7 @@ namespace Squared.Util {
         [Test, TestCaseSource("SequenceLengths")]
         public void SortRandomSequencesOfLengthWithIndices (int length) {
             var comparer = new RefComparerAdapter<Comparer<int>, int>(Comparer<int>.Default);
-            var r = new Random(37);
+            var r = new System.Random(37);
             int sequenceCount = (length >= 500) ? 128 : 1024;
 
             int[] indicesA = GenerateSequence(length), indicesB = GenerateSequence(length);

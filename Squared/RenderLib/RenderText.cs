@@ -207,6 +207,7 @@ namespace Squared.Render.Text {
         public Vector2?            position;
         public Color?              overrideColor;
         public Color               defaultColor;
+        public Color               addColor;
         public float               scale;
         private float              _spacingMinusOne;
         public DrawCallSortKey     sortKey;
@@ -771,6 +772,7 @@ namespace Squared.Render.Text {
                 TextureRegion = textureRegion ?? Bounds.Unit,
                 ScaleF = scale * this.scale,
                 MultiplyColor = multiplyColor ?? overrideColor ?? Color.White,
+                AddColor = addColor,
                 Origin = new Vector2(0, 0),
                 // HACK
                 UserData = new Vector4(hardXAlignment.HasValue ? 1 : 0, hardYAlignment.HasValue ? 1 : 0, 0, (hardYAlignment.HasValue ? 1 : 1 - verticalAlignment))
@@ -848,10 +850,12 @@ namespace Squared.Render.Text {
             var effectiveScale = scale / Math.Max(0.0001f, font.DPIScaleFactor);
             var effectiveSpacing = spacing;
 
-            var drawCall = default(BitmapDrawCall);
-            drawCall.MultiplyColor = defaultColor;
-            drawCall.ScaleF = effectiveScale;
-            drawCall.SortKey = sortKey;
+            var drawCall = new BitmapDrawCall {
+                MultiplyColor = defaultColor,
+                ScaleF = effectiveScale,
+                SortKey = sortKey,
+                AddColor = addColor
+            };
 
             float x = 0;
 
@@ -1390,7 +1394,8 @@ namespace Squared.Render {
             GlyphPixelAlignment alignToPixels = default(GlyphPixelAlignment),
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
             bool wordWrap = false, char wrapCharacter = '\0',
-            bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null
+            bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null,
+            Color? addColor = null
         ) {
             var state = new StringLayoutEngine {
                 allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
@@ -1407,7 +1412,8 @@ namespace Squared.Render {
                 wordWrap = wordWrap,
                 wrapCharacter = wrapCharacter,
                 buffer = buffer.GetValueOrDefault(default(ArraySegment<BitmapDrawCall>)),
-                reverseOrder = reverseOrder
+                reverseOrder = reverseOrder,
+                addColor = addColor ?? Color.Transparent
             };
             var gs = new SpriteFontGlyphSource(font);
 
@@ -1435,7 +1441,8 @@ namespace Squared.Render {
             bool alignToPixels = false,
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
             bool wordWrap = false, char wrapCharacter = '\0',
-            bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null
+            bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null,
+            Color? addColor = null
         ) {
             var state = new StringLayoutEngine {
                 allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
@@ -1452,7 +1459,8 @@ namespace Squared.Render {
                 wordWrap = wordWrap,
                 wrapCharacter = wrapCharacter,
                 buffer = buffer.GetValueOrDefault(default(ArraySegment<BitmapDrawCall>)),
-                reverseOrder = reverseOrder
+                reverseOrder = reverseOrder,
+                addColor = addColor ?? Color.Transparent
             };
 
             if (horizontalAlignment.HasValue)
