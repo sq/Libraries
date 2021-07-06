@@ -130,10 +130,14 @@ namespace Squared.Render.Text {
             }
         }
 
+        // Inputs
         public AbstractString MarkedString;
         public string MarkedID;
         public int FirstCharacterIndex, LastCharacterIndex;
+
+        // Outputs
         public int? FirstDrawCallIndex, LastDrawCallIndex;
+        public int? FirstLineIndex, LastLineIndex;
         public int GlyphCount;
         internal int CurrentSplitGlyphCount;
         public DenseList<Bounds> Bounds;
@@ -144,8 +148,8 @@ namespace Squared.Render.Text {
             MarkedString = markedString;
             MarkedID = markedID;
             FirstDrawCallIndex = LastDrawCallIndex = null;
-            GlyphCount = 0;
-            CurrentSplitGlyphCount = 0;
+            FirstLineIndex = LastLineIndex = null;
+            GlyphCount = CurrentSplitGlyphCount = 0;
             Bounds = default(DenseList<Bounds>);
         }
 
@@ -370,6 +374,8 @@ namespace Squared.Render.Text {
                     m.CurrentSplitGlyphCount++;
                 }
 
+                m.FirstLineIndex = m.FirstLineIndex ?? rowIndex;
+                m.LastLineIndex = rowIndex;
                 m.FirstDrawCallIndex = m.FirstDrawCallIndex ?? drawCallIndex;
                 m.LastDrawCallIndex = drawCallIndex ?? m.LastDrawCallIndex;
                 Markers[i] = m;
@@ -585,7 +591,7 @@ namespace Squared.Render.Text {
         }
 
         private void AlignLine (
-            ArraySegment<BitmapDrawCall> buffer, HorizontalAlignment alignment,
+            ArraySegment<BitmapDrawCall> buffer, int line, HorizontalAlignment alignment,
             int firstIndex, int lastIndex, float originalMaxX
         ) {
             Bounds firstDc = default(Bounds), endDc = default(Bounds);
@@ -632,7 +638,24 @@ namespace Squared.Render.Text {
 
             whitespace = (float)Math.Round(whitespace, 0, MidpointRounding.AwayFromZero);
 
-            for (var j = firstIndex; j <= lastIndex; j++) {
+            // FIXME: This double-applies whitespace for some reason, or doesn't work at all?
+            /*
+            for (int j = 0, n = Markers.Count; j < n; j++) {
+                Markers.TryGetItem(j, out LayoutMarker m);
+                // FIXME: Multiline markers
+                if ((m.FirstLineIndex >= line) && (m.LastLineIndex <= line)) {
+                    for (int k = 0, kn = m.Bounds.Count; k < kn; k++) {
+                        m.Bounds.TryGetItem(k, out Bounds b);
+                        b.TopLeft.X += whitespace;
+                        b.BottomRight.X += whitespace;
+                        m.Bounds[k] = b;
+                    }
+                }
+                Markers[j] = m;
+            }
+            */
+
+            for (int j = firstIndex; j <= lastIndex; j++) {
                 if (buffer.Array[buffer.Offset + j].UserData.X > 0)
                     continue;
 
@@ -660,14 +683,14 @@ namespace Squared.Render.Text {
                 var line = buffer.Array[buffer.Offset + i].SortOrder;
 
                 if (line > currentLine) {
-                    AlignLine(buffer, alignment, lineStartIndex, i - 1, originalMaxX);
+                    AlignLine(buffer, (int)line, alignment, lineStartIndex, i - 1, originalMaxX);
 
                     lineStartIndex = i;
                     currentLine = line;
                 }
             }
 
-            AlignLine(buffer, alignment, lineStartIndex, buffer.Count - 1, originalMaxX);
+            AlignLine(buffer, rowIndex, alignment, lineStartIndex, buffer.Count - 1, originalMaxX);
         }
 
         private void SnapPositions (ArraySegment<BitmapDrawCall> buffer) {
