@@ -220,8 +220,8 @@ namespace Squared.PRGUI {
 
         Func<Control, bool> FocusablePredicate, RotatablePredicate;
 
-        public Control PickFocusableChild (Control container, int direction = 1) {
-            var settings = new TraverseSettings {
+        private TraverseSettings MakeSettingsForPick (Control container, int direction) {
+            return new TraverseSettings {
                 AllowDescend = true,
                 AllowDescendIfDisabled = false,
                 AllowDescendIfInvisible = false,
@@ -234,6 +234,18 @@ namespace Squared.PRGUI {
                 FrameIndex = FrameIndex,
                 Predicate = FocusablePredicate ?? (FocusablePredicate = _FocusablePredicate)
             };
+        }
+
+        public IEnumerable<Control> FindFocusableChildren (Control container, int direction = 1) {
+            var settings = MakeSettingsForPick(container, direction);
+            // FIXME: Handle cases where the control isn't a container
+            var collection = ((container as IControlContainer)?.Children) ?? Controls;
+            // DebugLog($"Finding focusable child in {container} in direction {direction}");
+            return TraverseChildren(collection, settings).Select(ti => ti.Control);
+        }
+
+        public Control PickFocusableChild (Control container, int direction = 1) {
+            var settings = MakeSettingsForPick(container, direction);
             // FIXME: Handle cases where the control isn't a container
             var collection = ((container as IControlContainer)?.Children) ?? Controls;
             // DebugLog($"Finding focusable child in {container} in direction {direction}");

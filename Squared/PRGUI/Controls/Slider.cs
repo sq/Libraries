@@ -88,6 +88,7 @@ namespace Squared.PRGUI.Controls {
         AbstractTooltipContent ICustomTooltipTarget.GetContent () => _GetDefaultTooltip;
         TooltipTargetSettings _TooltipSettings = new TooltipTargetSettings {
             ShowWhileMouseIsHeld = true,
+            ShowWhileKeyboardFocused = true,
             HideOnMousePress = false
         };
         TooltipTargetSettings ICustomTooltipTarget.TooltipSettings {

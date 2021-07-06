@@ -620,24 +620,44 @@ namespace Squared.PRGUI {
             HideTooltip(true);
         }
 
+        private AbstractString GetTooltipTextForControl (Control target, bool leftButtonPressed, out AbstractTooltipContent content) {
+            content = default;
+            if (!IsTooltipAllowedToAppear(target, leftButtonPressed))
+                return default;
+
+            var cttt = target as ICustomTooltipTarget;
+            var tts = cttt?.TooltipSettings;
+
+            if (target != null) {
+                if (cttt != null)
+                    content = cttt.GetContent();
+                else
+                    content = target.TooltipContent;
+            }
+            return content.Get(target);
+        }
+
         private void UpdateTooltip (bool leftButtonPressed) {
             var target = PickTooltipTarget(leftButtonPressed);
-            if (!IsTooltipAllowedToAppear(target, leftButtonPressed))
-                return;
+            var tooltipText = GetTooltipTextForControl(target, leftButtonPressed, out AbstractTooltipContent tooltipContent);
+            if (tooltipText.IsNull) {
+                // HACK: If the focused control explicitly requests to have its tooltip visible while it's focused,
+                //  make sure we fall back to showing its tooltip if we didn't pick a better target
+                if (
+                    (Focused is ICustomTooltipTarget ictt) && 
+                    ictt.TooltipSettings.ShowWhileFocused &&
+                    (Hovering?.AcceptsMouseInput != true) &&
+                    (MouseOverLoose?.AcceptsMouseInput != true)
+                ) {
+                    target = Focused;
+                    tooltipText = GetTooltipTextForControl(target, leftButtonPressed, out tooltipContent);
+                }
+            }
 
             var cttt = target as ICustomTooltipTarget;
             var tts = cttt?.TooltipSettings;
 
             var now = Now;
-            var tooltipContent = default(AbstractTooltipContent);
-            if (target != null) {
-                if (cttt != null)
-                    tooltipContent = cttt.GetContent();
-                else
-                    tooltipContent = target.TooltipContent;
-            }
-            var tooltipText = tooltipContent.Get(target);
-
             var disappearDelay = (tts?.DisappearDelay ?? TooltipDisappearDelay);
 
             if (
