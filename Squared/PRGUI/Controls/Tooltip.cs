@@ -53,8 +53,8 @@ namespace Squared.PRGUI.Controls {
 
         RichTextConfiguration _RichTextConfiguration;
 
-        protected override RichTextConfiguration RichTextConfiguration =>
-            _RichTextConfiguration ?? base.RichTextConfiguration;
+        protected override RichTextConfiguration GetRichTextConfiguration() =>
+            _RichTextConfiguration ?? base.GetRichTextConfiguration();
 
         new public AbstractString Text {
             get => base.Text;

@@ -150,7 +150,7 @@ namespace Squared.PRGUI.Controls {
                         DecorationTraits = {
                             TabsOnLeft ? "left" : "top"
                         }
-                    },                    
+                    },
                     TextAlignment = Render.Text.HorizontalAlignment.Center,
                     AutoSizeWidth = TabsOnLeft,
                     AutoSizeIsMaximum = false,
@@ -158,7 +158,8 @@ namespace Squared.PRGUI.Controls {
                     LayoutFlags = TabsOnLeft
                         ? ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
                         : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
-                    Scale = _TabScale
+                    Scale = _TabScale,
+                    Margins = new Margins(0, 0, TabsOnLeft ? 0 : 1, TabsOnLeft ? 1 : 0),
                 };
                     
                 if (i == SelectedTabIndex + 1)

@@ -20,11 +20,28 @@ namespace Squared.PRGUI.Controls {
         bool Virtual { get; set; }
     }
 
+    public enum ListBoxEventMode {
+        /// <summary>
+        /// The list will consume all events that would normally go to its children
+        /// </summary>
+        Consume = 0,
+        /// <summary>
+        /// The list's currently selected item is allowed to receive events
+        /// </summary>
+        PassThroughIfSelected = 1,
+        /// <summary>
+        /// The list's items are allowed to receive events
+        /// </summary>
+        PassThrough = 2
+    }
+
     public class ListBox<T> : 
         Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, 
         IValueControl<T>, ISelectionBearer, IListBox,
         IPartiallyIntangibleControl, IFuzzyHitTestTarget, IHasDescription
     {
+        public ListBoxEventMode EventMode = ListBoxEventMode.Consume;
+
         public bool DisableItemHitTests = true;
         public bool DefaultToggleOnClick = false;
 
@@ -528,6 +545,7 @@ namespace Squared.PRGUI.Controls {
             if (ProcessMouseEventForScrollbar(name, args))
                 return true;
 
+            Items.GetControlForValue(SelectedItem, out Control selectedControl);
             var control = ChildFromGlobalPosition(Context.Layout, args.RelativeGlobalPosition);
             LastMouseOverPosition = args.RelativeGlobalPosition;
             MouseOverItem = control;
@@ -547,8 +565,9 @@ namespace Squared.PRGUI.Controls {
                 ) {
                     // Console.WriteLine($"Selection valid for item {newItem}");
                     var isClick = (name == UIEvents.Click);
-                    if (isClick && (!EnableSelect || (control == Manager.SelectedControl)))
-                        Context.FireEvent(name, control, args);
+                    if (isClick && (!EnableSelect || (control == Manager.SelectedControl))) {
+                        return Context.FireEvent(name, control, args);
+                    }
 
                     if (EnableSelect) {
                         if (args.Modifiers.Shift && (MaxSelectedCount > 1))
@@ -557,17 +576,31 @@ namespace Squared.PRGUI.Controls {
                             TryToggleItemSelected(ref newItem, true);
                         else
                             SetSelectedItem(newItem, true);
-                    } else {
-                        ;
                     }
 
-                    return isClick;
+                    if (
+                        (EventMode == ListBoxEventMode.PassThrough) ||
+                        ((EventMode == ListBoxEventMode.PassThroughIfSelected) && (selectedControl == control))
+                    )
+                        return Context.FireEvent(name, control, args) || isClick;
+                    else
+                        return isClick;
                 } else {
-                    // Console.WriteLine($"Selection not valid");
-                    ;
+                    if (
+                        (EventMode == ListBoxEventMode.PassThrough) ||
+                        ((EventMode == ListBoxEventMode.PassThroughIfSelected) && (selectedControl == control))
+                    )
+                        return Context.FireEvent(name, control, args);
+                    else
+                        return false;
                 }
             } else {
-                ;
+                if (
+                    (EventMode != ListBoxEventMode.Consume)
+                )
+                    return Context.FireEvent(name, control, args);
+                else
+                    return false;
             }
 
             // Console.WriteLine($"Discarding event");
@@ -675,8 +708,15 @@ namespace Squared.PRGUI.Controls {
                     if (args.Modifiers.Control)
                         SelectAll();
                     return true;
-                default:
-                    return false;
+                default: {
+                    if (
+                        Items.GetControlForValue(SelectedItem, out Control selectedControl) &&
+                        (EventMode != ListBoxEventMode.Consume)
+                    )
+                        return Context.FireEvent(name, selectedControl, args);
+                    else
+                        return false;
+                }
             }
 
             // FIXME: Control-shift

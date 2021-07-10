@@ -257,6 +257,13 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            context.UIContext.NotifyTextureUsed(this, Image);
+            context.UIContext.NotifyTextureUsed(this, Image2);
+
+            return base.OnGenerateLayoutTree(ref context, parent, existingKey);
+        }
+
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(ref context, ref renderer, settings, decorations);
 
@@ -266,8 +273,6 @@ namespace Squared.PRGUI.Controls {
 
                 var instance = Image.Instance;
                 var instance2 = Image2.Instance;
-                context.UIContext.NotifyTextureUsed(this, Image);
-                context.UIContext.NotifyTextureUsed(this, Image2);
 
                 var scale = ComputeDisplayScaleRatio(instance, settings.ContentBox.Width, settings.ContentBox.Height);
                 var position = new Vector2(

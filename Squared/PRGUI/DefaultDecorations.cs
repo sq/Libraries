@@ -566,7 +566,7 @@ namespace Squared.PRGUI {
         public float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
 
-        private void Button_Below_Common (
+        public void Button_Below_Common (
             UIOperationContext context, DecorationSettings settings, 
             out float alpha, out float thickness, out float pulse,
             out pSRGBColor baseColor, out pSRGBColor outlineColor 
@@ -636,6 +636,9 @@ namespace Squared.PRGUI {
 
             float base1 = 0.85f, base2 = 0.35f;
             if (settings.BackgroundColor.HasValue) {
+                if (settings.BackgroundColor.Value.IsTransparent)
+                    return;
+
                 color1 = color1.AdjustBrightness(1.2f);
                 base1 = 0.95f;
                 base2 = 0.75f;

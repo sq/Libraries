@@ -45,7 +45,7 @@ namespace Squared.PRGUI {
         public event Action<Control, AbstractTextureReference> OnTextureUsed;
         public event Func<string, Keys?, char?, bool> OnKeyEvent;
 
-        internal bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false, bool targetHandlesFirst = false) {
+        public bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false, bool targetHandlesFirst = false) {
             // FIXME: Is this right?
             if (target == null)
                 target = Control.None;
@@ -66,7 +66,7 @@ namespace Squared.PRGUI {
                 return target.HandleEvent(name, args);
         }
 
-        internal bool FireEvent (string name, Control target, bool suppressHandler = false, bool targetHandlesFirst = false) {
+        public bool FireEvent (string name, Control target, bool suppressHandler = false, bool targetHandlesFirst = false) {
             // FIXME: Is this right?
             if (target == null)
                 target = Control.None;

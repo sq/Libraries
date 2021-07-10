@@ -76,7 +76,7 @@ namespace Squared.PRGUI.Controls {
 
         bool _ScaleToFitX, _ScaleToFitY;
 
-        protected virtual RichTextConfiguration RichTextConfiguration => Context.RichTextConfiguration;
+        protected virtual RichTextConfiguration GetRichTextConfiguration() => Context.RichTextConfiguration;
 
         protected bool ScaleToFitX {
             get => _ScaleToFitX;
@@ -247,7 +247,7 @@ namespace Squared.PRGUI.Controls {
             if (_RichText.HasValue)
                 Content.RichText = _RichText.Value;
             if (Content.RichText)
-                Content.RichTextConfiguration = RichTextConfiguration;
+                Content.RichTextConfiguration = GetRichTextConfiguration();
 
             if (measurement) {
                 if (!Content.IsValid || (ContentMeasurement == null)) {
@@ -366,6 +366,14 @@ namespace Squared.PRGUI.Controls {
             if (!Content.IsValid)
                 ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+
+            // HACK: Ensure that we report all the textures we use even if we're not currently being rasterized
+            if (Content.IsValid) {
+                var layout = GetCurrentLayout(false);
+                foreach (var tex in layout.UsedTextures)
+                    context.UIContext.NotifyTextureUsed(this, tex);
+            }
+
             return result;
         }
 
@@ -605,9 +613,6 @@ namespace Squared.PRGUI.Controls {
                 _LayoutFilterScratchBuffer = null;
             }
 
-            foreach (var tex in layout.UsedTextures)
-                context.UIContext.NotifyTextureUsed(this, tex);
-
             if (CharacterLimit != null)
                 segment = new ArraySegment<BitmapDrawCall>(segment.Array, segment.Offset, Math.Min(CharacterLimit.Value, segment.Count));
 
@@ -767,6 +772,10 @@ namespace Squared.PRGUI.Controls {
             get => base.CharacterLimit;
             set => base.CharacterLimit = value;
         }
+
+        public RichTextConfiguration RichTextConfiguration { get; set; }
+        protected override RichTextConfiguration GetRichTextConfiguration () =>
+            RichTextConfiguration ?? base.GetRichTextConfiguration();
 
         new public void Invalidate () => base.Invalidate();
 

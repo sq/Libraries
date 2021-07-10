@@ -614,7 +614,7 @@ namespace Squared.PRGUI.Controls {
         public void GenerateControls (
             ControlCollection output, 
             CreateControlForValueDelegate<T> createControlForValue,
-            int offset = 0, int count = int.MaxValue
+            int offset = 0, int count = int.MaxValue, int skipOutputControls = 0
         ) {
             // FIXME: This is inefficient, it would be cool to reuse existing controls
             //  even if the order of values changes
@@ -628,7 +628,7 @@ namespace Squared.PRGUI.Controls {
 
             count = Math.Max(Math.Min(Count - offset, count), 0);
 
-            while (output.Count > count) {
+            while (output.Count > (count + skipOutputControls)) {
                 var ctl = output[output.Count - 1];
                 if (GetValueForControl(ctl, out T temp))
                     ControlForValue.Remove(temp);
@@ -641,15 +641,16 @@ namespace Squared.PRGUI.Controls {
                 if (value == null)
                     continue;
 
-                var existingControl = ((i < output.Count) && !PurgePending)
-                    ? output[i]
+                var j = i + skipOutputControls;
+                var existingControl = ((j < output.Count) && !PurgePending)
+                    ? output[j]
                     : null;
 
                 var newControl = CreateControlForValue(ref value, existingControl, createControlForValue);
 
                 if (newControl != existingControl) {
-                    if (i < output.Count)
-                        output[i] = newControl;
+                    if (j < output.Count)
+                        output[j] = newControl;
                     else
                         output.Add(newControl);
                 }

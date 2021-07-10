@@ -9,6 +9,7 @@ using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
+using Squared.Render.Text;
 using Squared.Util;
 using Squared.Util.Text;
 
