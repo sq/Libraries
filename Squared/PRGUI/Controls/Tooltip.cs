@@ -27,7 +27,7 @@ namespace Squared.PRGUI.Controls {
                 ConstrainToParentInsteadOfScreen = true,
                 HideIfNotInsideParent = true
             };
-            Content.Alignment = HorizontalAlignment.Left;
+            ConfigureDefaultLayout(Content);
             AcceptsMouseInput = false;
             AcceptsFocus = false;
             AutoSize = true;
@@ -79,11 +79,23 @@ namespace Squared.PRGUI.Controls {
             return provider?.Tooltip;
         }
 
+        // HACK: If a tooltip's settings messes with ours we need to reset them
+        private void ConfigureDefaultLayout (DynamicStringLayout content) {
+            _NeedsLayoutReset = false;
+            content.Reset();
+            content.Alignment = HorizontalAlignment.Left;
+        }
+
+        private bool _NeedsLayoutReset = true;
+
         public void ApplySettings (TooltipSettings settings) {
             RichText = settings.RichText;
             _RichTextConfiguration = settings.RichTextConfiguration;
-            if (settings.ConfigureLayout != null)
+            if (settings.ConfigureLayout != null) {
                 settings.ConfigureLayout(Content);
+                _NeedsLayoutReset = true;
+            } else if (_NeedsLayoutReset)
+                ConfigureDefaultLayout(Content);
             LayoutFilter = settings.LayoutFilter;
             Appearance.GlyphSourceProvider = settings.DefaultGlyphSource;
             TextAlignment = settings.TextAlignment;

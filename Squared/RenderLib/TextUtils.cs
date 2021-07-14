@@ -25,36 +25,36 @@ namespace Squared.Render.Text {
         private Func<IGlyphSource> _GlyphSourceProvider;
         private IGlyphSource _GlyphSource;
         private AbstractString _Text, _TruncatedIndicator;
-        private Vector2 _Position = Vector2.Zero;
-        private Color _DefaultColor = Microsoft.Xna.Framework.Color.White;
-        private Color? _Color = null;
-        private float _Scale = 1;
-        private float _Spacing = 1;
-        private float _SortKey = 0;
-        private int _CharacterSkipCount = 0;
-        private int _CharacterLimit = int.MaxValue;
-        private float _XOffsetOfFirstLine = 0;
-        private float _XOffsetOfNewLine = 0;
-        private float? _LineBreakAtX = null;
-        private float? _StopAtY = null;
-        private bool _WordWrap = false;
-        private bool _CharacterWrap = true;
-        private float _WrapIndentation = 0f;
-        private float _ExtraLineBreakSpacing = 0f;
-        private GlyphPixelAlignment _AlignToPixels = GlyphPixelAlignment.Default;
-        private char _WrapCharacter = '\0';
-        private int _Alignment = (int)HorizontalAlignment.Left;
-        private bool _ReverseOrder = false;
-        private int _LineLimit = int.MaxValue;
-        private int _LineBreakLimit = int.MaxValue;
-        private bool _MeasureOnly = false;
-        private bool _RichText = false;
-        private bool _HideOverflow = false;
-        private bool _RecordUsedTextures = false;
-        private bool _ExpandHorizontallyWhenAligning = true;
-        private char? _ReplacementCharacter = null;
-        private uint[] _WordWrapCharacters = null;
-        private bool _AwaitingDependencies = false;
+        private Vector2 _Position;
+        private Color _DefaultColor;
+        private Color? _Color;
+        private float _Scale;
+        private float _Spacing;
+        private float _SortKey;
+        private int _CharacterSkipCount;
+        private int _CharacterLimit;
+        private float _XOffsetOfFirstLine;
+        private float _XOffsetOfNewLine;
+        private float? _LineBreakAtX;
+        private float? _StopAtY;
+        private bool _WordWrap;
+        private bool _CharacterWrap;
+        private float _WrapIndentation;
+        private float _ExtraLineBreakSpacing;
+        private GlyphPixelAlignment _AlignToPixels;
+        private char _WrapCharacter;
+        private int _Alignment;
+        private bool _ReverseOrder;
+        private int _LineLimit;
+        private int _LineBreakLimit;
+        private bool _MeasureOnly;
+        private bool _RichText;
+        private bool _HideOverflow;
+        private bool _RecordUsedTextures;
+        private bool _ExpandHorizontallyWhenAligning;
+        private char? _ReplacementCharacter;
+        private uint[] _WordWrapCharacters;
+        private bool _AwaitingDependencies;
 
         private List<AsyncRichImage> _Dependencies = null;
         private Dictionary<Pair<int>, LayoutMarker> _Markers = null;
@@ -65,11 +65,53 @@ namespace Squared.Render.Text {
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _GlyphSource = new SpriteFontGlyphSource(font);
             _Text = text;
+            Reset();
         }
 
         public DynamicStringLayout (IGlyphSource font = null, string text = "") {
             _GlyphSource = font;
             _Text = text;
+            Reset();
+        }
+
+        public void Reset () {
+            RichTextConfiguration = default;
+            _StyleName = null;
+            KerningAdjustments = default;
+            TruncatedIndicator = default;
+            Position = Vector2.Zero;
+            DefaultColor = Microsoft.Xna.Framework.Color.White;
+            Color = null;
+            Scale = 1;
+            Spacing = 1;
+            SortKey = 0;
+            CharacterSkipCount = 0;
+            CharacterLimit = int.MaxValue;
+            XOffsetOfFirstLine = 0;
+            XOffsetOfNewLine = 0;
+            LineBreakAtX = null;
+            StopAtY = null;
+            WordWrap = false;
+            CharacterWrap = true;
+            WrapIndentation = 0f;
+            ExtraLineBreakSpacing = 0f;
+            AlignToPixels = GlyphPixelAlignment.Default;
+            WrapCharacter = '\0';
+            Alignment = HorizontalAlignment.Left;
+            ReverseOrder = false;
+            LineLimit = int.MaxValue;
+            LineBreakLimit = int.MaxValue;
+            MeasureOnly = false;
+            RichText = false;
+            HideOverflow = false;
+            RecordUsedTextures = false;
+            ExpandHorizontallyWhenAligning = true;
+            ReplacementCharacter = default;
+            WordWrapCharacters = default;
+            _AwaitingDependencies = false;
+            _Dependencies?.Clear();
+            _RichMarkers?.Clear();
+            _Boxes?.Clear();
         }
 
         public void ResetMarkersAndHitTests () {
