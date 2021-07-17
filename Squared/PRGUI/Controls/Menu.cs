@@ -81,6 +81,7 @@ namespace Squared.PRGUI.Controls {
         public bool CloseOnEscapePress { get; set; } = true;
         public bool CloseOnClickOutside { get; set; } = true;
         public bool BlockInput { get; set; } = true;
+        public bool BlockHitTests { get; set; } = false;
         public bool RetainFocus { get; set; } = true;
 
         public override int ColumnCount {
@@ -671,6 +672,9 @@ namespace Squared.PRGUI.Controls {
                 return false;
             if (!AllowProgrammaticClose && !force)
                 return false;
+            // HACK: We likely were the tooltip target, so hide it
+            // FIXME: The context should really do this automatically
+            Context.HideTooltip();
             Aligner.Enabled = false;
             IsActive = false;
             Intangible = true;
@@ -762,7 +766,6 @@ namespace Squared.PRGUI.Controls {
         new public void Add (Control child) => Children.Add(child);
         public void Add (string text) => Children.Add(new StaticText { Text = text });
 
-        bool IModal.BlockHitTests => false;
         bool IModal.BlockInput => !CloseOnClickOutside && BlockInput;
         bool IModal.RetainFocus => !CloseOnClickOutside && !CloseWhenFocusLost && RetainFocus;
         bool IModal.OnUnhandledEvent (string name, Util.Event.IEventInfo args) => false;

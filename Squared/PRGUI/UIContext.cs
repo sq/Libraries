@@ -585,6 +585,10 @@ namespace Squared.PRGUI {
         }
 
         private Control PickTooltipTarget (bool leftButtonPressed) {
+            // Fixes case where a menu is closed while it's hosting a tooltip
+            if (_PreferredTooltipSource?.IsValidFocusTarget == false)
+                _PreferredTooltipSource = null;
+
             var fixated = FixatedControl;
             if ((_PreferredTooltipSource != Focused) && (_PreferredTooltipSource != null) && _PreferredTooltipSource.AcceptsFocus)
                 return fixated;
