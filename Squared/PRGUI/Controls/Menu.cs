@@ -72,8 +72,9 @@ namespace Squared.PRGUI.Controls {
 
         public string Description { get; set; }
 
-        private Control _SelectedItem, _HoveringItem;
+        private Control _SelectedItem, _HoveringItem, _PendingSnap;
 
+        public bool SnapMouseToNewSelection = false;
         public bool AllowProgrammaticClose { get; set; } = true;
         public bool DeselectOnMouseLeave { get; set; } = true;
         public bool CloseWhenFocusLost { get; set; } = true;
@@ -103,7 +104,7 @@ namespace Squared.PRGUI.Controls {
             set => SetSelectedItem(value, true);
         }
 
-        private void SetSelectedItem (Control value, bool fireEvents) {
+        private void SetSelectedItem (Control value, bool fireEvents, bool snap = false) {
             if (value?.Enabled == false)
                 value = null;
             if (_SelectedItem == value)
@@ -111,6 +112,10 @@ namespace Squared.PRGUI.Controls {
             var oldSelection = _SelectedItem;
             _SelectedItem = value;
             OnSelectionChange(oldSelection, value);
+            if (snap && SnapMouseToNewSelection)
+                _PendingSnap = value;
+            else
+                _PendingSnap = null;
         }
 
         public Vector2 Position {
@@ -315,10 +320,10 @@ namespace Squared.PRGUI.Controls {
 
             if ((Context.MouseOver != this) && (Context.MouseCaptured != this)) {
                 if (DeselectOnMouseLeave)
-                    SetSelectedItem(null, fireSelectEvent);
+                    SetSelectedItem(null, fireSelectEvent, false);
             } else {
                 if (item != null)
-                    SetSelectedItem(item, fireSelectEvent);
+                    SetSelectedItem(item, fireSelectEvent, false);
             }
 
             if (name == UIEvents.MouseUp) {
@@ -358,7 +363,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void SelectItemViaKeyboard (Control item) {
-            SetSelectedItem(item, true);
+            SetSelectedItem(item, true, snap: true);
             // HACK: Tell the context that the current item is the keyboard selection,
             //  so that autoscroll and tooltips will happen for it.
             Context.OverrideKeyboardSelection(item, true);
@@ -433,6 +438,11 @@ namespace Squared.PRGUI.Controls {
             var opacity = GetOpacity(context.NowL);
             if ((opacity <= 0) && !IsActive)
                 context.UIContext.Controls.Remove(this);
+
+            if (!relayoutRequested && (_PendingSnap != null)) {
+                Context.TryMoveCursor(_PendingSnap.GetRect().Center);
+                _PendingSnap = null;
+            }
         }
 
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
@@ -564,7 +574,7 @@ namespace Squared.PRGUI.Controls {
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
             InvalidateLayout();
             SetSelectedItem(null, false);
-            SetSelectedItem(selectedItem, true);
+            SetSelectedItem(selectedItem, true, snap: true);
             Visible = true;
             Intangible = false;
             if (((IModal)this).BlockInput)

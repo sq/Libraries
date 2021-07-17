@@ -87,6 +87,7 @@ namespace Squared.PRGUI.Input {
         void Update (ref InputState previous, ref InputState current);
         void SetTextInputState (bool enabled);
         void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer);
+        void TryMoveCursor (Vector2 newPosition);
     }
 
     public struct KeyboardModifiers {
@@ -261,6 +262,9 @@ namespace Squared.PRGUI.Input {
 
         public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer) {
         }
+
+        public void TryMoveCursor (Vector2 position) {
+        }
     }
 
     public class MouseInputSource : IInputSource {
@@ -325,6 +329,10 @@ namespace Squared.PRGUI.Input {
         }
 
         public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer) {
+        }
+
+        public void TryMoveCursor (Vector2 position) {
+            Mouse.SetPosition((int)position.X, (int)position.Y);
         }
     }
 
@@ -750,6 +758,11 @@ namespace Squared.PRGUI.Input {
                     outlineColor: Color.Red * alpha
                 );
             }
+        }
+
+        public void TryMoveCursor (Vector2 position) {
+            // FIXME: Will this work right?
+            CurrentUnsnappedPosition = position;
         }
     }
 }

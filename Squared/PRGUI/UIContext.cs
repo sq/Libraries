@@ -167,6 +167,11 @@ namespace Squared.PRGUI {
             return CachedTooltip;
         }
 
+        public void TryMoveCursor (Vector2 newPosition) {
+            foreach (var provider in this.InputSources)
+                provider.TryMoveCursor(newPosition);
+        }
+
         private Controls.StaticText GetCompositionPreviewInstance () {
             if (CachedCompositionPreview == null) {
                 CachedCompositionPreview = new Controls.StaticText {
