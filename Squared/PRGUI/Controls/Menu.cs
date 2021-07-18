@@ -46,9 +46,9 @@ namespace Squared.PRGUI.Controls {
 
         protected TooltipTargetSettings TooltipSettings = new TooltipTargetSettings {
             ShowWhileFocused = false,
-            ShowWhileMouseIsHeld = true,
-            ShowWhileMouseIsNotHeld = true,
-            ShowWhileKeyboardFocused = true,
+            ShowWhileMouseIsHeld = false,
+            ShowWhileMouseIsNotHeld = false,
+            ShowWhileKeyboardFocused = false,
             HideOnMousePress = false,
             HostsChildTooltips = true,
         };
@@ -441,10 +441,20 @@ namespace Squared.PRGUI.Controls {
             if ((opacity <= 0) && !IsActive)
                 context.UIContext.Controls.Remove(this);
 
-            if (!relayoutRequested && (_PendingSnap != null)) {
+            if (relayoutRequested)
+                return;
+
+            // HACK: Once we've finished two layouts...
+            if (_PendingSnap != null) {
+                // Perform a pending snap-cursor-to-selection
                 Context.TryMoveCursor(_PendingSnap.GetRect().Center);
                 _PendingSnap = null;
             }
+
+            // Enable tooltips
+            TooltipSettings.ShowWhileMouseIsHeld = true;
+            TooltipSettings.ShowWhileMouseIsNotHeld = true;
+            TooltipSettings.ShowWhileKeyboardFocused = true;
         }
 
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
@@ -533,6 +543,11 @@ namespace Squared.PRGUI.Controls {
             Context = context;
             // Ensure we have run a generate pass for our dynamic content before doing anything
             GenerateDynamicContent(true);
+
+            // HACK: Prevent single-frame tooltip glitch when the menu first opens
+            TooltipSettings.ShowWhileMouseIsHeld = false;
+            TooltipSettings.ShowWhileMouseIsNotHeld = false;
+            TooltipSettings.ShowWhileKeyboardFocused = false;
 
             // If we have existing layout data (like we are in the middle of fading out),
             //  we do not want to re-use it for calculations, it might be wrong

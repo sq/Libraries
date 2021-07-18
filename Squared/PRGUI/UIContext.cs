@@ -680,6 +680,10 @@ namespace Squared.PRGUI {
             var now = Now;
             var disappearDelay = (tts?.DisappearDelay ?? TooltipDisappearDelay);
 
+            // FIXME: When a menu appears, its tooltip will appear in the wrong spot for a frame or two
+            //  until the menu shows up. Right now menus hack around this by disabling their tooltips,
+            //  but it would be better to have a robust general solution for that problem
+
             if (
                 !tooltipText.IsNull && 
                 // HACK: Setting .Visible = false on the current tooltip target or one of its
