@@ -148,10 +148,12 @@ namespace Squared.PRGUI {
             var seq = Controls.InDisplayOrder(FrameIndex);
 
             var activeModal = ActiveModal;
+            var maxFadeLevel = 0f;
             int fadeBackgroundAtIndex = -1;
             for (int i = 0; i < ModalStack.Count; i++) {
                 var modal = ModalStack[i];
-                if (modal.FadeBackground) {
+                if (modal.BackgroundFadeLevel > 0f) {
+                    maxFadeLevel = Math.Max(maxFadeLevel, modal.BackgroundFadeLevel);
                     if (!WasBackgroundFaded) {
                         BackgroundFadeTween = Tween.StartNow(
                             BackgroundFadeTween.Get(NowL), 1f,
@@ -184,7 +186,7 @@ namespace Squared.PRGUI {
             for (int i = 0; i < seq.Count; i++) {
                 var control = seq[i];
                 if (i == fadeBackgroundAtIndex) {
-                    var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity;
+                    var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity * maxFadeLevel;
                     renderer.FillRectangle(
                         Game.Bounds.FromPositionAndSize(Vector2.One * -9999, Vector2.One * 99999), 
                         Color.White * opacity, blendState: RenderStates.SubtractiveBlend

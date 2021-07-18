@@ -115,12 +115,34 @@ namespace Squared.PRGUI {
 
         public Vector2? AnchorPoint;
         public Vector2? ControlAlignmentPoint;
+        /// <summary>
+        /// The maximum size factor of the tooltip (1.0 is the full size of the canvas)
+        /// </summary>
         public Vector2? MaxSize;
+        /// <summary>
+        /// If set, the tooltip can appear while the mouse is pressed. You may also need to change HideOnMousePress
+        /// </summary>
         public bool ShowWhileMouseIsHeld = false;
+        /// <summary>
+        /// If set, the tooltip can appear while the mouse is not pressed
+        /// </summary>
         public bool ShowWhileMouseIsNotHeld = true;
+        /// <summary>
+        /// If set, the tooltip will always be visible while this control has focus
+        /// </summary>
         public bool ShowWhileFocused = false;
+        /// <summary>
+        /// If set, the tooltip will always be visible while this control has keyboard focus
+        /// </summary>
         public bool ShowWhileKeyboardFocused = true;
+        /// <summary>
+        /// If set, the tooltip will automatically be hidden when the mouse is pressed
+        /// </summary>
         public bool HideOnMousePress = true;
+        /// <summary>
+        /// If set, tooltips for child controls will be hosted by this control when possible
+        /// </summary>
+        public bool HostsChildTooltips = false;
         public float? AppearDelay;
         public float? DisappearDelay;
     }

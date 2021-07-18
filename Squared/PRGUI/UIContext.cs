@@ -169,7 +169,8 @@ namespace Squared.PRGUI {
 
         public void TryMoveCursor (Vector2 newPosition) {
             foreach (var provider in this.InputSources)
-                provider.TryMoveCursor(newPosition);
+                if (IsPriorityInputSource(provider))
+                    provider.TryMoveCursor(newPosition);
         }
 
         private Controls.StaticText GetCompositionPreviewInstance () {
@@ -595,13 +596,23 @@ namespace Squared.PRGUI {
                 _PreferredTooltipSource = null;
 
             var fixated = FixatedControl;
-            if ((_PreferredTooltipSource != Focused) && (_PreferredTooltipSource != null) && _PreferredTooltipSource.AcceptsFocus)
-                return fixated;
+            if (
+                ((Focused as ICustomTooltipTarget)?.TooltipSettings?.HostsChildTooltips == true) &&
+                ((fixated == null) || Control.IsEqualOrAncestor(fixated, Focused))
+            ) {
+                if (IsTooltipPriority(_PreferredTooltipSource))
+                    return _PreferredTooltipSource;
+                else
+                    return Focused;
+            } else {
+                if ((_PreferredTooltipSource != Focused) && (_PreferredTooltipSource != null) && _PreferredTooltipSource.AcceptsFocus)
+                    return fixated;
 
-            if (!IsTooltipPriority(fixated) && IsTooltipPriority(_PreferredTooltipSource))
-                return _PreferredTooltipSource;
-            else
-                return fixated ?? _PreferredTooltipSource;
+                if (!IsTooltipPriority(fixated) && IsTooltipPriority(_PreferredTooltipSource))
+                    return _PreferredTooltipSource;
+                else
+                    return fixated ?? _PreferredTooltipSource;
+            }
         }
 
         private bool IsTooltipAllowedToAppear (Control target, bool leftButtonPressed) {

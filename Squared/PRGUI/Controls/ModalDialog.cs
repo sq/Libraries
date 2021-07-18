@@ -67,7 +67,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         // FIXME: Customizable?
-        bool IModal.FadeBackground => true;
+        float IModal.BackgroundFadeLevel => 1f;
         bool IModal.BlockHitTests => true;
         bool IModal.BlockInput => true;
         bool IModal.RetainFocus => true;

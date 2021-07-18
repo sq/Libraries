@@ -31,9 +31,9 @@ namespace Squared.PRGUI {
         /// </summary>
         bool RetainFocus { get; }
         /// <summary>
-        /// While this modal is active, any controls beneath it will fade out.
+        /// While this modal is active, any controls beneath it will be darkened by this much (0.0 = no fade, 1.0 = default fade level)
         /// </summary>
-        bool FadeBackground { get; }
+        float BackgroundFadeLevel { get; }
         /// <summary>
         /// The modal allows programmatic closing (with Close()). You can still override this with force: true
         /// </summary>

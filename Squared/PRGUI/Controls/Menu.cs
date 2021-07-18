@@ -50,6 +50,7 @@ namespace Squared.PRGUI.Controls {
             ShowWhileMouseIsNotHeld = true,
             ShowWhileKeyboardFocused = true,
             HideOnMousePress = false,
+            HostsChildTooltips = true,
         };
 
         TooltipTargetSettings ICustomTooltipTarget.TooltipSettings {
@@ -84,6 +85,7 @@ namespace Squared.PRGUI.Controls {
         public bool BlockInput { get; set; } = true;
         public bool BlockHitTests { get; set; } = false;
         public bool RetainFocus { get; set; } = true;
+        public float BackgroundFadeLevel { get; set; } = 0f;
 
         public override int ColumnCount {
             get => base.ColumnCount;
@@ -631,8 +633,6 @@ namespace Squared.PRGUI.Controls {
 
             return changed;
         }
-
-        bool IModal.FadeBackground => false;
 
         void IModal.Show (UIContext context) {
             Show(context, (Vector2?)null);
