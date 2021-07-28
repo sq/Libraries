@@ -336,6 +336,12 @@ namespace Squared.PRGUI {
                     current.TryGetParent(out current);
                 }
             }
+
+            // HACK: Without doing this, something like SetFocus in a list's selectionchanged won't clear the
+            //  keyboard selection, so the list will keep showing its tooltip
+            if (_CurrentInput.KeyboardNavigationEnded)
+                ClearKeyboardSelection();
+
             _Focused = newFocusTarget;
 
             var previousTopLevel = TopLevelFocused;

@@ -339,6 +339,7 @@ namespace Squared.PRGUI.Controls {
                 NeedsUpdate = true;
 
             bool hadKeyboardSelection = false;
+            var oldKeyboardSelection = Context.KeyboardSelection;
             var generatingEnabled = GenerateControlsWhenHidden || hadKeyboardSelection || !IsRecursivelyTransparent(this, true);
             if (NeedsUpdate && !existingKey.HasValue) {
                 hadKeyboardSelection = Children.Contains(Context.KeyboardSelection);
@@ -395,7 +396,7 @@ namespace Squared.PRGUI.Controls {
                 // FIXME: overlap with OnSelectionChanged
                 SelectionChangeEventPending = false;
                 var newControl = Manager.SelectedControl;
-                if (hadKeyboardSelection)
+                if (hadKeyboardSelection && (Context.KeyboardSelection == oldKeyboardSelection) && (Context.Focused == this))
                     Context.OverrideKeyboardSelection(newControl, forUser: false);
             }
 
@@ -619,7 +620,8 @@ namespace Squared.PRGUI.Controls {
         private void UpdateKeyboardSelection (T item, bool forUser) {
             // HACK: Tell the context that the current item is the keyboard selection,
             //  so that autoscroll and tooltips will happen for it.
-            Context.OverrideKeyboardSelection(Manager.SelectedControl, forUser);
+            if (Context.Focused == this)
+                Context.OverrideKeyboardSelection(Manager.SelectedControl, forUser);
         }
 
         private void SelectItemViaKeyboard (T item) {
