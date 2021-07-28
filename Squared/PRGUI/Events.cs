@@ -90,4 +90,18 @@ namespace Squared.PRGUI {
         public Keys? Key;
         public char? Char;
     }
+
+    /// <summary>
+    /// Intercepts events on a control before the control handles them, and optionally suppresses them
+    /// </summary>
+    public interface IControlEventFilter {
+        /// <summary>
+        /// Return true to suppress the event
+        /// </summary>
+        bool OnEvent (Control target, string name);
+        /// <summary>
+        /// Return true to suppress the event
+        /// </summary>
+        bool OnEvent<T> (Control target, string name, T args);
+    }
 }

@@ -119,17 +119,6 @@ namespace Squared.PRGUI {
     public interface IHasDescription {
         string Description { get; set; }
     }
-
-    public interface IControlEventFilter {
-        /// <summary>
-        /// Return true to suppress the event
-        /// </summary>
-        bool OnEvent (Control target, string name);
-        /// <summary>
-        /// Return true to suppress the event
-        /// </summary>
-        bool OnEvent<T> (Control target, string name, T args);
-    }
     
     public abstract partial class Control {
         private struct PendingAnimationRecord {

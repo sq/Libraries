@@ -22,6 +22,7 @@ namespace Squared.PRGUI.Controls {
 
         Control IControlContainer.DefaultFocusTarget => null;
         bool IControlContainer.ChildrenAcceptFocus => true;
+        public IControlEventFilter ChildEventFilter { get; set; }
 
         public bool HotspotsAcceptFocus = true;
         public ControlAppearance HotspotAppearance = new ControlAppearance {

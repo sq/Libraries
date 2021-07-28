@@ -84,6 +84,7 @@ namespace Squared.PRGUI {
         /// </summary>
         void DescendantReceivedFocus (Control descendant, bool isUserInitiated);
         bool IsControlHidden (Control child);
+        IControlEventFilter ChildEventFilter { get; }
     }
 
     public interface IScrollableControl {

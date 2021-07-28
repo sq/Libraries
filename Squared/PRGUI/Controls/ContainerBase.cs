@@ -34,6 +34,8 @@ namespace Squared.PRGUI.Controls {
         ControlCollection IControlContainer.Children => Children;
         int IControlContainer.ChildrenToSkipWhenBuilding => ChildrenToSkipWhenBuilding;
 
+        public IControlEventFilter ChildEventFilter { get; set; }
+
         protected ControlParentBase () 
             : base () {
         }

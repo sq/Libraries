@@ -45,7 +45,7 @@ namespace Squared.PRGUI {
         public event Action<Control, AbstractTextureReference> OnTextureUsed;
         public event Func<string, Keys?, char?, bool> OnKeyEvent;
 
-        public bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false, bool targetHandlesFirst = false) {
+        public bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false, bool targetHandlesFirst = false, bool filtersOnly = false) {
             // FIXME: Is this right?
             if (target == null)
                 target = Control.None;
@@ -54,19 +54,29 @@ namespace Squared.PRGUI {
 
             if (!targetHandlesFirst && EventBus.Broadcast(target, name, args))
                 return true;
-            if (targetHandlesFirst && target.HandleEvent(name, args))
+            if (targetHandlesFirst && !filtersOnly && target.HandleEvent(name, args))
                 return true;
 
             if (suppressHandler)
                 return false;
 
-            if (targetHandlesFirst)
-                return EventBus.Broadcast(target, name, args);
-            else
-                return target.HandleEvent(name, args);
+            if (targetHandlesFirst && EventBus.Broadcast(target, name, args))
+                return true;
+            else if (!filtersOnly && target.HandleEvent(name, args))
+                return true;
+
+            Control ctl = target, parent = null;
+            while (ctl?.TryGetParent(out parent) == true) {
+                var filter = (parent as IControlContainer).ChildEventFilter;
+                if ((filter != null) && filter.OnEvent(target, name, args))
+                    return true;
+                ctl = parent;
+            }
+
+            return false;
         }
 
-        public bool FireEvent (string name, Control target, bool suppressHandler = false, bool targetHandlesFirst = false) {
+        public bool FireEvent (string name, Control target, bool suppressHandler = false, bool targetHandlesFirst = false, bool filtersOnly = false) {
             // FIXME: Is this right?
             if (target == null)
                 target = Control.None;
@@ -75,16 +85,26 @@ namespace Squared.PRGUI {
 
             if (!targetHandlesFirst && EventBus.Broadcast<object>(target, name, null))
                 return true;
-            if (targetHandlesFirst && target.HandleEvent(name))
+            if (targetHandlesFirst && !filtersOnly && target.HandleEvent(name))
                 return true;
 
             if (suppressHandler)
                 return false;
 
-            if (targetHandlesFirst)
-                return EventBus.Broadcast<object>(target, name, null);
-            else
-                return target.HandleEvent(name);
+            if (targetHandlesFirst && EventBus.Broadcast<object>(target, name, null))
+                return true;
+            else if (!filtersOnly && target.HandleEvent(name))
+                return true;
+
+            Control ctl = target, parent = null;
+            while (ctl?.TryGetParent(out parent) == true) {
+                var filter = (parent as IControlContainer).ChildEventFilter;
+                if ((filter != null) && filter.OnEvent(target, name))
+                    return true;
+                ctl = parent;
+            }
+
+            return false;
         }
 
         private int FindChildEvent (List<UIContext.UnhandledEvent> events, Control parent, string eventName, out Control source) {
@@ -304,7 +324,7 @@ namespace Squared.PRGUI {
                 LastNonRepeatKeyPressTarget = Focused;
 
             // FIXME: Suppress events with a char if the target doesn't accept text input?
-            if (!suppressRepeat && FireEvent(name, Focused, evt))
+            if (FireEvent(name, Focused, evt, filtersOnly: suppressRepeat))
                 return true;
 
             bool needsToClearFocus = false;
