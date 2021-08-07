@@ -55,19 +55,19 @@ namespace Squared.Util {
         decimal _Scale;
 
         public DotNetTimeProvider () {
-            _Offset = DateTime.UtcNow.Ticks;
+            _Offset = Stopwatch.GetTimestamp();
             _Scale = Time.SecondInTicks;
         }
 
         public long Ticks {
             get {
-                return DateTime.UtcNow.Ticks - _Offset;
+                return Stopwatch.GetTimestamp() - _Offset;
             }
         }
 
         public double Seconds {
             get {
-                decimal scaledTicks = DateTime.UtcNow.Ticks - _Offset;
+                decimal scaledTicks = Stopwatch.GetTimestamp() - _Offset;
                 scaledTicks /= _Scale;
                 return (double)scaledTicks;
             }

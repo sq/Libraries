@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using Squared.Threading;
 
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
+using System.Diagnostics;
 
 namespace Squared.Task {
     public interface ISchedulable {
@@ -512,9 +513,7 @@ namespace Squared.Task {
                     evt.Wait();
             }
 
-            DateTime started = default(DateTime);
-            if (timeout.HasValue)
-                started = DateTime.UtcNow;
+            long started = Stopwatch.GetTimestamp();
 
             using (IsActive)
             while (true) {
@@ -522,9 +521,9 @@ namespace Squared.Task {
                     return future.Result;
 
                 if (timeout.HasValue) {
-                    var elapsed = DateTime.UtcNow - started;
+                    var elapsed = Stopwatch.GetTimestamp() - started;
 
-                    if (elapsed.TotalSeconds >= timeout)
+                    if ((double)elapsed / Time.SecondInTicks >= timeout)
                         throw new TimeoutException();
                 }
             }
@@ -534,9 +533,7 @@ namespace Squared.Task {
             if (_IsDisposed)
                 throw new ObjectDisposedException("TaskScheduler");
 
-            DateTime started = default(DateTime);
-            if (timeout.HasValue)
-                started = DateTime.UtcNow;
+            long started = Stopwatch.GetTimestamp();
 
             using (IsActive)
             while (true) {
@@ -544,9 +541,9 @@ namespace Squared.Task {
                     return future.Result;
 
                 if (timeout.HasValue) {
-                    var elapsed = DateTime.UtcNow - started;
+                    var elapsed = Stopwatch.GetTimestamp() - started;
 
-                    if (elapsed.TotalSeconds >= timeout)
+                    if (((double)elapsed / Time.SecondInTicks) >= timeout)
                         throw new TimeoutException();
                 }
             }
