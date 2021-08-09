@@ -664,6 +664,8 @@ namespace Squared.PRGUI {
                 // HACK: If the focused control explicitly requests to have its tooltip visible while it's focused,
                 //  make sure we fall back to showing its tooltip if we didn't pick a better target
                 if (
+                    // FIXME: This sucks
+                    false &&
                     (Focused is ICustomTooltipTarget ictt) && 
                     ictt.TooltipSettings.ShowWhileFocused &&
                     (Hovering?.AcceptsMouseInput != true) &&
