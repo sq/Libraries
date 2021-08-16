@@ -545,6 +545,11 @@ namespace Squared.Render.Evil {
                 case SurfaceFormat.Rg32:
                     numComponents = 2;
                     return 4;
+                case SurfaceFormat.Dxt1:
+                case SurfaceFormat.Dxt3:
+                    // FIXME: These are technically less than 1 byte per pixel
+                    numComponents = 1;
+                    return 1;
                 case SurfaceFormat.Dxt5:
                     // HACK: 16 pixel groups -> 128 bits (16 bytes) of output
                     numComponents = 1;
