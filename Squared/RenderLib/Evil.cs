@@ -545,6 +545,10 @@ namespace Squared.Render.Evil {
                 case SurfaceFormat.Rg32:
                     numComponents = 2;
                     return 4;
+                case SurfaceFormat.Dxt5:
+                    // HACK: 16 pixel groups -> 128 bits (16 bytes) of output
+                    numComponents = 1;
+                    return 1;
                 default:
                     throw new ArgumentException("Surface format " + format + " not implemented");
             }
