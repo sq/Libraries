@@ -48,7 +48,7 @@ namespace Squared.Render.Resources {
                     try {
                         // Console.WriteLine($"CreateInstance('{Name}') on thread {Thread.CurrentThread.Name}");
                         var createStarted = Provider.Now;
-                        var instance = Provider.CreateInstance(Stream, Data, PreloadedData, Async);
+                        var instance = Provider.CreateInstance(Name, Stream, Data, PreloadedData, Async);
                         if (instance.Completed) {
                             var createElapsed = Provider.Now - createStarted;
                             Provider.FireLoadEvent(Name, WaitDuration, PreloadDuration, createElapsed);
@@ -105,7 +105,7 @@ namespace Squared.Render.Resources {
                     // Console.WriteLine($"PreloadInstance('{Name}') on thread {Thread.CurrentThread.Name}");
                     var now = Provider.Now;
                     var waitDuration = now - StartedWhen;
-                    var preloadedData = Provider.PreloadInstance(stream, Data);
+                    var preloadedData = Provider.PreloadInstance(Name, stream, Data);
                     var preloadElapsed = Provider.Now - now;
                     var item = new CreateWorkItem {
                         Future = Future,
@@ -145,8 +145,8 @@ namespace Squared.Render.Resources {
         protected WorkQueue<PreloadWorkItem> PreloadQueue { get; private set; }
         protected WorkQueue<CreateWorkItem> CreateQueue { get; private set; }
 
-        protected virtual object PreloadInstance (Stream stream, object data) => null;
-        protected abstract Future<T> CreateInstance (Stream stream, object data, object preloadedData, bool async);
+        protected virtual object PreloadInstance (string name, Stream stream, object data) => null;
+        protected abstract Future<T> CreateInstance (string name, Stream stream, object data, object preloadedData, bool async);
 
         public IResourceProviderStreamSource StreamSource { get; protected set; }
 
@@ -217,9 +217,9 @@ namespace Squared.Render.Resources {
             Stream stream;
             if (StreamSource.TryGetStream(name, optional, out stream, out exception)) {
                 var started = Now;
-                var preloadedData = PreloadInstance(stream, data);
+                var preloadedData = PreloadInstance(name, stream, data);
                 var createStarted = Now;
-                var future = CreateInstance(stream, data, preloadedData, false);
+                var future = CreateInstance(name, stream, data, preloadedData, false);
                 var finished = Now;
                 if (IsDisposed) {
                     Coordinator.DisposeResource(future.Result as IDisposable);
@@ -499,7 +499,7 @@ namespace Squared.Render.Resources {
         {
         }
 
-        protected override Future<Effect> CreateInstance (Stream stream, object data, object preloadedData, bool async) {
+        protected override Future<Effect> CreateInstance (string name, Stream stream, object data, object preloadedData, bool async) {
             lock (Coordinator.CreateResourceLock)
                 return new Future<Effect>(EffectUtils.EffectFromFxcOutput(Coordinator.Device, stream));
         }

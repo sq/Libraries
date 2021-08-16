@@ -936,10 +936,10 @@ namespace Squared.Util.Random {
         private CoreCLR.Xoshiro Xoshiro;
 
         public int Next (int minValue, int maxValueExclusive) {
-            if (Xoshiro != null)
-                return Xoshiro.Next(minValue, maxValueExclusive);
-            else
+            if (Random != null)
                 return Random.Next(minValue, maxValueExclusive);
+            else
+                return Xoshiro.Next(minValue, maxValueExclusive);
         }
 
         public static implicit operator RandomNumberProvider (CoreCLR.Xoshiro xoshiro) {

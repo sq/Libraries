@@ -67,7 +67,7 @@ namespace Squared.Render {
                 *pData = table[*pData];
         }
 
-        protected override object PreloadInstance (Stream stream, object data) {
+        protected override object PreloadInstance (string name, Stream stream, object data) {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
             var image = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint, options.Enable16Bit, options.GenerateMips);
             if (options.sRGBFromLinear || options.sRGBToLinear)
@@ -75,7 +75,7 @@ namespace Squared.Render {
             return image;
         }
 
-        protected override Future<Texture2D> CreateInstance (Stream stream, object data, object preloadedData, bool async) {
+        protected override Future<Texture2D> CreateInstance (string name, Stream stream, object data, object preloadedData, bool async) {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
             var img = (STB.Image)preloadedData;
             if (async) {

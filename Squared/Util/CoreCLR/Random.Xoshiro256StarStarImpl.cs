@@ -16,7 +16,7 @@ namespace Squared.CoreCLR
     /// As such, we are free to implement however we see fit, without back compat concerns around
     /// the sequence of numbers generated or what methods call what other methods.
     /// </summary>
-    public class Xoshiro {
+    public struct Xoshiro {
         // NextUInt64 is based on the algorithm from http://prng.di.unimi.it/xoshiro256starstar.c:
         //
         //     Written in 2018 by David Blackman and Sebastiano Vigna (vigna@acm.org)
@@ -27,32 +27,31 @@ namespace Squared.CoreCLR
         //
         //     See <http://creativecommons.org/publicdomain/zero/1.0/>.
 
+        private bool _isInitialized;
         private ulong _s0, _s1, _s2, _s3;
         private static RandomNumberGenerator _rng = RandomNumberGenerator.Create();
 
-        public unsafe Xoshiro()
-        {
-            lock (_rng) {
-                byte[] buf = new byte[sizeof(ulong) * 4];
-                fixed (byte * pBufB = buf) {
-                    var ptr = (ulong*)pBufB;
-                    do
-                    {
-                        // FIXME: Use GetNonZeroBytes and remove the loop?
-                        _rng.GetBytes(buf);
-                        _s0 = ptr[0];
-                        _s1 = ptr[1];
-                        _s2 = ptr[2];
-                        _s3 = ptr[3];
+        public unsafe Xoshiro (ulong[] state) {
+            _isInitialized = true;
+            if (state == null) {
+                lock (_rng) {
+                    byte[] buf = new byte[sizeof(ulong) * 4];
+                    fixed (byte * pBufB = buf) {
+                        var ptr = (ulong*)pBufB;
+                        do
+                        {
+                            // FIXME: Use GetNonZeroBytes and remove the loop?
+                            _rng.GetBytes(buf);
+                            _s0 = ptr[0];
+                            _s1 = ptr[1];
+                            _s2 = ptr[2];
+                            _s3 = ptr[3];
+                        }
+                        while ((_s0 | _s1 | _s2 | _s3) == 0); // at least one value must be non-zero
                     }
-                    while ((_s0 | _s1 | _s2 | _s3) == 0); // at least one value must be non-zero
                 }
+                return;
             }
-        }
-
-        public Xoshiro (ulong[] state) {
-            if (state == null)
-                throw new ArgumentNullException(nameof(state));
             else if (state.Length != 4)
                 throw new ArgumentOutOfRangeException(nameof(state));
             _s0 = state[0];
@@ -62,7 +61,9 @@ namespace Squared.CoreCLR
         }
 
         public void Save (ulong[] result) {
-            if (result == null)
+            if (!_isInitialized)
+                throw new InvalidOperationException("Not initialized");
+            else if (result == null)
                 throw new ArgumentNullException(nameof(result));
             else if (result.Length != 4)
                 throw new ArgumentOutOfRangeException(nameof(result));
@@ -80,6 +81,9 @@ namespace Squared.CoreCLR
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // small-ish hot path used by a handful of "next" methods
         public ulong NextUInt64()
         {
+            if (!_isInitialized)
+                throw new InvalidOperationException("Not initialized");
+
             ulong s0 = _s0, s1 = _s1, s2 = _s2, s3 = _s3;
 
             ulong result = BitOperations.RotateLeft(s1 * 5, 7) * 9;
@@ -224,6 +228,9 @@ namespace Squared.CoreCLR
         // FIXME
         public unsafe void NextBytes(ArraySegment<byte> buffer)
         {
+            if (!_isInitialized)
+                throw new InvalidOperationException("Not initialized");
+
             ulong s0 = _s0, s1 = _s1, s2 = _s2, s3 = _s3;
 
             fixed (byte * _pBuffer = buffer.Array) {

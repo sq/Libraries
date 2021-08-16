@@ -20,7 +20,7 @@ namespace Squared.Render {
             : base(provider, coordinator, enableThreadedCreate: false, enableThreadedPreload: true) {
         }
 
-        protected override Future<FreeTypeFont> CreateInstance (Stream stream, object data, object preloadedData, bool async) {
+        protected override Future<FreeTypeFont> CreateInstance (string name, Stream stream, object data, object preloadedData, bool async) {
             // FIXME
             var f = new Future<FreeTypeFont>(new FreeTypeFont(Coordinator, stream));
             return f;
