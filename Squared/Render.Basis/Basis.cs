@@ -153,25 +153,22 @@ namespace Squared.Render.Basis {
 
     [Flags]
     public enum DecodeFlags : UInt32 {
-        /// <summary>
-        /// PVRTC1: texture will use wrap addressing vs. clamp (most PVRTC viewer tools assume wrap addressing, so we default to wrap although that can cause edge artifacts)
-        /// </summary>
-        PVRTCWrapAddressing = 1,	
-                        
-        /// <summary>
-        /// PVRTC1: decode non-pow2 ETC1S texture level to the next larger power of 2 (not implemented yet, but we're going to support it). Ignored if the slice's dimensions are already a power of 2.
-        /// </summary>
-        PVRTCDecodeToNextPow2 = 2,	
-            
-        /// <summary>
-        /// When decoding to an opaque texture format, if the basis file has alpha, decode the alpha slice instead of the color slice to the output texture format
-        /// </summary>
-        TranscodeAlphaDataToOpaqueFormats = 4,
+		// PVRTC1: decode non-pow2 ETC1S texture level to the next larger power of 2 (not implemented yet, but we're going to support it). Ignored if the slice's dimensions are already a power of 2.
+		PVRTCDecodeToNextPow2 = 2,
 
-        /// <summary>
-        /// Forbid usage of BC1 3 color blocks (we don't support BC1 punchthrough alpha yet).
-        /// </summary>
-        BC1ForbidThreeColorBlocks = 8
+		// When decoding to an opaque texture format, if the basis file has alpha, decode the alpha slice instead of the color slice to the output texture format.
+		// This is primarily to allow decoding of textures with alpha to multiple ETC1 textures (one for color, another for alpha).
+		TranscodeAlphaDataToOpaqueFormats = 4,
+
+		// Forbid usage of BC1 3 color blocks (we don't support BC1 punchthrough alpha yet).
+		// This flag is used internally when decoding to BC3.
+		BC1ForbidThreeColorBlocks = 8,
+
+		// The output buffer contains alpha endpoint/selector indices. 
+		// Used internally when decoding formats like ASTC that require both color and alpha data to be available when transcoding to the output format.
+		OutputHasAlphaIndices = 16,
+
+		HighQuality = 32
     }
 
     [StructLayout(LayoutKind.Sequential)]

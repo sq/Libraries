@@ -83,6 +83,8 @@ namespace Squared.PRGUI.Controls {
         private void ConfigureDefaultLayout (DynamicStringLayout content) {
             _NeedsLayoutReset = false;
             content.Reset();
+            content.WordWrap = true;
+            content.CharacterWrap = false;
             content.Alignment = HorizontalAlignment.Left;
         }
 
