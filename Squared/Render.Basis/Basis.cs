@@ -336,14 +336,19 @@ namespace Squared.Render.Basis {
         }
 
         public bool TryTranscode (
-            TranscoderTextureFormats format, ArraySegment<byte> output, DecodeFlags decodeFlags
+            TranscoderTextureFormats format, ArraySegment<byte> output, DecodeFlags decodeFlags, out ImageLevelInfo levelInfo
         ) {
             lock (File) {
                 if (!File.IsStarted) {
-                    if (Transcoder.Start(File.pTranscoder, File.pData, File.DataSize) == 0)
+                    if (Transcoder.Start(File.pTranscoder, File.pData, File.DataSize) == 0) {
+                        levelInfo = default;
                         return false;
+                    }
                     File.IsStarted = true;
                 }
+
+                if (Transcoder.GetImageLevelInfo(File.pTranscoder, File.pData, File.DataSize, Image.Index, Index, out levelInfo) == 0)
+                    return false;
 
                 var blockSize = Transcoder.GetBytesPerBlock(format);
                 var numBlocks = (uint)(output.Count / blockSize);

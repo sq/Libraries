@@ -423,10 +423,12 @@ namespace Squared.Render.Resources {
 
             if (result == null) {
                 candidateStreamName = FixupName((Prefix ?? "") + name, false);
-                try {
-                    result = File.Open(candidateStreamName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-                } catch (Exception exc) {
-                    exception = exception ?? exc;
+                if (File.Exists(candidateStreamName)) {
+                    try {
+                        result = File.Open(candidateStreamName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                    } catch (Exception exc) {
+                        exception = exception ?? exc;
+                    }
                 }
             }
 

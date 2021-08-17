@@ -172,5 +172,21 @@ namespace Squared.PRGUI {
 
         public float Now { get; private set; }
         public long NowL { get; private set; }
+
+        /// <summary>
+        /// You can use this to explicitly request that textures for static images etc be treated as not premultiplied
+        /// </summary>
+        public BlendState DefaultTextureBlendState = null;
+        internal ConditionalWeakTable<Texture2D, BlendState> TextureBlendStateTable = new ConditionalWeakTable<Texture2D, BlendState>();
+
+        public void SetDefaultBlendState (Texture2D texture, BlendState blendState) {
+            TextureBlendStateTable.Add(texture, blendState);
+        }
+
+        public BlendState PickDefaultBlendState (Texture2D texture) {
+            if ((texture != null) && TextureBlendStateTable.TryGetValue(texture, out BlendState result))
+                return result;
+            return DefaultTextureBlendState;
+        }
     }
 }

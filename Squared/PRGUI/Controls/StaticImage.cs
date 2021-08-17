@@ -101,6 +101,7 @@ namespace Squared.PRGUI.Controls {
         public MaterialParameterValues MaterialParameters;
         public Vector4 RasterizerUserData;
         public Material Material;
+        public BlendState BlendState;
 
         public StaticImage ()
             : base () {
@@ -307,7 +308,7 @@ namespace Squared.PRGUI.Controls {
                 // HACK
                 var p = renderer.Parameters;
                 renderer.Parameters.AddRange(ref MaterialParameters);
-                renderer.Draw(ref drawCall, material: Material ?? material);
+                renderer.Draw(ref drawCall, material: Material ?? material, blendState: BlendState ?? Context.PickDefaultBlendState(drawCall.Texture));
                 renderer.Parameters = p;
             }
 
