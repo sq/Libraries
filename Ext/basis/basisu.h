@@ -293,26 +293,10 @@ namespace basisu
 			return *this;
 		}
 
-		inline operator uint32_t() const
-		{
+        inline uint32_t convert_slow() const
+        {
 			switch (NumBytes)
 			{
-				case 1:  
-				{
-					return  m_bytes[0];
-				}
-				case 2:  
-				{
-					return (m_bytes[1] << 8U) | m_bytes[0];
-				}
-				case 3:  
-				{
-					return (m_bytes[2] << 16U) | (m_bytes[1] << 8U) | m_bytes[0];
-				}
-				case 4:  
-				{
-					return read_le_dword(m_bytes);
-				}
 				case 5:
 				{
 					uint32_t l = read_le_dword(m_bytes);
@@ -336,6 +320,41 @@ namespace basisu
 					uint32_t l = read_le_dword(m_bytes);
 					uint32_t h = read_le_dword(m_bytes + 4);
 					return static_cast<uint64_t>(l) | (static_cast<uint64_t>(h) << 32U);
+				}
+				default: 
+				{
+					assert(0);
+					return 0;
+				}
+			}
+        }
+
+		inline operator uint32_t() const
+		{
+			switch (NumBytes)
+			{
+				case 1:  
+				{
+					return  m_bytes[0];
+				}
+				case 2:  
+				{
+					return (m_bytes[1] << 8U) | m_bytes[0];
+				}
+				case 3:  
+				{
+					return (m_bytes[2] << 16U) | (m_bytes[1] << 8U) | m_bytes[0];
+				}
+				case 4:  
+				{
+					return read_le_dword(m_bytes);
+				}
+				case 5:
+                case 6:
+                case 7:
+                case 8:
+                {
+                    return convert_slow();
 				}
 				default: 
 				{

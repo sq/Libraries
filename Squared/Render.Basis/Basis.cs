@@ -20,41 +20,41 @@ namespace Squared.Render.Basis {
 
         public const string DllName = "basis";
 
-        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr New ();
 
-        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void Delete (IntPtr transcoder);
 
-        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int Start (IntPtr transcoder, void * pData, UInt32 dataSize);
 
-        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 GetTotalImages (IntPtr transcoder, void * pData, UInt32 dataSize);
 
-        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int GetImageInfo (
             IntPtr transcoder, void * pData, UInt32 dataSize, 
             UInt32 imageIndex, out ImageInfo result
         );
 
-        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int GetImageLevelInfo (
             IntPtr transcoder, void * pData, UInt32 dataSize, 
             UInt32 imageIndex, UInt32 levelIndex, out ImageLevelInfo result
         );
 
-        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int GetImageLevelDesc (
             IntPtr transcoder, void * pData, UInt32 dataSize, 
             UInt32 imageIndex, UInt32 levelIndex,
             out UInt32 originalWidth, out UInt32 originalHeight, out UInt32 totalBlocks
         );
 
-        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 GetBytesPerBlock (TranscoderTextureFormats format);
 
-        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int TranscodeImageLevel (
             IntPtr transcoder, void * pData, UInt32 dataSize, 
             UInt32 imageIndex, UInt32 levelIndex,
@@ -287,9 +287,11 @@ namespace Squared.Render.Basis {
             public ImageLevel this [uint index] {
                 get {
                     ImageLevelInfo info;
-                    if (Transcoder.GetImageLevelInfo(File.pTranscoder, File.pData, File.DataSize, Image.Index, index, out info) == 0)
-                        throw new Exception("Failed to get image level info");
-                    return new ImageLevel(Image, index, ref info);
+                    lock (File) {
+                        if (Transcoder.GetImageLevelInfo(File.pTranscoder, File.pData, File.DataSize, Image.Index, index, out info) == 0)
+                            throw new Exception("Failed to get image level info");
+                        return new ImageLevel(Image, index, ref info);
+                    }
                 }
             }
         }
@@ -323,35 +325,38 @@ namespace Squared.Render.Basis {
 
         public uint GetTranscodedSizeInBytes (TranscoderTextureFormats format) {
             uint origWidth, origHeight, totalBlocks;
-            var blockSize = Transcoder.GetBytesPerBlock(format);
-            if (Transcoder.GetImageLevelDesc(
-                File.pTranscoder, File.pData, File.DataSize, Image.Index, Index, out origWidth, out origHeight, out totalBlocks
-            ) == 0)
-                return 0;
-
-            return totalBlocks * blockSize;
+            lock (File) {
+                var blockSize = Transcoder.GetBytesPerBlock(format);
+                if (Transcoder.GetImageLevelDesc(
+                    File.pTranscoder, File.pData, File.DataSize, Image.Index, Index, out origWidth, out origHeight, out totalBlocks
+                ) == 0)
+                    return 0;
+                return totalBlocks * blockSize;
+            }
         }
 
         public bool TryTranscode (
             TranscoderTextureFormats format, ArraySegment<byte> output, DecodeFlags decodeFlags
         ) {
-            if (!File.IsStarted) {
-                if (Transcoder.Start(File.pTranscoder, File.pData, File.DataSize) == 0)
-                    return false;
-                File.IsStarted = true;
-            }
+            lock (File) {
+                if (!File.IsStarted) {
+                    if (Transcoder.Start(File.pTranscoder, File.pData, File.DataSize) == 0)
+                        return false;
+                    File.IsStarted = true;
+                }
 
-            var blockSize = Transcoder.GetBytesPerBlock(format);
-            var numBlocks = (uint)(output.Count / blockSize);
+                var blockSize = Transcoder.GetBytesPerBlock(format);
+                var numBlocks = (uint)(output.Count / blockSize);
 
-            fixed (byte* pBuffer = output.Array) {
-                var pOutput = pBuffer + output.Offset;
-                if (Transcoder.TranscodeImageLevel(
-                    File.pTranscoder, File.pData, File.DataSize,
-                    Image.Index, Index, pOutput, numBlocks,
-                    format, decodeFlags
-                ) == 0)
-                    return false;
+                fixed (byte* pBuffer = output.Array) {
+                    var pOutput = pBuffer + output.Offset;
+                    if (Transcoder.TranscodeImageLevel(
+                        File.pTranscoder, File.pData, File.DataSize,
+                        Image.Index, Index, pOutput, numBlocks,
+                        format, decodeFlags
+                    ) == 0)
+                        return false;
+                }
             }
 
             return true;

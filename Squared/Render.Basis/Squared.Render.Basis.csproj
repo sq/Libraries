@@ -79,7 +79,7 @@
   <ItemGroup>
     <Compile Include="Basis.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="..\BasisNative\bin\basis-$(PlatformTarget)-$(Configuration).dll">
+    <EmbeddedResource Include="..\BasisNative\bin\basis-$(PlatformTarget)-Release.dll">
       <LogicalName>basis.dll</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
