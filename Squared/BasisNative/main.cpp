@@ -2,10 +2,12 @@
 
 #include <Windows.h>
 #include "basisu_transcoder.h"
+#include <mutex>
 
 using namespace basist;
 
 etc1_global_selector_codebook sel_codebook;
+std::mutex initializer_mutex;
 
 bool is_initialized = false;
 
@@ -19,14 +21,17 @@ BOOL WINAPI DllMain (
 
 extern "C" {
     basisu_transcoder __declspec(dllexport) * New () {
-        if (!is_initialized) {
-            is_initialized = true;
+        {
+            std::lock_guard<std::mutex> guard(initializer_mutex);
+            if (!is_initialized) {
+                basist::basisu_transcoder_init();
 
-            basist::basisu_transcoder_init();
+                sel_codebook = etc1_global_selector_codebook(
+                    basist::g_global_selector_cb_size, basist::g_global_selector_cb
+                );
 
-            sel_codebook = etc1_global_selector_codebook(
-                basist::g_global_selector_cb_size, basist::g_global_selector_cb
-            );
+                is_initialized = true;
+            }
         }
 
         basisu_transcoder * pTranscoder = new basisu_transcoder(&sel_codebook);
