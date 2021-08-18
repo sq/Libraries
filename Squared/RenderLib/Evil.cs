@@ -509,6 +509,7 @@ namespace Squared.Render.Evil {
 
     public static class TextureUtils {
         public static readonly SurfaceFormat ColorSrgbEXT;
+        public static readonly SurfaceFormat? BC7EXT;
 
         static TextureUtils () {
 #if WINDOWS
@@ -516,12 +517,16 @@ namespace Squared.Render.Evil {
 #endif
             if (!Enum.TryParse<SurfaceFormat>("ColorSrgbEXT", out ColorSrgbEXT))
                 ColorSrgbEXT = SurfaceFormat.Color;
+            if (Enum.TryParse<SurfaceFormat>("BC7EXT", out SurfaceFormat temp))
+                BC7EXT = temp;
         }
 
         public static int GetBytesPerPixelAndComponents (SurfaceFormat format, out int numComponents) {
             // HACK
             if (format == ColorSrgbEXT)
                 format = SurfaceFormat.Color;
+            else if (format == BC7EXT)
+                format = SurfaceFormat.Dxt5;
 
             switch (format) {
                 case SurfaceFormat.Alpha8:
@@ -551,6 +556,7 @@ namespace Squared.Render.Evil {
                     numComponents = 1;
                     return 1;
                 case SurfaceFormat.Dxt5:
+                // case SurfaceFormat.BC7EXT:
                     // HACK: 16 pixel groups -> 128 bits (16 bytes) of output
                     numComponents = 1;
                     return 1;
