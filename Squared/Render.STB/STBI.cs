@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -44,20 +45,31 @@ namespace Squared.Render.STB {
             if (!stream.CanRead)
                 throw new ArgumentException("Stream must be readable");
 
-            byte[] buffer;
+            MemoryMappedFile mappedFile = null;
+            MemoryMappedViewAccessor mappedView = null;
+            GCHandle hData = default;
+            byte* pData = null;
             int readOffset;
-            var ms = stream as MemoryStream;
-            if (ms != null) {
-                buffer = ms.GetBuffer();
+            if (stream is MemoryStream ms) {
+                var buffer = ms.GetBuffer();
+                hData = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+                pData = (byte*)hData.AddrOfPinnedObject();
                 readOffset = (int)ms.Position;
+            } else if (stream is FileStream fs) {
+                mappedFile = MemoryMappedFile.CreateFromFile(fs, null, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, false);
+                mappedView = mappedFile.CreateViewAccessor(0, fs.Length, MemoryMappedFileAccess.Read);
+                mappedView.SafeMemoryMappedViewHandle.AcquirePointer(ref pData);
+                readOffset = 0;
             } else {
-                buffer = new byte[length];
+                var buffer = new byte[length];
                 readOffset = 0;
                 stream.Read(buffer, 0, (int)length);
+                hData = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+                pData = (byte*)hData.AddrOfPinnedObject();
             }
 
-            InitializeFromBuffer(
-                buffer, readOffset, (int)length, 
+            InitializeFromPointer(
+                pData, readOffset, (int)length, 
                 premultiply: premultiply, 
                 asFloatingPoint: asFloatingPoint, 
                 enable16Bit: enable16Bit,
@@ -66,20 +78,28 @@ namespace Squared.Render.STB {
 
             if (ownsStream)
                 stream.Dispose();
+            if (hData.IsAllocated)
+                hData.Free();
+            if (mappedFile != null) {
+                mappedView.Dispose();
+                mappedFile.Dispose();
+            }
         }
 
-        public Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, bool generateMips = false) {
-            InitializeFromBuffer(
-                buffer.Array, buffer.Offset, buffer.Count,
-                premultiply: premultiply, 
-                asFloatingPoint: asFloatingPoint,
-                enable16Bit: false,
-                generateMips: generateMips
-            );
+        public unsafe Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, bool generateMips = false) {
+            fixed (byte* pBuffer = buffer.Array) {
+                InitializeFromPointer(
+                    pBuffer, buffer.Offset, buffer.Count,
+                    premultiply: premultiply, 
+                    asFloatingPoint: asFloatingPoint,
+                    enable16Bit: false,
+                    generateMips: generateMips
+                );
+            }
         }
 
-        private void InitializeFromBuffer (
-            byte[] buffer, int offset, int length, 
+        private void InitializeFromPointer (
+            byte* pBuffer, int offset, int length, 
             bool premultiply = true, bool asFloatingPoint = false, 
             bool enable16Bit = false, bool generateMips = false
         ) {
@@ -87,16 +107,14 @@ namespace Squared.Render.STB {
             const int desiredChannelCount = 4;
 
             // FIXME: Don't request RGBA?
-            fixed (byte * pBuffer = buffer) {
-                Is16Bit = enable16Bit && Native.API.stbi_is_16_bit_from_memory(pBuffer + offset, length) != 0;
+            Is16Bit = enable16Bit && Native.API.stbi_is_16_bit_from_memory(pBuffer + offset, length) != 0;
 
-                if (asFloatingPoint)
-                    _Data = Native.API.stbi_loadf_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
-                else if (Is16Bit)
-                    _Data = Native.API.stbi_load_16_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
-                else
-                    _Data = Native.API.stbi_load_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
-            }
+            if (asFloatingPoint)
+                _Data = Native.API.stbi_loadf_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
+            else if (Is16Bit)
+                _Data = Native.API.stbi_load_16_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
+            else
+                _Data = Native.API.stbi_load_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
 
             ChannelCount = desiredChannelCount;
 

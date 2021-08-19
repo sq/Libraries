@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -225,7 +226,9 @@ namespace Squared.Render.Basis {
 
         private GCHandle DataPin;
         internal IntPtr pTranscoder;
-        public byte[] Data { get; private set; }
+        protected MemoryMappedFile MappedFile { get; private set; }
+        protected MemoryMappedViewAccessor MappedView { get; private set; }
+        protected byte[] Data { get; private set; }
         public uint DataSize { get; private set; }
         public void* pData { get; private set; }
         public bool IsDisposed { get; private set; }
@@ -239,17 +242,24 @@ namespace Squared.Render.Basis {
         }
 
         public BasisFile (Stream stream, bool ownsStream) {
-            Data = new byte[stream.Length];
             DataSize = (uint)stream.Length;
-            try {
-                stream.Read(Data, 0, Data.Length);
-            } finally {
-                if (ownsStream)
-                    stream.Dispose();
+            if (stream is FileStream fs) {
+                MappedFile = MemoryMappedFile.CreateFromFile(fs, null, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, false);
+                MappedView = MappedFile.CreateViewAccessor(0, fs.Length, MemoryMappedFileAccess.Read);
+                byte* _pData = null;
+                MappedView.SafeMemoryMappedViewHandle.AcquirePointer(ref _pData);
+                pData = _pData;
+            } else {
+                Data = new byte[stream.Length];
+                try {
+                    stream.Read(Data, 0, Data.Length);
+                    DataPin = GCHandle.Alloc(Data, GCHandleType.Pinned);
+                    pData = DataPin.AddrOfPinnedObject().ToPointer();
+                } finally {
+                    if (ownsStream)
+                        stream.Dispose();
+                }
             }
-
-            DataPin = GCHandle.Alloc(Data, GCHandleType.Pinned);
-            pData = DataPin.AddrOfPinnedObject().ToPointer();
 
             pTranscoder = Transcoder.New();
             if (pTranscoder == IntPtr.Zero)
@@ -270,6 +280,9 @@ namespace Squared.Render.Basis {
                 return;
 
             IsDisposed = true;
+            pData = null;
+            MappedView?.Dispose();
+            MappedFile?.Dispose();
             Transcoder.Delete(pTranscoder);
         }
     }

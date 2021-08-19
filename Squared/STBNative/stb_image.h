@@ -4526,7 +4526,7 @@ static stbi_uc first_row_filter[5] =
    STBI__F_paeth_first
 };
 
-static int stbi__paeth(int a, int b, int c)
+static __forceinline int stbi__paeth(int a, int b, int c)
 {
    int p = a + b - c;
    int pa = abs(p-a);
