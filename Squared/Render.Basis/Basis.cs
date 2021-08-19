@@ -22,7 +22,7 @@ namespace Squared.Render.Basis {
         public const string DllName = "basis";
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr New ();
+        public static extern IntPtr New (bool ktx2);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void Delete (IntPtr transcoder);
@@ -224,6 +224,8 @@ namespace Squared.Render.Basis {
             }
         }
 
+        const string ktx2Magic = "«KTX 20»\r\n\x1A\n";
+
         private GCHandle DataPin;
         internal IntPtr pTranscoder;
         protected MemoryMappedFile MappedFile { get; private set; }
@@ -243,7 +245,11 @@ namespace Squared.Render.Basis {
 
         public BasisFile (Stream stream, bool ownsStream) {
             DataSize = (uint)stream.Length;
+            if (DataSize < ktx2Magic.Length)
+                throw new InvalidDataException("Basis file is shorter than the ktx2 magic header");
+
             if (stream is FileStream fs) {
+                // FIXME: Does this inherit the stream position? Does it matter?
                 MappedFile = MemoryMappedFile.CreateFromFile(fs, null, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, false);
                 MappedView = MappedFile.CreateViewAccessor(0, fs.Length, MemoryMappedFileAccess.Read);
                 byte* _pData = null;
@@ -261,7 +267,19 @@ namespace Squared.Render.Basis {
                 }
             }
 
-            pTranscoder = Transcoder.New();
+            bool ktx2;
+            {
+                var magicBuffer = new byte[ktx2Magic.Length];
+                var pos = stream.Position;
+                stream.Read(magicBuffer, 0, magicBuffer.Length);
+                stream.Position = pos;
+                var magicChars = new char[magicBuffer.Length];
+                for (int i = 0; i < magicBuffer.Length; i++)
+                    magicChars[i] = (char)magicBuffer[i];
+                ktx2 = (ktx2Magic == new string(magicChars));
+            }
+            
+            pTranscoder = Transcoder.New(ktx2);
             if (pTranscoder == IntPtr.Zero)
                 throw new Exception("Failed to create transcoder instance");
 

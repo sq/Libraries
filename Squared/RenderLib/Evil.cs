@@ -553,12 +553,12 @@ namespace Squared.Render.Evil {
                 case SurfaceFormat.Dxt1:
                 case SurfaceFormat.Dxt3:
                     // FIXME: These are technically less than 1 byte per pixel
-                    numComponents = 1;
+                    numComponents = 4;
                     return 1;
                 case SurfaceFormat.Dxt5:
                 // case SurfaceFormat.BC7EXT:
                     // HACK: 16 pixel groups -> 128 bits (16 bytes) of output
-                    numComponents = 1;
+                    numComponents = 4;
                     return 1;
                 default:
                     throw new ArgumentException("Surface format " + format + " not implemented");

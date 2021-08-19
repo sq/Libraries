@@ -23,18 +23,15 @@
     <TargetName>basis-$(PlatformShortName)-$(Configuration)</TargetName>
     <CompileAs>CompileAsCpp</CompileAs>
     <AdditionalDependencies>kernel32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    <LinkIncremental>false</LinkIncremental>
+    <GenerateManifest>false</GenerateManifest>
+    <OutDir>$(ProjectDir)bin\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Configuration)\$(PlatformShortName)</IntDir>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -47,19 +44,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-    <GenerateManifest>false</GenerateManifest>
-    <OutDir>$(ProjectDir)bin\</OutDir>
-    <IntDir>$(ProjectDir)obj\$(Configuration)\$(PlatformShortName)</IntDir>
+  <PropertyGroup>
     <TargetName>basis-$(PlatformShortName)-$(Configuration)</TargetName>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>false</LinkIncremental>
-    <GenerateManifest>false</GenerateManifest>
-    <OutDir>$(ProjectDir)bin\</OutDir>
-    <IntDir>$(ProjectDir)obj\$(Configuration)\$(PlatformShortName)</IntDir>
-    <TargetName>basis-$(PlatformShortName)-$(Configuration)</TargetName>
+    <CommonPreprocessorDefs>BASISD_SUPPORT_PVRTC1=0;BASISD_SUPPORT_PVRTC2=0;BASISD_SUPPORT_ETC2_EAC_A8=0;BASISD_SUPPORT_ETC2_EAC_RG11=0;BASISD_SUPPORT_ATC=0;BASISD_SUPPORT_FXT1=0;BASISU_FORCE_DEVEL_MESSAGES=1;ZSTD_STATIC_LINKING_ONLY=1</CommonPreprocessorDefs>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -69,7 +56,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;BASISD_SUPPORT_PVRTC1=0;BASISD_SUPPORT_PVRTC2=0;BASISD_SUPPORT_ETC2_EAC_A8=0;BASISD_SUPPORT_ETC2_EAC_RG11=0;BASISD_SUPPORT_ATC=0;BASISD_SUPPORT_FXT1=0;BASISD_SUPPORT_KTX2=0;BASISU_FORCE_DEVEL_MESSAGES=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;%(CommonPreprocessorDefs)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
@@ -102,7 +89,6 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;BASISD_SUPPORT_PVRTC1=0;BASISD_SUPPORT_PVRTC2=0;BASISD_SUPPORT_ETC2_EAC_A8=0;BASISD_SUPPORT_ETC2_EAC_RG11=0;BASISD_SUPPORT_ATC=0;BASISD_SUPPORT_FXT1=0;BASISD_SUPPORT_KTX2=0;BASISU_FORCE_DEVEL_MESSAGES=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
@@ -124,6 +110,7 @@
       <LanguageStandard>stdcpp14</LanguageStandard>
       <EnableModules>false</EnableModules>
       <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;%(CommonPreprocessorDefs)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -140,6 +127,8 @@
   <ItemGroup>
     <ClCompile Include="..\..\Ext\basis\basisu_transcoder.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="..\..\Ext\zstd\common\*.c" />
+    <ClCompile Include="..\..\Ext\zstd\decompress\*.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
