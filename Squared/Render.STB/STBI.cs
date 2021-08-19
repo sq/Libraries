@@ -12,11 +12,17 @@ using Squared.Util;
 
 namespace Squared.Render.STB {
     public unsafe class Image : IDisposable {
+        private volatile int _RefCount;
+        public int RefCount => _RefCount;
+
         public int Width, Height, ChannelCount;
         public bool IsDisposed { get; private set; }
-        public void* Data { get; private set; }
+        private volatile void* _Data;
+        public void* Data => _Data;
         public bool IsFloatingPoint { get; private set; }
         public bool Is16Bit { get; private set; }
+
+        public int DataLength => Width * Height * ChannelCount;
 
         private byte[][] MipChain = null;
 
@@ -30,6 +36,8 @@ namespace Squared.Render.STB {
 
         public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false, bool enable16Bit = false, bool generateMips = false) {
             var length = stream.Length - stream.Position;
+
+            _RefCount = 1;
 
             if (!stream.CanSeek)
                 throw new ArgumentException("Stream must be seekable");
@@ -82,14 +90,14 @@ namespace Squared.Render.STB {
                 Is16Bit = enable16Bit && Native.API.stbi_is_16_bit_from_memory(pBuffer + offset, length) != 0;
 
                 if (asFloatingPoint)
-                    Data = Native.API.stbi_loadf_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
+                    _Data = Native.API.stbi_loadf_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
                 else if (Is16Bit)
-                    Data = Native.API.stbi_load_16_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
+                    _Data = Native.API.stbi_load_16_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
                 else
-                    Data = Native.API.stbi_load_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
+                    _Data = Native.API.stbi_load_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
             }
 
-            if (Data == null) {
+            if (_Data == null) {
                 var reason = STB.Native.API.stbi_failure_reason();
                 var message = "Failed to load image";
                 if (reason != null)
@@ -134,8 +142,10 @@ namespace Squared.Render.STB {
         }
 
         private unsafe void PremultiplyFPData () {
-            var pData = (float*)Data;
-            var pEnd = pData + (Width * Height * ChannelCount);
+            if (IsDisposed)
+                throw new ObjectDisposedException("Image");
+            var pData = (float*)_Data;
+            var pEnd = pData + DataLength;
             for (; pData < pEnd; pData+=4) {
                 var a = pData[3];
                 var temp = pData[0];
@@ -146,8 +156,10 @@ namespace Squared.Render.STB {
         }
 
         private unsafe void PremultiplyData () {
-            var pData = (uint*)Data;
-            var pBytes = (byte*)Data;
+            if (IsDisposed)
+                throw new ObjectDisposedException("Image");
+            var pData = (uint*)_Data;
+            var pBytes = (byte*)pData;
             var pEnd = pData + (Width * Height);
             for (; pData < pEnd; pData++, pBytes+=4) {
                 var value = *pData;
@@ -162,8 +174,10 @@ namespace Squared.Render.STB {
         }
 
         private unsafe void PremultiplyAndChannelSwapData () {
-            var pData = (uint*)Data;
-            var pBytes = (byte*)Data;
+            if (IsDisposed)
+                throw new ObjectDisposedException("Image");
+            var pData = (uint*)_Data;
+            var pBytes = (byte*)pData;
             var pEnd = pData + (Width * Height);
             for (; pData < pEnd; pData++, pBytes+=4) {
                 var value = *pData;
@@ -178,8 +192,10 @@ namespace Squared.Render.STB {
         }
 
         private unsafe void ChannelSwapData () {
-            var pBytes = (byte*)Data;
-            var pEnd = pBytes + (Width * Height * ChannelCount);
+            if (IsDisposed)
+                throw new ObjectDisposedException("Image");
+            var pBytes = (byte*)_Data;
+            var pEnd = pBytes + DataLength;
             for (; pBytes < pEnd; pBytes += 4) {
                 var r = pBytes[0];
                 pBytes[0] = pBytes[2];
@@ -200,7 +216,7 @@ namespace Squared.Render.STB {
 
         public Texture2D CreateTexture (RenderCoordinator coordinator, bool padToPowerOfTwo = false) {
             if (IsDisposed)
-                throw new ObjectDisposedException("Image is disposed");
+                throw new ObjectDisposedException("Image");
             // FIXME: Channel count
 
             int width = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Width) : Width;
@@ -225,7 +241,7 @@ namespace Squared.Render.STB {
 
         public Future<Texture2D> CreateTextureAsync (RenderCoordinator coordinator, bool mainThread, bool padToPowerOfTwo) {
             if (IsDisposed)
-                throw new ObjectDisposedException("Image is disposed");
+                throw new ObjectDisposedException("Image");
             // FIXME: Channel count
 
             int width = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Width) : Width;
@@ -254,6 +270,8 @@ namespace Squared.Render.STB {
         private Stopwatch UploadTimer = new Stopwatch();
 
         private Future<Texture2D> UploadDirect (RenderCoordinator coordinator, Texture2D result, bool async, bool mainThread) {
+            if (IsDisposed)
+                throw new ObjectDisposedException("Image");
             // FIXME: async?
             UploadTimer.Restart();
             lock (coordinator.UseResourceLock)
@@ -272,6 +290,9 @@ namespace Squared.Render.STB {
             var pins = new List<GCHandle>();
 
             for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
+                if (IsDisposed)
+                    throw new ObjectDisposedException("Image");
+
                 if (level > 0) {
                     var levelBuf = new byte[levelWidth * levelHeight * SizeofPixel];
                     MipChain[level - 1] = levelBuf;
@@ -316,6 +337,9 @@ namespace Squared.Render.STB {
 
             var queue = coordinator.ThreadGroup.GetQueueForType<UploadMipWorkItem>(mainThread);
             for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
+                if (IsDisposed)
+                    throw new ObjectDisposedException("Image");
+
                 byte[] mip;
                 uint mipPitch;
                 if (level > 0) {
@@ -361,12 +385,26 @@ namespace Squared.Render.STB {
             return f;
         }
 
+        public void AddRef () {
+            if (IsDisposed)
+                throw new ObjectDisposedException("Image");
+            if (Interlocked.Increment(ref _RefCount) <= 1)
+                throw new ObjectDisposedException("Image");
+        }
+
         public void Dispose () {
-            IsDisposed = true;
-            MipChain = null;
-            if (Data != null) {
-                Native.API.stbi_image_free(Data);
-                Data = null;
+            if (IsDisposed)
+                return;
+
+            var newRefCount = Interlocked.Decrement(ref _RefCount);
+
+            if (RefCount <= 0) {
+                IsDisposed = true;
+                var data = Data;
+                _Data = null;
+                MipChain = null;
+                if (data != null)
+                    Native.API.stbi_image_free(data);
             }
         }
 

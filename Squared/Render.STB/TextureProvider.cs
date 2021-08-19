@@ -61,7 +61,7 @@ namespace Squared.Render {
             if (img.IsFloatingPoint || img.Is16Bit)
                 throw new NotImplementedException();
             var pData = (byte*)img.Data;
-            var pEnd = pData + (img.Width * img.Height * img.ChannelCount);
+            var pEnd = pData + img.DataLength;
             var table = options.sRGBFromLinear ? ColorSpace.LinearByteTosRGBByteTable : ColorSpace.sRGBByteToLinearByteTable;
             for (; pData < pEnd; pData++)
                 *pData = table[*pData];
