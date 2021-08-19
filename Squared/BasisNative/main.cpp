@@ -15,6 +15,7 @@ struct transcoder_info {
     bool isKtx2;
     basisu_transcoder * pBasis;
     ktx2_transcoder * pKtx2;
+    void * pData;
 };
 
 BOOL WINAPI DllMain (
@@ -41,6 +42,7 @@ extern "C" {
         }
 
         transcoder_info * pResult = new transcoder_info();
+        pResult->pData = 0;
         pResult->isKtx2 = ktx2;
         if (ktx2) {
             pResult->pKtx2 = new ktx2_transcoder(&sel_codebook);
@@ -53,18 +55,24 @@ extern "C" {
         return pResult;
     }
 
+    void autoInit (transcoder_info * pTranscoder, void * pData, uint32_t dataSize) {
+        if (pTranscoder->pData)
+            return;
+        pTranscoder->pData = pData;
+        pTranscoder->pKtx2->init(pData, dataSize);
+    }
+
     int __declspec(dllexport) Start (transcoder_info * pTranscoder, void * pData, uint32_t dataSize) {
         if (!pTranscoder)
             return 0;
         if (!pData)
             return 0;
+        if (pTranscoder->pData && (pTranscoder->pData != pData))
+            return 0;
 
         if (pTranscoder->isKtx2) {
-            if (!pTranscoder->pKtx2->start_transcoding())
-                return 0;
-            if (!pTranscoder->pKtx2->init(pData, dataSize))
-                return 0;
-            return 1;
+            autoInit(pTranscoder, pData, dataSize);
+            return pTranscoder->pKtx2->start_transcoding();
         } else
             return pTranscoder->pBasis->start_transcoding(pData, dataSize);
     }
@@ -95,6 +103,7 @@ extern "C" {
             return 0;
 
         if (pTranscoder->isKtx2) {
+            autoInit(pTranscoder, pData, dataSize);
             memset(pResult, 0, sizeof(*pResult));
             auto & header = pTranscoder->pKtx2->get_header();
             ktx2_image_level_info temp;
@@ -109,6 +118,7 @@ extern "C" {
             pResult->m_total_blocks = temp.m_total_blocks;
             pResult->m_num_blocks_x = temp.m_num_blocks_x;
             pResult->m_num_blocks_y = temp.m_num_blocks_y;
+            pResult->m_alpha_flag = temp.m_alpha_flag;
             // FIXME: Rest of the fields
             return 1;
         } else {
@@ -129,6 +139,7 @@ extern "C" {
             return 0;
 
         if (pTranscoder->isKtx2) {
+            autoInit(pTranscoder, pData, dataSize);
             ktx2_image_level_info temp;
             memset(&temp, 0, sizeof(temp));
             if (!pTranscoder->pKtx2->get_image_level_info(temp, levelIndex, 0, 0))
@@ -142,6 +153,7 @@ extern "C" {
             pResult->m_total_blocks = temp.m_total_blocks;
             pResult->m_num_blocks_x = temp.m_num_blocks_x;
             pResult->m_num_blocks_y = temp.m_num_blocks_y;
+            pResult->m_alpha_flag = temp.m_alpha_flag;
             // FIXME: Rest of the fields
             return 1;
         } else
@@ -161,6 +173,7 @@ extern "C" {
             return 0;
 
         if (pTranscoder->isKtx2) {
+            autoInit(pTranscoder, pData, dataSize);
             ktx2_image_level_info temp;
             memset(&temp, 0, sizeof(temp));
             if (!pTranscoder->pKtx2->get_image_level_info(temp, levelIndex, 0, 0))
@@ -193,13 +206,14 @@ extern "C" {
         if (!pOutputBlocks)
             return 0;
 
-        if (pTranscoder->isKtx2)
+        if (pTranscoder->isKtx2) {
+            autoInit(pTranscoder, pData, dataSize);
             return pTranscoder->pKtx2->transcode_image_level(
                 levelIndex, 0, 0, pOutputBlocks,
                 outputBlocksSizeInBlocks, format,
                 decodeFlags
             );
-        else
+        } else
             return pTranscoder->pBasis->transcode_image_level(
                 pData, dataSize, imageIndex, levelIndex, 
                 pOutputBlocks, outputBlocksSizeInBlocks,
