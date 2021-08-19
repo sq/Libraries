@@ -13,7 +13,7 @@ using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.Render.Resources {
-    public delegate void ResourceLoadCompleteHandler (string name, long waitDuration, long preloadDuration, long createDuration);
+    public delegate void ResourceLoadCompleteHandler (string name, object resource, long waitDuration, long preloadDuration, long createDuration);
 
     public abstract class ResourceProvider<T> : IDisposable
         where T : class 
@@ -51,14 +51,14 @@ namespace Squared.Render.Resources {
                         var instance = Provider.CreateInstance(Name, Stream, Data, PreloadedData, Async);
                         if (instance.Completed) {
                             var createElapsed = Provider.Now - createStarted;
-                            Provider.FireLoadEvent(Name, WaitDuration, PreloadDuration, createElapsed);
+                            Provider.FireLoadEvent(Name, instance.Result, WaitDuration, PreloadDuration, createElapsed);
                             Future.SetResult2(instance.Result, null);
                         } else
                             instance.RegisterOnComplete((_) => {
                                 var createElapsed = Provider.Now - createStarted;
                                 instance.GetResult(out T value, out Exception err);
                                 if (err == null)
-                                    Provider.FireLoadEvent(Name, WaitDuration, PreloadDuration, createElapsed);
+                                    Provider.FireLoadEvent(Name, value, WaitDuration, PreloadDuration, createElapsed);
 
                                 Future.SetResult(value, err);
                             });
@@ -155,11 +155,11 @@ namespace Squared.Render.Resources {
 
         internal long Now => TimeProvider.Ticks;
 
-        internal void FireLoadEvent (string name, long waitDuration, long preloadDuration, long createDuration) {
+        internal void FireLoadEvent (string name, object resource, long waitDuration, long preloadDuration, long createDuration) {
             if (OnLoad == null)
                 return;
 
-            OnLoad(name, waitDuration, preloadDuration, createDuration);
+            OnLoad(name, resource, waitDuration, preloadDuration, createDuration);
         }
 
         protected ResourceProvider (
@@ -225,7 +225,7 @@ namespace Squared.Render.Resources {
                     Coordinator.DisposeResource(future.Result as IDisposable);
                     return default(T);
                 } else {
-                    FireLoadEvent(name, 0, createStarted - started, finished - createStarted);
+                    FireLoadEvent(name, future.Result, 0, createStarted - started, finished - createStarted);
                     return future.Result;
                 }
             } else {

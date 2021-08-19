@@ -15,7 +15,7 @@ namespace Squared.Render.STB {
         private volatile int _RefCount;
         public int RefCount => _RefCount;
 
-        public int Width, Height, ChannelCount;
+        public int Width, Height, OriginalChannelCount, ChannelCount;
         public bool IsDisposed { get; private set; }
         private volatile void* _Data;
         public void* Data => _Data;
@@ -84,18 +84,21 @@ namespace Squared.Render.STB {
             bool enable16Bit = false, bool generateMips = false
         ) {
             IsFloatingPoint = asFloatingPoint;
+            const int desiredChannelCount = 4;
 
             // FIXME: Don't request RGBA?
             fixed (byte * pBuffer = buffer) {
                 Is16Bit = enable16Bit && Native.API.stbi_is_16_bit_from_memory(pBuffer + offset, length) != 0;
 
                 if (asFloatingPoint)
-                    _Data = Native.API.stbi_loadf_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
+                    _Data = Native.API.stbi_loadf_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
                 else if (Is16Bit)
-                    _Data = Native.API.stbi_load_16_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
+                    _Data = Native.API.stbi_load_16_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
                 else
-                    _Data = Native.API.stbi_load_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
+                    _Data = Native.API.stbi_load_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
             }
+
+            ChannelCount = desiredChannelCount;
 
             if (_Data == null) {
                 var reason = STB.Native.API.stbi_failure_reason();
@@ -146,7 +149,7 @@ namespace Squared.Render.STB {
                 throw new ObjectDisposedException("Image");
             var pData = (float*)_Data;
             var pEnd = pData + DataLength;
-            for (; pData < pEnd; pData+=4) {
+            for (; pData < pEnd; pData+=ChannelCount) {
                 var a = pData[3];
                 var temp = pData[0];
                 pData[0] *= a;
@@ -158,6 +161,8 @@ namespace Squared.Render.STB {
         private unsafe void PremultiplyData () {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image");
+            if (ChannelCount != 4)
+                throw new InvalidOperationException("Image is not rgba");
             var pData = (uint*)_Data;
             var pBytes = (byte*)pData;
             var pEnd = pData + (Width * Height);
@@ -176,6 +181,8 @@ namespace Squared.Render.STB {
         private unsafe void PremultiplyAndChannelSwapData () {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image");
+            if (ChannelCount != 4)
+                throw new InvalidOperationException("Image is not rgba");
             var pData = (uint*)_Data;
             var pBytes = (byte*)pData;
             var pEnd = pData + (Width * Height);
@@ -196,7 +203,7 @@ namespace Squared.Render.STB {
                 throw new ObjectDisposedException("Image");
             var pBytes = (byte*)_Data;
             var pEnd = pBytes + DataLength;
-            for (; pBytes < pEnd; pBytes += 4) {
+            for (; pBytes < pEnd; pBytes += ChannelCount) {
                 var r = pBytes[0];
                 pBytes[0] = pBytes[2];
                 pBytes[2] = r;
@@ -209,8 +216,12 @@ namespace Squared.Render.STB {
                     return SurfaceFormat.Vector4;
                 else if (Is16Bit)
                     return SurfaceFormat.Rgba64;
-                else
+                else if (ChannelCount == 4)
                     return SurfaceFormat.Color;
+                else if (ChannelCount == 1)
+                    return SurfaceFormat.Alpha8;
+                else
+                    throw new NotImplementedException($"{ChannelCount} channel(s)");
             }
         }
 
