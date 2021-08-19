@@ -31,10 +31,10 @@ extern "C" {
         {
             std::lock_guard<std::mutex> guard(initializer_mutex);
             if (!is_initialized) {
-                basist::basisu_transcoder_init();
+                basisu_transcoder_init();
 
                 sel_codebook = etc1_global_selector_codebook(
-                    basist::g_global_selector_cb_size, basist::g_global_selector_cb
+                    g_global_selector_cb_size, g_global_selector_cb
                 );
 
                 is_initialized = true;
@@ -101,6 +101,8 @@ extern "C" {
             return 0;
         if (!pResult)
             return 0;
+        if (pTranscoder->pData && (pTranscoder->pData != pData))
+            return 0;
 
         if (pTranscoder->isKtx2) {
             autoInit(pTranscoder, pData, dataSize);
@@ -137,6 +139,8 @@ extern "C" {
             return 0;
         if (!pResult)
             return 0;
+        if (pTranscoder->pData && (pTranscoder->pData != pData))
+            return 0;
 
         if (pTranscoder->isKtx2) {
             autoInit(pTranscoder, pData, dataSize);
@@ -171,6 +175,8 @@ extern "C" {
             return 0;
         if (!pOrigWidth || !pOrigHeight || !pTotalBlocks)
             return 0;
+        if (pTranscoder->pData && (pTranscoder->pData != pData))
+            return 0;
 
         if (pTranscoder->isKtx2) {
             autoInit(pTranscoder, pData, dataSize);
@@ -204,6 +210,8 @@ extern "C" {
         if (!pData)
             return 0;
         if (!pOutputBlocks)
+            return 0;
+        if (pTranscoder->pData && (pTranscoder->pData != pData))
             return 0;
 
         if (pTranscoder->isKtx2) {
