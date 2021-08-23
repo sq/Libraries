@@ -769,6 +769,16 @@ namespace Squared.PRGUI.Imperative {
                 stb.RichText = value;
             return this;
         }
+        public ControlBuilder<TControl> SetRichText (bool value, RichTextConfiguration rtc) {
+            if (Control is StaticText st)
+                st.RichTextConfiguration = rtc;
+            else if (Control is HyperText ht)
+                ht.RichTextConfiguration = rtc;
+
+            if (Control is StaticTextBase stb)
+                stb.RichText = value;
+            return this;
+        }
         public ControlBuilder<TControl> SetTextAlignment (HorizontalAlignment value) {
             if (Control is StaticTextBase stb)
                 stb.TextAlignment = value;
