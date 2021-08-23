@@ -493,12 +493,12 @@ namespace Squared.PRGUI {
             renderer.RasterizeArc(
                 center, angle1, LoadingSpinnerLength, radius, fillRadius + outlineRadius,
                 0f, Color.Transparent, Color.Black * 0.6f, Color.Transparent,
-                fillMode: RasterFillMode.Along, annularRadius: outlineRadius
+                fill: RasterFillMode.Along, annularRadius: outlineRadius
             );
             renderer.RasterizeArc(
                 center, angle1, LoadingSpinnerLength, radius, fillRadius,
                 0f, Color.Transparent, Color.White, Color.Transparent,
-                fillMode: RasterFillMode.Along,
+                fill: RasterFillMode.Along,
                 layer: renderer.Layer + 1
             );
         }
@@ -653,7 +653,9 @@ namespace Squared.PRGUI {
                 radius: InteractableCornerRadius,
                 outlineRadius: GetOutlineSize(thickness), outlineColor: outlineColor * alpha,
                 innerColor: color1 * fillAlpha1, outerColor: color2 * fillAlpha2,
-                fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
+                fill: new RasterFillSettings {
+                    Mode = RasterFillMode.RadialEnclosing, Size = 0.95f,
+                },
                 shadow: InteractableShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
@@ -673,10 +675,12 @@ namespace Squared.PRGUI {
                 radius: InteractableCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
-                fillMode: RasterFillMode.Angular,
-                fillSize: fillSize,
-                fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
-                fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
+                fill: new RasterFillSettings {
+                    Mode = RasterFillMode.Angular,
+                    Size = fillSize,
+                    Offset = -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
+                    Angle = Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
+                },
                 annularRadius: GetOutlineSize(EdgeGleamThickness),
                 blendState: BlendState.Additive
             );
@@ -702,7 +706,10 @@ namespace Squared.PRGUI {
                 radiusCW: radiusCW,
                 outlineRadius: GetOutlineSize(thickness), outlineColor: outlineColor * alpha,
                 innerColor: color1, outerColor: color2,
-                fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
+                fill: new RasterFillSettings {
+                    Mode = RasterFillMode.RadialEnclosing,
+                    Size = 0.95f,
+                },
                 shadow: InteractableShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
@@ -749,7 +756,10 @@ namespace Squared.PRGUI {
                 radiusCW: radiusCW,
                 outlineRadius: GetOutlineSize(thickness), outlineColor: outlineColor * alpha,
                 innerColor: color1 * fillAlpha1, outerColor: color2 * fillAlpha2,
-                fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
+                fill: new RasterFillSettings {
+                    Mode = RasterFillMode.RadialEnclosing,
+                    Size = 0.95f,
+                },
                 shadow: InteractableShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
@@ -771,10 +781,12 @@ namespace Squared.PRGUI {
                 radiusCW: radiusCW,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
-                fillMode: RasterFillMode.Angular,
-                fillSize: fillSize,
-                fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
-                fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
+                fill: new RasterFillSettings {
+                    Mode = RasterFillMode.Angular,
+                    Size = fillSize,
+                    Offset = -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
+                    Angle = Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
+                },
                 annularRadius: GetOutlineSize(EdgeGleamThickness),
                 blendState: BlendState.Additive
             );
@@ -978,26 +990,31 @@ namespace Squared.PRGUI {
                     startAngleDegrees: settings.ContentBox.Left, sizeDegrees: settings.ContentBox.Top,
                     ringRadius: settings.ContentBox.Width, fillRadius: settings.ContentBox.Height,
                     outlineRadius: outlineRadius, outlineColor: outlineColor * 0.5f,
-                    fillMode: fillMode, innerColor: fillColor1, outerColor: fillColor2,
+                    fill: new RasterFillSettings(
+                        fillMode, offset: settings.UserData.Z,
+                        size: (settings.UserData.W != 0) ? settings.UserData.W : 1
+                    ), 
+                    innerColor: fillColor1, outerColor: fillColor2,
                     shadow: GaugeValueShadow,
                     texture: settings.GetTexture(),
                     textureRegion: settings.GetTextureRegion(),
                     textureSettings: settings.GetTextureSettings(),
-                    endRounding: 0f, fillOffset: settings.UserData.Z, 
-                    fillSize: (settings.UserData.W != 0) ? settings.UserData.W : 1
+                    endRounding: 0f
                 );
             } else {
                 renderer.RasterizeRectangle(
                     ca, cb,
                     radiusCW: SliderCornerRadius * cornerRadiuses,
                     outlineRadius: outlineRadius, outlineColor: outlineColor * 0.5f,
-                    fillMode: fillMode, innerColor: fillColor1, outerColor: fillColor2,
+                    fill: new RasterFillSettings(
+                        fillMode, offset: settings.UserData.Z, 
+                        size: (settings.UserData.W != 0) ? settings.UserData.W : 1
+                    ), innerColor: fillColor1, outerColor: fillColor2,
                     shadow: GaugeValueShadow,
                     texture: settings.GetTexture(),
                     textureRegion: settings.GetTextureRegion(),
-                    textureSettings: settings.GetTextureSettings(),
-                    fillOffset: settings.UserData.Z, 
-                    fillSize: (settings.UserData.W != 0) ? settings.UserData.W : 1
+                    textureSettings: settings.GetTextureSettings()
+                    
                 );
             }
         }
@@ -1019,7 +1036,10 @@ namespace Squared.PRGUI {
                 radiusCW: new Vector4(InertCornerRadius, InertCornerRadius, tip, tip),
                 outlineRadius: GetOutlineSize(thickness), outlineColor: outlineColor * alpha,
                 innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
-                fillMode: RasterFillMode.Vertical, fillSize: 0.95f,
+                fill: new RasterFillSettings {
+                    Mode = RasterFillMode.Vertical,
+                    Size = 0.95f,
+                },
                 shadow: InteractableShadow
             );
         }
@@ -1037,10 +1057,12 @@ namespace Squared.PRGUI {
                 radiusCW: new Vector4(InertCornerRadius, InertCornerRadius, tip, tip),
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
-                fillMode: RasterFillMode.Angular,
-                fillSize: fillSize,
-                fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
-                fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
+                fill: new RasterFillSettings {
+                    Mode = RasterFillMode.Angular,
+                    Size = fillSize,
+                    Offset = -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
+                    Angle = Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
+                },
                 annularRadius: GetOutlineSize(EdgeGleamThickness),
                 blendState: BlendState.Additive
             );
@@ -1103,7 +1125,9 @@ namespace Squared.PRGUI {
                 radius: ScaledCheckboxSize * 0.45f,
                 outlineRadius: thickness, outlineColor: outlineColor * alpha,
                 innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
-                fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
+                fill: new RasterFillSettings {
+                    Mode = RasterFillMode.RadialEnclosing, Size = 0.95f,
+                },
                 shadow: InteractableShadow
             );
         }
@@ -1140,10 +1164,12 @@ namespace Squared.PRGUI {
                 radius: ScaledCheckboxSize * 0.45f,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
-                fillMode: RasterFillMode.Angular,
-                fillSize: fillSize,
-                fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
-                fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
+                fill: new RasterFillSettings {
+                    Mode = RasterFillMode.Angular,
+                    Size = fillSize,
+                    Offset = -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
+                    Angle = Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
+                },
                 annularRadius: GetOutlineSize(EdgeGleamThickness),
                 blendState: BlendState.Additive
             );
@@ -1456,7 +1482,7 @@ namespace Squared.PRGUI {
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: ColorScheme.ScrollbarThumb, outerColor: ColorScheme.ScrollbarThumb * 0.8f,
-                fillMode: RasterFillMode.Radial,
+                fill: RasterFillMode.Radial,
                 shadow: ScrollbarThumbShadow,
                 sortKey: 2
             );
@@ -1490,7 +1516,7 @@ namespace Squared.PRGUI {
                 radiusCW: new Vector4(cornerRadius, cornerRadius, cornerRadius2, cornerRadius2),
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: color1, outerColor: color2,
-                fillMode: RasterFillMode.Vertical,
+                fill: RasterFillMode.Vertical,
                 shadow: TitleShadow
             );
         }
@@ -1535,7 +1561,7 @@ namespace Squared.PRGUI {
                 radius: MenuSelectionCornerRadius,
                 outlineRadius: 0.9f, outlineColor: fillColor,
                 innerColor: fillColor, outerColor: fillColor * 0.75f,
-                fillMode: RasterFillMode.RadialEnclosing
+                fill: RasterFillMode.RadialEnclosing
             );
         }
 
@@ -1557,7 +1583,7 @@ namespace Squared.PRGUI {
                 radius: ListSelectionCornerRadius,
                 outlineRadius: 0.9f, outlineColor: outlineColor,
                 innerColor: fillColor, outerColor: fillColor,
-                fillMode: RasterFillMode.Horizontal
+                fill: RasterFillMode.Horizontal
             );
         }
 
@@ -1635,7 +1661,7 @@ namespace Squared.PRGUI {
                 a, b, radiusCW: radius,
                 outlineRadius: GetOutlineSize(outlineRadius), outlineColor: outlineColor,
                 innerColor: Color.White * alpha1, outerColor: Color.White * alpha2,
-                fillMode: RasterFillMode.Horizontal
+                fill: RasterFillMode.Horizontal
             );
         }
 
@@ -1664,8 +1690,11 @@ namespace Squared.PRGUI {
                 center, 0f, 360f, radius, thickness * SizeScaleRatio.X, // HACK
                 innerColor: VirtualCursorColor * fillAlpha, outerColor: VirtualCursorColor * fillAlpha2,
                 outlineRadius: GetOutlineSize(VirtualCursorOutlineThickness), outlineColor: VirtualCursorOutlineColor * (alpha * VirtualCursorOutlineAlpha),
-                fillMode: RasterFillMode.Along, fillSize: 0.25f * -1, // HACK: Repeat fill
-                fillOffset: fillOffset
+                fill: new RasterFillSettings {
+                    Mode = RasterFillMode.Along,
+                    Size = 0.25f * -1, // HACK: Repeat fill
+                    Offset = fillOffset
+                }
             );
         }
 

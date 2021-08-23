@@ -125,6 +125,37 @@ namespace Squared.Render.RasterShape {
         Conical = Angular + 720,
     }
 
+    public struct RasterFillSettings {
+        public RasterFillMode Mode;
+        public float Offset;
+        private float SizeMinusOne;
+        public float Size {
+            get => SizeMinusOne + 1;
+            set {
+                SizeMinusOne = value - 1;
+            }
+        }
+        internal float ModeF => Convenience.ImperativeRenderer.ConvertFillMode(Mode, Angle);
+        public float Angle;
+        public Vector2? GradientPower;
+
+        public RasterFillSettings (
+            RasterFillMode mode, float size = 1f, float offset = 0f,
+            float angle = 0f, Vector2? gradientPower = null
+        ) {
+            Mode = mode;
+            Offset = offset;
+            SizeMinusOne = size - 1f;
+            Angle = angle;
+            GradientPower = gradientPower;
+        }
+
+        public static implicit operator RasterFillSettings (RasterFillMode mode) =>
+            new RasterFillSettings {
+                Mode = mode
+            };
+    }
+
     public enum RasterTextureCompositeMode : byte {
         Multiply = 0,
         Over = 1,
