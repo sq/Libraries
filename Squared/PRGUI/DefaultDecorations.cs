@@ -1089,16 +1089,17 @@ namespace Squared.PRGUI {
             var isHovering = settings.State.IsFlagged(ControlStates.Hovering);
             var isChecked = settings.State.IsFlagged(ControlStates.Checked);
             if (isHovering || isChecked) {
-                var f = Color.White * (isChecked ? 1 : 0.4f);
+                float a = isChecked ? 1 : 0.55f;
+                Color f = Color.White * a, o = Color.Black * (a * 0.66f);
                 CheckboxTemp[0].Position = new Vector2(settings.Box.Left + 8f, settings.Box.Center.Y + 1.75f);
                 CheckboxTemp[1].Position = new Vector2(settings.Box.Center.X, settings.Box.Extent.Y - 6.5f);
                 CheckboxTemp[2].Position = new Vector2(settings.Box.Extent.X - 8.5f, settings.Box.Top + 7f);
                 var so = renderer.RasterSoftOutlines;
-                renderer.RasterSoftOutlines = false;
+                renderer.RasterSoftOutlines = true;
                 renderer.RasterizePolygon(
                     new ArraySegment<RasterPolygonVertex>(CheckboxTemp),
-                    false, radius: 0f, outlineRadius: isChecked ? 2.2f : 1.9f,
-                    Color.Transparent, Color.Transparent, f
+                    false, radius: 2f, outlineRadius: 0.9f,
+                    f, f, o
                 );
                 renderer.RasterSoftOutlines = so;
             }

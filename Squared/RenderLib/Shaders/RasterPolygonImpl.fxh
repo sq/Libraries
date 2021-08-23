@@ -2,8 +2,11 @@
 #define NODE_BEZIER 1
 
 float4 get (int offset) {
-    float4 uv = float4(offset * PolygonVertexBufferInvWidth, 0, 0, 0);
-    return tex2Dlod(VertexDataSampler, uv);
+    int y = (int)floor(offset / MAX_VERTEX_BUFFER_WIDTH);
+    float2 uvi = float2(
+        offset - (y * MAX_VERTEX_BUFFER_WIDTH), y
+    );
+    return tex2Dlod(VertexDataSampler, float4(uvi * PolygonVertexBufferInvSize, 0, 0));
 }
 
 void computeTLBR_Polygon (
@@ -60,7 +63,7 @@ void evaluatePolygon (
     tl = 99999;
     br = -99999;
 
-    bool closed = (_closed > 0.5);
+    bool closed = (_closed > 0.5), annular = params.y > 0;
     int offset = (int)vertexOffset;
     int count = (int)vertexCount;
 
@@ -75,7 +78,8 @@ void evaluatePolygon (
     else
         offset += 1;
 
-    float d = dot(worldPosition - first.xy, worldPosition - first.xy), s = 1.0;
+    float d = dot(worldPosition - first.xy, worldPosition - first.xy), s = 1.0,
+        gdist = 99999;
 
     for (int i = 0, limit = closed ? count : count - 1; i < limit; i++) {
         float4 xyt = get(offset);
@@ -105,14 +109,24 @@ void evaluatePolygon (
                 s *= -1.0;
         } else {
             // FIXME: Bezier
+            int temp3 = gradientType;
             float temp, temp2;
             evaluateLineSegment(
                 worldPosition, prev, pos, 0,
-                radius, temp, gradientType, temp2
+                radius, temp, temp3, temp2
             );
             distance = min(distance, temp);
-            if (distance <= 0)
+
+            if (gradientType == GRADIENT_TYPE_Along) {
+                if (((gdist > 0) && (temp < gdist)) || (temp < 0)) {
+                    float scale = 1.0 / (vertexCount - 1);
+                    gradientWeight = (i * scale) + (temp2 * scale);
+                    gdist = temp;
+                }
+            } else if (temp < gdist) {
                 gradientWeight = temp2;
+                gdist = temp;
+            }
         }
 
         prev = xyt;

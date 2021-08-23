@@ -5,10 +5,12 @@
 
 Texture2D VertexDataTexture : register(t2);
 
-uniform float PolygonVertexBufferInvWidth;
+#define MAX_VERTEX_BUFFER_WIDTH 1024
+
+uniform float2 PolygonVertexBufferInvSize;
 sampler VertexDataSampler : register(s2) {
     Texture = (VertexDataTexture);
-    AddressU = WRAP;
+    AddressU = CLAMP;
     AddressV = CLAMP;
     MipFilter = POINT;
     MinFilter = POINT;

@@ -776,8 +776,8 @@ namespace Squared.Render.RasterShape {
                     if (sb.Type == RasterShapeType.Polygon) {
                         FlushPolygonVertices(manager);
                         lock (PolygonVertexLock)
-                            rasterShader.Material.Effect.Parameters["PolygonVertexBufferInvWidth"]?.SetValue(
-                                1.0f / PolygonVertexTexture.Width
+                            rasterShader.Material.Effect.Parameters["PolygonVertexBufferInvSize"]?.SetValue(
+                                new Vector2(1.0f / PolygonVertexTexture.Width, 1.0f / PolygonVertexTexture.Height)
                             );
                     }
 
@@ -916,19 +916,29 @@ namespace Squared.Render.RasterShape {
         internal void FlushPolygonVertices (DeviceManager dm) {
             // HACK
             lock (PolygonVertexLock) {
+                // Must match MAX_VERTEX_BUFFER_WIDTH in RasterShapePolygon.fxh
+                const int maxWidth = 1024;
                 // FIXME: Calculate tighter size
                 var size = PolygonVertexBuffer.Length * 2;
+                int w, h;
+                if (size > maxWidth) {
+                    w = maxWidth;
+                    h = ((size + (maxWidth - 1)) / maxWidth) * maxWidth;
+                } else {
+                    w = size;
+                    h = 1;
+                }
 
-                if ((PolygonVertexTexture == null) || (PolygonVertexTexture.Width < size)) {
+                if ((PolygonVertexTexture == null) || (PolygonVertexTexture.Width < w) || (PolygonVertexTexture.Height < h)) {
                     dm.DisposeResource(PolygonVertexTexture);
-                    PolygonVertexTexture = new Texture2D(dm.Device, size, 1, false, SurfaceFormat.Vector4);
+                    PolygonVertexTexture = new Texture2D(dm.Device, w, h, false, SurfaceFormat.Vector4);
                     PolygonVertexFlushRequired = true;
                 }
 
                 if (!PolygonVertexFlushRequired)
                     return;
 
-                var temp = new Vector4[size];
+                var temp = new Vector4[w * h];
                 int j = 0;
                 for (int i = 0; i < PolygonVertexCount; i++) {
                     var vert = PolygonVertexBuffer[i];
@@ -943,7 +953,7 @@ namespace Squared.Render.RasterShape {
                         j++;
                     }
                 }
-                PolygonVertexTexture.SetData(temp, 0, size);
+                PolygonVertexTexture.SetData(temp);
 
                 PolygonVertexFlushRequired = false;
             }
