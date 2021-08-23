@@ -163,8 +163,10 @@ void computeTLBR (
 
 #ifdef INCLUDE_POLYGON
     else if (type == TYPE_Polygon) {
-        // FIXME
-        tl = br = 0;
+        computeTLBR_Polygon(
+            radius, outlineSize, params,
+            a.x, a.y, tl, br
+        );
     }
 #endif
 }
@@ -541,6 +543,7 @@ void evaluateRectangle (
         gradientType = GRADIENT_TYPE_Linear;
 }
 
+#ifdef INCLUDE_TRIANGLE
 void evaluateTriangle (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
@@ -581,6 +584,7 @@ void evaluateTriangle (
         gradientWeight = 0;
     }
 }
+#endif
 
 float evaluateGradient (
     int gradientType, float gradientAngle, float gradientWeight,
@@ -741,6 +745,17 @@ void evaluateRasterShape (
         }
 
         needTLBR = true;
+    }
+#endif
+
+#ifdef INCLUDE_POLYGON
+    else if (type == TYPE_Polygon) {
+        evaluatePolygon(
+            radius, outlineSize, params,
+            worldPosition, a.x, a.y, simple,
+            distance, tl, br,
+            gradientType, gradientWeight, gradientAngle
+        );
     }
 #endif
     

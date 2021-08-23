@@ -34,5 +34,7 @@ sampler VertexDataSampler : register(s7) {
 #define INCLUDE_POLYGON
 #define EVALUATE_TYPE TYPE_Polygon
 
+// Separate header to avoid recompiling all the other shaders when it changes
+#include "RasterPolygonImpl.fxh"
 #include "RasterShapeSkeleton.fxh"
 #include "RasterShapeImpl.fxh"

@@ -135,15 +135,10 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         Line = 0,
         /// <summary>
-        /// Creates an arc between this vertex and the previous vertex,
-        ///  with its radius controlled by Position2.X
+        /// Creates a cubic bezier between the previous vertex and this vertex, using
+        ///  ControlPoint1 + ControlPoint2 as control points
         /// </summary>
-        Arc = 1,
-        /// <summary>
-        /// Creates a cubic bezier between the previous vertex, Position2.XY,
-        ///  and this vertex
-        /// </summary>
-        Bezier = 2,
+        Bezier = 1,
     }
 
     public struct RasterFillSettings {
@@ -262,30 +257,9 @@ namespace Squared.Render.RasterShape {
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RasterPolygonVertex {
-        public Vector4 Positions;
+        public Vector2 Position;
+        public Vector2 ControlPoint1, ControlPoint2;
         public RasterVertexType Type;
-        public float X {
-            get => Positions.X;
-            set => Positions.X = value;
-        }
-        public float Y {
-            get => Positions.Y;
-            set => Positions.Y = value;
-        }
-        public Vector2 Position1 {
-            get => new Vector2(Positions.X, Positions.Y);
-            set {
-                Positions.X = value.X;
-                Positions.Y = value.Y;
-            }
-        }
-        public void SetPosition (ref Vector2 a) {
-            Positions.X = a.X;
-            Positions.Y = a.Y;
-        }
-        public void SetPositions (ref Vector2 a, ref Vector2 b) {
-            Positions = new Vector4(a.X, a.Y, b.X, b.Y);
-        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
