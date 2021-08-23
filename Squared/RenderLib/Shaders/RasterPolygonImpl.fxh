@@ -11,7 +11,6 @@ void computeTLBR_Polygon (
     in float vertexOffset, in float vertexCount, in float _closed,
     out float2 tl, out float2 br
 ) {
-    // FIXME
     tl = 99999;
     br = -99999;
 
@@ -52,6 +51,9 @@ void evaluatePolygon (
     // FIXME
     distance = 0;
     gradientWeight = 0;
+    gradientType = GRADIENT_TYPE_Radial;
+    tl = 99999;
+    br = -99999;
 
     bool closed = (_closed > 0.5);
     int offset = (int)vertexOffset;
@@ -65,24 +67,6 @@ void evaluatePolygon (
         offset += 1;
 
     float d = dot(worldPosition - first.xy, worldPosition - first.xy), s = 1.0;
-
-/*
-float sdPolygon( in vec2[N] v, in vec2 p )
-{
-    float d = dot(p-v[0],p-v[0]);
-    float s = 1.0;
-    for( int i=0, j=N-1; i<N; j=i, i++ )
-    {
-        vec2 e = v[j] - v[i];
-        vec2 w =    p - v[i];
-        vec2 b = w - e*clamp( dot(w,e)/dot(e,e), 0.0, 1.0 );
-        d = min( d, dot(b,b) );
-        bvec3 c = bvec3(p.y>=v[i].y,p.y<v[j].y,e.x*w.y>e.y*w.x);
-        if( all(c) || all(not(c)) ) s*=-1.0;  
-    }
-    return s*sqrt(d);
-}
-*/
 
     for (int i = 0, limit = closed ? count : count - 1; i < limit; i++) {
         float4 xyt = get(offset);
@@ -110,6 +94,8 @@ float sdPolygon( in vec2[N] v, in vec2 p )
             s *= -1.0;
 
         prev = xyt;
+        tl = min(tl, pos);
+        br = max(br, pos);
     }
 
     distance = s * sqrt(d);
