@@ -10,6 +10,7 @@
 #define TYPE_Triangle 3
 #define TYPE_QuadraticBezier 4
 #define TYPE_Arc 5
+#define TYPE_Polygon 6
 
 // Generic gradient types that operate on the bounding box or something
 //  similar to it

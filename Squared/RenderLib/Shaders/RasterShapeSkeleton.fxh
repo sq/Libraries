@@ -100,51 +100,73 @@ void computeTLBR (
 ) {
     type = EVALUATE_TYPE;
 
-    if (type == TYPE_Ellipse) {
-            tl = a - b - outlineSize;
-            br = a + b + outlineSize;
+    tl = br = 0;
+
+    if (false) {
     }
 
-    else if (type == TYPE_LineSegment) {
-            tl = min(a, b);
-            br = max(a, b);
-    }
-
-    else if (type == TYPE_Rectangle) {
-            tl = min(a, b) - outlineSize;
-            br = max(a, b) + outlineSize;
-    }
-
-    else if (type == TYPE_Triangle) {
-            outlineSize += 1;
-            tl = min(min(a, b), c) - outlineSize;
-            br = max(max(a, b), c) + outlineSize;
-    }
-
-#ifdef INCLUDE_BEZIER
-    else if (type == TYPE_QuadraticBezier) {
-            outlineSize += 1;
-            float2 mi = min(a, c);
-            float2 ma = max(a, c);
-
-            if (b.x<mi.x || b.x>ma.x || b.y<mi.y || b.y>ma.y)
-            {
-                float2 t = clamp((a - b) / (a - 2.0*b + c), 0.0, 1.0);
-                float2 s = 1.0 - t;
-                float2 q = s*s*a + 2.0*s*t*b + t*t*c;
-                mi = min(mi, q);
-                ma = max(ma, q);
-            }
-            
-            tl = mi - outlineSize - radius.x;
-            br = ma + outlineSize + radius.x;
+#ifdef INCLUDE_ELLIPSE
+    else if (type == TYPE_Ellipse) {
+        tl = a - b - outlineSize;
+        br = a + b + outlineSize;
     }
 #endif
 
-    else if (type == TYPE_Arc) {
-            tl = a - outlineSize - radius.x - radius.y;
-            br = a + outlineSize + radius.x + radius.y;
+#ifdef INCLUDE_LINE
+    else if (type == TYPE_LineSegment) {
+        tl = min(a, b);
+        br = max(a, b);
     }
+#endif
+
+#ifdef INCLUDE_RECTANGLE
+    else if (type == TYPE_Rectangle) {
+        tl = min(a, b) - outlineSize;
+        br = max(a, b) + outlineSize;
+    }
+#endif
+
+#ifdef INCLUDE_TRIANGLE
+    else if (type == TYPE_Triangle) {
+        outlineSize += 1;
+        tl = min(min(a, b), c) - outlineSize;
+        br = max(max(a, b), c) + outlineSize;
+    }
+#endif
+
+#ifdef INCLUDE_BEZIER
+    else if (type == TYPE_QuadraticBezier) {
+        outlineSize += 1;
+        float2 mi = min(a, c);
+        float2 ma = max(a, c);
+
+        if (b.x<mi.x || b.x>ma.x || b.y<mi.y || b.y>ma.y)
+        {
+            float2 t = clamp((a - b) / (a - 2.0*b + c), 0.0, 1.0);
+            float2 s = 1.0 - t;
+            float2 q = s*s*a + 2.0*s*t*b + t*t*c;
+            mi = min(mi, q);
+            ma = max(ma, q);
+        }
+            
+        tl = mi - outlineSize - radius.x;
+        br = ma + outlineSize + radius.x;
+    }
+#endif
+
+#ifdef INCLUDE_ARC
+    else if (type == TYPE_Arc) {
+        tl = a - outlineSize - radius.x - radius.y;
+        br = a + outlineSize + radius.x + radius.y;
+    }
+#endif
+
+#ifdef INCLUDE_POLYGON
+    else if (type == TYPE_Polygon) {
+        // FIXME
+        tl = br = 0;
+    }
+#endif
 }
 
 void computeHullCorners (
@@ -198,7 +220,10 @@ void computePosition (
     float4 params, bool isSimpleRectangle,
     out float2 xy
 ) {
+    xy = 0;
+
     if (type == TYPE_LineSegment) {
+#ifdef INCLUDE_LINE
         float totalRadius = radius.x;
 
         // HACK: Too hard to calculate precise offsets here so just pad it out.
@@ -222,12 +247,15 @@ void computePosition (
 
         // FIXME
         xy = lerp(a - alongNorm, b + alongNorm, cornerWeights.x) + lerp(left, right, cornerWeights.y);
+#endif
     } else if (type == TYPE_Triangle) {
+#ifdef INCLUDE_TRIANGLE
         adjustTLBR(tl, br, params);
         // HACK: Rounding triangles makes their bounding box expand for some reason
         tl -= (1 + radius.x * 0.33); br += (1 + radius.x * 0.33);
         // FIXME: Fit a better hull around triangles. Oriented bounding box?
         xy = lerp(tl, br, cornerWeights.xy);
+#endif
     } else {
         adjustTLBR(tl, br, params);
         // HACK: Padding
@@ -798,8 +826,10 @@ void rasterShapeCommon (
     bool HardOutline = (params.x >= 0);
     float OutlineGammaMinusOne = params.w;
 
+#ifdef INCLUDE_RECTANGLE
     if (type == TYPE_Rectangle)
         radius = computeLocalRectangleRadius(worldPosition, tl, br, cd.xy, cd.zw);
+#endif
 
     float2 invRadius = 1.0 / max(radius, 0.0001);
 

@@ -143,7 +143,7 @@ namespace Squared.Render.RasterShape {
         /// Creates a cubic bezier between the previous vertex, Position2.XY,
         ///  and this vertex
         /// </summary>
-        CubicBezier = 2,
+        Bezier = 2,
     }
 
     public struct RasterFillSettings {
@@ -630,8 +630,7 @@ namespace Squared.Render.RasterShape {
                 _SubBatches.Clear();
                 _SubBatches.EnsureCapacity(count, true);
 
-                if (!UseUbershader)
-                    _DrawCalls.Sort(ShapeDrawCallSorter);
+                _DrawCalls.Sort(ShapeDrawCallSorter);
 
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<RasterShapeVertex>>();
                 _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container, CornerBufferRepeatCount);
@@ -656,7 +655,7 @@ namespace Squared.Render.RasterShape {
                         _DrawCalls.GetItem(i, out dc);
 
                     if (
-                        ((dc.Type != lastType) && !UseUbershader) ||
+                        ((dc.Type != lastType) && (!UseUbershader || dc.Type == RasterShapeType.Polygon || lastType == RasterShapeType.Polygon)) ||
                         (dc.BlendInLinearSpace != lastBlend) ||
                         (dc.OutputInLinearSpace != lastOutput) ||
                         !dc.Shadow.Equals(ref lastShadow) ||
@@ -780,7 +779,9 @@ namespace Squared.Render.RasterShape {
                     (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
 
                 foreach (var sb in _SubBatches) {
-                    var rasterShader = UseUbershader ? PickMaterial(null, sb.Shadowed, sb.Simple) : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
+                    var rasterShader = (UseUbershader && sb.Type != RasterShapeType.Polygon) 
+                        ? PickMaterial(null, sb.Shadowed, sb.Simple)
+                        : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
 
                     rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
                     rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget || sb.OutputInLinearSpace);

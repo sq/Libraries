@@ -26,6 +26,8 @@
 #define INCLUDE_RECTANGLE
 #define INCLUDE_TRIANGLE
 #define INCLUDE_ARC
+// NOTE: Polygons are not included here since they read from a special sampler
+// TODO: Maybe we should include them so we can actually use the ubershader everywhere?
 
 #define EVALUATE_TYPE type
 

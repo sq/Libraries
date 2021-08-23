@@ -842,6 +842,7 @@ namespace Squared.Render {
             var rasterShapeRectangle = BuiltInShaders.Load("RasterShapeRectangle");
             var rasterShapeLine = BuiltInShaders.Load("RasterShapeLine");
             var rasterShapeTriangle = BuiltInShaders.Load("RasterShapeTriangle");
+            var rasterShapePolygon = BuiltInShaders.Load("RasterShapePolygon");
 
             LoadRasterShapeVariants(
                 rasterShapeUbershader, "RasterShape", null
@@ -857,6 +858,9 @@ namespace Squared.Render {
             );
             LoadRasterShapeVariants(
                 rasterShapeTriangle, "RasterTriangle", RasterShape.RasterShapeType.Triangle
+            );
+            LoadRasterShapeVariants(
+                rasterShapePolygon, "RasterPolygon", RasterShape.RasterShapeType.Polygon
             );
 
             RasterShapeUbershader = RasterShapeMaterials[new RasterShaderKey { Type = null, Shadowed = false, Textured = false }].Material;
