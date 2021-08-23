@@ -260,6 +260,14 @@ namespace Squared.Render.RasterShape {
         public Vector2 Position;
         public Vector2 ControlPoint1, ControlPoint2;
         public RasterVertexType Type;
+
+        public static implicit operator RasterPolygonVertex (Vector2 position) =>
+            new RasterPolygonVertex {
+                Position = position,
+                ControlPoint1 = default,
+                ControlPoint2 = default,
+                Type = RasterVertexType.Line
+            };
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -562,6 +570,13 @@ namespace Squared.Render.RasterShape {
         public RasterizerState RasterizerState;
         public RasterShadowSettings ShadowSettings;
 
+        // FIXME FIXME HACK HACK GROSS FIXME
+        private static object PolygonVertexLock = new object();
+        private static bool PolygonVertexFlushRequired = true;
+        private static int PolygonVertexWriteOffset = 0, PolygonVertexCount = 0;
+        private static RasterPolygonVertex[] PolygonVertexBuffer;
+        private static Texture2D PolygonVertexTexture;
+
         static RasterShapeBatch () {
             AdjustPoolCapacities(1024, null, 512, 16);
         }
@@ -757,6 +772,13 @@ namespace Squared.Render.RasterShape {
                         ? PickMaterial(null, sb.Shadowed, sb.Simple)
                         : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
 
+                    // HACK
+                    if (sb.Type == RasterShapeType.Polygon)
+                        lock (PolygonVertexLock)
+                            rasterShader.Material.Effect.Parameters["PolygonVertexBufferInvWidth"]?.SetValue(
+                                1.0f / PolygonVertexBuffer.Length
+                            );
+
                     rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
                     rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget || sb.OutputInLinearSpace);
                     rasterShader.RasterTexture?.SetValue(Texture);
@@ -800,6 +822,16 @@ namespace Squared.Render.RasterShape {
                     device.Textures[0] = Texture;
                     device.SamplerStates[0] = sb.TextureSettings.SamplerState ?? SamplerState ?? SamplerState.LinearWrap;
                     device.Textures[3] = RampTexture;
+
+                    if (sb.Type == RasterShapeType.Polygon) {
+                        lock (PolygonVertexLock) {
+                            device.Textures[2] = PolygonVertexTexture;
+                            device.VertexTextures[2] = PolygonVertexTexture;
+                        }
+                    } else {
+                        device.VertexTextures[2] = null;
+                        device.Textures[2] = null;
+                    }
 
                     scratchBindings[1] = new VertexBufferBinding(
                         vb, _SoftwareBuffer.HardwareVertexOffset + sb.InstanceOffset, 1
@@ -869,6 +901,70 @@ namespace Squared.Render.RasterShape {
         protected override void OnReleaseResources () {
             _SubBatches.Dispose();
             base.OnReleaseResources();
+        }
+
+        internal static void ClearPolygonVertices () {
+            lock (PolygonVertexLock) {
+                PolygonVertexFlushRequired = false;
+                PolygonVertexCount = 0;
+                PolygonVertexWriteOffset = 0;
+            }
+        }
+
+        internal void FlushPolygonVertices (DeviceManager dm) {
+            // HACK
+            lock (PolygonVertexLock) {
+                // FIXME: Calculate tighter size
+                var size = PolygonVertexBuffer.Length * ((2 * 3) + 1);
+
+                if ((PolygonVertexTexture == null) || (PolygonVertexTexture.Width < size)) {
+                    dm.DisposeResource(PolygonVertexTexture);
+                    PolygonVertexTexture = new Texture2D(dm.Device, size, 1, false, SurfaceFormat.Single);
+                    PolygonVertexFlushRequired = true;
+                }
+
+                if (!PolygonVertexFlushRequired)
+                    return;
+
+                var temp = new float[size];
+                int j = 0;
+                for (int i = 0; i < PolygonVertexCount; i++) {
+                    var vert = PolygonVertexBuffer[i];
+                    temp[j] = (float)(int)vert.Type;
+                    temp[j + 1] = vert.Position.X;
+                    temp[j + 2] = vert.Position.Y;
+                    j += 3;
+                    if (vert.Type == RasterVertexType.Bezier) {
+                        temp[j + 0] = vert.ControlPoint1.X;
+                        temp[j + 1] = vert.ControlPoint1.Y;
+                        temp[j + 2] = vert.ControlPoint2.X;
+                        temp[j + 3] = vert.ControlPoint2.Y;
+                        j += 4;
+                    }
+                }
+                PolygonVertexTexture.SetData(temp, 0, size);
+
+                PolygonVertexFlushRequired = false;
+            }
+        }
+
+        internal int AddPolygonVertices (ArraySegment<RasterPolygonVertex> vertices) {
+            lock (PolygonVertexLock) {
+                PolygonVertexFlushRequired = true;
+                var result = PolygonVertexWriteOffset;
+                var newCount = PolygonVertexCount + vertices.Count;
+                if ((PolygonVertexBuffer == null) || (newCount > PolygonVertexBuffer.Length)) {
+                    var newSize = ((newCount + 15) / 16) * 16;
+                    if (PolygonVertexBuffer == null)
+                        PolygonVertexBuffer = new RasterPolygonVertex[newSize];
+                    else
+                        Array.Resize(ref PolygonVertexBuffer, newSize);
+                }
+                PolygonVertexWriteOffset += vertices.Count;
+                PolygonVertexCount = newCount;
+                Array.Copy(vertices.Array, vertices.Offset, PolygonVertexBuffer, result, vertices.Count);
+                return result;
+            }
         }
     }
 }

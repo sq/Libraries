@@ -74,6 +74,7 @@ namespace Squared.Render {
         public static bool CaptureRenderTargetTransitionStacks = false;
 
         internal int RenderTargetChangeIndex = 0;
+        internal RenderManager RenderManager;
 
         private struct RenderTargetStackEntry {
             public static readonly RenderTargetStackEntry None = new RenderTargetStackEntry((RenderTarget2D)null);
@@ -247,7 +248,8 @@ namespace Squared.Render {
             // FIXME: Dispose device? Probably not
         }
 
-        public DeviceManager (GraphicsDevice device) {
+        public DeviceManager (RenderManager renderManager, GraphicsDevice device) {
+            RenderManager = renderManager;
             Device = device;
             DeviceId = ++NextDeviceId;
         }
@@ -468,6 +470,10 @@ namespace Squared.Render {
             RasterizerStateStack.Clear();
             DepthStencilStateStack.Clear();
         }
+
+        public void DisposeResource (IDisposable resource) {
+            RenderManager.DisposeResource(resource);
+        }
     }
 
     // Thread-safe
@@ -526,7 +532,7 @@ namespace Squared.Render {
                 throw new ArgumentNullException("mainThread");
 
             MainThread = mainThread;
-            DeviceManager = new DeviceManager(device);
+            DeviceManager = new DeviceManager(this, device);
             ThreadGroup = threadGroup;
             PrepareManager = new PrepareManager(ThreadGroup);
 
@@ -563,7 +569,7 @@ namespace Squared.Render {
 
             if (DeviceManager != null)
                 DeviceManager.Dispose();
-            DeviceManager = new DeviceManager(device);
+            DeviceManager = new DeviceManager(this, device);
             CreateNewBufferGenerators();
             if (DeviceChanged != null)
                 DeviceChanged(this, DeviceManager);

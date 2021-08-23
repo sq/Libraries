@@ -1598,12 +1598,14 @@ namespace Squared.Render.Convenience {
         ) {
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture
-            ))
+            )) {
+                var offset = rsb.AddPolygonVertices(vertices);
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Polygon,
                     SortKey = sortKey,
                     WorldSpace = worldSpace ?? WorldSpace,
-                    A = new Vector2(vertices.Count, closed ? 1 : 0),
+                    A = new Vector2(offset, vertices.Count),
+                    B = new Vector2(closed ? 1f : 0f, 0f),
                     Radius = new Vector2(radius),
                     OutlineSize = outlineRadius,
                     InnerColor = innerColor,
@@ -1621,6 +1623,7 @@ namespace Squared.Render.Convenience {
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
+            }
         }
 
         public void RasterizeQuadraticBezier (

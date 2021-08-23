@@ -3,9 +3,10 @@
 
 #include "RasterShapeConstants.fxh"
 
-Texture2D VertexDataTexture : register(t7);
+Texture2D VertexDataTexture : register(t2);
 
-sampler VertexDataSampler : register(s7) {
+uniform float PolygonVertexBufferInvWidth;
+sampler VertexDataSampler : register(s2) {
     Texture = (VertexDataTexture);
     AddressU = CLAMP;
     AddressV = CLAMP;
