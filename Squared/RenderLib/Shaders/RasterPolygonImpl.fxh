@@ -134,6 +134,9 @@ void evaluatePolygon (
         br = max(br, pos);
     }
 
+    tl -= radius.x;
+    br += radius.x;
+
     if (closed)
-        distance = s * sqrt(d);
+        distance = (s * sqrt(d)) - radius.x;
 }
