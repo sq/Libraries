@@ -1082,25 +1082,23 @@ namespace Squared.PRGUI {
             Button_Below(context, ref renderer, settings);
         }
 
+        private RasterPolygonVertex[] CheckboxTemp = new RasterPolygonVertex[3];
+
         private void Checkbox_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             AdjustRectForCheckbox(ref settings);
             var isHovering = settings.State.IsFlagged(ControlStates.Hovering);
             var isChecked = settings.State.IsFlagged(ControlStates.Checked);
             if (isHovering || isChecked) {
-                var f = Color.White * (isChecked ? 1 : 0.2f);
-                var o = Color.White * (isChecked ? 0.7f : 0f);
-                Vector2 a = new Vector2(settings.Box.Left + 8f, settings.Box.Center.Y + 1.75f),
-                    b = new Vector2(settings.Box.Center.X, settings.Box.Extent.Y - 6.5f),
-                    c = new Vector2(settings.Box.Extent.X - 7.75f, settings.Box.Top + 7f);
+                var f = Color.White * (isChecked ? 1 : 0.4f);
+                CheckboxTemp[0].Position = new Vector2(settings.Box.Left + 8f, settings.Box.Center.Y + 1.75f);
+                CheckboxTemp[1].Position = new Vector2(settings.Box.Center.X, settings.Box.Extent.Y - 6.5f);
+                CheckboxTemp[2].Position = new Vector2(settings.Box.Extent.X - 8.5f, settings.Box.Top + 7f);
                 var so = renderer.RasterSoftOutlines;
-                renderer.RasterSoftOutlines = true;
-                renderer.RasterizeLineSegment(
-                    a, b, startRadius: isChecked ? 1.7f : 1.4f, endRadius: null,
-                    outlineRadius: 0.8f, innerColor: f, outerColor: f, outlineColor: o
-                );
-                renderer.RasterizeLineSegment(
-                    b, c, startRadius: isChecked ? 1.65f : 1.4f, endRadius: isChecked ? 1.8f : 1.5f,
-                    outlineRadius: 0.8f, innerColor: f, outerColor: f, outlineColor: o
+                renderer.RasterSoftOutlines = false;
+                renderer.RasterizePolygon(
+                    new ArraySegment<RasterPolygonVertex>(CheckboxTemp),
+                    false, radius: 0f, outlineRadius: isChecked ? 2.2f : 1.9f,
+                    Color.Transparent, Color.Transparent, f
                 );
                 renderer.RasterSoftOutlines = so;
             }

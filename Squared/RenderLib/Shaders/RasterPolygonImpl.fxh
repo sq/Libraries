@@ -41,6 +41,12 @@ void computeTLBR_Polygon (
     br += outlineSize;
 }
 
+void evaluateLineSegment (
+    in float2 worldPosition, in float2 a, in float2 b, in float2 c,
+    in float2 radius, out float distance,
+    inout int gradientType, out float gradientWeight
+);
+
 void evaluatePolygon (
     in float2 radius, in float outlineSize, in float4 params,
     in float2 worldPosition, in float vertexOffset, in float vertexCount, 
@@ -49,15 +55,18 @@ void evaluatePolygon (
     inout int gradientType, out float gradientWeight, inout float gradientAngle
 ) {
     // FIXME
-    distance = 0;
+    distance = 9999;
     gradientWeight = 0;
-    gradientType = GRADIENT_TYPE_Radial;
     tl = 99999;
     br = -99999;
 
     bool closed = (_closed > 0.5);
     int offset = (int)vertexOffset;
     int count = (int)vertexCount;
+
+    // FIXME
+    if (closed && (gradientType == GRADIENT_TYPE_Natural))
+        gradientType = GRADIENT_TYPE_Radial;
 
     float4 first = get(offset), prev = first;
     if (((int)first.z) == NODE_BEZIER)
@@ -71,10 +80,7 @@ void evaluatePolygon (
     for (int i = 0, limit = closed ? count : count - 1; i < limit; i++) {
         float4 xyt = get(offset);
         int nodeType = (int)xyt.z;
-        float2 pos = (i >= (count - 1)) ? first : xyt.xy,
-            e = prev - pos,
-            w = worldPosition - pos,
-            b = w - (e * saturate(dot(w, e) / dot(e, e)));
+        float2 pos = (i >= (count - 1)) ? first : xyt.xy;
 
         offset++;
         if (nodeType == NODE_BEZIER) {
@@ -83,20 +89,37 @@ void evaluatePolygon (
             offset++;
         }
 
-        d = min(d, dot(b, b));
+        if (closed) {
+            float2 e = prev - pos,
+                w = worldPosition - pos,
+                b = w - (e * saturate(dot(w, e) / dot(e, e)));
 
-        bool3 c = bool3(
-            worldPosition.y >= pos.y, 
-            worldPosition.y < prev.y, 
-            (e.x * w.y) > (e.y * w.x)
-        );
-        if (all(c) || !any(c))
-            s *= -1.0;
+            d = min(d, dot(b, b));
+
+            bool3 c = bool3(
+                worldPosition.y >= pos.y, 
+                worldPosition.y < prev.y, 
+                (e.x * w.y) > (e.y * w.x)
+            );
+            if (all(c) || !any(c))
+                s *= -1.0;
+        } else {
+            // FIXME: Bezier
+            float temp, temp2;
+            evaluateLineSegment(
+                worldPosition, prev, pos, 0,
+                radius, temp, gradientType, temp2
+            );
+            distance = min(distance, temp);
+            if (distance <= 0)
+                gradientWeight = temp2;
+        }
 
         prev = xyt;
         tl = min(tl, pos);
         br = max(br, pos);
     }
 
-    distance = s * sqrt(d);
+    if (closed)
+        distance = s * sqrt(d);
 }
