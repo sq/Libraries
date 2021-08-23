@@ -1584,6 +1584,45 @@ namespace Squared.Render.Convenience {
                 });
         }
 
+        public void RasterizePolygon (
+            ArraySegment<RasterPolygonVertex> vertices, bool closed,
+            float radius, float outlineRadius,
+            pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
+            RasterFillSettings fill = default, float? annularRadius = null,
+            RasterShadowSettings? shadow = null,
+            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null,
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
+            int sortKey = 0
+        ) {
+            using (var rsb = GetRasterShapeBatch(
+                layer, worldSpace, blendState, texture, samplerState, rampTexture
+            ))
+                rsb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.Polygon,
+                    SortKey = sortKey,
+                    WorldSpace = worldSpace ?? WorldSpace,
+                    A = new Vector2(vertices.Count, closed ? 1 : 0),
+                    Radius = new Vector2(radius),
+                    OutlineSize = outlineRadius,
+                    InnerColor = innerColor,
+                    OuterColor = outerColor,
+                    OutlineColor = outlineColor,
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    FillGradientPowerMinusOne = (fill.GradientPower ?? Vector2.One) - Vector2.One,
+                    FillMode = fill.ModeF,
+                    FillOffset = fill.Offset,
+                    FillSize = fill.Size,
+                    AnnularRadius = annularRadius ?? 0,
+                    Shadow = shadow ?? RasterShadow,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                    SoftOutline = RasterSoftOutlines
+                });
+        }
+
         public void RasterizeQuadraticBezier (
             Vector2 a, Vector2 b, Vector2 c, float radius, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,

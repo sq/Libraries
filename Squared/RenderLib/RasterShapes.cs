@@ -67,7 +67,8 @@ namespace Squared.Render.RasterShape {
         Rectangle = 2,
         Triangle = 3,
         QuadraticBezier = 4,
-        Arc = 5
+        Arc = 5,
+        Polygon = 6
     }
 
     public enum RasterFillMode : int {
@@ -123,6 +124,26 @@ namespace Squared.Render.RasterShape {
         /// A fill that extends outwards from the center and travels around the outside edge (like a pie chart)
         /// </summary>
         Conical = Angular + 720,
+    }
+
+    /// <summary>
+    /// Controls the behavior of this point in the polygon
+    /// </summary>
+    public enum RasterVertexType : int {
+        /// <summary>
+        /// Creates a line between this vertex and the previous vertex
+        /// </summary>
+        Line = 0,
+        /// <summary>
+        /// Creates an arc between this vertex and the previous vertex,
+        ///  with its radius controlled by Position2.X
+        /// </summary>
+        Arc = 1,
+        /// <summary>
+        /// Creates a cubic bezier between the previous vertex, Position2.XY,
+        ///  and this vertex
+        /// </summary>
+        CubicBezier = 2,
     }
 
     public struct RasterFillSettings {
@@ -236,6 +257,34 @@ namespace Squared.Render.RasterShape {
                 return Equals((RasterTextureSettings)obj);
             else
                 return false;
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RasterPolygonVertex {
+        public Vector4 Positions;
+        public RasterVertexType Type;
+        public float X {
+            get => Positions.X;
+            set => Positions.X = value;
+        }
+        public float Y {
+            get => Positions.Y;
+            set => Positions.Y = value;
+        }
+        public Vector2 Position1 {
+            get => new Vector2(Positions.X, Positions.Y);
+            set {
+                Positions.X = value.X;
+                Positions.Y = value.Y;
+            }
+        }
+        public void SetPosition (ref Vector2 a) {
+            Positions.X = a.X;
+            Positions.Y = a.Y;
+        }
+        public void SetPositions (ref Vector2 a, ref Vector2 b) {
+            Positions = new Vector4(a.X, a.Y, b.X, b.Y);
         }
     }
 
