@@ -8,7 +8,7 @@ Texture2D VertexDataTexture : register(t2);
 uniform float PolygonVertexBufferInvWidth;
 sampler VertexDataSampler : register(s2) {
     Texture = (VertexDataTexture);
-    AddressU = CLAMP;
+    AddressU = WRAP;
     AddressV = CLAMP;
     MipFilter = POINT;
     MinFilter = POINT;

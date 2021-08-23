@@ -1,30 +1,33 @@
 #define NODE_LINE 0
 #define NODE_BEZIER 1
 
-float get (int base, int offset) {
-    float4 uv = float4((base + offset) * PolygonVertexBufferInvWidth, 0, 0, 0);
-    return tex2Dlod(VertexDataSampler, uv).r;
+float4 get (int offset) {
+    float4 uv = float4(offset * PolygonVertexBufferInvWidth, 0, 0, 0);
+    return tex2Dlod(VertexDataSampler, uv);
 }
 
 void computeTLBR_Polygon (
     in float2 radius, in float outlineSize, in float4 params,
-    in float vertexOffset, in float vertexCount, in float closed,
+    in float vertexOffset, in float vertexCount, in float _closed,
     out float2 tl, out float2 br
 ) {
     // FIXME
     tl = 99999;
     br = -99999;
 
+    bool closed = (_closed > 0.5);
     int offset = (int)vertexOffset;
     int count = (int)vertexCount;
 
     for (int i = 0; i < count; i++) {
-        int nodeType = (int)get(offset, 0);
-        float2 pos = float2(get(offset, 1), get(offset, 2));
-        offset += 3;
+        float3 xyt = get(offset).xyz;
+        int nodeType = (int)xyt.z;
+        float2 pos = xyt.xy;
+        offset++;
         if (nodeType == NODE_BEZIER) {
+            float4 controlPoints = get(offset);
             // FIXME: Implement this
-            offset += 4;
+            offset++;
         }
         tl = min(pos, tl);
         br = max(pos, br);
@@ -35,9 +38,8 @@ void computeTLBR_Polygon (
     if (br.y < tl.y)
         tl.y = br.y = -9999;
 
-    // FIXME
-    tl = -999;
-    br = 999;
+    tl -= outlineSize;
+    br += outlineSize;
 }
 
 void evaluatePolygon (
@@ -51,31 +53,50 @@ void evaluatePolygon (
     distance = 0;
     gradientWeight = 0;
 
+    bool closed = (_closed > 0.5);
     int offset = (int)vertexOffset;
     int count = (int)vertexCount;
-    bool closed = (_closed > 0.5);
 
-    int firstType = (int)get(offset, 0);
-    float2 first = float2(get(offset, 1), get(offset, 2)), prev = first;
-    if (firstType == NODE_BEZIER)
+    float4 first = get(offset), prev = first;
+    if (((int)first.z) == NODE_BEZIER)
         // FIXME: Record control points?
-        offset += 4 + 3;
+        offset += 2;
     else
-        offset += 3;
+        offset += 1;
 
-    float d = dot(worldPosition - first, worldPosition - first), s = 1.0;
+    float d = dot(worldPosition - first.xy, worldPosition - first.xy), s = 1.0;
 
-    for (int i = (closed ? 0 : 1), j = (closed ? count - 1 : 0); i < count; j = i, i++) {
-        int nodeType = (int)get(offset, 0);
-        float2 pos = float2(get(offset, 1), get(offset, 2)),
-            e = pos - prev,
+/*
+float sdPolygon( in vec2[N] v, in vec2 p )
+{
+    float d = dot(p-v[0],p-v[0]);
+    float s = 1.0;
+    for( int i=0, j=N-1; i<N; j=i, i++ )
+    {
+        vec2 e = v[j] - v[i];
+        vec2 w =    p - v[i];
+        vec2 b = w - e*clamp( dot(w,e)/dot(e,e), 0.0, 1.0 );
+        d = min( d, dot(b,b) );
+        bvec3 c = bvec3(p.y>=v[i].y,p.y<v[j].y,e.x*w.y>e.y*w.x);
+        if( all(c) || all(not(c)) ) s*=-1.0;  
+    }
+    return s*sqrt(d);
+}
+*/
+
+    for (int i = 0, limit = closed ? count : count - 1; i < limit; i++) {
+        float4 xyt = get(offset);
+        int nodeType = (int)xyt.z;
+        float2 pos = (i >= (count - 1)) ? first : xyt.xy,
+            e = prev - pos,
             w = worldPosition - pos,
             b = w - (e * saturate(dot(w, e) / dot(e, e)));
 
-        offset += 3;
+        offset++;
         if (nodeType == NODE_BEZIER) {
+            float4 controlPoints = get(offset);
             // FIXME: Implement this
-            offset += 4;
+            offset++;
         }
 
         d = min(d, dot(b, b));
@@ -86,9 +107,9 @@ void evaluatePolygon (
             (e.x * w.y) > (e.y * w.x)
         );
         if (all(c) || !any(c))
-            s *= 1.0;
+            s *= -1.0;
 
-        prev = pos;
+        prev = xyt;
     }
 
     distance = s * sqrt(d);

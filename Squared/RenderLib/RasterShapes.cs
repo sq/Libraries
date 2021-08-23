@@ -917,31 +917,30 @@ namespace Squared.Render.RasterShape {
             // HACK
             lock (PolygonVertexLock) {
                 // FIXME: Calculate tighter size
-                var size = PolygonVertexBuffer.Length * ((2 * 3) + 1);
+                var size = PolygonVertexBuffer.Length * 2;
 
                 if ((PolygonVertexTexture == null) || (PolygonVertexTexture.Width < size)) {
                     dm.DisposeResource(PolygonVertexTexture);
-                    PolygonVertexTexture = new Texture2D(dm.Device, size, 1, false, SurfaceFormat.Single);
+                    PolygonVertexTexture = new Texture2D(dm.Device, size, 1, false, SurfaceFormat.Vector4);
                     PolygonVertexFlushRequired = true;
                 }
 
                 if (!PolygonVertexFlushRequired)
                     return;
 
-                var temp = new float[size];
+                var temp = new Vector4[size];
                 int j = 0;
                 for (int i = 0; i < PolygonVertexCount; i++) {
                     var vert = PolygonVertexBuffer[i];
-                    temp[j] = (float)(int)vert.Type;
-                    temp[j + 1] = vert.Position.X;
-                    temp[j + 2] = vert.Position.Y;
-                    j += 3;
+                    temp[j] = new Vector4(vert.Position.X, vert.Position.Y, (float)(int)vert.Type, 0);
+                    j++;
+
                     if (vert.Type == RasterVertexType.Bezier) {
-                        temp[j + 0] = vert.ControlPoint1.X;
-                        temp[j + 1] = vert.ControlPoint1.Y;
-                        temp[j + 2] = vert.ControlPoint2.X;
-                        temp[j + 3] = vert.ControlPoint2.Y;
-                        j += 4;
+                        temp[j] = new Vector4(
+                            vert.ControlPoint1.X, vert.ControlPoint1.Y,
+                            vert.ControlPoint2.X, vert.ControlPoint2.Y
+                        );
+                        j++;
                     }
                 }
                 PolygonVertexTexture.SetData(temp, 0, size);
