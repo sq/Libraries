@@ -31,15 +31,19 @@ void computeTLBR_Polygon (
     }
 
     if (br.x < tl.x)
-        tl.x = br.x = 0;
+        tl.x = br.x = -9999;
     if (br.y < tl.y)
-        tl.y = br.y = 0;
+        tl.y = br.y = -9999;
+
+    // FIXME
+    tl = -999;
+    br = 999;
 }
 
 void evaluatePolygon (
     in float2 radius, in float outlineSize, in float4 params,
     in float2 worldPosition, in float vertexOffset, in float vertexCount, 
-    in float closed, in bool simple,
+    in float _closed, in bool simple,
     out float distance, inout float2 tl, inout float2 br,
     inout int gradientType, out float gradientWeight, inout float gradientAngle
 ) {
@@ -49,6 +53,7 @@ void evaluatePolygon (
 
     int offset = (int)vertexOffset;
     int count = (int)vertexCount;
+    bool closed = (_closed > 0.5);
 
     int firstType = (int)get(offset, 0);
     float2 first = float2(get(offset, 1), get(offset, 2)), prev = first;
@@ -62,16 +67,16 @@ void evaluatePolygon (
 
     for (int i = (closed ? 0 : 1), j = (closed ? count - 1 : 0); i < count; j = i, i++) {
         int nodeType = (int)get(offset, 0);
+        float2 pos = float2(get(offset, 1), get(offset, 2)),
+            e = pos - prev,
+            w = worldPosition - pos,
+            b = w - (e * saturate(dot(w, e) / dot(e, e)));
+
         offset += 3;
         if (nodeType == NODE_BEZIER) {
             // FIXME: Implement this
             offset += 4;
         }
-
-        float2 pos = float2(get(offset, 1), get(offset, 2)),
-            e = pos - prev,
-            w = worldPosition - pos,
-            b = w - (e * saturate(dot(w, e) / dot(e, e)));
 
         d = min(d, dot(b, b));
 

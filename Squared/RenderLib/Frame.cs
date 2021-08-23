@@ -115,9 +115,6 @@ namespace Squared.Render {
             if (Interlocked.Exchange(ref State, (int)States.Preparing) != (int)States.Initialized)
                 throw new InvalidOperationException("Frame was not in initialized state when prepare operation began ");
 
-            // HACK
-            RasterShape.RasterShapeBatch.ClearPolygonVertices();
-
             var numRemoved = BatchCombiner.CombineBatches(ref Batches, ref BatchesToRelease);
             // Batch combining shuffles the batches around to group by type. Once it's done,
             //  we need to do the final sort to preserve layer and material ordering.
@@ -165,6 +162,9 @@ namespace Squared.Render {
 
             if (Tracing.RenderTrace.EnableTracing)
                 Tracing.RenderTrace.ImmediateMarker(device, "Frame {0:0000} : End Draw", Index);
+
+            // HACK
+            RasterShape.RasterShapeBatch.ClearPolygonVertices();
 
             if (Interlocked.Exchange(ref State, (int)States.Drawn) != (int)States.Drawing)
                 throw new InvalidOperationException();

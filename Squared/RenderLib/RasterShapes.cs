@@ -773,11 +773,13 @@ namespace Squared.Render.RasterShape {
                         : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
 
                     // HACK
-                    if (sb.Type == RasterShapeType.Polygon)
+                    if (sb.Type == RasterShapeType.Polygon) {
+                        FlushPolygonVertices(manager);
                         lock (PolygonVertexLock)
                             rasterShader.Material.Effect.Parameters["PolygonVertexBufferInvWidth"]?.SetValue(
-                                1.0f / PolygonVertexBuffer.Length
+                                1.0f / PolygonVertexTexture.Width
                             );
+                    }
 
                     rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
                     rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget || sb.OutputInLinearSpace);
@@ -905,7 +907,7 @@ namespace Squared.Render.RasterShape {
 
         internal static void ClearPolygonVertices () {
             lock (PolygonVertexLock) {
-                PolygonVertexFlushRequired = false;
+                PolygonVertexFlushRequired = true;
                 PolygonVertexCount = 0;
                 PolygonVertexWriteOffset = 0;
             }
