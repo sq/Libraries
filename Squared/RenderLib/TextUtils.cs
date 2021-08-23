@@ -41,7 +41,7 @@ namespace Squared.Render.Text {
         private bool _CharacterWrap;
         private float _WrapIndentation;
         private float _ExtraLineBreakSpacing;
-        private GlyphPixelAlignment _AlignToPixels;
+        private GlyphPixelAlignment _AlignToPixels = GlyphPixelAlignment.Default;
         private char _WrapCharacter;
         private int _Alignment;
         private bool _ReverseOrder;
@@ -693,7 +693,7 @@ namespace Squared.Render.Text {
                 extraLineBreakSpacing = _ExtraLineBreakSpacing,
                 lineBreakAtX = _LineBreakAtX,
                 stopAtY = _StopAtY,
-                alignToPixels = _AlignToPixels,
+                alignToPixels = _AlignToPixels.Or(_GlyphSource.DefaultAlignment),
                 characterWrap = _CharacterWrap,
                 wordWrap = _WordWrap,
                 wrapCharacter = _WrapCharacter,
@@ -878,6 +878,7 @@ namespace Squared.Render.Text {
         public bool IsDisposed { get; private set; }
         public bool MaxLineSpacing = true;
         public bool OwnsSources = true;
+        public GlyphPixelAlignment? DefaultAlignment { get; set; }
         private readonly IGlyphSource[] Sources = null;
 
         public FallbackGlyphSource (bool ownsSources, params IGlyphSource[] sources) {
@@ -957,7 +958,7 @@ namespace Squared.Render.Text {
         bool GetGlyph (uint ch, out Glyph result);
         float LineSpacing { get; }
         float DPIScaleFactor { get; }
-
+        GlyphPixelAlignment? DefaultAlignment { get; }
         bool IsDisposed { get; }
         int Version { get; }
     }
@@ -1034,6 +1035,7 @@ namespace Squared.Render.Text {
     public struct SpriteFontGlyphSource : IGlyphSource {
         public readonly SpriteFont Font;
         public readonly Texture2D Texture;
+        public GlyphPixelAlignment? DefaultAlignment => GlyphPixelAlignment.None;
 
         public readonly TextUtils.FontFields Fields;
         public readonly int DefaultCharacterIndex;

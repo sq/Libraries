@@ -543,51 +543,36 @@ namespace Squared.Render.Text {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void Snap (ref float x) {
-            switch (alignToPixels.Horizontal) {
+        public static void Snap (ref float value, PixelAlignmentMode mode) {
+            switch (mode) {
                 case PixelAlignmentMode.Floor:
-                    x = (float)Math.Floor(x);
+                    value = (float)Math.Floor(value);
                     break;
                 case PixelAlignmentMode.FloorHalf:
-                    x = (float)Math.Floor(x * 2) / 2;
+                    value = (float)Math.Floor(value * 2) / 2;
                     break;
                 case PixelAlignmentMode.FloorQuarter:
-                    x = (float)Math.Floor(x * 4) / 4;
+                    value = (float)Math.Floor(value * 4) / 4;
+                    break;
+                case PixelAlignmentMode.Round:
+                    value = (float)Math.Round(value, 0, MidpointRounding.AwayFromZero);
+                    break;
+                case PixelAlignmentMode.RoundHalf:
+                    value = (float)Math.Round(value * 2, 0, MidpointRounding.AwayFromZero) / 2;
                     break;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void Snap (Vector2 pos, out Vector2 result) {
-            switch (alignToPixels.Horizontal) {
-                case PixelAlignmentMode.Floor:
-                    result.X = (float)Math.Floor(pos.X);
-                    break;
-                case PixelAlignmentMode.FloorHalf:
-                    result.X = (float)Math.Floor(pos.X * 2) / 2;
-                    break;
-                case PixelAlignmentMode.FloorQuarter:
-                    result.X = (float)Math.Floor(pos.X * 4) / 4;
-                    break;
-                default:
-                    result.X = pos.X;
-                    break;
-            }
+        private void Snap (ref float x) {
+            Snap(ref x, alignToPixels.Horizontal);
+        }
 
-            switch (alignToPixels.Vertical) {
-                case PixelAlignmentMode.Floor:
-                    result.Y = (float)Math.Floor(pos.Y);
-                    break;
-                case PixelAlignmentMode.FloorHalf:
-                    result.Y = (float)Math.Floor(pos.Y * 2) / 2;
-                    break;
-                case PixelAlignmentMode.FloorQuarter:
-                    result.Y = (float)Math.Floor(pos.Y * 4) / 4;
-                    break;
-                default:
-                    result.Y = pos.Y;
-                    break;
-            }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Snap (Vector2 pos, out Vector2 result) {
+            result = pos;
+            Snap(ref result.X, alignToPixels.Horizontal);
+            Snap(ref result.Y, alignToPixels.Vertical);
         }
 
         private void AlignLine (
@@ -1504,10 +1489,30 @@ namespace Squared.Render {
     namespace Text {
         public enum PixelAlignmentMode {
             None = 0,
+            /// <summary>
+            /// Snaps positions to 0 or 1
+            /// </summary>
             Floor = 1,
-            // Like Floor but allows half-pixel values (x.5 in addition to x.0)
+            /// <summary>
+            /// Allows [0, 0.5, 1] instead of [0, 1]
+            /// </summary>
             FloorHalf = 2,
-            FloorQuarter = 4
+            /// <summary>
+            /// Allows [0, 0.25, 0.5, 0.75, 1]
+            /// </summary>
+            FloorQuarter = 4,
+            /// <summary>
+            /// Rounds to 0 or 1
+            /// </summary>
+            Round = 5,
+            /// <summary>
+            /// Rounds to 0, 0.5, or 1
+            /// </summary>
+            RoundHalf = 6,
+            /// <summary>
+            /// Uses the default value set on the glyph source, if possible, otherwise None
+            /// </summary>
+            Default = 10,
         }
 
         public struct GlyphPixelAlignment : IEquatable<GlyphPixelAlignment> {
@@ -1530,7 +1535,9 @@ namespace Squared.Render {
                 return new GlyphPixelAlignment(alignToPixels);
             }
 
-            public static readonly GlyphPixelAlignment Default = new GlyphPixelAlignment(PixelAlignmentMode.None);
+            public static readonly GlyphPixelAlignment None = new GlyphPixelAlignment(PixelAlignmentMode.None);
+            public static readonly GlyphPixelAlignment Default = new GlyphPixelAlignment(PixelAlignmentMode.Default);
+            public static readonly GlyphPixelAlignment RoundXY = new GlyphPixelAlignment(PixelAlignmentMode.Round);
             public static readonly GlyphPixelAlignment FloorXY = new GlyphPixelAlignment(PixelAlignmentMode.Floor);
             public static readonly GlyphPixelAlignment FloorY = new GlyphPixelAlignment(PixelAlignmentMode.None, PixelAlignmentMode.Floor);
 
@@ -1550,6 +1557,17 @@ namespace Squared.Render {
                     return Horizontal.ToString();
                 else
                     return string.Format("{0}, {1}", Horizontal, Vertical);
+            }
+
+            internal GlyphPixelAlignment Or (GlyphPixelAlignment? defaultAlignment) {
+                return new GlyphPixelAlignment {
+                    Horizontal = (Horizontal == PixelAlignmentMode.Default) 
+                        ? (defaultAlignment?.Horizontal ?? PixelAlignmentMode.None)
+                        : Horizontal,
+                    Vertical = (Vertical == PixelAlignmentMode.Default) 
+                        ? (defaultAlignment?.Vertical ?? PixelAlignmentMode.None)
+                        : Vertical,
+                };
             }
         }
     }

@@ -154,7 +154,7 @@ namespace FontTest {
             DutchAndHarley = Content.Load<SpriteFont>("DutchAndHarley");
 
             Text = new DynamicStringLayout(ActiveFont, TestText) {
-                AlignToPixels = GlyphPixelAlignment.FloorXY,
+                AlignToPixels = GlyphPixelAlignment.RoundXY,
                 CharacterWrap = true,
                 WordWrap = true,
                 Scale = TextScale,
@@ -178,7 +178,7 @@ namespace FontTest {
                 }
             };
             Text2 = new DynamicStringLayout(ActiveFont, TestText2) {
-                AlignToPixels = GlyphPixelAlignment.FloorXY,
+                AlignToPixels = GlyphPixelAlignment.RoundXY,
                 CharacterWrap = true,
                 WordWrap = true,
                 Scale = TextScale,
