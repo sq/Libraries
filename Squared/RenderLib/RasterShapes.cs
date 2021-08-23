@@ -920,14 +920,9 @@ namespace Squared.Render.RasterShape {
                 const int maxWidth = 1024;
                 // FIXME: Calculate tighter size
                 var size = PolygonVertexBuffer.Length * 2;
-                int w, h;
-                if (size > maxWidth) {
-                    w = maxWidth;
+                int w = maxWidth, h = 1;
+                if (size > maxWidth)
                     h = ((size + (maxWidth - 1)) / maxWidth) * maxWidth;
-                } else {
-                    w = size;
-                    h = 1;
-                }
 
                 if ((PolygonVertexTexture == null) || (PolygonVertexTexture.Width < w) || (PolygonVertexTexture.Height < h)) {
                     dm.DisposeResource(PolygonVertexTexture);
@@ -962,8 +957,8 @@ namespace Squared.Render.RasterShape {
         internal int AddPolygonVertices (ArraySegment<RasterPolygonVertex> vertices) {
             lock (PolygonVertexLock) {
                 PolygonVertexFlushRequired = true;
-                var result = PolygonVertexWriteOffset;
-                var newCount = PolygonVertexCount + vertices.Count;
+                int result = PolygonVertexWriteOffset, allocSize = vertices.Count,
+                    newCount = PolygonVertexCount + allocSize;
                 if ((PolygonVertexBuffer == null) || (newCount > PolygonVertexBuffer.Length)) {
                     var newSize = ((newCount + 15) / 16) * 16;
                     if (PolygonVertexBuffer == null)
@@ -971,7 +966,7 @@ namespace Squared.Render.RasterShape {
                     else
                         Array.Resize(ref PolygonVertexBuffer, newSize);
                 }
-                PolygonVertexWriteOffset += vertices.Count;
+                PolygonVertexWriteOffset += allocSize;
                 PolygonVertexCount = newCount;
                 Array.Copy(vertices.Array, vertices.Offset, PolygonVertexBuffer, result, vertices.Count);
                 return result;

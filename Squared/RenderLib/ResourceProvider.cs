@@ -492,7 +492,7 @@ namespace Squared.Render.Resources {
     public class EffectProvider : ResourceProvider<Effect> {
         public EffectProvider (Assembly assembly, RenderCoordinator coordinator) 
             : this (
-                new EmbeddedResourceStreamProvider(assembly, suffix: ".fx"), coordinator 
+                new EmbeddedResourceStreamProvider(assembly, suffix: ".fx.bin"), coordinator 
             ) {
         }
 

@@ -61,7 +61,7 @@
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <AdditionalIncludeDirectories>..\..\ext\basis;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <CallingConvention>StdCall</CallingConvention>
+      <CallingConvention>Cdecl</CallingConvention>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
