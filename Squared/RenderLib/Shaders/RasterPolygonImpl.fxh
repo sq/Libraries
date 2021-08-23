@@ -37,8 +37,8 @@ void computeTLBR_Polygon (
     if (br.y < tl.y)
         tl.y = br.y = -9999;
 
-    tl -= outlineSize;
-    br += outlineSize;
+    tl -= radius.x + outlineSize;
+    br += radius.x + outlineSize;
 }
 
 void evaluateLineSegment (

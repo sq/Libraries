@@ -1606,7 +1606,7 @@ namespace Squared.Render.Convenience {
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = new Vector2(offset, vertices.Count),
                     B = new Vector2(closed ? 1f : 0f, 0f),
-                    Radius = new Vector2(radius),
+                    Radius = new Vector2(radius, 0),
                     OutlineSize = outlineRadius,
                     InnerColor = innerColor,
                     OuterColor = outerColor,
