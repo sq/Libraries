@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.Render.Convenience;
 using Squared.Render.Text;
 using Squared.Util.Text;
 
@@ -51,6 +52,10 @@ namespace Squared.PRGUI.Controls {
             return base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
+        }
+
         RichTextConfiguration _RichTextConfiguration;
 
         protected override RichTextConfiguration GetRichTextConfiguration() =>
@@ -83,6 +88,7 @@ namespace Squared.PRGUI.Controls {
         private void ConfigureDefaultLayout (DynamicStringLayout content) {
             _NeedsLayoutReset = false;
             content.Reset();
+            content.AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment;
             content.WordWrap = true;
             content.CharacterWrap = false;
             content.Alignment = HorizontalAlignment.Left;

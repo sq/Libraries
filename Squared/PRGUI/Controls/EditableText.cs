@@ -115,9 +115,12 @@ namespace Squared.PRGUI.Controls {
         protected Vector2? MaxScrollOffset;
 
         protected DynamicStringLayout DescriptionLayout = new DynamicStringLayout {
-            HideOverflow = true
+            HideOverflow = true,
+            AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment
         };
-        protected DynamicStringLayout DynamicLayout = new DynamicStringLayout();
+        protected DynamicStringLayout DynamicLayout = new DynamicStringLayout {
+            AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment
+        };
         protected StringBuilder Builder = new StringBuilder();
         protected Margins CachedPadding;
 
