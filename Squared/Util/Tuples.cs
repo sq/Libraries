@@ -117,6 +117,10 @@ namespace Squared.Util {
             }
         }
 
+        public void GetUnion (Interval other, out Interval result) {
+            result = new Interval(Math.Min(Min, other.Min), Math.Max(Max, other.Max));
+        }
+
         public bool GetIntersection (Interval other, out Interval result) {
             int a = Min.CompareTo(other.Min);
             int b = Max.CompareTo(other.Max);

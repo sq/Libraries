@@ -46,11 +46,11 @@ namespace Squared.Util {
         where T : class {
 
         public bool Equals (T x, T y) {
-            return (x == y);
+            return object.ReferenceEquals(x, y);
         }
 
         public int GetHashCode (T obj) {
-            return obj.GetHashCode();
+            return RuntimeHelpers.GetHashCode(obj);
         }
     }
 
