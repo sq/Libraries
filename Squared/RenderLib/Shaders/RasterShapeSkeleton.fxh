@@ -515,8 +515,9 @@ void evaluateLineSegment (
         gradientWeight = 1 - saturate(-distance / localRadius);
 }
 
+// Assumes y is 0
 bool quadraticBezierTFromY (
-    in float y0, in float y1, in float y2, in float y,
+    in float y0, in float y1, in float y2, 
     out float t1, out float t2
 ) {
     float divisor = (y0 - (2 * y1) + y2);
@@ -524,13 +525,12 @@ bool quadraticBezierTFromY (
         t1 = t2 = 0;
         return false;
     }
-    float rhs = sqrt((y * y0) - (2 * y * y1) + (y * y2) - (y0 * y2) + (y1 * y1));
+    float rhs = sqrt(-(y0 * y2) + (y1 * y1));
     t1 = ((y0 - y1) + rhs) / divisor;
     t2 = ((y0 - y1) - rhs) / divisor;
     return true;
 }
 
-// Assumes worldPosition is 0 relative to the control points
 float2 evaluateBezierAtT (
     in float2 a, in float2 b, in float2 c, in float t
 ) {
@@ -539,33 +539,40 @@ float2 evaluateBezierAtT (
     return lerp(ab, bc, t);
 }
 
+void pickClosestT (
+    inout float cd, inout float ct, in float d, in float t
+) {
+    if (d < cd) {
+        ct = t;
+        cd = d;
+    }
+}
+
+// Assumes worldPosition is 0 relative to the control points
 float distanceSquaredToBezierAtT (
-    in float2 a, in float2 b, in float2 c, float2 worldPosition, in float t
+    in float2 a, in float2 b, in float2 c, in float t
 ) {
     float2 pt = evaluateBezierAtT(a, b, c, t);
-    float2 dist = worldPosition - pt;
-    return dot(dist, dist);
+    return abs(dot(pt, pt));
 }
 
 void pickClosestTForAxis (
-    in float2 a, in float2 b, in float2 c, in float2 worldPosition, in float2 mask,
+    in float2 a, in float2 b, in float2 c, in float2 mask,
     inout float cd, inout float ct
 ) {
     // For a given x or y value on the bezier there are two candidate T values that are closest,
     //  so we compute both and then pick the closest of the two. If the divisor is too close to zero
     //  we will have failed to compute any valid T values, so we bail out
     float t1, t2;
-    float2 _a = a * mask, _b = b * mask, _c = c * mask, _wp = worldPosition * mask;
-    if (!quadraticBezierTFromY(_a.x+_a.y, _b.x+_b.y, _c.x+_c.y, _wp.x+_wp.y, t1, t2))
+    float2 _a = a * mask, _b = b * mask, _c = c * mask;
+    if (!quadraticBezierTFromY(_a.x+_a.y, _b.x+_b.y, _c.x+_c.y, t1, t2))
         return;
-    float d1 = distanceSquaredToBezierAtT(a, b, c, worldPosition, t1);
-    if (d1 < cd) {
-        ct = t1; cd = d1;
-    }
-    float d2 = distanceSquaredToBezierAtT(a, b, c, worldPosition, t2);
-    if (d2 < cd) {
-        ct = t2; cd = d2;
-    }
+    float d1 = distanceSquaredToBezierAtT(a, b, c, t1);
+    if ((t1 > 0) && (t1 < 1))
+        pickClosestT(cd, ct, d1, t1);
+    float d2 = distanceSquaredToBezierAtT(a, b, c, t2);
+    if ((t2 > 0) && (t2 < 1))
+        pickClosestT(cd, ct, d2, t2);
 }
 
 void evaluateBezier (
@@ -574,26 +581,27 @@ void evaluateBezier (
     inout int gradientType, out float gradientWeight
 ) {
     distance = sdBezier(worldPosition, a, b, c) - radius.x;
-
+    
     REQUIRE_BRANCH
     if (gradientType == GRADIENT_TYPE_Along) {
-
-        // If the control point b lies along the line a-c, all the math below is busted
-        //  so we want to detect that case and bail out.
-        float temp;
-        float2 closestPointToAC = closestPointOnLineSegment2(a, c, b, temp);
-        float2 distanceFromLine = (b - closestPointToAC);
-        // While this catches the common cases there are still scenarios where all this math is busted :(
-        if (dot(distanceFromLine, distanceFromLine) >= 0.5) {
-            // Analytically locate the closest point on the bezier for this position.
-            float ct = 0.5, cd = distanceSquaredToBezierAtT(a, b, c, worldPosition, ct);
-            pickClosestTForAxis(a, b, c, worldPosition, float2(1, 0), cd, ct);
-            pickClosestTForAxis(a, b, c, worldPosition, float2(0, 1), cd, ct);
-            gradientWeight = saturate(ct);
-        } else {
-            closestPointOnLineSegment2(a, c, worldPosition, temp);
-            gradientWeight = saturate(temp);
+        // Translating the control points so worldPosition is 0 simplifies all the math
+        a -= worldPosition;
+        b -= worldPosition;
+        c -= worldPosition;
+        // First generate a reasonable approximation using a reliable brute force approach
+        float ct = 0, cd = distanceSquaredToBezierAtT(a, b, c, ct), step = 0.05;
+        // HACK: Also test one step past the end of the time window, because if
+        //  the bezier has a radius > 0 we can end up shading pixels with t > 1
+        for (float tt = ct + step; tt <= (1 + step); tt += step) {
+            float td = distanceSquaredToBezierAtT(a, b, c, tt);
+            pickClosestT(cd, ct, td, tt);
         }
+        // Attempt to use precise bezier math to come up with a more accurate location
+        // This math produces very glitchy results if the control point b is near to the
+        //  line connecting a and c, because the bezier overlaps itself in that scenario
+        pickClosestTForAxis(a, b, c, float2(1, 0), cd, ct);
+        pickClosestTForAxis(a, b, c, float2(0, 1), cd, ct);
+        gradientWeight = saturate(ct);
         gradientType == GRADIENT_TYPE_Other;
     } else
         gradientWeight = 1 - saturate(-distance / radius.x);
