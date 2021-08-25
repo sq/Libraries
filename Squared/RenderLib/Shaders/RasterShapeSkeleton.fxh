@@ -515,9 +515,57 @@ void evaluateLineSegment (
         gradientWeight = 1 - saturate(-distance / localRadius);
 }
 
-float bezierDistanceAtT (
-    in float2 a, in float2 b, in float2 c
+bool quadraticBezierTFromY (
+    in float y0, in float y1, in float y2, in float y,
+    out float t1, out float t2
 ) {
+    float divisor = (y0 - (2 * y1) + y2);
+    if (abs(divisor) <= 0.001) {
+        t1 = t2 = 0;
+        return false;
+    }
+    float rhs = sqrt((y * y0) - (2 * y * y1) + (y * y2) - (y0 * y2) + (y1 * y1));
+    t1 = ((y0 - y1) + rhs) / divisor;
+    t2 = ((y0 - y1) - rhs) / divisor;
+    return true;
+}
+
+// Assumes worldPosition is 0 relative to the control points
+float2 evaluateBezierAtT (
+    in float2 a, in float2 b, in float2 c, in float t
+) {
+    float2 ab = lerp(a, b, t),
+        bc = lerp(b, c, t);
+    return lerp(ab, bc, t);
+}
+
+float distanceSquaredToBezierAtT (
+    in float2 a, in float2 b, in float2 c, float2 worldPosition, in float t
+) {
+    float2 pt = evaluateBezierAtT(a, b, c, t);
+    float2 dist = worldPosition - pt;
+    return dot(dist, dist);
+}
+
+void pickClosestTForAxis (
+    in float2 a, in float2 b, in float2 c, in float2 worldPosition, in float2 mask,
+    inout float cd, inout float ct
+) {
+    // For a given x or y value on the bezier there are two candidate T values that are closest,
+    //  so we compute both and then pick the closest of the two. If the divisor is too close to zero
+    //  we will have failed to compute any valid T values, so we bail out
+    float t1, t2;
+    float2 _a = a * mask, _b = b * mask, _c = c * mask, _wp = worldPosition * mask;
+    if (!quadraticBezierTFromY(_a.x+_a.y, _b.x+_b.y, _c.x+_c.y, _wp.x+_wp.y, t1, t2))
+        return;
+    float d1 = distanceSquaredToBezierAtT(a, b, c, worldPosition, t1);
+    if (d1 < cd) {
+        ct = t1; cd = d1;
+    }
+    float d2 = distanceSquaredToBezierAtT(a, b, c, worldPosition, t2);
+    if (d2 < cd) {
+        ct = t2; cd = d2;
+    }
 }
 
 void evaluateBezier (
@@ -529,30 +577,22 @@ void evaluateBezier (
 
     REQUIRE_BRANCH
     if (gradientType == GRADIENT_TYPE_Along) {
-        if (false) {
-            // Pick a reasonably close point on the bezier by distance,
-            //  since analytically finding the exact point is a nightmare
-            // We don't want to run too many steps since the cost would get
-            //  completely out of hand. This means the gradient will not be smooth :(
-            float minDt = 9999, step = 0.05;
-            REQUIRE_LOOP
-            for (float t = 0; t < 1; t += step) {
-                float2 ab = lerp(a, b, t),
-                    bc = lerp(b, c, t),
-                    pt = lerp(ab, bc, t),
-                    delta = pt - worldPosition;
-                float dt = dot(delta, delta);
-                if (dt < minDt) {
-                    minDt = dt;
-                    gradientWeight = saturate(t);
-                }
-            }
+
+        // If the control point b lies along the line a-c, all the math below is busted
+        //  so we want to detect that case and bail out.
+        float temp;
+        float2 closestPointToAC = closestPointOnLineSegment2(a, c, b, temp);
+        float2 distanceFromLine = (b - closestPointToAC);
+        // While this catches the common cases there are still scenarios where all this math is busted :(
+        if (dot(distanceFromLine, distanceFromLine) >= 0.5) {
+            // Analytically locate the closest point on the bezier for this position.
+            float ct = 0.5, cd = distanceSquaredToBezierAtT(a, b, c, worldPosition, ct);
+            pickClosestTForAxis(a, b, c, worldPosition, float2(1, 0), cd, ct);
+            pickClosestTForAxis(a, b, c, worldPosition, float2(0, 1), cd, ct);
+            gradientWeight = saturate(ct);
         } else {
-            // Analytical 'closest point on 3-point bezier' solution
-            float x = worldPosition.x, y = worldPosition.y,
-                c10 = (x - b.x)* (y - a.y) - (x - a.x) * (y - b.y),
-                c20 = (x - c.x)* (y - a.y) - (x - a.x) * (y - c.y);
-            gradientWeight = saturate(c10 / (c10 - 0.5 * c20));
+            closestPointOnLineSegment2(a, c, worldPosition, temp);
+            gradientWeight = saturate(temp);
         }
         gradientType == GRADIENT_TYPE_Other;
     } else
