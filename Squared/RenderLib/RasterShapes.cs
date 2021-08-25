@@ -135,8 +135,9 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         Line = 0,
         /// <summary>
-        /// Creates a cubic bezier between the previous vertex and this vertex, using
-        ///  ControlPoint1 + ControlPoint2 as control points
+        /// Creates a quadratic bezier between the previous vertex and this vertex, using
+        ///  ControlPoint as the control point.
+        /// FIXME: This currently only works for open polygons, not closed ones
         /// </summary>
         Bezier = 1,
     }
@@ -258,16 +259,30 @@ namespace Squared.Render.RasterShape {
     [StructLayout(LayoutKind.Sequential)]
     public struct RasterPolygonVertex {
         public Vector2 Position;
-        public Vector2 ControlPoint1, ControlPoint2;
+        public Vector2 ControlPoint;
         public RasterVertexType Type;
 
+        public RasterPolygonVertex (Vector2 position) {
+            Type = RasterVertexType.Line;
+            Position = position;
+            ControlPoint = default;
+        }
+
+        public RasterPolygonVertex (Vector2 position, Vector2 controlPoint) {
+            Type = RasterVertexType.Bezier;
+            Position = position;
+            ControlPoint = controlPoint;
+        }
+
         public static implicit operator RasterPolygonVertex (Vector2 position) =>
-            new RasterPolygonVertex {
-                Position = position,
-                ControlPoint1 = default,
-                ControlPoint2 = default,
-                Type = RasterVertexType.Line
-            };
+            new RasterPolygonVertex(position);
+
+        public override string ToString () {
+            if (Type == RasterVertexType.Line)
+                return $"({Position.X}, {Position.Y})";
+            else
+                return $"bezier (prev) ({ControlPoint}) ({Position.X}, {Position.Y})";
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -942,8 +957,8 @@ namespace Squared.Render.RasterShape {
 
                     if (vert.Type == RasterVertexType.Bezier) {
                         temp[j] = new Vector4(
-                            vert.ControlPoint1.X, vert.ControlPoint1.Y,
-                            vert.ControlPoint2.X, vert.ControlPoint2.Y
+                            vert.ControlPoint.X, vert.ControlPoint.Y,
+                            0, 0
                         );
                         j++;
                     }

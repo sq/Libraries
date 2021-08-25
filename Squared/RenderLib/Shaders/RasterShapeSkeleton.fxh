@@ -93,6 +93,23 @@ void adjustTLBR (
     }
 }
 
+void computeTLBR_Bezier (
+    float2 a, float2 b, float2 c,
+    out float2 tl, out float2 br
+) {
+    tl = min(a, c);
+    br = max(a, c);
+
+    if (b.x<tl.x || b.x>br.x || b.y<tl.y || b.y>br.y)
+    {
+        float2 t = clamp((a - b) / (a - 2.0*b + c), 0.0, 1.0);
+        float2 s = 1.0 - t;
+        float2 q = s*s*a + 2.0*s*t*b + t*t*c;
+        tl = min(tl, q);
+        br = max(br, q);
+    }
+}
+
 void computeTLBR (
     int type, float2 radius, float outlineSize, float4 params,
     float2 a, float2 b, float2 c,
@@ -137,20 +154,11 @@ void computeTLBR (
 #ifdef INCLUDE_BEZIER
     else if (type == TYPE_QuadraticBezier) {
         outlineSize += 1;
-        float2 mi = min(a, c);
-        float2 ma = max(a, c);
 
-        if (b.x<mi.x || b.x>ma.x || b.y<mi.y || b.y>ma.y)
-        {
-            float2 t = clamp((a - b) / (a - 2.0*b + c), 0.0, 1.0);
-            float2 s = 1.0 - t;
-            float2 q = s*s*a + 2.0*s*t*b + t*t*c;
-            mi = min(mi, q);
-            ma = max(ma, q);
-        }
-            
-        tl = mi - outlineSize - radius.x;
-        br = ma + outlineSize + radius.x;
+        computeTLBR_Bezier(a, b, c, tl, br);
+
+        tl -= outlineSize + radius.x;
+        br += outlineSize + radius.x;
     }
 #endif
 
