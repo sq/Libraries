@@ -456,13 +456,6 @@ namespace Squared.Render.Internal {
 
             return true;
         }
-        
-        // HACK: In multi-threaded scenarios, if a vertex's size is odd enough,
-        //  writes from different threads can potentially clash with each other and corrupt the buffer,
-        //  due to the writes touching 4-16 bytes instead of 1 or 2
-        // The writes can also cause cache line conflicts so in general they're just a bad time.
-        // This padding wastes memory, but honestly, who cares
-        public static int AllocationSafetyPadding = 4;
 
         /// <summary>
         /// Allocates a software vertex/index buffer pair that you can write vertices and indices into. 
@@ -473,15 +466,18 @@ namespace Squared.Render.Internal {
         /// <param name="forceExclusiveBuffer">Forces a unique hardware vertex/index buffer pair to be created for this allocation. This allows you to ignore the hardware vertex/index offsets.</param>
         /// <returns>A software buffer.</returns>
         public SoftwareBuffer Allocate (int vertexCount, int indexCount, bool forceExclusiveBuffer = false) {
-            var padding = (_VertexCount > 0) || (_IndexCount > 0)
-                ? AllocationSafetyPadding
-                : 0;
+            // HACK: There's something wrong with buffer sharing that can result in flickering
+            //  under certain scenarios. This seems to prevent it
+            // FIXME: Figure out why this matters. It seemed like a driver bug but once captured in a RenderDoc .rdc it's
+            //  reproducible under WARP, and it doesn't happen with threaded prepare disabled.
+            // forceExclusiveBuffer = true will also prevent it but is bad
+            var glitchPreventionPadding = forceExclusiveBuffer ? 0 : 1;
 
             var requestedVertexCount = vertexCount;
             var requestedIndexCount = indexCount;
 
-            vertexCount += padding;
-            indexCount += padding;
+            vertexCount += glitchPreventionPadding;
+            indexCount += glitchPreventionPadding;
 
             if (vertexCount > MaxVerticesPerHardwareBuffer)
                 throw new ArgumentOutOfRangeException("vertexCount", vertexCount, "Maximum vertex count on this platform is " + MaxVerticesPerHardwareBuffer);
@@ -503,8 +499,8 @@ namespace Squared.Render.Internal {
                     ref _VertexArray, ref _VertexCount, vertexCount, out oldVertexCount
                 );
                 if (EnsureBufferCapacity(
-                        ref _IndexArray, ref _IndexCount, indexCount, out oldIndexCount
-                    ))
+                    ref _IndexArray, ref _IndexCount, indexCount, out oldIndexCount
+                ))
                     didArraysChange = true;
 
                 if (didArraysChange) {
@@ -518,7 +514,7 @@ namespace Squared.Render.Internal {
 
                 hardwareBufferEntry = PrepareToFillBuffer(
                     hardwareBufferEntry,
-                    oldVertexCount, oldIndexCount,
+                    oldVertexCount + glitchPreventionPadding, oldIndexCount + glitchPreventionPadding,
                     vertexCount, indexCount,
                     forceExclusiveBuffer
                 );
