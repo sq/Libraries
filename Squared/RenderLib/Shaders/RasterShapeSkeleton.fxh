@@ -515,6 +515,50 @@ void evaluateLineSegment (
         gradientWeight = 1 - saturate(-distance / localRadius);
 }
 
+float bezierDistanceAtT (
+    in float2 a, in float2 b, in float2 c
+) {
+}
+
+void evaluateBezier (
+    in float2 worldPosition, in float2 a, in float2 b, in float2 c,
+    in float2 radius, out float distance,
+    inout int gradientType, out float gradientWeight
+) {
+    distance = sdBezier(worldPosition, a, b, c) - radius.x;
+
+    REQUIRE_BRANCH
+    if (gradientType == GRADIENT_TYPE_Along) {
+        if (false) {
+            // Pick a reasonably close point on the bezier by distance,
+            //  since analytically finding the exact point is a nightmare
+            // We don't want to run too many steps since the cost would get
+            //  completely out of hand. This means the gradient will not be smooth :(
+            float minDt = 9999, step = 0.05;
+            REQUIRE_LOOP
+            for (float t = 0; t < 1; t += step) {
+                float2 ab = lerp(a, b, t),
+                    bc = lerp(b, c, t),
+                    pt = lerp(ab, bc, t),
+                    delta = pt - worldPosition;
+                float dt = dot(delta, delta);
+                if (dt < minDt) {
+                    minDt = dt;
+                    gradientWeight = saturate(t);
+                }
+            }
+        } else {
+            // Analytical 'closest point on 3-point bezier' solution
+            float x = worldPosition.x, y = worldPosition.y,
+                c10 = (x - b.x)* (y - a.y) - (x - a.x) * (y - b.y),
+                c20 = (x - c.x)* (y - a.y) - (x - a.x) * (y - c.y);
+            gradientWeight = saturate(c10 / (c10 - 0.5 * c20));
+        }
+        gradientType == GRADIENT_TYPE_Other;
+    } else
+        gradientWeight = 1 - saturate(-distance / radius.x);
+}
+
 float computeLocalRectangleRadius (
     in float2 worldPosition, 
     in float2 a, in float2 b, 
@@ -698,8 +742,11 @@ void evaluateRasterShape (
 
 #ifdef INCLUDE_BEZIER
     else if (type == TYPE_QuadraticBezier) {
-        distance = sdBezier(worldPosition, a, b, c) - radius.x;
-        gradientWeight = 1 - saturate(-distance / radius.x);
+        evaluateBezier(
+            worldPosition, a, b, c,
+            radius, distance,
+            gradientType, gradientWeight
+        );
 
         computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
     }

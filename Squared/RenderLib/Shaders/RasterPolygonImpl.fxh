@@ -14,14 +14,16 @@ void computeTLBR_Bezier (
     out float2 tl, out float2 br
 );
 
-void evaluateLineSegment (
+void evaluateBezier (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
     inout int gradientType, out float gradientWeight
 );
 
-float sdBezier (
-    in float2 worldPosition, in float2 a, in float2 b, in float2 c
+void evaluateLineSegment (
+    in float2 worldPosition, in float2 a, in float2 b, in float2 c,
+    in float2 radius, out float distance,
+    inout int gradientType, out float gradientWeight
 );
 
 void computeTLBR_Polygon (
@@ -118,15 +120,14 @@ void evaluatePolygonStep (
         if (nodeType == NODE_BEZIER) {
             controlPoints = get(offset - 1);
             float2 a = prev, b = controlPoints.xy, c = pos; 
-            temp = sdBezier(worldPosition, a, b, c) - radius;
-            temp2 = 1 - saturate(-temp / radius);
-
-            // FIXME: TLBR
-            // computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
+            evaluateBezier(
+                worldPosition, a, b, c,
+                float2(radius, 0), temp, gradientType, temp2
+            );
         } else {
             evaluateLineSegment(
                 worldPosition, prev, pos, 0,
-                radius, temp, gradientType, temp2
+                float2(radius, 0), temp, gradientType, temp2
             );
         }
 
@@ -136,23 +137,7 @@ void evaluatePolygonStep (
             if (((gdist > 0) && (temp < gdist)) || (temp < 0)) {
                 float scale = 1.0 / (count - 1);
                 gradientWeight = (i * scale);
-                if (nodeType == NODE_BEZIER) {
-                    float minDt = 9999, tAtMinDt = 0, step = 0.05;
-                    for (float t = 0; t < 1; t += step) {
-                        float2 a = prev, b = controlPoints.xy, c = pos; 
-                        float2 ab = lerp(a, b, t),
-                            bc = lerp(b, c, t),
-                            pt = lerp(ab, bc, t);
-                        float dt = length(pt - worldPosition);
-                        if (dt < minDt) {
-                            minDt = dt;
-                            tAtMinDt = t;
-                        }
-                    }
-                    gradientWeight += (tAtMinDt * scale);
-                } else {
-                    gradientWeight += (temp2 * scale);
-                }
+                gradientWeight += (temp2 * scale);
                 gdist = temp;
             }
         } else if (temp < gdist) {

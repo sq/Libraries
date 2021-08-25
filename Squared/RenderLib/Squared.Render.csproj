@@ -15,6 +15,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <OutputPath>bin\$(Platform)\$(Configuration)</OutputPath>
+    <GenerateShaderDisassembly>true</GenerateShaderDisassembly>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'x86'">
     <EnableFNA>false</EnableFNA>
