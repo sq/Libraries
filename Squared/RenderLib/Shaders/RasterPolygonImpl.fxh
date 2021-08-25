@@ -82,6 +82,90 @@ float signBezier(float2 A, float2 B, float2 C, float2 p)
     ) * doesCrossLine(A, C, B);
 }
 
+void evaluatePolygonStep (
+    in int i, in int count, inout int offset, in bool along, in bool closed, 
+    in float2 worldPosition, in float4 first, inout float4 prev,
+    in float radius, in int gradientType, inout float distance, inout float gradientWeight, 
+    inout float s, inout float gdist, inout float2 tl, inout float2 br
+) {
+    float4 xyt = get(offset);
+    int nodeType = (int)xyt.z;
+    float2 pos = (i >= (count - 1)) ? first : xyt.xy;
+
+    offset++;
+    if (nodeType == NODE_BEZIER)
+        offset++;
+
+    if (closed) {
+        // FIXME: Bezier
+
+        float2 e = prev - pos,
+            w = worldPosition - pos,
+            b = w - (e * saturate(dot(w, e) / dot(e, e)));
+
+        distance = min(distance, dot(b, b));
+
+        bool3 c = bool3(
+            worldPosition.y >= pos.y, 
+            worldPosition.y < prev.y, 
+            (e.x * w.y) > (e.y * w.x)
+        );
+        if (all(c) || !any(c))
+            s *= -1.0;
+    } else {
+        float4 controlPoints;
+        float temp, temp2;
+        if (nodeType == NODE_BEZIER) {
+            controlPoints = get(offset - 1);
+            float2 a = prev, b = controlPoints.xy, c = pos; 
+            temp = sdBezier(worldPosition, a, b, c) - radius;
+            temp2 = 1 - saturate(-temp / radius);
+
+            // FIXME: TLBR
+            // computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
+        } else {
+            evaluateLineSegment(
+                worldPosition, prev, pos, 0,
+                radius, temp, gradientType, temp2
+            );
+        }
+
+        distance = min(distance, temp);
+
+        if (along) {
+            if (((gdist > 0) && (temp < gdist)) || (temp < 0)) {
+                float scale = 1.0 / (count - 1);
+                gradientWeight = (i * scale);
+                if (nodeType == NODE_BEZIER) {
+                    float minDt = 9999, tAtMinDt = 0, step = 0.05;
+                    for (float t = 0; t < 1; t += step) {
+                        float2 a = prev, b = controlPoints.xy, c = pos; 
+                        float2 ab = lerp(a, b, t),
+                            bc = lerp(b, c, t),
+                            pt = lerp(ab, bc, t);
+                        float dt = length(pt - worldPosition);
+                        if (dt < minDt) {
+                            minDt = dt;
+                            tAtMinDt = t;
+                        }
+                    }
+                    gradientWeight += (tAtMinDt * scale);
+                } else {
+                    gradientWeight += (temp2 * scale);
+                }
+                gdist = temp;
+            }
+        } else if (temp < gdist) {
+            gradientWeight = temp2;
+            gdist = temp;
+        }
+    }
+
+    prev = xyt;
+    tl = min(tl, pos);
+    br = max(br, pos);
+}
+
 void evaluatePolygon (
     in float2 radius, in float outlineSize, in float4 params,
     in float2 worldPosition, in float vertexOffset, in float vertexCount, 
@@ -90,7 +174,6 @@ void evaluatePolygon (
     inout int gradientType, out float gradientWeight, inout float gradientAngle
 ) {
     // FIXME
-    distance = 9999;
     gradientWeight = 0;
     tl = 99999;
     br = -99999;
@@ -110,74 +193,23 @@ void evaluatePolygon (
     else
         offset += 1;
 
-    float d = dot(worldPosition - first.xy, worldPosition - first.xy), s = 1.0,
-        gdist = 99999;
+    distance = closed ? dot(worldPosition - first.xy, worldPosition - first.xy) : 9999;
+    float s = 1.0, gdist = 99999;
+
+    bool along = (gradientType == GRADIENT_TYPE_Along);
 
     for (int i = 0, limit = closed ? count : count - 1; i < limit; i++) {
-        float4 xyt = get(offset);
-        int nodeType = (int)xyt.z;
-        float2 pos = (i >= (count - 1)) ? first : xyt.xy;
-
-        offset++;
-        if (nodeType == NODE_BEZIER)
-            offset++;
-
-        if (closed) {
-            // FIXME: Bezier
-
-            float2 e = prev - pos,
-                w = worldPosition - pos,
-                b = w - (e * saturate(dot(w, e) / dot(e, e)));
-
-            d = min(d, dot(b, b));
-
-            bool3 c = bool3(
-                worldPosition.y >= pos.y, 
-                worldPosition.y < prev.y, 
-                (e.x * w.y) > (e.y * w.x)
-            );
-            if (all(c) || !any(c))
-                s *= -1.0;
-        } else {
-            float temp, temp2;
-            if (nodeType == NODE_BEZIER) {
-                float4 controlPoints = get(offset - 1);
-                float2 a = prev, b = controlPoints.xy, c = pos; 
-                temp = sdBezier(worldPosition, a, b, c) - radius.x;
-                temp2 = 1 - saturate(-temp / radius.x);
-
-                // FIXME: TLBR
-                // computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
-            } else {
-                int temp3 = gradientType;
-                evaluateLineSegment(
-                    worldPosition, prev, pos, 0,
-                    radius, temp, temp3, temp2
-                );
-            }
-
-            distance = min(distance, temp);
-
-            if (gradientType == GRADIENT_TYPE_Along) {
-                if (((gdist > 0) && (temp < gdist)) || (temp < 0)) {
-                    float scale = 1.0 / (vertexCount - 1);
-                    gradientWeight = (i * scale) + (temp2 * scale);
-                    gdist = temp;
-                }
-            } else if (temp < gdist) {
-                gradientWeight = temp2;
-                gdist = temp;
-            }
-        }
-
-        prev = xyt;
-        tl = min(tl, pos);
-        br = max(br, pos);
+        evaluatePolygonStep(
+            i, count, offset, along, closed, 
+            worldPosition, first, prev,
+            radius.x, gradientType, distance, gradientWeight,
+            s, gdist, tl, br
+        );
     }
 
     tl -= radius.x;
     br += radius.x;
 
     if (closed)
-        distance = (s * sqrt(d)) - radius.x;
+        distance = (s * sqrt(distance)) - radius.x;
 }
