@@ -34,8 +34,8 @@ namespace Squared.CoreCLR
         public unsafe Xoshiro (ulong[] state) {
             _isInitialized = true;
             if (state == null) {
+                byte[] buf = new byte[sizeof(ulong) * 4];
                 lock (_rng) {
-                    byte[] buf = new byte[sizeof(ulong) * 4];
                     fixed (byte * pBufB = buf) {
                         var ptr = (ulong*)pBufB;
                         do

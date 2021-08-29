@@ -592,6 +592,7 @@ void evaluateBezier (
         float ct = 0, cd = distanceSquaredToBezierAtT(a, b, c, ct), step = 0.05;
         // HACK: Also test one step past the end of the time window, because if
         //  the bezier has a radius > 0 we can end up shading pixels with t > 1
+        REQUIRE_LOOP
         for (float tt = ct + step; tt <= (1 + step); tt += step) {
             float td = distanceSquaredToBezierAtT(a, b, c, tt);
             pickClosestT(cd, ct, td, tt);

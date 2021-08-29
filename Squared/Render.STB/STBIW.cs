@@ -57,14 +57,22 @@ namespace Squared.Render.STB {
             SurfaceFormat sourceFormat, Stream stream, 
             ImageWriteFormat format = ImageWriteFormat.PNG, int jpegQuality = 75
         ) {
+            fixed (byte* pBuffer = buffer)
+                WriteImage(pBuffer, buffer.Length, width, height, sourceFormat, stream, format, jpegQuality);
+        }
+
+        public static unsafe void WriteImage (
+            byte * data, int dataLength, int width, int height, 
+            SurfaceFormat sourceFormat, Stream stream, 
+            ImageWriteFormat format = ImageWriteFormat.PNG, int jpegQuality = 75
+        ) {
             int numComponents;
             var bytesPerPixel = Evil.TextureUtils.GetBytesPerPixelAndComponents(sourceFormat, out numComponents);
 
-            if (buffer.Length < (bytesPerPixel * width * height))
+            if (dataLength < (bytesPerPixel * width * height))
                 throw new ArgumentException("buffer");
 
             using (var scratch = BufferPool<byte>.Allocate(1024 * 64))
-            fixed (byte * pBuffer = buffer)
             fixed (byte * _pScratch = scratch.Data) {
                 Native.WriteCallback callback = (pScratch, pData, count) => {
                     int offset = 0;
@@ -81,27 +89,27 @@ namespace Squared.Render.STB {
                     case ImageWriteFormat.HDR:
                         if (bytesPerPixel != 16)
                             throw new NotImplementedException("Non-vector4");
-                        Native.API.stbi_write_hdr_to_func(callback, _pScratch, width, height, numComponents, (float*)(void*)pBuffer);
+                        Native.API.stbi_write_hdr_to_func(callback, _pScratch, width, height, numComponents, (float*)(void*)data);
                         break;
                     case ImageWriteFormat.PNG:
                         if (bytesPerPixel != 4)
                             throw new NotImplementedException("Non-rgba32");
-                        Native.API.stbi_write_png_to_func(callback, _pScratch, width, height, numComponents, pBuffer, width * bytesPerPixel);
+                        Native.API.stbi_write_png_to_func(callback, _pScratch, width, height, numComponents, data, width * bytesPerPixel);
                         break;
                     case ImageWriteFormat.BMP:
                         if (bytesPerPixel != 4)
                             throw new NotImplementedException("Non-rgba32");
-                        Native.API.stbi_write_bmp_to_func(callback, _pScratch, width, height, numComponents, pBuffer);
+                        Native.API.stbi_write_bmp_to_func(callback, _pScratch, width, height, numComponents, data);
                         break;
                     case ImageWriteFormat.TGA:
                         if (bytesPerPixel != 4)
                             throw new NotImplementedException("Non-rgba32");
-                        Native.API.stbi_write_tga_to_func(callback, _pScratch, width, height, numComponents, pBuffer);
+                        Native.API.stbi_write_tga_to_func(callback, _pScratch, width, height, numComponents, data);
                         break;
                     case ImageWriteFormat.JPEG:
                         if (bytesPerPixel != 4)
                             throw new NotImplementedException("Non-rgba32");
-                        Native.API.stbi_write_jpg_to_func(callback, _pScratch, width, height, numComponents, pBuffer, jpegQuality);
+                        Native.API.stbi_write_jpg_to_func(callback, _pScratch, width, height, numComponents, data, jpegQuality);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException("format");
