@@ -14,35 +14,177 @@ namespace Squared.Util {
     }
 
     public struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
+        private static class ValueTraits {
+            public static int Size8, Size32;
+            private static T[] MeasurementArray;
+            private static GCHandle MeasurementArrayPin;
+
+            public unsafe static void ComputeSize () {
+                if (typeof(T).IsValueType) {
+                    MeasurementArray = new T[2];
+                    MeasurementArrayPin = GCHandle.Alloc(MeasurementArray, GCHandleType.Normal);
+                    var local = MeasurementArray;
+                    RuntimeHelpers.PrepareConstrainedRegions();
+                    unchecked {
+                        try {
+                        } finally {
+                            var tRef0 = __makeref(local[0]);
+                            var tRef1 = __makeref(local[1]);
+                            var pRef0 = (long)*(IntPtr**)&tRef0;
+                            var pRef1 = (long)*(IntPtr**)&tRef1;
+                            var size = pRef1 - pRef0;
+                            Size8 = (int)size;
+                            Size32 = Size8 / 4;
+                        }
+                    }
+                    MeasurementArrayPin.Free();
+                    MeasurementArray = null;
+                } else {
+                    Size8 = Marshal.SizeOf<IntPtr>();
+                    Size32 = Size8 / 4;
+                }
+            }
+        }
+
         [StructLayout(LayoutKind.Sequential)]
         internal struct InlineStorage {
             public T Item1, Item2, Item3, Item4;
             public int Count;
 
+// FIXME: The debug JIT is unwilling to inline the optimized methods
+#if DEBUG
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public unsafe void GetItemAtIndex (int index, out T result) {
+                switch (index) {
+                    case 0:
+                        result = Item1;
+                        return;
+                    case 1:
+                        result = Item2;
+                        return;
+                    case 2:
+                        result = Item3;
+                        return;
+                    default:
+                        result = Item4;
+                        return;
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public unsafe void SetItemAtIndex (int index, ref T value) {
+                switch (index) {
+                    case 0:
+                        Item1 = value;
+                        return;
+                    case 1:
+                        Item2 = value;
+                        return;
+                    case 2:
+                        Item3 = value;
+                        return;
+                    default:
+                        Item4 = value;
+                        return;
+                }
+            }
+
+            public unsafe T this[int index] {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get {
+                    switch (index) {
+                        case 0:
+                            return Item1;
+                        case 1:
+                            return Item2;
+                        case 2:
+                            return Item3;
+                        default:
+                            return Item4;
+                    }
+                }
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                set {
+                    switch (index) {
+                        case 0:
+                            Item1 = value;
+                            return;
+                        case 1:
+                            Item2 = value;
+                            return;
+                        case 2:
+                            Item3 = value;
+                            return;
+                        default:
+                            Item4 = value;
+                            return;
+                    }
+                }
+            }
+#else
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private unsafe byte* GetPointerToElement(int index, int size) {
+                var r0 = __makeref(Item1);
+                var p0 = (byte*)(*(IntPtr**)&r0);
+                return p0 + (size * index);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public unsafe void GetItemAtIndex (int index, out T result) {
+                var size = ValueTraits.Size8;
+                var pSrc = GetPointerToElement(index, size);
+                result = default;
+                var tr = __makeref(result);
+                var pDest = (byte*)(*(IntPtr**)&tr);
+                for (int i = 0; i < size; i++)
+                    pDest[i] = pSrc[i];
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public unsafe void SetItemAtIndex (int index, ref T value) {
+                var size = ValueTraits.Size8;
+                var pDest = GetPointerToElement(index, size);
+                var tr = __makeref(value);
+                var pSrc = (byte*)(*(IntPtr**)&tr);
+                for (int i = 0; i < size; i++)
+                    pDest[i] = pSrc[i];
+            }
+
+            public unsafe T this[int index] {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get {
+                    T result = default;
+                    var size = ValueTraits.Size8;
+                    var pSrc = GetPointerToElement(index, size);
+                    var tr = __makeref(result);
+                    var pDest = (byte*)(*(IntPtr**)&tr);
+                    for (int i = 0; i < size; i++)
+                        pDest[i] = pSrc[i];
+                    return result;
+                }
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                set {
+                    var size = ValueTraits.Size8;
+                    var pDest = GetPointerToElement(index, size);
+                    var tr = __makeref(value);
+                    var pSrc = (byte*)(*(IntPtr**)&tr);
+                    for (int i = 0; i < size; i++)
+                        pDest[i] = pSrc[i];
+                }
+            }
+#endif
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Add (ref InlineStorage storage, ref T item) {
-                var i = storage.Count++;
-                switch (i) {
-                    case 0:
-                        storage.Item1 = item;
-                        break;
-                    case 1:
-                        storage.Item2 = item;
-                        break;
-                    case 2:
-                        storage.Item3 = item;
-                        break;
-                    case 3:
-                        storage.Item4 = item;
-                        break;
-                }
+                var i = storage.Count;
+                storage.Count++;
+                storage.SetItemAtIndex(i, ref item);
             }
         }
 
         public struct Enumerator : IEnumerator<T> {
             private int Index;
 
-            private readonly T Item1, Item2, Item3, Item4;
+            private readonly InlineStorage Storage;
             private readonly bool HasList;
             private readonly T[] Items;
             private readonly int Offset, Count;
@@ -53,35 +195,24 @@ namespace Squared.Util {
                 HasList = list.HasList;
 
                 if (HasList) {
-                    Item1 = Item2 = Item3 = Item4 = default(T);
+                    Storage = default;
                     var buffer = list.Items.GetBuffer();
                     Offset = buffer.Offset;
                     Items = buffer.Array;
                 } else {
                     Offset = 0;
-                    Item1 = list.Storage.Item1;
-                    Item2 = list.Storage.Item2;
-                    Item3 = list.Storage.Item3;
-                    Item4 = list.Storage.Item4;
+                    Storage = list.Storage;
                     Items = null;
                 }
-            }            
+            }
 
             public T Current {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
                     if (HasList)
                         return Items[Index];
-                    else switch (Index) {
-                        case 0:
-                            return Item1;
-                        case 1:
-                            return Item2;
-                        case 2:
-                            return Item3;
-                        case 3:
-                            return Item4;
-                    }
+                    else
+                        return Storage[Index];
 
                     throw new InvalidOperationException("No current value");
                 }
@@ -92,16 +223,8 @@ namespace Squared.Util {
                 get {
                     if (HasList)
                         return Items[Index];
-                    else switch (Index) {
-                        case 0:
-                            return Item1;
-                        case 1:
-                            return Item2;
-                        case 2:
-                            return Item3;
-                        case 3:
-                            return Item4;
-                    }
+                    else
+                        return Storage[Index];
 
                     throw new InvalidOperationException("No current value");
                 }
@@ -127,24 +250,13 @@ namespace Squared.Util {
                     if (HasList) {
                         result = Items[Index];
                         return false;
-                    } else switch (Index) {
-                        case 0:
-                            result = Item1;
-                            return true;
-                        case 1:
-                            result = Item2;
-                            return true;
-                        case 2:
-                            result = Item3;
-                            return true;
-                        case 3:
-                            result = Item4;
-                            return true;
-                        default:
-                            return false;
+                    } else if (Index < 4) {
+                        Storage.GetItemAtIndex(Index, out result);
+                        return true;
                     }
                 }
 
+                result = default;
                 return false;
             }
 
@@ -197,6 +309,10 @@ namespace Squared.Util {
 
         internal InlineStorage Storage;
         internal UnorderedList<T> Items;
+
+        static DenseList () {
+            ValueTraits.ComputeSize();
+        }
 
         public DenseList (T[] items) 
             : this (items, 0, items.Length) {
@@ -283,11 +399,7 @@ namespace Squared.Util {
         }
 
         public void Clear () {
-            if (Storage.Count != 0) {
-                Storage.Count = 0;
-                Storage.Item1 = Storage.Item2 = Storage.Item3 = Storage.Item4 = default(T);
-            }
-
+            Storage = default;
             if (HasList)
                 Items.Clear();
         }
@@ -322,7 +434,7 @@ namespace Squared.Util {
             else if (capacity.HasValue)
                 Items = new UnorderedList<T>(capacity.Value, Allocator);
             else
-                Items = new UnorderedList<T>(Allocator); 
+                Items = new UnorderedList<T>(Allocator);
 
             if (Storage.Count > 0)
                 Items.Add(ref Storage.Item1);
@@ -359,59 +471,29 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GetItem (int index, out T result) {
-            if (HasList) {
+            if (Items != null) {
                 Items.DangerousGetItem(index, out result);
                 return;
             }
 
-            if (index >= Count)
+            if (index >= Storage.Count)
                 throw new IndexOutOfRangeException();
 
-            switch (index) {
-                case 0:
-                    result = Storage.Item1;
-                    return;
-                case 1:
-                    result = Storage.Item2;
-                    return;
-                case 2:
-                    result = Storage.Item3;
-                    return;
-                case 3:
-                    result = Storage.Item4;
-                    return;
-                default:
-                    throw new IndexOutOfRangeException();
-            }
+            Storage.GetItemAtIndex(index, out result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetItem (int index, out T result) {
-            if (HasList)
+            if (Items != null)
                 return Items.DangerousTryGetItem(index, out result);
 
-            if (index >= Count) {
+            if (index >= Storage.Count) {
                 result = default(T);
                 return false;
             }
 
-            switch (index) {
-                case 0:
-                    result = Storage.Item1;
-                    return true;
-                case 1:
-                    result = Storage.Item2;
-                    return true;
-                case 2:
-                    result = Storage.Item3;
-                    return true;
-                case 3:
-                    result = Storage.Item4;
-                    return true;
-                default:
-                    result = default(T);
-                    return false;
-            }
+            Storage.GetItemAtIndex(index, out result);
+            return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -483,51 +565,25 @@ namespace Squared.Util {
         public T this [int index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                if (HasList)
+                if (Items != null)
                     return Items.DangerousGetItem(index);
 
-                if (index >= Count)
+                if (index >= Storage.Count)
                     throw new IndexOutOfRangeException();
 
-                switch (index) {
-                    case 0:
-                        return Storage.Item1;
-                    case 1:
-                        return Storage.Item2;
-                    case 2:
-                        return Storage.Item3;
-                    case 3:
-                        return Storage.Item4;
-                    default:
-                        throw new IndexOutOfRangeException();
-                }
+                return Storage[index];
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                if (HasList) {
+                if (Items != null) {
                     Items.DangerousSetItem(index, ref value);
                     return;
                 }
 
-                if (index >= Count)
+                if (index >= Storage.Count)
                     throw new IndexOutOfRangeException();
 
-                switch (index) {
-                    case 0:
-                        Storage.Item1 = value;
-                        return;
-                    case 1:
-                        Storage.Item2 = value;
-                        return;
-                    case 2:
-                        Storage.Item3 = value;
-                        return;
-                    case 3:
-                        Storage.Item4 = value;
-                        return;
-                    default:
-                        throw new IndexOutOfRangeException();
-                }
+                Storage.SetItemAtIndex(index, ref value);
             }
         }
 
@@ -538,20 +594,26 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Add_Fast (ref T item) {
-            InlineStorage.Add(ref Storage, ref item);
+            var count = Storage.Count;
+            Storage.Count = count + 1;
+            Storage.SetItemAtIndex(count, ref item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void UnsafeAddWithKnownCapacity (ref DenseList<T> list, ref T item) {
-            if (list.HasList)
+            if (list.HasList) {
                 list.Items.Add(ref item);
-            else
-                InlineStorage.Add(ref list.Storage, ref item);
+                return;
+            }
+
+            var count = list.Storage.Count;
+            list.Storage.Count = count + 1;
+            list.Storage.SetItemAtIndex(count, ref item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (ref T item) {
-            if (HasList || (Storage.Count >= 4)) {
+            if ((Items != null) || (Storage.Count >= 4)) {
                 Add_Slow(ref item);
             } else {
                 Add_Fast(ref item);
@@ -656,14 +718,8 @@ namespace Squared.Util {
                 Items.AddRange(data, sourceOffset, count);
             } else {
                 Storage.Count = count;
-                if (count > 0)
-                    Storage.Item1 = data[sourceOffset];
-                if (count > 1)
-                    Storage.Item2 = data[sourceOffset + 1];
-                if (count > 2)
-                    Storage.Item3 = data[sourceOffset + 2];
-                if (count > 3)
-                    Storage.Item4 = data[sourceOffset + 3];
+                for (int i = 0; i < count; i++)
+                    Storage.SetItemAtIndex(i, ref data[sourceOffset]);
             }
         }
 
@@ -682,10 +738,8 @@ namespace Squared.Util {
             } else {
                 var alloc = BufferPool<T>.Allocate(4);
                 var buf = alloc.Data;
-                buf[0] = Storage.Item1;
-                buf[1] = Storage.Item2;
-                buf[2] = Storage.Item3;
-                buf[3] = Storage.Item4;
+                for (int i = 0; i < Storage.Count; i++)
+                    Storage.GetItemAtIndex(i, out buf[i]);
                 return new Buffer {
                     IsTemporary = true,
                     Data = buf,
@@ -700,14 +754,8 @@ namespace Squared.Util {
                 return Items.ToArray();
             else {
                 var result = new T[Storage.Count];
-                if (Storage.Count > 0)
-                    result[0] = Storage.Item1;
-                if (Storage.Count > 1)
-                    result[1] = Storage.Item2;
-                if (Storage.Count > 2)
-                    result[2] = Storage.Item3;
-                if (Storage.Count > 3)
-                    result[3] = Storage.Item4;
+                for (int i = 0; i < result.Length; i++)
+                    Storage.GetItemAtIndex(i, out result[i]);
                 return result;
             }
         }
@@ -854,8 +902,7 @@ namespace Squared.Util {
         }
 
         public void Dispose () {
-            Storage.Count = 0;
-            Storage.Item1 = Storage.Item2 = Storage.Item3 = Storage.Item4 = default(T);
+            Storage = default;
             if (ListPool != null)
                 ListPool.Release(ref Items);
             else

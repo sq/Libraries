@@ -316,5 +316,19 @@ namespace Squared.Util {
                 destination.ToArray()
             );
         }
+
+        [Test]
+        public void SimpleBenchmark () {
+            var items = new DenseList<long> { 1, 2, 3, 4 };
+            const int count = 1024000 * 24;
+            var sw = Stopwatch.StartNew();
+            unchecked {
+                for (int i = 0; i < count; i++) {
+                    for (int j = 0; j < items.Count; j++)
+                        items[j]++;
+                }
+            }
+            Console.WriteLine(sw.ElapsedMilliseconds);
+        }
     }
 }
