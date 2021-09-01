@@ -473,9 +473,6 @@ namespace Squared.Render {
             Material material, SamplerState samplerState1, SamplerState samplerState2, LocalObjectCache<object> textureCache,
             out bool failed
         ) {
-            if (material == null)
-                throw new ArgumentNullException("material");
-
             int totalVertCount = 0;
             int vertCount = 0, vertOffset = 0;
             int nativeBatchSizeLimit = NativeBatchSize;
@@ -498,48 +495,50 @@ namespace Squared.Render {
             failed = false;
             var worldSpace = WorldSpace;
 
-            fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset]) {
-                for (int i = drawCallsPrepared; i < count; i++) {
-                    if (totalVertCount >= nativeBatchSizeLimit) {
-                        result = false;
-                        break;
-                    }
-
-                    int callIndex;
-                    if (indices != null) {
-                        callIndex = indices[i];
-                        if (callIndex >= callCount)
-                            continue;
-                    } else {
-                        callIndex = i;
-                        if (callIndex >= callCount)
+            unchecked {
+                fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset]) {
+                    for (int i = drawCallsPrepared; i < count; i++) {
+                        if (totalVertCount >= nativeBatchSizeLimit) {
+                            result = false;
                             break;
+                        }
+
+                        int callIndex;
+                        if (indices != null) {
+                            callIndex = indices[i];
+                            if (callIndex >= callCount)
+                                continue;
+                        } else {
+                            callIndex = i;
+                            if (callIndex >= callCount)
+                                break;
+                        }
+
+                        bool texturesEqual = callArray[callIndex + drawCalls.Offset].Textures.Equals(ref currentTextures);
+
+                        if (!texturesEqual) {
+                            if (vertCount > 0)
+                                failed |= !CreateNewNativeBatch(
+                                    softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset,
+                                    material, samplerState1, samplerState2, textureCache
+                                );
+
+                            currentTextures = callArray[callIndex + drawCalls.Offset].Textures;
+                            if (failed)
+                                break;
+                        }
+
+                        FillOneBitmapVertex(
+                            softwareBuffer, ref callArray[callIndex + drawCalls.Offset], out pVertices[vertexWritePosition],
+                            worldSpace, zBufferFactor
+                        );
+
+                        vertexWritePosition += 1;
+                        totalVertCount += 1;
+                        vertCount += 1;
+
+                        drawCallsPrepared += 1;
                     }
-
-                    bool texturesEqual = callArray[callIndex + drawCalls.Offset].Textures.Equals(ref currentTextures);
-
-                    if (!texturesEqual) {
-                        if (vertCount > 0)
-                            failed |= !CreateNewNativeBatch(
-                                softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset,
-                                material, samplerState1, samplerState2, textureCache
-                            );
-
-                        currentTextures = callArray[callIndex + drawCalls.Offset].Textures;
-                        if (failed)
-                            break;
-                    }
-
-                    FillOneBitmapVertex(
-                        softwareBuffer, ref callArray[callIndex + drawCalls.Offset], out pVertices[vertexWritePosition],
-                        worldSpace, zBufferFactor
-                    );
-
-                    vertexWritePosition += 1;
-                    totalVertCount += 1;
-                    vertCount += 1;
-
-                    drawCallsPrepared += 1;
                 }
             }
 

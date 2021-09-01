@@ -215,6 +215,9 @@ namespace Squared.Render {
             using (var buffer = BufferPool<BitmapDrawCall>.Allocate(count)) {
                 var data = buffer.Data;
                 var firstDc = drawCalls[first];
+                var material = firstDc.Material;
+                if (material == null)
+                    return false;
 
                 for (int j = 0; j < count; j++)
                     data[j] = drawCalls[j + first].DrawCall;
@@ -227,7 +230,7 @@ namespace Squared.Render {
                 bool failed = false;
                 while (!failed && !FillOneSoftwareBuffer(
                     indexArray, callSegment, ref drawCallsPrepared, count,
-                    firstDc.Material, ss1, ss2, textureCache, out failed
+                    material, ss1, ss2, textureCache, out failed
                 ));
 
                 return !failed;
