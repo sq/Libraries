@@ -227,8 +227,13 @@ namespace Squared.PRGUI {
             return true;
         }
 
+        private bool UpdatingTabOrder, UpdatingDisplayOrder;
+
         internal List<Control> InTabOrder (int frameIndex, bool suitableTargetsOnly) {
             if (PrepareToUpdateSortedList(ref TabOrderLastValidFrame, frameIndex, TabOrderedItems, ref TabOrderRange)) {
+                if (UpdatingTabOrder)
+                    throw new Exception("Already updating tab order list");
+                UpdatingTabOrder = true;
                 for (int i = 0; i < Items.Count; i++) {
                     var item = Items[i];
                     if (!suitableTargetsOnly || item.IsValidFocusTarget)
@@ -242,6 +247,7 @@ namespace Squared.PRGUI {
                 TabOrderedItemsResult.Clear();
                 foreach (var item in TabOrderedItems)
                     TabOrderedItemsResult.Add(item.Control);
+                UpdatingTabOrder = false;
             }
             return TabOrderedItemsResult;
         }
@@ -257,11 +263,15 @@ namespace Squared.PRGUI {
 
         internal List<Control> InDisplayOrder (int frameIndex, out OrderRange range) {
             if (PrepareToUpdateSortedList(ref PaintOrderLastValidFrame, frameIndex, PaintOrderedItems, ref PaintOrderRange)) {
+                if (UpdatingDisplayOrder)
+                    throw new Exception("Already updating display order list");
+                UpdatingDisplayOrder = true;
                 foreach (var item in Items) {
                     PaintOrderRange.Update(item.DisplayOrder);
                     PaintOrderedItems.Add(item);
                 }
                 PaintOrderedItems.Sort(PaintOrderComparer.Instance);
+                UpdatingDisplayOrder = false;
             }
             range = PaintOrderRange;
             return PaintOrderedItems;
