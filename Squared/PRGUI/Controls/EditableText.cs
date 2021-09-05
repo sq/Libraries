@@ -259,7 +259,7 @@ namespace Squared.PRGUI.Controls {
                 var sel = ExpandedSelection;
                 var result = Builder.ToString(sel.First, sel.Second - sel.First);
                 if (char.IsHighSurrogate(result[result.Length - 1]))
-                    throw new Exception();
+                    throw new Exception("Unpaired surrogate");
                 return result;
             }
             set {

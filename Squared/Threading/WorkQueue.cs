@@ -22,6 +22,15 @@ namespace Squared.Threading {
         void QueueWorkItem (Action item);
     }
 
+    public class WorkQueueException : Exception {
+        public IWorkQueue Queue;
+
+        public WorkQueueException (IWorkQueue queue, string message)
+            : base (message) {
+            Queue = queue;
+        }
+    }
+
     public static class WorkItemQueueTarget {
         private static IWorkItemQueueTarget Default = null;
 
@@ -120,7 +129,7 @@ namespace Squared.Threading {
         public static void Execute (ref InternalWorkItem<T> item) {
 #if DEBUG
             if (!item.Valid)
-                throw new ThreadStateException();
+                throw new WorkQueueException(item.Queue, "Invalid work item");
 #endif
             item.Data.Execute();
             if (item.OnComplete != null)
@@ -182,7 +191,7 @@ namespace Squared.Threading {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AssertCanEnqueue () {
             if (BlockEnqueuesWhileDraining && (NumWaitingForDrain > 0))
-                throw new Exception("Cannot enqueue items while the queue is draining");
+                throw new WorkQueueException(this, "Cannot enqueue items while the queue is draining");
         }
 
         const int Semilock_Open = 0;
@@ -471,7 +480,7 @@ namespace Squared.Threading {
             if (IsEmpty)
                 return;
 #if DEBUG
-            throw new Exception("Queue is not fully drained");
+            throw new WorkQueueException(this, "Queue is not fully drained");
 #else
             Console.Error.WriteLine("WorkQueue of type {0} was not fully drained", typeof(T).FullName);
 #endif
@@ -508,12 +517,12 @@ namespace Squared.Threading {
                     } else {
 #if DEBUG
                         if (!IsEmpty)
-                            throw new ThreadStateException();
+                            throw new WorkQueueException(this, "Queue is not empty");
                         Thread.Yield();
                         if (!IsEmpty)
-                            throw new ThreadStateException();
+                            throw new WorkQueueException(this, "Queue is not empty");
                         if (ItemsProcessed < waterMark)
-                            throw new Exception("AssertDrained returned before reaching watermark");
+                            throw new WorkQueueException(this, "AssertDrained returned before reaching watermark");
 #endif
                         return (ItemsProcessed >= waterMark);
                     }

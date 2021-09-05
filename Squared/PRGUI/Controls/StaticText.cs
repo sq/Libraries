@@ -226,7 +226,7 @@ namespace Squared.PRGUI.Controls {
             if (ContentMeasurement == null)
                 ContentMeasurement = new DynamicStringLayout();
             if (Content.GlyphSource == null)
-                throw new NullReferenceException();
+                throw new NullReferenceException("GlyphSource");
             ContentMeasurement.Copy(Content);
             ContentMeasurement.MeasureOnly = true;
             // HACK: If we never get painted (to validate our main content layout), then

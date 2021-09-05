@@ -1136,7 +1136,7 @@ namespace Squared.PRGUI {
 
 #if DETECT_DOUBLE_RASTERIZE
             if (!RasterizeIsPending)
-                throw new Exception();
+                throw new Exception("Double rasterize detected");
             RasterizeIsPending = false;
 #endif
 

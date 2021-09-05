@@ -335,7 +335,7 @@ namespace Squared.PRGUI.Imperative {
         public ContainerBuilder Children () {
             var cast = Control as IControlContainer;
             if (cast == null)
-                throw new InvalidCastException();
+                throw new InvalidCastException("Control is not a container");
             return new ContainerBuilder(Control);
         }
 

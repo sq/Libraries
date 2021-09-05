@@ -267,6 +267,7 @@ namespace Squared.Render.Text {
         float          currentBaseline;
         float          maxLineSpacing;
         Vector2        wordStartOffset;
+        int            wordStartColumn;
         private bool   ownsBuffer, suppress, suppressUntilNextLine, previousGlyphWasDead;
         private AbstractTextureReference lastUsedTexture;
         private DenseList<AbstractTextureReference> usedTextures;
@@ -288,6 +289,7 @@ namespace Squared.Render.Text {
             drawCallsSuppressed = 0;
             wordStartWritePosition = -1;
             wordStartOffset = Vector2.Zero;
+            wordStartColumn = 0;
             rowIndex = colIndex = 0;
             wordWrapSuppressed = false;
             initialLineSpacing = 0;
@@ -934,11 +936,13 @@ namespace Squared.Render.Text {
                     else
                         wordStartWritePosition = bufferWritePosition;
                     wordStartOffset = characterOffset;
+                    wordStartColumn = colIndex;
                     wordWrapSuppressed = false;
                 } else {
                     if (wordStartWritePosition < 0) {
                         wordStartWritePosition = bufferWritePosition;
                         wordStartOffset = characterOffset;
+                        wordStartColumn = colIndex;
                     }
                 }
 
@@ -1008,7 +1012,8 @@ namespace Squared.Render.Text {
                         wordWrap && !wordWrapSuppressed && 
                         // FIXME: If boxes shrink the current line too far, we want to just keep wrapping until we have enough room
                         //  instead of giving up
-                        (currentWordSize <= currentLineBreakAtX)
+                        (currentWordSize <= currentLineBreakAtX) &&
+                        (wordStartColumn > 0)
                     ) {
                         if (lineLimit.HasValue)
                             lineLimit--;
@@ -1033,6 +1038,7 @@ namespace Squared.Render.Text {
                         maxX = Math.Max(maxX, currentLineMaxX);
                         wordStartWritePosition = bufferWritePosition;
                         wordStartOffset = characterOffset;
+                        wordStartColumn = colIndex;
                         lineBreak = true;
 
                         if (lineLimit.HasValue && lineLimit.Value <= 0)

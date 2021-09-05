@@ -54,6 +54,12 @@ namespace Squared.Threading {
             Future = future;
             Handler = handler;
         }
+
+        public FutureHandlerException (IFuture future, Delegate handler, string message) 
+            : base(message) {
+            Future = future;
+            Handler = handler;
+        }
     }
 
     internal static class FutureHelpers {
@@ -265,8 +271,8 @@ namespace Squared.Threading {
                         completed = true;
                         State.Clear();
                     } else {
-                        if (!State.Remove(f))
-                            throw new ThreadStateException();
+                        if (!State.Remove(f) && (f != null))
+                            throw new ThreadStateException("Future was already removed from state array");
                     }
                 }
 
@@ -281,8 +287,8 @@ namespace Squared.Threading {
                         completed = true;
                         State.Clear();
                     } else {
-                        if (!State.Remove(f))
-                            throw new ThreadStateException();
+                        if (!State.Remove(f) && (f != null))
+                            throw new ThreadStateException("Future was already removed from state array");
                     }
                 }
 
@@ -310,8 +316,17 @@ namespace Squared.Threading {
 
             f.RegisterOnDispose(h.OnCompositeDispose);
 
-            foreach (IFuture _ in futures)
-                _.RegisterHandlers(oc, od);
+            var nullsToRemove = 0;
+
+            foreach (IFuture _ in futures) {
+                if (_ != null)
+                    _.RegisterHandlers(oc, od);
+                else
+                    nullsToRemove++;
+            }
+
+            for (int i = 0; i < nullsToRemove; i++)
+                h.OnComplete(null);
 
             return f;
         }
@@ -467,7 +482,7 @@ namespace Squared.Threading {
                 } else if ((untyped = handler as OnFutureResolved) != null) {
                     untyped(this);
                 } else {
-                    throw new Exception("Invalid future handler");
+                    throw new FutureHandlerException(this, handler, "Invalid future handler");
                 }
             } catch (Exception exc) {
                 throw new FutureHandlerException(this, handler, exc);
@@ -522,7 +537,7 @@ namespace Squared.Threading {
 
         private void ClearIndeterminate (int newState) {
             if (Interlocked.CompareExchange(ref _State, newState, State_Indeterminate) != State_Indeterminate)
-                throw new ThreadStateException();
+                throw new ThreadStateException("Future state was not indeterminate");
         }
 
         private int TrySetIndeterminate () {
@@ -570,7 +585,7 @@ namespace Squared.Threading {
                 }
                 return false;
             } else {
-                throw new ThreadStateException();
+                throw new ThreadStateException("Failed to register future handler due to a thread state error");
             }
         }
 
@@ -733,7 +748,7 @@ namespace Squared.Threading {
                     OnErrorCheck();
                     if (_Error is ExceptionDispatchInfo edi) {
                         edi.Throw();
-                        throw new InvalidOperationException();
+                        throw new FutureException("Failed to rethrow exception from dispatch info", edi.SourceException);
                     } else
                         throw new FutureException("Future's result was an error", (Exception)_Error);
                 } else if ((state == State_Disposed) || (state == State_Disposing)) {
@@ -840,7 +855,7 @@ namespace Squared.Threading {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void SetResultEpilogue (int newState) {
             if (Interlocked.Exchange(ref _State, newState) != State_Indeterminate)
-                throw new ThreadStateException();
+                throw new ThreadStateException("Future state was not indeterminate");
 
             if ((newState == State_CompletedWithValue) || (newState == State_CompletedWithError))
                 InvokeHandlers(ref _OnCompletes, ref _OnDisposes);
@@ -963,7 +978,7 @@ namespace Squared.Threading {
             InvokeHandlers(ref _OnDisposes, ref _OnCompletes);
 
             if (Interlocked.Exchange(ref _State, State_Disposed) != State_Disposing)
-                throw new ThreadStateException();
+                throw new ThreadStateException("Future state was not disposing");
         }
 
         bool IFuture.GetResult (out object result, out Exception error) {
