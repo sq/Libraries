@@ -335,7 +335,11 @@ namespace Squared.Util {
             return allTestValues.ToArray();
         }
 
+#if DEBUG
+        const int passCount = 4;
+#else
         const int passCount = 256;
+#endif
 
         private static void CompareToPass (float[] allTestValues, ref long totalAccumulator) {
             int accumulator = 0;

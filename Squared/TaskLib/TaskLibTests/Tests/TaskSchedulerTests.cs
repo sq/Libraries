@@ -70,7 +70,7 @@ namespace Squared.Task {
 
         [Test]
         public void StepPerformanceTest () {
-            int numSteps = 5000;
+            int numSteps = 100000;
             var buf = new int[1];
 
             var f = Scheduler.Start(TaskLongLivedWorkerStepWaiter(buf, numSteps));
