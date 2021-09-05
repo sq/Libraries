@@ -17,6 +17,8 @@ namespace Squared.Task {
     public interface IJobQueue : IDisposable, IWorkItemQueueTarget {
         /// <summary>Adds a work item to the end of the job queue for the next step.</summary>
         void QueueWorkItemForNextStep (Action item);
+        /// <summary>Adds a work item to the end of the job queue for the next step.</summary>
+        void QueueWorkItemForNextStep (WorkItemQueueEntry entry);
         /// <summary>Pumps the job queue, processing all the work items it contains.</summary>
         void Step ();
         /// <summary>Pumps the job queue until it is out of work items or the future is completed, whichever comes first.</summary>
@@ -76,11 +78,11 @@ namespace Squared.Task {
 
         private bool _Disposed = false;
 
-        private readonly System.Threading.ManualResetEventSlim _WaiterSignal = new System.Threading.ManualResetEventSlim(false);
+        private readonly System.Threading.ManualResetEventSlim _WaiterSignal = new ManualResetEventSlim(false);
         private int _WaiterCount = 0;
 
-        private readonly ConcurrentQueue<Action> _Queue = new ConcurrentQueue<Action>();
-        private readonly ConcurrentQueue<Action> _NextStepQueue = new ConcurrentQueue<Action>();
+        private readonly ConcurrentQueue<WorkItemQueueEntry> _Queue = new ConcurrentQueue<WorkItemQueueEntry>();
+        private readonly ConcurrentQueue<WorkItemQueueEntry> _NextStepQueue = new ConcurrentQueue<WorkItemQueueEntry>();
 
         public ThreadGroup ThreadGroup;
 
@@ -98,11 +100,11 @@ namespace Squared.Task {
                 stepStarted = Time.Ticks;
 
             int i = 0;
-            Action item;
+            WorkItemQueueEntry item;
             do {
                 if (_Queue.TryDequeue(out item)) {
                     try {
-                        item();
+                        item.Invoke();
                     } catch (Exception exc) {
                         if (UnhandledException != null)
                             UnhandledException(this, new UnhandledExceptionEventArgs(exc, false));
@@ -119,7 +121,7 @@ namespace Squared.Task {
                                 return;
                     }
                 }
-            } while (item != null);
+            } while (item.Action != null);
 
             while (_NextStepQueue.TryDequeue(out item))
                 _Queue.Enqueue(item);
@@ -133,7 +135,7 @@ namespace Squared.Task {
         }
 
         public bool WaitForFuture (IFuture future) {
-            Action item;
+            WorkItemQueueEntry item;
             while (!future.Completed) {
                 if (_Disposed)
                     throw new ObjectDisposedException("ThreadSafeJobQueue");
@@ -141,9 +143,9 @@ namespace Squared.Task {
                     throw new FutureDisposedException(future);
 
                 if (_Queue.TryDequeue(out item))
-                    item();
+                    item.Invoke();
                 else if (_NextStepQueue.TryDequeue(out item))
-                    item();
+                    item.Invoke();
                 else {
                     if (ThreadGroup?.StepMainThread() != true)
                         Thread.Sleep(0);
@@ -182,8 +184,15 @@ namespace Squared.Task {
             if (_Disposed)
                 throw new ObjectDisposedException("ThreadSafeJobQueue");
 
-            _Queue.Enqueue(item);
+            _Queue.Enqueue(new WorkItemQueueEntry { Action = item });
+            _WaiterSignal.Set();
+        }
 
+        public void QueueWorkItem (WorkItemQueueEntry entry) {
+            if (_Disposed)
+                throw new ObjectDisposedException("ThreadSafeJobQueue");
+
+            _Queue.Enqueue(entry);
             _WaiterSignal.Set();
         }
 
@@ -191,7 +200,15 @@ namespace Squared.Task {
             if (_Disposed)
                 throw new ObjectDisposedException("ThreadSafeJobQueue");
 
-            _NextStepQueue.Enqueue(item);
+            _NextStepQueue.Enqueue(new WorkItemQueueEntry { Action = item });
+            _WaiterSignal.Set();
+        }
+
+        public void QueueWorkItemForNextStep (WorkItemQueueEntry entry) {
+            if (_Disposed)
+                throw new ObjectDisposedException("ThreadSafeJobQueue");
+
+            _NextStepQueue.Enqueue(entry);
             _WaiterSignal.Set();
         }
 

@@ -159,7 +159,8 @@ namespace Squared.Task {
         }
 
         public override void Post (SendOrPostCallback d, object state) {
-            Scheduler.QueueWorkItem(() => d(state));
+            // TODO: Find a way to prevent this from allocating
+            Scheduler.QueueWorkItem(new WorkItemQueueEntry { Action = d, Arg1 = state });
         }
 
         public override void Send (SendOrPostCallback d, object state) {
@@ -397,11 +398,25 @@ namespace Squared.Task {
             _JobQueue.QueueWorkItem(workItem);
         }
 
+        public void QueueWorkItem (WorkItemQueueEntry entry) {
+            if (_IsDisposed)
+                throw new ObjectDisposedException("TaskScheduler");
+
+            _JobQueue.QueueWorkItem(entry);
+        }
+
         public void QueueWorkItemForNextStep (Action workItem) {
             if (_IsDisposed)
                 throw new ObjectDisposedException("TaskScheduler");
 
             _JobQueue.QueueWorkItemForNextStep(workItem);
+        }
+
+        public void QueueWorkItemForNextStep (WorkItemQueueEntry entry) {
+            if (_IsDisposed)
+                throw new ObjectDisposedException("TaskScheduler");
+
+            _JobQueue.QueueWorkItemForNextStep(entry);
         }
 
         internal void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, System.Threading.ManualResetEventSlim newSleepEvent) {

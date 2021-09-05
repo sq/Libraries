@@ -93,7 +93,8 @@ namespace Squared.Util.Expressions {
             var current = new Token();
             var matches = _Regex.Matches(expression);
 
-            foreach (var match in matches.Cast<Match>()) {
+            for (int i = 0, c = matches.Count; i < c; i++) {
+                var match = matches[i];
                 current.Text = match.ToString();
                 if (match.Groups[_Group_Number].Success)
                     current.Type = TokenType.Number;

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
@@ -22,6 +23,7 @@ namespace Squared.PRGUI {
             public bool ContainsChildren => (Container != null) && (Container.Children.Count > 0);
         }
 
+        // FIXME: It would be good to make this a struct to cut down on allocations
         public class TraverseSettings {
             public bool AllowDescend, AllowDescendIfDisabled, AllowDescendIfInvisible, AllowAscend, StartWithDefault;
             // HACK: Will default to true for Window and false for everything else
@@ -252,23 +254,32 @@ namespace Squared.PRGUI {
             return TraverseChildren(collection, settings).FirstOrDefault().Control;
         }
 
+        private volatile TraverseSettings _ScratchPickForRotationSettings;
+
         public Control PickFocusableSiblingForRotation (Control child, int direction, bool? allowLoop, out bool didFollowProxy) {
-            var settings = new TraverseSettings {
-                AllowDescend = true,
-                AllowDescendIfDisabled = false,
-                AllowDescendIfInvisible = false,
-                AllowAscend = true,
-                AllowWrap = allowLoop,
-                Direction = direction,
-                FollowProxies = true,
-                // FIXME: Prevent top level rotate here?
-                FrameIndex = FrameIndex,
-                Predicate = RotatablePredicate ?? (RotatablePredicate = _RotatablePredicate)
-            };
+            var settings = Interlocked.Exchange(ref _ScratchPickForRotationSettings, null);
+            if (settings == null)
+                settings = new TraverseSettings();
+
+            settings.StartWithDefault = false;
+            settings.DidFollowProxy = false;
+
+            settings.AllowDescend = true;
+            settings.AllowDescendIfDisabled = false;
+            settings.AllowDescendIfInvisible = false;
+            settings.AllowAscend = true;
+            settings.AllowWrap = allowLoop;
+            settings.Direction = direction;
+            settings.FollowProxies = true;
+            // FIXME: Prevent top level rotate here?
+            settings.FrameIndex = FrameIndex;
+            settings.Predicate = RotatablePredicate ?? (RotatablePredicate = _RotatablePredicate);
 
             // DebugLog($"Finding sibling for {child} in direction {direction}");
             var result = SearchForSiblings(null, child, settings).FirstOrDefault().Control;
             didFollowProxy = settings.DidFollowProxy;
+
+            Interlocked.CompareExchange(ref _ScratchPickForRotationSettings, settings, null);
             return result;
         }
     }

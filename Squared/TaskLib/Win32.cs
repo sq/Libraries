@@ -29,8 +29,8 @@ namespace Squared.Task {
         private int WM_RUN_WORK_ITEM;
         private const int WS_EX_NOACTIVATE = 0x08000000;
 
-        private ConcurrentQueue<Action> _Queue = new ConcurrentQueue<Action>();
-        private ConcurrentQueue<Action> _NextStepQueue = new ConcurrentQueue<Action>();
+        private ConcurrentQueue<WorkItemQueueEntry> _Queue = new ConcurrentQueue<WorkItemQueueEntry>();
+        private ConcurrentQueue<WorkItemQueueEntry> _NextStepQueue = new ConcurrentQueue<WorkItemQueueEntry>();
         private int StepIsPending = 0;
         private int ExecutionDepth = 0;
 
@@ -77,12 +77,22 @@ namespace Squared.Task {
         }
 
         public void QueueWorkItem (Action item) {
-            _Queue.Enqueue(item);
+            _Queue.Enqueue(new WorkItemQueueEntry { Action = item });
+            MarkPendingStep();
+        }
+
+        public void QueueWorkItem (WorkItemQueueEntry entry) {
+            _Queue.Enqueue(entry);
             MarkPendingStep();
         }
 
         public void QueueWorkItemForNextStep (Action item) {
-            _NextStepQueue.Enqueue(item);
+            _NextStepQueue.Enqueue(new WorkItemQueueEntry { Action = item });
+            MarkPendingStep();
+        }
+
+        public void QueueWorkItemForNextStep (WorkItemQueueEntry entry) {
+            _NextStepQueue.Enqueue(entry);
             MarkPendingStep();
         }
 
@@ -108,18 +118,16 @@ namespace Squared.Task {
             bool markPending = false;
 
             int i = 0;
-            Action item;
+            WorkItemQueueEntry item;
             while (_Queue.TryDequeue(out item)) {
-                if (item != null) {
-                    try {
-                        item();
-                    } catch (Exception exc) {
-                        if (UnhandledException != null)
-                            UnhandledException(this, new UnhandledExceptionEventArgs(exc, false));
-                        else
-                            throw;
-                    }
-                } 
+                try {
+                    item.Invoke();
+                } catch (Exception exc) {
+                    if (UnhandledException != null)
+                        UnhandledException(this, new UnhandledExceptionEventArgs(exc, false));
+                    else
+                        throw;
+                }
 
                 i++;
 

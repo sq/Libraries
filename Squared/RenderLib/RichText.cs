@@ -70,8 +70,9 @@ namespace Squared.Render.Text {
         public static IEnumerable<RichRule> ParseRules (AbstractString text) {
             // FIXME: Optimize this
             var tstr = text.ToString();
-            foreach (var _match in RuleRegex.Matches(tstr)) {
-                var match = (Match)_match;
+            var matches = RuleRegex.Matches(tstr);
+            for (int i = 0, c = matches.Count; i < c; i++) {
+                var match = matches[i];
                 if (!match.Success)
                     continue;
 

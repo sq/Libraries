@@ -17,9 +17,34 @@ namespace Squared.Threading {
     /// </summary>
     public delegate void WorkQueueDrainListener (int itemsRunByThisThread, bool moreWorkRemains);
 
+    public struct WorkItemQueueEntry {
+        private static ThreadLocal<object[]> ScratchArray = 
+            new ThreadLocal<object[]>(() => new object[1]);
+
+        public Delegate Action;
+        public object Arg1;
+
+        public void Invoke () {
+            if (Action is Action a)
+                a();
+            else if (Action is Action<object> ao)
+                ao(Arg1);
+            else if (Action is SendOrPostCallback sopc)
+                sopc(Arg1);
+            else {
+                var sa = ScratchArray.Value;
+                sa[0] = Arg1;
+                // FIXME: Is this correct when re-entrant? It should be
+                Action.DynamicInvoke(sa);
+            }
+        }
+    }
+
     public interface IWorkItemQueueTarget {
         /// <summary>Adds a work item to the end of the job queue for the current step.</summary>
         void QueueWorkItem (Action item);
+        /// <summary>Adds a work item to the end of the job queue for the current step.</summary>
+        void QueueWorkItem (WorkItemQueueEntry entry);
     }
 
     public class WorkQueueException : Exception {
