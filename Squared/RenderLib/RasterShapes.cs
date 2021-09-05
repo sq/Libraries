@@ -928,6 +928,8 @@ namespace Squared.Render.RasterShape {
             }
         }
 
+        private static volatile Vector4[] PolygonVertexFlushBuffer = null;
+
         internal void FlushPolygonVertices (DeviceManager dm) {
             // HACK
             lock (PolygonVertexLock) {
@@ -948,7 +950,9 @@ namespace Squared.Render.RasterShape {
                 if (!PolygonVertexFlushRequired)
                     return;
 
-                var temp = new Vector4[w * h];
+                var temp = Interlocked.Exchange(ref PolygonVertexFlushBuffer, null);
+                if ((temp == null) || temp.Length != (w * h))
+                    temp = new Vector4[w * h];
                 int j = 0;
                 for (int i = 0; i < PolygonVertexCount; i++) {
                     var vert = PolygonVertexBuffer[i];
@@ -964,6 +968,7 @@ namespace Squared.Render.RasterShape {
                     }
                 }
                 PolygonVertexTexture.SetData(temp);
+                Interlocked.CompareExchange(ref PolygonVertexFlushBuffer, temp, null);
 
                 PolygonVertexFlushRequired = false;
             }
