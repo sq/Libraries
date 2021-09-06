@@ -311,9 +311,7 @@ namespace Squared.Task {
                 f.GetResult(out r, out e);
                 future.Complete(r);
             });
-            _Future.RegisterOnDispose((f) => {
-                future.Dispose();
-            });
+            _Future.RegisterOnDispose(future.Dispose);
         }
 
         public IFuture Future {
@@ -363,9 +361,7 @@ namespace Squared.Task {
 
         void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             _CompletionSignal = future;
-            future.RegisterOnDispose((_) => {
-                _Future.Dispose();
-            });
+            future.RegisterOnDispose(_Future.Dispose);
             scheduler.Start(_Future, _Thunk, _ExecutionPolicy);
         }
 

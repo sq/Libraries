@@ -153,7 +153,11 @@ namespace Squared.Threading {
         bool GetResult (out object result, out Exception error);
         void SetResult (object result, Exception error);
         void SetResult2 (object result, ExceptionDispatchInfo errorInfo);
+        void RegisterHandlers (Action completeHandler, Action disposeHandler);
         void RegisterHandlers (OnFutureResolved completeHandler, OnFutureResolved disposeHandler);
+        void RegisterOnResolved (Action handler);
+        void RegisterOnComplete (Action handler);
+        void RegisterOnDispose (Action handler);
         void RegisterOnResolved (OnFutureResolved handler);
         void RegisterOnComplete (OnFutureResolved handler);
         void RegisterOnDispose (OnFutureResolved handler);
@@ -474,13 +478,13 @@ namespace Squared.Threading {
         }
 
         private void InvokeHandler (Delegate handler) {
-            OnFutureResolved untyped;
-            OnFutureResolved<T> typed;
             try {
-                if ((typed = handler as OnFutureResolved<T>) != null) {
+                if (handler is OnFutureResolved<T> typed) {
                     typed(this);
-                } else if ((untyped = handler as OnFutureResolved) != null) {
+                } else if (handler is OnFutureResolved untyped) {
                     untyped(this);
+                } else if (handler is Action action) {
+                    action();
                 } else {
                     throw new FutureHandlerException(this, handler, "Invalid future handler");
                 }
@@ -592,6 +596,15 @@ namespace Squared.Threading {
         /// <summary>
         /// Registers a pair of handlers to be notified upon future completion and disposal, respectively.
         /// </summary>
+        public void RegisterHandlers (Action onComplete, Action onDispose) {
+            // FIXME: Set state to indeterminate once instead of twice
+            if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
+                RegisterHandler_Impl(onDispose, ref _OnDisposes, true);
+        }
+
+        /// <summary>
+        /// Registers a pair of handlers to be notified upon future completion and disposal, respectively.
+        /// </summary>
         public void RegisterHandlers (OnFutureResolved<T> onComplete, OnFutureResolved onDispose) {
             // FIXME: Set state to indeterminate once instead of twice
             if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
@@ -612,12 +625,24 @@ namespace Squared.Threading {
                 RegisterHandler_Impl(handler, ref _OnDisposes, true);
         }
 
+        void IFuture.RegisterOnResolved (Action handler) {
+            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false))
+                RegisterHandler_Impl(handler, ref _OnDisposes, true);
+        }
+
         /// <summary>
         /// Registers a handler to be notified upon future completion or disposal.
         /// </summary>
         public void RegisterOnResolved (OnFutureResolved<T> handler) {
             if (!RegisterHandler_Impl(handler, ref _OnCompletes, false))
                 RegisterHandler_Impl(handler, ref _OnDisposes, true);
+        }
+
+        /// <summary>
+        /// Registers a handler to be notified upon future completion. If the future is disposed, this will not run.
+        /// </summary>
+        public void RegisterOnComplete (Action handler) {
+            RegisterHandler_Impl(handler, ref _OnCompletes, false);
         }
 
         /// <summary>
@@ -632,6 +657,13 @@ namespace Squared.Threading {
         /// </summary>
         public void RegisterOnComplete2 (OnFutureResolved<T> handler) {
             RegisterHandler_Impl(handler, ref _OnCompletes, false);
+        }
+
+        /// <summary>
+        /// Registers a handlers to be notified upon future disposal. If the future is completed, this will not run.
+        /// </summary>
+        public void RegisterOnDispose (Action handler) {
+            RegisterHandler_Impl(handler, ref _OnDisposes, true);
         }
 
         /// <summary>
@@ -1075,7 +1107,7 @@ namespace Squared.Threading {
         public static Future<T> Bind<T> (this Future<T> future, Expression<Func<T>> target) {
             var member = BoundMember.New(target);
 
-            future.RegisterOnComplete2((f) => {
+            future.RegisterOnComplete((f) => {
                 T result;
                 if (future.GetResult(out result))
                     member.Value = result;
@@ -1128,8 +1160,7 @@ namespace Squared.Threading {
         /// </summary>
         public static ManualResetEventSlim GetCompletionEvent (this IFuture future) {
             System.Threading.ManualResetEventSlim evt = new System.Threading.ManualResetEventSlim(false);
-            OnFutureResolved handler = (f) => evt.Set();
-            future.RegisterOnComplete(handler);
+            future.RegisterOnComplete(evt.Set);
             return evt;
         }
     }

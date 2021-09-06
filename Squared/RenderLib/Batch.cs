@@ -207,7 +207,7 @@ namespace Squared.Render {
                     return;
 
                 using (var mre = new ManualResetEventSlim(false)) {
-                    sf.RegisterOnComplete((f) => mre.Set());
+                    sf.RegisterOnComplete(mre.Set);
                     if (!mre.Wait(1000))
                         throw new ThreadStateException("A batch remained suspended for too long");
 

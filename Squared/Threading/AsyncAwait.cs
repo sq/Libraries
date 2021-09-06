@@ -81,7 +81,7 @@ namespace Squared.Threading {
 
             public void OnCompleted (Action continuation) {
                 var oc = Registration.OnComplete(continuation);
-                ((IFuture)Future).RegisterHandlers(oc, (f) => oc(f));
+                ((IFuture)Future).RegisterOnResolved(oc);
             }
 
             public bool IsCompleted {
@@ -132,7 +132,7 @@ namespace Squared.Threading {
 
             public void OnCompleted (Action continuation) {
                 var oc = Registration.OnComplete(continuation);
-                Future.RegisterHandlers(oc, (f) => oc(f));
+                Future.RegisterOnResolved(oc);
             }
 
             public bool IsCompleted {
@@ -167,7 +167,7 @@ namespace Squared.Threading {
 
             public void OnCompleted (Action continuation) {
                 var oc = Registration.OnComplete(continuation);
-                ((IFuture)Future).RegisterHandlers(oc, (f) => oc(f));
+                ((IFuture)Future).RegisterOnResolved(oc);
             }
 
             public bool IsCompleted {
