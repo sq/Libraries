@@ -81,9 +81,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void Clear () {
+            var previousSelection = SelectedIndex;
             Items.Clear();
             _SelectedIndices.Clear();
-            OnSelectionChanged(true);
+            if (previousSelection != SelectedIndex)
+                OnSelectionChanged(true);
             // FIXME: Should we do this?
             // HasSelectedItem = false;
         }
