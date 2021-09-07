@@ -926,8 +926,8 @@ namespace Squared.PRGUI.Controls {
             Invalidate();
         }
 
-        public void Clear () {
-            Items.Clear();
+        public void Clear (bool invalidateControls = false) {
+            Items.Clear(invalidateControls);
             Invalidate();
         }
 
