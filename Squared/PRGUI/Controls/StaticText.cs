@@ -35,7 +35,8 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public bool UseTooltipForReading = false;
 
-        public const float AutoSizePadding = 1.5f;
+        public const float LineBreakRightPadding = 1.1f;
+        public const float AutoSizePadding = 0.5f;
         public const bool DiagnosticText = false;
 
         public Material TextMaterial = null;
@@ -166,7 +167,7 @@ namespace Squared.PRGUI.Controls {
                 if (Content.Scale == value)
                     return;
                 Content.Scale = value;
-                ResetAutoSize();
+                ResetMeasurement();
             }
         }
 
@@ -235,6 +236,16 @@ namespace Squared.PRGUI.Controls {
             Content.Get();
         }
 
+        protected void ResetMeasurement () {
+            ResetAutoSize();
+            Content.LineBreakAtX = null;
+            Content.Invalidate();
+            if (ContentMeasurement != null) {
+                ContentMeasurement.LineBreakAtX = null;
+                ContentMeasurement.Invalidate();
+            }
+        }
+
         protected void ResetAutoSize () {
             AutoSizeComputedContentHeight = 0;
             AutoSizeComputedHeight = AutoSizeComputedWidth = null;
@@ -272,6 +283,7 @@ namespace Squared.PRGUI.Controls {
         private IDecorator _CachedTextDecorations,
             _CachedDecorations;
         private Margins _CachedPadding;
+        private float _CachedLineBreakPoint;
         private bool? _CachedContentIsSingleLine;
 
         protected void ComputeAutoSize (ref UIOperationContext context, ref Margins computedPadding, ref Margins computedMargins) {
@@ -292,6 +304,10 @@ namespace Squared.PRGUI.Controls {
             if (contentChanged || fontChanged)
                 ResetAutoSize();
 
+            var lineBreakPoint = Content.LineBreakAtX ?? 99999f;
+            if (Math.Abs(_CachedLineBreakPoint - lineBreakPoint) > 0.5f)
+                ResetAutoSize();
+
             if (
                 (_CachedTextDecorations != textDecorations) ||
                 (_CachedDecorations != decorations) ||
@@ -306,6 +322,7 @@ namespace Squared.PRGUI.Controls {
             )
                 return;
 
+            _CachedLineBreakPoint = lineBreakPoint;
             _CachedTextDecorations = textDecorations;
             _CachedDecorations = decorations;
             _CachedPadding = computedPadding;
@@ -334,7 +351,7 @@ namespace Squared.PRGUI.Controls {
                 float w = Wrap
                     ? layout.Size.X
                     : layout.UnconstrainedSize.X;
-                AutoSizeComputedWidth = (float)Math.Ceiling(w + computedPadding.X);
+                AutoSizeComputedWidth = (float)Math.Ceiling(w + computedPadding.X + AutoSizePadding);
                 // FIXME: Something is wrong here if padding scale is active
                 /* if ((sr.X > 1) || (sr.Y > 1))
                     AutoSizeComputedWidth += 1;
@@ -363,8 +380,7 @@ namespace Squared.PRGUI.Controls {
             ComputeEffectiveSpacing(ref context, decorations, out Margins computedPadding, out Margins computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
             UpdateLineBreak(ref context, decorations, ref computedPadding, ref computedMargins);
-            if (!Content.IsValid)
-                ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
+            ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
 
             // HACK: Ensure that we report all the textures we use even if we're not currently being rasterized
@@ -393,7 +409,7 @@ namespace Squared.PRGUI.Controls {
             // HACK
             ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             var hasWidthConstraint = (width.Fixed ?? width.Maximum).HasValue;
-            var maxPx = ((width.Fixed ?? width.Maximum) * sizeScale.X) - computedPadding.X;
+            var maxPx = (width.Fixed ?? width.Maximum) - computedPadding.X;
 
             if (!MostRecentContentBoxWidth.HasValue && !maxPx.HasValue)
                 return null;
@@ -633,7 +649,7 @@ namespace Squared.PRGUI.Controls {
         protected void UpdateLineBreak (ref UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
             var textWidthLimit = ComputeTextWidthLimit(ref context, decorations, ref computedPadding, ref computedMargins);
             if (textWidthLimit.HasValue)
-                Content.LineBreakAtX = (float)Math.Ceiling(textWidthLimit.Value + 0.1f);
+                Content.LineBreakAtX = (float)Math.Ceiling(textWidthLimit.Value + LineBreakRightPadding);
             else
                 Content.LineBreakAtX = null;
         }
@@ -642,7 +658,7 @@ namespace Squared.PRGUI.Controls {
         private bool SyncWithCurrentFont (IGlyphSource font) {
             var result = false;
             if (font != _MostRecentFont) {
-                ResetAutoSize();
+                ResetMeasurement();
                 if (Content.GlyphSource == _MostRecentFont) {
                     Content.GlyphSource = font;
                     result = true;
