@@ -11,6 +11,7 @@ using Squared.Render.Convenience;
 using Squared.Util;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
+using Squared.Threading;
 
 namespace Squared.Render {
     public interface IMaterialCollection {
@@ -363,7 +364,15 @@ namespace Squared.Render {
         internal void UnregisterUniform (ITypedUniform uniform) {
         }
 
-        public virtual void PreloadShaders (RenderCoordinator coordinator) {
+        protected virtual IEnumerable<Material> GetShadersToPreload () {
+            foreach (var m in AllMaterials) {
+                if (m.HintPipeline == null && m.DelegatedHintPipeline?.HintPipeline == null)
+                    continue;
+                yield return m;
+            }
+        }
+
+        public void PreloadShaders (RenderCoordinator coordinator) {
             if (IsDisposed)
                 throw new ObjectDisposedException("MaterialSetBase");
 
@@ -374,18 +383,47 @@ namespace Squared.Render {
             // HACK: We should really only need 6 indices but drivers seem to want more sometimes
             var tempIb = new IndexBuffer(dm.Device, IndexElementSize.SixteenBits, 128, BufferUsage.WriteOnly);
             var count = 0;
-            foreach (var m in AllMaterials) {
-                if (m.HintPipeline == null && m.DelegatedHintPipeline?.HintPipeline == null)
-                    continue;
 
-                count++;
+            foreach (var m in GetShadersToPreload()) {
                 m.Preload(coordinator, dm, tempIb);
+                count++;
             }
 
             coordinator.DisposeResource(tempIb);
 
             var elapsed = sw.Elapsed.TotalMilliseconds;
             Debug.WriteLine($"Shader preload took {elapsed:000.00}ms for {count} material(s)");
+        }
+
+        public IFuture PreloadShadersAsync (RenderCoordinator coordinator, Task.TaskScheduler scheduler, Action<float> onProgress = null) {
+            if (IsDisposed)
+                throw new ObjectDisposedException("MaterialSetBase");
+
+            var dm = coordinator.Manager.DeviceManager;
+            var materials = GetShadersToPreload().ToList();
+            var tempIb = new IndexBuffer(dm.Device, IndexElementSize.SixteenBits, 128, BufferUsage.WriteOnly);
+            var f = scheduler.Start(PreloadShadersAsyncImpl(coordinator, dm, tempIb, materials, onProgress), Task.TaskExecutionPolicy.RunAsBackgroundTask);
+            return f;
+        }
+
+        private IEnumerator<object> PreloadShadersAsyncImpl (RenderCoordinator coordinator, DeviceManager dm, IndexBuffer tempIb, List<Material> materials, Action<float> onProgress) {
+            var sw = Stopwatch.StartNew();
+            var wfns = new Task.WaitForNextStep();
+
+            for (int i = 0; i < materials.Count; i++) {
+                var m = materials[i];
+                if (onProgress != null)
+                    onProgress(i / (float)materials.Count);
+                coordinator.BeforeIssue(() => m.Preload(coordinator, dm, tempIb));
+                yield return wfns;
+            }
+
+            onProgress(1f);
+
+            coordinator.DisposeResource(tempIb);
+
+            var elapsed = sw.Elapsed.TotalMilliseconds;
+            Debug.WriteLine($"Async shader preload took {elapsed:000.00}ms");
         }
     }
 }

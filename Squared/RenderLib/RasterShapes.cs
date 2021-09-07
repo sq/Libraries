@@ -980,7 +980,7 @@ namespace Squared.Render.RasterShape {
                 int result = PolygonVertexWriteOffset, allocSize = vertices.Count,
                     newCount = PolygonVertexCount + allocSize;
                 if ((PolygonVertexBuffer == null) || (newCount > PolygonVertexBuffer.Length)) {
-                    var newSize = ((newCount + 15) / 16) * 16;
+                    var newSize = ((newCount + 63) / 64) * 64;
                     if (PolygonVertexBuffer == null)
                         PolygonVertexBuffer = new RasterPolygonVertex[newSize];
                     else
