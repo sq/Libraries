@@ -19,6 +19,7 @@
 uniform const float4 GlobalShadowColor;
 uniform const float2 ShadowOffset;
 uniform const float  ShadowedTopMipBias, ShadowMipBias;
+uniform const bool   PremultiplyTexture;
 
 void BasicPixelShader(
     in float4 multiplyColor : COLOR0, 
@@ -86,6 +87,9 @@ void ShadowedPixelShader (
 
     float2 shadowTexCoord = clamp2(texCoord - (ShadowOffset * HalfTexel * 2), texRgn.xy, texRgn.zw);
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
+    if (PremultiplyTexture)
+        texColor.rgb *= texColor.a;
+
     float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias));
     if (shadowColor.a > 1)
         shadowColor = normalize(shadowColor);
@@ -107,6 +111,8 @@ void OutlinedPixelShader(
     addColor.a = 0;
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
+    if (PremultiplyTexture)
+        texColor.rgb *= texColor.a;
 
     float shadowAlpha = texColor.a;
     float2 offset = (ShadowOffset * HalfTexel * 2);
@@ -122,7 +128,7 @@ void OutlinedPixelShader(
     shadowAlpha = pow(shadowAlpha, OutlineExponent);
     float4 shadowColor = float4(shadowColorIn.rgb, 1);
     shadowColor = lerp(GlobalShadowColor, shadowColor, shadowColorIn.a > 0 ? 1 : 0);
-    shadowColor *= shadowAlpha;
+    shadowColor *= shadowAlpha * saturate(shadowColorIn.a);
 
     float4 overColor = (texColor * multiplyColor);
     overColor += (addColor * overColor.a);

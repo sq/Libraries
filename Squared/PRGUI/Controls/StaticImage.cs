@@ -102,6 +102,10 @@ namespace Squared.PRGUI.Controls {
         public Vector4 RasterizerUserData;
         public Material Material;
         public BlendState BlendState;
+        /// <summary>
+        /// Creates padding around the image being drawn for shadows and other shader effects
+        /// </summary>
+        public int DrawExpansion = 0;
 
         public StaticImage ()
             : base () {
@@ -288,11 +292,15 @@ namespace Squared.PRGUI.Controls {
                 if (!settings.IsCompositing)
                     color4 *= context.Opacity;
                 var color = new Color(color4.X, color4.Y, color4.Z, color4.W);
+                var rect = new Rectangle(-DrawExpansion, -DrawExpansion, instance.Width + (DrawExpansion * 2), instance.Height + (DrawExpansion * 2));
+                position.X += DrawExpansion * scale;
+                position.Y += DrawExpansion * scale;
                 var drawCall = new BitmapDrawCall(instance, position.Round(0)) {
                     Origin = Alignment,
                     ScaleF = scale,
                     MultiplyColor = color,
-                    UserData = RasterizerUserData
+                    UserData = RasterizerUserData,
+                    TextureRegion = instance.BoundsFromRectangle(rect)
                 };
                 Material material = null;
 
