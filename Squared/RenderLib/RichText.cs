@@ -266,6 +266,21 @@ namespace Squared.Render.Text {
         }
     }
 
+    public enum MarkedStringAction {
+        /// <summary>
+        /// Lay out the text as normal and generate a marker
+        /// </summary>
+        Default = 0,
+        /// <summary>
+        /// Lay out the text as plain text and do not generate a marker
+        /// </summary>
+        PlainText = 1,
+        /// <summary>
+        /// Do not lay out the text
+        /// </summary>
+        Omit = 2,
+    }
+
     /// <summary>
     /// Prepares a layout engine to display a marked string (i.e. '$(text)' or '$(id|text)'), and potentially changes its display text.
     /// </summary>
@@ -274,7 +289,7 @@ namespace Squared.Render.Text {
     /// <param name="state">A state snapshot that can be used to examine or restore the current state of the layout engine.</param>
     /// <param name="layoutEngine">The layout engine that will be used to append the text (after this method returns).</param>
     /// <returns>true if the string should be laid out, false if it should be omitted from the output entirely.</returns>
-    public delegate bool MarkedStringProcessor (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
+    public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
 
     public class RichTextConfiguration : IEquatable<RichTextConfiguration> {
         private static readonly Dictionary<string, Color?> SystemNamedColorCache = new Dictionary<string, Color?>();
@@ -457,17 +472,24 @@ namespace Squared.Render.Text {
                                 astr = bracketed;
                             }
 
-                            var ok = true;
+                            var action = MarkedStringAction.Default;
                             // HACK: The string processor may mess with layout state, so we want to restore it after
                             var markedState = new RichTextLayoutState(ref layoutEngine, state.DefaultGlyphSource) {
                                 GlyphSource = state.GlyphSource
                             };
                             if (MarkedStringProcessor != null)
-                                ok = MarkedStringProcessor(ref astr, id, ref markedState, ref layoutEngine);
-                            if (ok) {
+                                action = MarkedStringProcessor(ref astr, id, ref markedState, ref layoutEngine);
+                            if (action != MarkedStringAction.Omit) {
                                 var l = astr.Length;
-                                var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + l - 1, bracketed, id);
-                                layoutEngine.Markers.Add(m);
+                                if (action != MarkedStringAction.PlainText) {
+                                    var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + l - 1) {
+                                        MarkedString = bracketed,
+                                        MarkedID = id,
+                                        MarkedStringActualText = astr
+                                    };
+                                    layoutEngine.Markers.Add(m);
+                                }
+                                // FIXME: Omit this too?
                                 state.MarkedStrings.Add(bracketed);
                                 AppendRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
                             }

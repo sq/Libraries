@@ -131,7 +131,7 @@ namespace Squared.Render.Text {
         }
 
         // Inputs
-        public AbstractString MarkedString;
+        public AbstractString MarkedString, MarkedStringActualText;
         public string MarkedID;
         public int FirstCharacterIndex, LastCharacterIndex;
 
@@ -142,11 +142,12 @@ namespace Squared.Render.Text {
         internal int CurrentSplitGlyphCount;
         public DenseList<Bounds> Bounds;
 
-        public LayoutMarker (int firstIndex, int lastIndex, AbstractString markedString = default(AbstractString), string markedID = null) {
+        public LayoutMarker (int firstIndex, int lastIndex) {
             FirstCharacterIndex = firstIndex;
             LastCharacterIndex = lastIndex;
-            MarkedString = markedString;
-            MarkedID = markedID;
+            MarkedString = default;
+            MarkedStringActualText = default;
+            MarkedID = null;
             FirstDrawCallIndex = LastDrawCallIndex = null;
             FirstLineIndex = LastLineIndex = null;
             GlyphCount = CurrentSplitGlyphCount = 0;

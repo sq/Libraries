@@ -90,6 +90,7 @@ namespace Squared.PRGUI.Controls {
                         var m = Content.RichMarkers[i];
                         var hs = (HyperTextHotspot)children[i];
                         hs.Rects = m.Bounds;
+                        hs.ActualText = m.MarkedStringActualText;
                         hs.MarkedString = m.MarkedString;
                         hs.MarkedID = m.MarkedID;
                         if (m.Bounds.Count <= 0) {
@@ -173,6 +174,7 @@ namespace Squared.PRGUI.Controls {
     public class HyperTextHotspot : Control, ICustomTooltipTarget, IReadingTarget, IPartiallyIntangibleControl {
         public AbstractString MarkedString;
         public string MarkedID;
+        public AbstractString ActualText;
         public Vector2 RectBase;
         public DenseList<Bounds> Rects;
 
@@ -280,7 +282,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public override string ToString () {
-            return $"HotSpot '{MarkedID}' '{MarkedString}'";
+            return $"HotSpot '{MarkedID}' '{ActualText.ToString() ?? MarkedString}'";
         }
     }
 }
