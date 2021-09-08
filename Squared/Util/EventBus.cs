@@ -262,12 +262,14 @@ namespace Squared.Util.Event {
             CreateFilter(source, type, out filter, true);
 
             EventSubscriberList subscribers;
+            lock (_Subscribers)
             if (!_Subscribers.TryGetValue(filter, out subscribers)) {
                 subscribers = new EventSubscriberList();
                 _Subscribers[filter] = subscribers;
             }
 
-            subscribers.Add(subscriber);
+            lock (subscribers)
+                subscribers.Add(subscriber);
 
             return new EventSubscription(this, ref filter, subscriber);
         }
@@ -275,6 +277,7 @@ namespace Squared.Util.Event {
         private EventCategoryToken GetCategory (string name) {
             EventCategoryToken result;
 
+            lock (_Categories)
             if (!_Categories.TryGetValue(name, out result)) {
                 result = new EventCategoryToken(name);
                 _Categories[name] = result;
@@ -306,10 +309,12 @@ namespace Squared.Util.Event {
 
         public bool Unsubscribe (ref EventFilter filter, EventSubscriber subscriber) {
             EventSubscriberList subscribers;
-            if (_Subscribers.TryGetValue(filter, out subscribers))
-                return subscribers.Remove(subscriber);
+            lock (_Subscribers)
+                if (!_Subscribers.TryGetValue(filter, out subscribers))
+                    return false;
 
-            return false;
+            lock (subscribers)
+                return subscribers.Remove(subscriber);
         }
 
         private bool BroadcastToSubscribers<T> (object source, string type, T arguments) {
@@ -353,32 +358,39 @@ namespace Squared.Util.Event {
                     false
                 );
 
-                if (!_Subscribers.TryGetValue(filter, out subscribers))
-                    continue;
+                lock (_Subscribers)
+                    if (!_Subscribers.TryGetValue(filter, out subscribers))
+                        continue;
 
-                int count = subscribers.Count;
-                if (count <= 0)
-                    continue;
+                lock (subscribers)
+                    if (subscribers.Count <= 0)
+                        continue;
 
                 if (info == null)
                     info = new EventInfo<T>(this, source, categoryToken, categoryName, type, arguments);
 
-                using (var b = BufferPool<EventSubscriber>.Allocate(count)) {
-                    var temp = b.Data;
-                    subscribers.CopyTo(temp);
+                int count;
+                BufferPool<EventSubscriber>.Buffer b;
+                lock (subscribers) {
+                    count = subscribers.Count;
+                    b = BufferPool<EventSubscriber>.Allocate();
+                    subscribers.CopyTo(b.Data);
+                }
 
+                using (b) {
                     for (int j = count - 1; j >= 0; j--) {
-                        var ts = temp[j] as TypedEventSubscriber<T>;
+                        var es = b.Data[j];
+                        var ts = es as TypedEventSubscriber<T>;
                         if (ts != null)
                             ts(info, arguments);
-                        else
-                            temp[j](info);
+                        else if (es != null)
+                            es(info);
+                        else // HACK: This shouldn't be possible
+                            ;
 
                         if (info.IsConsumed)
                             return true;
                     }
-
-                    b.Clear();
                 }
             }
 
@@ -419,13 +431,14 @@ namespace Squared.Util.Event {
 
         public int Compact () {
             int result = 0;
-            var keys = new EventFilter[_Subscribers.Count];
-            _Subscribers.Keys.CopyTo(keys, 0);
-
-            foreach (var ef in keys) {
-                if (!(ef.WeakSource.IsAlive)) {
-                    _Subscribers.Remove(ef);
-                    result += 1;
+            lock (_Subscribers) {
+                var keys = new EventFilter[_Subscribers.Count];
+                _Subscribers.Keys.CopyTo(keys, 0);
+                foreach (var ef in keys) {
+                    if (!ef.WeakSource.IsAlive) {
+                        _Subscribers.Remove(ef);
+                        result += 1;
+                    }
                 }
             }
 
@@ -437,7 +450,8 @@ namespace Squared.Util.Event {
         }
 
         public void Dispose () {
-            _Subscribers.Clear();
+            lock (_Subscribers)
+                _Subscribers.Clear();
         }
     }
 }
