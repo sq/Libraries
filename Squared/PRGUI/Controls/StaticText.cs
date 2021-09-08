@@ -244,6 +244,10 @@ namespace Squared.PRGUI.Controls {
                 ContentMeasurement.LineBreakAtX = null;
                 ContentMeasurement.Invalidate();
             }
+            _CachedLineBreakPoint = -99999f;
+            _CachedPadding = default;
+            _CachedContentIsSingleLine = null;
+            // TODO: Clear decoration cache too?
         }
 
         protected void ResetAutoSize () {
@@ -655,15 +659,17 @@ namespace Squared.PRGUI.Controls {
         }
 
         private IGlyphSource _MostRecentFont;
+        private int _MostRecentFontVersion;
         private bool SyncWithCurrentFont (IGlyphSource font) {
             var result = false;
-            if (font != _MostRecentFont) {
+            if ((font != _MostRecentFont) || (font.Version != _MostRecentFontVersion)) {
                 ResetMeasurement();
                 if (Content.GlyphSource == _MostRecentFont) {
                     Content.GlyphSource = font;
                     result = true;
                 }
                 _MostRecentFont = font;
+                _MostRecentFontVersion = font.Version;
             }
 
             return result;

@@ -124,6 +124,8 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = true;
             Manager = new ItemListManager<T>(comparer ?? EqualityComparer<T>.Default);
             DefaultCreateControlForValue = _DefaultCreateControlForValue;
+            Content.CharacterWrap = false;
+            Content.WordWrap = false;
         }
 
         protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
