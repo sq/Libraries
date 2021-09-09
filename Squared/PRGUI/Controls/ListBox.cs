@@ -40,6 +40,8 @@ namespace Squared.PRGUI.Controls {
         IValueControl<T>, ISelectionBearer, IListBox,
         IPartiallyIntangibleControl, IFuzzyHitTestTarget, IHasDescription
     {
+        public ControlAppearance DefaultChildAppearance;
+
         public ListBoxEventMode EventMode = ListBoxEventMode.Consume;
 
         public bool DisableItemHitTests = true;
@@ -244,6 +246,7 @@ namespace Squared.PRGUI.Controls {
                 (FormatValue != null)
                     ? FormatValue(value)
                     : value.ToString();
+            st.Appearance = DefaultChildAppearance;
             st.Text = text;
             st.Wrap = false;
             st.Multiline = false;

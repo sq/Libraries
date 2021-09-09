@@ -244,9 +244,10 @@ namespace Squared.PRGUI.Controls {
                 ContentMeasurement.LineBreakAtX = null;
                 ContentMeasurement.Invalidate();
             }
-            _CachedLineBreakPoint = -99999f;
             _CachedPadding = default;
+            _CachedLineBreakPoint = -99999f;
             _CachedContentIsSingleLine = null;
+            _NeedRelayout = true;
             // TODO: Clear decoration cache too?
         }
 
@@ -258,11 +259,25 @@ namespace Squared.PRGUI.Controls {
                 MostRecentContentBoxWidth = null;
         }
 
+        private int _CachedTextVersion, _CachedTextLength;
+
         protected StringLayout GetCurrentLayout (bool measurement) {
             if (_RichText.HasValue)
                 Content.RichText = _RichText.Value;
             if (Content.RichText)
                 Content.RichTextConfiguration = GetRichTextConfiguration();
+
+            // If wrapping and autosize are both enabled, text changes can cause
+            //  very bad unnecessary wrapping to happen, so we want to forcibly reset
+            //  all our measurement data to prevent it
+            if (
+                (_CachedTextVersion != Content.TextVersion) ||
+                (_CachedTextLength != Content.Text.Length)
+            ) {
+                _CachedTextVersion = Content.TextVersion;
+                _CachedTextLength = Content.Text.Length;
+                ResetMeasurement();
+            }
 
             if (measurement) {
                 if (!Content.IsValid || (ContentMeasurement == null)) {

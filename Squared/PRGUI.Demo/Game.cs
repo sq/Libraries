@@ -47,6 +47,8 @@ namespace PRGUI.Demo {
         public Material TextMaterial { get; private set; }
         public Material SelectedTextMaterial { get; private set; }
 
+        StaticText DynamicStaticText;
+
         public IGlyphSource Font;
         public AutoRenderTarget UIRenderTarget;
 
@@ -583,6 +585,14 @@ namespace PRGUI.Demo {
                     SuppressDecorationPadding = true,
                 },
                 Children = {
+                    (DynamicStaticText = new StaticText {
+                        Appearance = la,
+                        AutoSize = true,
+                        // Wrap needs to be true to reproduce the autosize bug
+                        Wrap = true,
+                        ScaleToFit = false,
+                        Text = "Dynamic text"
+                    }),
                     new StaticText { 
                         Layout = lfb,
                         Appearance = la,
@@ -1201,9 +1211,21 @@ namespace PRGUI.Demo {
         private readonly List<double> DrawHistory = new List<double>(),
             WaitHistory = new List<double>();
 
+        private int DynamicStringIndex;
+        private string[] DynamicStaticStrings = new[] {
+            "Dynamic",
+            "Dynamic static text",
+            "Dynamic static",
+            "Dyn",
+            "Dynamicstatictext",
+            "123 456 789 012 345 678",
+            "  hello  "
+        };
+
         protected override void Update (GameTime gameTime) {
             var started = Time.Ticks;
 
+            DynamicStaticText.Text = DynamicStaticStrings[DynamicStringIndex++ % DynamicStaticStrings.Length];
             Context.UpdateInput(IsActive);
 
             if (IsFirstUpdate || (UpdatesToSkip <= 0)) {

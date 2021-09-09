@@ -17,7 +17,7 @@ namespace Squared.Render.Text {
     public class DynamicStringLayout {
         private ArraySegment<BitmapDrawCall> _Buffer; 
         private StringLayout? _CachedStringLayout;
-        private int _CachedGlyphVersion = -1;
+        private int _CachedGlyphVersion = -1, _TextVersion = -1;
 
         private RichTextConfiguration _RichTextConfiguration;
         private string _StyleName;
@@ -61,6 +61,8 @@ namespace Squared.Render.Text {
         private Dictionary<Vector2, LayoutHitTest> _HitTests = null;
         private List<LayoutMarker> _RichMarkers = null;
         private List<Bounds> _Boxes = null;
+
+        public int TextVersion => _TextVersion;
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _GlyphSource = new SpriteFontGlyphSource(font);
@@ -222,13 +224,15 @@ namespace Squared.Render.Text {
             }
         }
 
-        private void InvalidatingValueAssignment<T> (ref T destination, T newValue) 
+        private bool InvalidatingValueAssignment<T> (ref T destination, T newValue) 
             where T : struct, IEquatable<T>
         {
             if (!destination.Equals(newValue)) {
                 destination = newValue;
                 Invalidate();
+                return true;
             }
+            return false;
         }
 
         private void InvalidatingReferenceAssignment<T> (ref T destination, T newValue)
@@ -254,7 +258,8 @@ namespace Squared.Render.Text {
                 return _Text;
             }
             set {
-                InvalidatingValueAssignment(ref _Text, value);
+                if (InvalidatingValueAssignment(ref _Text, value))
+                    _TextVersion++;
             }
         }
 
