@@ -85,35 +85,44 @@ namespace Squared.Threading {
         private bool PerformWork () {
             var queues = Owner.QueuesForWorkers;
 
+            var gsc = Owner.SynchronizationContext;
+            var sc = SynchronizationContext.Current;
             bool moreWorkRemains = false;
-            var nqi = NextQueueIndex++;
-            for (int pi = 0, pc = queues.Items.Count; pi < pc; pi++) {
-                if (IsDisposed)
-                    return false;
+            try {
+                if (gsc != null)
+                    SynchronizationContext.SetSynchronizationContext(gsc);
+                var nqi = NextQueueIndex++;
+                for (int pi = 0, pc = queues.Items.Count; pi < pc; pi++) {
+                    if (IsDisposed)
+                        return false;
 
-                var pq = queues.Items.DangerousGetItem(pi);
-                var processedAnyAtThisLevel = false;
+                    var pq = queues.Items.DangerousGetItem(pi);
+                    var processedAnyAtThisLevel = false;
 
-                for (int li = 0, lc = pq.Length; li < lc; li++) {
-                    var index = (li + nqi) % lc;
-                    var queue = pq[index];
-                    if (queue == null)
-                        continue;
+                    for (int li = 0, lc = pq.Length; li < lc; li++) {
+                        var index = (li + nqi) % lc;
+                        var queue = pq[index];
+                        if (queue == null)
+                            continue;
 
-                    int processedItemCount = queue.Step(out bool exhausted);
-                    if (processedItemCount > 0) {
-                        moreWorkRemains |= !exhausted;
-                        processedAnyAtThisLevel = true;
+                        int processedItemCount = queue.Step(out bool exhausted);
+                        if (processedItemCount > 0) {
+                            moreWorkRemains |= !exhausted;
+                            processedAnyAtThisLevel = true;
+                        }
                     }
-                }
 
-                // If we processed any work items at this priority level,
-                //  bail out instead of continuing to a lower priority level.
-                // This is intended to ensure that high-priority items complete
-                //  first, while allowing lower priority items to run if the
-                //  high priority queue(s) are at their max concurrency level.
-                if (processedAnyAtThisLevel)
-                    break;
+                    // If we processed any work items at this priority level,
+                    //  bail out instead of continuing to a lower priority level.
+                    // This is intended to ensure that high-priority items complete
+                    //  first, while allowing lower priority items to run if the
+                    //  high priority queue(s) are at their max concurrency level.
+                    if (processedAnyAtThisLevel)
+                        break;
+                }
+            } finally {
+                if (gsc != null)
+                    SynchronizationContext.SetSynchronizationContext(sc);
             }
 
             return !moreWorkRemains;

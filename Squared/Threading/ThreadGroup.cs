@@ -113,6 +113,8 @@ namespace Squared.Threading {
 
         public readonly GroupThread[] Threads;
 
+        public SynchronizationContext SynchronizationContext;
+
         public string Name;
 
         /// <param name="threadCount">The desired number of threads to create. If not specified, the default is based on the number of processors available.</param>
@@ -136,6 +138,8 @@ namespace Squared.Threading {
             Threads = new GroupThread[ThreadCount];
             for (int i = 0; i < Threads.Length; i++)
                 Threads[i] = new GroupThread(this, i);
+
+            SynchronizationContext = SynchronizationContext.Current;
         }
 
         private void NewQueueCreated () {
@@ -172,21 +176,30 @@ namespace Squared.Threading {
             int totalSteps = 0;
             float stepLengthLimitMs = (MainThreadStepLengthLimitMs ?? 999999) - (currentElapsedMs ?? 0);
 
-            // FIXME: This will deadlock if you create a new queue while it's stepping the main thread
-            var started = Time.Ticks;
-            lock (MainThreadQueueList)
-            foreach (var q in MainThreadQueueList) {
-                bool exhausted;
-                // We want to run one queue item at a time to try and drain all the main thread queues evenly
-                totalSteps += q.Step(out exhausted, 1);
-                if (!exhausted)
-                    allExhausted = false;
+            var sc = SynchronizationContext.Current;
+            var msc = SynchronizationContext;
+            try {
+                if (msc != null)
+                    SynchronizationContext.SetSynchronizationContext(msc);
+                // FIXME: This will deadlock if you create a new queue while it's stepping the main thread
+                var started = Time.Ticks;
+                lock (MainThreadQueueList)
+                foreach (var q in MainThreadQueueList) {
+                    bool exhausted;
+                    // We want to run one queue item at a time to try and drain all the main thread queues evenly
+                    totalSteps += q.Step(out exhausted, 1);
+                    if (!exhausted)
+                        allExhausted = false;
 
-                var elapsedTicks = (Time.Ticks - started) / Time.MillisecondInTicks;
-                if (
-                    elapsedTicks > stepLengthLimitMs
-                )
-                    return false;
+                    var elapsedTicks = (Time.Ticks - started) / Time.MillisecondInTicks;
+                    if (
+                        elapsedTicks > stepLengthLimitMs
+                    )
+                        return false;
+                }
+            } finally {
+                if (msc != null)
+                    SynchronizationContext.SetSynchronizationContext(sc);
             }
 
             return allExhausted;
