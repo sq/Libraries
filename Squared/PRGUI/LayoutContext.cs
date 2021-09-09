@@ -1258,6 +1258,22 @@ namespace Squared.PRGUI.Layout {
             return offset;
         }
 
+        private unsafe bool ShouldExpandLastRow (LayoutItem * pItem, int idim) {
+            // FIXME: This behavior feels wrong
+            return true;
+
+            if (pItem->LastChild.IsInvalid)
+                return true;
+
+            // HACK: Expanding the last row is broken if the last row doesn't want to expand to fill
+            var lastFlags = LayoutPtr(pItem->LastChild)->Flags;
+            var shiftedLastFlags = (ControlFlags)((uint)(lastFlags & ControlFlagMask.Layout) >> idim);
+            if (!shiftedLastFlags.IsFlagged(ControlFlags.Layout_Fill_Row))
+                return false;
+
+            return true;
+        }
+
         private unsafe void Arrange (LayoutItem * pItem, LayoutDimensions dim) {
             var flags = pItem->Flags;
             var pRect = RectPtr(pItem->Key);
@@ -1268,7 +1284,7 @@ namespace Squared.PRGUI.Layout {
                 case ControlFlags.Container_Column | ControlFlags.Container_Wrap:
                     if (dim == LayoutDimensions.Y) {
                         ArrangeStacked(pItem, LayoutDimensions.Y, true);
-                        var offset = ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.X, true);
+                        var offset = ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.X, ShouldExpandLastRow(pItem, idim));
                         // FIXME: What on earth is this here for?
                         // (*pRect)[0] = offset - (*pRect)[0];
                         ;
@@ -1283,7 +1299,7 @@ namespace Squared.PRGUI.Layout {
                     if (dim == LayoutDimensions.X)
                         ArrangeStacked(pItem, LayoutDimensions.X, true);
                     else
-                        ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.Y, true);
+                        ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.Y, ShouldExpandLastRow(pItem, idim));
                     break;
                 case ControlFlags.Container_Column:
                 case ControlFlags.Container_Row:

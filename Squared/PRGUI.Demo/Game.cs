@@ -712,6 +712,57 @@ namespace PRGUI.Demo {
                 },
             };
 
+            // Test for bug where listboxes won't expand vertically to fill available space if they have neighbors
+            var listLayoutTab = new ControlGroup {
+                Children = {
+                    new ControlGroup {
+                        Children = {
+                            new ListBox<string> {
+                                Items = {
+                                    "a", "b", "c"
+                                },
+                                Layout = {
+                                    Fill = true,
+                                },
+                            },
+                            new ControlGroup {
+                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Bottom | ControlFlags.Layout_ForceBreak,
+                                Appearance = {
+                                    BackgroundColor = Color.Green * 0.5f,
+                                },
+                                Height = 16
+                            },
+                        },
+                        LayoutFlags = ControlFlags.Layout_Fill,
+                        // NOTE: The fix for this at present is to make it Container_Column and not set ForceBreak on any items. Blech
+                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap,
+                        Appearance = {
+                            BackgroundColor = Color.Red * 0.5f,
+                        },
+                        Height = {
+                            Minimum = 500
+                        },
+                    },
+                    /*
+                    new ControlGroup {
+                        Children = {
+                            new StaticText {
+                                Text = "Right side"
+                            },
+                        },
+                        Width = 300,
+                        Height = {
+                            Minimum = 500
+                        },
+                        LayoutFlags = ControlFlags.Layout_Fill,
+                        Appearance = {
+                            BackgroundColor = Color.Blue * 0.5f,
+                        }
+                    }
+                    */
+                }
+            };
+
             var displayOrdering = new Container {
                 Children = {
                     new StaticText {
@@ -771,6 +822,7 @@ namespace PRGUI.Demo {
                 { displayOrdering, "Z-Order" },
                 { rich, "Rich Text" },
                 { textTab, "Text Size" },
+                { listLayoutTab, "List Layout" },
             };
             tabs.SelectedIndex = 1;
             tabs.TabsOnLeft = false;
@@ -1225,7 +1277,7 @@ namespace PRGUI.Demo {
         protected override void Update (GameTime gameTime) {
             var started = Time.Ticks;
 
-            DynamicStaticText.Text = DynamicStaticStrings[DynamicStringIndex++ % DynamicStaticStrings.Length];
+            DynamicStaticText.Text = DynamicStaticStrings[(DynamicStringIndex++ / 16) % DynamicStaticStrings.Length];
             Context.UpdateInput(IsActive);
 
             if (IsFirstUpdate || (UpdatesToSkip <= 0)) {
