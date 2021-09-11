@@ -260,18 +260,21 @@ namespace Squared.Render.RasterShape {
     public struct RasterPolygonVertex {
         public Vector2 Position;
         public Vector2 ControlPoint;
+        public float LocalRadius;
         public RasterVertexType Type;
 
-        public RasterPolygonVertex (Vector2 position) {
+        public RasterPolygonVertex (Vector2 position, float localRadius = 0) {
             Type = RasterVertexType.Line;
             Position = position;
             ControlPoint = default;
+            LocalRadius = localRadius;
         }
 
-        public RasterPolygonVertex (Vector2 position, Vector2 controlPoint) {
+        public RasterPolygonVertex (Vector2 position, Vector2 controlPoint, float localRadius = 0) {
             Type = RasterVertexType.Bezier;
             Position = position;
             ControlPoint = controlPoint;
+            LocalRadius = localRadius;
         }
 
         public static implicit operator RasterPolygonVertex (Vector2 position) =>
@@ -279,9 +282,9 @@ namespace Squared.Render.RasterShape {
 
         public override string ToString () {
             if (Type == RasterVertexType.Line)
-                return $"({Position.X}, {Position.Y})";
+                return $"({Position.X}, {Position.Y}) radius={LocalRadius}";
             else
-                return $"bezier (prev) ({ControlPoint}) ({Position.X}, {Position.Y})";
+                return $"bezier (prev) ({ControlPoint}) ({Position.X}, {Position.Y}) radius={LocalRadius}";
         }
     }
 
@@ -956,7 +959,7 @@ namespace Squared.Render.RasterShape {
                 int j = 0;
                 for (int i = 0; i < PolygonVertexCount; i++) {
                     var vert = PolygonVertexBuffer[i];
-                    temp[j] = new Vector4(vert.Position.X, vert.Position.Y, (float)(int)vert.Type, 0);
+                    temp[j] = new Vector4(vert.Position.X, vert.Position.Y, (float)(int)vert.Type, vert.LocalRadius);
                     j++;
 
                     if (vert.Type == RasterVertexType.Bezier) {

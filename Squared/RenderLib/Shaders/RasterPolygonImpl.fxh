@@ -38,11 +38,13 @@ void computeTLBR_Polygon (
     int offset = (int)vertexOffset;
     int count = (int)vertexCount;
     float2 prev = 0;
+    float maxLocalRadius = 0;
 
     for (int i = 0; i < count; i++) {
-        float3 xyt = get(offset).xyz;
-        int nodeType = (int)xyt.z;
-        float2 pos = xyt.xy;
+        float4 xytr = get(offset);
+        int nodeType = (int)xytr.z;
+        float2 pos = xytr.xy;
+        maxLocalRadius = max(maxLocalRadius, xytr.w);
         offset++;
         if (nodeType == NODE_BEZIER) {
             float4 controlPoints = get(offset);
@@ -63,8 +65,8 @@ void computeTLBR_Polygon (
     if (br.y < tl.y)
         tl.y = br.y = -9999;
 
-    tl -= radius.x + outlineSize;
-    br += radius.x + outlineSize;
+    tl -= radius.x + outlineSize + maxLocalRadius;
+    br += radius.x + outlineSize + maxLocalRadius;
 }
 
 float doesCrossLine (float2 a, float2 b, float2 pos) {
@@ -90,9 +92,10 @@ void evaluatePolygonStep (
     in float radius, in int gradientType, inout float distance, inout float gradientWeight, 
     inout float s, inout float gdist, inout float2 tl, inout float2 br
 ) {
-    float4 xyt = get(offset);
-    int nodeType = (int)xyt.z;
-    float2 pos = (i >= (count - 1)) ? first : xyt.xy;
+    float4 xytr = get(offset);
+    int nodeType = (int)xytr.z;
+    float4 current = (i >= (count - 1)) ? first : xytr;
+    float2 pos = current.xy;
 
     offset++;
     if (nodeType == NODE_BEZIER)
@@ -126,8 +129,8 @@ void evaluatePolygonStep (
             );
         } else {
             evaluateLineSegment(
-                worldPosition, prev, pos, 0,
-                float2(radius, 0), temp, gradientType, temp2
+                worldPosition, prev, pos, float2(0, prev.w),
+                float2(radius, current.w), temp, gradientType, temp2
             );
         }
 
@@ -146,7 +149,7 @@ void evaluatePolygonStep (
         }
     }
 
-    prev = xyt;
+    prev = xytr;
     tl = min(tl, pos);
     br = max(br, pos);
 }

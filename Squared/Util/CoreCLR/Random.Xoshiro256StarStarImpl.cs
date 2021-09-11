@@ -31,6 +31,14 @@ namespace Squared.CoreCLR
         private ulong _s0, _s1, _s2, _s3;
         private static RandomNumberGenerator _rng = RandomNumberGenerator.Create();
 
+        public Xoshiro (ref Xoshiro copyFrom) {
+            _isInitialized = copyFrom._isInitialized;
+            _s0 = copyFrom._s0;
+            _s1 = copyFrom._s1;
+            _s2 = copyFrom._s2;
+            _s3 = copyFrom._s3;
+        }
+
         public unsafe Xoshiro (ulong[] state) {
             _isInitialized = true;
             if (state == null) {
