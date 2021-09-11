@@ -172,11 +172,13 @@ namespace Squared.Render.RasterShape {
                 Mode = mode
             };
     }
-
+    
+    [Flags]
     public enum RasterTextureCompositeMode : byte {
         Multiply = 0,
         Over = 1,
-        Under = 2
+        Under = 2,
+        ScreenSpace = 128
     }
 
     public struct RasterTextureSettings {
@@ -826,7 +828,12 @@ namespace Squared.Render.RasterShape {
                         shadowExpansion, sb.Shadow.Inside ? 1 : 0
                     ));
                     rasterShader.ShadowColorLinear.SetValue(shadowColor);
-                    rasterShader.TextureModeAndSize?.SetValue(sb.TextureSettings.ModeAndSize);
+                    var mas = sb.TextureSettings.ModeAndSize;
+                    if ((sb.TextureSettings.Mode & RasterTextureCompositeMode.ScreenSpace) == RasterTextureCompositeMode.ScreenSpace) {
+                        mas.Z = (mas.Z + 1) * Texture.Width;
+                        mas.W = (mas.W + 1) * Texture.Height;
+                    }
+                    rasterShader.TextureModeAndSize?.SetValue(mas);
                     rasterShader.TexturePlacement?.SetValue(sb.TextureSettings.Placement);
 
                     manager.ApplyMaterial(rasterShader.Material, ref MaterialParameters);

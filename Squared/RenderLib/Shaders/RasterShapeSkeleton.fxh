@@ -1100,18 +1100,33 @@ float4 texturedShapeCommon (
     float2 sizePx = br - tl;
     
     sizePx = max(abs(sizePx), 0.001) * sign(sizePx);
-    float2 posRelative = worldPosition - tl;
-    posRelative -= TexturePlacement.zw * sizePx;
+    float mode = TextureModeAndSize.x;
+    bool screenSpace = mode >= 128;
+    if (screenSpace)
+        mode -= 128;
 
-    if (TextureModeAndSize.y > 0.5)
-        sizePx = min(sizePx.x, sizePx.y);
-    float2 posRelativeScaled = posRelative / sizePx;
+    float2 texCoord;
 
-    float2 posTextureScaled = posRelativeScaled / (TextureModeAndSize.zw + 1);
-    posTextureScaled += TexturePlacement.xy;
+    if (screenSpace) {
+        float2 texSize = (texRgn.zw - texRgn.xy);
+        texCoord = (
+            ((vpos / TextureModeAndSize.zw) - TexturePlacement.zw) * texSize
+        ) + TexturePlacement.xy;
+    } else {
+        float2 posRelative = worldPosition - tl;
+        posRelative -= TexturePlacement.zw * sizePx;
 
-    float2 texSize = (texRgn.zw - texRgn.xy);
-    float2 texCoord = (posTextureScaled * texSize) + texRgn.xy;
+        if (TextureModeAndSize.y > 0.5)
+            sizePx = min(sizePx.x, sizePx.y);
+        float2 posRelativeScaled = posRelative / sizePx;
+
+        float2 posTextureScaled = posRelativeScaled / (TextureModeAndSize.zw + 1);
+        posTextureScaled += TexturePlacement.xy;
+
+        float2 texSize = (texRgn.zw - texRgn.xy);
+        texCoord = (posTextureScaled * texSize) + texRgn.xy;
+    }
+
     texCoord = clamp(texCoord, texRgn.xy, texRgn.zw);
 
     float4 texColor = tex2Dbias(TextureSampler, float4(texCoord, 0, BACKGROUND_MIP_BIAS));
@@ -1119,11 +1134,11 @@ float4 texturedShapeCommon (
         texColor = pSRGBToPLinear(texColor);
 
     // Under
-    if (TextureModeAndSize.x > 1.5) {
+    if (mode > 1.5) {
         fill = over(fill, fillAlpha, texColor, fillAlpha);
         fillAlpha = 1;
     // Over
-    } else if (TextureModeAndSize.x > 0.5) {
+    } else if (mode > 0.5) {
         fill = over(texColor, fillAlpha, fill, fillAlpha);
         fillAlpha = 1;
     // Multiply
