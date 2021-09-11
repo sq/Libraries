@@ -221,12 +221,11 @@ namespace Squared.PRGUI.Layout {
                 return false;
 
             var pItem = LayoutPtr(key);
-            // HACK: Ensure its position is updated even if we don't fully lay out all controls
-
-            CalcSize(pItem, LayoutDimensions.X);
-            Arrange (pItem, LayoutDimensions.X);
-            CalcSize(pItem, LayoutDimensions.Y);
-            Arrange (pItem, LayoutDimensions.Y);
+            var constrainSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
+            CalcSize(pItem, LayoutDimensions.X, constrainSize);
+            Arrange (pItem, LayoutDimensions.X, constrainSize);
+            CalcSize(pItem, LayoutDimensions.Y, constrainSize);
+            Arrange (pItem, LayoutDimensions.Y, constrainSize);
 
             return true;
         }
@@ -509,6 +508,14 @@ namespace Squared.PRGUI.Layout {
             pItem->Padding = padding;
         }
 
+        public unsafe void SetTag (ControlKey key, LayoutTags tag) {
+            // HACK
+            if (key.IsInvalid)
+                return;
+            var pItem = LayoutPtr(key);
+            pItem->Tag = tag;
+        }
+
         public unsafe void SetMargins (ControlKey key, Margins m) {
             var pItem = LayoutPtr(key);
             pItem->Margins = m;
@@ -728,7 +735,7 @@ namespace Squared.PRGUI.Layout {
             return CalcWrappedSizeImpl(pItem, dim, false, false);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private float Constrain (float value, float maybeMin, float maybeMax) {
             if (maybeMin >= 0)
                 value = Math.Max(value, maybeMin);
@@ -744,11 +751,12 @@ namespace Squared.PRGUI.Layout {
             return Constrain(value, minimum.GetElement(dimension), maximum.GetElement(dimension));
         }
 
-        private unsafe void CalcSize (LayoutItem * pItem, LayoutDimensions dim) {
+        private unsafe void CalcSize (LayoutItem * pItem, LayoutDimensions dim, bool constrainSize) {
+            var constrainChildSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
             foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);
-                CalcSize(pChild, dim);
+                CalcSize(pChild, dim, constrainChildSize);
             }
 
             var pRect = RectPtr(pItem->Key);
@@ -793,8 +801,12 @@ namespace Squared.PRGUI.Layout {
                     break;
             }
 
-            if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating)) {
-                var parentRect = GetContentRect(pItem->Parent);
+            var isFloating = pItem->Flags.IsFlagged(ControlFlags.Layout_Floating);
+            var parentRect = isFloating
+                ? GetContentRect(pItem->Parent)
+                : default;
+
+            if (isFloating) {
                 // HACK: If we are maximized, enforce our full layout instead of just size
                 if (dim == LayoutDimensions.X && (parentRect.Width > 0)) {
                     if (pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Row)) {
@@ -1141,6 +1153,11 @@ namespace Squared.PRGUI.Layout {
                         break;
                 }
 
+                if (pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Size)) {
+                    // FIXME: Implement this
+                    ;
+                }
+
                 childRect[idim] += offset;
                 SetRect(child, ref childRect);
                 CheckConstraints(child, idim);
@@ -1274,11 +1291,20 @@ namespace Squared.PRGUI.Layout {
             return true;
         }
 
-        private unsafe void Arrange (LayoutItem * pItem, LayoutDimensions dim) {
+        private unsafe void Arrange (LayoutItem * pItem, LayoutDimensions dim, bool constrainSize) {
             var flags = pItem->Flags;
             var pRect = RectPtr(pItem->Key);
             GetContentRect(pItem, ref *pRect, out RectF contentRect);
-            var idim = (int)dim;
+            int idim = (int)dim, wdim = idim + 2;
+
+            if (constrainSize && !pItem->Parent.IsInvalid) {
+                var parentRect = GetContentRect(pItem->Parent);
+                // FIXME: Investigate why this is necessary
+                // HACK: Sometimes we end up with a rect larger than our parent. Not sure why, but let's fix that
+                //  so that our children don't end up being way too big as well
+                var limit = parentRect[idim] + parentRect[wdim] - (*pRect)[idim];
+                (*pRect)[wdim] = Constrain((*pRect)[wdim], 0, limit);
+            }
 
             switch (flags & ControlFlagMask.BoxModel) {
                 case ControlFlags.Container_Column | ControlFlags.Container_Wrap:
@@ -1317,11 +1343,12 @@ namespace Squared.PRGUI.Layout {
                     break;
             }
 
+            var constrainChildSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
             foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);
                 ApplyFloatingPosition(pChild, ref contentRect, idim, idim + 2);
-                Arrange(pChild, dim);
+                Arrange(pChild, dim, constrainChildSize);
             }
         }
     }

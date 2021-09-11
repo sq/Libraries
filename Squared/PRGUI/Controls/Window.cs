@@ -350,7 +350,9 @@ namespace Squared.PRGUI.Controls {
                     ? default(ControlFlags)
                     : ControlFlags.Container_Constrain_Size;
                 Aligner.AlignmentPending = true;
-                return base.OnGenerateLayoutTree(ref context, parent, existingKey);
+                var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+                context.Layout.SetTag(result, LayoutTags.Window);
+                return result;
             } finally {
                 if (Collapsed)
                     context.HiddenCount--;

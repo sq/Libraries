@@ -276,6 +276,7 @@ namespace Squared.PRGUI.Controls {
 
         protected virtual ControlKey CreateColumn (ref UIOperationContext context, ControlKey parent, int columnIndex) {
             var result = context.Layout.CreateItem();
+            context.Layout.SetTag(result, LayoutTags.Column);
             var cf = ComputeContainerFlags();
             var resultFlags = cf | ControlFlags.Container_Prevent_Crush_Y;
             // FIXME

@@ -376,6 +376,8 @@ namespace Squared.PRGUI.Controls {
             if (result.IsInvalid)
                 return result;
 
+            context.Layout.SetTag(result, LayoutTags.ListBox);
+
             var hasPushedDecorator = false;
             var children = Children;
             for (int i = 0, c = children.Count; i < c; i++) {

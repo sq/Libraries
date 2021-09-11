@@ -49,7 +49,9 @@ namespace Squared.PRGUI.Controls {
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var decorator = GetDefaultDecorator(context.DecorationProvider);
             Aligner.ExtraMargins = decorator.Margins;
-            return base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            context.Layout.SetTag(result, LayoutTags.Tooltip);
+            return result;
         }
 
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

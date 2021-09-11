@@ -26,6 +26,12 @@ namespace Squared.PRGUI.Controls {
             Intangible = true;
         }
 
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            context.Layout.SetTag(result, LayoutTags.Spacer);
+            return result;
+        }
+
         protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) => false;
         protected override bool OnEvent<T> (string name, T args) => false;
         protected override bool OnEvent (string name) => false;

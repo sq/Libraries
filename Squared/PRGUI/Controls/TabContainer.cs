@@ -206,7 +206,11 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
+            context.Layout.SetTag(result, LayoutTags.TabContainer);
+            var constrainSize = (Container.ConstrainSize || ContainerFlags.IsFlagged(ControlFlags.Container_Constrain_Size));
             var containerFlags = ContainerFlags | ExtraContainerFlags;
+            if (constrainSize)
+                containerFlags |= ControlFlags.Container_Constrain_Size;
             context.Layout.SetContainerFlags(result, containerFlags);
 
             {
@@ -220,10 +224,13 @@ namespace Squared.PRGUI.Controls {
                     childBox = context.Layout.CreateItem();
                     context.Layout.Append(result, childBox);
                 }
-                context.Layout.SetContainerFlags(
-                    childBox,
-                    ControlFlags.Container_Align_Start | ControlFlags.Container_Column
-                );
+                var childBoxFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Column;
+                // HACK
+                if (constrainSize)
+                    childBoxFlags |= ControlFlags.Container_Constrain_Size;
+
+                context.Layout.SetTag(childBox, LayoutTags.TabChildBox);
+                context.Layout.SetContainerFlags(childBox, childBoxFlags);
                 context.Layout.SetLayoutFlags(
                     childBox, TabsOnLeft
                         ? ControlFlags.Layout_Fill

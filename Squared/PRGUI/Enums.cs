@@ -8,6 +8,19 @@ using Microsoft.Xna.Framework;
 using Squared.Game;
 
 namespace Squared.PRGUI.Layout {
+    public enum LayoutTags : int {
+        Default = 0,
+        Spacer,
+        Text,
+        Window,
+        Tooltip,
+        TabContainer,
+        TabStrip,
+        TabChildBox,
+        ListBox,
+        Column,
+    }
+
     public enum LayoutDimensions : uint {
         X = 0,
         Y = 1
