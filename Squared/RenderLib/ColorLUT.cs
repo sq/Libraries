@@ -56,6 +56,32 @@ namespace Squared.Render {
             double sum = sRGBByteToLinearTable[a] + sRGBByteToLinearTable[b] + sRGBByteToLinearTable[c] + sRGBByteToLinearTable[d];
             return (byte)(LinearTosRGB(sum / 4) * 255);
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Color? ConvertColor (Color? color, ColorConversionMode mode) {
+            if (!color.HasValue)
+                return null;
+            return ConvertColor(color.Value, mode);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Color ConvertColor (Color color, ColorConversionMode mode) {
+            ConvertColor(ref color, mode);
+            return color;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ConvertColor (ref Color color, ColorConversionMode mode) {
+            if (mode == ColorConversionMode.None)
+                return;
+            var table = (mode == ColorConversionMode.LinearToSRGB)
+                ? LinearByteTosRGBByteTable
+                : sRGBByteToLinearByteTable;
+            color = new Color(
+                table[color.R], table[color.G],
+                table[color.B], table[color.A]
+            );
+        }
     }
 
     public class ColorLUT : IDisposable {
@@ -229,5 +255,11 @@ namespace Squared.Render {
         Low = 16,
         Medium = 24,
         High = 32
+    }
+
+    public enum ColorConversionMode : int {
+        None,
+        LinearToSRGB,
+        SRGBToLinear,
     }
 }

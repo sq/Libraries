@@ -302,8 +302,17 @@ namespace Squared.Render.Text {
         public Func<string, AsyncRichImage> ImageProvider;
         public Dictionary<char, KerningAdjustment> KerningAdjustments;
         public MarkedStringProcessor MarkedStringProcessor;
+        public ColorConversionMode ColorMode;
 
         public string DefaultStyle;
+
+        private Color AutoConvert (Color color) {
+            return ColorSpace.ConvertColor(color, ColorMode);
+        }
+
+        private Color? AutoConvert (Color? color) {
+            return ColorSpace.ConvertColor(color, ColorMode);
+        }
 
         private Color? ParseColor (string text) {
             if (string.IsNullOrWhiteSpace(text))
@@ -319,9 +328,9 @@ namespace Squared.Render.Text {
                 result.B = temp;
                 if (text.Length <= 7)
                     result.A = 255;
-                return result;
+                return AutoConvert(result);
             } else if ((NamedColors != null) && NamedColors.TryGetValue(text, out Color namedColor)) {
-                return namedColor;
+                return AutoConvert(namedColor);
             } else {
                 lock (SystemNamedColorCache) {
                     if (SystemNamedColorCache.TryGetValue(text, out Color? systemNamedColor))
@@ -336,7 +345,7 @@ namespace Squared.Render.Text {
                 lock (SystemNamedColorCache)
                     SystemNamedColorCache[text] = result;
 
-                return result;
+                return AutoConvert(result);
             }
         }
 
@@ -581,7 +590,9 @@ namespace Squared.Render.Text {
                 ImageProvider = ImageProvider,
                 KerningAdjustments = CloneDictionary(deep, KerningAdjustments),
                 MarkedStringProcessor = MarkedStringProcessor,
-                DefaultStyle = DefaultStyle
+                DefaultStyle = DefaultStyle,
+                ColorMode = ColorMode,
+                Version = Version + 1
             };
         }
 
