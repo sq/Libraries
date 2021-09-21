@@ -53,7 +53,7 @@ namespace Squared.Render.Basis {
         );
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 GetBytesPerBlock (TranscoderTextureFormats format);
+        public static extern UInt32 GetBytesPerBlockOrPixel (TranscoderTextureFormats format);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int TranscodeImageLevel (
@@ -62,6 +62,18 @@ namespace Squared.Render.Basis {
             void * pOutput, UInt32 outputSizeInBlocks,
             TranscoderTextureFormats format, DecodeFlags decodeFlags
         );
+
+        public static bool IsBlockTextureFormat (TranscoderTextureFormats format) {
+            switch (format) {
+                case TranscoderTextureFormats.RGBA32:
+                case TranscoderTextureFormats.RGB565:
+                case TranscoderTextureFormats.BGR565:
+                case TranscoderTextureFormats.RGBA4444:
+                    return false;
+                default:
+                    return true;
+            }
+        }
     }
 
     public enum BlockFormats : UInt32 {
@@ -357,12 +369,15 @@ namespace Squared.Render.Basis {
         public uint GetTranscodedSizeInBytes (TranscoderTextureFormats format) {
             uint origWidth, origHeight, totalBlocks;
             lock (File) {
-                var blockSize = Transcoder.GetBytesPerBlock(format);
+                var blockSize = Transcoder.GetBytesPerBlockOrPixel(format);
                 if (Transcoder.GetImageLevelDesc(
                     File.pTranscoder, File.pData, File.DataSize, Image.Index, Index, out origWidth, out origHeight, out totalBlocks
                 ) == 0)
                     return 0;
-                return totalBlocks * blockSize;
+                if (Transcoder.IsBlockTextureFormat(format))
+                    return totalBlocks * blockSize;
+                else
+                    return origWidth * origHeight * blockSize;
             }
         }
 
@@ -381,7 +396,7 @@ namespace Squared.Render.Basis {
                 if (Transcoder.GetImageLevelInfo(File.pTranscoder, File.pData, File.DataSize, Image.Index, Index, out levelInfo) == 0)
                     return false;
 
-                var blockSize = Transcoder.GetBytesPerBlock(format);
+                var blockSize = Transcoder.GetBytesPerBlockOrPixel(format);
                 var numBlocks = (uint)(output.Count / blockSize);
 
                 fixed (byte* pBuffer = output.Array) {

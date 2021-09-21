@@ -513,7 +513,7 @@ namespace Squared.Render.Text {
             ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, ref RichStyle style
         ) {
             state.GlyphSource = style.GlyphSource ?? state.GlyphSource;
-            layoutEngine.overrideColor = style.Color ?? state.InitialColor;
+            layoutEngine.overrideColor = style.Color ?? layoutEngine.overrideColor;
             layoutEngine.scale = style.Scale * state.InitialScale ?? state.InitialScale;
             layoutEngine.spacing = style.Spacing ?? state.InitialSpacing;
             if (style.Apply != null)

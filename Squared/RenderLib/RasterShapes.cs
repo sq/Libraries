@@ -374,10 +374,6 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         public bool BlendInLinearSpace;
         /// <summary>
-        /// If set, final output is in linear space instead of sRGB.
-        /// </summary>
-        public bool OutputInLinearSpace;
-        /// <summary>
         /// The fill gradient weight is calculated as 1 - pow(1 - pow(w, FillGradientPowerMinusOne.x + 1), FillGradientPowerMinusOne.y + 1)
         /// Adjusting x and y away from 1 allows you to adjust the shape of the curve
         /// </summary>
@@ -546,7 +542,7 @@ namespace Squared.Render.RasterShape {
 
         private struct SubBatch {
             public RasterShapeType Type;
-            public bool BlendInLinearSpace, OutputInLinearSpace;
+            public bool BlendInLinearSpace;
             public RasterShadowSettings Shadow;
             public bool Shadowed, Simple;
             public int InstanceOffset, InstanceCount;
@@ -653,7 +649,6 @@ namespace Squared.Render.RasterShape {
                 _DrawCalls.GetItem(0, out dc);
                 var lastType = dc.Type;
                 var lastBlend = dc.BlendInLinearSpace;
-                var lastOutput = dc.OutputInLinearSpace;
                 var lastShadow = dc.Shadow;
                 var lastOffset = 0;
                 var lastIsSimple = dc.IsSimple;
@@ -666,7 +661,6 @@ namespace Squared.Render.RasterShape {
                     if (
                         ((dc.Type != lastType) && (!UseUbershader || dc.Type == RasterShapeType.Polygon || lastType == RasterShapeType.Polygon)) ||
                         (dc.BlendInLinearSpace != lastBlend) ||
-                        (dc.OutputInLinearSpace != lastOutput) ||
                         !dc.Shadow.Equals(ref lastShadow) ||
                         (dc.IsSimple != lastIsSimple) ||
                         !dc.TextureSettings.Equals(lastTextureSettings)
@@ -675,7 +669,6 @@ namespace Squared.Render.RasterShape {
                             InstanceOffset = lastOffset,
                             InstanceCount = (i - lastOffset),
                             BlendInLinearSpace = lastBlend,
-                            OutputInLinearSpace = lastOutput,
                             Type = lastType,
                             Shadow = lastShadow,
                             Shadowed = ShouldBeShadowed(ref lastShadow),
@@ -709,7 +702,6 @@ namespace Squared.Render.RasterShape {
                     InstanceOffset = lastOffset,
                     InstanceCount = (count - lastOffset),
                     BlendInLinearSpace = lastBlend,
-                    OutputInLinearSpace = lastOutput,
                     Type = lastType,
                     Shadow = lastShadow,
                     Shadowed = ShouldBeShadowed(ref lastShadow),
@@ -802,7 +794,7 @@ namespace Squared.Render.RasterShape {
                     }
 
                     rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
-                    rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget || sb.OutputInLinearSpace);
+                    rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
                     rasterShader.RasterTexture?.SetValue(Texture);
                     rasterShader.RampTexture?.SetValue(RampTexture);
 
@@ -898,8 +890,7 @@ namespace Squared.Render.RasterShape {
             dc.IsSimple = (dc.OuterColor4.FastEquals(ref dc.InnerColor4) || (dc.FillMode == (float)RasterFillMode.None)) ? 1 : 0;
             dc.PackedFlags = (
                 (int)dc.Type | (dc.IsSimple << 16) | (dc.Shadow.IsEnabled << 17) | ((dc.BlendInLinearSpace ? 1 : 0) << 18) |
-                ((dc.Shadow.Inside ? 1 : 0) << 19) | ((dc.OutputInLinearSpace ? 1 : 0) << 20) |
-                ((dc.SoftOutline ? 1 : 0) << 21)
+                ((dc.Shadow.Inside ? 1 : 0) << 19) | ((dc.SoftOutline ? 1 : 0) << 20)
             );
             _DrawCalls.Add(ref dc);
         }

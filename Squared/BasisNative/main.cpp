@@ -195,7 +195,7 @@ extern "C" {
             return pTranscoder->pBasis->get_image_level_desc(pData, dataSize, imageIndex, levelIndex, *pOrigWidth, *pOrigHeight, *pTotalBlocks);
     }
 
-    uint32_t __declspec(dllexport) GetBytesPerBlock (transcoder_texture_format format) {
+    uint32_t __declspec(dllexport) GetBytesPerBlockOrPixel (transcoder_texture_format format) {
         return basis_get_bytes_per_block_or_pixel(format);
     }
 
