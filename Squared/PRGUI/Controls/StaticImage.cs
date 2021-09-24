@@ -291,7 +291,8 @@ namespace Squared.PRGUI.Controls {
                 // FIXME: Always use context.Opacity?
                 if (!settings.IsCompositing)
                     color4 *= context.Opacity;
-                var color = new Color(color4.X, color4.Y, color4.Z, color4.W);
+                var pcolor = new pSRGBColor(color4, true);
+                var color = pcolor.ToColor(context.UIContext.IsSRGB);
                 var rect = new Rectangle(-DrawExpansion, -DrawExpansion, instance.Width + (DrawExpansion * 2), instance.Height + (DrawExpansion * 2));
                 position.X += DrawExpansion * scale;
                 position.Y += DrawExpansion * scale;

@@ -361,6 +361,16 @@ namespace Squared.PRGUI {
             StencilTestStates[referenceStencil] = result;
             return result;
         }
+
+        // HACK
+        internal bool IsSRGB => 
+            (ScratchSurfaceFormat == Squared.Render.Evil.TextureUtils.ColorSrgbEXT) &&
+                (ScratchSurfaceFormat != SurfaceFormat.Color);
+
+        public Color ConvertColor (Color color) {
+            var result = ColorSpace.ConvertColor(color, IsSRGB ? ColorConversionMode.SRGBToLinear : ColorConversionMode.None);
+            return result;
+        }
     }
 
     public struct RasterizePassSet {

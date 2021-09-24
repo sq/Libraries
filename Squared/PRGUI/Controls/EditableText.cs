@@ -1045,17 +1045,21 @@ namespace Squared.PRGUI.Controls {
         ) {
             Color? selectedColor = DynamicLayout.Color;
             selectionDecorator.GetTextSettings(ref context, state, out Material temp, ref selectedColor);
-            var selectedColorC = (selectedColor ?? Color.Black);
-            var nonSelectedColorC = (DynamicLayout.Color ?? Color.White);
+            var selectedColorC = context.UIContext.ConvertColor(selectedColor ?? Color.Black);
+            var nonSelectedColorC = context.UIContext.ConvertColor(DynamicLayout.Color ?? Color.White);
             var noColorizing = (selection == null) || 
                 (selection.Value.Bounds.Count < 1) || 
                 (Selection.First == Selection.Second) ||
                 (selection.Value.GlyphCount == 0);
             for (int i = 0; i < drawCalls.Count; i++) {
-                var color = noColorizing || ((i < selection.Value.FirstDrawCallIndex) || (i > selection.Value.LastDrawCallIndex))
-                    ? nonSelectedColorC
-                    : selectedColorC;
+                var isSelected = !(noColorizing || ((i < selection.Value.FirstDrawCallIndex) || (i > selection.Value.LastDrawCallIndex)));
+                var color = isSelected
+                    ? selectedColorC
+                    : nonSelectedColorC;
                 drawCalls.Array[i + drawCalls.Offset].MultiplyColor = color;
+                // HACK: Suppress shadow
+                if (isSelected)
+                    drawCalls.Array[i + drawCalls.Offset].UserData = new Vector4(0, 0, 0, 1 / 256f);
             }
         }
 

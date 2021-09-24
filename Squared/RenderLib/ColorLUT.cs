@@ -20,16 +20,23 @@ namespace Squared.Render {
                     sRGBByteToLinearTable[i] = Math.Pow((fv + 0.055) / 1.055, 2.4);
 
                 sRGBByteToLinearFloatTable[i] = (float)sRGBByteToLinearTable[i];
+                LinearByteTosRGBTable[i] = LinearTosRGB(i / 255.0);
 
                 sRGBByteToLinearByteTable[i] = (byte)Arithmetic.Clamp(sRGBByteToLinearTable[i] * 255, 0f, 255f);
                 LinearByteTosRGBByteTable[i] = (byte)(LinearTosRGB(i / 255.0) * 255);
+
+                InverseAlphaTable[i] = (i > 0) ? 1.0 / i : 0;
             }
         }
 
         public static readonly double[] sRGBByteToLinearTable = new double[256];
         public static readonly float[] sRGBByteToLinearFloatTable = new float[256];
         public static readonly byte[] sRGBByteToLinearByteTable = new byte[256];
+
+        public static readonly double[] LinearByteTosRGBTable = new double[256];
         public static readonly byte[] LinearByteTosRGBByteTable = new byte[256];
+
+        public static readonly double[] InverseAlphaTable = new double[256];
 
         public static double sRGBToLinear (double sRGB) {
             var low = sRGB / 12.92;
@@ -74,13 +81,38 @@ namespace Squared.Render {
         public static void ConvertColor (ref Color color, ColorConversionMode mode) {
             if (mode == ColorConversionMode.None)
                 return;
-            var table = (mode == ColorConversionMode.LinearToSRGB)
-                ? LinearByteTosRGBByteTable
-                : sRGBByteToLinearByteTable;
-            color = new Color(
-                table[color.R], table[color.G],
-                table[color.B], table[color.A]
-            );
+
+            if (color.A == 0)
+                return;
+
+            byte r = color.R, g = color.G, b = color.B;
+            if (color.A < 255) {
+                double amult = InverseAlphaTable[color.A], ad = color.A / 255.0,
+                    rd = (r * amult), gd = (g * amult), bd = (b * amult);
+                if (mode == ColorConversionMode.LinearToSRGB) {
+                    rd = LinearTosRGB(rd);
+                    gd = LinearTosRGB(gd);
+                    bd = LinearTosRGB(bd);
+                } else {
+                    rd = sRGBToLinear(rd);
+                    gd = sRGBToLinear(gd);
+                    bd = sRGBToLinear(bd);
+                }
+                color = new Color(
+                    (float)(rd * ad),
+                    (float)(gd * ad),
+                    (float)(bd * ad),
+                    (float)ad
+                );
+            } else {
+                var table = (mode == ColorConversionMode.LinearToSRGB)
+                    ? LinearByteTosRGBByteTable
+                    : sRGBByteToLinearByteTable;
+                color = new Color(
+                    table[color.R], table[color.G],
+                    table[color.B], table[color.A]
+                );
+            }
         }
     }
 
