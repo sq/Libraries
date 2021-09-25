@@ -992,7 +992,8 @@ namespace Squared.PRGUI {
                     outlineRadius: outlineRadius, outlineColor: outlineColor * 0.5f,
                     fill: new RasterFillSettings(
                         fillMode, offset: settings.UserData.Z,
-                        size: (settings.UserData.W != 0) ? settings.UserData.W : 1
+                        size: (settings.UserData.W != 0) ? Math.Abs(settings.UserData.W) : 1,
+                        repeat: settings.UserData.W < 0
                     ), 
                     innerColor: fillColor1, outerColor: fillColor2,
                     shadow: GaugeValueShadow,
@@ -1008,7 +1009,8 @@ namespace Squared.PRGUI {
                     outlineRadius: outlineRadius, outlineColor: outlineColor * 0.5f,
                     fill: new RasterFillSettings(
                         fillMode, offset: settings.UserData.Z, 
-                        size: (settings.UserData.W != 0) ? settings.UserData.W : 1
+                        size: (settings.UserData.W != 0) ? Math.Abs(settings.UserData.W) : 1,
+                        repeat: settings.UserData.W < 0
                     ), innerColor: fillColor1, outerColor: fillColor2,
                     shadow: GaugeValueShadow,
                     texture: settings.GetTexture(),
