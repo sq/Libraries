@@ -45,7 +45,10 @@ namespace Squared.PRGUI.Controls {
             set => SetCollapsed(value, false);
         }
 
-        protected void SetCollapsed (bool value, bool instant = false) {
+        /// <summary>
+        /// WARNING: If you call this on Window you deserve the bugs that will result
+        /// </summary>
+        public void SetCollapsed (bool value, bool instant = false) {
             if (!Collapsible)
                 value = false;
             if (value == _Collapsed)
@@ -89,7 +92,7 @@ namespace Squared.PRGUI.Controls {
         );
         protected float DisclosureArrowPadding => DisclosureArrowSize + DisclosureArrowMargin;
 
-        protected override bool HideChildren => Collapsible && (DisclosureLevel.Get(Context.NowL) <= 0);
+        protected override bool HideChildren => Collapsible && !IsContentVisible;
 
         protected override bool ShouldClipContent {
             get {
@@ -275,6 +278,8 @@ namespace Squared.PRGUI.Controls {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             height.Maximum = ComputeDisclosureHeight(ref context, height.Maximum);
         }
+
+        public bool IsContentVisible => DisclosureLevel.Get(Context.NowL) > 0;
 
         protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(ref context, ref relayoutRequested);

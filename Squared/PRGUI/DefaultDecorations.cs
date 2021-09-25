@@ -1691,7 +1691,8 @@ namespace Squared.PRGUI {
                 outlineRadius: GetOutlineSize(VirtualCursorOutlineThickness), outlineColor: VirtualCursorOutlineColor * (alpha * VirtualCursorOutlineAlpha),
                 fill: new RasterFillSettings {
                     Mode = RasterFillMode.Along,
-                    Size = 0.25f * -1, // HACK: Repeat fill
+                    Size = 0.25f,
+                    Repeat = true,
                     Offset = fillOffset
                 }
             );

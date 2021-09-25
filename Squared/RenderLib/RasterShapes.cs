@@ -145,26 +145,58 @@ namespace Squared.Render.RasterShape {
     public struct RasterFillSettings {
         public RasterFillMode Mode;
         public float Offset;
-        private float SizeMinusOne;
+        internal Vector2 FillRangeBiased;
+        /// <summary>
+        /// Configures the size of the gradient. Shorthand for FillRange.Y.
+        /// </summary>
         public float Size {
-            get => SizeMinusOne + 1;
-            set {
-                SizeMinusOne = value - 1;
-            }
+            get => (FillRangeBiased.Y - FillRangeBiased.X) + 1;
+            set => FillRangeBiased.Y = FillRangeBiased.X + value - 1;
         }
         internal float ModeF => Convenience.ImperativeRenderer.ConvertFillMode(Mode, Angle);
+        internal float GradientPowerMinusOne;
         public float Angle;
-        public Vector2? GradientPower;
+        public bool Repeat;
+
+        /// <summary>
+        /// For repeated fills, FillRange.X specifies the padding around the gradient at both ends.
+        /// For non-repeated fills, the gradient starts at FillRange.X and ends at FillRange.Y
+        /// Both values are in a 0-1 range.
+        /// </summary>
+        public Vector2 FillRange {
+            get => new Vector2(FillRangeBiased.X, FillRangeBiased.Y + 1);
+            set => FillRangeBiased = new Vector2(value.X, value.Y - 1);
+        }
+        /// <summary>
+        /// The exponent used to ease the gradient value on both ends. Higher values produce a steeper curve.
+        /// </summary>
+        public float GradientPower {
+            get => GradientPowerMinusOne + 1;
+            set => GradientPowerMinusOne = value - 1;
+        }
 
         public RasterFillSettings (
             RasterFillMode mode, float size = 1f, float offset = 0f,
-            float angle = 0f, Vector2? gradientPower = null
+            float angle = 0f, float gradientPower = 1f, bool repeat = false
         ) {
             Mode = mode;
             Offset = offset;
-            SizeMinusOne = size - 1f;
+            FillRangeBiased = new Vector2(0, size - 1f);
             Angle = angle;
-            GradientPower = gradientPower;
+            GradientPowerMinusOne = gradientPower - 1f;
+            Repeat = repeat;
+        }
+
+        public RasterFillSettings (
+            RasterFillMode mode, Vector2 fillRange, float offset = 0f,
+            float angle = 0f, float gradientPower = 1f, bool repeat = false
+        ) {
+            Mode = mode;
+            Offset = offset;
+            FillRangeBiased = new Vector2(fillRange.X, fillRange.Y - 1f);
+            Angle = angle;
+            GradientPowerMinusOne = gradientPower - 1f;
+            Repeat = repeat;
         }
 
         public static implicit operator RasterFillSettings (RasterFillMode mode) =>
@@ -373,27 +405,7 @@ namespace Squared.Render.RasterShape {
         /// If set, blending between inner/outer/outline colors occurs in linear space.
         /// </summary>
         public bool BlendInLinearSpace;
-        /// <summary>
-        /// The fill gradient weight is calculated as 1 - pow(1 - pow(w, FillGradientPowerMinusOne.x + 1), FillGradientPowerMinusOne.y + 1)
-        /// Adjusting x and y away from 1 allows you to adjust the shape of the curve
-        /// </summary>
-        public Vector2 FillGradientPowerMinusOne;
-        /// <summary>
-        /// The fill mode to use for the interior, (+ an angle in degrees if the mode is Angular).
-        /// </summary>
-        public float FillMode;
-        /// <summary>
-        /// Offsets the gradient towards or away from the beginning.
-        /// </summary>
-        public float FillOffset;
-        /// <summary>
-        /// Sets the size of the gradient, with 1.0 filling the entire shape.
-        /// </summary>
-        public float FillSize;
-        /// <summary>
-        /// For angular gradients, set the angle of the gradient (in degrees).
-        /// </summary>
-        public float FillAngle;
+        public RasterFillSettings Fill;
         /// <summary>
         /// If above zero, the shape becomes annular (hollow) instead of solid, with a border this size in pixels.
         /// </summary>
@@ -682,6 +694,10 @@ namespace Squared.Render.RasterShape {
                         lastTextureSettings = dc.TextureSettings;
                     }
 
+                    var fill = dc.Fill;
+                    var gpower = fill.GradientPowerMinusOne + 1f;
+                    if (fill.Repeat)
+                        gpower = -gpower;
                     var vert = new RasterShapeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         // FIXME: Fill this last space with a separate value?
@@ -689,8 +705,8 @@ namespace Squared.Render.RasterShape {
                         InnerColor = dc.InnerColor.ToVector4(),
                         OutlineColor = dc.OutlineColor.ToVector4(),
                         OuterColor = dc.OuterColor.ToVector4(),
-                        Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, dc.FillMode, dc.OutlineGammaMinusOne),
-                        Parameters2 = new Vector4(dc.FillGradientPowerMinusOne.X + 1, dc.FillGradientPowerMinusOne.Y + 1, dc.FillOffset, dc.FillSize),
+                        Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, (float)(int)fill.Mode, dc.OutlineGammaMinusOne),
+                        Parameters2 = new Vector4(gpower, fill.FillRange.X, fill.FillRange.Y, fill.Offset),
                         TextureRegion = dc.TextureBounds.ToVector4(),
                         Type = (short)dc.Type,
                         WorldSpace = (short)(dc.WorldSpace ? 1 : 0)
@@ -887,7 +903,7 @@ namespace Squared.Render.RasterShape {
         new public void Add (ref RasterShapeDrawCall dc) {
             // FIXME
             dc.Index = _DrawCalls.Count;
-            dc.IsSimple = (dc.OuterColor4.FastEquals(ref dc.InnerColor4) || (dc.FillMode == (float)RasterFillMode.None)) ? 1 : 0;
+            dc.IsSimple = (dc.OuterColor4.FastEquals(ref dc.InnerColor4) || (dc.Fill.Mode == RasterFillMode.None)) ? 1 : 0;
             dc.PackedFlags = (
                 (int)dc.Type | (dc.IsSimple << 16) | (dc.Shadow.IsEnabled << 17) | ((dc.BlendInLinearSpace ? 1 : 0) << 18) |
                 ((dc.Shadow.Inside ? 1 : 0) << 19) | ((dc.SoftOutline ? 1 : 0) << 20)

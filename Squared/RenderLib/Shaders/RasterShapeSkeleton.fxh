@@ -952,7 +952,10 @@ void rasterShapeCommon (
 
     float2 invRadius = 1.0 / max(radius, 0.0001);
 
-    float gradientOffset = params2.z, gradientSize = params2.w, gradientAngle;
+    float gradientOffset = params2.w, gradientPower = params2.x, gradientAngle;
+    float2 gradientRange = params2.yz;
+    bool repeatGradient = (gradientPower <= 0);
+    gradientPower = max(abs(gradientPower), 0.0001);
     int gradientType;
 
     if (simple) {
@@ -987,19 +990,23 @@ void rasterShapeCommon (
 
         // FIXME: A bunch of this doesn't seem to be necessary anymore
 
-        if (gradientSize > 0) {
-            gradientWeight = saturate(gradientWeight / gradientSize);
-        } else {
-            gradientSize = max(abs(gradientSize), 0.0001);
+        float gradientSize = gradientRange.y - gradientRange.x;
+        if (repeatGradient) {
+            // Gradient weight rescaled into 0-1
             gradientWeight /= gradientSize;
+            // Remap the gradient weight so that it ping-pongs A B A
             gradientWeight = gradientWeight % 2;
             gradientWeight = 1 - abs(gradientWeight - 1);
+            float gradientDivisor = clamp(1 - (gradientRange.x * 2), 0.001, 1);
+            gradientWeight = clamp(gradientWeight - gradientRange.x, 0, gradientDivisor) / gradientDivisor;
+        } else {
+            gradientWeight = clamp(gradientWeight - gradientRange.x, 0, gradientSize) / gradientSize;
         }
 
-        if (gradientWeight > 0)
-            gradientWeight = saturate(pow(gradientWeight, max(params2.x, 0.001)));
-        if (gradientWeight < 1)
-            gradientWeight = 1 - saturate(pow(1 - gradientWeight, max(params2.y, 0.001)));
+        if ((gradientWeight > 0) && (gradientWeight < 1)) {
+            float tE = pow(gradientWeight, gradientPower);
+            gradientWeight = tE / (tE + pow(1 - gradientWeight, gradientPower));
+        }
     }
 
     float outlineSizeAlpha = saturate(outlineSize / 2);
