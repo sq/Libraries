@@ -97,7 +97,9 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<RenderTargetBatchGroup>();
 
-            result.Initialize(container, layer, before, after, userData, materialSet, viewTransform);
+            result.Initialize(container, layer, before, after, userData, materialSet);
+            if (viewTransform.HasValue)
+                result.SetViewTransform(ref viewTransform);
             result.SingleAuto = renderTarget;
             result.Single = null;
             result.Multiple = null;
@@ -122,7 +124,9 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<RenderTargetBatchGroup>();
 
-            result.Initialize(container, layer, before, after, userData, materialSet, viewTransform);
+            result.Initialize(container, layer, before, after, userData, materialSet);
+            if (viewTransform.HasValue)
+                result.SetViewTransform(ref viewTransform);
             result.Single = renderTarget;
             result.SingleAuto = null;
             result.Multiple = null;
@@ -168,7 +172,9 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<RenderTargetBatchGroup>();
 
-            result.Initialize(container, layer, before, after, userData, materialSet, viewTransform);
+            result.Initialize(container, layer, before, after, userData, materialSet);
+            if (viewTransform.HasValue)
+                result.SetViewTransform(ref viewTransform);
             result.Single = null;
             result.SingleAuto = null;
             result.Multiple = renderTargets;
@@ -182,16 +188,13 @@ namespace Squared.Render {
         public static BatchGroup New (
             IBatchContainer container, int layer, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null,
-            object userData = null, 
-            DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
-            Func<ViewTransform, object, ViewTransform> viewTransformModifier = null,
-            string name = null
+            object userData = null, DefaultMaterialSet materialSet = null, string name = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
-            result.Initialize(container, layer, before, after, userData, materialSet, viewTransform, viewTransformModifier: viewTransformModifier);
+            result.Initialize(container, layer, before, after, userData, materialSet);
             result.Name = name;
             result.CaptureStack(0);
 
@@ -201,13 +204,9 @@ namespace Squared.Render {
         public void Initialize (
             IBatchContainer container, int layer, 
             Action<DeviceManager, object> before, Action<DeviceManager, object> after, 
-            object userData, DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
-            bool addToContainer = true, Func<ViewTransform, object, ViewTransform> viewTransformModifier = null
+            object userData, DefaultMaterialSet materialSet = null, bool addToContainer = true
         ) {
             base.Initialize(container, layer, null, addToContainer);
-
-            if (viewTransform.HasValue && (materialSet == null))
-                throw new ArgumentException("No view transform can be applied without a material set");
 
             Frame = container.Frame;
             Coordinator = container.Coordinator;
@@ -216,10 +215,37 @@ namespace Squared.Render {
             _After = after;
             _UserData = userData;
             MaterialSet = materialSet;
-            ViewTransform = viewTransform;
-            ViewTransformModifier = viewTransformModifier;
+            ViewTransform = default;
+            ViewTransformModifier = null;
             IsReleased = false;
             OcclusionQuery = null;
+        }
+
+        public void SetViewTransform (
+            Func<ViewTransform, object, ViewTransform> modifier
+        ) {
+            if ((modifier != null) && (MaterialSet == null))
+                throw new ArgumentException("No view transform can be applied without a material set");
+
+            ViewTransformModifier = modifier;
+        }
+
+        public void SetViewTransform (
+            ref ViewTransform viewTransform
+        ) {
+            if (MaterialSet == null)
+                throw new ArgumentException("No view transform can be applied without a material set");
+
+            ViewTransform = viewTransform;
+        }
+
+        public void SetViewTransform (
+            ref ViewTransform? viewTransform
+        ) {
+            if (viewTransform.HasValue && (MaterialSet == null))
+                throw new ArgumentException("No view transform can be applied without a material set");
+
+            ViewTransform = viewTransform;
         }
 
         public RenderCoordinator Coordinator {

@@ -704,14 +704,34 @@ namespace Squared.Render.Convenience {
 
         public ImperativeRenderer MakeSubgroup (
             bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
-            ViewTransform? viewTransform = null, Func<ViewTransform, object, ViewTransform> viewTransformModifier = null, string name = null,
-            int? layer = null
+            string name = null, int? layer = null, Func<ViewTransform, object, ViewTransform> viewTransformModifier = null
         ) {
-            var result = this;
+            ImperativeRenderer result;
+            MakeSubgroup(out result, nextLayer, before, after, userData, name, layer, viewTransformModifier);
+            return result;
+        }
+
+        public ImperativeRenderer MakeSubgroup (
+            ref ViewTransform viewTransform, bool nextLayer = true, 
+            Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
+            string name = null, int? layer = null
+        ) {
+            ImperativeRenderer result;
+            MakeSubgroup(out result, ref viewTransform, nextLayer, before, after, userData, name, layer);
+            return result;
+        }
+
+        public void MakeSubgroup (
+            out ImperativeRenderer result, bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
+            string name = null, int? layer = null, Func<ViewTransform, object, ViewTransform> viewTransformModifier = null
+        ) {
+            result = this;
             var group = BatchGroup.New(
                 Container, layer ?? Layer, before: before, after: after, userData: userData,
-                materialSet: Materials, viewTransform: viewTransform, viewTransformModifier: viewTransformModifier, name: name
+                materialSet: Materials, name: name
             );
+            if (viewTransformModifier != null)
+                group.SetViewTransform(viewTransformModifier);
             // FIXME: is this necessary? seems like it might be...
             // result.Cache.Clear();
             group.Dispose();
@@ -721,8 +741,15 @@ namespace Squared.Render.Convenience {
 
             if (nextLayer)
                 Layer += 1;
+        }
 
-            return result;
+        public void MakeSubgroup (
+            out ImperativeRenderer result, ref ViewTransform viewTransform, 
+            bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
+            string name = null, int? layer = null
+        ) {
+            MakeSubgroup(out result, nextLayer, before, after, userData, name, layer);
+            ((BatchGroup)result.Container).SetViewTransform(ref viewTransform);
         }
 
         public ImperativeRenderer Clone (bool nextLayer = true) {

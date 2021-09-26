@@ -1016,10 +1016,10 @@ namespace Squared.PRGUI {
                 Opacity = Opacity,
                 Prepass = Prepass,
             };
-            RenderTargetStack.Clone(out result.RenderTargetStack);
-            DecoratorStack.Clone(out result.DecoratorStack);
-            TextDecoratorStack.Clone(out result.TextDecoratorStack);
-            DecorationProviderStack.Clone(out result.DecorationProviderStack);
+            RenderTargetStack.Clone(ref result.RenderTargetStack, true);
+            DecoratorStack.Clone(ref result.DecoratorStack, true);
+            TextDecoratorStack.Clone(ref result.TextDecoratorStack, true);
+            DecorationProviderStack.Clone(ref result.DecorationProviderStack, true);
         }
     }
 }

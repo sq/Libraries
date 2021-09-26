@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,31 +25,100 @@ namespace Squared.Render {
             public bool Async;
             public DenseList<Batch> BatchesToRelease;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public PrepareContext (PrepareManager manager, bool async) {
                 Manager = manager;
                 Async = async;
                 BatchesToRelease = new DenseList<Batch>();
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Prepare (Batch batch) {
                 Manager.Prepare(batch, ref this);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal void InvokeBasePrepare (Batch b) {
                 b.Prepare(Manager);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal void Validate (IBatch batch, bool enqueuing) {
                 Manager.ValidateBatch(batch, enqueuing);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal void PrepareMany (ref DenseList<Batch> batches) {
                 Manager.PrepareMany(ref batches, ref this);
             }
         }
 
         public struct PrepareState {
-            public volatile bool IsInitialized, IsPrepareQueued, IsPrepared, IsIssued, IsCombined;
+            public volatile PrepareStateFlags Flags;
+
+            public bool IsInitialized {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => (Flags & PrepareStateFlags.Initialized) == PrepareStateFlags.Initialized;
+                set {
+                    if (value)
+                        Flags |= PrepareStateFlags.Initialized;
+                    else
+                        Flags &= ~PrepareStateFlags.Initialized;
+                }
+            }
+
+            public bool IsPrepareQueued {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => (Flags & PrepareStateFlags.PrepareQueued) == PrepareStateFlags.PrepareQueued;
+                set {
+                    if (value)
+                        Flags |= PrepareStateFlags.PrepareQueued;
+                    else
+                        Flags &= ~PrepareStateFlags.PrepareQueued;
+                }
+            }
+
+            public bool IsPrepared {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => (Flags & PrepareStateFlags.Prepared) == PrepareStateFlags.Prepared;
+                set {
+                    if (value)
+                        Flags |= PrepareStateFlags.Prepared;
+                    else
+                        Flags &= ~PrepareStateFlags.Prepared;
+                }
+            }
+
+            public bool IsIssued {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => (Flags & PrepareStateFlags.Issued) == PrepareStateFlags.Issued;
+                set {
+                    if (value)
+                        Flags |= PrepareStateFlags.Issued;
+                    else
+                        Flags &= ~PrepareStateFlags.Issued;
+                }
+            }
+
+            public bool IsCombined {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => (Flags & PrepareStateFlags.Combined) == PrepareStateFlags.Combined;
+                set {
+                    if (value)
+                        Flags |= PrepareStateFlags.Combined;
+                    else
+                        Flags &= ~PrepareStateFlags.Combined;
+                }
+            }
+        }
+
+        [Flags]
+        public enum PrepareStateFlags : uint {
+            Initialized = 1,
+            PrepareQueued = 2,
+            Prepared = 4,
+            Issued = 8,
+            Combined = 16
         }
 
         private static Dictionary<Type, int> TypeIds = new Dictionary<Type, int>(new ReferenceComparer<Type>());
@@ -361,12 +431,14 @@ namespace Squared.Render {
             State.IsPrepareQueued = newState;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void GetState (out bool isInitialized, out bool isCombined, out bool isPrepareQueued, out bool isPrepared, out bool isIssued) {
-            isInitialized = State.IsInitialized;
-            isCombined = State.IsCombined;
-            isPrepareQueued = State.IsPrepareQueued;
-            isPrepared = State.IsPrepared;
-            isIssued = State.IsIssued;
+            var flags = State.Flags;
+            isInitialized = (flags & PrepareStateFlags.Initialized) == PrepareStateFlags.Initialized;
+            isCombined = (flags & PrepareStateFlags.Combined) == PrepareStateFlags.Combined;
+            isPrepareQueued = (flags & PrepareStateFlags.PrepareQueued) == PrepareStateFlags.PrepareQueued;
+            isPrepared = (flags & PrepareStateFlags.Prepared) == PrepareStateFlags.Prepared;
+            isIssued = (flags & PrepareStateFlags.Issued) == PrepareStateFlags.Issued;
         }
     }
 

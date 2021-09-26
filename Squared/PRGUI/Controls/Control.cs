@@ -1261,9 +1261,9 @@ namespace Squared.PRGUI {
                 var subgroup = passSet.Above.MakeSubgroup(
                     before: BeforeComposite, 
                     after: AfterComposite,
-                    viewTransformModifier: Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null, 
                     userData: this
                 );
+                ((BatchGroup)subgroup.Container).SetViewTransform(Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null);
                 subgroup.BlendState = RenderStates.PorterDuffOver;
                 if (enableCompositor)
                     Appearance.Compositor.Composite(this, ref subgroup, ref dc);

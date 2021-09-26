@@ -413,6 +413,23 @@ namespace Squared.Util {
             }
         }
 
+        public void Clone (ref DenseList<T> output, bool outputIsEmpty) {
+            if (HasList) {
+                if (!outputIsEmpty)
+                    output = default(DenseList<T>);
+
+                UnorderedList<T> newItems;
+                if (output.HasList) {
+                    newItems = output.Items;
+                } else {
+                    newItems = output.Items = new UnorderedList<T>(Items.Count);
+                }
+                Items.CopyTo(newItems);
+            } else if ((Storage.Count > 0) || !outputIsEmpty) {
+                output = this;
+            }
+        }
+
         public void EnsureCapacity (int capacity, bool lazy = false) {
             if (capacity <= 4)
                 return;

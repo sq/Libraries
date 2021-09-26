@@ -1,4 +1,6 @@
-﻿using System;
+﻿// #define INSTRUMENT_FAST_PATH
+
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
