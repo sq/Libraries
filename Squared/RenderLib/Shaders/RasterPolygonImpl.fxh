@@ -1,5 +1,6 @@
 #define NODE_LINE 0
 #define NODE_BEZIER 1
+#define NODE_SKIP 2
 
 float4 get (int offset) {
     int y = (int)floor(offset / MAX_VERTEX_BUFFER_WIDTH);
@@ -18,6 +19,10 @@ void evaluateBezier (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
     inout int gradientType, out float gradientWeight
+);
+
+float2 evaluateBezierAtT (
+    in float2 a, in float2 b, in float2 c, in float t
 );
 
 void evaluateLineSegment (
@@ -53,6 +58,10 @@ void computeTLBR_Polygon (
             computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
             tl = min(btl, tl);
             br = max(bbr, br);
+        } else if (nodeType == NODE_SKIP) {
+            // FIXME: Is this right? Not doing it seems to break our bounding boxes
+            tl = min(pos, tl);
+            br = max(pos, br);
         } else {
             tl = min(pos, tl);
             br = max(pos, br);
@@ -86,47 +95,87 @@ float signBezier(float2 A, float2 B, float2 C, float2 p)
     ) * doesCrossLine(A, C, B);
 }
 
+void evaluateClosedPolygonStep_Line (
+    float2 prev, float2 pos, float2 worldPosition,
+    inout float distance, inout float s
+) {
+    float2 e = prev - pos,
+        w = worldPosition - pos,
+        b = w - (e * saturate(dot(w, e) / dot(e, e)));
+
+    distance = min(distance, dot(b, b));
+
+    bool3 c = bool3(
+        worldPosition.y >= pos.y, 
+        worldPosition.y < prev.y, 
+        (e.x * w.y) > (e.y * w.x)
+    );
+    if (all(c) || !any(c))
+        s *= -1.0;
+}
+
 void evaluatePolygonStep (
     in int i, in int count, inout int offset, in bool along, in bool closed, 
-    in float2 worldPosition, in float4 first, inout float4 prev,
+    in float2 worldPosition, inout float4 first, inout float4 prev,
     in float radius, in int gradientType, inout float distance, inout float gradientWeight, 
     inout float s, inout float gdist, inout float2 tl, inout float2 br
 ) {
     float4 xytr = get(offset);
     int nodeType = (int)xytr.z;
-    float4 current = (i >= (count - 1)) ? first : xytr;
+    float4 current = (i >= (count - 1)) ? first : xytr, controlPoints;
     float2 pos = current.xy;
 
     offset++;
-    if (nodeType == NODE_BEZIER)
+
+    bool isBezier = (nodeType == NODE_BEZIER);
+    if (isBezier) {
+        controlPoints = get(offset);
         offset++;
+    }
 
     if (closed) {
-        // FIXME: Bezier
+        if (nodeType == NODE_SKIP) {
+            // HACK: A skip creates a break in the polygon, effectively creating
+            //  a new closed shape. So we need to replace the 'first' vert with this
+            //  point so that the loop at the end of the polygon loops to it instead
+            first = current;
+        } else if (isBezier) {
+            // HACK: Evaluate N imaginary lines between points along beziers.
+            // Not accurate, but better than nothing.
+            float2 tprev = prev, tcurrent = pos;
+            float approximateLength = length(controlPoints.xy - prev) + length(current - controlPoints.xy),
+                tstep = 1.0 / clamp(approximateLength * 0.05, 3, 16),
+                t = 0;
+            [loop]
+            do {
+                if (isBezier)
+                    tcurrent = evaluateBezierAtT(prev, controlPoints.xy, current, saturate(t));
 
-        float2 e = prev - pos,
-            w = worldPosition - pos,
-            b = w - (e * saturate(dot(w, e) / dot(e, e)));
-
-        distance = min(distance, dot(b, b));
-
-        bool3 c = bool3(
-            worldPosition.y >= pos.y, 
-            worldPosition.y < prev.y, 
-            (e.x * w.y) > (e.y * w.x)
-        );
-        if (all(c) || !any(c))
-            s *= -1.0;
+                evaluateClosedPolygonStep_Line(
+                    tprev, tcurrent, worldPosition,
+                    distance, s
+                );
+                tprev = tcurrent;
+                if (t >= 1.0)
+                    break;
+                t += tstep;
+            } while (true);
+        } else {
+            evaluateClosedPolygonStep_Line(
+                prev, current, worldPosition,
+                distance, s
+            );
+        }
     } else {
-        float4 controlPoints;
         float temp, temp2;
-        if (nodeType == NODE_BEZIER) {
-            controlPoints = get(offset - 1);
+        if (isBezier) {
             float2 a = prev, b = controlPoints.xy, c = pos; 
             evaluateBezier(
                 worldPosition, a, b, c,
                 float2(radius, 0), temp, gradientType, temp2
             );
+        } else if (nodeType == NODE_SKIP) {
+            temp = distance;
         } else {
             evaluateLineSegment(
                 worldPosition, prev, pos, float2(0, prev.w),
@@ -136,7 +185,9 @@ void evaluatePolygonStep (
 
         distance = min(distance, temp);
 
-        if (along) {
+        if (nodeType == NODE_SKIP)
+            ;
+        else if (along) {
             if (((gdist > 0) && (temp < gdist)) || (temp < 0)) {
                 float scale = 1.0 / (count - 1);
                 gradientWeight = (i * scale);

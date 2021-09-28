@@ -865,9 +865,9 @@ namespace Squared.PRGUI {
         public bool Gauge_Fill_Setup (
             UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings,
             out bool isCircular, out float outlineRadius, out Vector4 cornerRadiuses,
-            out float alpha1, out float alpha2, out string direction, out Vector2 ca, out Vector2 cb, 
-            out pSRGBColor fillColor1, out pSRGBColor fillColor2, out pSRGBColor outlineColor,
-            out RasterFillMode fillMode
+            out float alpha1, out float alpha2, out string direction, out Vector2 ca, out Vector2 cb,
+            out float gradientPower, out pSRGBColor fillColor1, out pSRGBColor fillColor2, 
+            out pSRGBColor outlineColor, out RasterFillMode fillMode
         ) {
             isCircular = false;
             outlineRadius = GetOutlineSize(1f);
@@ -879,6 +879,7 @@ namespace Squared.PRGUI {
             cb = b - (settings.Box.Extent - settings.ContentBox.Extent).Round();
             fillColor1 = fillColor2 = outlineColor = default(pSRGBColor);
             fillMode = default(RasterFillMode);
+            gradientPower = settings.HasTrait("eased-gradient") ? 2.5f : 1f;
 
             // Select fill mode and gradient direction based on orientation
             direction = settings.Traits.FirstOrDefault();
@@ -933,7 +934,7 @@ namespace Squared.PRGUI {
                     break;
             }
 
-            var fixedValues = settings.HasTrait("fixed-endpoints");
+            bool fixedValues = settings.HasTrait("fixed-endpoints");
             float value1 = fixedValues ? 0 : settings.UserData.X,
                 value2 = fixedValues ? 1 : settings.UserData.Y,
                 alphaDelta = ColorScheme.GaugeFillAlpha2 - ColorScheme.GaugeFillAlpha1;
@@ -967,7 +968,7 @@ namespace Squared.PRGUI {
                 context, ref renderer, settings,
                 out bool isCircular, out float outlineRadius, out Vector4 cornerRadiuses,
                 out float alpha1, out float alpha2, out string direction,
-                out Vector2 ca, out Vector2 cb,
+                out Vector2 ca, out Vector2 cb, out float gradientPower,
                 out pSRGBColor fillColor1, out pSRGBColor fillColor2,
                 out pSRGBColor outlineColor, out RasterFillMode fillMode
             );
@@ -993,7 +994,7 @@ namespace Squared.PRGUI {
                     fill: new RasterFillSettings(
                         fillMode, offset: settings.UserData.Z,
                         size: (settings.UserData.W != 0) ? Math.Abs(settings.UserData.W) : 1,
-                        repeat: settings.UserData.W < 0
+                        repeat: settings.UserData.W < 0, gradientPower: gradientPower
                     ), 
                     innerColor: fillColor1, outerColor: fillColor2,
                     shadow: GaugeValueShadow,
@@ -1010,7 +1011,7 @@ namespace Squared.PRGUI {
                     fill: new RasterFillSettings(
                         fillMode, offset: settings.UserData.Z, 
                         size: (settings.UserData.W != 0) ? Math.Abs(settings.UserData.W) : 1,
-                        repeat: settings.UserData.W < 0
+                        repeat: settings.UserData.W < 0, gradientPower: gradientPower
                     ), innerColor: fillColor1, outerColor: fillColor2,
                     shadow: GaugeValueShadow,
                     texture: settings.GetTexture(),

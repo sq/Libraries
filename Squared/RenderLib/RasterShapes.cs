@@ -137,9 +137,14 @@ namespace Squared.Render.RasterShape {
         /// <summary>
         /// Creates a quadratic bezier between the previous vertex and this vertex, using
         ///  ControlPoint as the control point.
-        /// FIXME: This currently only works for open polygons, not closed ones
+        /// NOTE: For closed polygons this uses an approximation
         /// </summary>
         Bezier = 1,
+        /// <summary>
+        /// Skips the connection between the previous vertex and this vertex, creating
+        ///  a gap in the polygon
+        /// </summary>
+        Skip = 2,
     }
 
     public struct RasterFillSettings {
