@@ -202,6 +202,9 @@ namespace Squared.PRGUI.Imperative {
             if (NextIndex < Children.Count)
                 instance = Children[NextIndex] as TControl;
 
+            if (instance?.GetType() != typeof(TControl))
+                instance = null;
+
             if (instance == null)
                 instance = new TControl();
 
@@ -227,6 +230,9 @@ namespace Squared.PRGUI.Imperative {
             if (NextIndex < Children.Count) {
                 instance = Children[NextIndex] as TControl;
             }
+
+            if (instance?.GetType() != typeof(TControl))
+                instance = null;
 
             ContainerBuilder result;
             ContainerBase container;
