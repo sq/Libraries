@@ -319,7 +319,7 @@ namespace Squared.PRGUI {
                 Padding = new Margins(6),
                 GetTextSettings = GetTextSettings_Tooltip,
                 GetFont = () => DefaultFont,
-                Below = Tooltip_Below,
+                Below = Menu_Below,
                 // FIXME: Separate routine?
                 ContentClip = Container_ContentClip,
             };
@@ -1237,6 +1237,36 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: TooltipCornerRadius ?? FloatingContainerCornerRadius ?? ContainerCornerRadius,
                 outlineRadius: GetOutlineSize(InertOutlineThickness), outlineColor: ColorScheme.TooltipOutline,
+                innerColor: color2, 
+                outerColor: color1,
+                shadow: TooltipShadow ?? FloatingContainerShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
+            );
+        }
+
+        private void Menu_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            // FIXME: Should we draw the outline in Above?
+            var color1 = settings.BackgroundColor ?? ColorScheme.TooltipFill;
+            var color2 = (color1.ToVector4() * 1.25f);
+            float outlineRadius = GetOutlineSize(InertOutlineThickness),
+                radius = TooltipCornerRadius ?? FloatingContainerCornerRadius ?? ContainerCornerRadius;
+            // For any corners that are aligned with our anchor (if we have one), we make that corner
+            //  sharp instead of rounded to subtly convey what this menu is attached to
+            var radiusCw = new Vector4(
+                settings.HasTrait("aligned-tl") ? 0f : radius,
+                settings.HasTrait("aligned-tr") ? 0f : radius,
+                settings.HasTrait("aligned-br") ? 0f : radius,
+                settings.HasTrait("aligned-bl") ? 0f : radius
+            );
+            color2.W = 1;
+            renderer.RasterizeRectangle(
+                a, b,
+                radiusCW: radiusCw,
+                outlineRadius: outlineRadius, 
+                outlineColor: ColorScheme.TooltipOutline,
                 innerColor: color2, 
                 outerColor: color1,
                 shadow: TooltipShadow ?? FloatingContainerShadow,

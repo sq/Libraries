@@ -79,6 +79,14 @@ namespace Squared.Util {
             return lhs + rhs;
         }
 
+        public static double op_Multiply (double lhs, double rhs) {
+            return lhs * rhs;
+        }
+
+        public static double op_Division (double lhs, double rhs) {
+            return lhs / rhs;
+        }
+
         public static double op_Multiply (double lhs, float rhs) {
             return lhs * rhs;
         }

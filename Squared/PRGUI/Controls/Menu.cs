@@ -26,7 +26,7 @@ namespace Squared.PRGUI.Controls {
         IModal, ISelectionBearer, IPartiallyIntangibleControl, 
         IFuzzyHitTestTarget, IHasDescription, IAlignedControl
     {
-        protected ControlAlignmentHelper Aligner;
+        protected ControlAlignmentHelper<Menu> Aligner;
 
         public event Action<IModal> Shown, Closed;
 
@@ -157,7 +157,7 @@ namespace Squared.PRGUI.Controls {
 
         public Menu ()
             : base () {
-            Aligner = new ControlAlignmentHelper(this) {
+            Aligner = new ControlAlignmentHelper<Menu>(this) {
                 UpdatePosition = UpdatePosition
             };
             Appearance.Opacity = 0f;
@@ -455,6 +455,12 @@ namespace Squared.PRGUI.Controls {
             TooltipSettings.ShowWhileMouseIsHeld = true;
             TooltipSettings.ShowWhileMouseIsNotHeld = true;
             TooltipSettings.ShowWhileKeyboardFocused = true;
+        }
+
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            // FIXME: Also generate corner traits if we are aligned to a position/box instead of a control
+            Aligner?.AddDecorationTraits(ref settings);
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
         }
 
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {

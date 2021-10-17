@@ -16,12 +16,12 @@ namespace Squared.PRGUI.Controls {
         public static Vector2 DefaultAnchorPoint = new Vector2(0.5f, 1f),
             DefaultControlAlignmentPoint = new Vector2(0.5f, 0f);
 
-        protected ControlAlignmentHelper Aligner;
+        protected ControlAlignmentHelper<Tooltip> Aligner;
 
         public Tooltip ()
             : base() {
             // FIXME: Centered?
-            Aligner = new ControlAlignmentHelper(this) {
+            Aligner = new ControlAlignmentHelper<Tooltip>(this) {
                 AllowOverlap = false,
                 AnchorPoint = DefaultAnchorPoint,
                 ControlAlignmentPoint = DefaultControlAlignmentPoint,
