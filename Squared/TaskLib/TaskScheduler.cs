@@ -215,6 +215,7 @@ namespace Squared.Task {
         private static readonly ThreadLocal<TaskScheduler> _Default = new ThreadLocal<TaskScheduler>();
 
         public BackgroundTaskErrorHandler ErrorHandler = null;
+        public Thread MainThread { get; private set; }
         
         private bool _IsDisposed = false;
         private IJobQueue _JobQueue = null;
@@ -223,7 +224,8 @@ namespace Squared.Task {
         public readonly ITimeProvider TimeProvider;
         public TaskSchedulerSynchronizationContext SynchronizationContext { get; private set; }
 
-        public TaskScheduler (Func<IJobQueue> JobQueueFactory, ITimeProvider timeProvider = null) {
+        public TaskScheduler (Func<IJobQueue> JobQueueFactory, ITimeProvider timeProvider = null, Thread mainThread = null) {
+            MainThread = mainThread ?? Thread.CurrentThread;
             TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
 
             _JobQueue = JobQueueFactory();
@@ -356,39 +358,59 @@ namespace Squared.Task {
             return Start(new SchedulableGeneratorThunk(task), executionPolicy);
         }
 
-        public OnFutureResolved Wrap (Action target) {
-            return (_) => QueueWorkItemForNextStep(target);
+        // FIXME: All of these allocate more garbage than they need to, especially in the skip queue path
+
+        public OnFutureResolved Wrap (Action target, bool skipQueueOnMainThread = false) {
+            return (_) => {
+                if (!skipQueueOnMainThread || Thread.CurrentThread != MainThread)
+                    QueueWorkItem(target);
+                else
+                    target();
+            };
         }
 
-        public OnFutureResolved<T> Wrap<T> (Action<T> target) {
-            return (f) => QueueWorkItemForNextStep(() => target((T)f.Result2));
+        public OnFutureResolved<T> Wrap<T> (Action<T> target, bool skipQueueOnMainThread = false) {
+            return (f) => {
+                if (!skipQueueOnMainThread || Thread.CurrentThread != MainThread)
+                    QueueWorkItem(() => target(f.Result2));
+                else
+                    target(f.Result2);
+            };
         }
 
-        public OnFutureResolved<T> Wrap<T> (Action<T> target, T defaultValue, T failedValue = default(T))
+        public OnFutureResolved<T> Wrap<T> (Action<T> target, T defaultValue, T failedValue = default(T), bool skipQueueOnMainThread = false)
             where T : class
         {
-            return (f) => QueueWorkItemForNextStep(
-                () => {
-                    if (f.Failed)
-                        target(failedValue);
-                    else
-                        target((f.Result2 as T) ?? defaultValue);
-                }
-            );
+            return (f) => {
+                T value = f.Failed
+                    ? failedValue
+                    : (f.Result2 as T) ?? defaultValue;
+
+                if (!skipQueueOnMainThread || Thread.CurrentThread != MainThread)
+                    QueueWorkItem(() => target(value));
+                else
+                    target(value);
+            };
         }
 
-        public OnFutureResolved<T> Wrap<T> (Action<T, Exception> target) {
-            return (f) => QueueWorkItemForNextStep(
-                () => {
-                    T _result;
-                    Exception _error;
-                    f.GetResult(out _result, out _error);
+        public OnFutureResolved<T> Wrap<T> (Action<T, Exception> target, bool skipQueueOnMainThread = false) {
+            return (f) => {
+                T _result;
+                Exception _error;
+                f.GetResult(out _result, out _error);
+
+                Action handler = () => {
                     if (_error != null)
                         target(default(T), _error);
                     else
                         target(_result, null);
-                }
-            );
+                };
+
+                if (!skipQueueOnMainThread || Thread.CurrentThread != MainThread)
+                    QueueWorkItem(handler);
+                else
+                    handler();
+            };
         }
 
         public void QueueWorkItem (Action workItem) {
@@ -417,6 +439,24 @@ namespace Squared.Task {
                 throw new ObjectDisposedException("TaskScheduler");
 
             _JobQueue.QueueWorkItemForNextStep(entry);
+        }
+
+        /// <summary>
+        /// Registers an OnResolved handler onto a specified future that will push the onComplete handler
+        ///  onto this scheduler's work queue once the future is completed or disposed.
+        /// </summary>
+        /// <param name="skipQueueOnMainThread">If the future is completed/disposed from the main thread, run the handler synchronously</param>
+        public void RegisterOnResolved (IFuture f, Action onComplete, bool skipQueueOnMainThread = false) {
+            f.RegisterOnResolved(Wrap(onComplete, skipQueueOnMainThread));
+        }
+
+        /// <summary>
+        /// Registers an OnResolved handler onto a specified future that will push the onComplete handler
+        ///  onto this scheduler's work queue once the future is completed or disposed.
+        /// </summary>
+        /// <param name="skipQueueOnMainThread">If the future is completed/disposed from the main thread, run the handler synchronously</param>
+        public void RegisterOnResolved<T> (Future<T> f, Action<T> onComplete, bool skipQueueOnMainThread = false) {
+            f.RegisterOnResolved(Wrap(onComplete, skipQueueOnMainThread));
         }
 
         internal void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, System.Threading.ManualResetEventSlim newSleepEvent) {
