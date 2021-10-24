@@ -159,7 +159,6 @@ namespace Squared.Task {
         }
 
         public override void Post (SendOrPostCallback d, object state) {
-            // TODO: Find a way to prevent this from allocating
             Scheduler.QueueWorkItem(new WorkItemQueueEntry { Action = d, Arg1 = state });
         }
 

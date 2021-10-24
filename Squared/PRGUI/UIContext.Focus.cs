@@ -173,7 +173,7 @@ namespace Squared.PRGUI {
                         c.Enabled && !c.IsTransparent &&
                         !(c is FocusProxy)
                     )
-                    .ToList();
+                    .ToDenseList();
                 var currentIndex = inTabOrder.IndexOf(currentTopLevel);
                 var newIndex = Arithmetic.Wrap(currentIndex + delta, 0, inTabOrder.Count - 1);
                 var target = inTabOrder[newIndex];

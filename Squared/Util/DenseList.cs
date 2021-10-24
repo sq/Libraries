@@ -13,6 +13,17 @@ namespace Squared.Util {
         void Release (ref UnorderedList<T> items);
     }
 
+    public static class DenseListExtensions {
+        /// <summary>
+        /// Returns a dense list containing all the items from a sequence.
+        /// </summary>
+        public static DenseList<T> ToDenseList<T> (this IEnumerable<T> enumerable) {
+            DenseList<T> result = default;
+            result.AddRange(enumerable);
+            return result;
+        }
+    }
+
     public struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
         private static class ValueTraits {
             public static int Size8, Size32;
@@ -347,16 +358,12 @@ namespace Squared.Util {
 
         public DenseList (T[] items, int offset, int count) {
             this = default(DenseList<T>);
-
-            for (int i = 0; i < count; i++)
-                Add(ref items[offset + i]);
+            AddRange(items, offset, count);
         }
 
         public DenseList (IEnumerable<T> items) {
             this = default(DenseList<T>);
-
-            foreach (var item in items)
-                Add(item);
+            AddRange(items);
         }
 
         public UnorderedList<T>.Allocator Allocator =>
@@ -571,6 +578,14 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T First () {
+            if (Count <= 0)
+                throw new ArgumentOutOfRangeException("List is empty");
+            else
+                return this[0];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T FirstOrDefault () {
             if (Count <= 0)
                 return default(T);
@@ -588,6 +603,14 @@ namespace Squared.Util {
                 return Items.DangerousGetItem(0);
             else
                 return Storage.Item1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T Last () {
+            if (Count <= 0)
+                throw new ArgumentOutOfRangeException("List is empty");
+            else
+                return this[Count - 1];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -722,7 +745,8 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (ref DenseList<T> items) {
-            // FIXME: use ref?
+            // FIXME: Do an optimized copy when the source does not have a backing list
+            // FIXME: Use ref
             foreach (var item in items)
                 Add(item);
         }
@@ -744,6 +768,31 @@ namespace Squared.Util {
             } else {
                 EnsureCapacity(newCount);
                 Items.AddRange(items, offset, count);
+            }
+        }
+
+        public void AddRange<U> (U enumerable) where U : IEnumerable<T> {
+            // FIXME: Find a way to do this without boxing?
+            if (!typeof(U).IsValueType && object.ReferenceEquals(null, enumerable))
+                return;
+
+            T item;
+            if (enumerable is T[] array) {
+                EnsureCapacity(Count + array.Length);
+                for (int i = 0, c = array.Length; i < c; i++)
+                    Add(ref array[i]);
+            } else if (enumerable is IList<T> list) {
+                EnsureCapacity(Count + list.Count);
+                for (int i = 0, c = list.Count; i < c; i++) {
+                    item = list[i];
+                    Add(ref item);
+                }
+            } else {
+                using (var e = enumerable.GetEnumerator())
+                while (e.MoveNext()) {
+                    item = e.Current;
+                    Add(ref item);
+                }
             }
         }
 
@@ -1001,6 +1050,17 @@ namespace Squared.Util {
             }
         }
 
+        /// <summary>
+        /// Performs an in-place sort of the DenseList.
+        /// NOTE: If the list is small this method may sort the values instead of the indices.
+        /// </summary>
+        /// <param name="indices">The element indices to use for sorting.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SortNonRef (IComparer<T> comparer, int[] indices = null) {
+            var wrapped = new RefComparerAdapter<IComparer<T>, T>(comparer);
+            Sort(wrapped, indices);
+        }
+
         public void Dispose () {
             Storage = default;
             if (ListPool != null)
@@ -1046,7 +1106,8 @@ namespace Squared.Util {
         }
 
         void ICollection<T>.CopyTo (T[] array, int arrayIndex) {
-            throw new NotImplementedException();
+            for (int i = 0, c = Math.Min(array.Length - arrayIndex, Count); i < c; i++)
+                GetItem(i, out array[arrayIndex + i]);
         }
 
         bool ICollection<T>.Remove (T item) {

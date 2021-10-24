@@ -157,6 +157,7 @@ namespace Squared.Render {
                 if (PendingUniformRegistrations.Count == 0)
                     return;
 
+                // FIXME: use ToDenseList
                 pur = PendingUniformRegistrations.ToList();
                 PendingUniformRegistrations.Clear();
             }

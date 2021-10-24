@@ -979,6 +979,19 @@ namespace Squared.Util.Random {
 
         public static void Shuffle<T> (
             RandomNumberProvider rng,
+            ref DenseList<T> values
+        ) {
+            var n = values.Count;
+            for (var i = 0; i < n; i += 1) {
+                var j = rng.Next(i, n);
+                var temp = values[j];
+                values[j] = values[i];
+                values[i] = temp;
+            }
+        }
+
+        public static void Shuffle<T> (
+            RandomNumberProvider rng,
             IList<T> values
         ) {
             var n = values.Count;
