@@ -591,9 +591,7 @@ namespace Squared.Render.RasterShape {
 
         const int MaxVertexCount = 65535;
 
-        const bool HollowOptimization = true;
-
-        const int CornerBufferRepeatCount = HollowOptimization ? 5 : 1;
+        const int CornerBufferRepeatCount = 5;
         const int CornerBufferVertexCount = CornerBufferRepeatCount * 4;
         const int CornerBufferIndexCount = CornerBufferRepeatCount * 6;
         const int CornerBufferPrimCount = CornerBufferRepeatCount * 2;
