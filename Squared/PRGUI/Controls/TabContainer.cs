@@ -17,7 +17,7 @@ namespace Squared.PRGUI.Controls {
 
         private readonly ControlGroup TabStrip;
         private readonly Dictionary<Control, string> Labels = new Dictionary<Control, string>();
-        private int SelectedTabIndex = 0;
+        private int? SelectedTabIndex = 0;
         private string GroupId;
 
         private bool IdentifySelectedTabFromUIState = true;
@@ -56,32 +56,45 @@ namespace Squared.PRGUI.Controls {
         public Control SelectedTab {
             get =>
                 (SelectedTabIndex < (Children.Count - 1))
-                    ? Children[SelectedTabIndex + 1] 
+                    ? Children[GetSelectedTabIndex() + 1] 
                     : null;
             set {
                 var idx = Children.IndexOf(value);
+                var oldIndex = GetSelectedTabIndex();
                 var newIndex = Math.Max(0, idx - 1);
-                if (newIndex == SelectedTabIndex)
-                    return;
-                SelectedTabIndex = newIndex;
-                FireEvent(UIEvents.SelectedTabChanged);
+                SelectedIndex = newIndex;
             }
         }
 
+        private int GetSelectedTabIndex () {
+            if (SelectedTabIndex.HasValue)
+                return SelectedTabIndex.Value;
+
+            var c = TabStrip.Children.Count;
+            for (var i = 0; i < c; i++) {
+                var btn = TabStrip.Children[i] as RadioButton;
+                if (btn.Checked)
+                    return i;
+            }
+
+            return -1;
+        }
+
         public int SelectedIndex {
-            get => SelectedTabIndex;
+            get => GetSelectedTabIndex();
             set {
                 var children = Children;
                 var c = children.Count - 2;
+                var oldIndex = GetSelectedTabIndex();
                 var newIndex = Arithmetic.Clamp(value, 0, c);
-                var changed = (newIndex != SelectedTabIndex);
+                var changed = (newIndex != oldIndex);
                 SelectedTabIndex = newIndex;
 
                 if ((TabStrip == null) || (TabStrip.Children.Count != children.Count - 1)) {
                 } else {
                     for (var i = 0; i <= c; i++) {
                         var btn = TabStrip.Children[i] as RadioButton;
-                        btn.Checked = i == SelectedTabIndex;
+                        btn.Checked = i == newIndex;
                     }
                 }
 
@@ -113,6 +126,7 @@ namespace Squared.PRGUI.Controls {
 
         public override void InvalidateLayout () {
             base.InvalidateLayout();
+            SelectedTabIndex = null;
             IdentifySelectedTabFromUIState = true;
             TabStripIsInvalid = true;
         }
@@ -136,6 +150,7 @@ namespace Squared.PRGUI.Controls {
 
             TabStrip.Children.Clear();
             var children = Children;
+            var idx = GetSelectedTabIndex();
 
             for (var i = 1; i < children.Count; i++) {
                 var child = children[i];
@@ -162,7 +177,7 @@ namespace Squared.PRGUI.Controls {
                     Margins = new Margins(0, 0, TabsOnLeft ? 0 : 1, TabsOnLeft ? 1 : 0),
                 };
                     
-                if (i == SelectedTabIndex + 1)
+                if (i == idx + 1)
                     btn.Checked = true;
                 TabStrip.Add(btn);
             }
@@ -327,6 +342,7 @@ namespace Squared.PRGUI.Controls {
 
         private void UpdateSelectedTab () {
             var oldIndex = SelectedTabIndex;
+
             IdentifySelectedTabFromUIState = false;
             foreach (var tab in TabStrip.Children) {
                 var rb = (RadioButton)tab;
@@ -338,9 +354,9 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            SelectedTabIndex = 0;
-            if (oldIndex != SelectedTabIndex)
-                FireEvent(UIEvents.SelectedTabChanged);
+            // HACK
+            if (oldIndex == null)
+                SelectedIndex = 0;
         }
 
         bool IControlEventFilter.OnEvent (Control target, string name) {
