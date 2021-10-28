@@ -279,6 +279,10 @@ namespace Squared.Render.Text {
         /// Do not lay out the text
         /// </summary>
         Omit = 2,
+        /// <summary>
+        /// The processor generated new rich text, so process that (gross)
+        /// </summary>
+        RichText = 3,
     }
 
     /// <summary>
@@ -362,160 +366,173 @@ namespace Squared.Render.Text {
             CommandTerminators = new HashSet<char> { '\"', '\'', '$', '[' },
             StringTerminators = new HashSet<char> { '$', '(' };
 
+        private void AppendRichRange (
+            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
+            bool? overrideSuppress, ref DenseList<AsyncRichImage> referencedImages
+        ) {
+            int currentRangeStart = 0;
+            RichStyle style;
+            RichImage image;
+            AsyncRichImage ai;
+
+            var count = text.Length;
+            for (int i = 0; i < count; i++) {
+                var ch = text[i];
+                var next = (i < count - 2) ? text[i + 1] : '\0';
+                if ((ch == '$') && ((next == '[') || (next == '('))) {
+                    AppendPlainRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, i, overrideSuppress);
+                    var commandMode = next == '[';
+                    var bracketed = ParseBracketedText(
+                        text, ref i, ref currentRangeStart, 
+                        commandMode ? CommandTerminators : StringTerminators, 
+                        commandMode ? ']' : ')'
+                    );
+                    if (bracketed == null) {
+                        // FIXME: Can this cause an infinite loop?
+                        continue;
+                    } else if (commandMode && string.IsNullOrWhiteSpace(bracketed)) {
+                        state.Reset(ref layoutEngine);
+                    } else if (commandMode && (Styles != null) && bracketed.StartsWith(".") && Styles.TryGetValue(bracketed.Substring(1), out style)) {
+                        ApplyStyle(ref layoutEngine, ref state, ref style);
+                    } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
+                        AppendImage(ref layoutEngine, image);
+                        ai = new AsyncRichImage(ref image);
+                        referencedImages.Add(ref ai);
+                    } else if (
+                        commandMode && (ImageProvider != null) && 
+                        (ai = ImageProvider(bracketed)).IsInitialized
+                    ) {
+                        var currentX1 = 0f;
+                        var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
+                        if (ai.TryGetValue(out RichImage ri)) {
+                            AppendImage(ref layoutEngine, ri);
+                        } else if (ai.Width.HasValue) {
+                            var m = ai.Margin ?? Vector2.Zero;
+                            var halfM = m / 2f;
+                            var w = ai.Width.Value;
+                            var h = (ai.Height ?? 0);
+                            if (ai.CreateBox) {
+                                Bounds box;
+                                float boxX = layoutEngine.characterOffset.X,
+                                    boxY = layoutEngine.characterOffset.Y;
+                                if (ai.HardHorizontalAlignment.HasValue)
+                                    // FIXME
+                                    boxX = Arithmetic.Lerp(layoutEngine.actualPosition.X, layoutEngine.actualPosition.X + layoutEngine.currentLineBreakAtX - w ?? 0f, ai.HardHorizontalAlignment.Value);
+                                if (ai.HardVerticalAlignment.HasValue)
+                                    // FIXME
+                                    boxY = Arithmetic.Lerp(layoutEngine.actualPosition.Y, layoutEngine.actualPosition.Y + layoutEngine.stopAtY - h ?? 0f, ai.HardVerticalAlignment.Value);
+                                box = Bounds.FromPositionAndSize(boxX - halfM.X, boxY - halfM.Y, w + m.X, h + m.Y);
+                                layoutEngine.CreateBox(ref box);
+                                if (ai.HardHorizontalAlignment.HasValue || ai.HardVerticalAlignment.HasValue)
+                                    ;
+                                else
+                                    layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
+                            } else {
+                                layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
+                            }
+                            referencedImages.Add(ref ai);
+                        } else {
+                            referencedImages.Add(ref ai);
+                        }
+                    } else if (commandMode && bracketed.Contains(":")) {
+                        foreach (var rule in RichText.ParseRules(bracketed)) {
+                            var value = rule.Value.ToString();
+                            switch (rule.Key.ToString()) {
+                                case "color":
+                                case "c":
+                                    layoutEngine.overrideColor = ParseColor(value) ?? state.InitialColor;
+                                    break;
+                                case "scale":
+                                case "sc":
+                                    if (!float.TryParse(value, out float newScale))
+                                        layoutEngine.scale = state.InitialScale;
+                                    else
+                                        layoutEngine.scale = state.InitialScale * newScale;
+                                    break;
+                                case "spacing":
+                                case "sp":
+                                    if (!float.TryParse(value, out float newSpacing))
+                                        layoutEngine.spacing = state.InitialSpacing;
+                                    else
+                                        layoutEngine.spacing = state.InitialSpacing * newSpacing;
+                                    break;
+                                case "font":
+                                case "glyph-source":
+                                case "glyphSource":
+                                case "gs":
+                                case "f":
+                                    if (GlyphSources != null)
+                                        GlyphSources.TryGetValue(value, out state.GlyphSource);
+                                    else
+                                        state.GlyphSource = null;
+                                    break;
+                            }
+                        }
+                    } else if (!commandMode) {
+                        AbstractString astr = bracketed;
+                        string id = null;
+                        int pipeIndex = bracketed.IndexOf('|');
+                        if (pipeIndex >= 0) {
+                            id = bracketed.Substring(0, pipeIndex);
+                            bracketed = bracketed.Substring(pipeIndex + 1);
+                            astr = bracketed;
+                        }
+
+                        var action = MarkedStringAction.Default;
+                        // HACK: The string processor may mess with layout state, so we want to restore it after
+                        var markedState = new RichTextLayoutState(ref layoutEngine, state.DefaultGlyphSource) {
+                            GlyphSource = state.GlyphSource
+                        };
+                        if (MarkedStringProcessor != null)
+                            action = MarkedStringProcessor(ref astr, id, ref markedState, ref layoutEngine);
+                        if (action != MarkedStringAction.Omit) {
+                            var l = astr.Length;
+                            var initialIndex = layoutEngine.currentCharacterIndex;
+                            // FIXME: Omit this too?
+                            state.MarkedStrings.Add(bracketed);
+                            if (action == MarkedStringAction.RichText)
+                                AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref referencedImages);
+                            else
+                                AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
+                            if (action != MarkedStringAction.PlainText) {
+                                var m = new LayoutMarker(initialIndex, layoutEngine.currentCharacterIndex - 1) {
+                                    MarkedString = bracketed,
+                                    MarkedID = id,
+                                    MarkedStringActualText = astr
+                                };
+                                layoutEngine.Markers.Add(m);
+                            }
+                        }
+                        if (MarkedStringProcessor != null)
+                            markedState.Reset(ref layoutEngine);
+                    } else {
+                        var close = (next == '[') ? ']' : ')';
+                        layoutEngine.AppendText(state.GlyphSource ?? state.DefaultGlyphSource, "<invalid: $" + next + bracketed + close + ">");
+                    }
+                }
+            }
+
+            AppendPlainRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, count, overrideSuppress);
+        }
+
         /// <returns>a list of rich images that were referenced</returns>
         public DenseList<AsyncRichImage> Append (
             ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
             string styleName, bool? overrideSuppress = null
         ) {
-            var result = new DenseList<AsyncRichImage>();
-            var count = text.Length;
-            var currentRangeStart = 0;
-            RichStyle style;
-            RichImage image;
-            AsyncRichImage ai;
+            var referencedImages = new DenseList<AsyncRichImage>();
 
             try {
                 styleName = styleName ?? DefaultStyle;
                 if (!string.IsNullOrWhiteSpace(styleName) && Styles.TryGetValue(styleName, out RichStyle defaultStyle))
                     ApplyStyle(ref layoutEngine, ref state, ref defaultStyle);
 
-                for (int i = 0; i < count; i++) {
-                    var ch = text[i];
-                    var next = (i < count - 2) ? text[i + 1] : '\0';
-                    if ((ch == '$') && ((next == '[') || (next == '('))) {
-                        AppendRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, i, overrideSuppress);
-                        var commandMode = next == '[';
-                        var bracketed = ParseBracketedText(
-                            text, ref i, ref currentRangeStart, 
-                            commandMode ? CommandTerminators : StringTerminators, 
-                            commandMode ? ']' : ')'
-                        );
-                        if (bracketed == null) {
-                            // FIXME: Can this cause an infinite loop?
-                            continue;
-                        } else if (commandMode && string.IsNullOrWhiteSpace(bracketed)) {
-                            state.Reset(ref layoutEngine);
-                        } else if (commandMode && (Styles != null) && bracketed.StartsWith(".") && Styles.TryGetValue(bracketed.Substring(1), out style)) {
-                            ApplyStyle(ref layoutEngine, ref state, ref style);
-                        } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
-                            AppendImage(ref layoutEngine, image);
-                            ai = new AsyncRichImage(ref image);
-                            result.Add(ref ai);
-                        } else if (
-                            commandMode && (ImageProvider != null) && 
-                            (ai = ImageProvider(bracketed)).IsInitialized
-                        ) {
-                            var currentX1 = 0f;
-                            var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
-                            if (ai.TryGetValue(out RichImage ri)) {
-                                AppendImage(ref layoutEngine, ri);
-                            } else if (ai.Width.HasValue) {
-                                var m = ai.Margin ?? Vector2.Zero;
-                                var halfM = m / 2f;
-                                var w = ai.Width.Value;
-                                var h = (ai.Height ?? 0);
-                                if (ai.CreateBox) {
-                                    Bounds box;
-                                    float boxX = layoutEngine.characterOffset.X,
-                                        boxY = layoutEngine.characterOffset.Y;
-                                    if (ai.HardHorizontalAlignment.HasValue)
-                                        // FIXME
-                                        boxX = Arithmetic.Lerp(layoutEngine.actualPosition.X, layoutEngine.actualPosition.X + layoutEngine.currentLineBreakAtX - w ?? 0f, ai.HardHorizontalAlignment.Value);
-                                    if (ai.HardVerticalAlignment.HasValue)
-                                        // FIXME
-                                        boxY = Arithmetic.Lerp(layoutEngine.actualPosition.Y, layoutEngine.actualPosition.Y + layoutEngine.stopAtY - h ?? 0f, ai.HardVerticalAlignment.Value);
-                                    box = Bounds.FromPositionAndSize(boxX - halfM.X, boxY - halfM.Y, w + m.X, h + m.Y);
-                                    layoutEngine.CreateBox(ref box);
-                                    if (ai.HardHorizontalAlignment.HasValue || ai.HardVerticalAlignment.HasValue)
-                                        ;
-                                    else
-                                        layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
-                                } else {
-                                    layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
-                                }
-                                result.Add(ref ai);
-                            } else {
-                                result.Add(ref ai);
-                            }
-                        } else if (commandMode && bracketed.Contains(":")) {
-                            foreach (var rule in RichText.ParseRules(bracketed)) {
-                                var value = rule.Value.ToString();
-                                switch (rule.Key.ToString()) {
-                                    case "color":
-                                    case "c":
-                                        layoutEngine.overrideColor = ParseColor(value) ?? state.InitialColor;
-                                        break;
-                                    case "scale":
-                                    case "sc":
-                                        if (!float.TryParse(value, out float newScale))
-                                            layoutEngine.scale = state.InitialScale;
-                                        else
-                                            layoutEngine.scale = state.InitialScale * newScale;
-                                        break;
-                                    case "spacing":
-                                    case "sp":
-                                        if (!float.TryParse(value, out float newSpacing))
-                                            layoutEngine.spacing = state.InitialSpacing;
-                                        else
-                                            layoutEngine.spacing = state.InitialSpacing * newSpacing;
-                                        break;
-                                    case "font":
-                                    case "glyph-source":
-                                    case "glyphSource":
-                                    case "gs":
-                                    case "f":
-                                        if (GlyphSources != null)
-                                            GlyphSources.TryGetValue(value, out state.GlyphSource);
-                                        else
-                                            state.GlyphSource = null;
-                                        break;
-                                }
-                            }
-                        } else if (!commandMode) {
-                            AbstractString astr = bracketed;
-                            string id = null;
-                            int pipeIndex = bracketed.IndexOf('|');
-                            if (pipeIndex >= 0) {
-                                id = bracketed.Substring(0, pipeIndex);
-                                bracketed = bracketed.Substring(pipeIndex + 1);
-                                astr = bracketed;
-                            }
-
-                            var action = MarkedStringAction.Default;
-                            // HACK: The string processor may mess with layout state, so we want to restore it after
-                            var markedState = new RichTextLayoutState(ref layoutEngine, state.DefaultGlyphSource) {
-                                GlyphSource = state.GlyphSource
-                            };
-                            if (MarkedStringProcessor != null)
-                                action = MarkedStringProcessor(ref astr, id, ref markedState, ref layoutEngine);
-                            if (action != MarkedStringAction.Omit) {
-                                var l = astr.Length;
-                                if (action != MarkedStringAction.PlainText) {
-                                    var m = new LayoutMarker(layoutEngine.currentCharacterIndex, layoutEngine.currentCharacterIndex + l - 1) {
-                                        MarkedString = bracketed,
-                                        MarkedID = id,
-                                        MarkedStringActualText = astr
-                                    };
-                                    layoutEngine.Markers.Add(m);
-                                }
-                                // FIXME: Omit this too?
-                                state.MarkedStrings.Add(bracketed);
-                                AppendRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
-                            }
-                            if (MarkedStringProcessor != null)
-                                markedState.Reset(ref layoutEngine);
-                        } else {
-                            var close = (next == '[') ? ']' : ')';
-                            layoutEngine.AppendText(state.GlyphSource ?? state.DefaultGlyphSource, "<invalid: $" + next + bracketed + close + ">");
-                        }
-                    }
-                }
-                AppendRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, count, overrideSuppress);
+                AppendRichRange(ref layoutEngine, ref state, text, overrideSuppress, ref referencedImages);
             } finally {
                 state.Reset(ref layoutEngine);
             }
 
-            return result;
+            return referencedImages;
         }
 
         private static void ApplyStyle (
@@ -541,7 +558,7 @@ namespace Squared.Render.Text {
             );
         }
 
-        private void AppendRange (
+        private void AppendPlainRange (
             ref StringLayoutEngine layoutEngine, IGlyphSource glyphSource, AbstractString text,
             int rangeStart, int rangeEnd, bool? overrideSuppress
         ) {
