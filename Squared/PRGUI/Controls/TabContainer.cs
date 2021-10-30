@@ -126,8 +126,7 @@ namespace Squared.PRGUI.Controls {
 
         public override void InvalidateLayout () {
             base.InvalidateLayout();
-            SelectedTabIndex = null;
-            IdentifySelectedTabFromUIState = true;
+            IdentifySelectedTabFromUIState = false;
             TabStripIsInvalid = true;
         }
 
