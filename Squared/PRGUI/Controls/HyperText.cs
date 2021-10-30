@@ -75,6 +75,7 @@ namespace Squared.PRGUI.Controls {
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             var rm = Content.RichMarkers;
 
+            // FIXME: On the first frame our hotspots will be in the wrong place
             if (!existingKey.HasValue) {
                 if (Content.IsValid) {
                     int numHotspots = rm.Count;

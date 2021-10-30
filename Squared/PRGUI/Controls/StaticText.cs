@@ -261,12 +261,7 @@ namespace Squared.PRGUI.Controls {
 
         private int _CachedTextVersion, _CachedTextLength;
 
-        protected StringLayout GetCurrentLayout (bool measurement) {
-            if (_RichText.HasValue)
-                Content.RichText = _RichText.Value;
-            if (Content.RichText)
-                Content.RichTextConfiguration = GetRichTextConfiguration();
-
+        protected void AutoResetMeasurement () {
             // If wrapping and autosize are both enabled, text changes can cause
             //  very bad unnecessary wrapping to happen, so we want to forcibly reset
             //  all our measurement data to prevent it
@@ -278,6 +273,16 @@ namespace Squared.PRGUI.Controls {
                 _CachedTextLength = Content.Text.Length;
                 ResetMeasurement();
             }
+        }
+
+        protected StringLayout GetCurrentLayout (bool measurement, bool autoReset = true) {
+            if (_RichText.HasValue)
+                Content.RichText = _RichText.Value;
+            if (Content.RichText)
+                Content.RichTextConfiguration = GetRichTextConfiguration();
+
+            if (autoReset)
+                AutoResetMeasurement();
 
             if (measurement) {
                 if (!Content.IsValid || (ContentMeasurement == null)) {
@@ -398,7 +403,7 @@ namespace Squared.PRGUI.Controls {
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             ComputeEffectiveSpacing(ref context, decorations, out Margins computedPadding, out Margins computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
-            UpdateLineBreak(ref context, decorations, ref computedPadding, ref computedMargins);
+            UpdateLineBreak(ref context, decorations, null, ref computedPadding, ref computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             context.Layout.SetTag(result, LayoutTags.Text);
@@ -417,7 +422,7 @@ namespace Squared.PRGUI.Controls {
             return provider?.StaticText ?? provider?.None;
         }
 
-        protected float? ComputeTextWidthLimit (ref UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
+        protected float? ComputeTextWidthLimit (ref UIOperationContext context, IDecorator decorations, float? currentWidth, ref Margins computedPadding, ref Margins computedMargins) {
             ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
             var spaceExpansion = 1.0f;
             var hasMinScale = (MinScale ?? 0) > 0.01f;
@@ -431,7 +436,12 @@ namespace Squared.PRGUI.Controls {
             var hasWidthConstraint = (width.Fixed ?? width.Maximum).HasValue;
             var maxPx = (width.Fixed ?? width.Maximum) - computedPadding.X;
 
-            if (!MostRecentContentBoxWidth.HasValue && !maxPx.HasValue)
+            currentWidth = currentWidth ?? MostRecentContentBoxWidth;
+
+            if (this is HyperText)
+                ;
+
+            if (!currentWidth.HasValue && !maxPx.HasValue)
                 return null;
 
             if (maxPx.HasValue) {
@@ -458,10 +468,12 @@ namespace Squared.PRGUI.Controls {
                     return maxPx.Value * spaceExpansion;
                 } else
                     return null;
-            } else if (!AutoSizeWidth && MostRecentContentBoxWidth.HasValue) {
+                
+            } else if (!AutoSizeWidth && currentWidth.HasValue) {
                 if (ScaleToFitX || ScaleToFitY) {
                     if (!hasMinScale)
                         return null;
+                    
                 }
                 // FIXME: Handle MinScale
                 /*
@@ -469,7 +481,7 @@ namespace Squared.PRGUI.Controls {
                     return null;
                 */
                 // FIXME: Should we do this?
-                return MostRecentContentBoxWidth.Value * spaceExpansion;
+                return currentWidth.Value * spaceExpansion;
             } else {
                 return null;
             }
@@ -570,9 +582,12 @@ namespace Squared.PRGUI.Controls {
             Vector2 textOffset = Vector2.Zero, textScale = Vector2.One;
             decorations?.GetContentAdjustment(ref context, settings.State, out textOffset, out textScale);
 
-            UpdateLineBreak(ref context, decorations, ref computedPadding, ref computedMargins);
+            UpdateLineBreak(ref context, decorations, settings.ContentBox.Width, ref computedPadding, ref computedMargins);
 
-            var layout = GetCurrentLayout(false);
+            if (this is HyperText)
+                ;
+
+            var layout = GetCurrentLayout(false, false);
             textScale *= ComputeScaleToFit(layout.Size, layout.UnconstrainedSize, ref settings.Box, ref computedPadding);
             textScale = ApplyScaleConstraints(textScale);
 
@@ -666,8 +681,8 @@ namespace Squared.PRGUI.Controls {
             _LastDrawScale = textScale;
         }
 
-        protected void UpdateLineBreak (ref UIOperationContext context, IDecorator decorations, ref Margins computedPadding, ref Margins computedMargins) {
-            var textWidthLimit = ComputeTextWidthLimit(ref context, decorations, ref computedPadding, ref computedMargins);
+        protected void UpdateLineBreak (ref UIOperationContext context, IDecorator decorations, float? currentWidth, ref Margins computedPadding, ref Margins computedMargins) {
+            var textWidthLimit = ComputeTextWidthLimit(ref context, decorations, currentWidth, ref computedPadding, ref computedMargins);
             if (textWidthLimit.HasValue)
                 Content.LineBreakAtX = (float)Math.Ceiling(textWidthLimit.Value + LineBreakRightPadding);
             else
