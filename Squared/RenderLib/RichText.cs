@@ -487,20 +487,22 @@ namespace Squared.Render.Text {
                             action = MarkedStringProcessor(ref astr, id, ref markedState, ref layoutEngine);
                         if (action != MarkedStringAction.Omit) {
                             var l = astr.Length;
-                            var initialIndex = layoutEngine.currentCharacterIndex;
                             // FIXME: Omit this too?
                             state.MarkedStrings.Add(bracketed);
                             if (action == MarkedStringAction.RichText)
                                 AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref referencedImages);
-                            else
-                                AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
-                            if (action != MarkedStringAction.PlainText) {
-                                var m = new LayoutMarker(initialIndex, layoutEngine.currentCharacterIndex - 1) {
+                            else if (action != MarkedStringAction.PlainText) {
+                                var initialIndex = layoutEngine.currentCharacterIndex;
+                                var m = new LayoutMarker(initialIndex, initialIndex + l - 1) {
                                     MarkedString = bracketed,
                                     MarkedID = id,
                                     MarkedStringActualText = astr
                                 };
                                 layoutEngine.Markers.Add(m);
+
+                                AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
+                            } else {
+                                AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
                             }
                         }
                         if (MarkedStringProcessor != null)
