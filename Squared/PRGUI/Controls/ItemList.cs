@@ -434,6 +434,8 @@ namespace Squared.PRGUI.Controls {
         private List<T> Items = new List<T>();
         private readonly Dictionary<T, Control> ControlForValue;
         private HashSet<Control> InvalidatedControls = new HashSet<Control>(new ReferenceComparer<Control>());
+        private DenseList<Control> ResultBuffer = new DenseList<Control>(),
+            SpareBuffer = new DenseList<Control>();
 
         public ItemList (IEqualityComparer<T> comparer) 
             : base () {
@@ -549,7 +551,7 @@ namespace Squared.PRGUI.Controls {
                 result = default(T);
                 return false;
             }
-            if (control.Data.TryGet<ValueToken>(null, out ValueToken vt)) {
+            if (control.Data.TryGet(null, out ValueToken vt)) {
                 result = vt.Value;
                 return true;
             } else {
@@ -621,12 +623,9 @@ namespace Squared.PRGUI.Controls {
         public void GenerateControls (
             ControlCollection output, 
             CreateControlForValueDelegate<T> createControlForValue,
-            int offset = 0, int count = int.MaxValue, int skipOutputControls = 0
+            int offset = 0, int count = int.MaxValue, 
+            int skipLeadingControls = 0, int skipTrailingControls = 0
         ) {
-            // FIXME: This is inefficient, it would be cool to reuse existing controls
-            //  even if the order of values changes
-            ControlForValue.Clear();
-
             count = Math.Min(Count, count);
             if (offset < 0) {
                 count += offset;
@@ -634,34 +633,69 @@ namespace Squared.PRGUI.Controls {
             }
 
             count = Math.Max(Math.Min(Count - offset, count), 0);
+            int i = 0, c = output.Count - skipLeadingControls - skipTrailingControls;
 
-            while (output.Count > (count + skipOutputControls)) {
-                var ctl = output[output.Count - 1];
-                if (GetValueForControl(ctl, out T temp))
-                    ControlForValue.Remove(temp);
-                output.RemoveAt(output.Count - 1);
-            }
+            ResultBuffer.Clear();
+            SpareBuffer.Clear();
 
-            for (int i = 0; i < count; i++) {
+            // Add the head to our result buffer
+            for (i = 0; i < skipLeadingControls; i++)
+                if (i < output.Count)
+                    ResultBuffer.Add(output[i]);
+
+            // First pass: Collect controls for values we previously had
+            for (i = 0; i < count; i++) {
                 var value = this[i + offset];
                 // FIXME
                 if (value == null)
                     continue;
 
-                var j = i + skipOutputControls;
-                var existingControl = ((j < output.Count) && !PurgePending)
-                    ? output[j]
-                    : null;
-
-                var newControl = CreateControlForValue(ref value, existingControl, createControlForValue);
-
-                if (newControl != existingControl) {
-                    if (j < output.Count)
-                        output[j] = newControl;
-                    else
-                        output.Add(newControl);
+                Control controlToPutHere;
+                if (GetControlForValue(ref value, out controlToPutHere)) {
+                    // Remove the control from the table so it doesn't get reused
+                    ControlForValue.Remove(value);
+                    ResultBuffer.Add(controlToPutHere);
+                } else {
+                    // We don't have an existing control so put a null here, we'll fill this slot later
+                    ResultBuffer.Add(null);
                 }
             }
+
+            // Any controls left in the value -> control table are unused since we didn't encounter
+            //  that value in our first pass
+            SpareBuffer.AddRange(ControlForValue.Values);
+            ControlForValue.Clear();
+
+            // Second pass: fill gaps and generate all the controls
+            for (i = 0; i < count; i++) {
+                int j = i + skipLeadingControls;
+                var value = this[i + offset];
+                // FIXME
+                if (value == null)
+                    continue;
+
+                // If we have any spare controls and this is a gap, fill it with one
+                if ((ResultBuffer[j] == null) && (SpareBuffer.Count > 0)) {
+                    ResultBuffer[j] = SpareBuffer.Last();
+                    SpareBuffer.RemoveTail(1);
+                }
+
+                ResultBuffer[j] = CreateControlForValue(ref value, ResultBuffer[j], createControlForValue);
+                // Now record the control for this value since we've filled gaps
+                ControlForValue[value] = ResultBuffer[j];
+            }
+
+            // Now add the tail to our result buffer
+            for (i = 0; i < skipTrailingControls; i++) {
+                int j = (output.Count - skipTrailingControls) + i;
+                if (j < output.Count)
+                    ResultBuffer.Add(output[j]);
+            }
+
+            output.ReplaceWith(ref ResultBuffer);
+
+            ResultBuffer.Clear();
+            SpareBuffer.Clear();
 
             PurgePending = false;
         }

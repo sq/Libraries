@@ -356,6 +356,30 @@ namespace Squared.Util {
         }
 
         /// <summary>
+        /// Clamps a value to the range (0, 1)
+        /// </summary>
+        public static double Saturate (double value) {
+            if (value < 0)
+                return 0;
+            else if (value > 1)
+                return 1;
+            else
+                return value;
+        }
+
+        /// <summary>
+        /// Clamps a value to the range (0, 1)
+        /// </summary>
+        public static double Saturate (double value, double max) {
+            if (value < 0)
+                return 0;
+            else if (value > max)
+                return max;
+            else
+                return value;
+        }
+
+        /// <summary>
         /// Wraps a value into the range (min, max)
         /// </summary>
         public static int Wrap (int value, int min, int max) {

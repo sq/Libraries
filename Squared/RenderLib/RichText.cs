@@ -159,6 +159,9 @@ namespace Squared.Render.Text {
             } else if ((Future == null) || !Future.Completed) {
                 result = default(RichImage);
                 return false;
+            } else if (Future.Failed) {
+                result = default;
+                return false;
             } else {
                 var tex = Future.Result;
                 float? autoScaleX = Width / tex.Width,
@@ -307,6 +310,10 @@ namespace Squared.Render.Text {
         public Dictionary<char, KerningAdjustment> KerningAdjustments;
         public MarkedStringProcessor MarkedStringProcessor;
         public ColorConversionMode ColorMode;
+        /// <summary>
+        /// If set, any images referenced by rich text will not be inserted.
+        /// </summary>
+        public bool DisableImages;
 
         public string DefaultStyle;
 
@@ -395,7 +402,8 @@ namespace Squared.Render.Text {
                     } else if (commandMode && (Styles != null) && bracketed.StartsWith(".") && Styles.TryGetValue(bracketed.Substring(1), out style)) {
                         ApplyStyle(ref layoutEngine, ref state, ref style);
                     } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
-                        AppendImage(ref layoutEngine, image);
+                        if (!DisableImages)
+                            AppendImage(ref layoutEngine, image);
                         ai = new AsyncRichImage(ref image);
                         referencedImages.Add(ref ai);
                     } else if (
@@ -404,8 +412,11 @@ namespace Squared.Render.Text {
                     ) {
                         var currentX1 = 0f;
                         var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
-                        if (ai.TryGetValue(out RichImage ri)) {
+                        if (DisableImages)
+                            referencedImages.Add(ai);
+                        else if (ai.TryGetValue(out RichImage ri)) {
                             AppendImage(ref layoutEngine, ri);
+                            referencedImages.Add(ref ai);
                         } else if (ai.Width.HasValue) {
                             var m = ai.Margin ?? Vector2.Zero;
                             var halfM = m / 2f;

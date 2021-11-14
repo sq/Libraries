@@ -634,6 +634,11 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Contains (T value) {
+            return IndexOf(value) >= 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf (T value) {
             return IndexOf(ref value, EqualityComparer<T>.Default);
         }
@@ -851,6 +856,17 @@ namespace Squared.Util {
             }
 
             Items.DangerousRemoveRange(Items.Count - count, count);
+        }
+
+        public int RemoveWhere (Func<T, bool> predicate) {
+            int result = 0;
+            for (int i = Count - 1; i >= 0; i--) {
+                if (!predicate(this[i]))
+                    continue;
+                RemoveAt(i);
+                result++;
+            }
+            return result;
         }
 
         public void OverwriteWith (T[] data) {

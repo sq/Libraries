@@ -24,6 +24,7 @@ namespace Squared.PRGUI {
         private List<Control> Items = new List<Control>();
         private Dictionary<Control, int> IndexTable = 
             new Dictionary<Control, int>(new ReferenceComparer<Control>());
+        private DenseList<Control> DeadControlScratchBuffer = new DenseList<Control>();
 
         public int Count => Items.Count;
         public Control Host { get; private set; }
@@ -138,13 +139,17 @@ namespace Squared.PRGUI {
             }
         }
 
+        private void FireControlRemoveEvents (Control control) {
+            Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
+            control.UnsetParent(Host);
+        }
+
         public void Remove (Control control) {
             if (control == null)
                 return;
 
             if (IndexTable.TryGetValue(control, out int deleteAtIndex)) {
-                Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
-                control.UnsetParent(Host);
+                FireControlRemoveEvents(control);
                 Items.RemoveAt(deleteAtIndex);
                 IndexTable.Remove(control);
                 UpdateIndexTable(deleteAtIndex);
@@ -155,9 +160,8 @@ namespace Squared.PRGUI {
 
         public void RemoveAt (int index) {
             var control = Items[index];
-            Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
+            FireControlRemoveEvents(control);
             Items.RemoveAt(index);
-            control.UnsetParent(Host);
             IndexTable.Remove(control);
             UpdateIndexTable(index);
             Invalidate();
@@ -174,10 +178,8 @@ namespace Squared.PRGUI {
         public void Clear () {
             IndexTable.Clear();
 
-            foreach (var control in Items) {
-                Context?.NotifyControlBecomingInvalidFocusTarget(control, true);
-                control.UnsetParent(Host);
-            }
+            foreach (var control in Items)
+                FireControlRemoveEvents(control);
 
             Items.Clear();
             Invalidate();
@@ -299,6 +301,83 @@ namespace Squared.PRGUI {
                 return Math.Max(ctl.DisplayOrder, 0);
             else
                 return result;
+        }
+
+        public void ReplaceWith (ref DenseList<Control> newControls) {
+#if DEBUG
+            for (int i = 0; i < newControls.Count; i++) {
+                var newControl = newControls[i];
+                if (newControl == null)
+                    throw new ArgumentNullException($"newControls[{i}]");
+            }
+#endif
+
+            for (int i = 0; i < newControls.Count; i++) {
+                var newControl = newControls[i];
+                if (newControl == null)
+                    throw new ArgumentNullException($"newControls[{i}]");
+                var isNew = !IndexTable.TryGetValue(newControl, out int oldIndex);
+                if (!isNew) {
+                    if (oldIndex == i)
+                        continue;
+
+                    // HACK: Erase the slot that previously held this control
+                    if (oldIndex >= 0)
+                        Items[oldIndex] = null;
+                }
+
+                if (i < Count) {
+                    var oldControl = Items[i];
+                    // HACK: Flag this control as potentially dead
+                    if (oldControl != null)
+                        IndexTable[oldControl] = -1;
+
+                    Items[i] = newControl;
+                } else {
+                    Items.Add(newControl);
+                }
+
+                IndexTable[newControl] = i;
+                if (isNew)
+                    newControl.SetParent(Host);
+            }
+
+            // Find dead controls that we removed and never re-added
+            foreach (var kvp in IndexTable) {
+                if (kvp.Value <= -1)
+                    DeadControlScratchBuffer.Add(kvp.Key);
+            }
+
+            // Fire the relevant notifications for the dead controls and purge them from the table
+            foreach (var deadControl in DeadControlScratchBuffer) {
+                FireControlRemoveEvents(deadControl);
+                IndexTable.Remove(deadControl);
+            }
+
+            while (Count > newControls.Count) {
+                var i = Count - 1;
+                var extraControl = Items[i];
+
+                // We may have moved this extra control, in which case we don't want to go through
+                //  the remove path that fires events.
+                if ((extraControl != null) && (IndexTable[extraControl] == i))
+                    RemoveAt(i);
+                else
+                    // We moved it, so we just need to remove whatever's at this location
+                    Items.RemoveAt(i);
+            }
+
+#if DEBUG
+            foreach (var kvp in IndexTable) {
+                if (kvp.Value <= -1)
+                    throw new Exception("Bad state");
+            }
+
+            foreach (var item in Items) {
+                if (item == null)
+                    throw new Exception("Bad state");
+            }
+#endif
         }
     }
 
