@@ -304,13 +304,13 @@ namespace Squared.PRGUI {
         }
 
         public void ReplaceWith (ref DenseList<Control> newControls) {
-#if DEBUG
+/*
             for (int i = 0; i < newControls.Count; i++) {
                 var newControl = newControls[i];
                 if (newControl == null)
                     throw new ArgumentNullException($"newControls[{i}]");
             }
-#endif
+*/
 
             for (int i = 0; i < newControls.Count; i++) {
                 var newControl = newControls[i];
@@ -367,7 +367,7 @@ namespace Squared.PRGUI {
                     Items.RemoveAt(i);
             }
 
-#if DEBUG
+/*
             foreach (var kvp in IndexTable) {
                 if (kvp.Value <= -1)
                     throw new Exception("Bad state");
@@ -377,7 +377,7 @@ namespace Squared.PRGUI {
                 if (item == null)
                     throw new Exception("Bad state");
             }
-#endif
+*/
         }
     }
 
