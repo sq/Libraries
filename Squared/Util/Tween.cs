@@ -37,6 +37,12 @@ namespace Squared.Util {
                 repeatMode: repeatMode
             );
         }
+
+        public static BoundInterpolator<T, Tween<T>> GetEasing<T> (Interpolators<T>.Easing ease)
+            where T : struct
+        {
+            return Interpolators<T>.Eased<Tween<T>>(ease);
+        }
     }
 
     public struct Tween<T> 
