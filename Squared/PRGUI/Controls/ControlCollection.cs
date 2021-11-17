@@ -41,8 +41,11 @@ namespace Squared.PRGUI {
         }
 
         public void CopyTo (List<Control> destination) {
-            foreach (var item in Items)
+            foreach (var item in Items) {
+                if (item == null)
+                    throw new ArgumentNullException("Items[...]");
                 destination.Add(item);
+            }
         }
 
         public void AddRange (IEnumerable<Control> source) {
@@ -201,6 +204,8 @@ namespace Squared.PRGUI {
                 return Items[index];
             }
             set {
+                if (value == null)
+                    throw new ArgumentNullException("value");
                 if (Items[index] == value)
                     return;
 
@@ -304,13 +309,11 @@ namespace Squared.PRGUI {
         }
 
         public void ReplaceWith (ref DenseList<Control> newControls) {
-/*
             for (int i = 0; i < newControls.Count; i++) {
                 var newControl = newControls[i];
                 if (newControl == null)
                     throw new ArgumentNullException($"newControls[{i}]");
             }
-*/
 
             for (int i = 0; i < newControls.Count; i++) {
                 var newControl = newControls[i];
@@ -348,12 +351,6 @@ namespace Squared.PRGUI {
                     DeadControlScratchBuffer.Add(kvp.Key);
             }
 
-            // Fire the relevant notifications for the dead controls and purge them from the table
-            foreach (var deadControl in DeadControlScratchBuffer) {
-                FireControlRemoveEvents(deadControl);
-                IndexTable.Remove(deadControl);
-            }
-
             while (Count > newControls.Count) {
                 var i = Count - 1;
                 var extraControl = Items[i];
@@ -367,7 +364,10 @@ namespace Squared.PRGUI {
                     Items.RemoveAt(i);
             }
 
-/*
+            foreach (var deadControl in DeadControlScratchBuffer)
+                IndexTable.Remove(deadControl);
+
+#if DEBUG
             foreach (var kvp in IndexTable) {
                 if (kvp.Value <= -1)
                     throw new Exception("Bad state");
@@ -377,7 +377,12 @@ namespace Squared.PRGUI {
                 if (item == null)
                     throw new Exception("Bad state");
             }
-*/
+#endif
+
+            // Fire the relevant notifications for the dead controls and purge them from the table
+            foreach (var deadControl in DeadControlScratchBuffer)
+                FireControlRemoveEvents(deadControl);
+            DeadControlScratchBuffer.Clear();
         }
     }
 
