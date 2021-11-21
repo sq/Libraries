@@ -18,7 +18,7 @@ void computeTLBR_Bezier (
 void evaluateBezier (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    inout int gradientType, out float gradientWeight
+    inout int gradientType, out float2 gradientWeight
 );
 
 float2 evaluateBezierAtT (
@@ -28,7 +28,7 @@ float2 evaluateBezierAtT (
 void evaluateLineSegment (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    inout int gradientType, out float gradientWeight
+    inout int gradientType, out float2 gradientWeight
 );
 
 void computeTLBR_Polygon (
@@ -117,7 +117,7 @@ void evaluateClosedPolygonStep_Line (
 void evaluatePolygonStep (
     in int i, in int count, inout int offset, in bool along, in bool closed, 
     in float2 worldPosition, inout float4 first, inout float4 prev,
-    in float radius, in int gradientType, inout float distance, inout float gradientWeight, 
+    in float radius, in int gradientType, inout float distance, inout float2 gradientWeight, 
     inout float s, inout float gdist, inout float2 tl, inout float2 br
 ) {
     float4 xytr = get(offset);
@@ -167,7 +167,8 @@ void evaluatePolygonStep (
             );
         }
     } else {
-        float temp, temp2;
+        float temp;
+        float2 temp2;
         if (isBezier) {
             float2 a = prev, b = controlPoints.xy, c = pos; 
             evaluateBezier(
@@ -190,11 +191,13 @@ void evaluatePolygonStep (
         else if (along) {
             if (((gdist > 0) && (temp < gdist)) || (temp < 0)) {
                 float scale = 1.0 / (count - 1);
-                gradientWeight = (i * scale);
+                // TODO: gradientWeight.y
+                gradientWeight.x = (i * scale);
                 gradientWeight += (temp2 * scale);
                 gdist = temp;
             }
         } else if (temp < gdist) {
+            // TODO: gradientWeight.y
             gradientWeight = temp2;
             gdist = temp;
         }
@@ -210,7 +213,7 @@ void evaluatePolygon (
     in float2 worldPosition, in float vertexOffset, in float vertexCount, 
     in float _closed, in bool simple,
     out float distance, inout float2 tl, inout float2 br,
-    inout int gradientType, out float gradientWeight, inout float gradientAngle
+    inout int gradientType, out float2 gradientWeight, inout float gradientAngle
 ) {
     // FIXME
     gradientWeight = 0;

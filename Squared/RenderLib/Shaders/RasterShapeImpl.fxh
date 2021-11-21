@@ -1,8 +1,8 @@
 void SHAPE_TYPE_NAME (
     RASTERSHAPE_FS_ARGS
 ) {
-    float2 tl, br;
-    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
+    float2 tl, br, gradientWeight;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, false, false,
         ab, cd, params, params2,
@@ -10,7 +10,7 @@ void SHAPE_TYPE_NAME (
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    float4 fill = lerp(centerColor, edgeColor, gradientWeight);
+    float4 fill = lerp(centerColor, edgeColor, gradientWeight.x);
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, false, false, GET_VPOS);
 
@@ -23,8 +23,8 @@ void SHAPE_TYPE_NAME (
 void SHAPE_TYPE_NAME_TEX (
     RASTERSHAPE_FS_ARGS
 ) {
-    float2 tl, br;
-    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
+    float2 tl, br, gradientWeight;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, false, false,
         ab, cd, params, params2,
@@ -32,7 +32,7 @@ void SHAPE_TYPE_NAME_TEX (
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    float4 fill = lerp(centerColor, edgeColor, gradientWeight);
+    float4 fill = lerp(centerColor, edgeColor, gradientWeight.x);
 
     result = texturedShapeCommon(
         worldPositionTypeAndWorldSpace.xy, texRgn,
@@ -51,8 +51,8 @@ void SHAPE_TYPE_NAME_TEX (
 void SHAPE_TYPE_NAME_SHADOWED (
     RASTERSHAPE_FS_ARGS
 ) {
-    float2 tl, br;
-    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
+    float2 tl, br, gradientWeight;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, true, false,
         ab, cd, params, params2,
@@ -60,7 +60,7 @@ void SHAPE_TYPE_NAME_SHADOWED (
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    float4 fill = lerp(centerColor, edgeColor, gradientWeight);
+    float4 fill = lerp(centerColor, edgeColor, gradientWeight.x);
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, false, true, GET_VPOS);
 
@@ -104,8 +104,8 @@ technique SHAPE_TYPE_TECHNIQUE_NAME_SHADOWED
 void SHAPE_TYPE_NAME_TEX_SHADOWED (
     RASTERSHAPE_FS_ARGS
 ) {
-    float2 tl, br;
-    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
+    float2 tl, br, gradientWeight;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, true, false,
         ab, cd, params, params2,
@@ -113,7 +113,7 @@ void SHAPE_TYPE_NAME_TEX_SHADOWED (
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    float4 fill = lerp(centerColor, edgeColor, gradientWeight);
+    float4 fill = lerp(centerColor, edgeColor, gradientWeight.x);
 
     result = texturedShapeCommon(
         worldPositionTypeAndWorldSpace.xy, texRgn,
@@ -147,8 +147,8 @@ technique SHAPE_TYPE_TECHNIQUE_NAME_TEX_SHADOWED
 void SHAPE_TYPE_NAME_SIMPLE (
     RASTERSHAPE_FS_ARGS
 ) {
-    float2 tl, br;
-    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
+    float2 tl, br, gradientWeight;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, false, true,
         ab, cd, params, params2,
@@ -169,8 +169,8 @@ void SHAPE_TYPE_NAME_SIMPLE (
 void SHAPE_TYPE_NAME_SIMPLE_SHADOWED (
     RASTERSHAPE_FS_ARGS
 ) {
-    float2 tl, br;
-    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
+    float2 tl, br, gradientWeight;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, true, true,
         ab, cd, params, params2,
@@ -223,15 +223,19 @@ sampler   RampTextureSampler : register(s3) {
 };
 
 // FIXME: In FNA ramp textures + sphere lights creates very jagged shadows but in XNA it does not.
-float4 SampleFromRamp (float value) {
-    return tex2Dlod(RampTextureSampler, float4(value, 0, 0, 0));
+float4 SampleFromRamp (float x) {
+    return tex2Dlod(RampTextureSampler, float4(x, 0, 0, 0));
+}
+
+float4 SampleFromRamp2 (float2 xy) {
+    return tex2Dlod(RampTextureSampler, float4(xy, 0, 0));
 }
 
 void SHAPE_TYPE_NAME_RAMP (
     RASTERSHAPE_FS_ARGS
 ) {
-    float2 tl, br;
-    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
+    float2 tl, br, gradientWeight;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, false, false,
         ab, cd, params, params2,
@@ -239,8 +243,8 @@ void SHAPE_TYPE_NAME_RAMP (
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    float4 fill = SampleFromRamp(gradientWeight);
-    fillAlpha *= lerp(centerColor.a, edgeColor.a, gradientWeight);
+    float4 fill = SampleFromRamp2(gradientWeight);
+    fillAlpha *= lerp(centerColor.a, edgeColor.a, gradientWeight.x);
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, true, false, GET_VPOS);
 
@@ -253,8 +257,8 @@ void SHAPE_TYPE_NAME_RAMP (
 void SHAPE_TYPE_NAME_RAMP_SHADOWED (
     RASTERSHAPE_FS_ARGS
 ) {
-    float2 tl, br;
-    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
+    float2 tl, br, gradientWeight;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, true, false,
         ab, cd, params, params2,
@@ -262,8 +266,8 @@ void SHAPE_TYPE_NAME_RAMP_SHADOWED (
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    float4 fill = SampleFromRamp(gradientWeight);
-    fillAlpha *= lerp(centerColor.a, edgeColor.a, gradientWeight);
+    float4 fill = SampleFromRamp2(gradientWeight);
+    fillAlpha *= lerp(centerColor.a, edgeColor.a, gradientWeight.x);
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, true, true, GET_VPOS);
 

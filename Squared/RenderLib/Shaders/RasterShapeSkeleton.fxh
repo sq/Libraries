@@ -462,7 +462,7 @@ float getWindowAlpha (
 void evaluateEllipse (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c, in bool simple,
     out float distance, out float2 tl, out float2 br,
-    inout int gradientType, out float gradientWeight
+    inout int gradientType, out float2 gradientWeight
 ) {
     // FIXME: sdEllipse is massively broken. What is wrong with it?
     // distance = sdEllipse(worldPosition - a, b);
@@ -477,7 +477,8 @@ void evaluateEllipse (
         return;
     }
 
-    gradientWeight = saturate(distanceF);
+    float fakeY = worldPosition.x + worldPosition.y; // FIXME
+    gradientWeight = float2(saturate(distanceF), fakeY);
     if (gradientType == GRADIENT_TYPE_Natural)
         gradientType = GRADIENT_TYPE_Radial;
     else if (
@@ -492,7 +493,7 @@ void evaluateEllipse (
                 ? (2 * sqrt(2)) 
                 : 2
         );
-        gradientWeight = saturate(max(distance2.x, distance2.y));
+        gradientWeight = float2(saturate(max(distance2.x, distance2.y)), fakeY);
         gradientType = GRADIENT_TYPE_Other;
     }
 }
@@ -500,19 +501,20 @@ void evaluateEllipse (
 void evaluateLineSegment (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    inout int gradientType, out float gradientWeight
+    inout int gradientType, out float2 gradientWeight
 ) {
     float t;
     float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
     float localRadius = radius.x + lerp(c.y, radius.y, t);
     distance = length(worldPosition - closestPoint) - localRadius;
 
+    float fakeY = 0; // FIXME
     PREFER_FLATTEN
     if (gradientType == GRADIENT_TYPE_Along) {
-        gradientWeight = saturate(t);
+        gradientWeight = float2(saturate(t), fakeY);
         gradientType == GRADIENT_TYPE_Other;
     } else
-        gradientWeight = 1 - saturate(-distance / localRadius);
+        gradientWeight = float2(1 - saturate(-distance / localRadius), fakeY);
 }
 
 // Assumes y is 0
@@ -578,11 +580,12 @@ void pickClosestTForAxis (
 void evaluateBezier (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    inout int gradientType, out float gradientWeight
+    inout int gradientType, out float2 gradientWeight
 ) {
     distance = sdBezier(worldPosition, a, b, c) - radius.x;
     
     REQUIRE_BRANCH
+    float fakeY = 0; // FIXME
     if (gradientType == GRADIENT_TYPE_Along) {
         // Translating the control points so worldPosition is 0 simplifies all the math
         a -= worldPosition;
@@ -602,10 +605,10 @@ void evaluateBezier (
         //  line connecting a and c, because the bezier overlaps itself in that scenario
         pickClosestTForAxis(a, b, c, float2(1, 0), cd, ct);
         pickClosestTForAxis(a, b, c, float2(0, 1), cd, ct);
-        gradientWeight = saturate(ct);
-        gradientType == GRADIENT_TYPE_Other;
+        gradientWeight = float2(saturate(ct), fakeY);
+        gradientType = GRADIENT_TYPE_Other;
     } else
-        gradientWeight = 1 - saturate(-distance / radius.x);
+        gradientWeight = float2(1 - saturate(-distance / radius.x), fakeY);
 }
 
 float computeLocalRectangleRadius (
@@ -629,7 +632,7 @@ float computeLocalRectangleRadius (
 
 void evaluateRectangle (
     in float2 worldPosition, in float2 a, in float2 b, in float radius, 
-    out float distance, inout int gradientType, out float gradientWeight
+    out float distance, inout int gradientType, out float2 gradientWeight
 ) {
     float2 center = (a + b) * 0.5;
     float2 boxSize = abs(b - a) * 0.5;
@@ -648,7 +651,7 @@ void evaluateRectangle (
 void evaluateTriangle (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    inout int gradientType, out float gradientWeight,
+    inout int gradientType, out float2 gradientWeight,
     out float2 tl, out float2 br
 ) {
     // FIXME: This function makes fxc compiles INCREDIBLY slow.
@@ -677,9 +680,11 @@ void evaluateTriangle (
     // FIXME: Recenter non-natural gradients around our incenter instead of the
     //  center of our bounding box
 
+    float fakeY = 0; // FIXME
+
     PREFER_FLATTEN
     if (gradientType == GRADIENT_TYPE_Natural) {
-        gradientWeight = 1 - saturate(distance / targetDistance);
+        gradientWeight = float2(1 - saturate(distance / targetDistance), fakeY);
         gradientType = GRADIENT_TYPE_Other;
     } else {
         gradientWeight = 0;
@@ -688,7 +693,7 @@ void evaluateTriangle (
 #endif
 
 float evaluateGradient (
-    int gradientType, float gradientAngle, float gradientWeight,
+    int gradientType, float gradientAngle, float2 gradientWeight,
     float2 worldPosition, float2 tl, float2 br, float radius
 ) {
     float2 gradientCenter = (tl + br) / 2;
@@ -757,7 +762,7 @@ void evaluateRasterShape (
     int type, float2 radius, float outlineSize, float4 params,
     in float2 worldPosition, in float2 a, in float2 b, in float2 c, in bool simple,
     out float distance, inout float2 tl, inout float2 br,
-    inout int gradientType, out float gradientWeight, inout float gradientAngle
+    inout int gradientType, out float2 gradientWeight, inout float gradientAngle
 ) {
     type = EVALUATE_TYPE;
     bool needTLBR = false;
@@ -840,8 +845,9 @@ void evaluateRasterShape (
         if (b.y >= (PI * 0.5))
             hardDistance = -hardDistance;
         distance = lerp(distance, max(distance, hardDistance), c.y);
+        float fakeY = 0; // FIXME
         if (gradientType == GRADIENT_TYPE_Natural) {
-            gradientWeight = 1 - saturate(-distance / radius.y);
+            gradientWeight = float2(1 - saturate(-distance / radius.y), fakeY);
         } else if (gradientType == GRADIENT_TYPE_Along) {
             gradientType = GRADIENT_TYPE_Conical;
             // FIXME: Size scaling
@@ -876,11 +882,10 @@ float computeShadowAlpha (
     float2 worldPosition, float2 a, float2 b, float2 c,
     float shadowEndDistance
 ) {
-    float2 tl, br;
+    float2 tl, br, gradientWeight = 0;
     int gradientType = 0;
-    float gradientWeight = 0, gradientAngle = 0;
+    float gradientAngle = 0, distance;
 
-    float distance;
     evaluateRasterShape(
         type, radius, 0 /* outlineSize, previously totalRadius */, params,
         // Force simple on since we don't use gradient value in shadow calc
@@ -913,7 +918,7 @@ void rasterShapeCommon (
     in float4 ab, in float4 cd,
     in float4 params, in float4 params2, in float2 vpos,
     out float2 tl, out float2 br,
-    out float gradientWeight, out float fillAlpha, 
+    out float2 gradientWeight, out float fillAlpha, 
     out float outlineAlpha, out float shadowAlpha
 ) {
     float2 worldPosition = worldPositionTypeAndInteriorFlag.xy;
@@ -986,26 +991,26 @@ void rasterShapeCommon (
             worldPosition, tl, br, radius.x
         );
 
-        gradientWeight += gradientOffset;
+        gradientWeight.x += gradientOffset;
 
         // FIXME: A bunch of this doesn't seem to be necessary anymore
 
         float gradientSize = gradientRange.y - gradientRange.x;
         if (repeatGradient) {
             // Gradient weight rescaled into 0-1
-            gradientWeight /= gradientSize;
+            gradientWeight.x /= gradientSize;
             // Remap the gradient weight so that it ping-pongs A B A
-            gradientWeight = gradientWeight % 2;
-            gradientWeight = 1 - abs(gradientWeight - 1);
+            gradientWeight.x = gradientWeight % 2;
+            gradientWeight.x = 1 - abs(gradientWeight.x - 1);
             float gradientDivisor = clamp(1 - (gradientRange.x * 2), 0.001, 1);
-            gradientWeight = clamp(gradientWeight - gradientRange.x, 0, gradientDivisor) / gradientDivisor;
+            gradientWeight.x = clamp(gradientWeight.x - gradientRange.x, 0, gradientDivisor) / gradientDivisor;
         } else {
-            gradientWeight = clamp(gradientWeight - gradientRange.x, 0, gradientSize) / gradientSize;
+            gradientWeight.x = clamp(gradientWeight.x - gradientRange.x, 0, gradientSize) / gradientSize;
         }
 
-        if ((gradientWeight > 0) && (gradientWeight < 1)) {
-            float tE = pow(gradientWeight, gradientPower);
-            gradientWeight = tE / (tE + pow(1 - gradientWeight, gradientPower));
+        if ((gradientWeight.x > 0) && (gradientWeight.x < 1)) {
+            float tE = pow(gradientWeight.x, gradientPower);
+            gradientWeight.x = tE / (tE + pow(1 - gradientWeight.x, gradientPower));
         }
     }
 
