@@ -708,7 +708,7 @@ namespace Squared.Render.RasterShape {
                         InnerColor = dc.InnerColor.ToVector4(),
                         OutlineColor = dc.OutlineColor.ToVector4(),
                         OuterColor = dc.OuterColor.ToVector4(),
-                        Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, (float)(int)fill.Mode, dc.OutlineGammaMinusOne),
+                        Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, fill.ModeF, dc.OutlineGammaMinusOne),
                         Parameters2 = new Vector4(gpower, fill.FillRange.X, fill.FillRange.Y, fill.Offset),
                         TextureRegion = dc.TextureBounds.ToVector4(),
                         Type = (short)dc.Type,

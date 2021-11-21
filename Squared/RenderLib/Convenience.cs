@@ -1219,7 +1219,7 @@ namespace Squared.Render.Convenience {
             float fillModeF = (int)fillMode;
             if (fillMode >= RasterFillMode.Angular) {
                 fillAngle = Arithmetic.WrapExclusive(fillAngle, 0, 360);
-                fillModeF += (float)(fillAngle);
+                fillModeF += fillAngle;
             }
             return fillModeF;
         }
