@@ -1232,10 +1232,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Ellipse,
@@ -1268,10 +1268,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             using (var eb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 eb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Ellipse,
@@ -1303,10 +1303,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.LineSegment,
@@ -1339,13 +1339,13 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             float _endRadius = endRadius.GetValueOrDefault(startRadius);
             float maxRadius = Math.Max(startRadius, _endRadius);
 
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.LineSegment,
@@ -1378,10 +1378,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
@@ -1414,10 +1414,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
@@ -1450,10 +1450,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
@@ -1486,10 +1486,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Triangle,
@@ -1521,10 +1521,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Triangle,
@@ -1555,10 +1555,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.QuadraticBezier,
@@ -1591,10 +1591,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             )) {
                 rsb.AddPolygonVertices(vertices, out int offset, out int count);
                 rsb.Add(new RasterShapeDrawCall {
@@ -1629,10 +1629,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.QuadraticBezier,
@@ -1671,7 +1671,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            float endRounding = 1f, int sortKey = 0
+            Vector2? rampUVOffset = null, float endRounding = 1f, int sortKey = 0
         ) {
             var centerAngleDegrees = (startAngleDegrees + (sizeDegrees / 2)) % 360;
             var offsetAngleDegrees = (startAngleDegrees + 90) % 360;
@@ -1700,7 +1700,7 @@ namespace Squared.Render.Convenience {
                 c.Y = 0;
 
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState, texture, samplerState, rampTexture
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Arc,
@@ -1857,7 +1857,10 @@ namespace Squared.Render.Convenience {
             return (GeometryBatch)cacheEntry.Batch;
         }
 
-        public RasterShapeBatch GetRasterShapeBatch (int? layer, bool? worldSpace, BlendState blendState, Texture2D texture, SamplerState samplerState, Texture2D rampTexture) {
+        public RasterShapeBatch GetRasterShapeBatch (
+            int? layer, bool? worldSpace, BlendState blendState, Texture2D texture, 
+            SamplerState samplerState, Texture2D rampTexture, Vector2? rampUVOffset
+        ) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
@@ -1899,12 +1902,14 @@ namespace Squared.Render.Convenience {
                 depthPrePass: DepthPrePass
             ) || (((RasterShapeBatch)cacheEntry.Batch).Texture != texture) 
               || (((RasterShapeBatch)cacheEntry.Batch).RampTexture != rampTexture)
+              || (((RasterShapeBatch)cacheEntry.Batch).RampUVOffset != (rampUVOffset ?? Vector2.Zero))
             ) {
                 // FIXME: The way this works will cause churn when mixing textured and untextured shape batches
                 //  oh well
                 var batch = RasterShapeBatch.New(
                     Container, actualLayer, Materials, texture, desiredSamplerState,
-                    RasterizerState, DepthStencilState, desiredBlendState, rampTexture
+                    RasterizerState, DepthStencilState, desiredBlendState, rampTexture,
+                    rampUVOffset
                 );
                 batch.MaterialParameters = Parameters;
                 // FIXME: why the hell

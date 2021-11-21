@@ -692,7 +692,7 @@ void evaluateTriangle (
 }
 #endif
 
-float evaluateGradient (
+float2 evaluateGradient (
     int gradientType, float gradientAngle, float2 gradientWeight,
     float2 worldPosition, float2 tl, float2 br, float radius
 ) {
@@ -706,7 +706,7 @@ float evaluateGradient (
         (gradientType == GRADIENT_TYPE_Natural) ||
         (gradientType == GRADIENT_TYPE_Other)
     ) {
-        return gradientWeight;
+        ;
     } else if (
         (gradientType == GRADIENT_TYPE_Linear) ||
         (gradientType == GRADIENT_TYPE_Linear_Enclosing) ||
@@ -720,7 +720,7 @@ float evaluateGradient (
                     : radialSize2
             );
         float2 linearDist2 = abs(worldPosition - gradientCenter) / linearRadialSize2;
-        return max(linearDist2.x, linearDist2.y);
+        gradientWeight.x = max(linearDist2.x, linearDist2.y);
     } else if (
         (gradientType == GRADIENT_TYPE_Radial) ||
         (gradientType == GRADIENT_TYPE_Radial_Enclosing) ||
@@ -733,14 +733,14 @@ float evaluateGradient (
                     ? min(radialSize2.x, radialSize2.y)
                     : radialSize2
             );
-        return length((worldPosition - gradientCenter) / max(radialSize, 0.0001));
+        gradientWeight.x = length((worldPosition - gradientCenter) / max(radialSize, 0.0001));
     } else if (
         (gradientType >= GRADIENT_TYPE_Angular)
     ) {
         float2 scaled = (worldPosition - gradientCenter) / (boxSize * 0.5);
         float scaledLength = length(scaled);
         if (scaledLength < 0.001) {
-            scaled.x = 0.001;
+            scaled.x = scaled.y = 0.001;
             scaledLength = 0.001;
         }
         if (gradientType >= GRADIENT_TYPE_Conical) {
@@ -748,10 +748,14 @@ float evaluateGradient (
             // We want a clockwise gradient starting at the top.
             float angleCw = atan2(-scaled.x, scaled.y) + PI; // [0, 2 * PI]
             float angleCwScaled = (angleCw + ((2 * PI) - gradientAngle)) / (2 * PI);
-            return angleCwScaled % 1;
+            gradientWeight.x = angleCwScaled % 1;
+            gradientWeight.y = scaled.y; // FIXME
         } else {
+            float2 sc;
+            sincos(gradientAngle + (PI / 2), sc.x, sc.y);
             float tan2 = atan2(scaled.y, scaled.x);
-            return ((sin(gradientAngle + tan2) * scaledLength) / 2) + 0.5;
+            gradientWeight.x = ((sin(gradientAngle + tan2) * scaledLength) / 2) + 0.5;
+            gradientWeight.y = dot(sc, scaled);
         }
     }
 

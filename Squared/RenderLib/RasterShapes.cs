@@ -518,6 +518,7 @@ namespace Squared.Render.RasterShape {
             OutputInLinearSpace,
             RasterTexture,
             RampTexture,
+            RampUVOffset,
             ShadowOptions,
             ShadowOptions2,
             ShadowColorLinear,
@@ -531,6 +532,7 @@ namespace Squared.Render.RasterShape {
             OutputInLinearSpace = p["OutputInLinearSpace"];
             RasterTexture = p["RasterTexture"];
             RampTexture = p["RampTexture"];
+            RampUVOffset = p["RampUVOffset"];
             ShadowOptions = p["ShadowOptions"];
             ShadowOptions2 = p["ShadowOptions2"];
             ShadowColorLinear = p["ShadowColorLinear"];
@@ -579,6 +581,7 @@ namespace Squared.Render.RasterShape {
         public Texture2D Texture;
         public SamplerState SamplerState;
         public Texture2D RampTexture;
+        public Vector2 RampUVOffset;
 
         public bool UseUbershader = false;
 
@@ -816,6 +819,7 @@ namespace Squared.Render.RasterShape {
                     rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
                     rasterShader.RasterTexture?.SetValue(Texture);
                     rasterShader.RampTexture?.SetValue(RampTexture);
+                    rasterShader.RampUVOffset?.SetValue(RampUVOffset);
 
                     // HACK: If the shadow color is fully transparent, suppress the offset and softness.
                     // If we don't do this, the bounding box of the shapes will be pointlessly expanded.
@@ -916,7 +920,8 @@ namespace Squared.Render.RasterShape {
 
         public static RasterShapeBatch New (
             IBatchContainer container, int layer, DefaultMaterialSet materials, Texture2D texture = null, SamplerState desiredSamplerState = null,
-            RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null, Texture2D rampTexture = null
+            RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null,
+            Texture2D rampTexture = null, Vector2? rampUVOffset = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
@@ -931,6 +936,7 @@ namespace Squared.Render.RasterShape {
             result.Texture = texture;
             result.SamplerState = desiredSamplerState;
             result.RampTexture = rampTexture;
+            result.RampUVOffset = rampUVOffset ?? Vector2.Zero;
             result.CaptureStack(0);
             return result;
         }

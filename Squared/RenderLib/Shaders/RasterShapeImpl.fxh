@@ -212,11 +212,13 @@ technique SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE_SHADOWED
 
 #ifdef SHAPE_TYPE_TECHNIQUE_NAME_RAMP
 
+uniform float2 RampUVOffset;
+
 Texture2D RampTexture        : register(t3);
 sampler   RampTextureSampler : register(s3) {
     Texture   = (RampTexture);
     AddressU  = CLAMP;
-    AddressV  = CLAMP;
+    AddressV  = WRAP;
     MipFilter = POINT;
     MinFilter = LINEAR;
     MagFilter = LINEAR;
@@ -243,7 +245,7 @@ void SHAPE_TYPE_NAME_RAMP (
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    float4 fill = SampleFromRamp2(gradientWeight);
+    float4 fill = SampleFromRamp2(gradientWeight + RampUVOffset);
     fillAlpha *= lerp(centerColor.a, edgeColor.a, gradientWeight.x);
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, true, false, GET_VPOS);
@@ -266,7 +268,7 @@ void SHAPE_TYPE_NAME_RAMP_SHADOWED (
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    float4 fill = SampleFromRamp2(gradientWeight);
+    float4 fill = SampleFromRamp2(gradientWeight + RampUVOffset);
     fillAlpha *= lerp(centerColor.a, edgeColor.a, gradientWeight.x);
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, true, true, GET_VPOS);
