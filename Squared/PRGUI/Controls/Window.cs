@@ -17,7 +17,8 @@ namespace Squared.PRGUI.Controls {
         protected ControlAlignmentHelper<Window> Aligner;
 
         /// <summary>
-        /// Configures what point on the screen (or the anchor, if set) [0 - 1] is used as the center for this window
+        /// Configures what point on the screen is used as the center for this window, OR
+        ///  if an alignment anchor is set, configures what point on this control is aligned to it
         /// </summary>
         public Vector2 Alignment {
             get => Aligner.ControlAlignmentPoint;

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Text;
 
@@ -580,6 +581,16 @@ namespace Squared.PRGUI.Controls {
             return IndexOf(ref value, comparer) >= 0;
         }
 
+        private void CreateControlForValueEpilogue (
+            ref T value, Control newControl
+        ) {
+            if (value != null)
+                ControlForValue[value] = newControl;
+
+            if (!GetValueForControl(newControl, out T existingValue) || !Comparer.Equals(existingValue, value))
+                newControl.Data.Set(new ValueToken { Value = value });
+        }
+
         private Control CreateControlForValue (
             ref T value, Control existingControl,
             CreateControlForValueDelegate<T> createControlForValue
@@ -592,12 +603,23 @@ namespace Squared.PRGUI.Controls {
             else
                 throw new ArgumentNullException("createControlForValue");
 
-            if (value != null)
-                ControlForValue[value] = newControl;
+            CreateControlForValueEpilogue(ref value, newControl);
+            return newControl;
+        }
 
-            if (!GetValueForControl(newControl, out T existingValue) || !Comparer.Equals(existingValue, value))
-                newControl.Data.Set(new ValueToken { Value = value });
+        private Control CreateControlForValue<TUserData> (
+            ref T value, Control existingControl, ref TUserData userData,
+            CreateControlForValueDelegate<T, TUserData> createControlForValue
+        ) {
+            Control newControl;
+            if (value is Control)
+                newControl = (Control)(object)value;
+            else if (createControlForValue != null)
+                newControl = createControlForValue(ref value, existingControl, ref userData);
+            else
+                throw new ArgumentNullException("createControlForValue");
 
+            CreateControlForValueEpilogue(ref value, newControl);
             return newControl;
         }
 
@@ -626,6 +648,37 @@ namespace Squared.PRGUI.Controls {
             int offset = 0, int count = int.MaxValue, 
             int skipLeadingControls = 0, int skipTrailingControls = 0
         ) {
+            var temp = NoneType.None;
+            GenerateControlsImpl<NoneType>(output, createControlForValue, ref temp, offset, count, skipLeadingControls, skipTrailingControls);
+        }
+
+        public void GenerateControls<TUserData> (
+            ControlCollection output, 
+            CreateControlForValueDelegate<T, TUserData> createControlForValue,
+            ref TUserData userData,
+            int offset = 0, int count = int.MaxValue, 
+            int skipLeadingControls = 0, int skipTrailingControls = 0
+        ) {
+            GenerateControlsImpl<TUserData>(output, createControlForValue, ref userData, offset, count, skipLeadingControls, skipTrailingControls);
+        }
+
+        private void GenerateControlsImpl<TUserData> (
+            ControlCollection output, 
+            Delegate createControlForValue,
+            ref TUserData userData,
+            int offset = 0, int count = int.MaxValue, 
+            int skipLeadingControls = 0, int skipTrailingControls = 0
+        ) {
+            CreateControlForValueDelegate<T> ccfvd = null;
+            CreateControlForValueDelegate<T, TUserData> ccfvdud = null;
+            if (typeof(TUserData) == typeof(NoneType))
+                ccfvd = (CreateControlForValueDelegate<T>)createControlForValue;
+            else
+                ccfvdud = (CreateControlForValueDelegate<T, TUserData>)createControlForValue;
+
+            var oldFocus = output.Context?.Focused;
+            var wasItemFocused = GetValueForControl(oldFocus, out T oldFocusedValue);
+
             count = Math.Min(Count, count);
             if (offset < 0) {
                 count += offset;
@@ -680,7 +733,10 @@ namespace Squared.PRGUI.Controls {
                     SpareBuffer.RemoveTail(1);
                 }
 
-                ResultBuffer[j] = CreateControlForValue(ref value, ResultBuffer[j], createControlForValue);
+                if (ccfvdud != null)
+                    ResultBuffer[j] = CreateControlForValue(ref value, ResultBuffer[j], ref userData, ccfvdud);
+                else
+                    ResultBuffer[j] = CreateControlForValue(ref value, ResultBuffer[j], ccfvd);
                 // Now record the control for this value since we've filled gaps
                 ControlForValue[value] = ResultBuffer[j];
             }
@@ -696,6 +752,9 @@ namespace Squared.PRGUI.Controls {
 
             ResultBuffer.Clear();
             SpareBuffer.Clear();
+
+            if (wasItemFocused && GetControlForValue(oldFocusedValue, out Control newFocusedControl))
+                output.Context.TrySetFocus(newFocusedControl, false, false);
 
             PurgePending = false;
         }

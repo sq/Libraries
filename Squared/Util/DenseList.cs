@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Squared.Util {
@@ -25,92 +26,13 @@ namespace Squared.Util {
     }
 
     public struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
-        private static class ValueTraits {
-            public static int Size8, Size32;
-            private static T[] MeasurementArray;
-            private static GCHandle MeasurementArrayPin;
-
-            public unsafe static void ComputeSize () {
-                if (typeof(T).IsValueType) {
-                    MeasurementArray = new T[2];
-                    MeasurementArrayPin = GCHandle.Alloc(MeasurementArray, GCHandleType.Normal);
-                    var local = MeasurementArray;
-                    RuntimeHelpers.PrepareConstrainedRegions();
-                    unchecked {
-                        try {
-                        } finally {
-                            var tRef0 = __makeref(local[0]);
-                            var tRef1 = __makeref(local[1]);
-                            var pRef0 = (long)*(IntPtr**)&tRef0;
-                            var pRef1 = (long)*(IntPtr**)&tRef1;
-                            var size = pRef1 - pRef0;
-                            Size8 = (int)size;
-                            Size32 = Size8 / 4;
-                        }
-                    }
-                    MeasurementArrayPin.Free();
-                    MeasurementArray = null;
-                } else {
-                    Size8 = Marshal.SizeOf<IntPtr>();
-                    Size32 = Size8 / 4;
-                }
-            }
-        }
+        private static T[] EmptyArray;
 
         [StructLayout(LayoutKind.Sequential)]
         internal struct InlineStorage {
             public T Item1, Item2, Item3, Item4;
             public int Count;
 
-            // FIXME: The JIT is unwilling to inline the optimized methods and generates bad code even though it's branchless
-#if USE_TYPEDREF
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private unsafe byte* GetPointerToElement(int index) {
-                var r0 = __makeref(Item1);
-                var p0 = (byte*)(*(IntPtr**)&r0);
-                return p0 + (ValueTraits.Size8 * index);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public unsafe void GetItemAtIndex (int index, out T result) {
-                var pSrc = GetPointerToElement(index);
-                result = default;
-                var tr = __makeref(result);
-                var pDest = (byte*)(*(IntPtr**)&tr);
-                for (int i = 0, c = ValueTraits.Size8; i < c; i++)
-                    pDest[i] = pSrc[i];
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public unsafe void SetItemAtIndex (int index, ref T value) {
-                var pDest = GetPointerToElement(index);
-                var tr = __makeref(value);
-                var pSrc = (byte*)(*(IntPtr**)&tr);
-                for (int i = 0, c = ValueTraits.Size8; i < c; i++)
-                    pDest[i] = pSrc[i];
-            }
-
-            public unsafe T this[int index] {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get {
-                    T result = default;
-                    var pSrc = GetPointerToElement(index);
-                    var tr = __makeref(result);
-                    var pDest = (byte*)(*(IntPtr**)&tr);
-                    for (int i = 0, c = ValueTraits.Size8; i < c; i++)
-                        pDest[i] = pSrc[i];
-                    return result;
-                }
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                set {
-                    var pDest = GetPointerToElement(index);
-                    var tr = __makeref(value);
-                    var pSrc = (byte*)(*(IntPtr**)&tr);
-                    for (int i = 0, c = ValueTraits.Size8; i < c; i++)
-                        pDest[i] = pSrc[i];
-                }
-            }
-#else
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public unsafe void GetItemAtIndex (int index, out T result) {
                 switch (index) {
@@ -179,7 +101,6 @@ namespace Squared.Util {
                     }
                 }
             }
-#endif
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Add (ref InlineStorage storage, ref T item) {
@@ -345,12 +266,6 @@ namespace Squared.Util {
 
         internal InlineStorage Storage;
         internal UnorderedList<T> Items;
-
-#if USE_TYPEDREF
-        static DenseList () {
-            ValueTraits.ComputeSize();
-        }
-#endif
 
         public DenseList (T[] items) 
             : this (items, 0, items.Length) {
@@ -915,7 +830,16 @@ namespace Squared.Util {
         }
 
         public T[] ToArray () {
-            if (HasList)
+            if (Count == 0) {
+                var result = EmptyArray;
+                if (result == null) {
+                    result = new T[0];
+                    Interlocked.CompareExchange(ref EmptyArray, result, null);
+                }
+                return result;
+            }
+
+            else if (HasList)
                 return Items.ToArray();
             else {
                 var result = new T[Storage.Count];

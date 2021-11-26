@@ -238,6 +238,13 @@ namespace Squared.PRGUI {
             };
         }
 
+        public Control FindChild (Control container, Func<Control, bool> predicate, int direction = 1) {
+            var settings = MakeSettingsForPick(container, direction);
+            settings.Predicate = predicate;
+            var collection = ((container as IControlContainer)?.Children) ?? Controls;
+            return TraverseChildren(collection, settings).FirstOrDefault().Control;
+        }
+
         public IEnumerable<Control> FindFocusableChildren (Control container, int direction = 1) {
             var settings = MakeSettingsForPick(container, direction);
             // FIXME: Handle cases where the control isn't a container

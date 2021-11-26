@@ -14,6 +14,7 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public delegate Control CreateControlForValueDelegate<T> (ref T value, Control existingControl);
+    public delegate Control CreateControlForValueDelegate<T, TUserData> (ref T value, Control existingControl, ref TUserData userData);
 
     public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget, IMenuListener, IValueControl<T>, IHasDescription {
         private readonly Menu ItemsMenu = new Menu {
