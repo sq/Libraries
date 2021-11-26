@@ -169,6 +169,12 @@ namespace Squared.Task {
     }
 
     public class TaskScheduler : IDisposable, IWorkItemQueueTarget {
+        /// <summary>
+        /// By default, attempts to queue a work item on a disposed scheduler will do nothing.
+        /// Setting this to true will cause them to throw instead.
+        /// </summary>
+        public bool ThrowOnQueueWhileDisposed = false;
+
         internal struct PushedActivity : IDisposable {
             public readonly SynchronizationContext PriorContext;
 
@@ -412,30 +418,43 @@ namespace Squared.Task {
             };
         }
 
-        public void QueueWorkItem (Action workItem) {
-            if (_IsDisposed)
+        private void QueuedWhileDisposed () {
+            if (ThrowOnQueueWhileDisposed)
                 throw new ObjectDisposedException("TaskScheduler");
+        }
+
+        public void QueueWorkItem (Action workItem) {
+            if (_IsDisposed) {
+                QueuedWhileDisposed();
+                return;
+            }
 
             _JobQueue.QueueWorkItem(workItem);
         }
 
         public void QueueWorkItem (WorkItemQueueEntry entry) {
-            if (_IsDisposed)
-                throw new ObjectDisposedException("TaskScheduler");
+            if (_IsDisposed) {
+                QueuedWhileDisposed();
+                return;
+            }
 
             _JobQueue.QueueWorkItem(entry);
         }
 
         public void QueueWorkItemForNextStep (Action workItem) {
-            if (_IsDisposed)
-                throw new ObjectDisposedException("TaskScheduler");
+            if (_IsDisposed) {
+                QueuedWhileDisposed();
+                return;
+            }
 
             _JobQueue.QueueWorkItemForNextStep(workItem);
         }
 
         public void QueueWorkItemForNextStep (WorkItemQueueEntry entry) {
-            if (_IsDisposed)
-                throw new ObjectDisposedException("TaskScheduler");
+            if (_IsDisposed) {
+                QueuedWhileDisposed();
+                return;
+            }
 
             _JobQueue.QueueWorkItemForNextStep(entry);
         }

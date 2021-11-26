@@ -201,11 +201,11 @@ namespace Squared.Threading {
             if (arr.Length == 0)
                 return new Future<IFuture>(null);
             else
-                return WaitForFirst(futures.ToArray());
+                return new WaitForFirstThunk(futures).Composite;
         }
 
         public static Future<IFuture> WaitForFirst (params IFuture[] futures) {
-            return WaitForX(futures, futures.Length);
+            return new WaitForFirstThunk(futures).Composite;
         }
 
         public static IFuture WaitForAll (IEnumerable<IFuture> futures) {
@@ -213,11 +213,11 @@ namespace Squared.Threading {
             if (arr.Length == 0)
                 return new SignalFuture(true);
             else
-                return WaitForAll(futures.ToArray());
+                return new WaitForAllThunk(futures).Composite;
         }
 
         public static IFuture WaitForAll (params IFuture[] futures) {
-            return WaitForX(futures, 1);
+            return new WaitForAllThunk(futures).Composite;
         }
 
         public static Future<U> RunInThread<U> (Func<U> workItem) {
@@ -245,94 +245,89 @@ namespace Squared.Threading {
             return thunk.Future;
         }
 
-        private class WaitHandler {
-            public Future<IFuture> Composite;
-            public readonly List<IFuture> State = new List<IFuture>();
-            public int TriggerAtPreviousCount;
-            private bool Disposing = false;
+        private class WaitForFirstThunk {
+            public Future<IFuture> Composite = new Future<IFuture>();
+            public bool Completed;
 
-            public void OnCompositeDispose (IFuture f) {
-                if (Disposing)
-                    return;
+            public WaitForFirstThunk (IEnumerable<IFuture> futures) {
+                OnFutureResolved handler = null;
 
-                lock (State)
-                try {
-                    Disposing = true;
-
-                    foreach (var future in State)
-                        future.Dispose();
-
-                    State.Clear();
-                } finally {
-                    Disposing = false;
+                foreach (var f in futures) {
+                    if (f == null)
+                        continue;
+                    if (handler == null)
+                        handler = OnResolved;
+                    f.RegisterOnResolved(handler);
+                    if (Completed)
+                        break;
                 }
             }
+            
+            public void OnResolved (IFuture f) {
+                lock (this) {
+                    if (Completed)
+                        return;
 
-            public void OnComplete (IFuture f) {
-                bool completed = false;
-                lock (State) {
-                    if (State.Count == TriggerAtPreviousCount) {
-                        completed = true;
-                        State.Clear();
-                    } else {
-                        if (!State.Remove(f) && (f != null))
-                            throw new ThreadStateException("Future was already removed from state array");
-                    }
+                    Completed = true;
                 }
 
-                if (completed)
-                    Composite.Complete(f);
-            }
-
-            public void OnDispose (IFuture f) {
-                bool completed = false;
-                lock (State) {
-                    if (State.Count == TriggerAtPreviousCount) {
-                        completed = true;
-                        State.Clear();
-                    } else {
-                        if (!State.Remove(f) && (f != null))
-                            throw new ThreadStateException("Future was already removed from state array");
-                    }
-                }
-
-                if (completed)
-                    Composite.Dispose();
+                Composite.Complete(f);
             }
         }
 
-        private static Future<IFuture> WaitForX (IEnumerable<IFuture> futures, int triggerAtPreviousCount) {
-            if (futures == null)
-                throw new ArgumentException("Must specify at least one future to wait on", "futures");
+        private class WaitForAllThunk {
+            public SignalFuture Composite = new SignalFuture();
+            private bool Initializing = true;
+            public int TargetCount;
+            public int DisposeCount, CompleteCount;
 
-            var f = new Future<IFuture>();
-            var h = new WaitHandler();
+            public WaitForAllThunk (IEnumerable<IFuture> futures) {
+                OnFutureResolved handler = null;
+                foreach (var f in futures) {
+                    if (f == null)
+                        continue;
+                    if (handler == null)
+                        handler = OnResolved;
 
-            h.Composite = f;
-            h.State.AddRange(futures);
-            h.TriggerAtPreviousCount = triggerAtPreviousCount;
+                    TargetCount++;
+                    f.RegisterOnResolved(handler);
+                }
 
-            OnFutureResolved oc = h.OnComplete;
-            OnFutureResolved od = h.OnDispose;
+                bool signal;
+                lock (this) {
+                    Initializing = false;
+                    signal = (DisposeCount + CompleteCount) == TargetCount;
+                }
 
-            if (h.State.Count == 0)
-                throw new ArgumentException("Must specify at least one future to wait on", "futures");
-
-            f.RegisterOnDispose(h.OnCompositeDispose);
-
-            var nullsToRemove = 0;
-
-            foreach (IFuture _ in futures) {
-                if (_ != null)
-                    _.RegisterHandlers(oc, od);
-                else
-                    nullsToRemove++;
+                if (signal && !Composite.Completed && !Composite.Disposed) {
+                    if (CompleteCount == 0)
+                        Composite.Dispose();
+                    else
+                        Composite.Complete();
+                }
             }
+            
+            public void OnResolved (IFuture f) {
+                bool signal = false;
+                lock (this) {
+                    if (f.Disposed)
+                        DisposeCount++;
+                    else
+                        CompleteCount++;
 
-            for (int i = 0; i < nullsToRemove; i++)
-                h.OnComplete(null);
+                    if (Initializing)
+                        return;
 
-            return f;
+                    signal = (DisposeCount + CompleteCount) == TargetCount;
+                }
+
+                if (signal && !Composite.Completed && !Composite.Disposed) {
+                    if (CompleteCount == 0)
+                        Composite.Dispose();
+                    else
+                        Composite.Complete();
+                }
+            }
         }
 
         private class WaitForSingleEventThunk {
@@ -567,7 +562,6 @@ namespace Squared.Threading {
                 
             if (oldState == State_Empty) {
                 list.Add(handler);
-
                 ClearIndeterminate(State_Empty);
                 return false;
             } else if (
