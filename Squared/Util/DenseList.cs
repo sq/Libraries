@@ -28,6 +28,26 @@ namespace Squared.Util {
     public struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
         private static T[] EmptyArray;
 
+        internal class BoxedEmptyEnumerator : IEnumerator<T> {
+            // HACK: While this will break any ABSURD code comparing enumerators by reference,
+            //  this means that foreach over an empty denselist won't have to allocate
+            public static readonly BoxedEmptyEnumerator Instance = new BoxedEmptyEnumerator();
+
+            // FIXME
+            public T Current => default;
+            object IEnumerator.Current => null;
+
+            public void Dispose () {
+            }
+
+            public bool MoveNext () {
+                return false;
+            }
+
+            public void Reset () {
+            }
+        }
+
         [StructLayout(LayoutKind.Sequential)]
         internal struct InlineStorage {
             public T Item1, Item2, Item3, Item4;
@@ -1014,10 +1034,14 @@ namespace Squared.Util {
         }
 
         IEnumerator<T> IEnumerable<T>.GetEnumerator () {
+            if (Count == 0)
+                return BoxedEmptyEnumerator.Instance;
             return new Enumerator(ref this);
         }
 
         IEnumerator IEnumerable.GetEnumerator () {
+            if (Count == 0)
+                return BoxedEmptyEnumerator.Instance;
             return new Enumerator(ref this);
         }
 
