@@ -332,5 +332,60 @@ namespace Squared.Threading {
             Assert.AreEqual(5, tc.Property);
             Assert.AreNotEqual(5, ts.Property);
         }
+
+        [Test]
+        public void WaitForFirst () {
+            // Basic test for behaviors - ignores nulls, handles duplicates
+            var futures = new IFuture[] {
+                null,
+                new SignalFuture(),
+                new Future<int>(),
+                new Future<bool>(),
+            };
+            var wfa = Future.WaitForFirst(futures);
+            Assert.False(wfa.Completed);
+            futures[2].Complete();
+            futures[3].Complete();
+            Assert.AreEqual(futures[2], wfa.Result);
+        }
+
+        [Test]
+        public void WaitForAll () {
+            // Basic test for behaviors - ignores nulls, handles duplicates
+            var futures = new IFuture[] {
+                null,
+                new SignalFuture(),
+                new Future<int>(),
+                new Future<bool>(),
+                null // We put a duplicate here
+            };
+            futures[4] = futures[1];
+            var wfa = Future.WaitForAll(futures);
+            Assert.False(wfa.Completed);
+            futures[1].Complete();
+            Assert.False(wfa.Completed);
+            futures[2].Dispose();
+            Assert.False(wfa.Completed);
+            futures[3].Complete();
+            Assert.True(wfa.Completed);
+        }
+
+        [Test]
+        public void WaitForAllWillDisposeIfAllFuturesAreDisposed () {
+            var futures = new IFuture[] {
+                new SignalFuture(),
+                new Future<int>(),
+            };
+            var wfa = Future.WaitForAll(futures);
+            foreach (var f in futures)
+                f.Dispose();
+            Assert.True(wfa.Disposed);
+        }
+
+        [Test]
+        public void WaitForAllAndWaitForFirstInstantlyCompleteWithEmptyList () {
+            Assert.True(Future.WaitForAll().Completed);
+            Assert.True(Future.WaitForFirst().Completed);
+        }
     }
 }

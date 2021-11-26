@@ -197,11 +197,7 @@ namespace Squared.Threading {
         }
 
         public static Future<IFuture> WaitForFirst (IEnumerable<IFuture> futures) {
-            var arr = futures.ToArray();
-            if (arr.Length == 0)
-                return new Future<IFuture>(null);
-            else
-                return new WaitForFirstThunk(futures).Composite;
+            return new WaitForFirstThunk(futures).Composite;
         }
 
         public static Future<IFuture> WaitForFirst (params IFuture[] futures) {
@@ -209,11 +205,7 @@ namespace Squared.Threading {
         }
 
         public static IFuture WaitForAll (IEnumerable<IFuture> futures) {
-            var arr = futures.ToArray();
-            if (arr.Length == 0)
-                return new SignalFuture(true);
-            else
-                return new WaitForAllThunk(futures).Composite;
+            return new WaitForAllThunk(futures).Composite;
         }
 
         public static IFuture WaitForAll (params IFuture[] futures) {
@@ -252,6 +244,15 @@ namespace Squared.Threading {
             public WaitForFirstThunk (IEnumerable<IFuture> futures) {
                 OnFutureResolved handler = null;
 
+                if (
+                    ((futures as System.Collections.IList)?.Count == 0) ||
+                    ((futures as Array)?.Length == 0)
+                ) {
+                    // HACK
+                    Composite.Complete(null);
+                    return;
+                }
+
                 foreach (var f in futures) {
                     if (f == null)
                         continue;
@@ -282,6 +283,15 @@ namespace Squared.Threading {
             public int DisposeCount, CompleteCount;
 
             public WaitForAllThunk (IEnumerable<IFuture> futures) {
+                if (
+                    ((futures as System.Collections.IList)?.Count == 0) ||
+                    ((futures as Array)?.Length == 0)
+                ) {
+                    // HACK
+                    Composite.Complete();
+                    return;
+                }
+
                 OnFutureResolved handler = null;
                 foreach (var f in futures) {
                     if (f == null)
@@ -289,6 +299,8 @@ namespace Squared.Threading {
                     if (handler == null)
                         handler = OnResolved;
 
+                    // NOTE: Duplicates will work correctly because we will increment the target count
+                    //  twice and then register the handler twice, so the handler will run twice.
                     TargetCount++;
                     f.RegisterOnResolved(handler);
                 }
