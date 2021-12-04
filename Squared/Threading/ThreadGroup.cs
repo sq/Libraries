@@ -126,12 +126,14 @@ namespace Squared.Threading {
         /// <param name="timeProvider">The time provider used to measure elapsed times during work item processing.</param>
         /// <param name="comThreadingModel">If you don't already know what this is, you probably don't care about it.</param>
         /// <param name="name">A name used to identify the threads owned by this group for debugging purposes.</param>
+        /// <param name="enableCoarseTime">If set, a background thread will be created responsible for reading the system clock. This will improve main thread step performance at the cost of extra CPU usage.</param>
         public ThreadGroup (
             int? threadCount = null,
             bool createBackgroundThreads = false,
             ITimeProvider timeProvider = null,
             ApartmentState comThreadingModel = ApartmentState.Unknown,
-            string name = null
+            string name = null,
+            bool enableCoarseTime = false
         ) {
             Name = name;
             ThreadCount = Math.Min(threadCount.GetValueOrDefault(Environment.ProcessorCount), MaximumThreadCount);
@@ -144,10 +146,12 @@ namespace Squared.Threading {
                 Threads[i] = new GroupThread(this, i);
 
             SynchronizationContext = SynchronizationContext.Current;
-            TimeThread = new Thread(TimeThreadProc) {
-                IsBackground = true
-            };
-            TimeThread.Start();
+            if (enableCoarseTime) {
+                TimeThread = new Thread(TimeThreadProc) {
+                    IsBackground = true
+                };
+                TimeThread.Start();
+            }
         }
 
         private void TimeThreadProc () {
@@ -181,6 +185,13 @@ namespace Squared.Threading {
             }
         }
 
+        private long GetTime () {
+            if (TimeThread != null)
+                return CoarseTime;
+            else
+                return Time.Ticks;
+        }
+
         /// <summary>
         /// Call this method to advance all the main thread work item queues.
         /// This is necessary to ensure main-thread-only jobs advance.
@@ -193,7 +204,7 @@ namespace Squared.Threading {
 
             var sc = SynchronizationContext.Current;
             var msc = SynchronizationContext;
-            var started = CoarseTime;
+            var started = GetTime();
             try {
                 if (msc != null)
                     SynchronizationContext.SetSynchronizationContext(msc);
@@ -206,7 +217,7 @@ namespace Squared.Threading {
                     if (!exhausted)
                         allExhausted = false;
 
-                    var elapsedMs = (CoarseTime - started) / Time.MillisecondInTicks;
+                    var elapsedMs = (GetTime() - started) / Time.MillisecondInTicks;
                     if (
                         elapsedMs > stepLengthLimitMs
                     )
@@ -222,10 +233,10 @@ namespace Squared.Threading {
 
         public bool TryStepMainThreadUntilDrained () {
             float stepLengthLimitMs = MainThreadStepLengthLimitMs ?? 999999;
-            var started = CoarseTime;
+            var started = GetTime();
 
             while (true) {
-                var elapsedMs = (CoarseTime - started) / Time.MillisecondInTicks;
+                var elapsedMs = (GetTime() - started) / Time.MillisecondInTicks;
                 if (elapsedMs >= stepLengthLimitMs)
                     return false;
 
