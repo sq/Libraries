@@ -445,6 +445,7 @@ namespace Squared.Threading {
                 try {
                     bool empty = false;
                     running = (actualMaximumCount > 0) &&
+                        (numProcessed < actualMaximumCount) &&
                         TryDequeue(out item, out empty);
 
                     if (empty) {

@@ -363,7 +363,7 @@ namespace Squared.Threading {
         }
 
         public static void BindFuture (this tTask task, IFuture future) {
-            task.GetAwaiter().OnCompleted(() => {
+            task.ConfigureAwait(false).GetAwaiter().OnCompleted(() => {
                 // FIXME: ExceptionDispatchInfo?
                 if (task.IsFaulted) {
                     future.Fail(task.Exception.InnerExceptions.Count == 1 ? task.Exception.InnerException : task.Exception);
@@ -376,7 +376,7 @@ namespace Squared.Threading {
         }
 
         public static void BindFuture<T> (this System.Threading.Tasks.Task<T> task, Future<T> future) {
-            task.GetAwaiter().OnCompleted(() => {
+            task.ConfigureAwait(false).GetAwaiter().OnCompleted(() => {
                 future.SetResultFrom(task);
             });
             future.RegisterOnDispose((_) => {

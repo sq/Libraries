@@ -96,7 +96,8 @@ namespace Squared.Threading {
         public readonly int ThreadCount;
         public readonly ApartmentState COMThreadingModel;
 
-        public bool IsDisposed { get; private set; }
+        public bool IsDisposed => _IsDisposed != 0;
+        private volatile int _IsDisposed;
         
         // A lock-free dictionary for looking up queues by work item type
         private readonly Dictionary<Type, IWorkQueue> Queues = 
@@ -116,6 +117,9 @@ namespace Squared.Threading {
         public SynchronizationContext SynchronizationContext;
 
         public string Name;
+
+        private Thread TimeThread;
+        private long CoarseTime;
 
         /// <param name="threadCount">The desired number of threads to create. If not specified, the default is based on the number of processors available.</param>
         /// <param name="createBackgroundThreads">Whether to create background threads for processing work. Non-background threads will block the program from exiting until their work is complete.</param>
@@ -140,6 +144,17 @@ namespace Squared.Threading {
                 Threads[i] = new GroupThread(this, i);
 
             SynchronizationContext = SynchronizationContext.Current;
+            TimeThread = new Thread(TimeThreadProc) {
+                IsBackground = true
+            };
+            TimeThread.Start();
+        }
+
+        private void TimeThreadProc () {
+            while (!IsDisposed) {
+                Volatile.Write(ref CoarseTime, Time.Ticks);
+                Thread.Yield();
+            }
         }
 
         private void NewQueueCreated () {
@@ -178,11 +193,11 @@ namespace Squared.Threading {
 
             var sc = SynchronizationContext.Current;
             var msc = SynchronizationContext;
+            var started = CoarseTime;
             try {
                 if (msc != null)
                     SynchronizationContext.SetSynchronizationContext(msc);
                 // FIXME: This will deadlock if you create a new queue while it's stepping the main thread
-                var started = Time.Ticks;
                 lock (MainThreadQueueList)
                 foreach (var q in MainThreadQueueList) {
                     bool exhausted;
@@ -191,9 +206,9 @@ namespace Squared.Threading {
                     if (!exhausted)
                         allExhausted = false;
 
-                    var elapsedTicks = (Time.Ticks - started) / Time.MillisecondInTicks;
+                    var elapsedMs = (CoarseTime - started) / Time.MillisecondInTicks;
                     if (
-                        elapsedTicks > stepLengthLimitMs
+                        elapsedMs > stepLengthLimitMs
                     )
                         return false;
                 }
@@ -207,10 +222,10 @@ namespace Squared.Threading {
 
         public bool TryStepMainThreadUntilDrained () {
             float stepLengthLimitMs = MainThreadStepLengthLimitMs ?? 999999;
-            var started = Time.Ticks;
+            var started = CoarseTime;
 
             while (true) {
-                var elapsedMs = (Time.Ticks - started) / Time.MillisecondInTicks;
+                var elapsedMs = (CoarseTime - started) / Time.MillisecondInTicks;
                 if (elapsedMs >= stepLengthLimitMs)
                     return false;
 
@@ -323,7 +338,7 @@ namespace Squared.Threading {
             if (IsDisposed)
                 return;
 
-            IsDisposed = true;
+            Volatile.Write(ref _IsDisposed, 1);
 
             for (int i = 0; i < Threads.Length; i++) {
                 var thread = Interlocked.Exchange(ref Threads[i], null);
@@ -368,21 +383,23 @@ namespace Squared.Threading {
             }
         }
 
-        public static SignalFuture Invoke (this ThreadGroup group, Action action) {
+        public static SignalFuture Invoke (this ThreadGroup group, Action action, bool forMainThread = false) {
             var workItem = new ActionWorkItem {
                 Action = action,
                 Future = new SignalFuture()
             };
-            group.Enqueue(ref workItem);
+            var queue = group.GetQueueForType<ActionWorkItem>(forMainThread);
+            queue.Enqueue(ref workItem);
             return workItem.Future;
         }
 
-        public static Future<T> Invoke<T> (this ThreadGroup group, Func<T> func) {
+        public static Future<T> Invoke<T> (this ThreadGroup group, Func<T> func, bool forMainThread = false) {
             var workItem = new FuncWorkItem<T> {
                 Func = func,
                 Future = new Future<T>()
             };
-            group.Enqueue(ref workItem);
+            var queue = group.GetQueueForType<FuncWorkItem<T>>(forMainThread);
+            queue.Enqueue(ref workItem);
             return workItem.Future;
         }
     }
