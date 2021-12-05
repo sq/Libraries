@@ -406,6 +406,8 @@ namespace Squared.Render.Resources {
         }
 
         public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception) {
+            var pathsSearched = new DenseList<string>();
+
             result = null;
             exception = null;
             string candidateStreamName;
@@ -418,7 +420,8 @@ namespace Squared.Render.Resources {
                     } catch (Exception exc) {
                         exception = exception ?? exc;
                     }
-                }
+                } else
+                    pathsSearched.Add(candidateStreamName);
             }
 
             if (result == null) {
@@ -429,14 +432,21 @@ namespace Squared.Render.Resources {
                     } catch (Exception exc) {
                         exception = exception ?? exc;
                     }
-                }
+                } else
+                    pathsSearched.Add(candidateStreamName);
             }
 
             if (result == null) {
                 if (optional) {
                     return false;
                 } else {
-                    exception = exception ?? new FileNotFoundException($"No file named '{name}' in '{Path}'", name);
+                    var sb = new StringBuilder();
+                    sb.Append("Could not find file '");
+                    sb.Append(name);
+                    sb.AppendLine("'. Searched the following paths:");
+                    foreach (var path in pathsSearched)
+                        sb.AppendLine(path);
+                    exception = exception ?? new FileNotFoundException(sb.ToString(), name);
                     return false;
                 }
             } else {
@@ -545,7 +555,8 @@ namespace Squared.Render.Resources {
             }
 
             if (errors.Count > 1) {
-                error = new AggregateException(errors.ToArray());
+                // Reverse the list of errors since the last fallback is usually the most important
+                error = new AggregateException(errors.Reverse().ToArray());
             } else if (errors.Count == 1) {
                 error = errors[0];
             } else {

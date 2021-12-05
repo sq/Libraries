@@ -64,11 +64,6 @@ namespace Squared.Render {
         }
 
         private void InternalDispose () {
-#if FNA
-            // FIXME: MojoShader crashes when disposing effects.
-            Process.GetCurrentProcess().Kill();
-#endif
-
             if (RenderCoordinator != null)
                 RenderCoordinator.Dispose();
 
