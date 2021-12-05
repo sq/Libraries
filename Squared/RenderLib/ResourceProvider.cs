@@ -410,7 +410,7 @@ namespace Squared.Render.Resources {
             exception = null;
             string candidateStreamName;
             foreach (var extension in Extensions) {
-                candidateStreamName = FixupName((Prefix ?? "") + name + extension, false);
+                candidateStreamName = System.IO.Path.Combine(Path, FixupName((Prefix ?? "") + name + extension, false));
                 if (File.Exists(candidateStreamName)) {
                     try {
                         result = File.Open(candidateStreamName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -422,7 +422,7 @@ namespace Squared.Render.Resources {
             }
 
             if (result == null) {
-                candidateStreamName = FixupName((Prefix ?? "") + name, false);
+                candidateStreamName = System.IO.Path.Combine(Path, FixupName((Prefix ?? "") + name, false));
                 if (File.Exists(candidateStreamName)) {
                     try {
                         result = File.Open(candidateStreamName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -436,7 +436,7 @@ namespace Squared.Render.Resources {
                 if (optional) {
                     return false;
                 } else {
-                    exception = exception ?? new FileNotFoundException($"No file with this name found: {name}", name);
+                    exception = exception ?? new FileNotFoundException($"No file named '{name}' in '{Path}'", name);
                     return false;
                 }
             } else {
@@ -533,7 +533,7 @@ namespace Squared.Render.Resources {
 
         public bool TryGetStream (string name, bool optional, out Stream result, out Exception error) {
             result = null;
-            error = null;
+            var errors = new DenseList<Exception>();
 
             foreach (var source in Sources) {
                 if (source.TryGetStream(name, optional, out result, out Exception temp)) {
@@ -541,10 +541,16 @@ namespace Squared.Render.Resources {
                     return true;
                 }
 
-                error = error ?? temp;
+                errors.Add(temp);
             }
 
-            error = error ?? new Exception("No results found");
+            if (errors.Count > 1) {
+                error = new AggregateException(errors.ToArray());
+            } else if (errors.Count == 1) {
+                error = errors[0];
+            } else {
+                error = new Exception("No results found");
+            }
             return false;
         }
     }
