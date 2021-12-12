@@ -495,6 +495,12 @@ namespace Squared.PRGUI.Controls {
             Invalidate();
         }
 
+        public void AddRange (T[] collection) {
+            foreach (var item in collection)
+                Items.Add(item);
+            Invalidate();
+        }
+
         public void AddRange (IEnumerable<T> collection) {
             Items.AddRange(collection);
             Invalidate();

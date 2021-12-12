@@ -409,7 +409,8 @@ namespace Squared.PRGUI {
             var mousePosition = _CurrentInput.CursorPosition;
 
             PreviousUnhandledEvents.Clear();
-            PreviousUnhandledEvents.AddRange(UnhandledEvents);
+            foreach (var evt in UnhandledEvents)
+                PreviousUnhandledEvents.Add(evt);
             UnhandledEvents.Clear();
 
             if (
