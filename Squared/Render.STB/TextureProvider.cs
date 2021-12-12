@@ -28,6 +28,10 @@ namespace Squared.Render {
         /// Performs color-space conversion
         /// </summary>
         public bool sRGBToLinear, sRGBFromLinear;
+        /// <summary>
+        /// The texture already contains sRGB data which should not be converted
+        /// </summary>
+        public bool sRGB;
     }
 
     public class Texture2DProvider : ResourceProvider<Texture2D> {
@@ -69,7 +73,10 @@ namespace Squared.Render {
 
         protected override object PreloadInstance (string name, Stream stream, object data) {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
-            var image = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint, options.Enable16Bit, options.GenerateMips);
+            var image = new STB.Image(
+                stream, false, options.Premultiply, options.FloatingPoint, 
+                options.Enable16Bit, options.GenerateMips, options.sRGBFromLinear || options.sRGB
+            );
             if (options.sRGBFromLinear || options.sRGBToLinear)
                 ApplyColorSpaceConversion(image, options);
             return image;
@@ -79,14 +86,14 @@ namespace Squared.Render {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
             var img = (STB.Image)preloadedData;
             if (async) {
-                var f = img.CreateTextureAsync(Coordinator, !EnableThreadedCreate, options.PadToPowerOfTwo);
+                var f = img.CreateTextureAsync(Coordinator, !EnableThreadedCreate, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB);
                 f.RegisterOnComplete((_) => {
                     Coordinator.DisposeResource(img);
                 });
                 return f;
             } else {
                 using (img)
-                    return new Future<Texture2D>(img.CreateTexture(Coordinator, options.PadToPowerOfTwo));
+                    return new Future<Texture2D>(img.CreateTexture(Coordinator, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB));
             }
         }
     }

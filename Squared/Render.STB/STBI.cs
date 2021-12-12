@@ -35,7 +35,11 @@ namespace Squared.Render.STB {
             : this (OpenStream(path), true, premultiply, asFloatingPoint) {
         }
 
-        public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false, bool enable16Bit = false, bool generateMips = false) {
+        public Image (
+            Stream stream, bool ownsStream, bool premultiply = true, 
+            bool asFloatingPoint = false, bool enable16Bit = false, bool generateMips = false,
+            bool sRGB = false
+        ) {
             var length = stream.Length - stream.Position;
 
             _RefCount = 1;
@@ -73,7 +77,8 @@ namespace Squared.Render.STB {
                 premultiply: premultiply, 
                 asFloatingPoint: asFloatingPoint, 
                 enable16Bit: enable16Bit,
-                generateMips: generateMips
+                generateMips: generateMips,
+                sRGB: sRGB
             );
 
             if (ownsStream)
@@ -86,14 +91,15 @@ namespace Squared.Render.STB {
             }
         }
 
-        public unsafe Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, bool generateMips = false) {
+        public unsafe Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, bool generateMips = false, bool sRGB = false) {
             fixed (byte* pBuffer = buffer.Array) {
                 InitializeFromPointer(
                     pBuffer, buffer.Offset, buffer.Count,
                     premultiply: premultiply, 
                     asFloatingPoint: asFloatingPoint,
                     enable16Bit: false,
-                    generateMips: generateMips
+                    generateMips: generateMips,
+                    sRGB: sRGB
                 );
             }
         }
@@ -101,7 +107,8 @@ namespace Squared.Render.STB {
         private void InitializeFromPointer (
             byte* pBuffer, int offset, int length, 
             bool premultiply = true, bool asFloatingPoint = false, 
-            bool enable16Bit = false, bool generateMips = false
+            bool enable16Bit = false, bool generateMips = false,
+            bool sRGB = false
         ) {
             IsFloatingPoint = asFloatingPoint;
             const int desiredChannelCount = 4;
@@ -127,7 +134,7 @@ namespace Squared.Render.STB {
             }
 
             int components;
-            SizeofPixel = Evil.TextureUtils.GetBytesPerPixelAndComponents(Format, out components);
+            SizeofPixel = Evil.TextureUtils.GetBytesPerPixelAndComponents(GetFormat(sRGB), out components);
 
             if (asFloatingPoint)
                 ConvertFPData(premultiply);
@@ -228,22 +235,20 @@ namespace Squared.Render.STB {
             }
         }
 
-        public SurfaceFormat Format {
-            get {
-                if (IsFloatingPoint)
-                    return SurfaceFormat.Vector4;
-                else if (Is16Bit)
-                    return SurfaceFormat.Rgba64;
-                else if (ChannelCount == 4)
-                    return SurfaceFormat.Color;
-                else if (ChannelCount == 1)
-                    return SurfaceFormat.Alpha8;
-                else
-                    throw new NotImplementedException($"{ChannelCount} channel(s)");
-            }
+        public SurfaceFormat GetFormat (bool sRGB) {
+            if (IsFloatingPoint)
+                return SurfaceFormat.Vector4;
+            else if (Is16Bit)
+                return SurfaceFormat.Rgba64;
+            else if (ChannelCount == 4)
+                return sRGB ? Evil.TextureUtils.ColorSrgbEXT : SurfaceFormat.Color;
+            else if (ChannelCount == 1)
+                return SurfaceFormat.Alpha8;
+            else
+                throw new NotImplementedException($"{ChannelCount} channel(s)");
         }
 
-        public Texture2D CreateTexture (RenderCoordinator coordinator, bool padToPowerOfTwo = false) {
+        public Texture2D CreateTexture (RenderCoordinator coordinator, bool padToPowerOfTwo = false, bool sRGB = false) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image");
             // FIXME: Channel count
@@ -253,7 +258,7 @@ namespace Squared.Render.STB {
 
             Texture2D result;
             lock (coordinator.CreateResourceLock) {
-                result = new Texture2D(coordinator.Device, width, height, MipChain != null, Format) {
+                result = new Texture2D(coordinator.Device, width, height, MipChain != null, GetFormat(sRGB)) {
                     Tag = "STB.Image"
                 };
                 coordinator.AutoAllocatedTextureResources.Add(result);
@@ -268,7 +273,7 @@ namespace Squared.Render.STB {
             return result;
         }
 
-        public Future<Texture2D> CreateTextureAsync (RenderCoordinator coordinator, bool mainThread, bool padToPowerOfTwo) {
+        public Future<Texture2D> CreateTextureAsync (RenderCoordinator coordinator, bool mainThread, bool padToPowerOfTwo, bool sRGB = false) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image");
             // FIXME: Channel count
@@ -278,7 +283,7 @@ namespace Squared.Render.STB {
 
             Texture2D tex;
             lock (coordinator.CreateResourceLock) {
-                tex = new Texture2D(coordinator.Device, width, height, MipChain != null, Format) {
+                tex = new Texture2D(coordinator.Device, width, height, MipChain != null, GetFormat(sRGB)) {
                     Tag = "STB.Image"
                 };
                 coordinator.AutoAllocatedTextureResources.Add(tex);
