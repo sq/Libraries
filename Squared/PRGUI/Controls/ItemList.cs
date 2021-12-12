@@ -769,7 +769,7 @@ namespace Squared.PRGUI.Controls {
             // Update the index table
             // FIXME: Optimize this
             for (i = 0; i < ResultBuffer.Count; i++)
-                ResultBuffer[i].Data.Set("_Index", i);
+                ResultBuffer[i].Data.Set("_Index", i + offset);
 
             output.ReplaceWith(ref ResultBuffer);
 

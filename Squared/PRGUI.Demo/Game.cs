@@ -1015,7 +1015,7 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(virtualCheckbox, UIEvents.CheckedChanged, (ei) => {
-                listBox.MaxSelectedCount = virtualCheckbox.Checked ? 10 : 1;
+                listBox.Virtual = virtualCheckbox.Checked;
             });
 
             Context.EventBus.Subscribe(multiselectCheckbox, UIEvents.CheckedChanged, (ei) => {
