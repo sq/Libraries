@@ -27,6 +27,8 @@ namespace Squared.PRGUI.Controls {
         public bool Collapsible;
         protected bool CollapsingEnabled = true;
 
+        public bool LayoutChildrenWhenCollapsed = true;
+
         public string Title;
 
         private float? MostRecentTitleHeight;
@@ -212,9 +214,10 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             FreezeDynamicContent = _Collapsed;
-            // FIXME: Broken right now
-            // SuppressChildLayout = _Collapsed && (DisclosureLevel.Get(context.NowL) <= 0);
-            SuppressChildLayout = false;
+            SuppressChildLayout = !LayoutChildrenWhenCollapsed 
+                && _Collapsed 
+                && MostRecentFullSize.HasValue
+                && (DisclosureLevel.Get(context.NowL) <= 0);
 
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
@@ -276,7 +279,21 @@ namespace Squared.PRGUI.Controls {
 
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
-            height.Maximum = ComputeDisclosureHeight(ref context, height.Maximum);
+            var dheight = ComputeDisclosureHeight(ref context, height.Maximum);
+
+            // If layout is suppressed because we are collapsed, we need to make sure we don't
+            //  shrink horizontally due to the loss of our child boxes. The height just needs to
+            //  be locked to our disclosure height instead of set as a maximum, since there's nothing
+            //  inside us to make us taller.
+            if (SuppressChildLayout && MostRecentFullSize.HasValue) {
+                if (width.Minimum.HasValue)
+                    width.Minimum = Math.Max(width.Minimum.Value, MostRecentFullSize.Value.Width);
+                else
+                    width.Minimum = MostRecentFullSize?.Width;
+                height.Fixed = dheight;
+            } else {
+                height.Maximum = dheight;
+            }
         }
 
         public bool IsContentVisible => DisclosureLevel.Get(Context.NowL) > 0;

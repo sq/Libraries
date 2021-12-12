@@ -94,6 +94,7 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = true;
             LayoutFlags = default(ControlFlags);
             Layout.Floating = true;
+            LayoutChildrenWhenCollapsed = false;
         }
 
         protected void CancelDrag () {
