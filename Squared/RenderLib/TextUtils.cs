@@ -24,7 +24,11 @@ namespace Squared.Render.Text {
         ///  yourself constantly by setting Text in this case.
         /// You can disable this entirely by setting the threshold to 0.
         /// </summary>
-        public static int TextHashThreshold = 512;
+        public static int TextHashLimit = 2048;
+        /// <summary>
+        /// Hashing small strings is a waste of time.
+        /// </summary>
+        public static int TextHashMinimum = 64;
 
         private ArraySegment<BitmapDrawCall> _Buffer; 
         private StringLayout? _CachedStringLayout;
@@ -286,7 +290,10 @@ namespace Squared.Render.Text {
                 newText.IsImmutable &&
                 (_Text.Length == newText.Length)
             ) {
-                if (useHash && newText.Length < TextHashThreshold) {
+                if (useHash && 
+                    newText.Length > TextHashMinimum &&
+                    newText.Length < TextHashLimit
+                ) {
                     newHash = newText.ComputeTextHash();
                     if (newHash == _TextHash)
                         return false;
