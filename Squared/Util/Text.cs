@@ -232,6 +232,12 @@ namespace Squared.Util.Text {
         private readonly ArraySegment<char> ArraySegment;
         private readonly int SubstringOffset, SubstringLength;
 
+        public bool IsImmutable {
+            get {
+                return String != null;
+            }
+        }
+
         public bool IsArraySegment {
             get {
                 return (ArraySegment.Array != null);

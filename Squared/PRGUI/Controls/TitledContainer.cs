@@ -29,7 +29,7 @@ namespace Squared.PRGUI.Controls {
 
         public bool LayoutChildrenWhenCollapsed = true;
 
-        public string Title;
+        public AbstractString Title;
 
         private float? MostRecentTitleHeight;
         private Tween<float> DisclosureLevel = 1f;
@@ -200,7 +200,7 @@ namespace Squared.PRGUI.Controls {
             var titleDecorations = context.DecorationProvider?.WindowTitle;
             if (titleDecorations == null)
                 return;
-            if (string.IsNullOrEmpty(Title))
+            if (Title.Length == 0)
                 return;
 
             Color? color = null;
@@ -223,7 +223,7 @@ namespace Squared.PRGUI.Controls {
             if (result.IsInvalid)
                 return result;
 
-            if (string.IsNullOrEmpty(Title) && !existingKey.HasValue && Collapsible) {
+            if (Title.Length == 0 && !existingKey.HasValue && Collapsible) {
                 var spacer = context.Layout.CreateItem();
                 context.Layout.SetLayoutFlags(spacer, ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak);
                 context.Layout.SetFixedSize(spacer, DisclosureArrowPadding, MostRecentTitleBox.Height);
@@ -333,7 +333,7 @@ namespace Squared.PRGUI.Controls {
                     ((layout.DrawCalls.Count > 0)
                         ? layout.Size.Y
                         : TitleLayout.GlyphSource.LineSpacing);
-                if (string.IsNullOrWhiteSpace(Title)) {
+                if (Title.Length == 0) {
                     if (Collapsible)
                         titleBox.Width = DisclosureArrowPadding;
                     else

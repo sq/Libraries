@@ -258,8 +258,17 @@ namespace Squared.Render.Text {
                 return _Text;
             }
             set {
-                if (InvalidatingValueAssignment(ref _Text, value))
-                    _TextVersion++;
+                if (
+                    // We can only do an efficient bailout if our text is immutable.
+                    // If the value being assigned is an ArraySegment or a StringBuilder,
+                    //  the contents may have changed since the last update, so we need to invalidate
+                    _Text.IsImmutable && value.IsImmutable &&
+                    _Text.TextEquals(value, StringComparison.Ordinal)
+                )
+                    return;
+                _Text = value;
+                _TextVersion++;
+                Invalidate();
             }
         }
 
