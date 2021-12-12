@@ -380,6 +380,7 @@ namespace Squared.PRGUI.Controls {
 
             var hasPushedDecorator = false;
             var children = Children;
+            // FIXME: This is really slow
             for (int i = 0, c = children.Count; i < c; i++) {
                 var child = children[i];
                 var lk = child.LayoutKey;
