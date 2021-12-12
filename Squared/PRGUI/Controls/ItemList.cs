@@ -76,9 +76,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         public int IndexOfControl (Control child) {
-            if (!Items.GetValueForControl(child, out T value))
+            if (!Items.GetIndexOfControl(child, out int index))
                 return -1;
-            return Items.IndexOf(ref value, Comparer);
+            return index;
         }
 
         public void Clear () {
@@ -452,8 +452,12 @@ namespace Squared.PRGUI.Controls {
         public T this[int index] {
             get => Items[index];
             set {
+                var oldValue = Items[index];
+                if (Comparer.Equals(oldValue, value))
+                    return;
+                Invalidate(oldValue);
                 Items[index] = value;
-                Invalidate();
+                Invalidate(value);
             }
         }
 
@@ -559,6 +563,20 @@ namespace Squared.PRGUI.Controls {
                 result = default(T);
                 return false;
             }
+        }
+
+        internal bool GetIndexOfControl (Control child, out int index) {
+            if (child == null) {
+                index = -1;
+                return false;
+            }
+
+            if (!child.Data.TryGet("_Index", out index)) {
+                index = -1;
+                return false;
+            }
+
+            return true;
         }
 
         public int IndexOf (T value, IEqualityComparer<T> comparer) {
@@ -747,6 +765,11 @@ namespace Squared.PRGUI.Controls {
                 if (j < output.Count)
                     ResultBuffer.Add(output[j]);
             }
+
+            // Update the index table
+            // FIXME: Optimize this
+            for (i = 0; i < ResultBuffer.Count; i++)
+                ResultBuffer[i].Data.Set("_Index", i);
 
             output.ReplaceWith(ref ResultBuffer);
 
