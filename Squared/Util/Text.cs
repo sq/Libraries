@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Squared.Util.Hash;
 
 namespace Squared.Util.Text {
     public static class Unicode {
@@ -227,6 +229,12 @@ namespace Squared.Util.Text {
     }
 
     public struct AbstractString : IEquatable<AbstractString> {
+        // NOTE: We seed all these hash providers to 0 to ensure we get the same hash no matter what thread we're on
+        private static readonly ThreadLocal<XXHash32> HashProvider = new ThreadLocal<XXHash32>(() => new XXHash32(0));
+        // We use a fixed-size buffer when hashing text
+        private const int HashBufferSize = 1024;
+        private static readonly ThreadLocal<byte[]> HashBuffer = new ThreadLocal<byte[]>(() => new byte[HashBufferSize]);
+
         private readonly string String;
         private readonly StringBuilder StringBuilder;
         private readonly ArraySegment<char> ArraySegment;
@@ -293,6 +301,27 @@ namespace Squared.Util.Text {
             return new AbstractString(text);
         }
 
+        public unsafe uint ComputeTextHash () {
+            var hasher = HashProvider.Value;
+            var hashBuffer = HashBuffer.Value;
+
+            hasher.Initialize();
+            int i = 0, l = Length, bufferSize = hashBuffer.Length / sizeof(char);
+            fixed (byte * pBuffer = hashBuffer) {
+                char* pBufferChars = (char*)pBuffer;
+                while (i < l) {
+                    int c = Math.Min(bufferSize, l - i);
+                    for (int j = 0; j < c; j++)
+                        pBufferChars[j] = this[i + j];
+                    i += c;
+
+                    hasher.FeedInput(hashBuffer, 0, c);
+                }
+                hasher.ComputeResult(out uint result);
+                return result;
+            }
+        }
+
         public static implicit operator AbstractString (StringBuilder stringBuilder) {
             return new AbstractString(stringBuilder);
         }
@@ -328,6 +357,8 @@ namespace Squared.Util.Text {
         }
 
         public bool TextEquals (AbstractString other, StringComparison comparison) {
+            if ((Length == 0) && (other.Length == 0))
+                return true;
             if (Equals(other))
                 return true;
             if (Length != other.Length)

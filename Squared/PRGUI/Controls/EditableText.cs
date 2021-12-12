@@ -1181,7 +1181,7 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             DescriptionLayout.GlyphSource = font;
-            DescriptionLayout.Text = Description;
+            DescriptionLayout.SetText(Description, true, true);
 
             var descriptionLayout = DescriptionLayout.Get();
             var width = descriptionLayout.Size.X;

@@ -129,7 +129,7 @@ namespace Squared.PRGUI.Controls {
                 return null;
             }
             decorations.GetTextSettings(ref context, state, out material, ref color);
-            TitleLayout.Text = Title;
+            TitleLayout.SetText(Title, true, false);
             TitleLayout.GlyphSource = decorations.GlyphSource;
             TitleLayout.DefaultColor = color ?? Color.White;
             TitleLayout.LineBreakAtX = contentBox.Width;

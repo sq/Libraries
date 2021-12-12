@@ -67,6 +67,7 @@
     <Compile Include="Tuples.cs" />
     <Compile Include="Tween.cs" />
     <Compile Include="UnorderedList.cs" />
+    <Compile Include="XXHash.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

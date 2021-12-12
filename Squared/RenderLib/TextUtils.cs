@@ -11,10 +11,21 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.Threading;
 using Squared.Util;
+using Squared.Util.Hash;
 using Squared.Util.Text;
 
 namespace Squared.Render.Text {
     public class DynamicStringLayout {
+        /// <summary>
+        /// Strings under this length will have a hash computed and stored in order to allow
+        ///  layout.Text = value to avoid invalidating if the text has not changed even if
+        ///  value is a StringBuilder or ArraySegment. This threshold is applied to avoid
+        ///  wasting CPU to hash very long strings - it's your responsibility to not invalidate
+        ///  yourself constantly by setting Text in this case.
+        /// You can disable this entirely by setting the threshold to 0.
+        /// </summary>
+        public static int TextHashThreshold = 512;
+
         private ArraySegment<BitmapDrawCall> _Buffer; 
         private StringLayout? _CachedStringLayout;
         private int _CachedGlyphVersion = -1, _TextVersion = -1;
@@ -24,6 +35,7 @@ namespace Squared.Render.Text {
         private Dictionary<char, KerningAdjustment> _KerningAdjustments;
         private Func<IGlyphSource> _GlyphSourceProvider;
         private IGlyphSource _GlyphSource;
+        private uint? _TextHash;
         private AbstractString _Text, _TruncatedIndicator;
         private Vector2 _Position;
         private Color _DefaultColor;
@@ -253,22 +265,52 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// Update the text stored in this layout.
+        /// </summary>
+        /// <param name="newText">The new string</param>
+        /// <param name="compareText">
+        /// If true, the new and existing strings will have their content 
+        /// compared (if possible) to skip invalidating the layout.
+        /// </param>
+        /// <param name="useHash">
+        /// If true, a hash will be computed for the existing and new strings,
+        /// and if the hashes match invalidation will be skipped.
+        /// </param>
+        /// <returns>true if the text was updated and the layout was invalidated.</returns>
+        public bool SetText (AbstractString newText, bool compareText = true, bool useHash = false) {
+            uint? newHash = null;
+            if (
+                compareText && 
+                _Text.IsImmutable && 
+                newText.IsImmutable &&
+                (_Text.Length == newText.Length)
+            ) {
+                if (useHash && newText.Length < TextHashThreshold) {
+                    newHash = newText.ComputeTextHash();
+                    if (newHash == _TextHash)
+                        return false;
+                }
+                if (_Text.TextEquals(newText, StringComparison.Ordinal)) {
+                    if (newHash.HasValue)
+                        _TextHash = newHash;
+                    return false;
+                }
+            }
+
+            _Text = newText;
+            _TextHash = newHash;
+            _TextVersion++;
+            Invalidate();
+            return true;
+        }
+
         public AbstractString Text {
             get {
                 return _Text;
             }
             set {
-                if (
-                    // We can only do an efficient bailout if our text is immutable.
-                    // If the value being assigned is an ArraySegment or a StringBuilder,
-                    //  the contents may have changed since the last update, so we need to invalidate
-                    _Text.IsImmutable && value.IsImmutable &&
-                    _Text.TextEquals(value, StringComparison.Ordinal)
-                )
-                    return;
-                _Text = value;
-                _TextVersion++;
-                Invalidate();
+                SetText(value, true, false);
             }
         }
 
@@ -756,7 +798,8 @@ namespace Squared.Render.Text {
             this.Scale = source.Scale;
             this.Spacing = source.Spacing;
             this.SortKey = source.SortKey;
-            this.Text = source.Text;
+            this.SetText(source.Text, true);
+            this._TextHash = source._TextHash;
             this.TruncatedIndicator = source.TruncatedIndicator;
             this.WordWrap = source.WordWrap;
             this.WrapCharacter = source.WrapCharacter;
