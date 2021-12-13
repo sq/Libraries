@@ -420,6 +420,7 @@ namespace Squared.Threading {
 
         private void StepInternal (out int result, out bool exhausted, int actualMaximumCount) {
             // We eat an extra lock acquisition this way, but it skips a lot of extra work
+            // FIXME: Optimize this out since in profiles it eats like 2% of CPU, probably not worth it anymore
             if (IsEmpty) {
                 result = 0;
                 exhausted = true;
@@ -436,6 +437,7 @@ namespace Squared.Threading {
 
             exhausted = false;
             result = 0;
+            // TODO: Move this into the loop so we do it at the start of processing the first item?
             if (Interlocked.Increment(ref _NumProcessing) > maxConcurrency) {
                 Interlocked.Decrement(ref _NumProcessing);
                 return;

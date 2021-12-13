@@ -27,7 +27,7 @@ namespace Squared.PRGUI.Controls {
         public bool Collapsible;
         protected bool CollapsingEnabled = true;
 
-        public bool LayoutChildrenWhenCollapsed = true;
+        public bool LayoutChildrenWhenCollapsed = true, LockWidthWhileCollapsed = false;
 
         public AbstractString Title;
 
@@ -129,11 +129,13 @@ namespace Squared.PRGUI.Controls {
                 return null;
             }
             decorations.GetTextSettings(ref context, state, out material, ref color);
-            TitleLayout.SetText(Title, true, false);
+            TitleLayout.SetText(Title, true, true);
+            var wasValid = TitleLayout.IsValid;
             TitleLayout.GlyphSource = decorations.GlyphSource;
             TitleLayout.DefaultColor = color ?? Color.White;
             TitleLayout.LineBreakAtX = contentBox.Width;
-            if (!TitleLayout.IsValid)
+            // We don't want to invalidate the height for text changes, but we do want to invalidate it for wrapping or font changes
+            if (!TitleLayout.IsValid && wasValid)
                 MostRecentTitleHeight = null;
             return decorations;
         }
@@ -286,10 +288,12 @@ namespace Squared.PRGUI.Controls {
             //  be locked to our disclosure height instead of set as a maximum, since there's nothing
             //  inside us to make us taller.
             if (SuppressChildLayout && MostRecentFullSize.HasValue) {
-                if (width.Minimum.HasValue)
-                    width.Minimum = Math.Max(width.Minimum.Value, MostRecentFullSize.Value.Width);
-                else
-                    width.Minimum = MostRecentFullSize?.Width;
+                if (LockWidthWhileCollapsed) {
+                    if (width.Minimum.HasValue)
+                        width.Minimum = Math.Max(width.Minimum.Value, MostRecentFullSize.Value.Width);
+                    else
+                        width.Minimum = MostRecentFullSize?.Width;
+                }
                 height.Fixed = dheight;
             } else {
                 height.Maximum = dheight;
