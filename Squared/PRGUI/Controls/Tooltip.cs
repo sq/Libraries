@@ -166,6 +166,20 @@ namespace Squared.PRGUI {
         public StringLayoutFilter LayoutFilter;
         public HorizontalAlignment TextAlignment;
 
+        public TooltipSettings Clone (bool deep) {
+            return new TooltipSettings {
+                RichText = RichText,
+                RichTextConfiguration = deep ? RichTextConfiguration.Clone(true) : RichTextConfiguration,
+                DefaultGlyphSource = DefaultGlyphSource,
+                AnchorPoint = AnchorPoint,
+                ControlAlignmentPoint = ControlAlignmentPoint,
+                MaxSize = MaxSize,
+                ConfigureLayout = ConfigureLayout,
+                LayoutFilter = LayoutFilter,
+                TextAlignment = TextAlignment,
+            };
+        }
+
         public bool Equals (TooltipSettings rhs) {
             return (RichText == rhs.RichText) &&
                 object.Equals(RichTextConfiguration, rhs.RichTextConfiguration) &&
