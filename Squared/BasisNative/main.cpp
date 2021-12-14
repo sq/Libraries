@@ -203,7 +203,8 @@ extern "C" {
         transcoder_info * pTranscoder, void * pData,
         uint32_t dataSize, uint32_t imageIndex, uint32_t levelIndex,
         void * pOutputBlocks, uint32_t outputBlocksSizeInBlocks,
-        transcoder_texture_format format, uint32_t decodeFlags
+        transcoder_texture_format format, uint32_t decodeFlags,
+        uint32_t outputRowPitch, uint32_t outputHeightInPixels
     ) {
         if (!pTranscoder)
             return 0;
@@ -219,13 +220,13 @@ extern "C" {
             return pTranscoder->pKtx2->transcode_image_level(
                 levelIndex, 0, 0, pOutputBlocks,
                 outputBlocksSizeInBlocks, format,
-                decodeFlags
+                decodeFlags, outputRowPitch, outputHeightInPixels
             );
         } else
             return pTranscoder->pBasis->transcode_image_level(
                 pData, dataSize, imageIndex, levelIndex, 
                 pOutputBlocks, outputBlocksSizeInBlocks,
-                format, decodeFlags
+                format, decodeFlags, outputRowPitch, nullptr, outputHeightInPixels
             );
     }
 

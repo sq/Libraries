@@ -60,7 +60,8 @@ namespace Squared.Render.Basis {
             IntPtr transcoder, void * pData, UInt32 dataSize, 
             UInt32 imageIndex, UInt32 levelIndex,
             void * pOutput, UInt32 outputSizeInBlocks,
-            TranscoderTextureFormats format, DecodeFlags decodeFlags
+            TranscoderTextureFormats format, DecodeFlags decodeFlags,
+            UInt32 outputRowPitch, UInt32 outputHeightInPixels
         );
 
         public static bool IsBlockTextureFormat (TranscoderTextureFormats format) {
@@ -351,6 +352,13 @@ namespace Squared.Render.Basis {
             Info = info;
             Levels = new LevelCollection(this);
         }
+
+        public void GetFormatInfo (TranscoderTextureFormats format, out uint bytesPerBlockOrPixel, out bool isBlockTextureFormat) {
+            lock (File) {
+                bytesPerBlockOrPixel = Transcoder.GetBytesPerBlockOrPixel(format);
+                isBlockTextureFormat = Transcoder.IsBlockTextureFormat(format);
+            }
+        }
     }
 
     public unsafe class ImageLevel {
@@ -382,7 +390,8 @@ namespace Squared.Render.Basis {
         }
 
         public bool TryTranscode (
-            TranscoderTextureFormats format, ArraySegment<byte> output, DecodeFlags decodeFlags, out ImageLevelInfo levelInfo
+            TranscoderTextureFormats format, ArraySegment<byte> output, DecodeFlags decodeFlags, out ImageLevelInfo levelInfo,
+            uint outputRowPitch = 0, uint outputHeightInPixels = 0
         ) {
             lock (File) {
                 if (!File.IsStarted) {
@@ -404,7 +413,7 @@ namespace Squared.Render.Basis {
                     if (Transcoder.TranscodeImageLevel(
                         File.pTranscoder, File.pData, File.DataSize,
                         Image.Index, Index, pOutput, numBlocks,
-                        format, decodeFlags
+                        format, decodeFlags, outputRowPitch, outputHeightInPixels
                     ) == 0)
                         return false;
                 }
