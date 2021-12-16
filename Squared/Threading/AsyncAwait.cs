@@ -351,6 +351,8 @@ namespace Squared.Threading {
         }
 
         public static SignalFuture GetFuture (this tTask task) {
+            if (task.IsCompleted && !task.IsFaulted)
+                return SignalFuture.Signaled;
             var result = new SignalFuture();
             BindFuture(task, result);
             return result;
@@ -370,9 +372,9 @@ namespace Squared.Threading {
 
             task.ConfigureAwait(false).GetAwaiter().OnCompleted(() => {
                 // FIXME: ExceptionDispatchInfo?
-                if (task.IsFaulted) {
+                if (task.IsFaulted)
                     future.Fail(task.Exception.InnerExceptions.Count == 1 ? task.Exception.InnerException : task.Exception);
-                } else
+                else
                     future.Complete();
             });
             future.RegisterOnDispose((_) => {

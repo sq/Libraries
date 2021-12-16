@@ -87,7 +87,7 @@ namespace Squared.Task {
 
                 Futures = new Future<T>[schedulables.Length];
                 if (Futures.Length == 0) {
-                    Ready = new SignalFuture(true);
+                    Ready = SignalFuture.Signaled;
                     return;
                 }
 
@@ -103,7 +103,7 @@ namespace Squared.Task {
 
                 Futures = futures;
                 if (Futures.Length == 0) {
-                    Ready = new SignalFuture(true);
+                    Ready = SignalFuture.Signaled;
                     return;
                 }
 

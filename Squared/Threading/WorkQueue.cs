@@ -19,12 +19,61 @@ namespace Squared.Threading {
     /// </summary>
     public delegate void WorkQueueDrainListener (int itemsRunByThisThread, bool moreWorkRemains);
 
+    public interface IDynamicInvokeHelper {
+        void Invoke (object d, object arg1);
+    }
+
+    static class DynamicInvokeHelper {
+        private static ThreadLocal<Dictionary<Type, IDynamicInvokeHelper>> Caches = 
+            new ThreadLocal<Dictionary<Type, IDynamicInvokeHelper>>(() => new Dictionary<Type, IDynamicInvokeHelper>());
+
+        public static IDynamicInvokeHelper Get (Type tDelegate) {
+            var cache = Caches.Value;
+            if (!cache.TryGetValue(tDelegate, out IDynamicInvokeHelper result)) {
+                var mInvoke = tDelegate.GetMethod("Invoke");
+                if (mInvoke == null)
+                    throw new Exception($"Failed to bind {tDelegate}.Invoke");
+                var p = mInvoke.GetParameters();
+                if (p.Length != 1)
+                    throw new Exception($"Expected {tDelegate}.Invoke to accept 1 parameter but it accepts {p.Length}");
+                var tHelper = typeof(DynamicInvokeHelper<,>).MakeGenericType(tDelegate, p[0].ParameterType);
+                result = (IDynamicInvokeHelper)Activator.CreateInstance(tHelper, mInvoke);
+                cache[tDelegate] = result;
+            }
+            return result;
+        }
+    }
+
+    class DynamicInvokeHelper<TDelegate, TArg0> : IDynamicInvokeHelper {
+        Action<TDelegate, TArg0> _Invoke;
+
+        public DynamicInvokeHelper (MethodInfo mInvoke) {
+            _Invoke = (Action<TDelegate, TArg0>)Delegate.CreateDelegate(typeof(Action<TDelegate, TArg0>), mInvoke);
+        }
+
+        public void Invoke (object d, object arg0) {
+            _Invoke((TDelegate)d, (TArg0)arg0);
+        }
+    }
+
     public struct WorkItemQueueEntry {
-        private static ThreadLocal<object[]> ScratchArray = 
-            new ThreadLocal<object[]>(() => new object[1]);
+        private static class TypeHelper<T> {
+            public static IDynamicInvokeHelper Helper = DynamicInvokeHelper.Get(typeof(T));
+        }
 
         public Delegate Action;
         public object Arg1;
+        public IDynamicInvokeHelper InvokeHelper;
+
+        public static WorkItemQueueEntry New<TDelegate, TArg1> (TDelegate action, TArg1 arg1)
+            where TDelegate : class
+        {
+            return new WorkItemQueueEntry {
+                Action = (Delegate)(object)action,
+                Arg1 = arg1,
+                InvokeHelper = TypeHelper<TDelegate>.Helper
+            };
+        }
 
         public void Invoke () {
             if (Action is Action a)
@@ -34,10 +83,8 @@ namespace Squared.Threading {
             else if (Action is SendOrPostCallback sopc)
                 sopc(Arg1);
             else {
-                var sa = ScratchArray.Value;
-                sa[0] = Arg1;
-                // FIXME: Is this correct when re-entrant? It should be
-                Action.DynamicInvoke(sa);
+                var helper = InvokeHelper ?? DynamicInvokeHelper.Get(Action.GetType());
+                helper.Invoke(Action, Arg1);
             }
         }
     }

@@ -245,22 +245,21 @@ namespace Squared.Render {
             // ????
             RenderCoordinator.WaitForActiveDraws();
 
-            Threading.Profiling.Superluminal.BeginEvent("MultithreadedGame.Draw");
             try {
                 OnBeforeDraw(gameTime);
                 var frame = RenderCoordinator.BeginFrame(true);
+                Squared.Threading.Profiling.Superluminal.BeginEventFormat("Build Frame", "SRFrame #{0}", frame.Index, color: 0x1010CF);
                 Draw(gameTime, frame);
             } finally {
+                Squared.Threading.Profiling.Superluminal.EndEvent();
                 RenderCoordinator.SynchronousDrawsEnabled = true;
                 RenderCoordinator.WorkStopwatch.Stop();
                 NextFrameTiming.Draw = RenderCoordinator.WorkStopwatch.Elapsed;
                 NextFrameTiming.BatchCount = (int)(Batch.LifetimeCount - priorIndex);
-                Threading.Profiling.Superluminal.EndEvent();
             }
         }
 
         protected override void EndDraw() {
-            Threading.Profiling.Superluminal.BeginEvent("MultithreadedGame.EndDraw");
             RenderCoordinator.WorkStopwatch.Restart();
 
             try {
@@ -289,8 +288,6 @@ namespace Squared.Render {
                 RenderCoordinator.WaitStopwatch.Reset();
                 RenderCoordinator.BeforePresentStopwatch.Reset();
                 RenderCoordinator.AfterPresentStopwatch.Reset();
-
-                Threading.Profiling.Superluminal.EndEvent();
             }
 
             ThreadGroup.TryStepMainThreadUntilDrained();
