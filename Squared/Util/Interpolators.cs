@@ -376,6 +376,7 @@ namespace Squared.Util {
             return _Hermite(a, u, d, v, positionInWindow, t2, tSquared, s, s2, sSquared);
         }
 
+        // FIXME: Thread safety
         private static T[] _TemporaryValues = new T[4];
         private static int _NumTemporaryValues = 0;
         private static InterpolatorSource<T> _TemporarySource;

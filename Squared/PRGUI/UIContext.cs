@@ -419,9 +419,16 @@ namespace Squared.PRGUI {
             ) {
                 // If the current focused control is no longer enabled or present, attempt to
                 //  focus something else in the current top level control, if possible
-                if (Controls.Contains(TopLevelFocused))
-                    Focused = TopLevelFocused;
-                else
+                if (Controls.Contains(TopLevelFocused)) {
+                    // HACK: Unfortunately, there's probably nothing useful to do here
+                    // I suppose a focusable child could appear out of nowhere? But I don't think we'd want to
+                    //  suddenly change focus if that happened. If we don't do this we waste a ton of CPU
+                    //  doing pointless treewalks and allocating garbage for nothing.
+                    if (TopLevelFocused != Focused)
+                        Focused = TopLevelFocused;
+                    else 
+                        ;
+                } else
                     NotifyControlBecomingInvalidFocusTarget(Focused, false);
             }
 
