@@ -305,10 +305,19 @@ namespace Squared.Util {
             }
         }
 
-        private class EasedInterpolator {
-            public Easing Ease;
+        private class EasedInterpolator<U> {
+            internal static Dictionary<Easing, EasedInterpolator<U>> Cache =
+                new Dictionary<Easing, EasedInterpolator<U>>(new ReferenceComparer<Easing>());
 
-            public T Interpolate<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+            public readonly Easing Ease;
+            public readonly BoundInterpolator<T, U> Interpolate;
+
+            public EasedInterpolator (Easing ease) {
+                Ease = ease;
+                Interpolate = _Interpolate;
+            }
+
+            private T _Interpolate (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
                 var t = Ease.GetT(positionInWindow);
                 return _Linear(
                     data(ref obj, dataOffset),
@@ -319,8 +328,14 @@ namespace Squared.Util {
         }
 
         public static BoundInterpolator<T, U> Eased<U> (Easing easing) {
-            var obj = new EasedInterpolator { Ease = easing };
-            return obj.Interpolate<U>;
+            var cache = EasedInterpolator<U>.Cache;
+            lock (cache) {
+                if (!cache.TryGetValue(easing, out EasedInterpolator<U> result)) {
+                    result = new EasedInterpolator<U>(easing);
+                    cache[easing] = result;
+                }
+                return result.Interpolate;
+            }
         }
 
         public static T Cubic<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
