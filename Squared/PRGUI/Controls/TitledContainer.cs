@@ -31,8 +31,10 @@ namespace Squared.PRGUI.Controls {
 
         public AbstractString Title;
 
-        private float? MostRecentTitleHeight;
+        public float? MostRecentTitleHeight { get; protected set; }
         private Tween<float> DisclosureLevel = 1f;
+
+        public float? MostRecentTitleOuterHeight => MostRecentTitleHeight + GetTitleDecorator(Context?.Decorations)?.Padding.Y;
 
         protected DynamicStringLayout TitleLayout = new DynamicStringLayout {
             HideOverflow = true,

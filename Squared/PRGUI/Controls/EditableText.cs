@@ -1215,16 +1215,19 @@ namespace Squared.PRGUI.Controls {
             var layout = UpdateLayout(ref context, settings, decorations, out Material textMaterial);
 
             AlignmentOffset = Vector2.Zero;
-            if (
-                (HorizontalAlignment != HorizontalAlignment.Left) &&
-                (layout.Size.X < settings.ContentBox.Width)
-            ) {
-                AlignmentOffset = new Vector2(
-                    (settings.ContentBox.Width - layout.Size.X) * (HorizontalAlignment == HorizontalAlignment.Center ? 0.5f : 1.0f), 0
-                );
-            }
+            if (Builder.Length > 0) {
+                // Don't compute alignment if we're empty (our layout will have a size of 0)
+                if (
+                    (HorizontalAlignment != HorizontalAlignment.Left) &&
+                    (layout.Size.X < settings.ContentBox.Width)
+                ) {
+                    AlignmentOffset = new Vector2(
+                        (settings.ContentBox.Width - layout.Size.X) * (HorizontalAlignment == HorizontalAlignment.Center ? 0.5f : 1.0f), 0
+                    );
+                }
 
-            AlignmentOffset.Y += (settings.ContentBox.Height - layout.UnconstrainedSize.Y) / 2f;
+                AlignmentOffset.Y += (settings.ContentBox.Height - layout.UnconstrainedSize.Y) / 2f;
+            }
 
             var selection = MarkSelection();
             var selBounds = GetBoundsForSelection(selection);
@@ -1245,13 +1248,17 @@ namespace Squared.PRGUI.Controls {
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            if (selBounds.HasValue && 
+            if (
+                (selBounds.HasValue || Builder.Length == 0) && 
                 (
                     settings.State.IsFlagged(ControlStates.Focused) || 
                     (Selection.First != Selection.Second)
                 )
             ) {
-                var selBox = (RectF)selBounds.Value;
+                var selBox = selBounds.HasValue
+                    ? (RectF)selBounds
+                    // If we're completely empty we just synthesize a dummy selection at the left side
+                    : new RectF(0, 0, 0, settings.ContentBox.Height);
                 selBox.Position += textOffset;
 
                 LastLocalCursorPosition = selBox.Position - settings.Box.Position;

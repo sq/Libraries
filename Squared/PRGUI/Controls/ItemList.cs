@@ -121,9 +121,14 @@ namespace Squared.PRGUI.Controls {
         }
 
         public int SelectedIndex {
-            get => _SelectedIndices.Count > 0 
-                ? Arithmetic.Clamp(_SelectedIndices[0], 0, Items.Count) 
-                : -1;
+            get {
+                if (_SelectedIndices.Count < 1)
+                    return -1;
+                var index = _SelectedIndices[0];
+                if (index >= Items.Count)
+                    return -1;
+                return index;
+            }
             set {
                 if (!TrySetSelectedIndex(value, true))
                     throw new Exception("Failed to set selected index");
