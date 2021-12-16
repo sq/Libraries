@@ -207,6 +207,7 @@ namespace Squared.Render.Tracing {
 
         public static IntPtr API {
             get {
+                // FIXME: Thread safety
                 if (!_API.HasValue) {
                     // HACK: This call will always fail under the debugger since RenderDoc can't *also* be attached, unless
                     //  you attached a debugger after starting the app under renderdoc, which is kind of ridiculous.
@@ -229,15 +230,19 @@ namespace Squared.Render.Tracing {
 
     public static class RenderTrace {
         private static volatile int TracingBroken = 0;
-        private static volatile bool Cached_IsCurrentlyProfiled = false;
 
         private static bool? _EnableTracing;
 
         public static bool EnableTracing {
             get {
-                if (!_EnableTracing.HasValue)
-                    _EnableTracing = Environment.GetCommandLineArgs().Any(arg => arg.Equals("--rendertrace", StringComparison.OrdinalIgnoreCase)) || 
-                        (RenderDoc.API != IntPtr.Zero);
+                // FIXME: Thread safety
+                if (!_EnableTracing.HasValue) {
+                    var explicitlyEnabled = Environment.GetCommandLineArgs().Any(arg => arg.Equals("--rendertrace", StringComparison.OrdinalIgnoreCase));
+                    if (Squared.Threading.Profiling.Superluminal.Enabled)
+                        // This may clear the enabled flag if loading it fails
+                        Squared.Threading.Profiling.Superluminal.LoadAPI();
+                    _EnableTracing = explicitlyEnabled || (RenderDoc.API != IntPtr.Zero) || Squared.Threading.Profiling.Superluminal.Enabled;
+                }
 
                 return _EnableTracing.Value && (TracingBroken == 0);
             }

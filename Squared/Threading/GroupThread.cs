@@ -25,13 +25,15 @@ namespace Squared.Threading {
 #endif
         private int NextQueueIndex;
 
+        public string Name { get; private set; }
         public bool IsDisposed { get; private set; }
 
-        internal GroupThread (ThreadGroup owner, int nextQueueIndex) {
+        internal GroupThread (ThreadGroup owner, int index) {
             Owner = owner;
-            NextQueueIndex = nextQueueIndex;
+            NextQueueIndex = index;
             Thread = new Thread(ThreadMain);
-            Thread.Name = string.Format("ThreadGroup {0} {1} worker #{2}", owner.GetHashCode(), owner.Name, owner.Count);
+            Name = string.Format("ThreadGroup {0} {1} worker #{2}", owner.GetHashCode(), owner.Name, index);
+            Thread.Name = Name;
             Thread.IsBackground = owner.CreateBackgroundThreads;
             if (owner.COMThreadingModel != ApartmentState.Unknown)
                 Thread.SetApartmentState(owner.COMThreadingModel);
@@ -61,6 +63,7 @@ namespace Squared.Threading {
         ) {
             var self = (GroupThread)_self;
             var weakSelf = new WeakReference<GroupThread>(self);
+            Profiling.Superluminal.SetCurrentThreadName(self.Name);
             return weakSelf;
         }
 

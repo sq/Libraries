@@ -423,8 +423,13 @@ namespace Squared.Render {
         }
 
         public bool WaitForActiveDraws () {
-            return WaitForActiveDraw() &&
-                WaitForActiveSynchronousDraw();
+            Threading.Profiling.Superluminal.BeginEvent("RenderCoordinator.WaitForActiveDraws");
+            try {
+                return WaitForActiveDraw() &&
+                    WaitForActiveSynchronousDraw();
+            } finally {
+                Threading.Profiling.Superluminal.EndEvent();
+            }
         }
 
         internal bool WaitForActiveDraw () {
@@ -634,6 +639,7 @@ namespace Squared.Render {
 
             CheckMainThread(DoThreadedPrepare && threaded);
 
+            Squared.Threading.Profiling.Superluminal.BeginEventFormat("Prepare Frame", "SRFrame #{0}", frame.Index, color: 0x10CF10);
             try {
                 PrepareStopwatch.Reset();
                 PrepareStopwatch.Start();
@@ -643,6 +649,7 @@ namespace Squared.Render {
                 PrepareStopwatch.Stop();
                 if (DoThreadedPrepare)
                     Monitor.Exit(PrepareLock);
+                Squared.Threading.Profiling.Superluminal.EndEvent();
             }
         }
 
@@ -853,6 +860,7 @@ namespace Squared.Render {
         }
 
         protected void RenderFrameToDraw (Frame frameToDraw, bool endDraw) {
+            Squared.Threading.Profiling.Superluminal.BeginEventFormat("Issue Frame", "SRFrame #{0}", frameToDraw.Index, color: 0x10CFCF);
             try {
                 PresentBegunSignal.Reset();
 
@@ -874,6 +882,7 @@ namespace Squared.Render {
             } finally {
                 if (frameToDraw != null)
                     frameToDraw.Dispose();
+                Squared.Threading.Profiling.Superluminal.EndEvent();
             }
         }
 

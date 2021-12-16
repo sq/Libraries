@@ -11,11 +11,8 @@ namespace Squared.Util {
     public class EmbeddedDLLLoader : IDisposable {
         public bool IsDisposed { get; private set; }
 
-        [DllImport("kernel32", SetLastError=true, CharSet = CharSet.Ansi)]
-        static extern IntPtr LoadLibrary(
-            [MarshalAs(UnmanagedType.LPStr)]
-            string lpFileName
-        );
+        [DllImport("kernel32", SetLastError=true, CharSet=CharSet.Auto)]
+        static extern IntPtr LoadLibrary(string lpFileName);
 
         [DllImport("kernel32", SetLastError=true)]
         static extern bool FreeLibrary(IntPtr hModule);
