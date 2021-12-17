@@ -161,22 +161,40 @@ namespace Squared.Util {
         }
 
         public T Get (float now) {
-            return Get((long)(now * Time.SecondInTicks));
+            Get((long)(now * Time.SecondInTicks), out T result);
+            return result;
+        }
+
+        /// <param name="now">The current time (in seconds)</param>
+        /// <param name="result">The value at time <paramref name="now"/></param>
+        /// <returns>True if the tween has ended at time <paramref name="now"/></returns>
+        public bool Get (float now, out T result) {
+            return Get((long)(now * Time.SecondInTicks), out result);
         }
 
         public T Get (long now) {
+            Get(now, out T result);
+            return result;
+        }
+
+        /// <param name="now">The current time (in ticks)</param>
+        /// <param name="result">The value at time <paramref name="now"/></param>
+        /// <returns>True if the tween has ended at time <paramref name="now"/></returns>
+        public bool Get (long now, out T result) {
             var progress = GetProgress(now);
 
             // Default-init / completed
-            if (progress >= 1f)
-                return To;
-            else if (progress <= 0f)
-                return From;
-
-            if (Interpolator != null)
-                return Interpolator(GetValue, ref this, 0, progress);
+            if (progress >= 1f) {
+                result = To;
+                return true;
+            } else if (progress <= 0f)
+                result = From;
+            else if (Interpolator != null)
+                result = Interpolator(GetValue, ref this, 0, progress);
             else
-                return From;
+                result = From;
+
+            return false;
         }
 
         public bool IsConstant => StartedWhen >= EndWhen;

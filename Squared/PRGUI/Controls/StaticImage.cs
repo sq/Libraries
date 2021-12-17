@@ -97,7 +97,7 @@ namespace Squared.PRGUI.Controls {
 
         public bool ShowLoadingSpinner;
 
-        public ColorVariable MultiplyColor;
+        public ColorVariable MultiplyColor, AddColor;
         public MaterialParameterValues MaterialParameters;
         public Vector4 RasterizerUserData;
         public Material Material;
@@ -287,19 +287,21 @@ namespace Squared.PRGUI.Controls {
                 // HACK: Fix images overhanging by a pixel
                 position = position.Floor();
                 var origin = Alignment;
-                var color4 = MultiplyColor.Get(context.NowL) ?? Vector4.One;
+                Vector4 color4 = MultiplyColor.Get(context.NowL) ?? Vector4.One,
+                    addColor4 = AddColor.Get(context.NowL) ?? Vector4.Zero;
                 // FIXME: Always use context.Opacity?
                 if (!settings.IsCompositing)
                     color4 *= context.Opacity;
-                var pcolor = new pSRGBColor(color4, true);
-                var color = pcolor.ToColor(context.UIContext.IsSRGB);
+                pSRGBColor pColor = new pSRGBColor(color4, true),
+                    pAddColor = new pSRGBColor(addColor4, true);
                 var rect = new Rectangle(-DrawExpansion, -DrawExpansion, instance.Width + (DrawExpansion * 2), instance.Height + (DrawExpansion * 2));
                 position.X += DrawExpansion * scale;
                 position.Y += DrawExpansion * scale;
                 var drawCall = new BitmapDrawCall(instance, position.Round(0)) {
                     Origin = Alignment,
                     ScaleF = scale,
-                    MultiplyColor = color,
+                    MultiplyColor = pColor.ToColor(context.UIContext.IsSRGB),
+                    AddColor = pAddColor.ToColor(context.UIContext.IsSRGB),
                     UserData = RasterizerUserData,
                     TextureRegion = instance.BoundsFromRectangle(rect)
                 };

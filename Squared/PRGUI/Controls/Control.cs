@@ -1156,6 +1156,8 @@ namespace Squared.PRGUI {
                 return false;
             }
 
+            Appearance.AutoClearTransform(context.NowL);
+
             var enableCompositor = Appearance.Compositor?.WillComposite(this, opacity) == true;
             var needsComposition = ((opacity < 1) && !this.CanApplyOpacityWithoutCompositing) || 
                 enableCompositor ||

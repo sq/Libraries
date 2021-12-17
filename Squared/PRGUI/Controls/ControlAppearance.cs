@@ -242,13 +242,23 @@ namespace Squared.PRGUI {
             }
         }
 
+        internal void AutoClearTransform (long now) {
+            if (!HasTransformMatrix)
+                return;
+            
+            if (_TransformMatrix.Get(now, out Matrix m)) {
+                if (m == Matrix.Identity)
+                    HasTransformMatrix = false;
+            }
+        }
+
         public bool GetTransform (out Matrix matrix, long now) {
             if (!HasTransformMatrix) {
                 matrix = default(Matrix);
                 return false;
             }
 
-            matrix = _TransformMatrix.Get(now);
+            _TransformMatrix.Get(now, out matrix);
             return true;
         }
 
@@ -258,7 +268,7 @@ namespace Squared.PRGUI {
                 return false;
             }
 
-            var temp = _TransformMatrix.Get(now);
+            _TransformMatrix.Get(now, out Matrix temp);
             Matrix.Invert(ref temp, out matrix);
             var det = matrix.Determinant();
             return !float.IsNaN(det) && !float.IsInfinity(det);
