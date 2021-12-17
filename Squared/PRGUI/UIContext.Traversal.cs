@@ -23,8 +23,7 @@ namespace Squared.PRGUI {
             public bool ContainsChildren => (Container != null) && (Container.Children.Count > 0);
         }
 
-        // FIXME: It would be good to make this a struct to cut down on allocations
-        public class TraverseSettings {
+        public struct TraverseSettings {
             public bool AllowDescend, AllowDescendIfDisabled, AllowDescendIfInvisible, AllowAscend, StartWithDefault;
             // HACK: Will default to true for Window and false for everything else
             public bool? AllowWrap;
@@ -34,23 +33,7 @@ namespace Squared.PRGUI {
 
             internal int FrameIndex;
 
-            public bool DidFollowProxy;
-
-            public TraverseSettings Clone () {
-                return new TraverseSettings {
-                    AllowDescend = AllowDescend,
-                    AllowDescendIfDisabled = AllowDescendIfDisabled,
-                    AllowDescendIfInvisible = AllowDescendIfInvisible,
-                    AllowAscend = AllowAscend,
-                    StartWithDefault = StartWithDefault,
-                    AllowWrap = AllowWrap,
-                    Direction = Direction,
-                    Predicate = Predicate,
-                    FollowProxies = FollowProxies,
-                    FrameIndex = FrameIndex,
-                    DidFollowProxy = DidFollowProxy
-                };
-            }
+            public bool[] DidFollowProxy;
         }
 
         private TraversalInfo Traverse_MakeInfo (Control control) {
@@ -134,7 +117,7 @@ namespace Squared.PRGUI {
                 throw new ArgumentNullException(nameof(startingPosition));
 
             var visitedProxyTargets = new DenseList<Control>();
-            var descendSettings = settings.Clone();
+            var descendSettings = settings;
             descendSettings.AllowAscend = false;
             // FIXME
             // descendSettings.FollowProxies = false;
@@ -197,7 +180,7 @@ namespace Squared.PRGUI {
                 if (proxyTarget != null) {
                     currentStartingPosition = proxyTarget;
                     didFollowProxy = true;
-                    settings.DidFollowProxy = true;
+                    settings.DidFollowProxy[0] = true;
                 } else {
                     currentStartingPosition = currentCollection.Host;
                     didFollowProxy = false;
@@ -261,32 +244,33 @@ namespace Squared.PRGUI {
             return TraverseChildren(collection, settings).FirstOrDefault().Control;
         }
 
-        private volatile TraverseSettings _ScratchPickForRotationSettings;
+        private volatile bool[] _ScratchPickForRotationCell;
 
         public Control PickFocusableSiblingForRotation (Control child, int direction, bool? allowLoop, out bool didFollowProxy) {
-            var settings = Interlocked.Exchange(ref _ScratchPickForRotationSettings, null);
-            if (settings == null)
-                settings = new TraverseSettings();
+            var cell = Interlocked.Exchange(ref _ScratchPickForRotationCell, null);
+            cell = cell ?? new bool[1];
+            cell[0] = false;
 
-            settings.StartWithDefault = false;
-            settings.DidFollowProxy = false;
-
-            settings.AllowDescend = true;
-            settings.AllowDescendIfDisabled = false;
-            settings.AllowDescendIfInvisible = false;
-            settings.AllowAscend = true;
-            settings.AllowWrap = allowLoop;
-            settings.Direction = direction;
-            settings.FollowProxies = true;
-            // FIXME: Prevent top level rotate here?
-            settings.FrameIndex = FrameIndex;
-            settings.Predicate = RotatablePredicate ?? (RotatablePredicate = _RotatablePredicate);
+            var settings = new TraverseSettings {
+                StartWithDefault = false,
+                DidFollowProxy = cell,
+                AllowDescend = true,
+                AllowDescendIfDisabled = false,
+                AllowDescendIfInvisible = false,
+                AllowAscend = true,
+                AllowWrap = allowLoop,
+                Direction = direction,
+                FollowProxies = true,
+                // FIXME: Prevent top level rotate here?
+                FrameIndex = FrameIndex,
+                Predicate = RotatablePredicate ?? (RotatablePredicate = _RotatablePredicate)
+            };
 
             // DebugLog($"Finding sibling for {child} in direction {direction}");
             var result = SearchForSiblings(null, child, settings).FirstOrDefault().Control;
-            didFollowProxy = settings.DidFollowProxy;
+            didFollowProxy = cell[0];
 
-            Interlocked.CompareExchange(ref _ScratchPickForRotationSettings, settings, null);
+            Interlocked.CompareExchange(ref _ScratchPickForRotationCell, cell, null);
             return result;
         }
     }

@@ -50,6 +50,15 @@ namespace Squared.PRGUI {
             if (GetOpacity(Context.NowL) <= 0)
                 return null;
 
+            // HACK: ApplyLocalTransformToGlobalPosition can be expensive, so we skip it this way
+            if (
+                rejectIntangible &&                
+                !(this is IControlContainer) && 
+                !(this is IPartiallyIntangibleControl) &&
+                _Intangible
+            )
+                return null;
+
             var result = this;
             var box = GetRect();
             position = ApplyLocalTransformToGlobalPosition(position, ref box, true);
