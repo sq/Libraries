@@ -26,6 +26,9 @@ namespace Squared.Util {
     }
 
     public struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
+        public delegate bool Predicate<TUserData> (ref T item, ref TUserData userData);
+        public delegate bool Predicate (ref T item);
+
         private static T[] EmptyArray;
 
         internal class BoxedEmptyEnumerator : IEnumerator<T> {
@@ -623,30 +626,32 @@ namespace Squared.Util {
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                if (Items != null) {
-                    Items.DangerousSetItem(index, ref value);
+                SetItem(index, ref value);
+            }
+        }
+
+        public void SetItem (int index, ref T value) {
+            if (Items != null) {
+                Items.DangerousSetItem(index, ref value);
+                return;
+            }
+
+            if (index >= Storage.Count)
+                throw new IndexOutOfRangeException();
+
+            switch (index) {
+                case 0:
+                    Storage.Item1 = value;
                     return;
-                }
-
-                if (index >= Storage.Count)
-                    throw new IndexOutOfRangeException();
-
-                switch (index) {
-                    case 0:
-                        Storage.Item1 = value;
-                        return;
-                    case 1:
-                        Storage.Item2 = value;
-                        return;
-                    case 2:
-                        Storage.Item3 = value;
-                        return;
-                    case 3:
-                        Storage.Item4 = value;
-                        return;
-                    default:
-                        throw new IndexOutOfRangeException();
-                }
+                case 1:
+                    Storage.Item2 = value;
+                    return;
+                case 2:
+                    Storage.Item3 = value;
+                    return;
+                case 3:
+                    Storage.Item4 = value;
+                    return;
             }
         }
 
@@ -901,6 +906,66 @@ namespace Squared.Util {
                 indices[index] = value.Index;
             else
                 field = value.Value;
+        }
+
+        private int Find_Small<TUserData> (Predicate<TUserData> predicate, ref TUserData userData) {
+            if ((Storage.Count > 0) && predicate(ref Storage.Item1, ref userData))
+                return 0;
+            if ((Storage.Count > 1) && predicate(ref Storage.Item2, ref userData))
+                return 1;
+            if ((Storage.Count > 2) && predicate(ref Storage.Item3, ref userData))
+                return 2;
+            if ((Storage.Count > 3) && predicate(ref Storage.Item4, ref userData))
+                return 3;
+            return -1;
+        }
+
+        private int Find_Large<TUserData> (Predicate<TUserData> predicate, ref TUserData userData) {
+            var buffer = Items.GetBuffer();
+            for (int i = 0, c = Items.Count; i < c; i++) {
+                if (predicate(ref buffer.Array[i + buffer.Offset], ref userData))
+                    return i;
+            }
+            return -1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Find<TUserData> (Predicate<TUserData> predicate, TUserData userData) {
+            if (HasList) {
+                return Find_Large(predicate, ref userData);
+            } else {
+                return Find_Small(predicate, ref userData);
+            }
+        }
+
+        private int Find_Small (Predicate predicate) {
+            if ((Storage.Count > 0) && predicate(ref Storage.Item1))
+                return 0;
+            if ((Storage.Count > 1) && predicate(ref Storage.Item2))
+                return 1;
+            if ((Storage.Count > 2) && predicate(ref Storage.Item3))
+                return 2;
+            if ((Storage.Count > 3) && predicate(ref Storage.Item4))
+                return 3;
+            return -1;
+        }
+
+        private int Find_Large (Predicate predicate) {
+            var buffer = Items.GetBuffer();
+            for (int i = 0, c = Items.Count; i < c; i++) {
+                if (predicate(ref buffer.Array[i + buffer.Offset]))
+                    return i;
+            }
+            return -1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Find (Predicate predicate) {
+            if (HasList) {
+                return Find_Large(predicate);
+            } else {
+                return Find_Small(predicate);
+            }
         }
 
         private void Sort_Small<TComparer> (TComparer comparer, int[] indices)

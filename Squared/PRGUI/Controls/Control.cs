@@ -492,17 +492,14 @@ namespace Squared.PRGUI {
         protected T AutoFireTweenEvent<T> (long now, string name, ref Tween<T> tween, ref bool eventFired)
             where T : struct {
 
-            if (tween.IsConstant) {
-                eventFired = true;
-            } else if (tween.IsOver(now)) {
-                if (!eventFired) {
-                    eventFired = true;
+            if (tween.Get(now, out T result)) {
+                if (!tween.IsConstant && !eventFired)
                     FireEvent(name);
-                }
+                eventFired = true;
             } else {
                 eventFired = false;
             }
-            return tween.Get(now);
+            return result;
         }
 
         /// <summary>
