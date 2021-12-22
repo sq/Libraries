@@ -115,7 +115,8 @@ namespace Squared.Render.Text {
         Left,
         Center,
         Right,
-        // Justify
+        JustifyCharacters,
+        JustifyWords,
     }
 
     public struct LayoutMarker {
@@ -256,8 +257,9 @@ namespace Squared.Render.Text {
         public int     drawCallsWritten, drawCallsSuppressed;
         float          initialLineXOffset;
         int            bufferWritePosition, wordStartWritePosition, baselineAdjustmentStart;
-        public int     rowIndex { get; private set; }
-        public int     colIndex { get; private set; }
+        public int     rowIndex => _rowIndex;
+        public int     colIndex => _colIndex;
+        public int     wordIndex => _wordIndex;
         bool           wordWrapSuppressed;
         public float   currentLineMaxX, currentLineMaxXUnconstrained;
         public float?  currentLineBreakAtX;
@@ -273,6 +275,8 @@ namespace Squared.Render.Text {
         private AbstractTextureReference lastUsedTexture;
         private DenseList<AbstractTextureReference> usedTextures;
         private DenseList<Bounds> boxes;
+
+        private int _rowIndex, _colIndex, _wordIndex;
 
         public int currentCharacterIndex { get; private set; }
 
@@ -291,7 +295,7 @@ namespace Squared.Render.Text {
             wordStartWritePosition = -1;
             wordStartOffset = Vector2.Zero;
             wordStartColumn = 0;
-            rowIndex = colIndex = 0;
+            _rowIndex = _colIndex = _wordIndex = 0;
             wordWrapSuppressed = false;
             initialLineSpacing = 0;
             currentBaseline = 0;
@@ -377,8 +381,8 @@ namespace Squared.Render.Text {
                     m.CurrentSplitGlyphCount++;
                 }
 
-                m.FirstLineIndex = m.FirstLineIndex ?? rowIndex;
-                m.LastLineIndex = rowIndex;
+                m.FirstLineIndex = m.FirstLineIndex ?? _rowIndex;
+                m.LastLineIndex = _rowIndex;
                 m.FirstDrawCallIndex = m.FirstDrawCallIndex ?? drawCallIndex;
                 m.LastDrawCallIndex = drawCallIndex ?? m.LastDrawCallIndex;
                 Markers[i] = m;
@@ -465,8 +469,10 @@ namespace Squared.Render.Text {
                 if (i == firstGlyphIndex)
                     adjustment = newPosition - dc.Position;
                 dc.Position = newPosition;
-                if (alignment != HorizontalAlignment.Left)
-                    dc.SortOrder += 1;
+
+                unchecked {
+                    dc.LocalData2 = (byte)(dc.LocalData2 + 1);
+                }
 
                 if (i == lastGlyphIndex) {
                     var db = dc.EstimateDrawBounds();
@@ -528,7 +534,7 @@ namespace Squared.Render.Text {
             Bounds b;
             float result = 0;
             var tempBounds = Bounds.FromPositionAndSize(x, y1, 1f, Math.Max(h, 1));
-            if ((rowIndex == 0) && (leftPad == null))
+            if ((_rowIndex == 0) && (leftPad == null))
                 leftPad = xOffsetOfFirstLine;
             for (int i = 0, c = boxes.Count; i < c; i++) {
                 boxes.GetItem(i, out b);
@@ -579,12 +585,15 @@ namespace Squared.Render.Text {
         }
 
         private void AlignLine (
-            ArraySegment<BitmapDrawCall> buffer, int line, HorizontalAlignment alignment,
+            ArraySegment<BitmapDrawCall> buffer, int line, HorizontalAlignment globalAlignment,
             int firstIndex, int lastIndex, float originalMaxX
         ) {
             Bounds firstDc = default(Bounds), endDc = default(Bounds);
+            int firstWord = 999999, lastWord = 0;
             for (int i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
+                firstWord = Math.Min(firstWord, dc.LocalData1);
+                lastWord = Math.Max(lastWord, dc.LocalData1);
                 if (dc.UserData.X > 0)
                     continue;
 
@@ -593,6 +602,17 @@ namespace Squared.Render.Text {
 
                 endDc = dc.EstimateDrawBounds();
             }
+
+            int wordCount = (firstWord < lastWord)
+                ? lastWord - firstWord
+                : 0; // FIXME: detect and handle wrap-around. Will only happen with very large word count
+
+            // In justify mode if there is only one word or one character on the line, fall back to centering, otherwise
+            //  the math will have some nasty divides by zero or one
+            var localAlignment = (globalAlignment < HorizontalAlignment.JustifyWords) || ((wordCount > 1) && (lastIndex > firstIndex + 1))
+                ? globalAlignment
+                : HorizontalAlignment.Center;
+
             float lineWidth = (endDc.BottomRight.X - firstDc.TopLeft.X),
                 localMinX = firstDc.TopLeft.X, localMaxX = originalMaxX - 2f;
 
@@ -609,6 +629,7 @@ namespace Squared.Render.Text {
             float whitespace;
             // Factor in text starting offset from the left side, if we don't the text
             //  will overhang to the right after alignment. This is usually caused by boxes
+            // FIXME: This doesn't seem to work anymore
             whitespace = localMaxX - lineWidth - localMinX;
 
             // HACK: Don't do anything if the line is too big, just overflow to the right.
@@ -621,8 +642,21 @@ namespace Squared.Render.Text {
             //  still preserve per-line centering.
             maxX = Math.Max(maxX, whitespace + lineWidth);
 
-            if (alignment == HorizontalAlignment.Center)
+            if (localAlignment == HorizontalAlignment.Center)
                 whitespace /= 2;
+
+            // In JustifyCharacters mode we spread all the characters out to fill the line.
+            // In JustifyWords mode we spread all the extra whitespace into the gaps between words.
+            // In both cases the goal is for the last character of each line to end up flush
+            //  against the right side of the layout box.
+            float characterSpacing = 0, wordSpacing = 0, accumulatedSpacing = 0;
+            if (localAlignment == HorizontalAlignment.JustifyCharacters) {
+                characterSpacing = whitespace / (lastIndex - firstIndex);
+                whitespace = 0;
+            } else if (localAlignment == HorizontalAlignment.JustifyWords) {
+                wordSpacing = whitespace / wordCount;
+                whitespace = 0;
+            }
 
             whitespace = (float)Math.Round(whitespace, 0, MidpointRounding.AwayFromZero);
 
@@ -643,16 +677,25 @@ namespace Squared.Render.Text {
             }
             */
 
+            var previousWordIndex = firstWord;
+
             for (int j = firstIndex; j <= lastIndex; j++) {
                 if (buffer.Array[buffer.Offset + j].UserData.X > 0)
                     continue;
 
-                buffer.Array[buffer.Offset + j].Position.X += whitespace;
-                // We used the sortkey to store line numbers, now we put the right data there
-                var key = sortKey;
-                if (reverseOrder)
-                    key.Order += j;
-                buffer.Array[buffer.Offset + j].SortKey = key;
+                // If a word transition has happened, we want to shift the following characters
+                //  over to the right to consume the extra whitespace in word justify mode.
+                var currentWordIndex = (int)buffer.Array[buffer.Offset + j].LocalData1;
+                if (currentWordIndex != previousWordIndex) {
+                    previousWordIndex = currentWordIndex;
+                    accumulatedSpacing += wordSpacing;
+                }
+
+                var computedOffset = whitespace + accumulatedSpacing;
+                buffer.Array[buffer.Offset + j].Position.X += computedOffset;
+
+                // In character justify mode we just spread all the characters out.
+                accumulatedSpacing += characterSpacing;
             }
         }
 
@@ -663,14 +706,14 @@ namespace Squared.Render.Text {
                 return;
 
             int lineStartIndex = 0;
-            float currentLine = buffer.Array[buffer.Offset].SortOrder;
+            int currentLine = buffer.Array[buffer.Offset].LocalData2;
 
             var originalMaxX = maxX;
 
             for (var i = 1; i < buffer.Count; i++) {
-                var line = buffer.Array[buffer.Offset + i].SortOrder;
+                var line = buffer.Array[buffer.Offset + i].LocalData2;
 
-                if (line > currentLine) {
+                if (line != currentLine) {
                     AlignLine(buffer, (int)line, alignment, lineStartIndex, i - 1, originalMaxX);
 
                     lineStartIndex = i;
@@ -678,7 +721,7 @@ namespace Squared.Render.Text {
                 }
             }
 
-            AlignLine(buffer, rowIndex, alignment, lineStartIndex, buffer.Count - 1, originalMaxX);
+            AlignLine(buffer, _rowIndex, alignment, lineStartIndex, buffer.Count - 1, originalMaxX);
         }
 
         private void SnapPositions (ArraySegment<BitmapDrawCall> buffer) {
@@ -745,7 +788,7 @@ namespace Squared.Render.Text {
             var position = new Vector2(characterOffset.X, characterOffset.Y + currentBaseline);
             characterOffset.X += width;
             characterOffsetUnconstrained.X += width;
-            if (colIndex == 0) {
+            if (_colIndex == 0) {
                 characterOffset.X = Math.Max(characterOffset.X, 0);
                 characterOffsetUnconstrained.X = Math.Max(characterOffsetUnconstrained.X, 0);
             }
@@ -931,19 +974,20 @@ namespace Squared.Render.Text {
                 }
 
                 if (isWordWrapPoint) {
+                    _wordIndex++;
                     currentLineWrapPointLeft = Math.Max(currentLineWrapPointLeft, characterOffset.X);
                     if (isWhiteSpace)
                         wordStartWritePosition = -1;
                     else
                         wordStartWritePosition = bufferWritePosition;
                     wordStartOffset = characterOffset;
-                    wordStartColumn = colIndex;
+                    wordStartColumn = _colIndex;
                     wordWrapSuppressed = false;
                 } else {
                     if (wordStartWritePosition < 0) {
                         wordStartWritePosition = bufferWritePosition;
                         wordStartOffset = characterOffset;
-                        wordStartColumn = colIndex;
+                        wordStartColumn = _colIndex;
                     }
                 }
 
@@ -986,7 +1030,7 @@ namespace Squared.Render.Text {
 
                 // MonoGame#1355 rears its ugly head: If a character with negative left-side bearing is at the start of a line,
                 //  we need to compensate for the bearing to prevent the character from extending outside of the layout bounds
-                if (colIndex == 0) {
+                if (_colIndex == 0) {
                     if (glyph.LeftSideBearing < 0)
                         glyph.LeftSideBearing = 0;
                 }
@@ -1000,7 +1044,7 @@ namespace Squared.Render.Text {
                 if (x >= currentLineBreakAtX) {
                     if (
                         !deadGlyph &&
-                        (colIndex > 0) &&
+                        (_colIndex > 0) &&
                         !isWhiteSpace
                     )
                         forcedWrap = true;
@@ -1039,7 +1083,7 @@ namespace Squared.Render.Text {
                         maxX = Math.Max(maxX, currentLineMaxX);
                         wordStartWritePosition = bufferWritePosition;
                         wordStartOffset = characterOffset;
-                        wordStartColumn = colIndex;
+                        wordStartColumn = _colIndex;
                         lineBreak = true;
 
                         if (lineLimit.HasValue && lineLimit.Value <= 0)
@@ -1086,8 +1130,8 @@ namespace Squared.Render.Text {
                         currentLineWhitespaceMaxX = 0;
                         currentLineWrapPointLeft = 0;
                     }
-                    rowIndex += 1;
-                    colIndex = 0;
+                    _rowIndex += 1;
+                    _colIndex = 0;
                 }
 
                 // HACK: Recompute after wrapping
@@ -1153,7 +1197,7 @@ namespace Squared.Render.Text {
 
                 ProcessHitTests(ref testBounds, testBounds.Center.X);
 
-                if ((rowIndex == 0) && (colIndex == 0))
+                if ((_rowIndex == 0) && (_colIndex == 0))
                     firstCharacterBounds = lastCharacterBounds;
 
                 if (!ComputeSuppress(overrideSuppress))
@@ -1192,7 +1236,7 @@ namespace Squared.Render.Text {
                 maxLineSpacing = Math.Max(maxLineSpacing, currentLineSpacing);
 
                 currentCharacterIndex++;
-                colIndex += 1;
+                _colIndex += 1;
             }
 
             var segment = 
@@ -1241,7 +1285,7 @@ namespace Squared.Render.Text {
                     usedTextures.Add(lastUsedTexture);
             }
 
-            if (colIndex == 0) {
+            if (_colIndex == 0) {
                 characterOffset.X = Math.Max(characterOffset.X, 0);
                 characterOffsetUnconstrained.X = Math.Max(characterOffsetUnconstrained.X, 0);
             }
@@ -1254,14 +1298,20 @@ namespace Squared.Render.Text {
                     suppress = true;
 
                 if (!isWhiteSpace) {
+                    unchecked {
+                        drawCall.LocalData1 = (short)(_wordIndex % 32767);
+                    }
+
                     if (!measureOnly) {
                         if (bufferWritePosition >= buffer.Count)
                             EnsureBufferCapacity(bufferWritePosition);
 
-                        // HACK so that the alignment pass can detect rows. We strip this later.
-                        if (alignment != HorizontalAlignment.Left)
-                            drawCall.SortOrder = rowIndex;
-                        else if (reverseOrder)
+                        // So the alignment pass can detect rows
+                        unchecked {
+                            drawCall.LocalData2 = (byte)(_rowIndex % 256);
+                        }
+
+                        if (reverseOrder)
                             drawCall.SortOrder += 1;
                     }
 

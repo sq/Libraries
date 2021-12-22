@@ -76,7 +76,7 @@ namespace FontTest {
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
             Alignment.Pressed += (s, e) => {
-                Text2.Alignment = Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 3);
+                Text2.Alignment = Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 5);
             };
             CharacterWrap.Pressed += (s, e) => {
                 Text2.CharacterWrap = Text.CharacterWrap = !Text.CharacterWrap;
@@ -333,6 +333,10 @@ namespace FontTest {
                 foreach (var b in rm.Bounds)
                     ir.OutlineRectangle(b, Color.Green);
             }
+
+            var state = $"align {Text.Alignment} char-wrap {Text.CharacterWrap} word-wrap {Text.WordWrap}";
+            var stateLayout = Text.GlyphSource.LayoutString(state);
+            ir.DrawMultiple(stateLayout, new Vector2(0, 1024 - stateLayout.UnconstrainedSize.Y));
         }
     }
 

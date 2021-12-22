@@ -1213,8 +1213,18 @@ namespace Squared.Render {
         public TextureSet Textures;
         // 104
         public Tags       SortTags;
-        // 105
-        private sbyte      _WorldSpace;
+        // 106
+        /// <summary>
+        /// Scratch storage space for user purposes. This data is not forwarded to the GPU
+        /// </summary>
+        public short      LocalData1;
+        // 107
+        private sbyte     _WorldSpace;
+        // 108
+        /// <summary>
+        /// Scratch storage space for user purposes. This data is not forwarded to the GPU
+        /// </summary>
+        public byte       LocalData2;
 
         // TODO: Consider allocating TextureRegion2 and UserData on the heap only if used,
         //  to shrink most draw calls by 32 bytes
@@ -1318,6 +1328,8 @@ namespace Squared.Render {
             _WorldSpace = -1;
             SortOrder = 0f;
             SortTags = default(Tags);
+            LocalData1 = 0;
+            LocalData2 = 0;
         }
 
         public void Mirror (bool x, bool y) {

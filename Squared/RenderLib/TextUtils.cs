@@ -1178,6 +1178,8 @@ namespace Squared.Render.Text {
         }
 
         public SpriteFontGlyphSource (SpriteFont font) {
+            if (font == null)
+                throw new ArgumentNullException(nameof(font));
             Font = font;
 
             if (TextUtils.GetPrivateFields(font, out Fields)) {
