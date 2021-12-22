@@ -739,6 +739,9 @@ namespace Squared.Render.Text {
         /// Constructs a layout engine based on this configuration
         /// </summary>
         public void MakeLayoutEngine (out StringLayoutEngine result) {
+            if (_GlyphSource == null)
+                throw new ArgumentNullException("GlyphSource");
+
             result = new StringLayoutEngine {
                 allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
                 buffer = _Buffer,
@@ -848,6 +851,11 @@ namespace Squared.Render.Text {
 
             if (!_CachedStringLayout.HasValue) {
                 var glyphSource = GlyphSource;
+                if (glyphSource == null) {
+                    _CachedStringLayout = new StringLayout();
+                    return _CachedStringLayout.Value;
+                }
+
                 if (_Text.IsNull) {
                     _CachedStringLayout = new StringLayout();
                     _CachedGlyphVersion = glyphSource.Version;
