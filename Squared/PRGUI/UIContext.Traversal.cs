@@ -112,6 +112,245 @@ namespace Squared.PRGUI {
             }
         }
 
+        // this sucks
+        /*
+        private struct SearchForSiblingsEnumerable : IEnumerable<TraversalInfo> {
+            private UIContext Context;
+            private ControlCollection Collection;
+            private Control StartingPosition;
+            private TraverseSettings Settings;
+
+            public SearchForSiblingsEnumerable (UIContext context, ControlCollection collection, Control startingPosition, TraverseSettings settings) {
+                Context = context;
+                Collection = collection;
+                StartingPosition = startingPosition;
+                Settings = settings;
+            }
+
+            public SearchForSiblingsEnumerator GetEnumerator () {
+                return new SearchForSiblingsEnumerator(Context, Collection, StartingPosition, Settings);
+            }
+
+            IEnumerator<TraversalInfo> IEnumerable<TraversalInfo>.GetEnumerator () {
+                return GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator () {
+                return GetEnumerator();
+            }
+        }
+
+        private struct SearchForSiblingsEnumerator : IEnumerator<TraversalInfo> {
+            private UIContext Context;
+            private ControlCollection Collection, CurrentCollection;
+            private Control StartingPosition, CurrentStartingPosition, ProxyTarget;
+            private TraverseSettings Settings, DescendSettings;
+            // FIXME: Reuse this to prevent allocation if it gets big
+            private DenseList<Control> VisitedProxyTargets;
+            private bool IsFirstStep, Halted, DidFollowProxy;
+            private List<Control> TabOrdered;
+            private int Position, OuterIndex, InnerStep;
+            private IEnumerator<TraversalInfo> DescendEnumerator;
+            private TraversalInfo Info;
+
+            public SearchForSiblingsEnumerator (UIContext context, ControlCollection collection, Control startingPosition, TraverseSettings settings) {
+                Context = context;
+                Collection = collection;
+                StartingPosition = startingPosition;
+                Settings = settings;
+                DescendSettings = settings;
+                DescendSettings.AllowAscend = false;
+                VisitedProxyTargets = default;
+                Current = default;
+                ProxyTarget = default;
+                IsFirstStep = true;
+                CurrentCollection = collection ?? ((startingPosition as IControlContainer)?.Children);
+                CurrentStartingPosition = startingPosition;
+                Halted = false;
+                DidFollowProxy = false;
+                TabOrdered = default;
+                Position = -1;
+                InnerStep = -1;
+                OuterIndex = -1;
+                Info = default;
+                DescendEnumerator = default;
+
+                if (CurrentCollection == null) {
+                    if (!startingPosition.TryGetParent(out Control startingParent) || !(startingParent is IControlContainer icc)) {
+                        Halted = true;
+                        return;
+                    }
+
+                    CurrentCollection = icc.Children;
+                }
+            }
+
+            public TraversalInfo Current { get; private set; }
+            object IEnumerator.Current => Current;
+
+            public void Dispose () {
+                Halted = true;
+            }
+
+            public bool MoveNext () {
+                if (IsFirstStep) {
+                    IsFirstStep = false;
+                    return !Halted;
+                } else {
+                    var result = Iterate();
+                    if (!result)
+                        Halted = true;
+                    return result;
+                }
+            }
+
+            private bool IterateOuter () {
+                TabOrdered = CurrentCollection.InTabOrder(Context.FrameIndex, false);
+                int motion = DidFollowProxy ? 0 : Settings.Direction;
+                OuterIndex = TabOrdered.IndexOf(CurrentStartingPosition);
+                Position = OuterIndex + motion;
+                InnerStep = -1;
+
+                while (InnerStep < 0) {
+                    if (!IterateInner())
+                        return false;
+
+                    if (InnerStep < 0) {
+                        if (ProxyTarget != null) {
+                            CurrentStartingPosition = ProxyTarget;
+                            DidFollowProxy = true;
+                            Settings.DidFollowProxy[0] = true;
+                        } else {
+                            CurrentStartingPosition = CurrentCollection.Host;
+                            DidFollowProxy = false;
+                            if (!Settings.AllowAscend)
+                                return false;
+                        }
+
+                        if (!CurrentStartingPosition.TryGetParent(out Control parent))
+                            return false;
+
+                        if (!(parent is IControlContainer parentContainer))
+                            return false;
+
+                        CurrentCollection = parentContainer.Children;
+                    }
+                }
+
+                return true;
+            }
+
+            private bool IterateInner () {
+                switch (InnerStep) {
+                    case 0: {
+                        if ((Position < 0) || (Position >= TabOrdered.Count)) {
+                            // FIXME: Wrap
+                            InnerStep = -1;
+                            return true;
+                        }
+
+                        var child = TabOrdered[Position];
+                        Info = Context.Traverse_MakeInfo(child);
+
+                        if (
+                            Info.IsProxy && Settings.FollowProxies && Info.Control.Enabled &&
+                            (VisitedProxyTargets.IndexOf(Info.RedirectTarget) < 0)
+                        ) {
+                            ProxyTarget = Info.RedirectTarget;
+                            VisitedProxyTargets.Add(ProxyTarget);
+                            InnerStep = -1;
+                            return true;
+                        } else if ((Settings.Predicate == null) || Settings.Predicate(child)) {
+                            Current = Info;
+                            InnerStep = 1;
+                            return true;
+                        }
+                    }
+                    break;
+                    case 1: {
+                        if (Context.Traverse_CanDescend(ref Info, ref Settings)) {
+                            InnerStep = 2;
+                            DescendEnumerator = Context.TraverseChildren(Info.Container.Children, DescendSettings).GetEnumerator();
+                            
+                            while (InnerStep == 2) {
+                                if (!IterateDescend())
+                                    return false;
+                            }
+                        }
+
+                        Position += Settings.Direction;
+                        if (Position == OuterIndex)
+                            InnerStep = -1;
+                    }
+                    break;
+                    case 2: {
+                        while (InnerStep == 2) {
+                            if (!IterateDescend())
+                                return false;
+                        }
+                    }
+                    break;
+                    case 3: {
+                        if (!IterateDescend())
+                            return false;
+                    }
+                    break;
+                    case 4: {
+                        if (ProxyTarget != null)
+                            InnerStep = 4;
+                        InnerStep = -1;
+                        return true;
+                    }
+                    break;
+                }
+            }
+
+            private bool IterateDescend () {
+                if (!DescendEnumerator.MoveNext()) {
+                    // FIXME: Is this right?
+                    InnerStep = -1;
+                    return true;
+                }
+
+                var subchild = DescendEnumerator.Current;
+                    
+                if (subchild.IsProxy && Settings.FollowProxies && (VisitedProxyTargets.IndexOf(subchild.RedirectTarget) < 0)) {
+                    ProxyTarget = Info.RedirectTarget;
+                    VisitedProxyTargets.Add(ProxyTarget);
+                    // FIXME: Is this right? It was 'break' before
+                    InnerStep = -1;
+                    return true;
+                }
+
+                Current = subchild;
+                InnerStep = 4;
+                return true;
+            }
+
+            private bool Iterate () {
+                if (Halted)
+                    throw new InvalidOperationException();
+
+                if (InnerStep < 0)
+                    return IterateOuter();
+                else
+                    return IterateInner();
+            }
+
+            public void Reset () {
+                throw new NotImplementedException();
+            }
+        }
+
+        private SearchForSiblingsEnumerable SearchForSiblings (ControlCollection collection, Control startingPosition, TraverseSettings settings) {
+            if (startingPosition == null)
+                throw new ArgumentNullException(nameof(startingPosition));
+
+            return new SearchForSiblingsEnumerable(this, collection, startingPosition, settings);
+        }
+
+        */
+
         private IEnumerable<TraversalInfo> SearchForSiblings (ControlCollection collection, Control startingPosition, TraverseSettings settings) {
             if (startingPosition == null)
                 throw new ArgumentNullException(nameof(startingPosition));
@@ -244,7 +483,7 @@ namespace Squared.PRGUI {
             return TraverseChildren(collection, settings).FirstOrDefault().Control;
         }
 
-        private volatile bool[] _ScratchPickForRotationCell;
+        private bool[] _ScratchPickForRotationCell;
 
         public Control PickFocusableSiblingForRotation (Control child, int direction, bool? allowLoop, out bool didFollowProxy) {
             var cell = Interlocked.Exchange(ref _ScratchPickForRotationCell, null);
