@@ -712,7 +712,6 @@ namespace Squared.PRGUI.Controls {
             StartAnimation(Context.Animations?.HideMenu);
             var fd = _FocusDonor;
             AcceptsFocus = false;
-            _FocusDonor = null;
             Context.NotifyControlBecomingInvalidFocusTarget(this, false);
             if (Context.Focused == this) {
                 if (fd != null)
@@ -724,6 +723,7 @@ namespace Squared.PRGUI.Controls {
             Context.NotifyModalClosed(this);
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
+            _FocusDonor = null;
             return true;
         }
 

@@ -61,13 +61,27 @@ namespace Squared.PRGUI {
         private Control FindFocusableChildOfDefaultFocusTarget (Control defaultFocusTarget, TraverseSettings settings) {
             if (defaultFocusTarget.IsValidFocusTarget)
                 return defaultFocusTarget;
-            else if ((defaultFocusTarget is IControlContainer icc) && icc.ChildrenAcceptFocus)
-                return TraverseChildren(icc.Children, settings).FirstOrDefault().Control;
-            else
+            else if ((defaultFocusTarget is IControlContainer icc) && icc.ChildrenAcceptFocus) {
+                TraverseChildren(icc.Children, ref settings, out TraverseChildrenEnumerable enumerable);
+                return enumerable.FirstOrDefault().Control;
+            } else
                 return null;
         }
 
-        private IEnumerable<TraversalInfo> TraverseChildren (ControlCollection collection, TraverseSettings settings) {
+        private TraverseChildrenEnumerable TraverseChildren (ControlCollection collection, ref TraverseSettings settings) {
+            TraverseChildren(collection, ref settings, out TraverseChildrenEnumerable result);
+            return result;
+        }
+
+        private void TraverseChildren (ControlCollection collection, ref TraverseSettings settings, out TraverseChildrenEnumerable result) {
+	        result = new TraverseChildrenEnumerable();
+		    result.state = -2;
+	        result.context = this;
+	        result.collection = collection;
+	        result.settings = settings;
+        }
+
+        private IEnumerable<TraversalInfo> _TraverseChildren (ControlCollection collection, TraverseSettings settings) {
             if (collection.Count <= 0)
                 yield break;
 
@@ -104,7 +118,7 @@ namespace Squared.PRGUI {
                     yield break;
 
                 if (Traverse_CanDescend(ref info, ref settings)) {
-                    foreach (var subchild in TraverseChildren(info.Container.Children, settings))
+                    foreach (var subchild in TraverseChildren(info.Container.Children, ref settings))
                         yield return subchild;
                 }
 
@@ -351,7 +365,16 @@ namespace Squared.PRGUI {
 
         */
 
-        private IEnumerable<TraversalInfo> SearchForSiblings (ControlCollection collection, Control startingPosition, TraverseSettings settings) {
+        private void SearchForSiblings (ControlCollection collection, Control startingPosition, ref TraverseSettings settings, out SearchForSiblingsEnumerable result) {
+	        result = new SearchForSiblingsEnumerable();
+            result.state = -2;
+	        result.context = this;
+	        result.collection = collection;
+	        result.startingPosition = startingPosition;
+	        result.settings = settings;
+        }
+
+        private IEnumerable<TraversalInfo> _SearchForSiblings (ControlCollection collection, Control startingPosition, TraverseSettings settings) {
             if (startingPosition == null)
                 throw new ArgumentNullException(nameof(startingPosition));
 
@@ -397,7 +420,7 @@ namespace Squared.PRGUI {
                     }
 
                     if (Traverse_CanDescend(ref info, ref settings)) {
-                        foreach (var subchild in TraverseChildren(info.Container.Children, descendSettings)) {
+                        foreach (var subchild in TraverseChildren(info.Container.Children, ref descendSettings)) {
                             if (subchild.IsProxy && settings.FollowProxies && (visitedProxyTargets.IndexOf(subchild.RedirectTarget) < 0)) {
                                 proxyTarget = info.RedirectTarget;
                                 visitedProxyTargets.Add(proxyTarget);
@@ -464,7 +487,7 @@ namespace Squared.PRGUI {
             var settings = MakeSettingsForPick(container, direction);
             settings.Predicate = predicate;
             var collection = ((container as IControlContainer)?.Children) ?? Controls;
-            return TraverseChildren(collection, settings).FirstOrDefault().Control;
+            return TraverseChildren(collection, ref settings).FirstOrDefault().Control;
         }
 
         public IEnumerable<Control> FindFocusableChildren (Control container, int direction = 1) {
@@ -472,7 +495,7 @@ namespace Squared.PRGUI {
             // FIXME: Handle cases where the control isn't a container
             var collection = ((container as IControlContainer)?.Children) ?? Controls;
             // DebugLog($"Finding focusable child in {container} in direction {direction}");
-            return TraverseChildren(collection, settings).Select(ti => ti.Control);
+            return TraverseChildren(collection, ref settings).Controls;
         }
 
         public Control PickFocusableChild (Control container, int direction = 1) {
@@ -480,7 +503,7 @@ namespace Squared.PRGUI {
             // FIXME: Handle cases where the control isn't a container
             var collection = ((container as IControlContainer)?.Children) ?? Controls;
             // DebugLog($"Finding focusable child in {container} in direction {direction}");
-            return TraverseChildren(collection, settings).FirstOrDefault().Control;
+            return TraverseChildren(collection, ref settings).FirstOrDefault().Control;
         }
 
         private bool[] _ScratchPickForRotationCell;
@@ -506,7 +529,8 @@ namespace Squared.PRGUI {
             };
 
             // DebugLog($"Finding sibling for {child} in direction {direction}");
-            var result = SearchForSiblings(null, child, settings).FirstOrDefault().Control;
+            SearchForSiblings(null, child, ref settings, out SearchForSiblingsEnumerable enumerable);
+            var result = enumerable.FirstOrDefault().Control;
             didFollowProxy = cell[0];
 
             Interlocked.CompareExchange(ref _ScratchPickForRotationCell, cell, null);

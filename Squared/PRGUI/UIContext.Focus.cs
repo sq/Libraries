@@ -117,7 +117,12 @@ namespace Squared.PRGUI {
                 idealNewTarget = fm.FocusDonor;
 
             // Attempt to auto-shift focus as long as our parent chain is focusable
-            if (!Control.IsRecursivelyTransparent(control, includeSelf: false))
+            if (
+                !Control.IsRecursivelyTransparent(control, includeSelf: false) && 
+                // We shouldn't auto-shift focus for modals since it's somewhat expensive and we don't
+                //  want to focus a random top level control after they close
+                !(control is IModal)
+            )
                 idealNewTarget = idealNewTarget ?? PickFocusableSiblingForRotation(control, 1, false, out bool temp);
 
             // Auto-shifting failed, so try to return to the most recently focused control
