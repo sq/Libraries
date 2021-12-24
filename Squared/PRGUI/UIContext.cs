@@ -406,6 +406,17 @@ namespace Squared.PRGUI {
             if (!processEvents)
                 return;
 
+            foreach (var mea in PurgatoryMouseEventArgs) {
+                if (SpareMouseEventArgs.Count >= 32)
+                    break;
+                SpareMouseEventArgs.Add(mea);
+            }
+            PurgatoryMouseEventArgs.Clear();
+
+            foreach (var mea in UsedMouseEventArgs)
+                PurgatoryMouseEventArgs.Add(mea);
+            UsedMouseEventArgs.Clear();
+
             var mousePosition = _CurrentInput.CursorPosition;
 
             PreviousUnhandledEvents.Clear();

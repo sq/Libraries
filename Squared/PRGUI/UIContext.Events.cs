@@ -133,7 +133,7 @@ namespace Squared.PRGUI {
         }
 
         public void NotifyTextureUsed (Control source, AbstractTextureReference texture) {
-            if (texture == default(AbstractTextureReference))
+            if (!texture.IsInitialized)
                 return;
             if (OnTextureUsed != null)
                 OnTextureUsed(source, texture);
@@ -579,31 +579,33 @@ namespace Squared.PRGUI {
                 var travelDistance = (globalPosition - mdp).Length();
                 var doubleClicking = IsInDoubleClickWindow(target, globalPosition);
                 doubleClicking = doubleClicking && (MouseCaptured != null);
-                return new MouseEventArgs {
-                    Context = this,
-                    Now = Now,
-                    NowL = NowL,
-                    Modifiers = CurrentModifiers,
-                    Focused = Focused,
-                    MouseOver = MouseOver,
-                    MouseOverLoose = MouseOverLoose,
-                    Hovering = Hovering,
-                    MouseCaptured = MouseCaptured,
-                    GlobalPosition = globalPosition,
-                    RelativeGlobalPosition = transformedGlobalPosition,
-                    LocalPosition = transformedGlobalPosition - contentBox.Position,
-                    Box = box,
-                    ContentBox = contentBox,
-                    MouseDownPosition = mdp,
-                    MouseDownTimestamp = LastMouseDownTime,
-                    MovedSinceMouseDown = travelDistance >= MinimumMouseMovementDistance,
-                    DoubleClicking = doubleClicking,
-                    PreviousButtons = LastMouseButtons,
-                    Buttons = CurrentMouseButtons,
-                    SequentialClickCount = (target == PreviousClickTarget)
-                        ? SequentialClickCount 
-                        : 0
-                };
+                if (!SpareMouseEventArgs.TryPopFront(out MouseEventArgs result, out _))
+                    result = new MouseEventArgs();
+                result.Context = this;
+                result.Now = Now;
+                result.NowL = NowL;
+                result.Modifiers = CurrentModifiers;
+                result.Focused = Focused;
+                result.MouseOver = MouseOver;
+                result.MouseOverLoose = MouseOverLoose;
+                result.Hovering = Hovering;
+                result.MouseCaptured = MouseCaptured;
+                result.GlobalPosition = globalPosition;
+                result.RelativeGlobalPosition = transformedGlobalPosition;
+                result.LocalPosition = transformedGlobalPosition - contentBox.Position;
+                result.Box = box;
+                result.ContentBox = contentBox;
+                result.MouseDownPosition = mdp;
+                result.MouseDownTimestamp = LastMouseDownTime;
+                result.MovedSinceMouseDown = travelDistance >= MinimumMouseMovementDistance;
+                result.DoubleClicking = doubleClicking;
+                result.PreviousButtons = LastMouseButtons;
+                result.Buttons = CurrentMouseButtons;
+                result.SequentialClickCount = (target == PreviousClickTarget)
+                    ? SequentialClickCount
+                    : 0;
+                UsedMouseEventArgs.Add(result);
+                return result;
             }
         }
 

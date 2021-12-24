@@ -162,5 +162,9 @@ namespace Squared.PRGUI {
         public RichTextConfiguration RichTextConfiguration = new RichTextConfiguration();
 
         public event Action<string> OnLogMessage;
+
+        private UnorderedList<MouseEventArgs> SpareMouseEventArgs = new UnorderedList<MouseEventArgs>(),
+            PurgatoryMouseEventArgs = new UnorderedList<MouseEventArgs>(),
+            UsedMouseEventArgs = new UnorderedList<MouseEventArgs>();
     }
 }

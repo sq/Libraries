@@ -551,6 +551,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            // FIXME: This method allocates object[] sometimes
+
             base.OnRasterize(ref context, ref renderer, settings, decorations);
 
             if (context.Pass != RasterizePasses.Content)
@@ -625,21 +627,8 @@ namespace Squared.PRGUI.Controls {
                     break;
             }
 
-            if (VisualizeLayout) {
-                renderer.RasterizeRectangle(textOffset + ca, textOffset + ca + scaledSize, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue, layer: 1);
-                if (Content.LineBreakAtX.HasValue) {
-                    var la = new Vector2(ca.X, ca.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
-                    var lb = new Vector2(ca.X, cb.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
-                    var lc = new Vector2(ca.X, la.Y);
-                    renderer.RasterizeLineSegment(la, lb, 1f, Color.Green, layer: 2);
-                    renderer.RasterizeLineSegment(la, lc, 1f, Color.Green, layer: 2);
-                }
-                foreach (var contentBox in Content.Boxes)
-                    renderer.RasterizeRectangle(
-                        contentBox.TopLeft + textOffset + ca, contentBox.BottomRight + textOffset + ca, 1f, 1f, 
-                        Color.Transparent, Color.Transparent, Color.Red, layer: 3
-                    );
-            }
+            if (VisualizeLayout)
+                DoVisualizeLayout(ref renderer, ca, cb, textOffset, scaledSize);
 
             // FIXME: Why is this here?
             renderer.Layer += 1;
@@ -674,6 +663,23 @@ namespace Squared.PRGUI.Controls {
 
             _LastDrawOffset = textOffset.Floor();
             _LastDrawScale = textScale;
+        }
+
+        private void DoVisualizeLayout (ref  ImperativeRenderer renderer, Vector2 ca, Vector2 cb, Vector2 textOffset, Vector2 scaledSize) {
+            renderer.RasterizeRectangle(textOffset + ca, textOffset + ca + scaledSize, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue, layer: 1);
+            if (Content.LineBreakAtX.HasValue) {
+                var la = new Vector2(ca.X, ca.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
+                var lb = new Vector2(ca.X, cb.Y) + new Vector2(Content.LineBreakAtX ?? 0, 0);
+                var lc = new Vector2(ca.X, la.Y);
+                renderer.RasterizeLineSegment(la, lb, 1f, Color.Green, layer: 2);
+                renderer.RasterizeLineSegment(la, lc, 1f, Color.Green, layer: 2);
+            }
+
+            foreach (var contentBox in Content.Boxes)
+                renderer.RasterizeRectangle(
+                    contentBox.TopLeft + textOffset + ca, contentBox.BottomRight + textOffset + ca, 1f, 1f,
+                    Color.Transparent, Color.Transparent, Color.Red, layer: 3
+                );
         }
 
         protected void UpdateLineBreak (ref UIOperationContext context, IDecorator decorations, float? currentWidth, ref Margins computedPadding, ref Margins computedMargins) {
