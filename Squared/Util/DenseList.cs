@@ -921,6 +921,20 @@ namespace Squared.Util {
                 Items = null;
         }
 
+        public Query<U> Select<U> (Func<T, U> selector) {
+            if (Count == 0)
+                return default(Query<U>);
+            else
+                return new Query<U>(ref this, selector);
+        }
+
+        public Query<T> Where (Predicate predicate) {
+            if (Count == 0)
+                return default(Query<T>);
+            else
+                return new Query<T>(ref this, NullSelector, predicate);
+        }
+
         public Enumerator GetEnumerator () {
             return new Enumerator(ref this);
         }

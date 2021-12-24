@@ -49,7 +49,74 @@ namespace Squared.Util {
             }
         }
 
-        public struct DenseListQuery<U> : IEnumerable<U>, IEnumerator<U> {
+        public struct Query<U> : IEnumerable<U>, IEnumerator<U> {
+            public struct SelectQuery<V> : IEnumerable<V>, IEnumerator<V> {
+                V _Current;
+                public Query<U> Query;
+                public Func<U, V> Selector;
+
+                public V Current => _Current;
+                object IEnumerator.Current => _Current;
+
+                void IDisposable.Dispose () {
+                    Query.Dispose();
+                }
+
+                IEnumerator<V> IEnumerable<V>.GetEnumerator () {
+                    return this;
+                }
+
+                IEnumerator IEnumerable.GetEnumerator () {
+                    return this;
+                }
+
+                bool IEnumerator.MoveNext () {
+                    if (!Query.MoveNext())
+                        return false;
+
+                    _Current = Selector(Query._Current);
+                    return true;
+                }
+
+                void IEnumerator.Reset () {
+                    Query.Reset();
+                    _Current = default;
+                }
+            }
+
+            public struct WhereQuery : IEnumerable<U>, IEnumerator<U> {
+                public Query<U> Query;
+                public U Current => Query.Current;
+                public Func<U, bool> Predicate;
+
+                object IEnumerator.Current => Query.Current;
+
+                void IDisposable.Dispose () {
+                    Query.Dispose();
+                }
+
+                IEnumerator<U> IEnumerable<U>.GetEnumerator () {
+                    return this;
+                }
+
+                IEnumerator IEnumerable.GetEnumerator () {
+                    return this;
+                }
+
+                bool IEnumerator.MoveNext () {
+                    while (Query.MoveNext()) {
+                        if (Predicate(Query._Current))
+                            return true;
+                    }
+
+                    return false;
+                }
+
+                void IEnumerator.Reset () {
+                    Query.Reset();
+                }
+            }
+
             private int _Position;
             private U _Current;
 
@@ -61,7 +128,7 @@ namespace Squared.Util {
             public U Current => _Current;
             object IEnumerator.Current => _Current;
 
-            internal DenseListQuery (
+            internal Query (
                 ref DenseList<T> list, Func<T, U> selector, Predicate prePredicate = null, Func<U, bool> postPredicate = null
             ) {
                 if (selector == null)
@@ -73,6 +140,20 @@ namespace Squared.Util {
                 PostPredicate = postPredicate;
                 _Position = -1;
                 _Current = default;
+            }
+
+            public SelectQuery<V> Select<V> (Func<U, V> selector) {
+                return new SelectQuery<V> {
+                    Query = this,
+                    Selector = selector
+                };
+            }
+
+            public WhereQuery Where (Func<U, bool> postPredicate) {
+                return new WhereQuery {
+                    Query = this,
+                    Predicate = postPredicate
+                };
             }
 
             public void Dispose () {
@@ -103,7 +184,7 @@ namespace Squared.Util {
                 _Current = default;
             }
 
-            public DenseListQuery<U> GetEnumerator () {
+            public Query<U> GetEnumerator () {
                 return this;
             }
 
