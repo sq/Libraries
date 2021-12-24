@@ -297,6 +297,13 @@ namespace Squared.Util.Text {
             ArraySegment = array;
         }
 
+        public AbstractString (ref AbstractString text, int substringOffset = 0, int substringLength = 0) {
+            this = text;
+            SubstringOffset += substringOffset;
+            if (substringLength > 0)
+                SubstringLength = substringLength;
+        }
+
         public static implicit operator AbstractString (string text) {
             return new AbstractString(text);
         }

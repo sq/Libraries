@@ -45,6 +45,7 @@
     <Compile Include="Arithmetic.cs" />
     <Compile Include="CoreCLR\BitOperations.cs" />
     <Compile Include="CoreCLR\Random.Xoshiro256StarStarImpl.cs" />
+    <Compile Include="DenseList.Util.cs" />
     <Compile Include="DenseList.cs" />
     <Compile Include="EmbeddedDLLLoader.cs" />
     <Compile Include="IndexedSort.cs" />

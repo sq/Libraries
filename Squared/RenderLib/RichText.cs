@@ -67,22 +67,24 @@ namespace Squared.Render.Text {
 
         private static readonly Regex RuleRegex = new Regex(@"([\w\-_]+)(?:\s*):(?:\s*)([^;\]]*)(?:;|)", RegexOptions.Compiled);
 
+        private static bool _NotNull (RichRule rule) => !rule.Key.IsNull || !rule.Value.IsNull;
+        private static Func<RichRule, bool> NotNull = _NotNull;
+
         public static IEnumerable<RichRule> ParseRules (AbstractString text) {
             // FIXME: Optimize this
             var tstr = text.ToString();
-            var matches = RuleRegex.Matches(tstr);
-            for (int i = 0, c = matches.Count; i < c; i++) {
-                var match = matches[i];
-                if (!match.Success)
-                    continue;
+            return RuleRegex.Matches(tstr).Cast<Match>()
+                .Select((match) => {
+                    if (!match.Success)
+                        return default;
 
-                var key = new AbstractString(tstr, match.Groups[1].Index, match.Groups[1].Length);
-                var value = new AbstractString(tstr, match.Groups[2].Index, match.Groups[2].Length);
-                yield return new RichRule {
-                    Key = key,
-                    Value = value
-                };
-            }
+                    var key = new AbstractString(tstr, match.Groups[1].Index, match.Groups[1].Length);
+                    var value = new AbstractString(tstr, match.Groups[2].Index, match.Groups[2].Length);
+                    return new RichRule {
+                        Key = key,
+                        Value = value
+                    };
+                }).Where(NotNull);
         }
     }
 
