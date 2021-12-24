@@ -273,9 +273,13 @@ namespace Squared.PRGUI.Input {
         /// </summary>
         public float MouseWheelScale = 1.0f / 2.4f;
         /// <summary>
-        /// The mouse position is offset by this distance
+        /// The input mouse position is offset by this amount (after scaling) to convert it to the UI coordinate space
         /// </summary>
         public Vector2 Offset;
+        /// <summary>
+        /// The input mouse position is scaled by this factor to convert it to the UI coordinate space
+        /// </summary>
+        public Vector2 Scale = Vector2.One;
 
         public MouseState PreviousState, CurrentState;
         private bool HasState;
@@ -302,8 +306,8 @@ namespace Squared.PRGUI.Input {
             current.Buttons |= ((mouseState.XButton1 == ButtonState.Pressed) ? MouseButtons.X1 : MouseButtons.None);
             current.Buttons |= ((mouseState.XButton2 == ButtonState.Pressed) ? MouseButtons.X2 : MouseButtons.None);
 
-            var prevPosition = new Vector2(PreviousState.X, PreviousState.Y) + Offset;
-            var newPosition = new Vector2(mouseState.X, mouseState.Y) + Offset;
+            var prevPosition = new Vector2(PreviousState.X, PreviousState.Y) * Scale + Offset;
+            var newPosition = new Vector2(mouseState.X, mouseState.Y) * Scale + Offset;
             if (PreviousState.ScrollWheelValue != CurrentState.ScrollWheelValue)
                 current.WheelValue = mouseState.ScrollWheelValue * MouseWheelScale;
 
@@ -332,7 +336,7 @@ namespace Squared.PRGUI.Input {
         }
 
         public void TryMoveCursor (Vector2 position) {
-            Mouse.SetPosition((int)position.X, (int)position.Y);
+            Mouse.SetPosition((int)(position.X / Scale.Y), (int)(position.Y / Scale.Y));
         }
     }
 

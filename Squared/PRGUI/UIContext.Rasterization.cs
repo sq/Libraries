@@ -141,8 +141,16 @@ namespace Squared.PRGUI {
 
             ScratchRenderTargetsUsedThisFrame = 0;
             foreach (var srt in ScratchRenderTargets) {
-                srt.Update();
-                srt.Reset();
+                if (_ScratchRenderTargetsInvalid)
+                    container.Coordinator.DisposeResource(srt);
+                else {
+                    srt.Update();
+                    srt.Reset();
+                }
+            }
+            if (_ScratchRenderTargetsInvalid) {
+                ScratchRenderTargets.Clear();
+                _ScratchRenderTargetsInvalid = false;
             }
 
             var seq = Controls.InDisplayOrder(FrameIndex);

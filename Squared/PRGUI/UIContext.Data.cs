@@ -53,7 +53,7 @@ namespace Squared.PRGUI {
 
         // Allocate scratch rendering buffers (for composited controls) at a higher or lower resolution
         //  than the canvas, to improve the quality of transformed imagery
-        public readonly float ScratchScaleFactor = 1.0f;
+        public const float DefaultScratchScaleFactor = 1.0f;
 
         // Full occlusion tests are performed with this padding region (in pixels) to account for things like
         //  drop shadows being visible even if the control itself is not
@@ -133,6 +133,20 @@ namespace Squared.PRGUI {
         /// The key repeating rate accelerates over this period of time (in seconds)
         /// </summary>
         public double KeyRepeatAccelerationDelay = 4.5;
+
+        private bool _ScratchRenderTargetsInvalid = false;
+        private float _ScratchScaleFactor = DefaultScratchScaleFactor;
+
+        public float ScratchScaleFactor {
+            get => _ScratchScaleFactor;
+            set {
+                value = (float)Math.Round(Arithmetic.Clamp(value, 0.5f, 4f), 2, MidpointRounding.AwayFromZero);
+                if (value == _ScratchScaleFactor)
+                    return;
+                _ScratchScaleFactor = value;
+                _ScratchRenderTargetsInvalid = true;
+            }
+        }
 
         /// <summary>
         /// Configures the appearance and size of controls
