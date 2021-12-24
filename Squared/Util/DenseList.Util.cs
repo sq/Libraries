@@ -18,6 +18,59 @@ namespace Squared.Util {
             result.AddRange(enumerable);
             return result;
         }
+
+        public static bool Any<T> (this DenseList<T> list) {
+            if (list.Count == 0)
+                return false;
+            else
+                return true;
+        }
+
+        public static bool Any<T> (this DenseList<T> list, Func<T, bool> predicate) {
+            if (list.Count == 0)
+                return false;
+            else
+                return list.Find(predicate) >= 0;
+        }
+
+        public static bool All<T> (this DenseList<T> list, Func<T, bool> predicate) {
+            return list.CountWhere(predicate) == list.Count;
+        }
+
+        public static DenseList<T>.Query<U> Select<T, U> (this DenseList<T> list, Func<T, U> selector) {
+            if (list.Count == 0)
+                return default;
+            else
+                return new DenseList<T>.Query<U>(ref list, selector);
+        }
+
+        public static DenseList<T>.Query<T> Where<T> (this DenseList<T> list, Func<T, bool> predicate) {
+            if (list.Count == 0)
+                return default;
+            else
+                return new DenseList<T>.Query<T>(ref list, DenseList<T>.NullSelector, predicate);
+        }
+
+        public static DenseList<T>.Query<U>.SelectQuery<U> Select<T, U> (this DenseList<T>.Query<U> query, Func<U, U> selector) {
+            return new DenseList<T>.Query<U>.SelectQuery<U> {
+                Query = query,
+                Selector = selector
+            };
+        }
+
+        public static DenseList<T>.Query<U>.SelectQuery<V> Select<T, U, V> (this DenseList<T>.Query<U> query, Func<U, V> selector) {
+            return new DenseList<T>.Query<U>.SelectQuery<V> {
+                Query = query,
+                Selector = selector
+            };
+        }
+
+        public static DenseList<T>.Query<U>.WhereQuery Where<T, U> (this DenseList<T>.Query<U> query, Func<U, bool> postPredicate) {
+            return new DenseList<T>.Query<U>.WhereQuery {
+                Query = query,
+                Predicate = postPredicate
+            };
+        }
     }
 
     public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
@@ -26,7 +79,7 @@ namespace Squared.Util {
 
         private static T[] EmptyArray;
 
-        private static readonly Func<T, T> NullSelector = _NullSelector;
+        internal static readonly Func<T, T> NullSelector = _NullSelector;
         private static T _NullSelector (T value) => value;
 
         internal class BoxedEmptyEnumerator : IEnumerator<T> {
@@ -70,7 +123,15 @@ namespace Squared.Util {
                     return this;
                 }
 
-                bool IEnumerator.MoveNext () {
+                public DenseList<V> ToDenseList () {
+                    var result = new DenseList<V>();
+                    Reset();
+                    while (MoveNext())
+                        result.Add(ref _Current);
+                    return result;
+                }
+
+                public bool MoveNext () {
                     if (!Query.MoveNext())
                         return false;
 
@@ -78,7 +139,7 @@ namespace Squared.Util {
                     return true;
                 }
 
-                void IEnumerator.Reset () {
+                public void Reset () {
                     Query.Reset();
                     _Current = default;
                 }
@@ -103,7 +164,15 @@ namespace Squared.Util {
                     return this;
                 }
 
-                bool IEnumerator.MoveNext () {
+                public DenseList<U> ToDenseList () {
+                    var result = new DenseList<U>();
+                    Reset();
+                    while (MoveNext())
+                        result.Add(ref Query._Current);
+                    return result;
+                }
+
+                public bool MoveNext () {
                     while (Query.MoveNext()) {
                         if (Predicate(Query._Current))
                             return true;
@@ -112,24 +181,28 @@ namespace Squared.Util {
                     return false;
                 }
 
-                void IEnumerator.Reset () {
+                public void Reset () {
                     Query.Reset();
                 }
             }
+
+            internal static Func<T, U> CastSelector = _CastSelector;
+            // FIXME: Boxing
+            private static U _CastSelector (T value) => (U)(object)value;
 
             private int _Position;
             private U _Current;
 
             public DenseList<T> List;
             public Func<T, U> Selector;
-            public Predicate PrePredicate;
+            public Func<T, bool> PrePredicate;
             public Func<U, bool> PostPredicate;
 
             public U Current => _Current;
             object IEnumerator.Current => _Current;
 
             internal Query (
-                ref DenseList<T> list, Func<T, U> selector, Predicate prePredicate = null, Func<U, bool> postPredicate = null
+                ref DenseList<T> list, Func<T, U> selector, Func<T, bool> prePredicate = null, Func<U, bool> postPredicate = null
             ) {
                 if (selector == null)
                     throw new ArgumentNullException(nameof(selector));
@@ -140,20 +213,6 @@ namespace Squared.Util {
                 PostPredicate = postPredicate;
                 _Position = -1;
                 _Current = default;
-            }
-
-            public SelectQuery<V> Select<V> (Func<U, V> selector) {
-                return new SelectQuery<V> {
-                    Query = this,
-                    Selector = selector
-                };
-            }
-
-            public WhereQuery Where (Func<U, bool> postPredicate) {
-                return new WhereQuery {
-                    Query = this,
-                    Predicate = postPredicate
-                };
             }
 
             public void Dispose () {
@@ -167,7 +226,7 @@ namespace Squared.Util {
 
                     List.GetItem(_Position, out T input);
 
-                    if ((PrePredicate != null) && !PrePredicate(ref input))
+                    if ((PrePredicate != null) && !PrePredicate(input))
                         continue;
 
                     _Current = Selector(input);
@@ -182,6 +241,14 @@ namespace Squared.Util {
             public void Reset () {
                 _Position = -1;
                 _Current = default;
+            }
+
+            public DenseList<U> ToDenseList () {
+                var result = new DenseList<U>();
+                Reset();
+                while (MoveNext())
+                    result.Add(ref _Current);
+                return result;
             }
 
             public Query<U> GetEnumerator () {

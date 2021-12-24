@@ -625,6 +625,15 @@ namespace Squared.Util {
             Items.DangerousRemoveRange(Items.Count - count, count);
         }
 
+        public int CountWhere (Func<T, bool> predicate) {
+            int result = 0;
+            for (int i = 0, c = Count; i < c; i++) {
+                if (predicate(this[i]))
+                    result++;
+            }
+            return result;
+        }
+
         public int RemoveWhere (Func<T, bool> predicate) {
             int result = 0;
             for (int i = Count - 1; i >= 0; i--) {
@@ -795,6 +804,36 @@ namespace Squared.Util {
             }
         }
 
+        private int Find_Small (Func<T, bool> predicate) {
+            if ((Storage.Count > 0) && predicate(Storage.Item1))
+                return 0;
+            if ((Storage.Count > 1) && predicate(Storage.Item2))
+                return 1;
+            if ((Storage.Count > 2) && predicate(Storage.Item3))
+                return 2;
+            if ((Storage.Count > 3) && predicate(Storage.Item4))
+                return 3;
+            return -1;
+        }
+
+        private int Find_Large (Func<T, bool> predicate) {
+            var buffer = Items.GetBuffer();
+            for (int i = 0, c = Items.Count; i < c; i++) {
+                if (predicate(buffer.Array[i + buffer.Offset]))
+                    return i;
+            }
+            return -1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Find (Func<T, bool> predicate) {
+            if (HasList) {
+                return Find_Large(predicate);
+            } else {
+                return Find_Small(predicate);
+            }
+        }
+
         private void Sort_Small<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IRefComparer<T>
         {
@@ -921,18 +960,11 @@ namespace Squared.Util {
                 Items = null;
         }
 
-        public Query<U> Select<U> (Func<T, U> selector) {
+        public Query<U> Cast<U> () {
             if (Count == 0)
-                return default(Query<U>);
+                return default;
             else
-                return new Query<U>(ref this, selector);
-        }
-
-        public Query<T> Where (Predicate predicate) {
-            if (Count == 0)
-                return default(Query<T>);
-            else
-                return new Query<T>(ref this, NullSelector, predicate);
+                return new Query<U>(ref this, Query<U>.CastSelector);
         }
 
         public Enumerator GetEnumerator () {
