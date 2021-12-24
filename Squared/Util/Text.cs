@@ -229,6 +229,8 @@ namespace Squared.Util.Text {
     }
 
     public struct AbstractString : IEquatable<AbstractString> {
+        public static readonly AbstractString Empty;
+
         // NOTE: We seed all these hash providers to 0 to ensure we get the same hash no matter what thread we're on
         private static readonly ThreadLocal<XXHash32> HashProvider = new ThreadLocal<XXHash32>(() => new XXHash32(0));
         // We use a fixed-size buffer when hashing text
@@ -264,6 +266,7 @@ namespace Squared.Util.Text {
             }
         }
 
+        // FIXME: Make 0 length return an empty string
         public AbstractString (string text, int substringOffset = 0, int substringLength = 0) {
             String = text;
             StringBuilder = null;
@@ -273,6 +276,7 @@ namespace Squared.Util.Text {
             ArraySegment = default(ArraySegment<char>);
         }
 
+        // FIXME: Make 0 length return an empty string
         public AbstractString (StringBuilder stringBuilder, int substringOffset = 0, int substringLength = 0) {
             String = null;
             StringBuilder = stringBuilder;
@@ -297,15 +301,18 @@ namespace Squared.Util.Text {
             ArraySegment = array;
         }
 
-        public AbstractString (ref AbstractString text, int substringOffset = 0, int substringLength = 0) {
-            this = text;
-            SubstringOffset += substringOffset;
-            if (substringLength > 0)
-                SubstringLength = substringLength;
-        }
+        public AbstractString (ref AbstractString text, int start, int length) {
+            if (length == 0) {
+                this = default;
+                return;
+            }
 
-        public static implicit operator AbstractString (string text) {
-            return new AbstractString(text);
+            this = text;
+            // FIXME: Check offset + length too
+            if (length > (text.Length - start))
+                throw new ArgumentOutOfRangeException(nameof(length));
+            SubstringOffset += start;
+            SubstringLength = length;
         }
 
         public unsafe uint ComputeTextHash () {
@@ -327,6 +334,10 @@ namespace Squared.Util.Text {
                 hasher.ComputeResult(out uint result);
                 return result;
             }
+        }
+
+        public static implicit operator AbstractString (string text) {
+            return new AbstractString(text);
         }
 
         public static implicit operator AbstractString (StringBuilder stringBuilder) {
@@ -416,7 +427,7 @@ namespace Squared.Util.Text {
                     if ((index < 0) || (index >= ArraySegment.Count))
                         throw new ArgumentOutOfRangeException("index");
 
-                    return ArraySegment.Array[index + ArraySegment.Offset];
+                    return ArraySegment.Array[index + SubstringOffset + ArraySegment.Offset];
                 } else
                     throw new NullReferenceException("This string contains no text");
             }
@@ -428,8 +439,21 @@ namespace Squared.Util.Text {
                     return (SubstringLength > 0) ? SubstringLength : (String.Length - SubstringOffset);
                 else if (StringBuilder != null)
                     return (SubstringLength > 0) ? SubstringLength : (StringBuilder.Length - SubstringOffset);
-                else // Default fallback to 0 characters
-                    return ArraySegment.Count;
+                else
+                    return (SubstringLength > 0) ? SubstringLength : ArraySegment.Count - SubstringOffset;
+            }
+        }
+
+        public bool IsNullOrWhiteSpace {
+            get {
+                if (IsNull)
+                    return true;
+
+                for (int i = 0, l = Length; i < l; i++)
+                    if (!char.IsWhiteSpace(this[i]))
+                        return false;
+
+                return true;
             }
         }
 
@@ -501,6 +525,21 @@ namespace Squared.Util.Text {
             return -1;
         }
 
+        public bool StartsWith (char c) {
+            return this[0] == c;
+        }
+
+        public bool StartsWith (string s) {
+            if (s.Length > Length)
+                return false;
+
+            for (int i = 0; i < s.Length; i++)
+                if (this[i] != s[i])
+                    return false;
+
+            return true;
+        }
+
         public bool Contains (string s) {
             return IndexOf(s) > -1;
         }
@@ -509,13 +548,17 @@ namespace Squared.Util.Text {
             return IndexOf(ch) > -1;
         }
 
+        public string Substring (int start) {
+            return Substring(start, Length - start);
+        }
+
         public string Substring (int start, int count) {
             if (String != null)
-                return String.Substring(start, count);
+                return String.Substring(SubstringOffset + start, count);
             else if (StringBuilder != null)
-                return StringBuilder.ToString(start, count);
+                return StringBuilder.ToString(SubstringOffset + start, count);
             else if (ArraySegment.Array != null)
-                return new string(ArraySegment.Array, ArraySegment.Offset + start, count);
+                return new string(ArraySegment.Array, ArraySegment.Offset + SubstringOffset + start, count);
             else
                 throw new ArgumentNullException("this");
         }
