@@ -497,7 +497,7 @@ namespace Squared.Util.Text {
 
         public int IndexOf (char ch) {
             if (String != null)
-                return String.IndexOf(ch, SubstringOffset, Length);
+                return String.IndexOf(ch, SubstringOffset, Length) - SubstringOffset;
 
             for (int i = 0, l = Length; i < l; i++) {
                 if (this[i] == ch)
@@ -512,7 +512,7 @@ namespace Squared.Util.Text {
                 return 0;
 
             if (String != null)
-                return String.IndexOf(s, SubstringOffset, Length);
+                return String.IndexOf(s, SubstringOffset, Length) - SubstringOffset;
 
             var ch = s[0];
             for (int i = 0, l = Length; i < l; i++) {
