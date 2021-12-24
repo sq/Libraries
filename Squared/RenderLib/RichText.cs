@@ -65,6 +65,7 @@ namespace Squared.Render.Text {
             return richText.ToString();
         }
 
+        // FIXME: This is incredibly inefficient and allocates a ton
         private static readonly Regex RuleRegex = new Regex(@"([\w\-_]+)(?:\s*):(?:\s*)([^;\]]*)(?:;|)", RegexOptions.Compiled);
 
         private static bool _NotNull (RichRule rule) => !rule.Key.IsNull || !rule.Value.IsNull;
@@ -399,18 +400,18 @@ namespace Squared.Render.Text {
                     if (bracketed == null) {
                         // FIXME: Can this cause an infinite loop?
                         continue;
-                    } else if (commandMode && string.IsNullOrWhiteSpace(bracketed)) {
+                    } else if (commandMode && bracketed.IsNullOrWhiteSpace) {
                         state.Reset(ref layoutEngine);
                     } else if (commandMode && (Styles != null) && bracketed.StartsWith(".") && Styles.TryGetValue(bracketed.Substring(1), out style)) {
                         ApplyStyle(ref layoutEngine, ref state, ref style);
-                    } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
+                    } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed.ToString(), out image)) {
                         if (!DisableImages)
                             AppendImage(ref layoutEngine, image);
                         ai = new AsyncRichImage(ref image);
                         referencedImages.Add(ref ai);
                     } else if (
                         commandMode && (ImageProvider != null) && 
-                        (ai = ImageProvider(bracketed)).IsInitialized
+                        (ai = ImageProvider(bracketed.ToString())).IsInitialized
                     ) {
                         var currentX1 = 0f;
                         var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
@@ -501,7 +502,8 @@ namespace Squared.Render.Text {
                         if (action != MarkedStringAction.Omit) {
                             var l = astr.Length;
                             // FIXME: Omit this too?
-                            state.MarkedStrings.Add(bracketed);
+                            // TODO: Store an AbstractString instead?
+                            state.MarkedStrings.Add(bracketed.ToString());
                             if (action == MarkedStringAction.RichText)
                                 AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref referencedImages);
                             else if (action != MarkedStringAction.PlainText) {
@@ -582,7 +584,7 @@ namespace Squared.Render.Text {
             layoutEngine.AppendText(glyphSource, text, KerningAdjustments, start: rangeStart, end: rangeEnd, overrideSuppress: overrideSuppress);
         }
 
-        private string ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart, HashSet<char> terminators, char close) {
+        private AbstractString ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart, HashSet<char> terminators, char close) {
             var count = text.Length;
             var start = i + 2;
             i = start;
@@ -590,15 +592,15 @@ namespace Squared.Render.Text {
                 var ch = text[i];
                 if (ch == close) {
                     currentRangeStart = i + 1;
-                    return text.Substring(start, i - start);
+                    return new AbstractString(ref text, start, i - start);
                 } else if (terminators.Contains(ch) || (ch < ' ')) {
                     i = start;
-                    return null;
+                    return default;
                 }
 
                 i++;
             }
-            return null;
+            return default;
         }
 
         private static Dictionary<K, V> CloneDictionary<K, V> (bool deep, Dictionary<K, V> value) {
