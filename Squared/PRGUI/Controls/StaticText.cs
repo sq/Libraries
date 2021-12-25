@@ -233,9 +233,11 @@ namespace Squared.PRGUI.Controls {
 
         protected void ResetMeasurement () {
             ResetAutoSize();
+            Content.DesiredWidth = 0;
             Content.LineBreakAtX = null;
             Content.Invalidate();
             if (ContentMeasurement != null) {
+                ContentMeasurement.DesiredWidth = 0;
                 ContentMeasurement.LineBreakAtX = null;
                 ContentMeasurement.Invalidate();
             }

@@ -116,7 +116,9 @@ namespace Squared.Render.Text {
         Center,
         Right,
         JustifyCharacters,
+        JustifyCharactersCentered,
         JustifyWords,
+        JustifyWordsCentered
     }
 
     public struct LayoutMarker {
@@ -612,12 +614,20 @@ namespace Squared.Render.Text {
             // In justify mode if there is only one word or one character on the line, fall back to centering, otherwise
             //  the math will have some nasty divides by zero or one
             var localAlignment = globalAlignment;
-            if (localAlignment == HorizontalAlignment.JustifyWords) {
-                if (wordCountMinusOne < 1)
-                    return;
-            } else if (localAlignment == HorizontalAlignment.JustifyCharacters) {
-                if (lastIndex <= (firstIndex + 1))
-                    return;
+            if (localAlignment >= HorizontalAlignment.JustifyWords) {
+                if (wordCountMinusOne < 1) {
+                    if (localAlignment == HorizontalAlignment.JustifyWordsCentered)
+                        localAlignment = HorizontalAlignment.Center;
+                    else
+                        return;
+                }
+            } else if (localAlignment >= HorizontalAlignment.JustifyCharacters) {
+                if (lastIndex <= (firstIndex + 1)) {
+                    if (localAlignment == HorizontalAlignment.JustifyCharactersCentered)
+                        localAlignment = HorizontalAlignment.Center;
+                    else
+                        return;
+                }
             }
 
             float lineWidth = (endDc.BottomRight.X - firstDc.TopLeft.X),
@@ -662,20 +672,22 @@ namespace Squared.Render.Text {
             // In both cases the goal is for the last character of each line to end up flush
             //  against the right side of the layout box.
             float characterSpacing = 0, wordSpacing = 0, accumulatedSpacing = 0;
-            if (localAlignment == HorizontalAlignment.JustifyCharacters) {
+            if (localAlignment >= HorizontalAlignment.JustifyWords) {
                 if (maxExpansion.HasValue && whitespace > maxExpansion.Value) {
-                    // FIXME: Centering?
-                    whitespace = 0;
-                } else {
-                    characterSpacing = whitespace / (lastIndex - firstIndex);
-                    whitespace = 0;
-                }
-            } else if (localAlignment == HorizontalAlignment.JustifyWords) {
-                if (maxExpansion.HasValue && whitespace > maxExpansion.Value) {
-                    // FIXME: Centering?
-                    whitespace = 0;
+                    whitespace = (localAlignment == HorizontalAlignment.JustifyWordsCentered)
+                        ? whitespace / 2
+                        : 0;
                 } else {
                     wordSpacing = whitespace / wordCountMinusOne;
+                    whitespace = 0;
+                }
+            } else if (localAlignment >= HorizontalAlignment.JustifyCharacters) {
+                if (maxExpansion.HasValue && whitespace > maxExpansion.Value) {
+                    whitespace = (localAlignment == HorizontalAlignment.JustifyCharactersCentered)
+                        ? whitespace / 2
+                        : 0;
+                } else {
+                    characterSpacing = whitespace / (lastIndex - firstIndex);
                     whitespace = 0;
                 }
             }
