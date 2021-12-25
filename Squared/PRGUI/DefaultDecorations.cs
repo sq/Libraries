@@ -568,7 +568,7 @@ namespace Squared.PRGUI {
         public float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
 
-        public float GetHoveringAlpha (UIOperationContext context, ControlStates state, out bool isHovering) {
+        public float GetHoveringAlpha (ref UIOperationContext context, ControlStates state, out bool isHovering) {
             isHovering = state.IsFlagged(ControlStates.Hovering);
 
             float previousAlpha = 0f, newAlpha = 0f;
@@ -582,7 +582,7 @@ namespace Squared.PRGUI {
             return Arithmetic.Saturate(previousAlpha + newAlpha);
         }
 
-        public float GetFocusedAlpha (UIOperationContext context, ControlStates state, out bool isFocused, bool includeContains = true) {
+        public float GetFocusedAlpha (ref UIOperationContext context, ControlStates state, out bool isFocused, bool includeContains = true) {
             var previouslyFocused = state.IsFlagged(ControlStates.PreviouslyFocused);
             isFocused = state.IsFlagged(ControlStates.Focused);
             var fadeFlag = isFocused;
@@ -616,7 +616,7 @@ namespace Squared.PRGUI {
             var now = context.NowL;
             var nowF = context.Now;
             var state = settings.State;
-            var focusedAlpha = GetFocusedAlpha(context, settings.State, out bool isFocused);
+            var focusedAlpha = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
             baseColor = settings.BackgroundColor ?? (pSRGBColor)(
                 Color.Lerp(ColorScheme.Inactive, ColorScheme.Focused, focusedAlpha)
             );
@@ -705,7 +705,7 @@ namespace Squared.PRGUI {
         }
 
         private void Button_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            var alpha = GetHoveringAlpha(context, settings.State, out bool isHovering);
+            var alpha = GetHoveringAlpha(ref context, settings.State, out bool isHovering);
             if (alpha <= 0)
                 return;
 
@@ -810,7 +810,7 @@ namespace Squared.PRGUI {
         }
 
         private void Tab_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            var alpha = GetHoveringAlpha(context, settings.State, out bool isHovering);
+            var alpha = GetHoveringAlpha(ref context, settings.State, out bool isHovering);
             if (alpha <= 0)
                 return;
 
@@ -1091,7 +1091,7 @@ namespace Squared.PRGUI {
         }
 
         private void SliderThumb_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            var alpha = GetHoveringAlpha(context, settings.State, out bool isHovering);
+            var alpha = GetHoveringAlpha(ref context, settings.State, out bool isHovering);
             if (alpha <= 0)
                 return;
 
@@ -1134,8 +1134,8 @@ namespace Squared.PRGUI {
         private void Checkbox_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             AdjustRectForCheckbox(ref settings);
 
-            var ha = GetHoveringAlpha(context, settings.State, out bool isHovering);
-            var fa = GetFocusedAlpha(context, settings.State, out bool isFocused);
+            var ha = GetHoveringAlpha(ref context, settings.State, out bool isHovering);
+            var fa = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
             var isChecked = settings.State.IsFlagged(ControlStates.Checked);
             if (isHovering || isChecked || isFocused) {
                 var a = isChecked
@@ -1185,8 +1185,8 @@ namespace Squared.PRGUI {
         private void RadioButton_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             AdjustRectForCheckbox(ref settings);
 
-            var ha = GetHoveringAlpha(context, settings.State, out bool isHovering);
-            var fa = GetFocusedAlpha(context, settings.State, out bool isFocused);
+            var ha = GetHoveringAlpha(ref context, settings.State, out bool isHovering);
+            var fa = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
             var isChecked = settings.State.IsFlagged(ControlStates.Checked);
             if (isHovering || isChecked || isFocused) {
                 var f = Color.White * (
@@ -1212,7 +1212,7 @@ namespace Squared.PRGUI {
                 renderer.RasterSoftOutlines = so;
             }
 
-            var alpha = GetHoveringAlpha(context, settings.State, out _);
+            var alpha = GetHoveringAlpha(ref context, settings.State, out _);
             if (alpha <= 0)
                 return;
 
@@ -1352,7 +1352,7 @@ namespace Squared.PRGUI {
         }
 
         private void EditableText_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            var focusedAlpha = GetFocusedAlpha(context, settings.State, out bool isFocused);
+            var focusedAlpha = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
@@ -1612,7 +1612,7 @@ namespace Squared.PRGUI {
         private void Selection_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isCaret = (settings.Box.Width <= 0.5f);
-            var focusedAlpha = GetFocusedAlpha(context, settings.State, out bool isFocused);
+            var focusedAlpha = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
             if (settings.State.IsFlagged(ControlStates.ContainsFocus))
                 isFocused = true;
             var fillColor = ColorScheme.SelectionFill *
