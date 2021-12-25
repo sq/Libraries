@@ -313,7 +313,7 @@ namespace Squared.PRGUI.Controls {
 
                 if ((item != this) && !Children.Contains(item)) {
                     if (CloseOnClickOutside) {
-                        Context.ReleaseCapture(this, FocusDonor);
+                        Context.ReleaseCapture(this, FocusDonor, !args.IsSynthetic);
                         Close(true);
                     }
                     return true;

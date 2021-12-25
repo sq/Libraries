@@ -31,7 +31,7 @@ namespace Squared.PRGUI {
                 ? ModalStack[ModalStack.Count - 1]
                 : null;
 
-        private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection;
+        private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection, _PreviouslyFocusedForTimestampUpdate;
 
         private Control _PreferredTooltipSource;
 
@@ -128,7 +128,8 @@ namespace Squared.PRGUI {
         private Vector2? DragToScrollInitialOffset;
         private Vector2 DragToScrollInitialPosition;
 
-        bool SuppressAutoscrollDueToInputScroll = false;
+        bool SuppressAutoscrollDueToInputScroll = false,
+            SuppressFocusChangeAnimationsThisStep = false;
 
         /// <summary>
         /// This control is currently being scrolled via implicit scroll input
@@ -164,7 +165,9 @@ namespace Squared.PRGUI {
         private int CurrentTooltipContentVersion;
         private Controls.StaticText CachedCompositionPreview;
 
-        internal bool IsCompositionActive = false;
+        internal bool IsCompositionActive = false,
+            // HACK: Suppress the 'if not Visible then don't perform layout' behavior
+            IsUpdatingSubtreeLayout;
 
         private Vector2 LastMousePosition => _LastInput.CursorPosition;
         private MouseButtons LastMouseButtons => _LastInput.Buttons;
@@ -173,9 +176,6 @@ namespace Squared.PRGUI {
 
         UnorderedList<IPostLayoutListener> _PostLayoutListeners = new UnorderedList<IPostLayoutListener>();
         List<Control> _TopLevelControls = new List<Control>();
-
-        // HACK: Suppress the 'if not Visible then don't perform layout' behavior
-        internal bool IsUpdatingSubtreeLayout;
 
         private int ScratchRenderTargetsUsedThisFrame;
 

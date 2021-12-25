@@ -574,8 +574,9 @@ namespace Squared.PRGUI {
             var fadeFlag = isFocused;
             if (includeContains && state.IsFlagged(ControlStates.ContainsFocus)) {
                 isFocused = true;
-                // This indicates that focus shifted out of us but we're still in the chain, so suppress the animation
-                if (previouslyFocused)
+                // We aren't focused but are in the focus chain (a child or modal inherited focus from us), so it's not possible
+                //  to trivially get this animation right. So just suppress it
+                if (!fadeFlag)
                     return 1;
             }
             // HACK because we want mouseover to feel really responsive

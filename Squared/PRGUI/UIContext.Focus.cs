@@ -236,7 +236,8 @@ namespace Squared.PRGUI {
         public bool TrySetFocus (
             Control value, 
             bool force = false, 
-            bool isUserInitiated = true
+            bool isUserInitiated = true,
+            bool? suppressAnimations = null
         ) {
             var newFocusTarget = value;
 
@@ -320,8 +321,13 @@ namespace Squared.PRGUI {
                 return false;
 
             var previous = _Focused;
-            if (previous != newFocusTarget)
+            if (previous != newFocusTarget) {
                 PreviousFocused = previous;
+
+                // On programmatic focus swaps, suppress the animation
+                if (suppressAnimations ?? !isUserInitiated)
+                    SuppressFocusChangeAnimationsThisStep = true;
+            }
 
             var newTopLevelAncestor = FindTopLevelAncestor(newFocusTarget);
             var activeModal = ActiveModal;
@@ -347,12 +353,6 @@ namespace Squared.PRGUI {
             if (_CurrentInput.KeyboardNavigationEnded)
                 ClearKeyboardSelection();
 
-            if (_Focused != newFocusTarget) {
-                if (isUserInitiated)
-                    LastFocusChange = NowL;
-                else // For instant changes (like focus donor transfers) suppress the animation, to avoid glitches
-                    LastFocusChange = 0;
-            }
             _Focused = newFocusTarget;
 
             var previousTopLevel = TopLevelFocused;

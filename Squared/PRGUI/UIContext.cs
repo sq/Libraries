@@ -215,9 +215,12 @@ namespace Squared.PRGUI {
             RetainCaptureRequested = target;
         }
 
-        public void ReleaseCapture (Control target, Control focusDonor) {
+        public void ReleaseCapture (Control target, Control focusDonor, bool isUserInitiated = true) {
             if (Focused == target)
-                Focused = focusDonor;
+                // Technically capture may be getting released by the user, but focus returning to a donor is not
+                //  user-initiated - it happens automatically, may not be what they clicked, and should suppress
+                //  animations
+                TrySetFocus(focusDonor, isUserInitiated: isUserInitiated, suppressAnimations: true);
             if (Hovering == target)
                 Hovering = null;
             if (MouseCaptured == target)
@@ -344,7 +347,8 @@ namespace Squared.PRGUI {
             var newFocusTarget = (TopLevelFocused == ctl)
                 ? modal.FocusDonor
                 : null;
-            ReleaseCapture(ctl, modal.FocusDonor);
+            // FIXME: Track user initated flag?
+            ReleaseCapture(ctl, modal.FocusDonor, false);
             if (!ModalStack.Contains(modal))
                 return;
             ModalStack.Remove(modal);
@@ -444,6 +448,18 @@ namespace Squared.PRGUI {
             }
 
             EnsureValidFocus();
+
+            // We want to do this check once per frame since during a given frame, the focus
+            //  may move multiple times and we don't want to pointlessly start the animation
+            //  if focus ends up going back to where it originally was
+            if (_PreviouslyFocusedForTimestampUpdate != _Focused) {
+                if ((_Focused == _MouseCaptured) || SuppressFocusChangeAnimationsThisStep)
+                    LastFocusChange = 0;
+                else
+                    LastFocusChange = NowL;
+            }
+            SuppressFocusChangeAnimationsThisStep = false;
+            _PreviouslyFocusedForTimestampUpdate = _Focused;
 
             var previouslyFixated = FixatedControl;
 
