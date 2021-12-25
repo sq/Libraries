@@ -276,23 +276,24 @@ namespace Squared.PRGUI.Layout {
 namespace Squared.PRGUI {
     [Flags]
     public enum ControlStates : uint {
-        Disabled = 0b1,
-        Hovering = 0b10,
-        Focused = 0b100,
-        Pressed = 0b1000,
+        Disabled          = 0b1,
+        Hovering          = 0b10,
+        Focused           = 0b100,
+        Pressed           = 0b1000,
         /// <summary>
         /// If a checkbox or radio button is pressed, this will be set.
         /// </summary>
-        Checked = 0b10000,
+        Checked           = 0b10000,
         /// <summary>
         /// If this control or one of its children is focused, this will be set.
         /// </summary>
-        ContainsFocus = 0b100000,
+        ContainsFocus     = 0b100000,
         /// <summary>
         /// PreRasterize handlers may be run while the control is invisible. If so, this will be set.
         /// </summary>
-        Invisible = 0b1000000,
-        AnchorForTooltip = 0b10000000
+        Invisible         = 0b1000000,
+        AnchorForTooltip  = 0b10000000,
+        PreviouslyFocused = 0b100000000,
     }
 
     public enum RasterizePasses {

@@ -547,6 +547,8 @@ namespace Squared.PRGUI {
         public float ScrollbarSize = 18f, 
             ScrollbarRadius = 3f,
             ScrollbarMinThumbSize = 24f;
+        // TODO: Add a hover fade as well
+        public float FocusFadeLength = 0.08f;
 
         public RasterShadowSettings? InteractableShadow, 
             ContainerShadow,
@@ -566,23 +568,46 @@ namespace Squared.PRGUI {
         public float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
 
+        public float GetFocusedAlpha (UIOperationContext context, ControlStates state, out bool isFocused, bool includeContains = true) {
+            var previouslyFocused = state.IsFlagged(ControlStates.PreviouslyFocused);
+            isFocused = state.IsFlagged(ControlStates.Focused);
+            var fadeFlag = isFocused;
+            if (includeContains && state.IsFlagged(ControlStates.ContainsFocus)) {
+                isFocused = true;
+                // This indicates that focus shifted out of us but we're still in the chain, so suppress the animation
+                if (previouslyFocused)
+                    return 1;
+            }
+            // HACK because we want mouseover to feel really responsive
+            if (state.IsFlagged(ControlStates.Hovering) && isFocused)
+                return 1;
+
+            var focusedAlpha = (float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastFocusChange).TotalSeconds / FocusFadeLength;
+            if (!isFocused)
+                return state.IsFlagged(ControlStates.PreviouslyFocused)
+                    ? 1 - Arithmetic.Saturate(focusedAlpha)
+                    : 0;
+            else
+                return Arithmetic.Saturate(focusedAlpha);
+        }
+
         public void Button_Below_Common (
             UIOperationContext context, DecorationSettings settings, 
             out float alpha, out float thickness, out float pulse,
             out pSRGBColor baseColor, out pSRGBColor outlineColor 
         ) {
+            var now = context.NowL;
+            var nowF = context.Now;
             var state = settings.State;
-            var isFocused = state.IsFlagged(ControlStates.Focused);
+            var focusedAlpha = GetFocusedAlpha(context, settings.State, out bool isFocused);
             baseColor = settings.BackgroundColor ?? (pSRGBColor)(
-                isFocused
-                    ? ColorScheme.Focused
-                    : ColorScheme.Inactive
+                Color.Lerp(ColorScheme.Inactive, ColorScheme.Focused, focusedAlpha)
             );
             var hasColor = settings.BackgroundColor.HasValue;
             var colorIsGray = hasColor && (baseColor.ColorDelta <= 0.05f);
             // HACK: If the background color isn't saturated, use the focused color for the outline
             pSRGBColor? outlineBaseColor = (colorIsGray && isFocused) ? ColorScheme.Focused : (pSRGBColor?)null;
-            var pulseThickness = Arithmetic.PulseSine(context.Now / 3f, 0, 0.4f);
+            var pulseThickness = Arithmetic.PulseSine(nowF / 3f, 0, 0.4f);
 
             pulse = 0;
             if (
@@ -602,22 +627,20 @@ namespace Squared.PRGUI {
             } else if (state.IsFlagged(ControlStates.Hovering)) {
                 alpha = hasColor 
                     ? 0.95f 
-                    : (isFocused ? 0.8f : 0.55f);
+                    : Arithmetic.Lerp(0.55f, 0.8f, focusedAlpha);
                 thickness = ActiveOutlineThickness + pulseThickness;
-                pulse = Arithmetic.PulseSine(context.Now / 2.5f, 0f, 0.15f);
+                pulse = Arithmetic.PulseSine(nowF / 2.5f, 0f, 0.15f);
                 if (hasColor)
                     outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.3f : 0f);
                 else
                     outlineColor = (outlineBaseColor ?? baseColor);
             } else {
                 alpha = hasColor
-                    ? (isFocused ? 0.95f : 0.85f)
-                    : (isFocused ? 0.75f : 0.4f);
-                thickness = isFocused
-                    ? ActiveOutlineThickness + pulseThickness
-                    : InactiveOutlineThickness;
+                    ? Arithmetic.Lerp(0.85f, 0.95f, focusedAlpha)
+                    : Arithmetic.Lerp(0.4f, 0.75f, focusedAlpha);
+                thickness = Arithmetic.Lerp(InactiveOutlineThickness, ActiveOutlineThickness + pulseThickness, focusedAlpha);
                 if (hasColor && !colorIsGray)
-                    outlineColor = (outlineBaseColor ?? baseColor) + (isFocused ? 0.3f : 0.05f);
+                    outlineColor = (outlineBaseColor ?? baseColor) + Arithmetic.Lerp(0.05f, 0.3f, focusedAlpha);
                 else
                     outlineColor = (outlineBaseColor ?? baseColor);
             }
@@ -1294,18 +1317,17 @@ namespace Squared.PRGUI {
         }
 
         private void EditableText_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            bool isFocused = settings.State.IsFlagged(ControlStates.Focused),
-                isHovering = settings.State.IsFlagged(ControlStates.Hovering);
+            var focusedAlpha = GetFocusedAlpha(context, settings.State, out bool isFocused);
+            bool isHovering = settings.State.IsFlagged(ControlStates.Hovering);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
                 radius: EditableTextCornerRadius,
+                // FIXME: Lerp this?
                 outlineRadius: GetOutlineSize(isFocused
                     ? EditableFocusedOutlineThickness 
                     : InactiveOutlineThickness), 
-                outlineColor: isFocused
-                    ? ColorScheme.Focused
-                    : ColorScheme.ContainerOutline,
+                outlineColor: Color.Lerp(ColorScheme.ContainerOutline, ColorScheme.Focused, focusedAlpha),
                 // FIXME: Separate textarea fill color?
                 innerColor: (settings.BackgroundColor ?? ColorScheme.ContainerFill), 
                 outerColor: (settings.BackgroundColor ?? ColorScheme.ContainerFill),
@@ -1556,21 +1578,21 @@ namespace Squared.PRGUI {
         private void Selection_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isCaret = (settings.Box.Width <= 0.5f);
-            var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
-                settings.State.IsFlagged(ControlStates.ContainsFocus);
+            var focusedAlpha = GetFocusedAlpha(context, settings.State, out bool isFocused);
+            if (settings.State.IsFlagged(ControlStates.ContainsFocus))
+                isFocused = true;
             var fillColor = ColorScheme.SelectionFill *
-                (isFocused
-                    ? Arithmetic.Pulse(context.Now / 2f, 0.7f, 0.8f)
-                    : 0.45f
-                ) * (isCaret ? 1.8f : 1f);
-            var outlineColor = (isFocused && !isCaret)
-                ? Color.White
-                : Color.Transparent;
+                Arithmetic.Lerp(0.45f, Arithmetic.Pulse(context.Now / 2f, 0.7f, 0.8f), focusedAlpha) *
+                (isCaret ? 1.8f : 1f);
+            var outlineAlpha = !isCaret
+                ? focusedAlpha
+                : 0f;
+            var outlineColor = Color.Lerp(Color.Transparent, Color.White, outlineAlpha);
 
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SelectionCornerRadius,
-                outlineRadius: (isFocused && !isCaret) ? 0.9f : 0f, 
+                outlineRadius: outlineAlpha * 0.9f,
                 outlineColor: outlineColor,
                 innerColor: fillColor, outerColor: fillColor,
                 shadow: SelectionShadow

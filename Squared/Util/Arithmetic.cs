@@ -513,6 +513,24 @@ namespace Squared.Util {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Lerp (float a, float b, float x) {
+            if (x <= 0)
+                return a;
+            else if (x >= 1)
+                return b;
+            return a + ((b - a) * x);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double Lerp (double a, double b, double x) {
+            if (x <= 0)
+                return a;
+            else if (x >= 1)
+                return b;
+            return a + ((b - a) * x);
+        }
+
         public static T Lerp<T> (T a, T b, float x) 
             where T : struct {
 

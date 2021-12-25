@@ -347,6 +347,12 @@ namespace Squared.PRGUI {
             if (_CurrentInput.KeyboardNavigationEnded)
                 ClearKeyboardSelection();
 
+            if (_Focused != newFocusTarget) {
+                if (isUserInitiated)
+                    LastFocusChange = NowL;
+                else // For instant changes (like focus donor transfers) suppress the animation, to avoid glitches
+                    LastFocusChange = 0;
+            }
             _Focused = newFocusTarget;
 
             var previousTopLevel = TopLevelFocused;

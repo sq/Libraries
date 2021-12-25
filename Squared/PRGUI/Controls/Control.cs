@@ -805,6 +805,9 @@ namespace Squared.PRGUI {
                     (context.UIContext.TopLevelModalFocusDonor == this)
                 )
                     result |= ControlStates.ContainsFocus;
+
+                if (context.UIContext.PreviousFocused == this)
+                    result |= ControlStates.PreviouslyFocused;
             }
 
             if ((context.UIContext.MouseCaptured == this) || (context.ActivateKeyHeld && context.UIContext.Focused == this))

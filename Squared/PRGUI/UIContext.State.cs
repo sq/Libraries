@@ -56,6 +56,9 @@ namespace Squared.PRGUI {
         /// </summary>
         public Control MouseOverLoose { get; private set; }
 
+        public long LastFocusChange { get; private set; }
+        public long LastHoverChange { get; private set; }
+
         /// <summary>
         /// The control that currently has keyboard input focus
         /// </summary>
@@ -92,8 +95,10 @@ namespace Squared.PRGUI {
             private set {
                 var previous = _Hovering;
                 _Hovering = value;
-                if (previous != value)
+                if (previous != value) {
+                    LastHoverChange = NowL;
                     HandleHoverTransition(previous, value);
+                }
             }
         }
 
@@ -105,6 +110,10 @@ namespace Squared.PRGUI {
         public Control TopLevelModalFocusDonor { get; private set; }
 
         public Control ModalFocusDonor { get; private set; }
+        /// <summary>
+        /// The control that most recently held focused before the current control.
+        /// Note that if focus was acquired from a focus donor, the focus donor will not be recorded in this property.
+        /// </summary>
         public Control PreviousFocused { get; private set; }
         public Control PreviousTopLevelFocused { get; private set; }
 
