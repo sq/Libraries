@@ -431,10 +431,13 @@ namespace Squared.PRGUI.Controls {
             var hasWidthConstraint = (width.Fixed ?? width.Maximum).HasValue;
             var maxPx = (width.Fixed ?? width.Maximum) - computedPadding.X;
 
-            currentWidth = currentWidth ?? MostRecentContentBoxWidth;
+            // FIXME: Minimum of 1 instead of 0?
+            if (TextAlignment >= HorizontalAlignment.JustifyCharacters)
+                Content.DesiredWidth = (float)Math.Max(Math.Floor((width.Minimum ?? 0) - AutoSizePadding - computedPadding.X), 0);
+            else
+                Content.DesiredWidth = 0;
 
-            if (this is HyperText)
-                ;
+            currentWidth = currentWidth ?? MostRecentContentBoxWidth;
 
             if (!currentWidth.HasValue && !maxPx.HasValue)
                 return null;

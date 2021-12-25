@@ -47,6 +47,7 @@ namespace Squared.Render.Text {
         private float _Scale;
         private float _Spacing;
         private float _SortKey;
+        private float _DesiredWidth;
         private int _CharacterSkipCount;
         private int _CharacterLimit;
         private float _XOffsetOfFirstLine;
@@ -498,6 +499,20 @@ namespace Squared.Render.Text {
         }
 
         /// <summary>
+        /// When using alignment modes this sets the desired width for the laid out string, and if
+        ///  the string is less wide than the desired value it will be expanded. If the string is
+        ///  wider, it will not be compressed - use LineBreakAtX for that.
+        /// </summary>
+        public float DesiredWidth {
+            get {
+                return _DesiredWidth;
+            }
+            set {
+                InvalidatingValueAssignment(ref _DesiredWidth, value);
+            }
+        }
+
+        /// <summary>
         /// Any characters with a Y offset exceeding this value will be hidden
         /// </summary>
         public float? StopAtY {
@@ -751,6 +766,7 @@ namespace Squared.Render.Text {
                 scale = _Scale,
                 spacing = _Spacing,
                 sortKey = _SortKey,
+                desiredWidth = _DesiredWidth,
                 characterSkipCount = _CharacterSkipCount,
                 characterLimit = _CharacterLimit,
                 xOffsetOfFirstLine = _XOffsetOfFirstLine,
@@ -824,6 +840,7 @@ namespace Squared.Render.Text {
             this.WordWrapCharacters = source.WordWrapCharacters;
             this.RecordUsedTextures = source.RecordUsedTextures;
             this.ExpandHorizontallyWhenAligning = source.ExpandHorizontallyWhenAligning;
+            this.DesiredWidth = source.DesiredWidth;
         }
 
         /// <summary>

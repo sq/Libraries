@@ -222,6 +222,7 @@ namespace Squared.Render.Text {
         public float               xOffsetOfFirstLine;
         public float               xOffsetOfWrappedLine;
         public float               xOffsetOfNewLine;
+        public float               desiredWidth;
         public float?              lineBreakAtX;
         public float?              stopAtY;
         public float               extraLineBreakSpacing;
@@ -603,15 +604,20 @@ namespace Squared.Render.Text {
                 endDc = dc.EstimateDrawBounds();
             }
 
-            int wordCount = (firstWord < lastWord)
+            int wordCountMinusOne = (firstWord < lastWord)
                 ? lastWord - firstWord
                 : 0; // FIXME: detect and handle wrap-around. Will only happen with very large word count
 
             // In justify mode if there is only one word or one character on the line, fall back to centering, otherwise
             //  the math will have some nasty divides by zero or one
-            var localAlignment = (globalAlignment < HorizontalAlignment.JustifyWords) || ((wordCount > 1) && (lastIndex > firstIndex + 1))
-                ? globalAlignment
-                : HorizontalAlignment.Center;
+            var localAlignment = globalAlignment;
+            if (localAlignment == HorizontalAlignment.JustifyWords) {
+                if (wordCountMinusOne < 1)
+                    localAlignment = HorizontalAlignment.Center;
+            } else if (localAlignment == HorizontalAlignment.JustifyCharacters) {
+                if (lastIndex <= (firstIndex + 1))
+                    localAlignment = HorizontalAlignment.Center;
+            }
 
             float lineWidth = (endDc.BottomRight.X - firstDc.TopLeft.X),
                 localMinX = firstDc.TopLeft.X, localMaxX = originalMaxX - 2f;
@@ -642,6 +648,11 @@ namespace Squared.Render.Text {
             //  still preserve per-line centering.
             maxX = Math.Max(maxX, whitespace + lineWidth);
 
+            if (maxX < desiredWidth) {
+                whitespace += (desiredWidth - maxX);
+                maxX = whitespace;
+            }
+
             if (localAlignment == HorizontalAlignment.Center)
                 whitespace /= 2;
 
@@ -654,7 +665,7 @@ namespace Squared.Render.Text {
                 characterSpacing = whitespace / (lastIndex - firstIndex);
                 whitespace = 0;
             } else if (localAlignment == HorizontalAlignment.JustifyWords) {
-                wordSpacing = whitespace / wordCount;
+                wordSpacing = whitespace / wordCountMinusOne;
                 whitespace = 0;
             }
 
@@ -1429,6 +1440,9 @@ namespace Squared.Render.Text {
                 box.BottomRight += actualPosition;
                 boxes[i] = box;
             }
+
+            maxX = Math.Max(maxX, desiredWidth);
+            maxXUnconstrained = Math.Max(maxXUnconstrained, desiredWidth);
 
             return new StringLayout(
                 position.GetValueOrDefault(), 
