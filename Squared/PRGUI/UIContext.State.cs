@@ -31,7 +31,8 @@ namespace Squared.PRGUI {
                 ? ModalStack[ModalStack.Count - 1]
                 : null;
 
-        private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection, _PreviouslyFocusedForTimestampUpdate;
+        private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection, 
+            _PreviouslyFocusedForTimestampUpdate;
 
         private Control _PreferredTooltipSource;
 
@@ -57,7 +58,8 @@ namespace Squared.PRGUI {
         public Control MouseOverLoose { get; private set; }
 
         public long LastFocusChange { get; private set; }
-        public long LastHoverChange { get; private set; }
+        public long LastHoverLoss { get; private set; }
+        public long LastHoverGain { get; private set; }
 
         /// <summary>
         /// The control that currently has keyboard input focus
@@ -96,7 +98,17 @@ namespace Squared.PRGUI {
                 var previous = _Hovering;
                 _Hovering = value;
                 if (previous != value) {
-                    LastHoverChange = NowL;
+                    // If hovering moves from ControlA to null, then later moves from null to ControlB, we don't
+                    //  want to restart the fade for ControlA
+                    if (previous != null)
+                        LastHoverLoss = NowL;
+                    // If the mouse moves off of a control and then back onto it, we shouldn't restart the fade-in
+                    //  animation, it'll look really bad
+                    if (PreviousHovering != value)
+                        LastHoverGain = NowL;
+                    // We want to always keep a control in PreviousHovering so that fade-outs will work
+                    if (previous != null)
+                        PreviousHovering = previous;
                     HandleHoverTransition(previous, value);
                 }
             }
@@ -111,10 +123,15 @@ namespace Squared.PRGUI {
 
         public Control ModalFocusDonor { get; private set; }
         /// <summary>
-        /// The control that most recently held focused before the current control.
+        /// The control that most recently held focus before the current control, if any.
         /// Note that if focus was acquired from a focus donor, the focus donor will not be recorded in this property.
         /// </summary>
         public Control PreviousFocused { get; private set; }
+        /// <summary>
+        /// The control that was most recently being hovered over before the current control, if any.
+        /// Note that this will rarely become null.
+        /// </summary>
+        public Control PreviousHovering { get; private set; }
         public Control PreviousTopLevelFocused { get; private set; }
 
         private Control PreviousMouseDownTarget = null;

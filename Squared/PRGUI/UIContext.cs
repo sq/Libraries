@@ -462,7 +462,6 @@ namespace Squared.PRGUI {
             _PreviouslyFocusedForTimestampUpdate = _Focused;
 
             var previouslyFixated = FixatedControl;
-
             var previouslyHovering = Hovering;
 
             UpdateCaptureAndHovering(_CurrentInput.CursorPosition);

@@ -547,8 +547,8 @@ namespace Squared.PRGUI {
         public float ScrollbarSize = 18f, 
             ScrollbarRadius = 3f,
             ScrollbarMinThumbSize = 24f;
-        // TODO: Add a hover fade as well
-        public float FocusFadeLength = 0.08f;
+        public float FocusFadeLength = 0.1f,
+            HoverFadeLength = 0.075f;
 
         public RasterShadowSettings? InteractableShadow, 
             ContainerShadow,
@@ -568,6 +568,20 @@ namespace Squared.PRGUI {
         public float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
 
+        public float GetHoveringAlpha (UIOperationContext context, ControlStates state, out bool isHovering) {
+            isHovering = state.IsFlagged(ControlStates.Hovering);
+
+            float previousAlpha = 0f, newAlpha = 0f;
+            if (state.IsFlagged(ControlStates.PreviouslyHovering))
+                previousAlpha = 1f - Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverLoss).TotalSeconds / HoverFadeLength);
+            if (isHovering)
+                newAlpha = Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverGain).TotalSeconds / HoverFadeLength);
+
+            // It's possible to both be the previous and current hovering control (mouse moved off and then back on), so in that case
+            //  we sum both alpha values to minimize any glitch and cause the edge to become bright faster
+            return Arithmetic.Saturate(previousAlpha + newAlpha);
+        }
+
         public float GetFocusedAlpha (UIOperationContext context, ControlStates state, out bool isFocused, bool includeContains = true) {
             var previouslyFocused = state.IsFlagged(ControlStates.PreviouslyFocused);
             isFocused = state.IsFlagged(ControlStates.Focused);
@@ -579,17 +593,19 @@ namespace Squared.PRGUI {
                 if (!fadeFlag)
                     return 1;
             }
+
             // HACK because we want mouseover to feel really responsive
+            // FIXME: Link this to the hovering alpha transition
             if (state.IsFlagged(ControlStates.Hovering) && isFocused)
                 return 1;
 
-            var focusedAlpha = (float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastFocusChange).TotalSeconds / FocusFadeLength;
+            var result = (float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastFocusChange).TotalSeconds / FocusFadeLength;
             if (!isFocused)
                 return state.IsFlagged(ControlStates.PreviouslyFocused)
-                    ? 1 - Arithmetic.Saturate(focusedAlpha)
+                    ? 1 - Arithmetic.Saturate(result)
                     : 0;
             else
-                return Arithmetic.Saturate(focusedAlpha);
+                return Arithmetic.Saturate(result);
         }
 
         public void Button_Below_Common (
@@ -626,6 +642,7 @@ namespace Squared.PRGUI {
                     baseColor = ColorScheme.Active;
                 outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.4f : 0.05f);
             } else if (state.IsFlagged(ControlStates.Hovering)) {
+                // FIXME: Animate this
                 alpha = hasColor 
                     ? 0.95f 
                     : Arithmetic.Lerp(0.55f, 0.8f, focusedAlpha);
@@ -688,7 +705,8 @@ namespace Squared.PRGUI {
         }
 
         private void Button_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            if (!settings.State.IsFlagged(ControlStates.Hovering))
+            var alpha = GetHoveringAlpha(context, settings.State, out bool isHovering);
+            if (alpha <= 0)
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
@@ -698,7 +716,7 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: InteractableCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
+                innerColor: Color.White * (EdgeGleamOpacity * alpha), outerColor: Color.White * 0.0f,
                 fill: new RasterFillSettings {
                     Mode = RasterFillMode.Angular,
                     Size = fillSize,
@@ -792,7 +810,8 @@ namespace Squared.PRGUI {
         }
 
         private void Tab_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            if (!settings.State.IsFlagged(ControlStates.Hovering))
+            var alpha = GetHoveringAlpha(context, settings.State, out bool isHovering);
+            if (alpha <= 0)
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
@@ -804,7 +823,7 @@ namespace Squared.PRGUI {
                 a, b,
                 radiusCW: radiusCW,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
+                innerColor: Color.White * (EdgeGleamOpacity * alpha), outerColor: Color.White * 0.0f,
                 fill: new RasterFillSettings {
                     Mode = RasterFillMode.Angular,
                     Size = fillSize,
@@ -1072,7 +1091,8 @@ namespace Squared.PRGUI {
         }
 
         private void SliderThumb_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            if (!settings.State.IsFlagged(ControlStates.Hovering))
+            var alpha = GetHoveringAlpha(context, settings.State, out bool isHovering);
+            if (alpha <= 0)
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
@@ -1083,7 +1103,7 @@ namespace Squared.PRGUI {
                 a, b,
                 radiusCW: new Vector4(InertCornerRadius, InertCornerRadius, tip, tip),
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
+                innerColor: Color.White * (EdgeGleamOpacity * alpha), outerColor: Color.White * 0.0f,
                 fill: new RasterFillSettings {
                     Mode = RasterFillMode.Angular,
                     Size = fillSize,
@@ -1113,10 +1133,14 @@ namespace Squared.PRGUI {
 
         private void Checkbox_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             AdjustRectForCheckbox(ref settings);
-            var isHovering = settings.State.IsFlagged(ControlStates.Hovering);
+
+            var ha = GetHoveringAlpha(context, settings.State, out bool isHovering);
+            var fa = GetFocusedAlpha(context, settings.State, out bool isFocused);
             var isChecked = settings.State.IsFlagged(ControlStates.Checked);
-            if (isHovering || isChecked) {
-                float a = isChecked ? 1 : 0.55f;
+            if (isHovering || isChecked || isFocused) {
+                var a = isChecked
+                    ? 1f
+                    : Math.Max(ha, fa) * 0.5f;
                 Color f = Color.White * a, o = Color.Black * (a * 0.66f);
                 CheckboxTemp[0].Position = new Vector2(settings.Box.Left + 8f, settings.Box.Center.Y + 1.75f);
                 CheckboxTemp[1].Position = new Vector2(settings.Box.Center.X, settings.Box.Extent.Y - 6.5f);
@@ -1161,11 +1185,20 @@ namespace Squared.PRGUI {
         private void RadioButton_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             AdjustRectForCheckbox(ref settings);
 
-            var isHovering = settings.State.IsFlagged(ControlStates.Hovering);
+            var ha = GetHoveringAlpha(context, settings.State, out bool isHovering);
+            var fa = GetFocusedAlpha(context, settings.State, out bool isFocused);
             var isChecked = settings.State.IsFlagged(ControlStates.Checked);
-            if (isHovering || isChecked) {
-                var f = Color.White * (isChecked ? 1 : 0.2f);
-                var o = Color.White * (isChecked ? 0.6f : 0.4f);
+            if (isHovering || isChecked || isFocused) {
+                var f = Color.White * (
+                    isChecked
+                        ? 1f
+                        : Math.Max(ha, fa) * 0.2f
+                );
+                var o = Color.White * (
+                    isChecked
+                        ? 0.6f
+                        : Math.Max(ha, fa) * 0.4f
+                );
                 var so = renderer.RasterSoftOutlines;
                 renderer.RasterSoftOutlines = true;
                 renderer.RasterizeEllipse(
@@ -1179,7 +1212,8 @@ namespace Squared.PRGUI {
                 renderer.RasterSoftOutlines = so;
             }
 
-            if (!settings.State.IsFlagged(ControlStates.Hovering))
+            var alpha = GetHoveringAlpha(context, settings.State, out _);
+            if (alpha <= 0)
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
@@ -1189,7 +1223,7 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: ScaledCheckboxSize * 0.45f,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
+                innerColor: Color.White * (EdgeGleamOpacity * alpha), outerColor: Color.White * 0.0f,
                 fill: new RasterFillSettings {
                     Mode = RasterFillMode.Angular,
                     Size = fillSize,
@@ -1319,7 +1353,6 @@ namespace Squared.PRGUI {
 
         private void EditableText_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             var focusedAlpha = GetFocusedAlpha(context, settings.State, out bool isFocused);
-            bool isHovering = settings.State.IsFlagged(ControlStates.Hovering);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,

@@ -806,6 +806,9 @@ namespace Squared.PRGUI {
                 )
                     result |= ControlStates.ContainsFocus;
 
+                if (context.UIContext.PreviousHovering == this)
+                    result |= ControlStates.PreviouslyHovering;
+
                 if (context.UIContext.PreviousFocused == this)
                     result |= ControlStates.PreviouslyFocused;
             }

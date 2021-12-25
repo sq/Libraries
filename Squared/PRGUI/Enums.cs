@@ -294,6 +294,7 @@ namespace Squared.PRGUI {
         Invisible         = 0b1000000,
         AnchorForTooltip  = 0b10000000,
         PreviouslyFocused = 0b100000000,
+        PreviouslyHovering = 0b1000000000,
     }
 
     public enum RasterizePasses {
