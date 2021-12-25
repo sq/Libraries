@@ -60,6 +60,8 @@ namespace FontTest {
         PressableKey Margin = new PressableKey(Keys.M);
         PressableKey Indent = new PressableKey(Keys.I);
         PressableKey Monochrome = new PressableKey(Keys.R);
+        PressableKey Expand = new PressableKey(Keys.E);
+        PressableKey LimitExpansion = new PressableKey(Keys.X);
 
         Texture2D[] Images = new Texture2D[4];
 
@@ -266,6 +268,8 @@ namespace FontTest {
             Margin.Update(ref ks);
             Indent.Update(ref ks);
             Monochrome.Update(ref ks);
+            Expand.Update(ref ks);
+            LimitExpansion.Update(ref ks);
 
             var newSize = Arithmetic.Clamp(20 + (ms.ScrollWheelValue / 56f), 6, 200);
             newSize = Arithmetic.Clamp(9 + (ms.ScrollWheelValue / 100f), 4, 200);
@@ -286,7 +290,11 @@ namespace FontTest {
             ir.Clear(color: ClearColor);
 
             Text.Position = TopLeft;
-            Text2.LineBreakAtX = Text.LineBreakAtX = BottomRight.X - TopLeft.X;
+            var targetX = BottomRight.X - TopLeft.X;
+            Text.ExpandHorizontallyWhenAligning = Text2.ExpandHorizontallyWhenAligning = !Expand.Value;
+            Text2.LineBreakAtX = Text.LineBreakAtX = targetX;
+            Text2.DesiredWidth = Text.DesiredWidth = Expand.Value ? targetX : 0;
+            Text2.MaxExpansion = Text.MaxExpansion = LimitExpansion.Value ? 400 : (float?)null;
             Text2.StopAtY = Text.StopAtY = BottomRight.Y - TopLeft.Y;
             Text.WrapIndentation = Text2.WrapIndentation = Indent.Value ? 64 : 0;
 
@@ -334,7 +342,7 @@ namespace FontTest {
                     ir.OutlineRectangle(b, Color.Green);
             }
 
-            var state = $"align {Text.Alignment} char-wrap {Text.CharacterWrap} word-wrap {Text.WordWrap}";
+            var state = $"align {Text.Alignment} char-wrap {Text.CharacterWrap} word-wrap {Text.WordWrap} expand {Expand.Value}";
             var stateLayout = Text.GlyphSource.LayoutString(state);
             ir.DrawMultiple(stateLayout, new Vector2(0, 1024 - stateLayout.UnconstrainedSize.Y));
         }

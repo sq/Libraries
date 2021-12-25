@@ -48,6 +48,7 @@ namespace Squared.Render.Text {
         private float _Spacing;
         private float _SortKey;
         private float _DesiredWidth;
+        private float? _MaxExpansion;
         private int _CharacterSkipCount;
         private int _CharacterLimit;
         private float _XOffsetOfFirstLine;
@@ -513,6 +514,19 @@ namespace Squared.Render.Text {
         }
 
         /// <summary>
+        /// When using justify alignment modes, the amount of whitespace added to a line of text
+        ///   will not exceed this amount.
+        /// </summary>
+        public float? MaxExpansion {
+            get {
+                return _MaxExpansion;
+            }
+            set {
+                InvalidatingNullableAssignment(ref _MaxExpansion, value);
+            }
+        }
+
+        /// <summary>
         /// Any characters with a Y offset exceeding this value will be hidden
         /// </summary>
         public float? StopAtY {
@@ -767,6 +781,7 @@ namespace Squared.Render.Text {
                 spacing = _Spacing,
                 sortKey = _SortKey,
                 desiredWidth = _DesiredWidth,
+                maxExpansion = _MaxExpansion,
                 characterSkipCount = _CharacterSkipCount,
                 characterLimit = _CharacterLimit,
                 xOffsetOfFirstLine = _XOffsetOfFirstLine,
