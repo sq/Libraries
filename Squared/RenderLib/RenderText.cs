@@ -631,7 +631,8 @@ namespace Squared.Render.Text {
             }
 
             float lineWidth = (endDc.BottomRight.X - firstDc.TopLeft.X),
-                localMinX = firstDc.TopLeft.X - actualPosition.X, localMaxX = originalMaxX - 2f;
+                // FIXME: Why is this padding here?
+                localMinX = firstDc.TopLeft.X - actualPosition.X, localMaxX = originalMaxX - 0.1f;
 
             if (currentLineBreakAtX.HasValue && expandHorizontallyWhenAligning)
                 localMaxX = currentLineBreakAtX.Value;
@@ -692,7 +693,7 @@ namespace Squared.Render.Text {
                 }
             }
 
-            whitespace = (float)Math.Round(whitespace, 0, MidpointRounding.AwayFromZero);
+            whitespace = (float)Math.Round(whitespace, alignToPixels.Horizontal != PixelAlignmentMode.Floor ? 2 : 0, MidpointRounding.AwayFromZero);
 
             // FIXME: This double-applies whitespace for some reason, or doesn't work at all?
             /*

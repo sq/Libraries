@@ -37,6 +37,50 @@ namespace Squared.Util {
             return list.CountWhere(predicate) == list.Count;
         }
 
+        public static DenseList<T> Distinct<T> (this DenseList<T> list, IEqualityComparer<T> comparer = null) {
+            comparer = EqualityComparer<T>.Default;
+
+            var hash = (list.Count > 32) ? new HashSet<T>(list.Count, comparer) : null;
+            var result = new DenseList<T>();
+            for (int i = 0, c = list.Count; i < c; i++) {
+                list.GetItem(i, out T item);
+                if (hash != null) {
+                    if (hash.Contains(item))
+                        continue;
+                    hash.Add(item);
+                } else if (result.IndexOf(ref item, comparer) >= 0) {
+                    continue;
+                }
+                result.Add(ref item);
+            }
+            return result;
+        }
+
+        public static DenseList<U> SelectMany<T, U> (this DenseList<T> list, Func<T, DenseList<U>> selector) {
+            if (list.Count == 0)
+                return default;
+
+            var result = new DenseList<U>();
+            for (int i = 0, c = list.Count; i < c; i++) {
+                list.GetItem(i, out T item);
+                var items = selector(item);
+                result.AddRange(ref items);
+            }
+            return result;
+        }
+
+        public static DenseList<U> SelectMany<T, U> (this DenseList<T> list, Func<T, IEnumerable<U>> selector) {
+            if (list.Count == 0)
+                return default;
+
+            var result = new DenseList<U>();
+            foreach (var item in list) {
+                var items = selector(item);
+                result.AddRange(items);
+            }
+            return result;
+        }
+
         public static DenseList<T>.Query<U> Select<T, U> (this DenseList<T> list, Func<T, U> selector) {
             if (list.Count == 0)
                 return default;
