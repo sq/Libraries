@@ -70,6 +70,8 @@ namespace Squared.Render.Text {
         private bool _HideOverflow;
         private bool _RecordUsedTextures;
         private bool _ExpandHorizontallyWhenAligning;
+        private bool _SplitAtWrapCharactersOnly;
+        private bool _IncludeTrailingWhitespace;
         private char? _ReplacementCharacter;
         private uint[] _WordWrapCharacters;
         private bool _AwaitingDependencies;
@@ -741,9 +743,28 @@ namespace Squared.Render.Text {
             }
         }
 
+        /// <summary>
+        /// When horizontally aligning text, the layout will automatically be expanded to reach its line break point
+        /// </summary>
         public bool ExpandHorizontallyWhenAligning {
             get => _ExpandHorizontallyWhenAligning;
             set => InvalidatingValueAssignment(ref _ExpandHorizontallyWhenAligning, value);
+        }
+
+        /// <summary>
+        /// When justifying or wrapping text, only characters in the WordWrapCharacters list will be treated as split/wrap points
+        /// </summary>
+        public bool SplitAtWrapCharactersOnly {
+            get => _SplitAtWrapCharactersOnly;
+            set => InvalidatingValueAssignment(ref _SplitAtWrapCharactersOnly, value);
+        }
+
+        /// <summary>
+        /// Trailing whitespace will be included in the layout
+        /// </summary>
+        public bool IncludeTrailingWhitespace {
+            get => _IncludeTrailingWhitespace;
+            set => InvalidatingValueAssignment(ref _IncludeTrailingWhitespace, value);
         }
 
         public bool IsValid {
@@ -793,7 +814,6 @@ namespace Squared.Render.Text {
                 alignToPixels = _AlignToPixels.Or(_GlyphSource.DefaultAlignment),
                 characterWrap = _CharacterWrap,
                 wordWrap = _WordWrap,
-                wrapCharacter = _WrapCharacter,
                 hideOverflow = _HideOverflow,
                 alignment = (HorizontalAlignment)_Alignment,
                 reverseOrder = _ReverseOrder,
@@ -803,6 +823,8 @@ namespace Squared.Render.Text {
                 replacementCodepoint = _ReplacementCharacter,
                 recordUsedTextures = _RecordUsedTextures,
                 expandHorizontallyWhenAligning = _ExpandHorizontallyWhenAligning,
+                splitAtWrapCharactersOnly = _SplitAtWrapCharactersOnly,
+                includeTrailingWhitespace = _IncludeTrailingWhitespace,
             };
 
             if (_WordWrapCharacters != null)
@@ -855,6 +877,8 @@ namespace Squared.Render.Text {
             this.WordWrapCharacters = source.WordWrapCharacters;
             this.RecordUsedTextures = source.RecordUsedTextures;
             this.ExpandHorizontallyWhenAligning = source.ExpandHorizontallyWhenAligning;
+            this.SplitAtWrapCharactersOnly = source.SplitAtWrapCharactersOnly;
+            this.IncludeTrailingWhitespace = source.IncludeTrailingWhitespace;
             this.DesiredWidth = source.DesiredWidth;
         }
 

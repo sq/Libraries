@@ -231,8 +231,6 @@ namespace Squared.Render.Text {
         public float               extraLineBreakSpacing;
         public bool                characterWrap;
         public bool                wordWrap;
-        // FIXME: This isn't implemented?
-        public char                wrapCharacter;
         public bool                hideOverflow;
         public bool                reverseOrder;
         public int?                lineLimit;
@@ -240,6 +238,8 @@ namespace Squared.Render.Text {
         public bool                measureOnly;
         public bool                recordUsedTextures;
         public bool                expandHorizontallyWhenAligning;
+        public bool                splitAtWrapCharactersOnly;
+        public bool                includeTrailingWhitespace;
         public GlyphPixelAlignment alignToPixels;
         public HorizontalAlignment alignment;
         public uint?               replacementCodepoint;
@@ -275,7 +275,7 @@ namespace Squared.Render.Text {
         float          maxLineSpacing;
         Vector2        wordStartOffset;
         int            wordStartColumn;
-        private bool   ownsBuffer, suppress, suppressUntilNextLine, previousGlyphWasDead;
+        private bool   ownsBuffer, suppress, suppressUntilNextLine, previousGlyphWasDead, newLinePending;
         private AbstractTextureReference lastUsedTexture;
         private DenseList<AbstractTextureReference> usedTextures;
         private DenseList<Bounds> boxes;
@@ -975,9 +975,12 @@ namespace Squared.Render.Text {
 
                 bool isWhiteSpace = (char.IsWhiteSpace(ch1) && !replacementCodepoint.HasValue),
                     forcedWrap = false, lineBreak = false,
-                    deadGlyph = false, isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1) ||
-                        replacementCodepoint.HasValue || (WordWrapCharacters.IndexOf(codepoint) >= 0),
-                    didWrapWord = false;
+                    deadGlyph = false, isWordWrapPoint, didWrapWord = false;
+                if (splitAtWrapCharactersOnly)
+                    isWordWrapPoint = (WordWrapCharacters.IndexOf(codepoint) >= 0);
+                else
+                    isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1) ||
+                        replacementCodepoint.HasValue || (WordWrapCharacters.IndexOf(codepoint) >= 0);
                 Glyph glyph;
                 KerningAdjustment kerningAdjustment;
 
@@ -1003,6 +1006,8 @@ namespace Squared.Render.Text {
                         if (lineBreakLimit.Value <= 0)
                             suppress = true;
                     }
+                    if (!suppress && includeTrailingWhitespace)
+                        newLinePending = true;
                 } else if (lineLimit.HasValue && lineLimit.Value <= 0) {
                     suppress = true;
                 }
@@ -1283,6 +1288,15 @@ namespace Squared.Render.Text {
             maxXUnconstrained = Math.Max(maxXUnconstrained, currentLineMaxXUnconstrained);
             maxX = Math.Max(maxX, currentLineMaxX);
 
+            if (newLinePending) {
+                var trailingSpace = currentLineSpacing;
+                if (trailingSpace <= 0)
+                    trailingSpace = font.LineSpacing;
+                maxY += trailingSpace;
+                maxYUnconstrained += trailingSpace;
+                newLinePending = false;
+            }
+
             return segment;
         }
 
@@ -1348,6 +1362,8 @@ namespace Squared.Render.Text {
                         if (reverseOrder)
                             drawCall.SortOrder += 1;
                     }
+
+                    newLinePending = false;
 
                     if (!ComputeSuppress(overrideSuppress)) {
                         if (!measureOnly) {
@@ -1495,7 +1511,7 @@ namespace Squared.Render {
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
             GlyphPixelAlignment alignToPixels = default(GlyphPixelAlignment),
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
-            bool wordWrap = false, char wrapCharacter = '\0',
+            bool wordWrap = false,
             bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null,
             Color? addColor = null
         ) {
@@ -1512,7 +1528,6 @@ namespace Squared.Render {
                 alignToPixels = alignToPixels,
                 characterWrap = lineBreakAtX.HasValue,
                 wordWrap = wordWrap,
-                wrapCharacter = wrapCharacter,
                 buffer = buffer.GetValueOrDefault(default(ArraySegment<BitmapDrawCall>)),
                 reverseOrder = reverseOrder,
                 addColor = addColor ?? Color.Transparent
@@ -1542,7 +1557,7 @@ namespace Squared.Render {
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
             bool alignToPixels = false,
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
-            bool wordWrap = false, char wrapCharacter = '\0',
+            bool wordWrap = false,
             bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null,
             Color? addColor = null
         ) {
@@ -1559,7 +1574,6 @@ namespace Squared.Render {
                 alignToPixels = alignToPixels,
                 characterWrap = lineBreakAtX.HasValue,
                 wordWrap = wordWrap,
-                wrapCharacter = wrapCharacter,
                 buffer = buffer.GetValueOrDefault(default(ArraySegment<BitmapDrawCall>)),
                 reverseOrder = reverseOrder,
                 addColor = addColor ?? Color.Transparent
