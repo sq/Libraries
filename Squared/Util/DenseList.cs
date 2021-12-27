@@ -298,12 +298,6 @@ namespace Squared.Util {
             }
             // FIXME: Add fast path
             Insert_Slow(index, ref item);
-            /*
-            if ((Items != null) || (Count == 4))
-                Insert_Slow(index, ref item);
-            else
-                Insert_Fast(index, ref item);
-            */
         }
 
         private void Insert_Slow (int index, ref T item) {

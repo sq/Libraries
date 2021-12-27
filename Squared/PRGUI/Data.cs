@@ -58,7 +58,7 @@ namespace Squared.PRGUI.Layout {
         }
     }
 
-    public class ControlKeyComparer : 
+    public sealed class ControlKeyComparer : 
         IComparer<ControlKey>, IRefComparer<ControlKey>, IEqualityComparer<ControlKey> 
     {
         public static readonly ControlKeyComparer Instance = new ControlKeyComparer();

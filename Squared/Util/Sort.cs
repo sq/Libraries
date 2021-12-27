@@ -21,7 +21,7 @@ namespace Squared.Util {
 
         public RefComparerAdapter (TComparer comparer) {
             _Comparer = comparer;
-            _Boxed = _Comparer;
+            _Boxed = null;
         }
 
         public TComparer Comparer {
@@ -32,6 +32,8 @@ namespace Squared.Util {
 
         IComparer<TElement> IRefComparerAdapter<TElement>.Comparer {
             get {
+                if (_Boxed == null)
+                    _Boxed = _Comparer;
                 return _Boxed;
             }
         }
@@ -43,7 +45,9 @@ namespace Squared.Util {
     }
 
     public sealed class ReferenceComparer<T> : IEqualityComparer<T>
-        where T : class {
+        where T : class 
+    {
+        public static readonly ReferenceComparer<T> Instance = new ReferenceComparer<T>();
 
         public bool Equals (T x, T y) {
             return object.ReferenceEquals(x, y);

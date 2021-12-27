@@ -18,108 +18,6 @@ namespace Squared.Util {
             result.AddRange(enumerable);
             return result;
         }
-
-        public static bool Any<T> (this DenseList<T> list) {
-            if (list.Count == 0)
-                return false;
-            else
-                return true;
-        }
-
-        public static bool Any<T> (this DenseList<T> list, Func<T, bool> predicate) {
-            if (list.Count == 0)
-                return false;
-            else
-                return list.IndexOf(predicate) >= 0;
-        }
-
-        public static bool All<T> (this DenseList<T> list, Func<T, bool> predicate) {
-            return list.CountWhere(predicate) == list.Count;
-        }
-
-        public static DenseList<T> Distinct<T> (this DenseList<T> list, IEqualityComparer<T> comparer = null, HashSet<T> hash = null) {
-            comparer = EqualityComparer<T>.Default;
-
-            hash = hash ??
-                (
-                    // FIXME: Make this larger?
-                    (list.Count > 32) 
-                        ? new HashSet<T>(list.Count, comparer) 
-                        : null
-                );
-            hash?.Clear();
-
-            var result = new DenseList<T>();
-            for (int i = 0, c = list.Count; i < c; i++) {
-                list.GetItem(i, out T item);
-                if (hash != null) {
-                    if (hash.Contains(item))
-                        continue;
-                    hash.Add(item);
-                } else if (result.IndexOf(ref item, comparer) >= 0) {
-                    continue;
-                }
-                result.Add(ref item);
-            }
-            return result;
-        }
-
-        public static DenseList<U> SelectMany<T, U> (this DenseList<T> list, Func<T, DenseList<U>> selector) {
-            if (list.Count == 0)
-                return default;
-            else if (list.Count == 1)
-                return selector(list[0]);
-
-            var result = new DenseList<U>();
-            for (int i = 0, c = list.Count; i < c; i++) {
-                list.GetItem(i, out T item);
-                var items = selector(item);
-                result.AddRange(ref items);
-            }
-            return result;
-        }
-
-        public static DenseList<U> SelectMany<T, U> (this DenseList<T> list, Func<T, IEnumerable<U>> selector) {
-            if (list.Count == 0)
-                return default;
-            else if (list.Count == 1)
-                return selector(list[0]).ToDenseList();
-
-            var result = new DenseList<U>();
-            foreach (var item in list) {
-                var items = selector(item);
-                result.AddRange(items);
-            }
-            return result;
-        }
-
-        public static DenseList<T>.Query<U> Select<T, U> (this DenseList<T> list, Func<T, U> selector) {
-            if (list.Count == 0)
-                return default;
-            else
-                return new DenseList<T>.Query<U>(ref list, selector);
-        }
-
-        public static DenseList<T>.Query<T> Where<T> (this DenseList<T> list, Func<T, bool> predicate) {
-            if (list.Count == 0)
-                return default;
-            else
-                return new DenseList<T>.Query<T>(ref list, DenseList<T>.NullSelector, predicate);
-        }
-
-        public static DenseList<T>.Query<U>.SelectQuery<V> Select<T, U, V> (this DenseList<T>.Query<U> query, Func<U, V> selector) {
-            return new DenseList<T>.Query<U>.SelectQuery<V> {
-                Query = query,
-                Selector = selector
-            };
-        }
-
-        public static DenseList<T>.Query<U>.WhereQuery Where<T, U> (this DenseList<T>.Query<U> query, Func<U, bool> postPredicate) {
-            return new DenseList<T>.Query<U>.WhereQuery {
-                Query = query,
-                Predicate = postPredicate
-            };
-        }
     }
 
     public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
@@ -292,6 +190,20 @@ namespace Squared.Util {
                 _Current = default;
             }
 
+            public SelectQuery<V> Select<V> (Func<U, V> selector) {
+                return new SelectQuery<V> {
+                    Query = this,
+                    Selector = selector
+                };
+            }
+
+            public WhereQuery Where (Func<U, bool> postPredicate) {
+                return new WhereQuery {
+                    Query = this,
+                    Predicate = postPredicate
+                };
+            }
+
             public DenseList<U> ToDenseList () {
                 var result = new DenseList<U>();
                 Reset();
@@ -448,6 +360,113 @@ namespace Squared.Util {
 
                 Data = null;
             }
+        }
+
+        public bool Any () {
+            if (Count == 0)
+                return false;
+            else
+                return true;
+        }
+
+        public bool Any (Func<T, bool> predicate) {
+            if (Count == 0)
+                return false;
+            else
+                return IndexOf(predicate) >= 0;
+        }
+
+        public bool All (Func<T, bool> predicate) {
+            return CountWhere(predicate) == Count;
+        }
+
+        public DenseList<T> Distinct (IEqualityComparer<T> comparer = null, HashSet<T> hash = null) {
+            comparer = EqualityComparer<T>.Default;
+
+            hash = hash ??
+                (
+                    // FIXME: Make this larger?
+                    (Count > 32) 
+                        ? new HashSet<T>(Count, comparer) 
+                        : null
+                );
+            hash?.Clear();
+
+            var result = new DenseList<T>();
+            for (int i = 0, c = Count; i < c; i++) {
+                GetItem(i, out T item);
+                if (hash != null) {
+                    if (hash.Contains(item))
+                        continue;
+                    hash.Add(item);
+                } else if (result.IndexOf(ref item, comparer) >= 0) {
+                    continue;
+                }
+                result.Add(ref item);
+            }
+            return result;
+        }
+
+        public DenseList<U> SelectMany<U> (Func<T, DenseList<U>> selector) {
+            if (Count == 0)
+                return default;
+            else if (Count == 1)
+                return selector(this[0]);
+
+            var result = new DenseList<U>();
+            for (int i = 0, c = Count; i < c; i++) {
+                GetItem(i, out T item);
+                var items = selector(item);
+                result.AddRange(ref items);
+            }
+            return result;
+        }
+
+        public DenseList<U> SelectMany<U> (Func<T, IEnumerable<U>> selector) {
+            if (Count == 0)
+                return default;
+            else if (Count == 1)
+                return selector(this[0]).ToDenseList();
+
+            var result = new DenseList<U>();
+            for (int i = 0, c = Count; i < c; i++) {
+                GetItem(i, out T item);
+                var items = selector(item);
+                result.AddRange(items);
+            }
+            return result;
+        }
+
+        public Query<U> Select<U> (Func<T, U> selector) {
+            if (Count == 0)
+                return default;
+            else
+                return new Query<U>(ref this, selector);
+        }
+
+        public Query<T> Where (Func<T, bool> predicate) {
+            if (Count == 0)
+                return default;
+            else
+                return new Query<T>(ref this, NullSelector, predicate);
+        }
+
+        public DenseList<T> Concat (DenseList<T> rhs) {
+            Clone(out DenseList<T> result);
+            result.AddRange(ref rhs);
+            return result;
+        }
+
+        public DenseList<T> Concat (ref DenseList<T> rhs) {
+            Clone(out DenseList<T> result);
+            result.AddRange(ref rhs);
+            return result;
+        }
+
+        public DenseList<T> Concat (IEnumerable<T> rhs) {
+            Clone(out DenseList<T> result);
+            result.AddRange(rhs);
+            return result;
         }
     }
 
