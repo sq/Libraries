@@ -16,9 +16,9 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public class DefaultDecorationColorScheme {
-        public Color Focused = new Color(200, 220, 255),
-            Active = new Color(240, 240, 240),
-            Inactive = new Color(180, 180, 180),
+        public Color Focused = new Color(170, 200, 255),
+            Active = new Color(245, 245, 245),
+            Inactive = new Color(170, 170, 170),
             ContainerOutline = new Color(32, 32, 32) * 0.5f,
             InertOutline = new Color(255, 255, 255) * 0.33f,
             TooltipOutline = new Color(16, 16, 16) * 0.5f,
@@ -636,8 +636,7 @@ namespace Squared.PRGUI {
                 thickness = PressedOutlineThickness;
                 if (hasColor) {
                     // Intensify the color if the button has a custom color
-                    baseColor = (settings.BackgroundColor.Value.ToVector4()) * 1.25f;
-                    baseColor.Vector4.W = 1;
+                    baseColor = settings.BackgroundColor.Value.AdjustBrightness(1.4f);
                 } else
                     baseColor = ColorScheme.Active;
                 outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.4f : 0.05f);
