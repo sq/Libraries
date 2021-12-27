@@ -76,12 +76,6 @@ namespace Squared.Render {
             get; set;
         }
 
-        /// <summary>
-        /// If set and no declarative sorter is provided, draw calls will only be sorted by texture,
-        ///  and the z-buffer will be relied on to provide sorting of individual draw calls.
-        /// </summary>
-        public bool UseZBuffer = false;
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (BitmapDrawCall item) {
             Add(item, Material, null, null);

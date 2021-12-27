@@ -366,6 +366,10 @@ namespace Squared.Render.Convenience {
                 return false;
             }
 
+            public override int GetHashCode () {
+                return 0;
+            }
+
             public override string ToString () {
                 return string.Format("{0} (layer={1} material={2})", Batch, Layer, CustomMaterial);
             }

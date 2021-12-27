@@ -264,6 +264,10 @@ namespace Squared.Util {
             return !lhs.Equals(ref rhs);
         }
 
+        public override int GetHashCode () {
+            return From.GetHashCode() ^ To.GetHashCode();
+        }
+
         public bool Equals (ref Tween<T> rhs) {
             return
                 (StartedWhen == rhs.StartedWhen) &&

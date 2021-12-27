@@ -94,7 +94,7 @@ namespace Squared.PRGUI.Controls {
             set => base.ScaleToFit = value;
         }
 
-        new public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
+        public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
 
         /// <summary>
         /// If set, the button will produce additional periodic Click events while pressed
@@ -177,7 +177,7 @@ namespace Squared.PRGUI.Controls {
         }
         new public void Invalidate () => base.Invalidate();
 
-        new public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
+        public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
 
         public Checkbox ()
             : base () {
@@ -241,7 +241,7 @@ namespace Squared.PRGUI.Controls {
         }
         new public void Invalidate () => base.Invalidate();
 
-        new public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
+        public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
 
         public RadioButton ()
             : base () {

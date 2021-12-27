@@ -688,6 +688,10 @@ namespace Squared.Render {
             return true;
         }
 
+        public override int GetHashCode () {
+            return Entries.Count;
+        }
+
         public override bool Equals (object obj) {
             if (obj is MaterialParameterValues mpv)
                 return Equals(ref mpv);

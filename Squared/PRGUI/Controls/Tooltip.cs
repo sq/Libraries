@@ -192,6 +192,10 @@ namespace Squared.PRGUI {
                 (TextAlignment == rhs.TextAlignment);
         }
 
+        public override int GetHashCode () {
+            return 0;
+        }
+
         public override bool Equals (object obj) {
             if (obj is TooltipSettings)
                 return Equals((TooltipSettings)obj);
@@ -251,6 +255,10 @@ namespace Squared.PRGUI {
                     result = (Version == rhs.Version);
             }
             return result;
+        }
+
+        public override int GetHashCode () {
+            return 0;
         }
 
         public override bool Equals (object obj) {

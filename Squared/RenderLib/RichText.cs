@@ -65,35 +65,85 @@ namespace Squared.Render.Text {
             return richText.ToString();
         }
 
-        // FIXME: This is incredibly inefficient and allocates a ton
-        private static readonly Regex RuleRegex = new Regex(@"([\w\-_]+)(?:\s*):(?:\s*)([^;\]]*)(?:;|)", RegexOptions.Compiled);
+        public static DenseList<RichRule> ParseRules (AbstractString text, ref DenseList<RichParseError> parseErrors) {
+            var result = new DenseList<RichRule>();
+            int keyStart = 0;
+            int? keyEnd = null, valueStart = null;
+            for (int i = 0, l = text.Length; i <= l; i++) {
+                var ch = (i == l) ? '\0' : text[i];
+                switch (ch) {
+                    case ':':
+                        if (valueStart.HasValue)
+                            parseErrors.Add(new RichParseError {
+                                Text = text,
+                                Offset = i,
+                                Message = "Unexpected :"
+                            });
+                        else {
+                            keyEnd = i;
+                            valueStart = i + 1;
+                        }
+                        break;
 
-        private static bool _NotNull (RichRule rule) => !rule.Key.IsNull || !rule.Value.IsNull;
-        private static Func<RichRule, bool> NotNull = _NotNull;
-
-        public static IEnumerable<RichRule> ParseRules (AbstractString text) {
-            // FIXME: Optimize this
-            var tstr = text.ToString();
-            return RuleRegex.Matches(tstr).Cast<Match>()
-                .Select((match) => {
-                    if (!match.Success)
-                        return default;
-
-                    var key = new AbstractString(tstr, match.Groups[1].Index, match.Groups[1].Length);
-                    var value = new AbstractString(tstr, match.Groups[2].Index, match.Groups[2].Length);
-                    return new RichRule {
-                        Key = key,
-                        Value = value
-                    };
-                }).Where(NotNull);
+                    case '\0':
+                    case ';':
+                        if (!valueStart.HasValue) {
+                            if (ch != '\0')
+                                parseErrors.Add(new RichParseError {
+                                    Text = text,
+                                    Offset = i,
+                                    Message = "Unexpected ;"
+                                });
+                        } else {
+                            result.Add(new RichRule {
+                                Key = new AbstractString(ref text, keyStart, keyEnd.Value - keyStart),
+                                Value = new AbstractString(ref text, valueStart.Value, i - valueStart.Value),
+                            });
+                            keyStart = i + 1;
+                            keyEnd = valueStart = null;
+                        }
+                        break;
+                }
+            }
+            return result;
         }
     }
 
     public delegate void RichStyleApplier (ref RichStyle style, ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state);
 
+    public struct RichParseError {
+        public AbstractString Text;
+        public int Offset;
+        public string Message;
+
+        public override string ToString () {
+            return $"'{Message}' at {Offset}";
+        }
+    }
+
     public struct RichRule {
         public AbstractString Key;
         public AbstractString Value;
+
+        public bool Equals (RichRule rhs) {
+            return Key.TextEquals(rhs.Key, StringComparison.Ordinal) &&
+                Value.TextEquals(rhs.Value, StringComparison.Ordinal);
+        }
+
+        public override int GetHashCode () {
+            return Key.GetHashCode() ^ Value.GetHashCode();
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is RichRule rr)
+                return Equals(rr);
+            else
+                return false;
+        }
+
+        public override string ToString () {
+            return $"{Key}: {Value}";
+        }
     }
 
     public struct RichStyle {
@@ -304,6 +354,8 @@ namespace Squared.Render.Text {
     public class RichTextConfiguration : IEquatable<RichTextConfiguration> {
         private static readonly Dictionary<string, Color?> SystemNamedColorCache = new Dictionary<string, Color?>();
 
+        public event Action<RichTextConfiguration, RichParseError> OnParseError;
+
         private int Version;
         public Dictionary<string, Color> NamedColors;
         public Dictionary<string, IGlyphSource> GlyphSources;
@@ -378,7 +430,7 @@ namespace Squared.Render.Text {
 
         private void AppendRichRange (
             ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
-            bool? overrideSuppress, ref DenseList<AsyncRichImage> referencedImages
+            bool? overrideSuppress, ref DenseList<AsyncRichImage> referencedImages, ref DenseList<RichParseError> parseErrors
         ) {
             int currentRangeStart = 0;
             RichStyle style;
@@ -449,7 +501,7 @@ namespace Squared.Render.Text {
                             referencedImages.Add(ref ai);
                         }
                     } else if (commandMode && bracketed.Contains(":")) {
-                        foreach (var rule in RichText.ParseRules(bracketed)) {
+                        foreach (var rule in RichText.ParseRules(bracketed, ref parseErrors)) {
                             var value = rule.Value.ToString();
                             switch (rule.Key.ToString()) {
                                 case "color":
@@ -505,7 +557,7 @@ namespace Squared.Render.Text {
                             // TODO: Store an AbstractString instead?
                             state.MarkedStrings.Add(bracketed.ToString());
                             if (action == MarkedStringAction.RichText)
-                                AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref referencedImages);
+                                AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref referencedImages, ref parseErrors);
                             else if (action != MarkedStringAction.PlainText) {
                                 var initialIndex = layoutEngine.currentCharacterIndex;
                                 var m = new LayoutMarker(initialIndex, initialIndex + l - 1) {
@@ -538,13 +590,18 @@ namespace Squared.Render.Text {
             string styleName, bool? overrideSuppress = null
         ) {
             var referencedImages = new DenseList<AsyncRichImage>();
+            var parseErrors = new DenseList<RichParseError>();
 
             try {
                 styleName = styleName ?? DefaultStyle;
                 if (!string.IsNullOrWhiteSpace(styleName) && Styles.TryGetValue(styleName, out RichStyle defaultStyle))
                     ApplyStyle(ref layoutEngine, ref state, ref defaultStyle);
 
-                AppendRichRange(ref layoutEngine, ref state, text, overrideSuppress, ref referencedImages);
+                AppendRichRange(ref layoutEngine, ref state, text, overrideSuppress, ref referencedImages, ref parseErrors);
+
+                if (OnParseError != null)
+                    foreach (var pe in parseErrors)
+                        OnParseError(this, pe);
             } finally {
                 state.Reset(ref layoutEngine);
             }
@@ -632,6 +689,10 @@ namespace Squared.Render.Text {
 
         public void Invalidate () {
             Version++;
+        }
+
+        public override int GetHashCode () {
+            return Version;
         }
 
         public bool Equals (RichTextConfiguration other) {

@@ -37,10 +37,18 @@ namespace Squared.Util {
             return list.CountWhere(predicate) == list.Count;
         }
 
-        public static DenseList<T> Distinct<T> (this DenseList<T> list, IEqualityComparer<T> comparer = null) {
+        public static DenseList<T> Distinct<T> (this DenseList<T> list, IEqualityComparer<T> comparer = null, HashSet<T> hash = null) {
             comparer = EqualityComparer<T>.Default;
 
-            var hash = (list.Count > 32) ? new HashSet<T>(list.Count, comparer) : null;
+            hash = hash ??
+                (
+                    // FIXME: Make this larger?
+                    (list.Count > 32) 
+                        ? new HashSet<T>(list.Count, comparer) 
+                        : null
+                );
+            hash?.Clear();
+
             var result = new DenseList<T>();
             for (int i = 0, c = list.Count; i < c; i++) {
                 list.GetItem(i, out T item);
@@ -59,6 +67,8 @@ namespace Squared.Util {
         public static DenseList<U> SelectMany<T, U> (this DenseList<T> list, Func<T, DenseList<U>> selector) {
             if (list.Count == 0)
                 return default;
+            else if (list.Count == 1)
+                return selector(list[0]);
 
             var result = new DenseList<U>();
             for (int i = 0, c = list.Count; i < c; i++) {
@@ -72,6 +82,8 @@ namespace Squared.Util {
         public static DenseList<U> SelectMany<T, U> (this DenseList<T> list, Func<T, IEnumerable<U>> selector) {
             if (list.Count == 0)
                 return default;
+            else if (list.Count == 1)
+                return selector(list[0]).ToDenseList();
 
             var result = new DenseList<U>();
             foreach (var item in list) {

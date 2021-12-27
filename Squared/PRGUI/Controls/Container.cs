@@ -290,10 +290,8 @@ namespace Squared.PRGUI.Controls {
             } else {
                 ok = context.Layout.TryMeasureContent(LayoutKey, out contentRect);
             }
-            if (ok) {
-                contentRect = contentRect;
+            if (ok)
                 contentBounds = contentRect.Size;
-            }
             HasContentBounds = ok;
             return ok;
         }

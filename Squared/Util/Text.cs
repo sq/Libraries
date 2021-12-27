@@ -386,9 +386,9 @@ namespace Squared.Util.Text {
         }
 
         public override int GetHashCode () {
-            return (String?.GetHashCode() ?? 0) ^
-                (StringBuilder?.GetHashCode() ?? 0) ^
-                (ArraySegment.Array?.GetHashCode() ?? 0);
+            // FIXME: An accurate hash would be ideal here, but AbstractStrings really should not be used
+            //  as container keys since they're mutable
+            return 0;
         }
 
         public override bool Equals (object obj) {

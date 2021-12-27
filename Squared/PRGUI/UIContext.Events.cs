@@ -29,6 +29,10 @@ namespace Squared.PRGUI {
             public Control Source;
             public string Name;
 
+            public override int GetHashCode () {
+                return Name?.GetHashCode() ?? 0;
+            }
+
             public bool Equals (UnhandledEvent rhs) {
                 return (Source == rhs.Source) &&
                     (Name == rhs.Name);

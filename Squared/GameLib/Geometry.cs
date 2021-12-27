@@ -284,6 +284,11 @@ namespace Squared.Game {
             return !lhs.Equals(rhs);
         }
 
+        public override int GetHashCode () {
+            // FIXME
+            return 0;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector4 ToVector4 () {
             return new Vector4(TopLeft.X, TopLeft.Y, BottomRight.X, BottomRight.Y);

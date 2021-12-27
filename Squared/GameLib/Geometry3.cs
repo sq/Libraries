@@ -240,6 +240,11 @@ namespace Squared.Game {
         public static bool operator != (Bounds3 lhs, Bounds3 rhs) {
             return !lhs.Equals(rhs);
         }
+
+        public override int GetHashCode () {
+            // FIXME
+            return 0;
+        }
     }
 
     public class Polygon3 : IEnumerable<Vector3>, IHasBounds3 {

@@ -1654,6 +1654,10 @@ namespace Squared.Render {
                 return (other.Horizontal == Horizontal) && (other.Vertical == Vertical);
             }
 
+            public override int GetHashCode () {
+                return Horizontal.GetHashCode() ^ Vertical.GetHashCode();
+            }
+
             public override bool Equals (object obj) {
                 if (obj is GlyphPixelAlignment)
                     return Equals((GlyphPixelAlignment)obj);

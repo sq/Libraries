@@ -676,6 +676,10 @@ namespace Squared.PRGUI {
             Bottom = bottom;
         }
 
+        public override int GetHashCode () {
+            return 0;
+        }
+
         public bool Equals (Margins rhs) {
             return Equals(ref rhs);
         }

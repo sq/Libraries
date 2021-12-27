@@ -430,6 +430,10 @@ namespace Squared.Render {
             public float Seconds;
             public int? FrameIndex;
 
+            public override int GetHashCode () {
+                return Seconds.GetHashCode();
+            }
+
             public bool Equals (FrameParams rhs) {
                 return (Seconds == rhs.Seconds) && (FrameIndex == rhs.FrameIndex);
             }

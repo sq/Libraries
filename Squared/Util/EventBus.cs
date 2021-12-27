@@ -86,7 +86,7 @@ namespace Squared.Util.Event {
     }
 
     public interface IEventInfo<out T> : IEventInfo {
-        T Arguments { get; }
+        new T Arguments { get; }
     }
 
     // FIXME: Make this a struct?
