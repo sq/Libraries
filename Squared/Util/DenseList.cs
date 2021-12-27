@@ -371,6 +371,17 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T FirstOrDefault (Func<T, bool> predicate, T defaultValue = default) {
+            if (Count <= 0)
+                return defaultValue;
+            var index = IndexOf(predicate);
+            if (index < 0)
+                return defaultValue;
+            else
+                return this[index];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Last () {
             if (Count <= 0)
                 throw new ArgumentOutOfRangeException("List is empty");
@@ -574,6 +585,14 @@ namespace Squared.Util {
             return Items.ReserveSpace(count);
         }
 
+        public bool Remove (T item) {
+            var index = IndexOf(ref item);
+            if (index < 0)
+                return false;
+            RemoveAt(index);
+            return true;
+        }
+
         public void RemoveAt (int index) {
             // FIXME: Slow
             if ((index < Storage.Count) && !HasList) {
@@ -744,7 +763,7 @@ namespace Squared.Util {
                 field = value.Value;
         }
 
-        private int Find_Small<TUserData> (Predicate<TUserData> predicate, ref TUserData userData) {
+        private int IndexOf_Small<TUserData> (Predicate<TUserData> predicate, ref TUserData userData) {
             if ((Storage.Count > 0) && predicate(ref Storage.Item1, ref userData))
                 return 0;
             if ((Storage.Count > 1) && predicate(ref Storage.Item2, ref userData))
@@ -756,7 +775,7 @@ namespace Squared.Util {
             return -1;
         }
 
-        private int Find_Large<TUserData> (Predicate<TUserData> predicate, ref TUserData userData) {
+        private int IndexOf_Large<TUserData> (Predicate<TUserData> predicate, ref TUserData userData) {
             var buffer = Items.GetBuffer();
             for (int i = 0, c = Items.Count; i < c; i++) {
                 if (predicate(ref buffer.Array[i + buffer.Offset], ref userData))
@@ -766,15 +785,15 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int Find<TUserData> (Predicate<TUserData> predicate, TUserData userData) {
+        public int IndexOf<TUserData> (Predicate<TUserData> predicate, TUserData userData) {
             if (HasList) {
-                return Find_Large(predicate, ref userData);
+                return IndexOf_Large(predicate, ref userData);
             } else {
-                return Find_Small(predicate, ref userData);
+                return IndexOf_Small(predicate, ref userData);
             }
         }
 
-        private int Find_Small (Predicate predicate) {
+        private int IndexOf_Small (Predicate predicate) {
             if ((Storage.Count > 0) && predicate(ref Storage.Item1))
                 return 0;
             if ((Storage.Count > 1) && predicate(ref Storage.Item2))
@@ -786,7 +805,7 @@ namespace Squared.Util {
             return -1;
         }
 
-        private int Find_Large (Predicate predicate) {
+        private int IndexOf_Large (Predicate predicate) {
             var buffer = Items.GetBuffer();
             for (int i = 0, c = Items.Count; i < c; i++) {
                 if (predicate(ref buffer.Array[i + buffer.Offset]))
@@ -796,15 +815,15 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int Find (Predicate predicate) {
+        public int IndexOf (Predicate predicate) {
             if (HasList) {
-                return Find_Large(predicate);
+                return IndexOf_Large(predicate);
             } else {
-                return Find_Small(predicate);
+                return IndexOf_Small(predicate);
             }
         }
 
-        private int Find_Small (Func<T, bool> predicate) {
+        private int IndexOf_Small (Func<T, bool> predicate) {
             if ((Storage.Count > 0) && predicate(Storage.Item1))
                 return 0;
             if ((Storage.Count > 1) && predicate(Storage.Item2))
@@ -816,7 +835,7 @@ namespace Squared.Util {
             return -1;
         }
 
-        private int Find_Large (Func<T, bool> predicate) {
+        private int IndexOf_Large (Func<T, bool> predicate) {
             var buffer = Items.GetBuffer();
             for (int i = 0, c = Items.Count; i < c; i++) {
                 if (predicate(buffer.Array[i + buffer.Offset]))
@@ -826,12 +845,28 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int Find (Func<T, bool> predicate) {
+        public int IndexOf (Func<T, bool> predicate) {
             if (HasList) {
-                return Find_Large(predicate);
+                return IndexOf_Large(predicate);
             } else {
-                return Find_Small(predicate);
+                return IndexOf_Small(predicate);
             }
+        }
+
+        public T Find (Predicate predicate) {
+            var index = IndexOf(predicate);
+            if (index < 0)
+                return default;
+            else
+                return this[index];
+        }
+
+        public T Find (Func<T, bool> predicate) {
+            var index = IndexOf(predicate);
+            if (index < 0)
+                return default;
+            else
+                return this[index];
         }
 
         private void Sort_Small<TComparer> (TComparer comparer, int[] indices)

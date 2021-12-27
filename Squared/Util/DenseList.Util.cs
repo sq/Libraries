@@ -30,7 +30,7 @@ namespace Squared.Util {
             if (list.Count == 0)
                 return false;
             else
-                return list.Find(predicate) >= 0;
+                return list.IndexOf(predicate) >= 0;
         }
 
         public static bool All<T> (this DenseList<T> list, Func<T, bool> predicate) {
