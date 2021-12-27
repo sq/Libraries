@@ -107,13 +107,6 @@ namespace Squared.Util {
                 return new DenseList<T>.Query<T>(ref list, DenseList<T>.NullSelector, predicate);
         }
 
-        public static DenseList<T>.Query<U>.SelectQuery<U> Select<T, U> (this DenseList<T>.Query<U> query, Func<U, U> selector) {
-            return new DenseList<T>.Query<U>.SelectQuery<U> {
-                Query = query,
-                Selector = selector
-            };
-        }
-
         public static DenseList<T>.Query<U>.SelectQuery<V> Select<T, U, V> (this DenseList<T>.Query<U> query, Func<U, V> selector) {
             return new DenseList<T>.Query<U>.SelectQuery<V> {
                 Query = query,

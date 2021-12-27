@@ -293,6 +293,20 @@ namespace Squared.Util {
             _BufferSize = newBuffer.Count;
         }
 
+        public void InsertOrdered (int index, T item) {
+            InsertOrdered(index, ref item);
+        }
+
+        public void InsertOrdered (int index, ref T item) {
+            EnsureCapacity(_Count + 1);
+            if ((index < 0) || (index > _Count + 1))
+                throw new ArgumentOutOfRangeException(nameof(index));
+            if (index < Count)
+                Array.Copy(_Items, index + _BufferOffset, _Items, index + _BufferOffset + 1, Count - index);
+            _Items[index + _BufferOffset] = item;
+            _Count += 1;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureCapacity (int capacity) {
             if (_BufferSize >= capacity)
@@ -336,10 +350,6 @@ namespace Squared.Util {
             EnsureCapacity(newCount);
 
             int insertOffset = _BufferOffset + newCount - count;
-            /*
-            for (var i = 0; i < count; i++)
-                _Items[insertOffset + i] = items[i + sourceOffset];
-            */
             Array.Copy(items, sourceOffset, _Items, insertOffset, count);
 
             _Count = newCount;
@@ -580,11 +590,14 @@ namespace Squared.Util {
             Array.Sort(_Items, _BufferOffset, _Count, comparer);
         }
 
-        public void FastCLRSort<TComparer> (TComparer comparer)
+        public void FastCLRSort<TComparer> (TComparer comparer, int offset = 0, int count = int.MaxValue)
             where TComparer : IComparer<T>
         {
             var items = new ArraySegment<T>(_Items, _BufferOffset, _Count);
-            Util.Sort.FastCLRSort(items, comparer, 0, _Count);
+            count = Math.Min(count, _Count - offset);
+            if (count < 0)
+                throw new ArgumentOutOfRangeException("offset or count out of range");
+            Util.Sort.FastCLRSort(items, comparer, offset, count);
         }
 
         public void IndexedSort<TComparer> (TComparer comparer, int[] indices)
@@ -595,11 +608,14 @@ namespace Squared.Util {
             Util.Sort.IndexedSort(items, _indices, comparer);
         }
 
-        public void FastCLRSortRef<TComparer> (TComparer comparer)
+        public void FastCLRSortRef<TComparer> (TComparer comparer, int offset = 0, int count = int.MaxValue)
             where TComparer : IRefComparer<T>
         {
             var items = new ArraySegment<T>(_Items, _BufferOffset, _Count);
-            Util.Sort.FastCLRSortRef(items, comparer, 0, _Count);
+            count = Math.Min(count, _Count - offset);
+            if (count < 0)
+                throw new ArgumentOutOfRangeException("offset or count out of range");
+            Util.Sort.FastCLRSortRef(items, comparer, offset, count);
         }
 
         public void IndexedSortRef<TComparer> (TComparer comparer, int[] indices)

@@ -330,5 +330,61 @@ namespace Squared.Util {
             }
             Console.WriteLine(sw.ElapsedMilliseconds);
         }
+
+        [Test]
+        public void Queries () {
+            var items = new DenseList<int> { 1, 2, 4, 8, 16, 24, 32, 16 };
+            var below = items.Where(i => i < 16);
+            var above = items.Where(i => i >= 16);
+
+            Assert.AreEqual(
+                new int[] { 1, 2, 4, 8 },
+                below.ToArray()
+            );
+            Assert.AreEqual(
+                new int[] { 16, 24, 32, 16 },
+                above.ToArray()
+            );
+
+            var distinct = items.Distinct();
+            Assert.AreEqual(
+                new int[] { 1, 2, 4, 8, 16, 24, 32 },
+                distinct.ToArray()
+            );
+
+            var shifted = below.Select(i => i + 1);
+            Assert.AreEqual(
+                new int[] { 2, 3, 5, 9 },
+                shifted.ToArray()
+            );
+
+            var shiftedThenSelected = items.Select(i => i - 1).Where(i => i < 16);
+            Assert.AreEqual(
+                new int[] { 0, 1, 3, 7, 15, 15 },
+                shiftedThenSelected.ToArray()
+            );
+
+            Assert.True(items.Any());
+            Assert.True(items.All(i => i > 0));
+            Assert.False(items.All(i => i > 24));
+            Assert.True(items.Any(i => i > 24));
+            Assert.False(items.Any(i => i > 48));
+
+            var expanded = below.ToDenseList().SelectMany(i => new[] { i, i });
+            Assert.AreEqual(
+                new int[] { 1, 1, 2, 2, 4, 4, 8, 8 },
+                expanded.ToArray()
+            );
+        }
+
+        [Test]
+        public void SortSubset () {
+            var items = new DenseList<int> { 16, 14, 15, 2, 3, 1, 4 };
+            items.SortNonRef(2, 4, Comparer<int>.Default);
+            Assert.AreEqual(
+                new int[] { 16, 14, 1, 2, 3, 15, 4 },
+                items.ToArray()
+            );
+        }
     }
 }

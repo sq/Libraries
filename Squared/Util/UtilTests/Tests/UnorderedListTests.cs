@@ -25,6 +25,23 @@ namespace Squared.Util {
         }
 
         [Test]
+        public void InsertOrdered () {
+            var l = new UnorderedList<string>();
+
+            l.InsertOrdered(0, "b");
+            l.InsertOrdered(0, "a");
+            l.InsertOrdered(2, "d");
+            l.InsertOrdered(2, "c");
+            l.InsertOrdered(4, "e");
+            l.InsertOrdered(0, "-");
+
+            Assert.AreEqual(
+                new string[] { "-", "a", "b", "c", "d", "e" },
+                l.ToArray()
+            );                
+        }
+
+        [Test]
         public void RemoveAt () {
             var l = new UnorderedList<int>(new int[] { 1, 2, 3, 4, 5 });
 

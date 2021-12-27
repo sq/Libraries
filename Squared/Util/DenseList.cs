@@ -286,6 +286,32 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Insert (int index, T item) {
+            Insert(index, ref item);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Insert (int index, ref T item) {
+            if (index == Count) {
+                Add(ref item);
+                return;
+            }
+            // FIXME: Add fast path
+            Insert_Slow(index, ref item);
+            /*
+            if ((Items != null) || (Count == 4))
+                Insert_Slow(index, ref item);
+            else
+                Insert_Fast(index, ref item);
+            */
+        }
+
+        private void Insert_Slow (int index, ref T item) {
+            EnsureList();
+            Items.InsertOrdered(index, ref item);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GetItem (int index, out T result) {
             if (Items != null) {
                 Items.DangerousGetItem(index, out result);
@@ -653,10 +679,11 @@ namespace Squared.Util {
             return result;
         }
 
-        public int RemoveWhere (Func<T, bool> predicate) {
+        public int RemoveAll (Func<T, bool> predicate) {
             int result = 0;
             for (int i = Count - 1; i >= 0; i--) {
-                if (!predicate(this[i]))
+                GetItem(i, out T item);
+                if (!predicate(item))
                     continue;
                 RemoveAt(i);
                 result++;
@@ -982,9 +1009,35 @@ namespace Squared.Util {
         /// </summary>
         /// <param name="indices">The element indices to use for sorting.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Sort<TComparer> (int offset, int count, TComparer comparer)
+            where TComparer : IRefComparer<T>
+        {
+            if ((offset == 0) && (count == Count)) {
+                Sort(comparer, null);
+                return;
+            }
+
+            if (!HasList)
+                EnsureList();
+
+            Items.FastCLRSortRef(comparer, offset, count);
+        }
+
+        /// <summary>
+        /// Performs an in-place sort of the DenseList.
+        /// NOTE: If the list is small this method may sort the values instead of the indices.
+        /// </summary>
+        /// <param name="indices">The element indices to use for sorting.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SortNonRef (IComparer<T> comparer, int[] indices = null) {
             var wrapped = new RefComparerAdapter<IComparer<T>, T>(comparer);
             Sort(wrapped, indices);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SortNonRef (int offset, int count, IComparer<T> comparer) {
+            var wrapped = new RefComparerAdapter<IComparer<T>, T>(comparer);
+            Sort(offset, count, wrapped);
         }
 
         public void Dispose () {
