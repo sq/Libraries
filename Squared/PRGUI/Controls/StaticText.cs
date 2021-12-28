@@ -586,9 +586,6 @@ namespace Squared.PRGUI.Controls {
 
             UpdateLineBreak(ref context, decorations, settings.ContentBox.Width, ref computedPadding, ref computedMargins);
 
-            if (this is HyperText)
-                ;
-
             var layout = GetCurrentLayout(false, false);
             textScale *= ComputeScaleToFit(layout.Size, layout.UnconstrainedSize, ref settings.Box, ref computedPadding);
             textScale = ApplyScaleConstraints(textScale);
@@ -636,9 +633,14 @@ namespace Squared.PRGUI.Controls {
                 DoVisualizeLayout(ref renderer, ca, cb, textOffset, scaledSize);
 
             // FIXME: Why is this here?
-            renderer.Layer += 1;
+            /*
+            if (layout.DrawCalls.Count > 0)
+                renderer.Layer += 1;
+            */
 
             var segment = layout.DrawCalls;
+            if (segment.Count <= 0)
+                return;
 
             if (LayoutFilter != null) {
                 var size = layout.DrawCalls.Count;
@@ -685,6 +687,8 @@ namespace Squared.PRGUI.Controls {
                     contentBox.TopLeft + textOffset + ca, contentBox.BottomRight + textOffset + ca, 1f, 1f,
                     Color.Transparent, Color.Transparent, Color.Red, layer: 3
                 );
+
+            renderer.Layer += 1;
         }
 
         protected void UpdateLineBreak (ref UIOperationContext context, IDecorator decorations, float? currentWidth, ref Margins computedPadding, ref Margins computedMargins) {

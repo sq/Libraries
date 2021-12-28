@@ -244,6 +244,9 @@ namespace Squared.Render.Text {
         public HorizontalAlignment alignment;
         public uint?               replacementCodepoint;
         public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
+        public Vector4             userData;
+        public Vector4             imageUserData;
+        public bool                clearUserData;
 
         public float spacing {
             get {
@@ -264,7 +267,6 @@ namespace Squared.Render.Text {
         public int     rowIndex => _rowIndex;
         public int     colIndex => _colIndex;
         public int     wordIndex => _wordIndex;
-        bool           wordWrapSuppressed;
         public float   currentLineMaxX, currentLineMaxXUnconstrained;
         public float?  currentLineBreakAtX;
         float          currentLineWrapPointLeft, currentLineWhitespaceMaxX;
@@ -275,7 +277,8 @@ namespace Squared.Render.Text {
         float          maxLineSpacing;
         Vector2        wordStartOffset;
         int            wordStartColumn;
-        private bool   ownsBuffer, suppress, suppressUntilNextLine, previousGlyphWasDead, newLinePending;
+        private bool   ownsBuffer, suppress, suppressUntilNextLine, previousGlyphWasDead, 
+            newLinePending, wordWrapSuppressed;
         private AbstractTextureReference lastUsedTexture;
         private DenseList<AbstractTextureReference> usedTextures;
         private DenseList<Bounds> boxes;
@@ -462,7 +465,7 @@ namespace Squared.Render.Text {
 
             for (var i = firstGlyphIndex; i <= lastGlyphIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
-                if (dc.UserData.Y > 0)
+                if ((dc.UserData.Y > 0) || (dc.UserData.Z != 0))
                     continue;
                 var newCharacterX = (xOffset) + (dc.Position.X - firstOffset.X);
                 if (i == firstGlyphIndex)
@@ -864,8 +867,14 @@ namespace Squared.Render.Text {
                 AddColor = addColor,
                 Origin = new Vector2(0, 0),
                 // HACK
-                UserData = new Vector4(hardXAlignment.HasValue ? 1 : 0, hardYAlignment.HasValue ? 1 : 0, 0, (hardYAlignment.HasValue ? 1 : 1 - verticalAlignment))
+                UserData = new Vector4(
+                    hardXAlignment.HasValue ? 1 : 0, 
+                    hardYAlignment.HasValue ? 1 : 0, 
+                    1, // This is an image
+                    (hardYAlignment.HasValue ? 1 : 1 - verticalAlignment)
+                )
             };
+            clearUserData = true;
             var estimatedBounds = dc.EstimateDrawBounds();
             estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
             estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
@@ -899,6 +908,8 @@ namespace Squared.Render.Text {
             dc.Position += actualPosition;
             // FIXME: Margins and stuff
             AppendDrawCall(ref dc, overrideX ?? x, 1, false, currentLineSpacing, 0f, x, ref estimatedBounds, false, false);
+            maxY = Math.Max(maxY, characterOffset.Y + estimatedBounds.Size.Y);
+            maxYUnconstrained = Math.Max(maxYUnconstrained, characterOffsetUnconstrained.Y + estimatedBounds.Size.Y);
 
             if (createBox) {
                 var mx = (margin?.X ?? 0) / 2f;
@@ -1458,11 +1469,16 @@ namespace Squared.Render.Text {
                     int j = result.Offset + result.Count - 1;
                     while (i < j) {
                         var temp = result.Array[i];
+                        temp.UserData = (temp.UserData.Z != 0) ? imageUserData : userData;
                         result.Array[i] = result.Array[j];
                         result.Array[j] = temp;
                         i++;
                         j--;
                     }
+                } else if (clearUserData) {
+                    for (int i = 0, l = result.Count; i < l; i++)
+                        result.Array[i + result.Offset].UserData = 
+                            (result.Array[i + result.Offset].UserData.Z != 0) ? imageUserData : userData;
                 }
             }
 

@@ -439,10 +439,14 @@ namespace Squared.Util.Text {
                     return (SubstringLength > 0) ? SubstringLength : (String.Length - SubstringOffset);
                 else if (StringBuilder != null)
                     return (SubstringLength > 0) ? SubstringLength : (StringBuilder.Length - SubstringOffset);
+                else if (ArraySegment.Array == null)
+                    return 0;
                 else
                     return (SubstringLength > 0) ? SubstringLength : ArraySegment.Count - SubstringOffset;
             }
         }
+
+        public int Offset => SubstringOffset;
 
         public bool IsNullOrWhiteSpace {
             get {

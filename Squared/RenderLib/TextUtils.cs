@@ -75,6 +75,8 @@ namespace Squared.Render.Text {
         private char? _ReplacementCharacter;
         private uint[] _WordWrapCharacters;
         private bool _AwaitingDependencies;
+        private Vector4? _UserData;
+        private Vector4? _ImageUserData;
 
         private List<AsyncRichImage> _Dependencies = null;
         private Dictionary<Pair<int>, LayoutMarker> _Markers = null;
@@ -767,6 +769,30 @@ namespace Squared.Render.Text {
             set => InvalidatingValueAssignment(ref _IncludeTrailingWhitespace, value);
         }
 
+        /// <summary>
+        /// If set, text draw calls will have their UserData value set to this
+        /// </summary>
+        public Vector4? UserData {
+            get {
+                return _UserData;
+            }
+            set {
+                InvalidatingNullableAssignment(ref _UserData, value);
+            }
+        }
+
+        /// <summary>
+        /// If set, image draw calls will have their UserData value set to this
+        /// </summary>
+        public Vector4? ImageUserData {
+            get {
+                return _ImageUserData;
+            }
+            set {
+                InvalidatingNullableAssignment(ref _ImageUserData, value);
+            }
+        }
+
         public bool IsValid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
@@ -825,6 +851,9 @@ namespace Squared.Render.Text {
                 expandHorizontallyWhenAligning = _ExpandHorizontallyWhenAligning,
                 splitAtWrapCharactersOnly = _SplitAtWrapCharactersOnly,
                 includeTrailingWhitespace = _IncludeTrailingWhitespace,
+                userData = _UserData ?? Vector4.Zero,
+                imageUserData = _ImageUserData ?? _UserData ?? Vector4.Zero,
+                clearUserData = _UserData.HasValue
             };
 
             if (_WordWrapCharacters != null)
@@ -880,6 +909,7 @@ namespace Squared.Render.Text {
             this.SplitAtWrapCharactersOnly = source.SplitAtWrapCharactersOnly;
             this.IncludeTrailingWhitespace = source.IncludeTrailingWhitespace;
             this.DesiredWidth = source.DesiredWidth;
+            _AwaitingDependencies = false;
         }
 
         /// <summary>
@@ -959,6 +989,7 @@ namespace Squared.Render.Text {
                             _RichTextConfiguration.Append(ref le, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
                         _RichTextConfiguration.KerningAdjustments = ka;
                     } else {
+                        _AwaitingDependencies = false;
                         le.AppendText(glyphSource, _Text, _KerningAdjustments);
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             le.AppendText(glyphSource, TruncatedIndicator, _KerningAdjustments, overrideSuppress: false);

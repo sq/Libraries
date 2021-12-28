@@ -339,6 +339,10 @@ namespace Squared.Render.Text {
         /// The processor generated new rich text, so process that (gross)
         /// </summary>
         RichText = 3,
+        /// <summary>
+        /// The processor failed to process the text
+        /// </summary>
+        Error = 4
     }
 
     /// <summary>
@@ -459,6 +463,12 @@ namespace Squared.Render.Text {
                     } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed.ToString(), out image)) {
                         if (!DisableImages)
                             AppendImage(ref layoutEngine, image);
+                        else
+                            parseErrors.Add(new RichParseError {
+                                Offset = bracketed.Offset,
+                                Message = "Images are disabled",
+                                Text = bracketed
+                            });
                         ai = new AsyncRichImage(ref image);
                         referencedImages.Add(ref ai);
                     } else if (
@@ -467,9 +477,14 @@ namespace Squared.Render.Text {
                     ) {
                         var currentX1 = 0f;
                         var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
-                        if (DisableImages)
+                        if (DisableImages) {
                             referencedImages.Add(ai);
-                        else if (ai.TryGetValue(out RichImage ri)) {
+                            parseErrors.Add(new RichParseError {
+                                Offset = bracketed.Offset,
+                                Message = "Images are disabled",
+                                Text = bracketed
+                            });
+                        } else if (ai.TryGetValue(out RichImage ri)) {
                             AppendImage(ref layoutEngine, ri);
                             referencedImages.Add(ref ai);
                         } else if (ai.Width.HasValue) {
@@ -532,6 +547,13 @@ namespace Squared.Render.Text {
                                     else
                                         state.GlyphSource = null;
                                     break;
+                                default:
+                                    parseErrors.Add(new RichParseError {
+                                        Offset = rule.Key.Offset,
+                                        Message = "Unrecognized rule",
+                                        Text = rule.Key
+                                    });
+                                    break;
                             }
                         }
                     } else if (!commandMode) {
@@ -551,6 +573,14 @@ namespace Squared.Render.Text {
                         };
                         if (MarkedStringProcessor != null)
                             action = MarkedStringProcessor(ref astr, id, ref markedState, ref layoutEngine);
+
+                        if (action == MarkedStringAction.Error)
+                            parseErrors.Add(new RichParseError {
+                                Message = "Processing failed",
+                                Offset = bracketed.Offset,
+                                Text = bracketed,
+                            });
+
                         if (action != MarkedStringAction.Omit) {
                             var l = astr.Length;
                             // FIXME: Omit this too?
@@ -572,6 +602,7 @@ namespace Squared.Render.Text {
                                 AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
                             }
                         }
+
                         if (MarkedStringProcessor != null)
                             markedState.Reset(ref layoutEngine);
                     } else {
@@ -673,7 +704,7 @@ namespace Squared.Render.Text {
         }
 
         public RichTextConfiguration Clone (bool deep) {
-            return new RichTextConfiguration {
+            var result = new RichTextConfiguration {
                 NamedColors = CloneDictionary(deep, NamedColors),
                 GlyphSources = CloneDictionary(deep, GlyphSources),
                 Styles = CloneDictionary(deep, Styles),
@@ -685,6 +716,9 @@ namespace Squared.Render.Text {
                 ColorMode = ColorMode,
                 Version = Version + 1
             };
+            if (OnParseError != null)
+                result.OnParseError += OnParseError;
+            return result;
         }
 
         public void Invalidate () {
