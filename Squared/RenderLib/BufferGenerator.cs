@@ -69,6 +69,8 @@ namespace Squared.Render.Internal {
 
             public XNABufferPair<TVertex> Buffer;
 
+            internal bool AddedToList = false;
+
             public HardwareBufferEntry () {
             }
 
@@ -318,13 +320,13 @@ namespace Squared.Render.Internal {
                 lock (_StaticStateLock)
                     StaticReset(frameIndex, RenderManager);
 
-                _ReusableHardwareBufferEntries.Clear();
                 foreach (var _hb in _PreviouslyUsedHardwareBufferEntries)
                     _ReusableHardwareBufferEntries.Add(_hb);
                 _PreviouslyUsedHardwareBufferEntries.Clear();
 
                 // Return any buffers that were used this frame to the unused state.
                 foreach (var _hb in _UsedHardwareBufferEntries) {
+                    _hb.AddedToList = false;
                     _PreviouslyUsedHardwareBufferEntries.Add(_hb);
 
                     // HACK
@@ -403,7 +405,8 @@ namespace Squared.Render.Internal {
                 HardwareBufferEntry entry;
 
                 if (!_ReusableHardwareBufferEntries.TryPopFront(out entry)) {
-                    // This should almost never happen across frames, but for some reason it does infrequently?
+                    // FIXME: This frequently happens and it seems like the reason is that switching buffer generators to thread local
+                    //  means that parallel prepare ends up creating dozens of generators that all fail to pool enough instances
                     // Console.WriteLine("New entry");
                     entry = new HardwareBufferEntry();
                 } else {
@@ -413,12 +416,17 @@ namespace Squared.Render.Internal {
                 entry.Initialize(
                     newBuffer, vertexOffset, indexOffset, additionalVertexCount, additionalIndexCount
                 );
+                entry.AddedToList = true;
                 _UsedHardwareBufferEntries.Add(entry);
 
                 _FillingHardwareBufferEntry = entry;
 
                 return entry;
             } else {
+                if (!currentBufferEntry.AddedToList) {
+                    currentBufferEntry.AddedToList = true;
+                    _UsedHardwareBufferEntries.Add(currentBufferEntry);
+                }
                 currentBufferEntry.SourceVertexCount += additionalVertexCount;
                 currentBufferEntry.SourceIndexCount += additionalIndexCount;
 
