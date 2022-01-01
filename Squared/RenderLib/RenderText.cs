@@ -1340,7 +1340,7 @@ namespace Squared.Render.Text {
         ) {
             if (recordUsedTextures && (drawCall.Textures.Texture1 != lastUsedTexture) && (drawCall.Textures.Texture1 != null)) {
                 lastUsedTexture = drawCall.Textures.Texture1;
-                var existingIndex = usedTextures.IndexOf(drawCall.Textures.Texture1);
+                var existingIndex = usedTextures.IndexOf(drawCall.Textures.Texture1, AbstractTextureReference.Comparer.Instance);
                 if (existingIndex < 0)
                     usedTextures.Add(lastUsedTexture);
             }

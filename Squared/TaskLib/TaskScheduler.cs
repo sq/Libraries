@@ -7,6 +7,7 @@ using Squared.Threading;
 
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace Squared.Task {
     public interface ISchedulable {
@@ -218,6 +219,11 @@ namespace Squared.Task {
         const long MaximumSleepLength = Time.SecondInTicks * 60;
 
         private static readonly ThreadLocal<TaskScheduler> _Default = new ThreadLocal<TaskScheduler>();
+        private OnFutureResolved BackgroundTaskOnComplete;
+        private OnFutureResolvedWithData OnResolvedDispatcher, OnResolvedDispatcher_SkipQueue;
+        private MethodInfo mOnResolvedDispatcher, mOnResolvedDispatcher_SkipQueue;
+        private Dictionary<Type, Delegate> OnResolvedDispatchersForType_SkipQueue = 
+                new Dictionary<Type, Delegate>(new ReferenceComparer<Type>());
 
         public BackgroundTaskErrorHandler ErrorHandler = null;
         public Thread MainThread { get; private set; }
@@ -232,6 +238,12 @@ namespace Squared.Task {
         public TaskScheduler (Func<IJobQueue> JobQueueFactory, ITimeProvider timeProvider = null, Thread mainThread = null) {
             MainThread = mainThread ?? Thread.CurrentThread;
             TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
+
+            BackgroundTaskOnComplete = _BackgroundTaskOnComplete;
+            OnResolvedDispatcher = _OnResolvedDispatcher;
+            OnResolvedDispatcher_SkipQueue = _OnResolvedDispatcher_SkipQueue;
+
+            mOnResolvedDispatcher_SkipQueue = GetType().GetMethod("_OnResolvedDispatcher_SkipQueue_Generic", BindingFlags.Instance | BindingFlags.NonPublic);
 
             _JobQueue = JobQueueFactory();
             _SleepWorker = new Internal.WorkerThread<PriorityQueue<SleepItem>>(
@@ -280,7 +292,7 @@ namespace Squared.Task {
                 return _JobQueue.WaitForWorkItems(timeout);
         }
 
-        private void BackgroundTaskOnComplete (IFuture f) {
+        private void _BackgroundTaskOnComplete (IFuture f) {
             using (IsActive) {
                 var e = f.Error;
                 if (e != null)
@@ -307,7 +319,7 @@ namespace Squared.Task {
 
             switch (executionPolicy) {
                 case TaskExecutionPolicy.RunAsBackgroundTask:
-                    future.RegisterOnComplete(BackgroundTaskOnComplete);
+                    future.RegisterOnResolved(BackgroundTaskOnComplete);
                 break;
                 default:
                 break;
@@ -320,7 +332,7 @@ namespace Squared.Task {
 
             switch (executionPolicy) {
                 case TaskExecutionPolicy.RunAsBackgroundTask:
-                    future.RegisterOnComplete(BackgroundTaskOnComplete);
+                    future.RegisterOnResolved(BackgroundTaskOnComplete);
                 break;
                 default:
                 break;
@@ -331,7 +343,7 @@ namespace Squared.Task {
             var future = task.GetFuture();
             switch (executionPolicy) {
                 case TaskExecutionPolicy.RunAsBackgroundTask:
-                    future.RegisterOnComplete(BackgroundTaskOnComplete);
+                    future.RegisterOnResolved(BackgroundTaskOnComplete);
                     break;
             }
             return future;
@@ -341,7 +353,7 @@ namespace Squared.Task {
             var future = task.GetFuture();
             switch (executionPolicy) {
                 case TaskExecutionPolicy.RunAsBackgroundTask:
-                    future.RegisterOnComplete(BackgroundTaskOnComplete);
+                    future.RegisterOnResolved(BackgroundTaskOnComplete);
                     break;
             }
             return future;
@@ -363,59 +375,43 @@ namespace Squared.Task {
             return Start(new SchedulableGeneratorThunk(task), executionPolicy);
         }
 
-        // FIXME: All of these allocate more garbage than they need to, especially in the skip queue path
-
-        public OnFutureResolved Wrap (Action target, bool skipQueueOnMainThread = false) {
-            return (_) => {
-                if (!skipQueueOnMainThread || Thread.CurrentThread != MainThread)
-                    QueueWorkItem(target);
-                else
-                    target();
-            };
+        private void _OnResolvedDispatcher (IFuture future, object handler) {
+            QueueWorkItem(new WorkItemQueueEntry {
+                Action = (Delegate)handler,
+                Arg1 = future
+            });
         }
 
-        public OnFutureResolved<T> Wrap<T> (Action<T> target, bool skipQueueOnMainThread = false) {
-            return (f) => {
-                if (!skipQueueOnMainThread || Thread.CurrentThread != MainThread)
-                    QueueWorkItem(() => target(f.Result2));
+        private void _OnResolvedDispatcher_SkipQueue_Generic<T> (Future<T> future, object _handler) {
+            if (Thread.CurrentThread == MainThread) {
+                if (_handler is Action<T> a)
+                    a(future.Result2);
+                else if (_handler is OnFutureResolved<T> ofrt)
+                    ofrt(future);
+                else if (_handler is OnFutureResolved ofr)
+                    ofr(future);
                 else
-                    target(f.Result2);
-            };
+                    throw new ArgumentOutOfRangeException($"Unsupported handler type: {_handler.GetType()}");
+            } else
+                QueueWorkItem(new WorkItemQueueEntry {
+                    Action = (Delegate)_handler,
+                    Arg1 = future.Result2
+                });
         }
 
-        public OnFutureResolved<T> Wrap<T> (Action<T> target, T defaultValue, T failedValue = default(T), bool skipQueueOnMainThread = false)
-            where T : class
-        {
-            return (f) => {
-                T value = f.Failed
-                    ? failedValue
-                    : (f.Result2 as T) ?? defaultValue;
-
-                if (!skipQueueOnMainThread || Thread.CurrentThread != MainThread)
-                    QueueWorkItem(() => target(value));
+        private void _OnResolvedDispatcher_SkipQueue (IFuture future, object _handler) {
+            if (Thread.CurrentThread == MainThread) {
+                if (_handler is Action a)
+                    a();
+                else if (_handler is OnFutureResolved ofr)
+                    ofr(future);
                 else
-                    target(value);
-            };
-        }
-
-        public OnFutureResolved<T> Wrap<T> (Action<T, Exception> target, bool skipQueueOnMainThread = false) {
-            return (f) => {
-                T _result;
-                Exception _error;
-                f.GetResult(out _result, out _error);
-
-                Action handler = () => {
-                    if (_error != null)
-                        target(default(T), _error);
-                    else
-                        target(_result, null);
-                };
-
-                if (!skipQueueOnMainThread || Thread.CurrentThread != MainThread)
-                    QueueWorkItem(handler);
-                else
-                    handler();
-            };
+                    throw new ArgumentOutOfRangeException($"Unsupported handler type: {_handler.GetType()}");
+            } else
+                QueueWorkItem(new WorkItemQueueEntry {
+                    Action = (Delegate)_handler,
+                    Arg1 = future
+                });            
         }
 
         private void QueuedWhileDisposed () {
@@ -459,13 +455,50 @@ namespace Squared.Task {
             _JobQueue.QueueWorkItemForNextStep(entry);
         }
 
+        private void RegisterOnResolved_Impl (IFuture f, Delegate handler, bool skipQueueOnMainThread = false) {
+            f.RegisterOnResolved(
+                skipQueueOnMainThread
+                    ? OnResolvedDispatcher_SkipQueue
+                    : OnResolvedDispatcher,
+                handler
+            );
+        }
+                
         /// <summary>
         /// Registers an OnResolved handler onto a specified future that will push the onComplete handler
         ///  onto this scheduler's work queue once the future is completed or disposed.
         /// </summary>
         /// <param name="skipQueueOnMainThread">If the future is completed/disposed from the main thread, run the handler synchronously</param>
         public void RegisterOnResolved (IFuture f, Action onComplete, bool skipQueueOnMainThread = false) {
-            f.RegisterOnResolved(Wrap(onComplete, skipQueueOnMainThread));
+            RegisterOnResolved_Impl(f, onComplete, skipQueueOnMainThread);
+        }
+
+        /// <summary>
+        /// Registers an OnResolved handler onto a specified future that will push the onComplete handler
+        ///  onto this scheduler's work queue once the future is completed or disposed.
+        /// </summary>
+        /// <param name="skipQueueOnMainThread">If the future is completed/disposed from the main thread, run the handler synchronously</param>
+        public void RegisterOnResolved (IFuture f, OnFutureResolved onResolved, bool skipQueueOnMainThread = false) {
+            RegisterOnResolved_Impl(f, onResolved, skipQueueOnMainThread);
+        }
+        
+        private void RegisterOnResolved_Impl<T> (Future<T> f, Delegate onComplete, bool skipQueueOnMainThread = false) {
+            if (skipQueueOnMainThread) {
+                var dict = OnResolvedDispatchersForType_SkipQueue;
+                Delegate handler;
+                lock (dict)
+                    dict.TryGetValue(typeof(T), out handler);
+                if (handler == null) {
+                    var genMethod = mOnResolvedDispatcher_SkipQueue;
+                    var method = genMethod.MakeGenericMethod(typeof(T));
+                    handler = Delegate.CreateDelegate(typeof(OnFutureResolvedWithData<T>), this, method, true);
+                    lock (dict)
+                        dict[typeof(T)] = handler;
+                }
+                f.RegisterOnResolved2((OnFutureResolvedWithData<T>)handler, onComplete);
+            } else {
+                f.RegisterOnResolved(OnResolvedDispatcher, onComplete);
+            }
         }
 
         /// <summary>
@@ -474,7 +507,16 @@ namespace Squared.Task {
         /// </summary>
         /// <param name="skipQueueOnMainThread">If the future is completed/disposed from the main thread, run the handler synchronously</param>
         public void RegisterOnResolved<T> (Future<T> f, Action<T> onComplete, bool skipQueueOnMainThread = false) {
-            f.RegisterOnResolved(Wrap(onComplete, skipQueueOnMainThread));
+            RegisterOnResolved_Impl(f, onComplete, skipQueueOnMainThread);
+        }
+
+        /// <summary>
+        /// Registers an OnResolved handler onto a specified future that will push the onComplete handler
+        ///  onto this scheduler's work queue once the future is completed or disposed.
+        /// </summary>
+        /// <param name="skipQueueOnMainThread">If the future is completed/disposed from the main thread, run the handler synchronously</param>
+        public void RegisterOnResolved<T> (Future<T> f, OnFutureResolved<T> onComplete, bool skipQueueOnMainThread = false) {
+            RegisterOnResolved_Impl(f, onComplete, skipQueueOnMainThread);
         }
 
         internal void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, System.Threading.ManualResetEventSlim newSleepEvent) {

@@ -111,6 +111,7 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
+                // FIXME: Use UserData
                 Ready.RegisterOnComplete(Registration.OnComplete(continuation));
             }
 

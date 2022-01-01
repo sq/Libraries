@@ -35,6 +35,8 @@ namespace Squared.Render {
     }
 
     public class Texture2DProvider : ResourceProvider<Texture2D> {
+        private OnFutureResolvedWithData DisposeHandler;
+
         new public TextureLoadOptions DefaultOptions {
             get {
                 return (TextureLoadOptions)base.DefaultOptions;
@@ -55,10 +57,15 @@ namespace Squared.Render {
             source, coordinator, 
             enableThreadedCreate: false, enableThreadedPreload: true
         ) {
+            DisposeHandler = _DisposeHandler;
         }
 
         public Texture2D Load (string name, TextureLoadOptions options, bool cached = true, bool optional = false) {
             return base.LoadSync(name, options, cached, optional);
+        }
+
+        private void _DisposeHandler (IFuture future, object resource) {
+            Coordinator.DisposeResource((IDisposable)resource);
         }
 
         private unsafe static void ApplyColorSpaceConversion (STB.Image img, TextureLoadOptions options) {
@@ -87,9 +94,7 @@ namespace Squared.Render {
             var img = (STB.Image)preloadedData;
             if (async) {
                 var f = img.CreateTextureAsync(Coordinator, !EnableThreadedCreate, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB);
-                f.RegisterOnComplete((_) => {
-                    Coordinator.DisposeResource(img);
-                });
+                f.RegisterOnComplete(DisposeHandler, img);
                 return f;
             } else {
                 using (img)

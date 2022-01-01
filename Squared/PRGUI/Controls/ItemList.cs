@@ -745,7 +745,8 @@ namespace Squared.PRGUI.Controls {
 
             // Any controls left in the value -> control table are unused since we didn't encounter
             //  that value in our first pass
-            SpareBuffer.AddRange(ControlForValue.Values);
+            foreach (var ctl in ControlForValue.Values)
+                SpareBuffer.Add(ctl);
             ControlForValue.Clear();
 
             // Second pass: fill gaps and generate all the controls

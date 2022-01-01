@@ -13,6 +13,10 @@ namespace Squared.Util {
     public static class Interpolators<T>
         where T : struct {
 
+        private static class BoundDefaultCache<U> {
+            public static BoundInterpolator<T, U> Linear = Interpolators<T>.Linear<U>;
+        }
+
         public delegate T LinearFn (T a, T b, float x);
         public delegate T CosineFn (T a, T b, float x);
         public delegate T CubicPFn (T a, T b, T c, T d);
@@ -440,7 +444,7 @@ namespace Squared.Util {
         }
 
         public static BoundInterpolator<T, U> GetBoundDefault<U>() {
-            return Linear<U>;
+            return BoundDefaultCache<U>.Linear;
         }
 
         private static class CacheContainer<U> {

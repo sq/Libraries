@@ -1124,14 +1124,14 @@ namespace Squared.Render {
         internal static void FlushDisposeList (List<IDisposable> list, ref int isActive) {
             Interlocked.Increment(ref isActive);
             try {
-                IDisposable[] pds = null;
+                DenseList<IDisposable> pds = default;
 
                 lock (list) {
                     if (list.Count == 0)
                         return;
 
                     // Prevents a deadlock from recursion
-                    pds = list.ToArray();
+                    pds.AddRange(list);
                     list.Clear();
                 }
 

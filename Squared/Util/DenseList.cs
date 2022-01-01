@@ -445,12 +445,16 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf (T value, IEqualityComparer<T> comparer) {
+        public int IndexOf<TComparer> (T value, TComparer comparer)
+            where TComparer : IEqualityComparer<T>
+        {
             return IndexOf(ref value, comparer);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf (ref T value, IEqualityComparer<T> comparer) {
+        public int IndexOf<TComparer> (ref T value, TComparer comparer)
+            where TComparer : IEqualityComparer<T>
+        {
             var c = Count;
             if (c <= 0)
                 return -1;

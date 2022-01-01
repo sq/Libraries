@@ -80,6 +80,7 @@ namespace Squared.Threading {
             }
 
             public void OnCompleted (Action continuation) {
+                // FIXME: Use UserData
                 var oc = Registration.OnComplete(continuation);
                 ((IFuture)Future).RegisterOnResolved(oc);
             }
@@ -131,6 +132,7 @@ namespace Squared.Threading {
             }
 
             public void OnCompleted (Action continuation) {
+                // FIXME: Use UserData
                 var oc = Registration.OnComplete(continuation);
                 Future.RegisterOnResolved(oc);
             }
@@ -166,6 +168,7 @@ namespace Squared.Threading {
             }
 
             public void OnCompleted (Action continuation) {
+                // FIXME: Use UserData
                 var oc = Registration.OnComplete(continuation);
                 ((IFuture)Future).RegisterOnResolved(oc);
             }
@@ -364,6 +367,13 @@ namespace Squared.Threading {
             return result;
         }
 
+        private static OnFutureResolvedWithData CancelScopeForTask = _CancelScopeForTask;
+
+        private static void _CancelScopeForTask (IFuture future, object _task) {
+            var task = (tTask)_task;
+            task.TryCancelScope();
+        }
+
         public static void BindFuture (this tTask task, IFuture future) {
             if (task.IsCompleted && !task.IsFaulted) {
                 future.Complete();
@@ -377,9 +387,7 @@ namespace Squared.Threading {
                 else
                     future.Complete();
             });
-            future.RegisterOnDispose((_) => {
-                task.TryCancelScope();
-            });
+            future.RegisterOnDispose(CancelScopeForTask, task);
         }
 
         public static void BindFuture<T> (this System.Threading.Tasks.Task<T> task, Future<T> future) {
@@ -391,9 +399,7 @@ namespace Squared.Threading {
             task.ConfigureAwait(false).GetAwaiter().OnCompleted(() => {
                 future.SetResultFrom(task);
             });
-            future.RegisterOnDispose((_) => {
-                task.TryCancelScope();
-            });
+            future.RegisterOnDispose(CancelScopeForTask, task);
         }
 
         public static bool TryCancelScope (this tTask task) {

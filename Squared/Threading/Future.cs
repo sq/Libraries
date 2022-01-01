@@ -11,6 +11,8 @@ using Squared.Util;
 namespace Squared.Threading {
     public delegate void OnFutureResolved (IFuture future);
     public delegate void OnFutureResolved<T> (Future<T> future);
+    public delegate void OnFutureResolvedWithData (IFuture future, object userData);
+    public delegate void OnFutureResolvedWithData<T> (Future<T> future, object userData);
 
     public class FutureException : Exception {
         public FutureException (string message, Exception innerException)
@@ -155,9 +157,13 @@ namespace Squared.Threading {
         void SetResult2 (object result, ExceptionDispatchInfo errorInfo);
         void RegisterHandlers (Action completeHandler, Action disposeHandler);
         void RegisterHandlers (OnFutureResolved completeHandler, OnFutureResolved disposeHandler);
+        void RegisterHandlers (OnFutureResolvedWithData completeHandler, OnFutureResolvedWithData disposeHandler, object userData);
         void RegisterOnResolved (Action handler);
+        void RegisterOnResolved (OnFutureResolvedWithData handler, object userData);
         void RegisterOnComplete (Action handler);
+        void RegisterOnComplete (OnFutureResolvedWithData handler, object userData);
         void RegisterOnDispose (Action handler);
+        void RegisterOnDispose (OnFutureResolvedWithData handler, object userData);
         void RegisterOnResolved (OnFutureResolved handler);
         void RegisterOnComplete (OnFutureResolved handler);
         void RegisterOnDispose (OnFutureResolved handler);
@@ -416,6 +422,31 @@ namespace Squared.Threading {
     }
 
     public class Future<T> : IDisposable, IFuture {
+        private struct Handler {
+            public Delegate Delegate;
+            public object UserData;
+
+            public void Invoke (Future<T> future) {
+                try {
+                    if (Delegate is OnFutureResolved<T> typed) {
+                        typed(future);
+                    } else if (Delegate is OnFutureResolved untyped) {
+                        untyped(future);
+                    } else if (Delegate is OnFutureResolvedWithData<T> withData) {
+                        withData(future, UserData);
+                    } else if (Delegate is OnFutureResolvedWithData withDataUntyped) {
+                        withDataUntyped(future, UserData);
+                    } else if (Delegate is Action action) {
+                        action();
+                    } else {
+                        throw new FutureHandlerException(future, Delegate, "Invalid future handler");
+                    }
+                } catch (Exception exc) {
+                    throw new FutureHandlerException(future, Delegate, exc);
+                }
+            }
+        }
+
         private static readonly int ProcessorCount;
 
         private const int State_Empty = 0;
@@ -426,7 +457,7 @@ namespace Squared.Threading {
         private const int State_Disposing = 5;
 
         private volatile int _State = State_Empty;
-        private DenseList<Delegate> _OnCompletes, _OnDisposes;
+        private DenseList<Handler> _OnCompletes, _OnDisposes;
         private object _Error = null;
         private Action _OnErrorChecked = null;
         private T _Result = default(T);
@@ -484,30 +515,16 @@ namespace Squared.Threading {
             }
         }
 
-        private void InvokeHandler (Delegate handler) {
-            try {
-                if (handler is OnFutureResolved<T> typed) {
-                    typed(this);
-                } else if (handler is OnFutureResolved untyped) {
-                    untyped(this);
-                } else if (handler is Action action) {
-                    action();
-                } else {
-                    throw new FutureHandlerException(this, handler, "Invalid future handler");
-                }
-            } catch (Exception exc) {
-                throw new FutureHandlerException(this, handler, exc);
-            }
-        }
-
-        private void InvokeHandlers (ref DenseList<Delegate> handlers, ref DenseList<Delegate> otherListToClear) {
+        private void InvokeHandlers (ref DenseList<Handler> handlers, ref DenseList<Handler> otherListToClear) {
             if (handlers.Count <= 0)
                 return;
 
             try {
                 otherListToClear.Clear();
-                for (int i = 0; i < handlers.Count; i++)
-                    InvokeHandler(handlers[i]);
+                for (int i = 0, c = handlers.Count; i < c; i++) {
+                    handlers.GetItem(i, out Handler h);
+                    h.Invoke(this);
+                }
             } finally {
                 handlers.Clear();
             }
@@ -566,14 +583,19 @@ namespace Squared.Threading {
         }
 
         /// <returns>Whether the future is already complete and handlers were run</returns>
-        private bool RegisterHandler_Impl (Delegate handler, ref DenseList<Delegate> list, bool forDispose) {
+        private bool RegisterHandler_Impl (Delegate handler, ref DenseList<Handler> list, bool forDispose, object userData = null) {
             if (handler == null)
                 return false;
+
+            var item = new Handler {
+                Delegate = handler,
+                UserData = userData,
+            };
 
             int oldState = TrySetIndeterminate();
                 
             if (oldState == State_Empty) {
-                list.Add(handler);
+                list.Add(item);
                 ClearIndeterminate(State_Empty);
                 return false;
             } else if (
@@ -584,12 +606,12 @@ namespace Squared.Threading {
             ) {
                 if (forDispose) {
                     if ((oldState == State_Disposed) || (oldState == State_Disposing)) {
-                        InvokeHandler(handler);
+                        item.Invoke(this);
                         return true;
                     }
                 } else {
                     if ((oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError)) {
-                        InvokeHandler(handler);
+                        item.Invoke(this);
                         return true;
                     }
                 }
@@ -626,6 +648,15 @@ namespace Squared.Threading {
                 RegisterHandler_Impl(onDispose, ref _OnDisposes, true);
         }
 
+        /// <summary>
+        /// Registers a pair of handlers to be notified upon future completion and disposal, respectively.
+        /// </summary>
+        void IFuture.RegisterHandlers (OnFutureResolvedWithData onComplete, OnFutureResolvedWithData onDispose, object userData) {
+            // FIXME: Set state to indeterminate once instead of twice
+            if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false, userData))
+                RegisterHandler_Impl(onDispose, ref _OnDisposes, true, userData);
+        }
+
         void IFuture.RegisterOnResolved (OnFutureResolved handler) {
             if (!RegisterHandler_Impl(handler, ref _OnCompletes, false))
                 RegisterHandler_Impl(handler, ref _OnDisposes, true);
@@ -639,9 +670,33 @@ namespace Squared.Threading {
         /// <summary>
         /// Registers a handler to be notified upon future completion or disposal.
         /// </summary>
-        public void RegisterOnResolved (OnFutureResolved<T> handler) {
+        public void RegisterOnResolved (OnFutureResolved handler) {
             if (!RegisterHandler_Impl(handler, ref _OnCompletes, false))
                 RegisterHandler_Impl(handler, ref _OnDisposes, true);
+        }
+
+        /// <summary>
+        /// Registers a handler to be notified upon future completion or disposal.
+        /// </summary>
+        public void RegisterOnResolved2 (OnFutureResolved<T> handler) {
+            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false))
+                RegisterHandler_Impl(handler, ref _OnDisposes, true);
+        }
+
+        /// <summary>
+        /// Registers a handler to be notified upon future completion or disposal.
+        /// </summary>
+        public void RegisterOnResolved (OnFutureResolvedWithData handler, object userData) {
+            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false, userData))
+                RegisterHandler_Impl(handler, ref _OnDisposes, true, userData);
+        }
+
+        /// <summary>
+        /// Registers a handler to be notified upon future completion or disposal.
+        /// </summary>
+        public void RegisterOnResolved2 (OnFutureResolvedWithData<T> handler, object userData) {
+            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false, userData))
+                RegisterHandler_Impl(handler, ref _OnDisposes, true, userData);
         }
 
         /// <summary>
@@ -666,6 +721,20 @@ namespace Squared.Threading {
         }
 
         /// <summary>
+        /// Registers a handler to be notified upon future completion. If the future is disposed, this will not run.
+        /// </summary>
+        public void RegisterOnComplete (OnFutureResolvedWithData handler, object userData) {
+            RegisterHandler_Impl(handler, ref _OnCompletes, false, userData);
+        }
+
+        /// <summary>
+        /// Registers a handler to be notified upon future completion. If the future is disposed, this will not run.
+        /// </summary>
+        public void RegisterOnComplete (OnFutureResolvedWithData<T> handler, object userData) {
+            RegisterHandler_Impl(handler, ref _OnCompletes, false, userData);
+        }
+
+        /// <summary>
         /// Registers a handlers to be notified upon future disposal. If the future is completed, this will not run.
         /// </summary>
         public void RegisterOnDispose (Action handler) {
@@ -676,6 +745,20 @@ namespace Squared.Threading {
         /// Registers a handlers to be notified upon future disposal. If the future is completed, this will not run.
         /// </summary>
         public void RegisterOnDispose (OnFutureResolved handler) {
+            RegisterHandler_Impl(handler, ref _OnDisposes, true);
+        }
+
+        /// <summary>
+        /// Registers a handlers to be notified upon future disposal. If the future is completed, this will not run.
+        /// </summary>
+        public void RegisterOnDispose (OnFutureResolvedWithData<T> handler, object userData) {
+            RegisterHandler_Impl(handler, ref _OnDisposes, true);
+        }
+
+        /// <summary>
+        /// Registers a handlers to be notified upon future disposal. If the future is completed, this will not run.
+        /// </summary>
+        public void RegisterOnDispose (OnFutureResolvedWithData handler, object userData) {
             RegisterHandler_Impl(handler, ref _OnDisposes, true);
         }
         
@@ -1081,22 +1164,29 @@ namespace Squared.Threading {
     }
     
     public static class FutureExtensionMethods {
-        /// <summary>
-        /// Causes this future to become completed when the specified future is completed.
-        /// </summary>
-        public static void Bind (this IFuture future, IFuture target) {
-            OnFutureResolved handler = (f) => {
-                future.CopyFrom(f);
-            };
-            target.RegisterOnComplete(handler);
+        private static OnFutureResolvedWithData BindHandler = _BindHandler;
+
+        private static void _BindHandler (IFuture future, object _target) {
+            var target = (IFuture)_target;
+            future.GetResult(out object result, out Exception error);
+            // FIXME: SetResult2?
+            target.SetResult(result, error);
         }
 
         /// <summary>
         /// Causes this future to become completed when the specified future is completed.
         /// </summary>
+        public static void Bind (this IFuture future, IFuture target) {
+            target.RegisterOnResolved(BindHandler, target);
+        }
+
+        /// <summary>
+        /// Causes the result of this future to be stored into the specified member when it is completed.
+        /// </summary>
         public static IFuture Bind<T> (this IFuture future, Expression<Func<T>> target) {
             var member = BoundMember.New(target);
 
+            // FIXME: Use UserData version?
             future.RegisterOnComplete((_) => {
                 Exception error;
                 object result;
@@ -1108,7 +1198,7 @@ namespace Squared.Threading {
         }
 
         /// <summary>
-        /// Causes this future to become completed when the specified future is completed.
+        /// Causes the result of this future to be stored into the specified member when it is completed.
         /// </summary>
         public static Future<T> Bind<T> (this Future<T> future, Expression<Func<T>> target) {
             var member = BoundMember.New(target);
@@ -1165,7 +1255,8 @@ namespace Squared.Threading {
         /// Creates a ManualResetEventSlim that will become set when this future is completed.
         /// </summary>
         public static ManualResetEventSlim GetCompletionEvent (this IFuture future) {
-            System.Threading.ManualResetEventSlim evt = new System.Threading.ManualResetEventSlim(false);
+            var evt = new ManualResetEventSlim(false);
+            // FIXME: Use userData
             future.RegisterOnComplete(evt.Set);
             return evt;
         }

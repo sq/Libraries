@@ -884,6 +884,24 @@ namespace Squared.Render {
     }
 
     public struct AbstractTextureReference {
+        public sealed class Comparer : IEqualityComparer<AbstractTextureReference>, IComparer<AbstractTextureReference> {
+            public static Comparer Instance = new Comparer();
+
+            public int Compare (AbstractTextureReference x, AbstractTextureReference y) {
+                unchecked {
+                    return x._Id - y._Id;
+                }
+            }
+
+            public bool Equals (AbstractTextureReference x, AbstractTextureReference y) {
+                return x.Equals(y);
+            }
+
+            public int GetHashCode (AbstractTextureReference obj) {
+                return obj.GetHashCode();
+            }
+        }
+
         public static readonly AbstractTextureReference Invalid;
 
         public static readonly LocallyReplicatedObjectCache<object> Cache = 
