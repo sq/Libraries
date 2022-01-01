@@ -319,16 +319,51 @@ namespace Squared.Util {
 
         [Test]
         public void SimpleBenchmark () {
-            var items = new DenseList<long> { 1, 2, 3, 4 };
-            const int count = 1024000 * 24;
-            var sw = Stopwatch.StartNew();
+            // The list contains 4 items so that the DenseList doesn't need a heap allocation
+            // You can test the heap allocated backing store with 5 items, it ends up being somewhat slower
+            var dense = new DenseList<decimal> { 1, 2, 3, 4 };
+            var list = new List<decimal> { 1, 2, 3, 4 };
+            // for int64 try something like 32
+            const int count = 1024000 * 10;
+
+            var started1 = Stopwatch.GetTimestamp();
             unchecked {
                 for (int i = 0; i < count; i++) {
-                    for (int j = 0; j < items.Count; j++)
-                        items[j]++;
+                    for (int j = 0; j < dense.Count; j++)
+                        dense[j]++;
                 }
             }
-            Console.WriteLine(sw.ElapsedMilliseconds);
+            var ended1 = Stopwatch.GetTimestamp();
+
+            for (int i = 0; i < 4; i++)
+                dense[i] = i + 1;
+
+            var started2 = Stopwatch.GetTimestamp();
+            unchecked {
+                for (int i = 0; i < count; i++) {
+                    for (int j = 0; j < dense.Count; j++) {
+                        dense.GetItem(j, out decimal item);
+                        item++;
+                        dense.SetItem(j, ref item);
+                    }
+                }
+            }
+
+            var started3 = Stopwatch.GetTimestamp();
+            unchecked {
+                for (int i = 0; i < count; i++) {
+                    for (int j = 0; j < list.Count; j++)
+                        list[j]++;
+                }
+            }
+
+            var ended = Stopwatch.GetTimestamp();
+            var elapsedDense = (double)(ended1 - started1) / Time.MillisecondInTicks;
+            var elapsedDenseRef = (double)(started3 - started2) / Time.MillisecondInTicks;
+            var elapsedList = (double)(ended - started3) / Time.MillisecondInTicks;
+            // FIXME: for x64 release on my pc the ratio is 4 for int64s, it seems like it could be much lower...
+            // It's pretty good for big types like Decimal though
+            Console.WriteLine($"dense: {elapsedDense}, dense ref: {elapsedDenseRef}, list: {elapsedList}. ratio={elapsedDense / elapsedList}");
         }
 
         [Test]

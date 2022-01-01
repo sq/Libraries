@@ -268,7 +268,7 @@ namespace Squared.Util {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (HasList)
-                    return Items.Count;
+                    return Items._Count;
                 else
                     return Storage.Count;
             }
@@ -548,6 +548,11 @@ namespace Squared.Util {
             } else {
                 Add_Fast(ref item);
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddRange (DenseList<T> items) {
+            AddRange(ref items);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1046,11 +1051,12 @@ namespace Squared.Util {
                 Items = null;
         }
 
-        public Query<U> Cast<U> () {
+        public Query<Enumerator, U> Cast<U> () {
             if (Count == 0)
                 return default;
-            else
-                return new Query<U>(ref this, Query<U>.CastSelector);
+
+            var e = GetEnumerator();
+            return new Query<Enumerator, U>(ref e, Query<Enumerator, U>.CastSelector, false);
         }
 
         public Enumerator GetEnumerator () {

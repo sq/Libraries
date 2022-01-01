@@ -95,7 +95,7 @@ namespace Squared.Util {
         protected Allocator _Allocator;
         protected T[] _Items;
         protected int _BufferOffset, _BufferSize;
-        protected int _Count;
+        internal int _Count;
 
         public struct Enumerator : IEnumerator<T>{
             UnorderedList<T> _List;

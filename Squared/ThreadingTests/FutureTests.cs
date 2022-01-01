@@ -117,13 +117,13 @@ namespace Squared.Threading {
                             );
                 }
             );
-            f1.RegisterOnResolved(handler);
+            f1.RegisterOnResolved2(handler);
             f1.Complete(5);
             Assert.AreEqual(5, completeResult);
-            f2.RegisterOnResolved(handler);
+            f2.RegisterOnResolved2(handler);
             f2.Dispose();
             Assert.AreEqual("disposed", completeResult);
-            f3.RegisterOnResolved(handler);
+            f3.RegisterOnResolved2(handler);
             var exc = new Exception("test");
             f3.SetResult(0, exc);
             Assert.AreEqual(exc, completeResult);
