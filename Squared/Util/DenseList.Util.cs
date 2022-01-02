@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace Squared.Util {
-    public interface IDenseQuerySource<TSource> {
+    public interface IDenseQuerySource<TSource> : IEnumerator {
         void CloneInto (out TSource result);
     }
 
@@ -50,145 +50,6 @@ namespace Squared.Util {
             }
 
             public void Reset () {
-            }
-        }
-
-        public struct Query<TEnumerator, TResult> : IEnumerable<TResult>, IEnumerator<TResult>, IDenseQuerySource<Query<TEnumerator, TResult>>
-            where TEnumerator : IEnumerator<T>, IDenseQuerySource<TEnumerator>
-        {
-            internal static Func<T, TResult> CastSelector = _CastSelector;
-            // FIXME: Boxing
-            private static TResult _CastSelector (T value) => (TResult)(object)value;
-
-            private TResult _Current;
-            private TEnumerator _Enumerator;
-            private bool _IsNullSelector, _HasMoved;
-
-            public DenseList<Func<T, bool>> PrePredicates;
-            public DenseList<Func<TResult, bool>> PostPredicates;
-            public Func<T, TResult> Selector;
-
-            public TResult Current => _Current;
-            object IEnumerator.Current => _Current;
-
-            internal Query (
-                ref TEnumerator enumerator, Func<T, TResult> selector, bool isNullSelector
-            ) {
-                _IsNullSelector = isNullSelector;
-                Selector = selector;
-                _Enumerator = enumerator;
-                PrePredicates = default;
-                PostPredicates = default;
-                Selector = selector;
-                _Current = default;
-                _HasMoved = false;
-            }
-
-            public void Dispose () {
-                _Enumerator.Dispose();
-            }
-
-            public bool Any () {
-                if (!_HasMoved)
-                    return MoveNext();
-
-                using (var temp = GetEnumerator())
-                    return temp.MoveNext();
-            }
-
-            public bool MoveNext () {
-                _HasMoved = true;
-
-                while (true) {
-                    if (!_Enumerator.MoveNext())
-                        return false;
-
-                    var input = _Enumerator.Current;
-
-                    bool predicateRejected = false;
-
-                    foreach (var pre in PrePredicates) {
-                        if (!pre(input)) {
-                            predicateRejected = true;
-                            break;
-                        }
-                    }
-
-                    if (predicateRejected)
-                        continue;
-
-                    _Current = Selector(input);
-
-                    foreach (var post in PostPredicates) {
-                        if (!post(_Current)) {
-                            predicateRejected = true;
-                            break;
-                        }
-                    }
-
-                    if (predicateRejected)
-                        continue;
-
-                    return true;
-                }
-            }
-
-            public void Reset () {
-                _Enumerator.Reset();
-                _Current = default;
-            }
-
-            public void CloneInto (out DenseList<T>.Query<TEnumerator, TResult> result) {
-                result = new Query<TEnumerator, TResult> {
-                    Selector = Selector
-                };
-                _Enumerator.CloneInto(out result._Enumerator);
-                PrePredicates.Clone(out result.PrePredicates);
-                PostPredicates.Clone(out result.PostPredicates);
-            }
-
-            public DenseList<TResult>.Query<Query<TEnumerator, TResult>, V> Select<V> (Func<TResult, V> selector, Func<V, bool> where = null) {
-                var source = GetEnumerator();
-                var result = new DenseList<TResult>.Query<Query<TEnumerator, TResult>, V>(
-                    ref source, selector, false
-                );
-                if (where != null)
-                    result.PostPredicates.Add(where);
-                return result;
-            }
-
-            public Query<TEnumerator, TResult> Where (Func<TResult, bool> predicate) {
-                CloneInto(out Query<TEnumerator, TResult> result);
-                if ((predicate is Func<T, bool> f) && _IsNullSelector)
-                    result.PrePredicates.Add(f);
-                else
-                    result.PostPredicates.Add(predicate);
-                return result;
-            }
-
-            public DenseList<TResult> ToDenseList () {
-                var result = new DenseList<TResult>();
-                Reset();
-                while (MoveNext())
-                    result.Add(ref _Current);
-                return result;
-            }
-
-            public Query<TEnumerator, TResult> GetEnumerator () {
-                if (_HasMoved) {
-                    CloneInto(out Query<TEnumerator, TResult> result);
-                    return result;
-                }
-
-                return this;
-            }
-
-            IEnumerator<TResult> IEnumerable<TResult>.GetEnumerator () {
-                return GetEnumerator();
-            }
-
-            IEnumerator IEnumerable.GetEnumerator () {
-                return GetEnumerator();
             }
         }
 
@@ -352,6 +213,7 @@ namespace Squared.Util {
             return CountWhere(predicate) == Count;
         }
 
+        // FIXME: Implement this as a lazy enumerable?
         public DenseList<T> Distinct (IEqualityComparer<T> comparer = null, HashSet<T> hash = null) {
             comparer = comparer ?? EqualityComparer<T>.Default;
 
@@ -379,6 +241,7 @@ namespace Squared.Util {
             return result;
         }
 
+        // FIXME: Implement this as a lazy enumerable
         public DenseList<U> SelectMany<U> (Func<T, DenseList<U>> selector) {
             if (Count == 0)
                 return default;
@@ -409,23 +272,23 @@ namespace Squared.Util {
             return result;
         }
 
-        public Query<Enumerator, U> Select<U> (Func<T, U> selector, Func<U, bool> where = null) {
+        public DenseQuery<T, Enumerator, U> Select<U> (Func<T, U> selector, Func<U, bool> where = null) {
             if (Count == 0)
                 return default;
 
             var e = GetEnumerator();
-            var result = new Query<Enumerator, U>(ref e, selector, false);
+            var result = new DenseQuery<T, Enumerator, U>(ref e, selector, false);
             if (where != null)
                 result.PostPredicates.Add(where);
             return result;
         }
 
-        public Query<Enumerator, T> Where (Func<T, bool> predicate) {
+        public DenseQuery<T, Enumerator, T> Where (Func<T, bool> predicate) {
             if (Count == 0)
                 return default;
 
             var e = GetEnumerator();
-            var result = new Query<Enumerator, T>(ref e, NullSelector, true);
+            var result = new DenseQuery<T, Enumerator, T>(ref e, NullSelector, true);
             result.PrePredicates.Add(predicate);
             return result;
         }
@@ -476,6 +339,177 @@ namespace Squared.Util {
         public void Dispose () {
             if (IsBuffer)
                 Buffer.Free();
+        }
+    }
+
+    public struct DenseQuery<T, TEnumerator, TResult> : IEnumerable<TResult>, IEnumerator<TResult>, IDenseQuerySource<DenseQuery<T, TEnumerator, TResult>>
+        where TEnumerator : IEnumerator<T>, IDenseQuerySource<TEnumerator>
+    {
+        internal static Func<T, TResult> CastSelector = _CastSelector;
+        // FIXME: Boxing
+        private static TResult _CastSelector (T value) => (TResult)(object)value;
+
+        private TResult _Current;
+        private TEnumerator _Enumerator;
+        private bool _IsNullSelector, _HasMoved;
+
+        public DenseList<Func<T, bool>> PrePredicates;
+        public DenseList<Func<TResult, bool>> PostPredicates;
+        public Func<T, TResult> Selector;
+
+        public TResult Current => _Current;
+        object IEnumerator.Current => _Current;
+
+        internal DenseQuery (
+            ref TEnumerator enumerator, Func<T, TResult> selector, bool isNullSelector
+        ) {
+            _IsNullSelector = isNullSelector;
+            Selector = selector;
+            _Enumerator = enumerator;
+            PrePredicates = default;
+            PostPredicates = default;
+            Selector = selector;
+            _Current = default;
+            _HasMoved = false;
+        }
+
+        public void Dispose () {
+            _Enumerator.Dispose();
+        }
+
+        public TResult FirstOrDefault () {
+            if (!_HasMoved) {
+                if (MoveNext())
+                    return _Current;
+                else
+                    return default;
+            }
+
+            using (var temp = GetEnumerator()) {
+                if (temp.MoveNext())
+                    return _Current;
+                else
+                    return default;
+            }
+        }
+
+        public bool Any () {
+            if (!_HasMoved)
+                return MoveNext();
+
+            using (var temp = GetEnumerator())
+                return temp.MoveNext();
+        }
+
+        public bool MoveNext () {
+            _HasMoved = true;
+
+            while (true) {
+                if (!_Enumerator.MoveNext())
+                    return false;
+
+                var input = _Enumerator.Current;
+
+                bool predicateRejected = false;
+
+                foreach (var pre in PrePredicates) {
+                    if (!pre(input)) {
+                        predicateRejected = true;
+                        break;
+                    }
+                }
+
+                if (predicateRejected)
+                    continue;
+
+                _Current = Selector(input);
+
+                foreach (var post in PostPredicates) {
+                    if (!post(_Current)) {
+                        predicateRejected = true;
+                        break;
+                    }
+                }
+
+                if (predicateRejected)
+                    continue;
+
+                return true;
+            }
+        }
+
+        public void Reset () {
+            _Enumerator.Reset();
+            _Current = default;
+        }
+
+        public void CloneInto (out DenseQuery<T, TEnumerator, TResult> result) {
+            result = new DenseQuery<T, TEnumerator, TResult> {
+                Selector = Selector
+            };
+            _Enumerator.CloneInto(out result._Enumerator);
+            PrePredicates.Clone(out result.PrePredicates);
+            PostPredicates.Clone(out result.PostPredicates);
+        }
+
+        public DenseQuery<TResult, DenseQuery<T, TEnumerator, TResult>, V> Select<V> (Func<TResult, V> selector, Func<V, bool> where = null) {
+            var source = GetEnumerator();
+            var result = new DenseQuery<TResult, DenseQuery<T, TEnumerator, TResult>, V>(
+                ref source, selector, false
+            );
+            if (where != null)
+                result.PostPredicates.Add(where);
+            return result;
+        }
+
+        public DenseQuery<T, TEnumerator, TResult> Where (Func<TResult, bool> predicate) {
+            CloneInto(out DenseQuery<T, TEnumerator, TResult> result);
+            if ((predicate is Func<T, bool> f) && _IsNullSelector)
+                result.PrePredicates.Add(f);
+            else
+                result.PostPredicates.Add(predicate);
+            return result;
+        }
+
+        public TResult[] ToArray () {
+            var result = new DenseList<TResult>();
+            Reset();
+            while (MoveNext())
+                result.Add(ref _Current);
+            return result.ToArray();
+        }
+
+        public List<TResult> ToList () {
+            var result = new List<TResult>();
+            Reset();
+            while (MoveNext())
+                result.Add(_Current);
+            return result;
+        }
+
+        public DenseList<TResult> ToDenseList () {
+            var result = new DenseList<TResult>();
+            Reset();
+            while (MoveNext())
+                result.Add(ref _Current);
+            return result;
+        }
+
+        public DenseQuery<T, TEnumerator, TResult> GetEnumerator () {
+            if (_HasMoved) {
+                CloneInto(out DenseQuery<T, TEnumerator, TResult> result);
+                return result;
+            }
+
+            return this;
+        }
+
+        IEnumerator<TResult> IEnumerable<TResult>.GetEnumerator () {
+            return GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return GetEnumerator();
         }
     }
 }

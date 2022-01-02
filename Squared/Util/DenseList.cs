@@ -1051,12 +1051,12 @@ namespace Squared.Util {
                 Items = null;
         }
 
-        public Query<Enumerator, U> Cast<U> () {
+        public DenseQuery<T, Enumerator, U> Cast<U> () {
             if (Count == 0)
                 return default;
 
             var e = GetEnumerator();
-            return new Query<Enumerator, U>(ref e, Query<Enumerator, U>.CastSelector, false);
+            return new DenseQuery<T, Enumerator, U>(ref e, DenseQuery<T, Enumerator, U>.CastSelector, false);
         }
 
         public Enumerator GetEnumerator () {

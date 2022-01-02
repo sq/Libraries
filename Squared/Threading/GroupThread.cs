@@ -32,7 +32,7 @@ namespace Squared.Threading {
             Owner = owner;
             NextQueueIndex = index;
             Thread = new Thread(ThreadMain);
-            Name = string.Format("ThreadGroup {0} {1} worker #{2}", owner.GetHashCode(), owner.Name, index);
+            Name = string.Format($"{owner.Name} worker #{index} [ThreadGroup {owner.GetHashCode():X8}]");
             Thread.Name = Name;
             Thread.IsBackground = owner.CreateBackgroundThreads;
             if (owner.COMThreadingModel != ApartmentState.Unknown)
