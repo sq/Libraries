@@ -367,7 +367,7 @@ namespace Squared.Util {
         }
 
         [Test]
-        public void Queries () {
+        public void LinqStuff () {
             var items = new DenseList<int> { 1, 2, 4, 8, 16, 24, 32, 16 };
             var below = items.Where(i => i < 16);
             var above = items.Where(i => i >= 16);
@@ -409,6 +409,24 @@ namespace Squared.Util {
             Assert.AreEqual(
                 new int[] { 1, 1, 2, 2, 4, 4, 8, 8 },
                 expanded.ToArray()
+            );
+
+            var unsorted = new DenseList<int> { 9, 3, 1, 4, 1 };
+            var sorted = unsorted.OrderBy(i => i);
+            var reverseSorted = unsorted.OrderByDescending(i => i);
+            Assert.AreEqual(
+                new int[] { 1, 1, 3, 4, 9 },
+                sorted
+            );
+            Assert.AreEqual(
+                new int[] { 9, 4, 3, 1, 1 },
+                reverseSorted
+            );
+
+            var denseWhereExtension = (new[] { 4, 3, 2, 1 }).ToDenseList(where: i => i > 2);
+            Assert.AreEqual(
+                new int[] { 4, 3 },
+                denseWhereExtension.ToArray()
             );
         }
 

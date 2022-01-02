@@ -608,6 +608,37 @@ namespace Squared.Util {
             }
         }
 
+        public void AddRange<U> (U enumerable, Func<T, bool> where) where U : IEnumerable<T> {
+            if (where == null)
+                throw new ArgumentNullException(nameof(where));
+            // FIXME: Find a way to do this without boxing?
+            if (!typeof(U).IsValueType && object.ReferenceEquals(null, enumerable))
+                return;
+
+            T item;
+            if (enumerable is T[] array) {
+                EnsureCapacity(Count + array.Length);
+                for (int i = 0, c = array.Length; i < c; i++) {
+                    if (where(array[i]))
+                        Add(ref array[i]);
+                }
+            } else if (enumerable is IList<T> list) {
+                EnsureCapacity(Count + list.Count);
+                for (int i = 0, c = list.Count; i < c; i++) {
+                    item = list[i];
+                    if (where(item))
+                        Add(ref item);
+                }
+            } else {
+                using (var e = enumerable.GetEnumerator())
+                while (e.MoveNext()) {
+                    item = e.Current;
+                    if (where(item))
+                        Add(ref item);
+                }
+            }
+        }
+
         public ArraySegment<T> ReserveSpace (int count) {
             // FIXME: Slow
             EnsureList(count);

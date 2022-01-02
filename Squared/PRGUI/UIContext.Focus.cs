@@ -173,12 +173,11 @@ namespace Squared.PRGUI {
                 var currentTopLevel = FindTopLevelAncestor(Focused);
                 // HACK
                 var inTabOrder = Controls.InTabOrder(FrameIndex, false)
-                    .Where(c => 
+                    .ToDenseList(where: c => 
                         (((c as IControlContainer)?.ChildrenAcceptFocus ?? false) || c.AcceptsFocus) &&
                         c.Enabled && !c.IsTransparent &&
                         !(c is FocusProxy)
-                    )
-                    .ToDenseList();
+                    );
                 var currentIndex = inTabOrder.IndexOf(currentTopLevel);
                 var newIndex = Arithmetic.Wrap(currentIndex + delta, 0, inTabOrder.Count - 1);
                 var target = inTabOrder[newIndex];

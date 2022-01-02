@@ -22,9 +22,20 @@ namespace Squared.Util {
             result.AddRange(enumerable);
             return result;
         }
+
+        /// <summary>
+        /// Returns a dense list containing all the items from a sequence that satisfy a predicate.
+        /// </summary>
+        public static DenseList<T> ToDenseList<T> (this IEnumerable<T> enumerable, Func<T, bool> where) {
+            DenseList<T> result = default;
+            result.AddRange(enumerable, where);
+            return result;
+        }
+
+        // TODO: Add a select version of ToDenseList? Harder to do
     }
 
-    public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
+    public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T>, IOrderedEnumerable<T> {
         public delegate bool Predicate<TUserData> (ref T item, ref TUserData userData);
         public delegate bool Predicate (ref T item);
 
@@ -213,32 +224,20 @@ namespace Squared.Util {
             return CountWhere(predicate) == Count;
         }
 
-        // FIXME: Implement this as a lazy enumerable?
-        public DenseList<T> Distinct (IEqualityComparer<T> comparer = null, HashSet<T> hash = null) {
-            comparer = comparer ?? EqualityComparer<T>.Default;
+        public DenseDistinct<T, Enumerator, IEqualityComparer<T>> Distinct () {
+            var e = GetEnumerator();
+            return new DenseDistinct<T, Enumerator, IEqualityComparer<T>>(
+                ref e, EqualityComparer<T>.Default, null
+            );
+        }
 
-            hash = hash ??
-                (
-                    // FIXME: Make this larger?
-                    (Count > 32) 
-                        ? new HashSet<T>(Count, comparer) 
-                        : null
-                );
-            hash?.Clear();
-
-            var result = new DenseList<T>();
-            for (int i = 0, c = Count; i < c; i++) {
-                GetItem(i, out T item);
-                if (hash != null) {
-                    if (hash.Contains(item))
-                        continue;
-                    hash.Add(item);
-                } else if (result.IndexOf(ref item, comparer) >= 0) {
-                    continue;
-                }
-                result.Add(ref item);
-            }
-            return result;
+        public DenseDistinct<T, Enumerator, TEqualityComparer> Distinct<TEqualityComparer> (TEqualityComparer comparer = default, HashSet<T> hash = null)
+            where TEqualityComparer : IEqualityComparer<T>
+        {
+            var e = GetEnumerator();
+            return new DenseDistinct<T, Enumerator, TEqualityComparer>(
+                ref e, comparer, hash
+            );
         }
 
         // FIXME: Implement this as a lazy enumerable
@@ -293,6 +292,67 @@ namespace Squared.Util {
             return result;
         }
 
+        private struct OrderByAdapter<TKey, TComparer> : IRefComparer<T>
+            where TComparer : IComparer<TKey>
+        {
+            public Func<T, TKey> KeySelector;
+            public TComparer Comparer;
+            public int Sign;
+
+            public OrderByAdapter (Func<T, TKey> keySelector, TComparer comparer, int sign) {
+                KeySelector = keySelector;
+                Comparer = comparer;
+                Sign = sign;
+            }
+
+            public int Compare (ref T lhs, ref T rhs) {
+                var lKey = KeySelector(lhs);
+                var rKey = KeySelector(rhs);
+                return Comparer.Compare(lKey, rKey) * Sign;
+            }
+        }
+
+        // You may be wondering: Why do these return a DenseList instead of an enumerable?
+        // Well the answer is simple: To sort a sequence you need to buffer the whole thing somehow,
+        //  so we might as well buffer it up front and then sort + return it.
+        // csc doesn't seem to mind and will happily use these methods anyway. Hooray!
+        public DenseList<T> OrderBy<TKey> (Func<T, TKey> keySelector) {
+            OrderByImpl(keySelector, Comparer<TKey>.Default, false, out DenseList<T> result);
+            return result;
+        }
+
+        public DenseList<T> OrderBy<TKey, TComparer> (Func<T, TKey> keySelector, TComparer comparer)
+            where TComparer : IComparer<TKey>
+        {
+            OrderByImpl(keySelector, comparer, false, out DenseList<T> result);
+            return result;
+        }
+
+        public DenseList<T> OrderByDescending<TKey> (Func<T, TKey> keySelector) {
+            OrderByImpl(keySelector, Comparer<TKey>.Default, true, out DenseList<T> result);
+            return result;
+        }
+
+        public DenseList<T> OrderByDescending<TKey, TComparer> (Func<T, TKey> keySelector, TComparer comparer)
+            where TComparer : IComparer<TKey>
+        {
+            OrderByImpl(keySelector, comparer, true, out DenseList<T> result);
+            return result;
+        }
+
+        internal void OrderByImpl<TKey, TComparer> (Func<T, TKey> keySelector, TComparer comparer, bool descending, out DenseList<T> result)
+            where TComparer : IComparer<TKey>
+        {
+            Clone(out result);
+            result.OrderByImpl(keySelector, comparer, descending);
+        }
+
+        internal void OrderByImpl<TKey, TComparer> (Func<T, TKey> keySelector, TComparer comparer, bool descending) 
+            where TComparer : IComparer<TKey> 
+        {
+            Sort(new OrderByAdapter<TKey, TComparer>(keySelector, comparer, descending ? -1 : 1));
+        }
+
         public DenseList<T> Concat (DenseList<T> rhs) {
             Clone(out DenseList<T> result);
             result.AddRange(ref rhs);
@@ -308,6 +368,13 @@ namespace Squared.Util {
         public DenseList<T> Concat (IEnumerable<T> rhs) {
             Clone(out DenseList<T> result);
             result.AddRange(rhs);
+            return result;
+        }
+
+        // It's unfortunate that this returns an interface, which means calls to it will box the result.
+        // Not much we can do about it though.
+        IOrderedEnumerable<T> IOrderedEnumerable<T>.CreateOrderedEnumerable<TKey> (Func<T, TKey> keySelector, IComparer<TKey> comparer, bool descending) {
+            OrderByImpl(keySelector, comparer, descending, out DenseList<T> result);
             return result;
         }
     }
@@ -342,7 +409,9 @@ namespace Squared.Util {
         }
     }
 
-    public struct DenseQuery<T, TEnumerator, TResult> : IEnumerable<TResult>, IEnumerator<TResult>, IDenseQuerySource<DenseQuery<T, TEnumerator, TResult>>
+    public struct DenseQuery<T, TEnumerator, TResult> : 
+        IEnumerable<TResult>, IEnumerator<TResult>, 
+        IDenseQuerySource<DenseQuery<T, TEnumerator, TResult>>
         where TEnumerator : IEnumerator<T>, IDenseQuerySource<TEnumerator>
     {
         internal static Func<T, TResult> CastSelector = _CastSelector;
@@ -377,6 +446,18 @@ namespace Squared.Util {
             _Enumerator.Dispose();
         }
 
+        public TResult First () {
+            if (!_HasMoved) {
+                if (MoveNext())
+                    return _Current;
+                else
+                    throw new Exception("Sequence is empty");
+            }
+
+            using (var temp = GetEnumerator())
+                return temp.First();
+        }
+
         public TResult FirstOrDefault () {
             if (!_HasMoved) {
                 if (MoveNext())
@@ -385,12 +466,8 @@ namespace Squared.Util {
                     return default;
             }
 
-            using (var temp = GetEnumerator()) {
-                if (temp.MoveNext())
-                    return _Current;
-                else
-                    return default;
-            }
+            using (var temp = GetEnumerator())
+                return temp.FirstOrDefault();
         }
 
         public bool Any () {
@@ -505,6 +582,254 @@ namespace Squared.Util {
         }
 
         IEnumerator<TResult> IEnumerable<TResult>.GetEnumerator () {
+            return GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return GetEnumerator();
+        }
+
+        public DenseDistinct<TResult, DenseQuery<T, TEnumerator, TResult>, IEqualityComparer<TResult>> Distinct () {
+            var e = GetEnumerator();
+            return new DenseDistinct<TResult, DenseQuery<T, TEnumerator, TResult>, IEqualityComparer<TResult>>(
+                ref e, EqualityComparer<TResult>.Default, null
+            );
+        }
+
+        public DenseDistinct<TResult, DenseQuery<T, TEnumerator, TResult>, TEqualityComparer> Distinct<TEqualityComparer> (
+            TEqualityComparer comparer, HashSet<TResult> hash = null
+        ) where TEqualityComparer : IEqualityComparer<TResult> {
+            var e = GetEnumerator();
+            return new DenseDistinct<TResult, DenseQuery<T, TEnumerator, TResult>, TEqualityComparer>(
+                ref e, comparer, hash
+            );
+        }
+
+        public DenseList<TResult> OrderBy<TKey> (Func<TResult, TKey> keySelector) {
+            var temp = ToDenseList();
+            temp.OrderByImpl(keySelector, Comparer<TKey>.Default, false);
+            return temp;
+        }
+
+        public DenseList<TResult> OrderBy<TKey, TComparer> (Func<TResult, TKey> keySelector, TComparer comparer)
+            where TComparer : IComparer<TKey>
+        {
+            var temp = ToDenseList();
+            temp.OrderByImpl(keySelector, comparer, false);
+            return temp;
+        }
+
+        public DenseList<TResult> OrderByDescending<TKey> (Func<TResult, TKey> keySelector) {
+            var temp = ToDenseList();
+            temp.OrderByImpl(keySelector, Comparer<TKey>.Default, true);
+            return temp;
+        }
+
+        public DenseList<TResult> OrderByDescending<TKey, TComparer> (Func<TResult, TKey> keySelector, TComparer comparer)
+            where TComparer : IComparer<TKey>
+        {
+            var temp = ToDenseList();
+            temp.OrderByImpl(keySelector, comparer, true);
+            return temp;
+        }
+    }
+
+    public struct DenseDistinct<T, TEnumerator, TEqualityComparer> :
+        IEnumerable<T>, IEnumerator<T>, 
+        IDenseQuerySource<DenseDistinct<T, TEnumerator, TEqualityComparer>>
+        where TEnumerator : IEnumerator<T>, IDenseQuerySource<TEnumerator>
+        where TEqualityComparer : IEqualityComparer<T>
+    {
+        private T _Current;
+        private TEnumerator _Enumerator;
+        private bool _HasMoved;
+
+        private TEqualityComparer _Comparer;
+        private DenseList<T> _SeenItems;
+        private HashSet<T> _SeenItemSet;
+
+        public T Current => _Current;
+        object IEnumerator.Current => _Current;
+
+        internal DenseDistinct (
+            ref TEnumerator enumerator, TEqualityComparer comparer, HashSet<T> seenItemSet
+        ) {
+            _Enumerator = enumerator;
+            _Current = default;
+            _HasMoved = false;
+            _Comparer = comparer;
+            _SeenItemSet = seenItemSet;
+            _SeenItems = default;
+        }
+
+        public void Dispose () {
+            _Enumerator.Dispose();
+            _SeenItemSet?.Clear();
+        }
+
+        public T First () {
+            if (!_HasMoved) {
+                if (MoveNext())
+                    return _Current;
+                else
+                    throw new Exception("Sequence is empty");
+            }
+
+            using (var temp = GetEnumerator())
+                return temp.First();
+        }
+
+        public T FirstOrDefault () {
+            if (!_HasMoved) {
+                if (MoveNext())
+                    return _Current;
+                else
+                    return default;
+            }
+
+            using (var temp = GetEnumerator())
+                return temp.FirstOrDefault();
+        }
+
+        public bool Any () {
+            if (!_HasMoved)
+                return MoveNext();
+
+            using (var temp = GetEnumerator())
+                return temp.MoveNext();
+        }
+
+        public bool MoveNext () {
+            _HasMoved = true;
+
+            while (true) {
+                if (!_Enumerator.MoveNext())
+                    return false;
+
+                _Current = _Enumerator.Current;
+                if ((_SeenItemSet != null) && _SeenItemSet.Contains(_Current))
+                    continue;
+                else if (_SeenItems.IndexOf(ref _Current, _Comparer) >= 0)
+                    continue;
+
+                if (_SeenItems.Count >= 4) {
+                    _SeenItemSet = new HashSet<T>(_Comparer);
+                    foreach (var item in _SeenItems)
+                        _SeenItemSet.Add(item);
+                    _SeenItems.Clear();
+                }
+
+                if (_SeenItemSet != null)
+                    _SeenItemSet.Add(_Current);
+                else
+                    _SeenItems.Add(ref _Current);
+
+                return true;
+            }
+        }
+
+        public void Reset () {
+            _Enumerator.Reset();
+            _Current = default;
+        }
+
+        public void CloneInto (out DenseDistinct<T, TEnumerator, TEqualityComparer> result) {
+            result = new DenseDistinct<T, TEnumerator, TEqualityComparer> {
+                _Comparer = _Comparer,
+            };
+            _Enumerator.CloneInto(out result._Enumerator);
+        }
+
+        // FIXME: Don't make a temporary copy?
+        public DenseDistinct<T, DenseList<T>.Enumerator, TEqualityComparer2> Distinct<TEqualityComparer2> (
+            TEqualityComparer2 comparer, HashSet<T> hash = null
+        ) where TEqualityComparer2 : IEqualityComparer<T> {
+            var items = ToDenseList();
+            var e = items.GetEnumerator();
+            return new DenseDistinct<T, DenseList<T>.Enumerator, TEqualityComparer2>(ref e, comparer, hash);
+        }
+
+        public DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, V> Select<V> (Func<T, V> selector, Func<V, bool> where = null) {
+            var source = GetEnumerator();
+            var result = new DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, V>(
+                ref source, selector, false
+            );
+            if (where != null)
+                result.PostPredicates.Add(where);
+            return result;
+        }
+
+        public DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, T> Where (Func<T, bool> predicate) {
+            var source = GetEnumerator();
+            var result = new DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, T>(
+                ref source, DenseList<T>.NullSelector, true
+            );
+            result.PrePredicates.Add(predicate);
+            return result;
+        }
+
+        public T[] ToArray () {
+            var result = new DenseList<T>();
+            Reset();
+            while (MoveNext())
+                result.Add(ref _Current);
+            return result.ToArray();
+        }
+
+        public List<T> ToList () {
+            var result = new List<T>();
+            Reset();
+            while (MoveNext())
+                result.Add(_Current);
+            return result;
+        }
+
+        public DenseList<T> ToDenseList () {
+            var result = new DenseList<T>();
+            Reset();
+            while (MoveNext())
+                result.Add(ref _Current);
+            return result;
+        }
+
+        public DenseList<T> OrderBy<TKey> (Func<T, TKey> keySelector) {
+            var temp = ToDenseList();
+            temp.OrderByImpl(keySelector, Comparer<TKey>.Default, false);
+            return temp;
+        }
+
+        public DenseList<T> OrderBy<TKey, TComparer> (Func<T, TKey> keySelector, TComparer comparer)
+            where TComparer : IComparer<TKey>
+        {
+            var temp = ToDenseList();
+            temp.OrderByImpl(keySelector, comparer, false);
+            return temp;
+        }
+
+        public DenseList<T> OrderByDescending<TKey> (Func<T, TKey> keySelector) {
+            var temp = ToDenseList();
+            temp.OrderByImpl(keySelector, Comparer<TKey>.Default, true);
+            return temp;
+        }
+
+        public DenseList<T> OrderByDescending<TKey, TComparer> (Func<T, TKey> keySelector, TComparer comparer)
+            where TComparer : IComparer<TKey>
+        {
+            var temp = ToDenseList();
+            temp.OrderByImpl(keySelector, comparer, true);
+            return temp;
+        }
+
+        public DenseDistinct<T, TEnumerator, TEqualityComparer> GetEnumerator () {
+            if (_HasMoved) {
+                CloneInto(out DenseDistinct<T, TEnumerator, TEqualityComparer> result);
+                return result;
+            }
+
+            return this;
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator () {
             return GetEnumerator();
         }
 
