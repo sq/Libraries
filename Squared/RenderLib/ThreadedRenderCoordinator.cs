@@ -34,7 +34,7 @@ namespace Squared.Render {
 
     public delegate void PendingDrawHandler (IBatchContainer container, DefaultMaterialSet materials, object userData);
 
-    public class RenderCoordinator : IDisposable {
+    public sealed class RenderCoordinator : IDisposable {
         private static ThreadLocal<bool> IsDrawingOnThisThread = new ThreadLocal<bool>(false);
 
         struct CompletedPendingDraw {
@@ -44,7 +44,7 @@ namespace Squared.Render {
             public RenderTarget2D RenderTarget;
         }
 
-        class PendingDraw {
+        sealed class PendingDraw {
             public RenderTarget2D RenderTarget;
             public DefaultMaterialSet Materials;
             public object UserData;

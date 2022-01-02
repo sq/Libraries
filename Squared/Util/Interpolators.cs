@@ -211,7 +211,7 @@ namespace Squared.Util {
             );
         }
 
-        private class ExponentialInterpolator {
+        private sealed class ExponentialInterpolator {
             public float ExponentIn, ExponentMidpoint, ExponentOut;
 
             public T Interpolate<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
@@ -266,17 +266,17 @@ namespace Squared.Util {
         }
 
         public static class Ease {
-            internal class EaseInSine : Easing {
+            internal sealed class EaseInSine : Easing {
                 public override float GetT (float t) => 
                     (float)(1 - Math.Cos((t * Math.PI) / 2));
             }
 
-            internal class EaseOutSine : Easing {
+            internal sealed class EaseOutSine : Easing {
                 public override float GetT (float t) =>
                     (float)(Math.Sin((t * Math.PI) / 2));
             }
 
-            internal class EaseSine : Easing {
+            internal sealed class EaseSine : Easing {
                 public override float GetT (float t) => 
                     (float)-(Math.Cos(Math.PI * t) - 1) / 2;
             }
@@ -309,7 +309,7 @@ namespace Squared.Util {
             }
         }
 
-        private class EasedInterpolator<U> {
+        private sealed class EasedInterpolator<U> {
             internal static Dictionary<Easing, EasedInterpolator<U>> Cache =
                 new Dictionary<Easing, EasedInterpolator<U>>(new ReferenceComparer<Easing>());
 

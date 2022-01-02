@@ -120,7 +120,7 @@ namespace Squared.PRGUI {
         TooltipTargetSettings TooltipSettings { get; }
     }
 
-    public class TooltipTargetSettings {
+    public sealed class TooltipTargetSettings {
         public static TooltipTargetSettings Default = new TooltipTargetSettings();
 
         public Vector2? AnchorPoint;

@@ -18,13 +18,13 @@ using System.Linq.Expressions;
 using Squared.Threading;
 
 namespace Squared.Threading.AsyncAwait {
-    public class CancellationScope {
+    public sealed class CancellationScope {
         /// <summary>
         /// Set this to false in order to allow cancellation scopes to be used on threads without an active scheduler.
         /// </summary>
         public static bool StrictMode = false;
 
-        public class Registration {
+        public sealed class Registration {
             public readonly CancellationScope    Scope;
             public readonly IWorkItemQueueTarget Scheduler;
 

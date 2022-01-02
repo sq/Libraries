@@ -38,7 +38,7 @@ namespace Squared.Util {
             }
         }
 
-        public class BasicSlabAllocator : DefaultAllocator {
+        public sealed class BasicSlabAllocator : DefaultAllocator {
             public int SlabSize = 1024 * 64;
 
             private T[] PreviousSlab = null, CurrentSlab = null;

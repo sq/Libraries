@@ -44,7 +44,7 @@ namespace Squared.Threading {
         }
     }
 
-    class DynamicInvokeHelper<TDelegate, TArg0> : IDynamicInvokeHelper {
+    sealed class DynamicInvokeHelper<TDelegate, TArg0> : IDynamicInvokeHelper {
         Action<TDelegate, TArg0> _Invoke;
 
         public DynamicInvokeHelper (MethodInfo mInvoke) {
@@ -136,7 +136,7 @@ namespace Squared.Threading {
         int Priority { get; }
     }
 
-    public class WorkItemConfiguration {
+    public sealed class WorkItemConfiguration {
         /// <summary>
         /// Work items with higher priority values have their queues stepped before queues
         ///  with lower priority
@@ -217,7 +217,7 @@ namespace Squared.Threading {
         Stochastically = 2
     }
 
-    public class WorkQueue<T> : IWorkQueue
+    public sealed class WorkQueue<T> : IWorkQueue
         where T : IWorkItem 
     {
         const int DefaultBufferSize = 512;

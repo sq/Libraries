@@ -127,7 +127,7 @@ namespace Squared.PRGUI.Layout {
         }
     }
 
-    public unsafe partial class LayoutContext : IDisposable {
+    public unsafe sealed partial class LayoutContext : IDisposable {
         public const int DefaultCapacity = 1024;
 
         public int Count {

@@ -203,7 +203,7 @@ namespace Squared.Render.Convenience {
         };
     }
 
-    public class MaterialStateSet {
+    public sealed class MaterialStateSet {
         public BlendState BlendState;
         public DepthStencilState DepthStencilState;
         public RasterizerState RasterizerState;

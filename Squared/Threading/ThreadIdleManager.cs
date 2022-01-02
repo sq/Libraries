@@ -10,7 +10,7 @@ namespace Squared.Threading {
     /// Manages the sleep/wake state of a single worker thread, and tracks whether the thread
     ///  has received another wake request since the last time it woke up.
     /// </summary>
-    public class ThreadIdleManager : IDisposable {
+    public sealed class ThreadIdleManager : IDisposable {
         const int RunState_Sleeping = 0,
             RunState_WakeRequested = 1,
             RunState_Running = 2,

@@ -12,7 +12,7 @@ using Squared.PRGUI.Input;
 using Squared.Util;
 
 namespace Squared.PRGUI {
-    public partial class UIContext : IDisposable {
+    public sealed partial class UIContext : IDisposable {
         public struct TraversalInfo {
             public Control Control, RedirectTarget;
             public IControlContainer Container;

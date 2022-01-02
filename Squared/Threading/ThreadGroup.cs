@@ -10,9 +10,9 @@ using Squared.Util;
 using System.Linq;
 
 namespace Squared.Threading {
-    public class ThreadGroup : IDisposable {
-        internal class PriorityOrderedQueueList {
-            internal class ListForPriority : UnorderedList<IWorkQueue> {
+    public sealed class ThreadGroup : IDisposable {
+        internal sealed class PriorityOrderedQueueList {
+            internal sealed class ListForPriority : UnorderedList<IWorkQueue> {
                 public readonly int Priority;
 
                 public ListForPriority (int priority)
@@ -366,7 +366,7 @@ namespace Squared.Threading {
     }
 
     public static class ThreadGroupExtensions {
-        private class ActionWorkItem : IWorkItem {
+        private struct ActionWorkItem : IWorkItem {
             public Action Action;
             public SignalFuture Future;
 
@@ -380,7 +380,7 @@ namespace Squared.Threading {
             }
         }
 
-        private class FuncWorkItem<T> : IWorkItem {
+        private struct FuncWorkItem<T> : IWorkItem {
             public Func<T> Func;
             public Future<T> Future;
 

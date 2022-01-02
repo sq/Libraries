@@ -86,7 +86,7 @@ namespace Squared.PRGUI {
         int WalkTree (List<FuzzyHitTest.Result> output, ref FuzzyHitTest.Result thisControl, Vector2 position, Func<Control, bool> predicate, float maxDistanceSquared);
     }
 
-    public class FuzzyHitTest : IEnumerable<FuzzyHitTest.Result> {
+    public sealed class FuzzyHitTest : IEnumerable<FuzzyHitTest.Result> {
         public struct Result {
             public int Depth;
             public float Distance;

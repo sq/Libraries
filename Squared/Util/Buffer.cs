@@ -103,7 +103,7 @@ namespace Squared.Util {
             }
         }
 
-        private class Pool : UnorderedList<T[]> {
+        private sealed class Pool : UnorderedList<T[]> {
         }
 
         private static readonly ThreadLocal<Pool> ThreadLocalPool =

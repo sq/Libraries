@@ -90,7 +90,7 @@ namespace Squared.Util.Event {
     }
 
     // FIXME: Make this a struct?
-    public class EventInfo<T> : IEventInfo<T> {
+    public sealed class EventInfo<T> : IEventInfo<T> {
         public EventBus Bus { private set; get; }
         public object Source { private set; get; }
         public EventCategoryToken Category { private set; get; }
@@ -120,7 +120,7 @@ namespace Squared.Util.Event {
             IsConsumed = false;
         }
 
-        public virtual EventInfo<T> Clone () {
+        public EventInfo<T> Clone () {
             return new EventInfo<T>(Bus, Source, Category, CategoryName, Type, Arguments);
         }
     }
@@ -128,7 +128,7 @@ namespace Squared.Util.Event {
     public delegate void EventSubscriber (IEventInfo e);
     public delegate void TypedEventSubscriber<in T> (IEventInfo<T> e, T arguments);
 
-    public class EventSubscriberList : List<EventSubscriber> {
+    public sealed class EventSubscriberList : List<EventSubscriber> {
     }
 
     public struct EventSubscription : IDisposable {
@@ -208,7 +208,7 @@ namespace Squared.Util.Event {
         }
     }
 
-    public class EventCategoryToken {
+    public sealed class EventCategoryToken {
         public readonly string Name;
 
         public EventCategoryToken (string name) {

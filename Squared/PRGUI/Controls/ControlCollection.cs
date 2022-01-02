@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Squared.Util;
 
 namespace Squared.PRGUI {
-    public class ControlCollection : IEnumerable<Control> {
+    public sealed class ControlCollection : IEnumerable<Control> {
         public struct OrderRange {
             public int Min, Max;
 

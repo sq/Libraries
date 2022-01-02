@@ -587,12 +587,12 @@ namespace Squared.Render {
         void Initialize (Material m);
     }
 
-    internal class TypedUniform {
+    internal static class TypedUniform {
         internal readonly static Dictionary<UniformBindingKey, uint> KeyToIDCache = 
             new Dictionary<UniformBindingKey, uint>(new UniformBindingKey.EqualityComparer());
     }
 
-    public class TypedUniform<T> : IDisposable, ITypedUniform
+    public sealed class TypedUniform<T> : IDisposable, ITypedUniform
         where T: struct 
     {
         internal readonly UniformBindingKey KeyTemplate;

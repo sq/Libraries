@@ -268,7 +268,7 @@ namespace Squared.Threading {
         }
 
         public struct WaitableEvent {
-            public class Awaiter : WaitableEventAwaiterBase<IEventInfo> {
+            public sealed class Awaiter : WaitableEventAwaiterBase<IEventInfo> {
                 readonly WaitableEvent Parent;
 
                 public Awaiter (ref WaitableEvent parent) {
@@ -301,7 +301,7 @@ namespace Squared.Threading {
         }
 
         public struct WaitableEvent<T> {
-            public class Awaiter : WaitableEventAwaiterBase<T> {
+            public sealed class Awaiter : WaitableEventAwaiterBase<T> {
                 readonly WaitableEvent<T> Parent;
 
                 public Awaiter (ref WaitableEvent<T> parent) {

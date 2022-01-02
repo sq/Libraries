@@ -14,7 +14,7 @@ using Squared.Render.Text;
 using Squared.Util;
 
 namespace Squared.PRGUI.Decorations {
-    public class BackgroundImageSettings {
+    public sealed class BackgroundImageSettings {
         public AbstractTextureReference Texture;
         public Bounds TextureBounds;
         public RasterTextureSettings Settings;

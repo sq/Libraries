@@ -44,7 +44,7 @@ namespace Squared.Util {
         internal static readonly Func<T, T> NullSelector = _NullSelector;
         private static T _NullSelector (T value) => value;
 
-        internal class BoxedEmptyEnumerator : IEnumerator<T> {
+        internal sealed class BoxedEmptyEnumerator : IEnumerator<T> {
             // HACK: While this will break any ABSURD code comparing enumerators by reference,
             //  this means that foreach over an empty denselist won't have to allocate
             public static readonly BoxedEmptyEnumerator Instance = new BoxedEmptyEnumerator();

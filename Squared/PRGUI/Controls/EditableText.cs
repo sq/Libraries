@@ -25,7 +25,7 @@ namespace Squared.PRGUI.Controls {
             public Pair<int> Selection;
         }
 
-        internal class HistoryBuffer {
+        internal sealed class HistoryBuffer {
             public int Capacity = 100;
 
             private readonly List<HistoryEntry> Entries = new List<HistoryEntry>();

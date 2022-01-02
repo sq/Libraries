@@ -23,7 +23,7 @@ namespace Squared.Render {
     public unsafe delegate void MipGenerator<T> (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) where T : struct;
 
     public static class MipGenerator {
-        public class WithGammaRamp {
+        public sealed class WithGammaRamp {
             public readonly GammaRamp Ramp;
             private byte[] GammaTable, InvGammaTable;
 
@@ -180,7 +180,7 @@ namespace Squared.Render {
         }
     }
 
-    public class DynamicAtlas<T> : IDisposable, IDynamicTexture
+    public sealed class DynamicAtlas<T> : IDisposable, IDynamicTexture
         where T : struct 
     {
         public readonly object Tag = null;

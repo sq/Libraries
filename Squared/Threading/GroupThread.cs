@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Squared.Util;
 
 namespace Squared.Threading {
-    public class GroupThread : IDisposable {
+    public sealed class GroupThread : IDisposable {
         public  readonly ThreadGroup          Owner;
         public  readonly Thread               Thread;
         public  readonly ThreadIdleManager    IdleManager = new ThreadIdleManager();

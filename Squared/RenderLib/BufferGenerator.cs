@@ -42,10 +42,10 @@ namespace Squared.Render.Internal {
         int Id { get; }
     }
 
-    public class BufferGenerator<TVertex> : IBufferGenerator
+    public sealed class BufferGenerator<TVertex> : IBufferGenerator
         where TVertex : struct
     {
-        protected class SoftwareBufferPool : BaseObjectPool<SoftwareBuffer> {
+        protected sealed class SoftwareBufferPool : BaseObjectPool<SoftwareBuffer> {
             public readonly BufferGenerator<TVertex> BufferGenerator;
 
             public SoftwareBufferPool (BufferGenerator<TVertex> bufferGenerator) {
@@ -57,7 +57,7 @@ namespace Squared.Render.Internal {
             }
         }
 
-        protected class HardwareBufferEntry {
+        protected sealed class HardwareBufferEntry {
             public int VertexOffset { get; private set; }
             public int IndexOffset { get; private set; }
             public int SourceVertexCount;
@@ -97,7 +97,7 @@ namespace Squared.Render.Internal {
             }
         }
 
-        public class SoftwareBuffer : ISoftwareBuffer {
+        public sealed class SoftwareBuffer : ISoftwareBuffer {
             private static volatile int NextId;
 
             public readonly BufferGenerator<TVertex> BufferGenerator;
@@ -256,7 +256,7 @@ namespace Squared.Render.Internal {
                 _InstanceCount++;
         }
 
-        public virtual void Dispose () {
+        public void Dispose () {
             lock (_StateLock) {
                 _VertexArray = null;
                 _IndexArray = null;
@@ -280,7 +280,7 @@ namespace Squared.Render.Internal {
             }
         }
 
-        protected virtual int PickNewArraySize (int previousSize, int requestedSize) {
+        protected int PickNewArraySize (int previousSize, int requestedSize) {
             if (previousSize >= LargeSizeThreshold) {
                 var newSize = ((requestedSize + LargeChunkSize - 1) / LargeChunkSize) * LargeChunkSize;
 
@@ -659,7 +659,7 @@ namespace Squared.Render.Internal {
         }
     }
 
-    public class XNABufferPair<TVertex> : IHardwareBuffer
+    public sealed class XNABufferPair<TVertex> : IHardwareBuffer
         where TVertex : struct 
     {
         internal volatile int _IsValid = 0, _IsActive = 0;

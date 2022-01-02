@@ -42,7 +42,7 @@ namespace Squared.Render {
         }
     }
     
-    public class GeometryBatch : Batch {
+    public sealed class GeometryBatch : Batch {
         #region Primitive Infrastructure
 
         internal struct DrawArguments {

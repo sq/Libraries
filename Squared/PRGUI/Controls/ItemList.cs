@@ -9,7 +9,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class ItemListManager<T> {
+    public sealed class ItemListManager<T> {
         private sealed class IndexComparer : IRefComparer<int>, IEqualityComparer<int> {
             public static IndexComparer Instance = new IndexComparer();
 
@@ -431,7 +431,7 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public class ItemList<T> : IEnumerable<T> {
+    public sealed class ItemList<T> : IEnumerable<T> {
         private struct ValueToken {
             public T Value;
         }

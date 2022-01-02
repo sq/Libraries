@@ -16,7 +16,7 @@ using System.Collections;
 
 namespace Squared.Render {
     public sealed class Material : IDisposable {
-        public class PipelineHint {
+        public sealed class PipelineHint {
             public static readonly PipelineHint Default = new PipelineHint {
                 HasIndices = true,
                 VertexFormats = new[] { typeof(CornerVertex) }

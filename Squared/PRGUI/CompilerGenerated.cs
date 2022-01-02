@@ -12,7 +12,7 @@ using Squared.PRGUI.Input;
 using Squared.Util;
 
 namespace Squared.PRGUI {
-    public partial class UIContext : IDisposable {
+    public sealed partial class UIContext : IDisposable {
         private struct TraverseChildrenEnumerable : IEnumerable<TraversalInfo>, IEnumerable, IEnumerator<TraversalInfo>, IDisposable, IEnumerator
         {
 	        // Token: 0x06000903 RID: 2307 RVA: 0x0002BF1C File Offset: 0x0002A11C

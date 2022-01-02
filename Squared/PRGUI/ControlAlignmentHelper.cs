@@ -19,7 +19,7 @@ namespace Squared.PRGUI {
     /// Also manages cascading alignment (where control C is aligned to control B which is aligned to control A).
     /// Will prevent the aligned control from extending outside its parent region or from covering its anchor.
     /// </summary>
-    public class ControlAlignmentHelper<TControl>
+    public sealed class ControlAlignmentHelper<TControl>
         where TControl : Control
     {
         public delegate bool UpdatePositionHandler (Vector2 newPosition, ref RectF parentRect, ref RectF rect, bool updateDesiredPosition);

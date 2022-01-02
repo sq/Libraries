@@ -13,7 +13,7 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI {
-    public partial class UIContext : IDisposable {
+    public sealed partial class UIContext : IDisposable {
         /// <summary>
         /// Performance stats
         /// </summary>
@@ -37,7 +37,7 @@ namespace Squared.PRGUI {
 
         private List<ScratchRenderTarget> TopoSortTable = new List<ScratchRenderTarget>();
 
-        internal class ScratchRenderTarget : IDisposable {
+        internal sealed class ScratchRenderTarget : IDisposable {
             public readonly UIContext Context;
             public readonly AutoRenderTarget Instance;
             public readonly UnorderedList<RectF> UsedRectangles = new UnorderedList<RectF>();

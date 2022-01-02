@@ -116,7 +116,7 @@ namespace Squared.Render {
         }
     }
 
-    public class ColorLUT : IDisposable {
+    public sealed class ColorLUT : IDisposable {
         public readonly Texture2D Texture;
         public readonly bool OwnsTexture;
         public readonly int Resolution;

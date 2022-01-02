@@ -355,7 +355,7 @@ namespace Squared.Render.Text {
     /// <returns>true if the string should be laid out, false if it should be omitted from the output entirely.</returns>
     public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
 
-    public class RichTextConfiguration : IEquatable<RichTextConfiguration> {
+    public sealed class RichTextConfiguration : IEquatable<RichTextConfiguration> {
         private static readonly Dictionary<string, Color?> SystemNamedColorCache = new Dictionary<string, Color?>();
 
         public event Action<RichTextConfiguration, RichParseError> OnParseError;

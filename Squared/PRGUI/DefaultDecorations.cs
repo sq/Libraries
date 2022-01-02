@@ -1923,7 +1923,7 @@ namespace Squared.PRGUI {
         }
     }
 
-    public class FadeAnimation : IControlAnimation {
+    public sealed class FadeAnimation : IControlAnimation {
         public float DefaultDuration { get; set; }
         public float? From;
         public float To;

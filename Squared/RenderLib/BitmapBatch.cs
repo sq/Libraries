@@ -18,7 +18,7 @@ using System.Threading;
 using System.Runtime.CompilerServices;
 
 namespace Squared.Render {
-    public class BitmapBatch : BitmapBatchBase<BitmapDrawCall>, IBitmapBatch {
+    public sealed class BitmapBatch : BitmapBatchBase<BitmapDrawCall>, IBitmapBatch {
         public static readonly SamplerState DefaultSamplerState = SamplerState.LinearClamp;
 
         static BitmapBatch () {
@@ -28,7 +28,7 @@ namespace Squared.Render {
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
         }
 
-        class BitmapBatchCombiner : IBatchCombiner {
+        sealed class BitmapBatchCombiner : IBatchCombiner {
             public bool CanCombine (Batch lhs, Batch rhs) {
                 // Combining large batches could be counter-productive
                 const int combineThreshold = 2048;

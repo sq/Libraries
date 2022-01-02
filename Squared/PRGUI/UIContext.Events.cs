@@ -12,9 +12,9 @@ using Squared.Render;
 using Squared.Util;
 
 namespace Squared.PRGUI {
-    public partial class UIContext : IDisposable {
+    public sealed partial class UIContext : IDisposable {
         internal struct UnhandledEvent {
-            internal class Comparer : IEqualityComparer<UnhandledEvent> {
+            internal sealed class Comparer : IEqualityComparer<UnhandledEvent> {
                 public static readonly Comparer Instance = new Comparer();
 
                 public bool Equals (UnhandledEvent x, UnhandledEvent y) {

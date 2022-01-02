@@ -147,7 +147,7 @@ namespace Squared.PRGUI.Controls {
         object Value { get; set; }
     }
 
-    internal class ControlData<T> : IControlData {
+    internal sealed class ControlData<T> : IControlData {
         public ControlDataKey Key;
         public T Value;
 

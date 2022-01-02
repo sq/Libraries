@@ -44,7 +44,7 @@ namespace Squared.PRGUI {
             TooltipShown = "TooltipShown";
     }
 
-    public class MouseEventArgs {
+    public sealed class MouseEventArgs {
         public UIContext Context;
 
         public double Now;

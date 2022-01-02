@@ -20,7 +20,7 @@ using Squared.Util.Event;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI {
-    public partial class UIContext : IDisposable {
+    public sealed partial class UIContext : IDisposable {
         internal List<UnhandledEvent> UnhandledEvents = new List<UnhandledEvent>();
         internal List<UnhandledEvent> PreviousUnhandledEvents = new List<UnhandledEvent>();
 

@@ -152,7 +152,7 @@ namespace Squared.Task {
     /// <returns>True if the error has been fully processed; false to allow the error to propagate up the stack and/or get rethrown on the main thread.</returns>
     public delegate bool BackgroundTaskErrorHandler (Exception error);
 
-    public class TaskSchedulerSynchronizationContext : SynchronizationContext {
+    public sealed class TaskSchedulerSynchronizationContext : SynchronizationContext {
         public readonly TaskScheduler Scheduler;
 
         public TaskSchedulerSynchronizationContext (TaskScheduler scheduler) {
@@ -169,7 +169,7 @@ namespace Squared.Task {
         }
     }
 
-    public class TaskScheduler : IDisposable, IWorkItemQueueTarget {
+    public sealed class TaskScheduler : IDisposable, IWorkItemQueueTarget {
         /// <summary>
         /// By default, attempts to queue a work item on a disposed scheduler will do nothing.
         /// Setting this to true will cause them to throw instead.

@@ -50,7 +50,7 @@ namespace Squared.Util {
         }
     }
 
-    public class DotNetTimeProvider : ITimeProvider {
+    public sealed class DotNetTimeProvider : ITimeProvider {
         long _Offset;
         decimal _Scale;
 
@@ -74,7 +74,7 @@ namespace Squared.Util {
         }
     }
 
-    public class Win32TimeProvider : ITimeProvider {
+    public sealed class Win32TimeProvider : ITimeProvider {
         [DllImport("Kernel32.dll")]
         [SuppressUnmanagedCodeSecurity()]
         private static extern bool QueryPerformanceCounter (out long lpPerformanceCount);
@@ -136,7 +136,7 @@ namespace Squared.Util {
         }
     }
 
-    public class MockTimeProvider : ITimeProvider {
+    public sealed class MockTimeProvider : ITimeProvider {
         public long CurrentTime = 0;
 
         public long Ticks {
@@ -155,7 +155,7 @@ namespace Squared.Util {
         }
     }
 
-    public class PausableTimeProvider : ITimeProvider {
+    public sealed class PausableTimeProvider : ITimeProvider {
         public readonly ITimeProvider Source;
 
         private long? _PausedSince = null;
@@ -215,7 +215,7 @@ namespace Squared.Util {
         }
     }
 
-    public class ScalableTimeProvider : ITimeProvider {
+    public sealed class ScalableTimeProvider : ITimeProvider {
         public readonly ITimeProvider Source;
 
         private long? _LastTimeScaleChange = null;
@@ -226,13 +226,13 @@ namespace Squared.Util {
             Source = source;
         }
 
-        protected long Elapsed {
+        long Elapsed {
             get {
                 return Source.Ticks + _Offset;
             }
         }
 
-        protected long ScaledElapsed {
+        long ScaledElapsed {
             get {
                 long ticks = Source.Ticks;
 
@@ -273,7 +273,7 @@ namespace Squared.Util {
             }
         }
 
-        protected void OnTimeScaleChange (int oldTimeScale, int newTimeScale) {
+        void OnTimeScaleChange (int oldTimeScale, int newTimeScale) {
             long ticks = Source.Ticks;
             long offset = 0;
 

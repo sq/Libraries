@@ -1176,7 +1176,7 @@ namespace Squared.Render {
         }
     }
 
-    public class ImageReference {
+    public sealed class ImageReference {
         public readonly Texture2D Texture;
         public readonly Bounds TextureRegion;
 

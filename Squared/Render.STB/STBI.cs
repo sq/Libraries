@@ -12,7 +12,7 @@ using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.Render.STB {
-    public unsafe class Image : IDisposable {
+    public unsafe sealed class Image : IDisposable {
         private volatile int _RefCount;
         public int RefCount => _RefCount;
 

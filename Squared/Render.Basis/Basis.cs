@@ -219,8 +219,8 @@ namespace Squared.Render.Basis {
         public bool   iframe_flag;		// true if the image is an I-Frame
     };
 
-    public unsafe class BasisFile : IDisposable {
-        public unsafe class ImageCollection {
+    public unsafe sealed class BasisFile : IDisposable {
+        public unsafe sealed class ImageCollection {
             public readonly BasisFile File;
 
             internal ImageCollection (BasisFile image) {
@@ -318,8 +318,8 @@ namespace Squared.Render.Basis {
         }
     }
 
-    public class Image {
-        public unsafe class LevelCollection {
+    public sealed class Image {
+        public unsafe sealed class LevelCollection {
             public readonly BasisFile File;
             public readonly Image Image;
 
@@ -361,7 +361,7 @@ namespace Squared.Render.Basis {
         }
     }
 
-    public unsafe class ImageLevel {
+    public unsafe sealed class ImageLevel {
         public readonly BasisFile File;
         public readonly Image Image;
         public readonly uint Index;

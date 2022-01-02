@@ -29,7 +29,7 @@ using Microsoft.Xna.Framework;
 using Squared.Game;
 
 namespace Squared.PRGUI.Layout {
-    public unsafe partial class LayoutContext : IDisposable {
+    public unsafe sealed partial class LayoutContext : IDisposable {
         public unsafe struct ChildrenEnumerator : IEnumerator<ControlKey> {
             public readonly LayoutContext Context;
             public readonly ControlKey Parent;

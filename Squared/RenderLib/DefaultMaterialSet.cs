@@ -141,7 +141,7 @@ namespace Squared.Render {
         }
     }
 
-    public class ActiveViewTransformInfo {
+    public sealed class ActiveViewTransformInfo {
         public readonly DefaultMaterialSet MaterialSet;
         public ViewTransform ViewTransform;
         public uint Id = 0;

@@ -502,7 +502,7 @@ namespace Squared.Render {
         }
     }
 
-    public class ClearBatch : Batch {
+    public sealed class ClearBatch : Batch {
         public Color? ClearColor;
         public float? ClearZ;
         public int? ClearStencil;
@@ -550,7 +550,7 @@ namespace Squared.Render {
         }
     }
 
-    public class SetScissorBatch : Batch {
+    public sealed class SetScissorBatch : Batch {
         public Rectangle? Scissor;
 
         public void Initialize (IBatchContainer container, int layer, Material material, Rectangle? scissor) {
@@ -585,7 +585,7 @@ namespace Squared.Render {
         }
     }
 
-    public class SetViewportBatch : Batch {
+    public sealed class SetViewportBatch : Batch {
         public Rectangle? Viewport;
         public DefaultMaterialSet MaterialSet;
         public bool UpdateViewTransform;
@@ -637,7 +637,7 @@ namespace Squared.Render {
         }
     }
 
-    public class SetRenderTargetBatch : Batch {
+    public sealed class SetRenderTargetBatch : Batch {
         protected AutoRenderTarget AutoRenderTarget;
         protected RenderTarget2D RenderTarget;
 

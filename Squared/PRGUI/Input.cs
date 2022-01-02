@@ -12,7 +12,7 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Input {
-    public class InputID {
+    public sealed class InputID {
         // FIXME: Move this
         public static Dictionary<Buttons, string> GamePadButtonLabels = new Dictionary<Buttons, string>();
 
@@ -146,7 +146,7 @@ namespace Squared.PRGUI.Input {
         public bool AreAnyKeysHeld, ActivateKeyHeld, KeyboardNavigationEnded, VirtualInputActive;
     }
 
-    public class KeyboardInputSource : IInputSource {
+    public sealed class KeyboardInputSource : IInputSource {
         public KeyboardState PreviousState, CurrentState;
 
         bool IsTextInputRegistered;
@@ -267,7 +267,7 @@ namespace Squared.PRGUI.Input {
         }
     }
 
-    public class MouseInputSource : IInputSource {
+    public sealed class MouseInputSource : IInputSource {
         /// <summary>
         /// Mouse wheel movements are scaled by this amount
         /// </summary>
@@ -340,7 +340,7 @@ namespace Squared.PRGUI.Input {
         }
     }
 
-    public class GamepadVirtualKeyboardAndCursor : IInputSource {
+    public sealed class GamepadVirtualKeyboardAndCursor : IInputSource {
         public struct InputBindings {
             public static readonly InputBindings Default = new InputBindings {
                 FocusBack = new [] { Buttons.LeftShoulder },

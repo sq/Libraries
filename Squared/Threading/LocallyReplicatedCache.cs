@@ -10,8 +10,8 @@ using Squared.Util;
 using Id = System.Int32;
 
 namespace Squared.Threading {
-    public class LocallyReplicatedCache<TValue> {
-        public class Table {
+    public sealed class LocallyReplicatedCache<TValue> {
+        public sealed class Table {
             private UnorderedList<TValue> ValuesById;
             private Dictionary<TValue, Id> IdsByValue;
 
@@ -197,7 +197,7 @@ namespace Squared.Threading {
         }
     }
 
-    public class LocallyReplicatedObjectCache<TObject>
+    public sealed class LocallyReplicatedObjectCache<TObject>
         where TObject : class
     {
         public sealed class EntryComparer : IEqualityComparer<Entry> {

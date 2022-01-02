@@ -11,7 +11,7 @@ using Squared.PRGUI.Input;
 using Squared.Util;
 
 namespace Squared.PRGUI {
-    public partial class UIContext : IDisposable {
+    public sealed partial class UIContext : IDisposable {
         private void AutomaticallyTransferFocusOnTopLevelChange (Control target) {
             if (target.AcceptsFocus)
                 return;

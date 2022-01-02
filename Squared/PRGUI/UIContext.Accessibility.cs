@@ -49,7 +49,7 @@ namespace Squared.PRGUI.Accessibility {
         void FormatValueInto (StringBuilder sb);
     }
 
-    public class TTS {
+    public sealed class TTS {
         public readonly UIContext Context;
 
         public static TimeSpan StopOnTransitionThreshold = TimeSpan.FromSeconds(0.3);
@@ -291,7 +291,7 @@ namespace Squared.PRGUI.Accessibility {
 }
 
 namespace Squared.PRGUI {
-    public partial class UIContext : IDisposable {
+    public sealed partial class UIContext : IDisposable {
         public int TTSValueReadingSpeed = 3;
         public int TTSDescriptionReadingSpeed = 0;
         public bool ReadAloudOnFixation = false;

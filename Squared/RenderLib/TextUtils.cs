@@ -15,7 +15,7 @@ using Squared.Util.Hash;
 using Squared.Util.Text;
 
 namespace Squared.Render.Text {
-    public class DynamicStringLayout {
+    public sealed class DynamicStringLayout {
         /// <summary>
         /// Strings under this length will have a hash computed and stored in order to allow
         ///  layout.Text = value to avoid invalidating if the text has not changed even if

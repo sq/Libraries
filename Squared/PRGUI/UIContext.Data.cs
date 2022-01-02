@@ -20,7 +20,7 @@ using Squared.Util.Event;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI {
-    public partial class UIContext : IDisposable {
+    public sealed partial class UIContext : IDisposable {
         public static readonly HashSet<Keys> ModifierKeys = new HashSet<Keys> {
             Keys.LeftAlt,
             Keys.LeftControl,

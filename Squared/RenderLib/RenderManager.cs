@@ -909,7 +909,7 @@ namespace Squared.Render {
         }
     }
 
-    public class PrepareManager {
+    public sealed class PrepareManager {
         public struct Task : IWorkItem {
             public static WorkItemConfiguration Configuration =>
                 new WorkItemConfiguration {

@@ -9,7 +9,7 @@ using Squared.Game;
 using Squared.Util;
 
 namespace Squared.Render {
-    public class GammaRamp {
+    public sealed class GammaRamp {
         public readonly double Gamma;
         public readonly byte[] GammaTable, InvGammaTable;
 

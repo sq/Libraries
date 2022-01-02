@@ -192,7 +192,7 @@ namespace Squared.Util.Bind {
         }
     }
 
-    public class BoundMember<T> : IBoundMember, IComparable<BoundMember<T>> {
+    public sealed class BoundMember<T> : IBoundMember, IComparable<BoundMember<T>> {
         public readonly Type Type;
         public readonly object Target;
         public readonly string Name;

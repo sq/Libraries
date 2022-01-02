@@ -166,7 +166,7 @@ namespace Squared.Render.Tracing {
         private extern static int D3DPERF_GetStatus ();
     }
 
-    internal class MarkerBatch : Batch {
+    internal sealed class MarkerBatch : Batch {
         public readonly string Text;
 
         public MarkerBatch (int layer, string text) {

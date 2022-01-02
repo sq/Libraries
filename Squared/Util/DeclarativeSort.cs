@@ -267,7 +267,7 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public class Tag {
+    public sealed class Tag {
         public sealed class EqualityComparer : IEqualityComparer<Tag> {
             public static readonly EqualityComparer Instance = new EqualityComparer();
 
@@ -391,7 +391,7 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public partial class TagSet : IEnumerable<Tag> {
+    public sealed partial class TagSet : IEnumerable<Tag> {
         internal static readonly Dictionary<int, TagSet> Registry = new Dictionary<int, TagSet>();
 
         private string _CachedToString;
@@ -459,7 +459,7 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public partial class TagSet {
+    public sealed partial class TagSet {
         private sealed class TagArrayComparer : IEqualityComparer<Tag[]> {
             public bool Equals (Tag[] x, Tag[] y) {
                 return x.SequenceEqual(y);
@@ -593,11 +593,11 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public class Group {
+    public sealed class Group {
         public readonly string Name;
     }
 
-    public class TagOrderingCollection : IEnumerable<TagOrdering> {
+    public sealed class TagOrderingCollection : IEnumerable<TagOrdering> {
         internal const bool Tracing = false;
 
         private struct DownwardEdge {
@@ -617,7 +617,7 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
-        private class DownwardEdges : List<DownwardEdge> {
+        private sealed class DownwardEdges : List<DownwardEdge> {
             public readonly Tags From;
 
             public DownwardEdges (Tags from) {
@@ -636,7 +636,7 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
-        private class EdgeGraph : KeyedCollection<Tags, DirectedEdgeList> {
+        private sealed class EdgeGraph : KeyedCollection<Tags, DirectedEdgeList> {
             public EdgeGraph ()
                 : base () {
             }
@@ -711,8 +711,8 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
-        private class DirectedEdgeList : KeyedCollection<Tags, DirectedEdgeList.DirectedEdge> {
-            public class DirectedEdge {
+        private sealed class DirectedEdgeList : KeyedCollection<Tags, DirectedEdgeList.DirectedEdge> {
+            public sealed class DirectedEdge {
                 public readonly Tags Target;
                 public int           Directionality;
 
@@ -950,12 +950,12 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public class Sorter<TValue> : IEnumerable<Sorter<TValue>.SortRule> {
+    public sealed class Sorter<TValue> : IEnumerable<Sorter<TValue>.SortRule> {
         public delegate TProperty PropertyGetter<TProperty> (TValue value);
         public delegate Tags      TagGetter                 (TValue value);
         public delegate int       ValueComparer             (ref TValue lhs, ref TValue rhs);
         
-        public class DelegateOrExpression<T> {
+        public sealed class DelegateOrExpression<T> {
             public T Delegate {
                 get; private set;
             }
@@ -1016,7 +1016,7 @@ namespace Squared.Util.DeclarativeSort {
             public abstract int Compare (ref TValue lhs, ref TValue rhs);
         }
 
-        public class PropertySortRule<TProperty> : SortRule {
+        public sealed class PropertySortRule<TProperty> : SortRule {
             public  readonly DelegateOrExpression<PropertyGetter<TProperty>> GetProperty;
             public  readonly IComparer<TProperty> Comparer;
             private readonly IComparer<TProperty> RuntimeComparer;
@@ -1066,7 +1066,7 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
-        public class TagSortRule : SortRule {
+        public sealed class TagSortRule : SortRule {
             public readonly DelegateOrExpression<TagGetter> GetTags;
             public readonly TagOrderingCollection           Orderings = new TagOrderingCollection();
 

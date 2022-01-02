@@ -168,7 +168,7 @@ namespace Squared.Render.Internal {
 }
 
 namespace Squared.Render {
-    public class PrimitiveBatch<T> : ListBatch<PrimitiveDrawCall<T>>
+    public sealed class PrimitiveBatch<T> : ListBatch<PrimitiveDrawCall<T>>
         where T : struct, IVertexType {
 
         private readonly PrimitiveDrawCallComparer<T> _Comparer = new PrimitiveDrawCallComparer<T>();
@@ -400,7 +400,7 @@ namespace Squared.Render {
         }
     }
 
-    public class NativeBatch : ListBatch<NativeDrawCall> {
+    public sealed class NativeBatch : ListBatch<NativeDrawCall> {
         private Action<DeviceManager, object> _BatchSetup;
         private Action<DeviceManager, object> _BatchTeardown;
         private object _UserData;

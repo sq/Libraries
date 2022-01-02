@@ -88,7 +88,7 @@ namespace Squared.Threading {
         public abstract void Invoke ();
     }
 
-    internal class ActionRunInThreadThunk : RunInThreadThunk {
+    internal sealed class ActionRunInThreadThunk : RunInThreadThunk {
         public readonly SignalFuture Future = new SignalFuture();
         public Action WorkItem;
 
@@ -102,7 +102,7 @@ namespace Squared.Threading {
         }
     }
 
-    internal class FuncRunInThreadThunk<T> : RunInThreadThunk {
+    internal sealed class FuncRunInThreadThunk<T> : RunInThreadThunk {
         public readonly Future<T> Future = new Future<T>();
         public Func<T> WorkItem;
 
@@ -115,7 +115,7 @@ namespace Squared.Threading {
         }
     }
 
-    internal class DynamicRunInThreadThunk : RunInThreadThunk {
+    internal sealed class DynamicRunInThreadThunk : RunInThreadThunk {
         public readonly IFuture Future = new Future<object>();
         public object[] Arguments;
         public Delegate WorkItem;
@@ -171,14 +171,14 @@ namespace Squared.Threading {
         bool CopyFrom (IFuture source);
     }
 
-    public class NoneType {
+    public sealed class NoneType {
         private NoneType () {
         }
 
         public static readonly NoneType None = new NoneType();
     }
 
-    public class SignalFuture : Future<NoneType> {
+    public sealed class SignalFuture : Future<NoneType> {
         public static readonly SignalFuture Signaled = new SignalFuture(true);
 
         public SignalFuture ()
@@ -243,7 +243,7 @@ namespace Squared.Threading {
             return thunk.Future;
         }
 
-        private class WaitForFirstThunk {
+        private sealed class WaitForFirstThunk {
             public Future<IFuture> Composite = new Future<IFuture>();
             public bool Completed;
 
@@ -282,7 +282,7 @@ namespace Squared.Threading {
             }
         }
 
-        private class WaitForAllThunk {
+        private sealed class WaitForAllThunk {
             public SignalFuture Composite = new SignalFuture();
             private bool Initializing = true;
             public int TargetCount;
@@ -348,7 +348,7 @@ namespace Squared.Threading {
             }
         }
 
-        private class WaitForSingleEventThunk {
+        private sealed class WaitForSingleEventThunk {
             public readonly Squared.Util.Bind.BoundMember<EventHandler> Event;
             public readonly SignalFuture Future = new SignalFuture();
             private readonly EventHandler Handler;
@@ -371,7 +371,7 @@ namespace Squared.Threading {
             }
         }
 
-        private class WaitForSingleEventThunk<TEventArgs>
+        private sealed class WaitForSingleEventThunk<TEventArgs>
             where TEventArgs : System.EventArgs {
 
             public readonly Squared.Util.Bind.BoundMember<EventHandler<TEventArgs>> Event;
