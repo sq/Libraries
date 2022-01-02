@@ -154,8 +154,8 @@
   <Target Name="CleanShaders" Condition="'$(ShaderDirectory)' != ''" AfterTargets="Clean">
     <Message Importance="High" Text="Cleaning shaders" />
 
-    <Exec Command='del /Q /S "$(ShaderLocalBinDirectory)\*.bin"' />
-    <Exec Command='del /Q /S "$(ShaderLocalBinDirectory)\*.glsl"' />
+    <Exec Command='del /Q /S "$(ShaderLocalBinDirectory)\*.bin"' ContinueOnError="WarnAndContinue" />
+    <Exec Command='del /Q /S "$(ShaderLocalBinDirectory)\*.glsl"' ContinueOnError="WarnAndContinue" />
   </Target>
 
   <!-- FIXME: I want this to run only during Rebuild
