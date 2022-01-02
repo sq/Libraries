@@ -177,7 +177,7 @@
   <ItemGroup Condition="'$(ShaderDirectory)' != ''">
     <ShaderText Include="$(ShaderDirectory)\*.fx" />
     <None Include="$(ShaderDirectory)\*.fxh" />
-    <EmbeddedResource Include="$(ShaderLocalBinDirectory)\*.bin" >
+    <EmbeddedResource Include="@(ShaderText->'$(ShaderLocalBinDirectory)\%(Filename).fx.bin')" >
       <LogicalName>%(Filename).bin</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
