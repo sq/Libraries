@@ -180,6 +180,7 @@ namespace Squared.Render.Internal {
         protected static object _StaticStateLock = new object();
         protected static int    _InstanceCount = 0;
         protected static int    _LastFrameStaticReset = -1;
+        protected static int    _SmallUnusedBufferCount = 0, _LargeUnusedBufferCount = 0;
         protected static readonly UnorderedList<XNABufferPair<TVertex>> _UnusedHardwareBuffers 
             = new UnorderedList<XNABufferPair<TVertex>>();
 
@@ -201,8 +202,8 @@ namespace Squared.Render.Internal {
 
         protected HardwareBufferEntry _FillingHardwareBufferEntry = null;
 
-        const int MaxBufferAge = 5;
-        const int MaxUnusedBuffers = 5;
+        const int MaxBufferAge = 4;
+        const int MaxLargeUnusedBuffers = 4, MaxSmallUnusedBuffers = 16;
 
         // Initial size of the single vertex and index buffers
         const int InitialArraySize = 8192;
@@ -272,6 +273,8 @@ namespace Squared.Render.Internal {
                             buffer.Dispose();
 
                         _UnusedHardwareBuffers.Clear();
+
+                        _LargeUnusedBufferCount = _SmallUnusedBufferCount = 0;
                     }
                 }
             }
@@ -299,13 +302,19 @@ namespace Squared.Render.Internal {
             using (var e = _UnusedHardwareBuffers.GetEnumerator())
             while (e.GetNext(out hb)) {
                 hb.Age += 1;
+                int usedCount = hb.IsLarge ? _LargeUnusedBufferCount : _SmallUnusedBufferCount;
+                int usedLimit = hb.IsLarge ? MaxLargeUnusedBuffers : MaxSmallUnusedBuffers;
 
-                bool shouldKill = (hb.Age >= MaxBufferAge) ||
-                    ((_UnusedHardwareBuffers.Count > MaxUnusedBuffers) && (hb.Age > 1));
+                bool shouldKill = (!hb.ProtectedFromDeath && (hb.Age >= MaxBufferAge)) ||
+                    ((usedCount > usedLimit) && (hb.Age > 1));
 
                 if (shouldKill) {
                     e.RemoveCurrent();
                     hb.Invalidate(frameIndex);
+                    if (hb.IsLarge)
+                        _LargeUnusedBufferCount--;
+                    else
+                        _SmallUnusedBufferCount--;
 
                     renderManager.DisposeResource(hb);
                 }
@@ -340,8 +349,13 @@ namespace Squared.Render.Internal {
                         continue;
                     hwb.Invalidate(frameIndex);
 
-                    lock (_StaticStateLock)
+                    lock (_StaticStateLock) {
+                        if (hwb.IsLarge)
+                            _LargeUnusedBufferCount++;
+                        else
+                            _SmallUnusedBufferCount++;
                         _UnusedHardwareBuffers.Add(hwb);
+                    }
                 }
 
                 _UsedHardwareBufferEntries.Clear();
@@ -563,7 +577,12 @@ namespace Squared.Render.Internal {
                         // This buffer is large enough, so return it.
                         e.RemoveCurrent();
 
-                        buffer.Age = Arithmetic.Clamp(buffer.Age - 2, 0, MaxBufferAge);
+                        if (buffer.IsLarge)
+                            _LargeUnusedBufferCount--;
+                        else
+                            _SmallUnusedBufferCount--;
+
+                        buffer.Age = 0;
                         return buffer;
                     }
                 }
@@ -770,10 +789,8 @@ namespace Squared.Render.Internal {
             _IsValid = 0;
         }
 
-        public int Age {
-            get;
-            set;
-        }
+        public bool ProtectedFromDeath { get; set; }
+        public int Age { get; set; }
 
         public bool IsAllocated {
             get;
@@ -794,6 +811,8 @@ namespace Squared.Render.Internal {
             get;
             private set;
         }
+
+        public bool IsLarge => (VertexCount > 1024) || (IndexCount > 2048);
 
         public override string ToString() {
             return $"XNABufferPair<{typeof(TVertex).Name}> #{Id} [{VertexCount}v {IndexCount}i] {((_IsValid != 0) ? "valid" : "invalid")}";

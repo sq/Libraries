@@ -215,6 +215,9 @@ namespace Squared.Render {
             if (!cornerGenerator.TryGetCachedBuffer(CornerBufferNames[repeatCount], vertCount, indexCount, out result)) {
                 // Console.Write($"Alloc corner buffer {bufferName} -> ");
                 result = cornerGenerator.Allocate(vertCount, indexCount, true);
+                // FIXME: For some reason the logic for pruning unused buffers triggers on corner buffers every frame
+                // HACK: So until that's fixed we just disable it for corner buffers
+                result.HardwareBuffer.ProtectedFromDeath = true;
                 // Console.WriteLine(result.ToString());
                 cornerGenerator.SetCachedBuffer(CornerBufferNames[repeatCount], result);
                 // TODO: Can we just skip filling the buffer here?
