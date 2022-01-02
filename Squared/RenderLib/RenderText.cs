@@ -16,8 +16,8 @@ using System.Globalization;
 
 namespace Squared.Render.Text {
     public struct StringLayout {
-        private static readonly ConditionalWeakTable<SpriteFont, Dictionary<char, KerningAdjustment>> _DefaultKerningAdjustments =
-            new ConditionalWeakTable<SpriteFont, Dictionary<char, KerningAdjustment>>(); 
+        private static readonly ConditionalWeakTable<object, Dictionary<char, KerningAdjustment>> _DefaultKerningAdjustments =
+            new ConditionalWeakTable<object, Dictionary<char, KerningAdjustment>>(); 
 
         public readonly Vector2 Position;
         /// <summary>
@@ -84,15 +84,16 @@ namespace Squared.Render.Text {
             return layout.DrawCalls;
         }
 
-        public static Dictionary<char, KerningAdjustment> GetDefaultKerningAdjustments (IGlyphSource font) {
-            // FIXME
-            if (font is SpriteFontGlyphSource) {
-                Dictionary<char, KerningAdjustment> result;
-                _DefaultKerningAdjustments.TryGetValue(((SpriteFontGlyphSource)font).Font, out result);
-                return result;
-            } else {
+        public static Dictionary<char, KerningAdjustment> GetDefaultKerningAdjustments<TGlyphSource> (TGlyphSource font)
+            where TGlyphSource : IGlyphSource
+        {
+            var key = font.UniqueKey;
+            if (key == null)
                 return null;
-            }
+
+            Dictionary<char, KerningAdjustment> result;
+            _DefaultKerningAdjustments.TryGetValue(key, out result);
+            return result;
         }
 
         public static void SetDefaultKerningAdjustments (SpriteFont font, Dictionary<char, KerningAdjustment> adjustments) {
@@ -928,16 +929,18 @@ namespace Squared.Render.Text {
             return overrideSuppress ?? suppress;
         }
 
-        public ArraySegment<BitmapDrawCall> AppendText (
-            IGlyphSource font, AbstractString text,
+        public ArraySegment<BitmapDrawCall> AppendText<TGlyphSource> (
+            TGlyphSource font, AbstractString text,
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
             int? start = null, int? end = null, bool? overrideSuppress = null
-        ) {
+        ) where TGlyphSource : IGlyphSource {
             if (!IsInitialized)
                 throw new InvalidOperationException("Call Initialize first");
 
-            if (font == null)
-                throw new ArgumentNullException("font");
+            if (!typeof(TGlyphSource).IsValueType) {
+                if (font == null)
+                    throw new ArgumentNullException("font");
+            }
             if (text.IsNull)
                 throw new ArgumentNullException("text");
 

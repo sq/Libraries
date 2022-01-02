@@ -1040,6 +1040,8 @@ namespace Squared.Render.Text {
         public GlyphPixelAlignment? DefaultAlignment { get; set; }
         private readonly IGlyphSource[] Sources = null;
 
+        object IGlyphSource.UniqueKey => this;
+
         public FallbackGlyphSource (bool ownsSources, params IGlyphSource[] sources) {
             OwnsSources = ownsSources;
             Sources = sources;
@@ -1120,6 +1122,7 @@ namespace Squared.Render.Text {
         GlyphPixelAlignment? DefaultAlignment { get; }
         bool IsDisposed { get; }
         int Version { get; }
+        object UniqueKey { get; }
     }
 
     public static class TextUtils {
@@ -1198,6 +1201,8 @@ namespace Squared.Render.Text {
 
         public readonly TextUtils.FontFields Fields;
         public readonly int DefaultCharacterIndex;
+
+        object IGlyphSource.UniqueKey => Font;
 
         public bool IsDisposed => (Texture?.IsDisposed == true);
 

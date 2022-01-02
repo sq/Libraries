@@ -49,6 +49,8 @@ namespace Squared.Render.Text {
 
             public bool IsDisposed { get; private set; }
 
+            object IGlyphSource.UniqueKey => this;
+
             public FontSize (FreeTypeFont font, float sizePoints) {
                 Font = font;
                 SizePoints = sizePoints;
@@ -389,6 +391,8 @@ namespace Squared.Render.Text {
 
         internal RenderCoordinator RenderCoordinator;
         internal Face Face;
+
+        object IGlyphSource.UniqueKey => this;
 
         public GlyphPixelAlignment? DefaultAlignment {
             get => DefaultSize.DefaultAlignment;
