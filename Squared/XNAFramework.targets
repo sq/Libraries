@@ -166,7 +166,7 @@
   </Target>
   -->
 
-  <Target Name="CompileShaders" Condition="'$(ShaderDirectory)' != ''" BeforeTargets="BeforeBuild">
+  <Target Name="CompileShaders" Condition="'$(ShaderDirectory)' != ''" BeforeTargets="ValidateShaderBinaries;PrepareResources">
     <Message Text="Loaded property overrides from '$(XNAPropertiesOverridePath)'" />
     <Message Importance="High" Text="Compiling shaders" />
     <Error Text="You must set SquaredPath to use the shader compiler" Condition=" '$(SquaredPath)' == '' " />
@@ -174,11 +174,20 @@
     <Exec Command='"$(ShaderCompilerPath)" "$(SquaredPath)\ext\fxc" "$(ShaderDirectory)" "$(ShaderLocalBinDirectory)" "/O$(ShaderOptimizationLevel) /Zi $(ShaderCompilerDefines)" "$(ShaderCompilerExtraOptions)" "$(TestParsePath)" $(ShaderCompilerModeSwitches)' />
   </Target>
 
+  <Target Condition="'$(ShaderDirectory)' != ''" Name="ValidateShaderBinaries" BeforeTargets="PrepareResources;BeforeBuild">
+    <ItemGroup>
+      <ShaderBinary Include="@(ShaderText->'$(ShaderLocalBinDirectory)\%(Filename).fx.bin')" />
+      <EmbeddedResource Include="@(ShaderBinary)" >
+        <LogicalName>%(Filename).bin</LogicalName>
+      </EmbeddedResource>
+    </ItemGroup>
+
+    <Error Condition="!Exists(%(ShaderBinary.FullPath))" Text="Missing shader binary [%(ShaderBinary.FullPath)]"/>
+    <Message Importance="High" Text="Including the following shader binaries: '@(ShaderBinary)'" />
+  </Target>
+
   <ItemGroup Condition="'$(ShaderDirectory)' != ''">
     <ShaderText Include="$(ShaderDirectory)\*.fx" />
     <None Include="$(ShaderDirectory)\*.fxh" />
-    <EmbeddedResource Include="@(ShaderText->'$(ShaderLocalBinDirectory)\%(Filename).fx.bin')" >
-      <LogicalName>%(Filename).bin</LogicalName>
-    </EmbeddedResource>
   </ItemGroup>
 </Project>
