@@ -500,8 +500,8 @@ namespace Squared.Render {
 
         internal long TotalVertexBytes, TotalIndexBytes;
 
-        private readonly List<IBufferGenerator> _AllBufferGenerators = new List<IBufferGenerator>();
-        private ThreadLocal<Dictionary<Type, IBufferGenerator>> _BufferGenerators;
+        private readonly Dictionary<Type, IBufferGenerator> _AllBufferGenerators =
+            new Dictionary<Type, IBufferGenerator>(new ReferenceComparer<Type>());
 
         private readonly Dictionary<Type, int> _PreferredPoolCapacities =
             new Dictionary<Type, int>(new ReferenceComparer<Type>());
@@ -542,17 +542,16 @@ namespace Squared.Render {
         }
 
         internal void CreateNewBufferGenerators () {
-            lock (_AllBufferGenerators)
-            foreach (var generator in _AllBufferGenerators) {
-                try {
-                    generator.Dispose();
-                } catch (Exception) {
+            lock (_AllBufferGenerators) {
+                foreach (var kvp in _AllBufferGenerators) {
+                    try {
+                        kvp.Value.Dispose();
+                    } catch (Exception) {
+                    }
                 }
-            }
 
-            _BufferGenerators = new ThreadLocal<Dictionary<Type, IBufferGenerator>>(
-                MakeThreadBufferGeneratorTable
-            );
+                _AllBufferGenerators.Clear();
+            }
         }
 
         internal void OnDeviceResetOrLost () {
@@ -573,11 +572,6 @@ namespace Squared.Render {
             CreateNewBufferGenerators();
             if (DeviceChanged != null)
                 DeviceChanged(this, DeviceManager);
-        }
-
-        private Dictionary<Type, IBufferGenerator> MakeThreadBufferGeneratorTable () {
-            var result = new Dictionary<Type, IBufferGenerator>(new ReferenceComparer<Type>());
-            return result;
         }
 
         public static readonly BlendState ResetBlendState = new BlendState {
@@ -632,10 +626,12 @@ namespace Squared.Render {
                 ManagedIndexBytes = 0
             };
 
-            lock (_AllBufferGenerators)
-            foreach (var generator in _AllBufferGenerators) {
-                result.ManagedVertexBytes += generator.ManagedVertexBytes;
-                result.ManagedIndexBytes += generator.ManagedIndexBytes;
+            lock (_AllBufferGenerators) {
+                foreach (var kvp in _AllBufferGenerators) {
+                    var generator = kvp.Value;
+                    result.ManagedVertexBytes += generator.ManagedVertexBytes;
+                    result.ManagedIndexBytes += generator.ManagedIndexBytes;
+                }
             }
 
             return result;
@@ -753,9 +749,10 @@ namespace Squared.Render {
             var t = typeof(T);
 
             IBufferGenerator result = null;
-            var bg = _BufferGenerators.Value;
-            if (bg.TryGetValue(t, out result))
-                return (T)result;
+            lock (_AllBufferGenerators) {
+                if (_AllBufferGenerators.TryGetValue(t, out result))
+                    return (T)result;
+            }
 
             if (_AllowCreatingNewGenerators != 1)
                 throw new InvalidOperationException("Cannot create a buffer generator after the flush operation has occurred");
@@ -763,10 +760,14 @@ namespace Squared.Render {
             result = (IBufferGenerator)Activator.CreateInstance(
                 t, this
             );
-            bg.Add(t, result);
 
-            lock (_AllBufferGenerators)
-                _AllBufferGenerators.Add(result);
+            lock (_AllBufferGenerators) {
+                if (_AllBufferGenerators.TryGetValue(t, out IBufferGenerator lostRace)) {
+                    result.Dispose();
+                    return (T)lostRace;
+                } else
+                    _AllBufferGenerators.Add(t, result);
+            }
 
             return (T)result;
         }
@@ -836,8 +837,8 @@ namespace Squared.Render {
             _AllowCreatingNewGenerators = 1;
 
             lock (_AllBufferGenerators)
-            foreach (var generator in _AllBufferGenerators)
-                generator.Reset(frameIndex);
+            foreach (var kvp in _AllBufferGenerators)
+                kvp.Value.Reset(frameIndex);
         }
 
         internal void FlushBufferGenerators (int frameIndex) {
@@ -846,8 +847,8 @@ namespace Squared.Render {
             _AllowCreatingNewGenerators = 0;
 
             lock (_AllBufferGenerators)
-            foreach (var bg in _AllBufferGenerators)
-                bg.Flush(frameIndex);
+            foreach (var kvp in _AllBufferGenerators)
+                kvp.Value.Flush(frameIndex);
         }
 
         internal void FlushPendingDisposes () {

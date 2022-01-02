@@ -84,6 +84,7 @@ namespace Squared.Render.Internal {
                 IndexOffset = indexOffset;
                 SourceVertexCount = sourceVertexCount;
                 SourceIndexCount = sourceIndexCount;
+                SoftwareBufferCount = 0;
                 VerticesUsed = IndicesUsed = 0;
             }
 
@@ -200,8 +201,8 @@ namespace Squared.Render.Internal {
 
         protected HardwareBufferEntry _FillingHardwareBufferEntry = null;
 
-        const int MaxBufferAge = 4;
-        const int MaxUnusedBuffers = 4;
+        const int MaxBufferAge = 5;
+        const int MaxUnusedBuffers = 5;
 
         // Initial size of the single vertex and index buffers
         const int InitialArraySize = 8192;
@@ -211,11 +212,15 @@ namespace Squared.Render.Internal {
         // Once the buffer is considered large it grows at this rate
         const int LargeChunkSize = 65536;
 
-        const int MinVerticesPerHardwareBuffer = 10240;
-        const int MinIndicesPerHardwareBuffer = 15360;
+        const int MinVerticesPerHardwareBuffer = 10240,
+            // Dedicated buffers tend to be very small, so we want to make sure we allocate them
+            //  with some extra padding space to increase the odds of being reusable on future frames
+            MinVerticesPerDedicatedHardwareBuffer = 256,
+            MinIndicesPerHardwareBuffer = 15360,
+            MinIndicesPerDedicatedHardwareBuffer = 512;
         
         protected int MaxVerticesPerHardwareBuffer = 204800;
-        protected int MaxSoftwareBuffersPerHardwareBuffer = 1024;
+        protected int MaxSoftwareBuffersPerHardwareBuffer = 4096;
 
         public readonly RenderManager RenderManager;
         public readonly object CreateResourceLock;
@@ -449,7 +454,8 @@ namespace Squared.Render.Internal {
 
         public void SetCachedBuffer (string key, SoftwareBuffer buffer) {
             lock (_BufferCache)
-                _BufferCache.Add(key, buffer);
+                // FIXME: We could leak an old one here
+                _BufferCache[key] = buffer;
         }
 
         public bool TryGetCachedBuffer (string key, int vertexCount, int indexCount, out SoftwareBuffer result) {
@@ -568,6 +574,11 @@ namespace Squared.Render.Internal {
                     vertexCount = MinVerticesPerHardwareBuffer;
                 if (indexCount < MinIndicesPerHardwareBuffer)
                     indexCount = MinIndicesPerHardwareBuffer;
+            } else {
+                if (vertexCount < MinVerticesPerDedicatedHardwareBuffer)
+                    vertexCount = MinVerticesPerDedicatedHardwareBuffer;
+                if (indexCount < MinIndicesPerDedicatedHardwareBuffer)
+                    indexCount = MinIndicesPerDedicatedHardwareBuffer;
             }
 
             // We didn't find a suitably large buffer.
@@ -785,7 +796,7 @@ namespace Squared.Render.Internal {
         }
 
         public override string ToString() {
-            return String.Format("XNABufferPair<{0}> #{1} {2}", typeof(TVertex).Name, Id, (_IsValid != 0) ? "valid" : "invalid");
+            return $"XNABufferPair<{typeof(TVertex).Name}> #{Id} [{VertexCount}v {IndexCount}i] {((_IsValid != 0) ? "valid" : "invalid")}";
         }
 
         public void Validate (int frameIndex) {
