@@ -34,6 +34,7 @@
     <ShaderCompilerPath>$(SquaredPath)\ShaderCompiler\bin\ShaderCompiler.exe</ShaderCompilerPath>
     <!-- The 'disable preshaders' flag has to come last, /Od /O3 etc clear it -->
     <ShaderCompilerExtraOptions>/Op</ShaderCompilerExtraOptions>
+    <ShaderCompilerModeSwitches></ShaderCompilerModeSwitches>
     <ShaderCompilerModeSwitches Condition="'$(ParallelShaderCompile)' != 'false'">$(ShaderCompilerModeSwitches) --parallel</ShaderCompilerModeSwitches>
     <ShaderCompilerModeSwitches Condition="'$(GenerateShaderDisassembly)' == 'true'">$(ShaderCompilerModeSwitches) --disassemble</ShaderCompilerModeSwitches>
 
@@ -140,6 +141,9 @@
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader output directory: '$(ShaderLocalBinDirectory)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader optimization level: $(ShaderOptimizationLevel)" />
     <Message Importance="High" Condition="'$(EnableFNA)' == 'true'" Text="Copying FNALibs from '$(FNALibsPath)\$(PlatformTarget)\*.dll'." />
+    <Message Text="ParallelShaderCompile: '$(ParallelShaderCompile)'" />
+    <Message Text="GenerateShaderDisassembly: '$(GenerateShaderDisassembly)'" />
+    <Message Importance="High" Text="Shader compiler mode switches: '$(ShaderCompilerModeSwitches)'" />
 
     <Error Text="EnableFNA is set and FNAPath could not be automatically detected after searching nearby folders." Condition=" ('$(FNAPath)' == '') And ('$(EnableFNA)' == 'true') " />
     <Error Text="SDL2.dll could not be found in the configured FNALibsPath." Condition=" ('$(EnableFNA)' == 'true') And !Exists('$(FNALibsPath)\$(PlatformTarget)\SDL2.dll') " />
