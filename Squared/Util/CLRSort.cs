@@ -47,27 +47,27 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int CompareAtIndex (int a, int b) {
-            return RefComparer.Compare(ref Items.Array[Items.Offset + a], ref Items.Array[Items.Offset + b]);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SwapIfGreaterWithItems (int a, int b) {
             if (a == b)
                 return;
 
-            if (CompareAtIndex(a, b) > 0) {
-                var key = Items.Array[Items.Offset + a];
-                Items.Array[Items.Offset + a] = Items.Array[Items.Offset + b];
-                Items.Array[Items.Offset + b] = key;
+            var array = Items.Array;
+            var offset = Items.Offset;
+
+            if (RefComparer.Compare(ref array[offset + a], ref array[offset + b]) > 0) {
+                var key = array[offset + a];
+                array[offset + a] = array[offset + b];
+                array[offset + b] = key;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Swap (int i, int j) {
-            var t1 = Items.Array[Items.Offset + i];
-            Items.Array[Items.Offset + i] = Items.Array[Items.Offset + j];
-            Items.Array[Items.Offset + j] = t1;
+            var array = Items.Array;
+            var offset = Items.Offset;
+            var t1 = array[offset + i];
+            array[offset + i] = array[offset + j];
+            array[offset + j] = t1;
         }
 
         internal void Sort(int left, int length) {
@@ -118,6 +118,9 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int PickPivotAndPartition(int lo, int hi) {
+            var array = Items.Array;
+            var offset = Items.Offset;
+
             // Compute median-of-three.  But also partition them, since we've done the comparison.
             int mid = lo + (hi - lo) / 2;
 
@@ -130,8 +133,8 @@ namespace Squared.Util {
             int left = lo, right = hi - 1;  // We already partitioned lo and hi and put the pivot in hi - 1.  And we pre-increment & decrement below.
                 
             while (left < right) {
-                while (RefComparer.Compare(ref Items.Array[Items.Offset + ++left], ref pivot) < 0) ;
-                while (RefComparer.Compare(ref pivot, ref Items.Array[Items.Offset + --right]) < 0) ;
+                while (RefComparer.Compare(ref array[offset + ++left], ref pivot) < 0) ;
+                while (RefComparer.Compare(ref pivot, ref array[offset + --right]) < 0) ;
 
                 if (left >= right)
                     break;
@@ -158,40 +161,50 @@ namespace Squared.Util {
         }
 
         private void DownHeap(int i, int n, int lo) {
-            var d = Items.Array[Items.Offset + lo + i - 1];
+            var array = Items.Array;
+            var offset = Items.Offset;
+            var d = array[offset + lo + i - 1];
             int child;
 
             while (i <= n / 2) {
                 child = 2 * i;
-                if (child < n && CompareAtIndex(lo + child - 1, lo + child) < 0) {
+
+                if (
+                    (child < n) && 
+                    (RefComparer.Compare(ref array[offset + lo + child - 1], ref array[offset + lo + child]) < 0)
+                ) {
                     child++;
                 }
 
-                if (!(RefComparer.Compare(ref d, ref Items.Array[Items.Offset + lo + child - 1]) < 0))
+                ref var current = ref array[offset + lo + child - 1];
+
+                if (!(RefComparer.Compare(ref d, ref current) < 0))
                     break;
 
-                Items.Array[Items.Offset + lo + i - 1] = Items.Array[Items.Offset + lo + child - 1];
+                array[offset + lo + i - 1] = current;
                 i = child;
             }
 
-            Items.Array[Items.Offset + lo + i - 1] = d;
+            array[offset + lo + i - 1] = d;
         }
 
         private void InsertionSort (int lo, int hi) {
+            var array = Items.Array;
+            var offset = Items.Offset;
             int i, j;
             TElement t;
             for (i = lo; i < hi; i++)
             {
                 j = i;
-                t = Items.Array[Items.Offset + i + 1];
+                t = array[offset + i + 1];
 
-                while (j >= lo && RefComparer.Compare(ref t, ref Items.Array[Items.Offset + j]) < 0)
+                while (j >= lo && RefComparer.Compare(ref t, ref array[offset + j]) < 0)
                 {
-                    Items.Array[Items.Offset + j + 1] = Items.Array[Items.Offset + j];
+                    array[offset + j + 1] = array[offset + j];
                     j--;
                 }
 
-                Items.Array[Items.Offset + j + 1] = t;
+                array[offset + j + 1] = t;
             }
         }
     }
@@ -212,27 +225,27 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int CompareAtIndex (int a, int b) {
-            return NonRefComparer.Compare(Items.Array[Items.Offset + a], Items.Array[Items.Offset + b]);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SwapIfGreaterWithItems (int a, int b) {
             if (a == b)
                 return;
 
-            if (CompareAtIndex(a, b) > 0) {
-                var key = Items.Array[Items.Offset + a];
-                Items.Array[Items.Offset + a] = Items.Array[Items.Offset + b];
-                Items.Array[Items.Offset + b] = key;
+            var array = Items.Array;
+            var offset = Items.Offset;
+
+            if (NonRefComparer.Compare(array[offset + a], array[offset + b]) > 0) {
+                var key = array[offset + a];
+                array[offset + a] = array[offset + b];
+                array[offset + b] = key;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Swap (int i, int j) {
-            var t1 = Items.Array[Items.Offset + i];
-            Items.Array[Items.Offset + i] = Items.Array[Items.Offset + j];
-            Items.Array[Items.Offset + j] = t1;
+            var array = Items.Array;
+            var offset = Items.Offset;
+            var t1 = array[offset + i];
+            array[offset + i] = array[offset + j];
+            array[offset + j] = t1;
         }
 
         internal void Sort(int left, int length) {
@@ -283,6 +296,8 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int PickPivotAndPartition(int lo, int hi) {
+            var array = Items.Array;
+            var offset = Items.Offset;
             // Compute median-of-three.  But also partition them, since we've done the comparison.
             int mid = lo + (hi - lo) / 2;
 
@@ -290,13 +305,13 @@ namespace Squared.Util {
             SwapIfGreaterWithItems(lo, hi);
             SwapIfGreaterWithItems(mid, hi);
 
-            var pivot = Items.Array[Items.Offset + mid];
+            var pivot = array[offset + mid];
             Swap(mid, hi - 1);
             int left = lo, right = hi - 1;  // We already partitioned lo and hi and put the pivot in hi - 1.  And we pre-increment & decrement below.
                 
             while (left < right) {
-                while (NonRefComparer.Compare(Items.Array[Items.Offset + ++left], pivot) < 0) ;
-                while (NonRefComparer.Compare(pivot, Items.Array[Items.Offset + --right]) < 0) ;
+                while (NonRefComparer.Compare(array[offset + ++left], pivot) < 0) ;
+                while (NonRefComparer.Compare(pivot, array[offset + --right]) < 0) ;
 
                 if (left >= right)
                     break;
@@ -323,40 +338,48 @@ namespace Squared.Util {
         }
 
         private void DownHeap(int i, int n, int lo) {
-            var d = Items.Array[Items.Offset + lo + i - 1];
+            var array = Items.Array;
+            var offset = Items.Offset;
+            var d = array[offset + lo + i - 1];
             int child;
 
             while (i <= n / 2) {
                 child = 2 * i;
-                if (child < n && CompareAtIndex(lo + child - 1, lo + child) < 0) {
+                if (
+                    (child < n) && 
+                    (NonRefComparer.Compare(array[offset + lo + child - 1], array[offset + lo + child]) < 0)
+                ) {
                     child++;
                 }
 
-                if (!(NonRefComparer.Compare(d, Items.Array[Items.Offset + lo + child - 1]) < 0))
+                if (!(NonRefComparer.Compare(d, array[offset + lo + child - 1]) < 0))
                     break;
 
-                Items.Array[Items.Offset + lo + i - 1] = Items.Array[Items.Offset + lo + child - 1];
+                array[offset + lo + i - 1] = array[offset + lo + child - 1];
                 i = child;
             }
 
-            Items.Array[Items.Offset + lo + i - 1] = d;
+            array[offset + lo + i - 1] = d;
         }
 
         private void InsertionSort (int lo, int hi) {
+            var array = Items.Array;
+            var offset = Items.Offset;
+
             int i, j;
             TElement t;
             for (i = lo; i < hi; i++)
             {
                 j = i;
-                t = Items.Array[Items.Offset + i + 1];
+                t = array[offset + i + 1];
 
-                while (j >= lo && NonRefComparer.Compare(t, Items.Array[Items.Offset + j]) < 0)
+                while (j >= lo && NonRefComparer.Compare(t, array[offset + j]) < 0)
                 {
-                    Items.Array[Items.Offset + j + 1] = Items.Array[Items.Offset + j];
+                    array[offset + j + 1] = array[offset + j];
                     j--;
                 }
 
-                Items.Array[Items.Offset + j + 1] = t;
+                array[offset + j + 1] = t;
             }
         }
     }

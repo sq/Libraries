@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Ext = Squared.Util.DenseListExtensions;
 
 namespace Squared.Util {
     public interface IDenseQuerySource<TSource> : IEnumerator {
@@ -30,6 +31,25 @@ namespace Squared.Util {
             DenseList<T> result = default;
             result.AddRange(enumerable, where);
             return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref T Item<T> (this ref DenseList<T> list, int index) {
+            if (list.Items != null)
+                return ref list.Items.DangerousItem(index);
+            
+            switch (index) {
+                case 0:
+                    return ref list.Storage.Item1;
+                case 1:
+                    return ref list.Storage.Item2;
+                case 2:
+                    return ref list.Storage.Item3;
+                case 3:
+                    return ref list.Storage.Item4;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index));
+            }
         }
 
         // TODO: Add a select version of ToDenseList? Harder to do
@@ -373,8 +393,10 @@ namespace Squared.Util {
 
         public U Reduce<U> (U initialValue, Func<U, T, U> reducer) {
             var result = initialValue;
-            for (int i = 0, c = Count; i < c; i++)
-                result = reducer(result, this[i]);
+            for (int i = 0, c = Count; i < c; i++) {
+                ref var item = ref Ext.Item(ref this, i);
+                result = reducer(result, item);
+            }
             return result;
         }
 

@@ -258,9 +258,8 @@ namespace Squared.Render {
             {
                 var device = manager.Device;
 
-                PrimitiveDrawCall<T> call;
                 for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
-                    _DrawCalls.GetItem(i, out call);
+                    ref var call = ref _DrawCalls.Item(i);
 
                     var beforeDraw = call.BeforeDraw;
                     if (beforeDraw != null)
@@ -437,9 +436,8 @@ namespace Squared.Render {
             // FIXME: Why the hell do we have to record these in Prepare and not Issue? >:|
             long primCount = 0;
 
-            NativeDrawCall call;
             for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
-                _DrawCalls.GetItem(i, out call);
+                ref var call = ref _DrawCalls.Item(i);
                 if (call.InstanceCount.HasValue)
                     primCount += call.PrimitiveCount * call.InstanceCount.Value;
                 else
@@ -502,9 +500,8 @@ namespace Squared.Render {
                 {
                     var device = manager.Device;
 
-                    NativeDrawCall call;
                     for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
-                        _DrawCalls.GetItem(i, out call);
+                        ref var call = ref _DrawCalls.Item(i);
                         IssueDrawCall(device, ref call, TwoBindings, ThreeBindings);
                     }
 

@@ -986,7 +986,8 @@ namespace Squared.PRGUI.Layout {
                         var predictedRect = childRect;
                         predictedRect[idim] = ix0;
                         predictedRect[wdim] = finalSize;
-                        var predictedExtent = predictedRect.Extent.GetElement(idim);
+                        var extent = predictedRect.Extent;
+                        var predictedExtent = extent.GetElement(idim);
                         var predictedOverflow = predictedExtent - max_x2;
                         // HACK :-(
                         if (predictedOverflow >= 0.5f)

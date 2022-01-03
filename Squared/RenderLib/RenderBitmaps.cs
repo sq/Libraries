@@ -513,7 +513,8 @@ namespace Squared.Render {
                                 break;
                         }
 
-                        bool texturesEqual = callArray[callIndex + drawCalls.Offset].Textures.Equals(ref currentTextures);
+                        ref var call = ref callArray[callIndex + drawCalls.Offset];
+                        bool texturesEqual = call.Textures.Equals(ref currentTextures);
 
                         if (!texturesEqual) {
                             if (vertCount > 0)
@@ -522,15 +523,34 @@ namespace Squared.Render {
                                     material, samplerState1, samplerState2, textureCache
                                 );
 
-                            currentTextures = callArray[callIndex + drawCalls.Offset].Textures;
+                            currentTextures = call.Textures;
                             if (failed)
                                 break;
                         }
 
-                        FillOneBitmapVertex(
-                            softwareBuffer, ref callArray[callIndex + drawCalls.Offset], out pVertices[vertexWritePosition],
-                            worldSpace, zBufferFactor
-                        );
+                        ref var resultVertex = ref pVertices[vertexWritePosition];
+
+                        var ws = (short)((call.WorldSpace ?? worldSpace) ? 1 : 0);
+                        resultVertex = new BitmapVertex {
+                            Texture1Region = call.TextureRegion.ToVector4(),
+                            MultiplyColor = call.MultiplyColor,
+                            AddColor = call.AddColor,
+                            UserData = call.UserData,
+                            WorldSpace = ws,
+                            TexID = (short)call.Textures.Texture1.Id
+                        };
+                        resultVertex.PositionAndRotation.X = call.Position.X;
+                        resultVertex.PositionAndRotation.Y = call.Position.Y;
+                        resultVertex.PositionAndRotation.Z = call.SortOrder * zBufferFactor;
+                        resultVertex.PositionAndRotation.W = call.Rotation;
+                        resultVertex.ScaleOrigin.X = call.Scale.X;
+                        resultVertex.ScaleOrigin.Y = call.Scale.Y;
+                        resultVertex.ScaleOrigin.Z = call.Origin.X;
+                        resultVertex.ScaleOrigin.W = call.Origin.Y;
+                        if (call.TextureRegion2.TopLeft == call.TextureRegion2.BottomRight)
+                            resultVertex.Texture2Region = resultVertex.Texture1Region;
+                        else
+                            resultVertex.Texture2Region = call.TextureRegion2.ToVector4();
 
                         vertexWritePosition += 1;
                         totalVertCount += 1;
@@ -552,34 +572,6 @@ namespace Squared.Render {
             }
 
             return result;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void FillOneBitmapVertex (
-            BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref BitmapDrawCall call, out BitmapVertex result, 
-            bool worldSpace, float zBufferFactor
-        ) {
-            var ws = (short)((call.WorldSpace ?? worldSpace) ? 1 : 0);
-            result = new BitmapVertex {
-                Texture1Region = call.TextureRegion.ToVector4(),
-                MultiplyColor = call.MultiplyColor,
-                AddColor = call.AddColor,
-                UserData = call.UserData,
-                WorldSpace = ws,
-                TexID = (short)call.Textures.Texture1.Id
-            };
-            result.PositionAndRotation.X = call.Position.X;
-            result.PositionAndRotation.Y = call.Position.Y;
-            result.PositionAndRotation.Z = call.SortOrder * zBufferFactor;
-            result.PositionAndRotation.W = call.Rotation;
-            result.ScaleOrigin.X = call.Scale.X;
-            result.ScaleOrigin.Y = call.Scale.Y;
-            result.ScaleOrigin.Z = call.Origin.X;
-            result.ScaleOrigin.W = call.Origin.Y;
-            if (call.TextureRegion2.TopLeft == call.TextureRegion2.BottomRight)
-                result.Texture2Region = result.Texture1Region;
-            else
-                result.Texture2Region = call.TextureRegion2.ToVector4();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -770,9 +762,7 @@ namespace Squared.Render {
 
                     {
                         for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
-                            NativeBatch nb;
-                            if (!_NativeBatches.TryGetItem(n, out nb))
-                                break;
+                            ref var nb = ref _NativeBatches.Item(n);
 
                             var forceTextureTransition = PerformNativeBatchTransition(manager, ref nb, ref cnbs);
                             PerformNativeBatchTextureTransition(manager, ref nb, ref cnbs, forceTextureTransition, textureCache);

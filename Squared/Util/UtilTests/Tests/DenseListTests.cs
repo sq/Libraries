@@ -342,9 +342,8 @@ namespace Squared.Util {
             unchecked {
                 for (int i = 0; i < count; i++) {
                     for (int j = 0; j < dense.Count; j++) {
-                        dense.GetItem(j, out decimal item);
+                        ref var item = ref dense.Item(j);
                         item++;
-                        dense.SetItem(j, ref item);
                     }
                 }
             }

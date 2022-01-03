@@ -403,6 +403,14 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T DangerousItem (int index) {
+            if ((index < 0) || (index >= _Count))
+                throw new IndexOutOfRangeException();
+
+            return ref _Items[_BufferOffset + index];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T DangerousGetItem (int index) {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();

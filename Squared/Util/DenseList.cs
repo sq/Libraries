@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Ext = Squared.Util.DenseListExtensions;
 
 namespace Squared.Util {
     public interface IListPool<T> {
@@ -153,18 +154,18 @@ namespace Squared.Util {
                     Items.CopyTo(output.Items);
                 } else {
                     for (int i = 0, c = Items.Count; i < c; i++) {
-                        var item = this[i];
+                        ref var item = ref Ext.Item(ref this, i);
                         output.Add(ref item);
                     }
                 }
             } else if (output.HasList) {
                 for (int i = 0, c = Count; i < c; i++) {
-                    var item = this[i];
+                    ref var item = ref Ext.Item(ref this, i);
                     output.Items.Add(ref item);
                 }
             } else {
                 for (int i = 0, c = Count; i < c; i++) {
-                    var item = this[i];
+                    ref var item = ref Ext.Item(ref this, i);
                     output.Add(ref item);
                 }
             }
@@ -431,14 +432,14 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Contains (T value) {
-            return IndexOf(value) >= 0;
+            return IndexOf(ref value) >= 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Contains<TComparer> (T value, TComparer comparer)
             where TComparer : IEqualityComparer<T>
         {
-            return IndexOf(value, comparer) >= 0;
+            return IndexOf(ref value, comparer) >= 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -465,9 +466,11 @@ namespace Squared.Util {
             var c = Count;
             if (c <= 0)
                 return -1;
-            for (int i = 0; i < c; i++)
-                if (comparer.Equals(this[i], value))
+            for (int i = 0; i < c; i++) {
+                ref var item = ref Ext.Item(ref this, i);
+                if (comparer.Equals(item, value))
                     return i;
+            }
             return -1;
         }
 
@@ -724,7 +727,8 @@ namespace Squared.Util {
         public int CountWhere (Func<T, bool> predicate) {
             int result = 0;
             for (int i = 0, c = Count; i < c; i++) {
-                if (predicate(this[i]))
+                ref var item = ref Ext.Item(ref this, i);
+                if (predicate(item))
                     result++;
             }
             return result;
@@ -733,7 +737,7 @@ namespace Squared.Util {
         public int RemoveAll (Func<T, bool> predicate) {
             int result = 0;
             for (int i = Count - 1; i >= 0; i--) {
-                GetItem(i, out T item);
+                ref var item = ref Ext.Item(ref this, i);
                 if (!predicate(item))
                     continue;
                 RemoveAt(i);

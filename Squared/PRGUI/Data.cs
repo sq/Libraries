@@ -172,20 +172,6 @@ namespace Squared.PRGUI.Layout {
             Boxes.EnsureCapacity(capacity);
         }
 
-        public LayoutItem this [ControlKey key] {
-            get {
-                return Layout.DangerousGetItem(key.ID);
-            }
-        }
-
-        public bool TryGetItem (ref ControlKey key, out LayoutItem result) {
-            return Layout.DangerousTryGetItem(key.ID, out result);
-        }
-
-        public bool TryGetItem (ControlKey key, out LayoutItem result) {
-            return Layout.DangerousTryGetItem(key.ID, out result);
-        }
-
         public bool TryGetFirstChild (ControlKey key, out LayoutItem result) {
             if (!Layout.DangerousTryGetItem(key.ID, out result))
                 return false;

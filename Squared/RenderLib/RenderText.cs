@@ -1323,7 +1323,7 @@ namespace Squared.Render.Text {
             var row = Bounds.FromPositionAndSize(0f, characterOffset.Y, lineBreakAtX.Value, currentLineSpacing);
             float rightEdge = lineBreakAtX.Value;
             for (int i = 0, c = boxes.Count; i < c; i++) {
-                boxes.GetItem(i, out Bounds b);
+                ref var b = ref boxes.Item(i);
                 // HACK
                 if (b.BottomRight.X <= (rightEdge - 2f))
                     continue;
@@ -1494,10 +1494,9 @@ namespace Squared.Render.Text {
 
             // HACK: Boxes are in local space so we have to offset them at the end
             for (int i = 0, c = boxes.Count; i < c; i++) {
-                boxes.GetItem(i, out Bounds box);
+                ref var box = ref boxes.Item(i);
                 box.TopLeft += actualPosition;
                 box.BottomRight += actualPosition;
-                boxes[i] = box;
             }
 
             maxX = Math.Max(maxX, desiredWidth);
