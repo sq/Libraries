@@ -325,7 +325,7 @@ namespace Squared.Render.Resources {
         {
             lock (Cache)
                 foreach (var entry in Cache.Values) {
-                    if (!entry.Future.Completed || entry.Future.Failed)
+                    if (!entry.Future.CompletedSuccessfully)
                         continue;
                     result.Add((U)entry.Future.Result);
                 }
@@ -335,7 +335,7 @@ namespace Squared.Render.Resources {
             var result = initialValue;
             lock (Cache)
                 foreach (var entry in Cache.Values) {
-                    if (!entry.Future.Completed || entry.Future.Failed)
+                    if (!entry.Future.CompletedSuccessfully)
                         continue;
                     result = f(result, entry.Name, entry.Future.Result, entry.Data);
                 }
@@ -347,7 +347,7 @@ namespace Squared.Render.Resources {
                 foreach (var entry in Cache.Values) {
                     entry.Future.RegisterOnComplete((f) => {
                         try {
-                            if (f.Completed && !f.Failed)
+                            if (f.CompletedSuccessfully)
                                 Coordinator.DisposeResource(f.Result2 as IDisposable);
                         } catch {
                         }

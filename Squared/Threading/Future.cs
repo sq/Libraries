@@ -129,15 +129,11 @@ namespace Squared.Threading {
     }
 
     public interface IFuture : IDisposable {
-        bool Failed {
-            get;
-        }
-        bool Completed {
-            get;
-        }
-        bool Disposed {
-            get;
-        }
+        bool Failed { get; }
+        bool Resolved { get; }
+        bool Completed { get; }
+        bool CompletedSuccessfully { get; }
+        bool Disposed { get; }
         object Result {
             get;
         }
@@ -193,6 +189,15 @@ namespace Squared.Threading {
     }
 
     public static class Future {
+        public enum State : int {
+            Empty = 0,
+            // Unknown = 1,
+            CompletedWithValue = 2,
+            CompletedWithError = 3,
+            Disposed = 4,
+            // Disposing = 5;
+        }
+
         public static Future<T> New<T> () {
             return new Future<T>();
         }
@@ -357,6 +362,7 @@ namespace Squared.Threading {
                 Handler = OnEvent;
 
                 Event.Add(Handler);
+                // FIXME: Use UserData
                 Future.RegisterOnDispose((Threading.OnFutureResolved)this.OnDispose);
             }
 
@@ -382,6 +388,7 @@ namespace Squared.Threading {
                 Handler = OnEvent;
 
                 Event.Add(Handler);
+                // FIXME: Use UserData
                 Future.RegisterOnDispose((Threading.OnFutureResolved)this.OnDispose);
             }
 
@@ -461,11 +468,11 @@ namespace Squared.Threading {
 
         private static readonly int ProcessorCount;
 
-        private const int State_Empty = 0;
+        private const int State_Empty = (int)Future.State.Empty;
         private const int State_Indeterminate = 1;
-        private const int State_CompletedWithValue = 2;
-        private const int State_CompletedWithError = 3;
-        private const int State_Disposed = 4;
+        private const int State_CompletedWithValue = (int)Future.State.CompletedWithValue;
+        private const int State_CompletedWithError = (int)Future.State.CompletedWithError;
+        private const int State_Disposed = (int)Future.State.Disposed;
         private const int State_Disposing = 5;
 
         private volatile int _State = State_Empty;
@@ -648,6 +655,11 @@ namespace Squared.Threading {
         /// Registers a pair of handlers to be notified upon future completion and disposal, respectively.
         /// </summary>
         public void RegisterHandlers (Action onComplete, Action onDispose) {
+            if (onComplete == onDispose) {
+                RegisterHandler_Impl(onComplete, HandlerType.Resolved);
+                return;
+            }
+
             // FIXME: Set state to indeterminate once instead of twice
             if (!RegisterHandler_Impl(onComplete, HandlerType.Completed))
                 RegisterHandler_Impl(onDispose, HandlerType.Disposed);
@@ -666,6 +678,11 @@ namespace Squared.Threading {
         /// Registers a pair of handlers to be notified upon future completion and disposal, respectively.
         /// </summary>
         void IFuture.RegisterHandlers (OnFutureResolved onComplete, OnFutureResolved onDispose) {
+            if (onComplete == onDispose) {
+                RegisterHandler_Impl(onComplete, HandlerType.Resolved);
+                return;
+            }
+
             // FIXME: Set state to indeterminate once instead of twice
             if (!RegisterHandler_Impl(onComplete, HandlerType.Completed))
                 RegisterHandler_Impl(onDispose, HandlerType.Disposed);
@@ -675,6 +692,11 @@ namespace Squared.Threading {
         /// Registers a pair of handlers to be notified upon future completion and disposal, respectively.
         /// </summary>
         void IFuture.RegisterHandlers (OnFutureResolvedWithData onComplete, OnFutureResolvedWithData onDispose, object userData) {
+            if (onComplete == onDispose) {
+                RegisterHandler_Impl(onComplete, HandlerType.Resolved, userData);
+                return;
+            }
+
             // FIXME: Set state to indeterminate once instead of twice
             if (!RegisterHandler_Impl(onComplete, HandlerType.Completed, userData))
                 RegisterHandler_Impl(onDispose, HandlerType.Disposed, userData);
@@ -784,7 +806,19 @@ namespace Squared.Threading {
         /// </summary>
         public bool Disposed {
             get {
-                return (_State == State_Disposed) || (_State == State_Disposing);
+                int state = _State;
+                return (state == State_Disposed) || (state == State_Disposing);
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the future has been completed or disposed.
+        /// Note that if the future is currently being completed, this may return false.
+        /// </summary>
+        public bool Resolved {
+            get {
+                int state = _State;
+                return (state != State_Indeterminate) && (state != State_Empty);
             }
         }
 
@@ -796,6 +830,17 @@ namespace Squared.Threading {
             get {
                 int state = _State;
                 return (state == State_CompletedWithValue) || (state == State_CompletedWithError);
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the future has been completed with a result instead of an error.
+        /// Note that if the future is currently being completed, this may return false.
+        /// </summary>
+        public bool CompletedSuccessfully {
+            get {
+                OnErrorCheck();
+                return _State == State_CompletedWithValue;
             }
         }
 
@@ -833,6 +878,18 @@ namespace Squared.Threading {
                 return (_Error is ExceptionDispatchInfo edi) 
                     ? edi.SourceException 
                     : (Exception)_Error;
+            }
+        }
+
+        public Future.State State {
+            get {
+                int state = _State;
+                if (state == State_Disposing)
+                    return Future.State.Disposed;
+                // FIXME: Is this right?
+                else if (state == State_Indeterminate)
+                    return Future.State.Empty;
+                return (Future.State)state;
             }
         }
 
