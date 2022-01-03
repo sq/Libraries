@@ -669,14 +669,14 @@ namespace Squared.PRGUI {
 
         protected virtual void ComputeScaledMargins (ref UIOperationContext context, IDecorator decorations, out Margins result) {
             if (!Appearance.SuppressDecorationMargins && (decorations != null))
-                Margins.Add(ref Margins, decorations.Margins, out result);
+                Margins.Add(in Margins, decorations.Margins, out result);
             else
                 result = Margins;
         }
 
         protected virtual void ComputeScaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
             if (!Appearance.SuppressDecorationPadding && (decorations != null))
-                Margins.Add(ref Padding, decorations.Padding, out result);
+                Margins.Add(in Padding, decorations.Padding, out result);
             else
                 result = Padding;
         }
@@ -693,9 +693,9 @@ namespace Squared.PRGUI {
             ComputeScaledPadding(ref context, decorations, out Margins scaledPadding);
             ComputeUnscaledPadding(ref context, decorations, out Margins unscaledPadding);
             ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
-            Margins.Scale(ref scaledPadding, ref paddingScale);
-            Margins.Add(ref scaledPadding, unscaledPadding, out padding);
-            Margins.Scale(ref scaledMargins, ref marginScale);
+            Margins.Scale(ref scaledPadding, in paddingScale);
+            Margins.Add(in scaledPadding, in unscaledPadding, out padding);
+            Margins.Scale(ref scaledMargins, in marginScale);
             margins = scaledMargins;
         }
 
@@ -736,7 +736,7 @@ namespace Squared.PRGUI {
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetLayoutData(result, ref Layout.FloatingPosition, ref computedMargins, ref computedPadding);
-            context.Layout.SetSizeConstraints(result, ref width, ref height);
+            context.Layout.SetSizeConstraints(result, in width, in height);
 
             if (!parent.IsInvalid && !existingKey.HasValue)
                 context.Layout.InsertAtEnd(parent, result);
@@ -1186,7 +1186,7 @@ namespace Squared.PRGUI {
                 context.UIContext.CanvasRect.Clamp(ref br);
 
                 var compositeBox = new RectF(tl, br - tl);
-                var srt = context.UIContext.GetScratchRenderTarget(context.Prepass, ref compositeBox);
+                var srt = context.UIContext.GetScratchRenderTarget(context.Prepass, in compositeBox);
                 if (context.RenderTargetStack.Count > 0)
                     context.RenderTargetStack[context.RenderTargetStack.Count - 1].Dependencies.Add(srt);
                 context.RenderTargetStack.Add(srt);

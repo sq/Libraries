@@ -71,9 +71,9 @@ namespace Squared.PRGUI {
                 Instance?.Dispose();
             }
 
-            internal bool IsSpaceAvailable (ref RectF rectangle) {
+            internal bool IsSpaceAvailable (in RectF rectangle) {
                 foreach (var used in UsedRectangles) {
-                    if (used.Intersects(ref rectangle))
+                    if (used.Intersects(in rectangle))
                         return false;
                 }
 
@@ -99,11 +99,11 @@ namespace Squared.PRGUI {
             OverlayQueue.Clear();
         }
 
-        internal ScratchRenderTarget GetScratchRenderTarget (BatchGroup prepass, ref RectF rectangle) {
+        internal ScratchRenderTarget GetScratchRenderTarget (BatchGroup prepass, in RectF rectangle) {
             ScratchRenderTarget result = null;
 
             foreach (var rt in ScratchRenderTargets) {
-                if (rt.IsSpaceAvailable(ref rectangle)) {
+                if (rt.IsSpaceAvailable(in rectangle)) {
                     result = rt;
                     break;
                 }

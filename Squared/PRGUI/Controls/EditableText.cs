@@ -654,7 +654,7 @@ namespace Squared.PRGUI.Controls {
             if (!forMouseEvent) {
                 if (LastSelectionRect.HasValue) {
                     var myRect = GetRect();
-                    LastSelectionRect.Value.Intersection(ref myRect, out RectF intersected);
+                    LastSelectionRect.Value.Intersection(in myRect, out RectF intersected);
                     menuResult = ContextMenu.Show(Context, intersected);
                 } else
                     menuResult = ContextMenu.Show(Context, this);

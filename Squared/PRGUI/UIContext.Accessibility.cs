@@ -408,10 +408,10 @@ namespace Squared.PRGUI {
                 var controlBox = previousRect.ControlBox;
                 var label = previousRect.LabelBox;
                 if (previousRect.Control != forControl) {
-                    if (controlBox.Contains(ref box))
+                    if (controlBox.Contains(in box))
                         continue;
                 }
-                if (label.Intersects(ref padded))
+                if (label.Intersects(in padded))
                     return true;
             }
 

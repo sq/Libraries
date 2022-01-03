@@ -77,7 +77,7 @@ namespace Squared.Game {
             }
         }
 
-        public Bounds (Rectangle rectangle, float scaleX = 1, float scaleY = 1)
+        public Bounds (in Rectangle rectangle, float scaleX = 1, float scaleY = 1)
             : this(
                 new Vector2(rectangle.Left * scaleX, rectangle.Top * scaleY),
                 new Vector2(rectangle.Right * scaleX, rectangle.Bottom * scaleY)
@@ -85,27 +85,17 @@ namespace Squared.Game {
         {
         }
 
-        public Bounds (Vector2 a, Vector2 b) {
+        public Bounds (in Vector2 a, in Vector2 b) {
             TopLeft = new Vector2(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y));
             BottomRight = new Vector2(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y));
         }
 
-        public bool Contains (Vector2 point) {
+        public bool Contains (in Vector2 point) {
             return (point.X >= TopLeft.X) && (point.Y >= TopLeft.Y) &&
                 (point.X <= BottomRight.X) && (point.Y <= BottomRight.Y);
         }
 
-        public bool Contains (ref Vector2 point) {
-            return (point.X >= TopLeft.X) && (point.Y >= TopLeft.Y) &&
-                (point.X <= BottomRight.X) && (point.Y <= BottomRight.Y);
-        }
-
-        public bool Contains (Bounds other) {
-            return (other.TopLeft.X >= TopLeft.X) && (other.TopLeft.Y >= TopLeft.Y) &&
-                (other.BottomRight.X <= BottomRight.X) && (other.BottomRight.Y <= BottomRight.Y);
-        }
-
-        public bool Contains (ref Bounds other) {
+        public bool Contains (in Bounds other) {
             return (other.TopLeft.X >= TopLeft.X) && (other.TopLeft.Y >= TopLeft.Y) &&
                 (other.BottomRight.X <= BottomRight.X) && (other.BottomRight.Y <= BottomRight.Y);
         }
@@ -114,7 +104,7 @@ namespace Squared.Game {
             return String.Format("{{{0}, {1}}} - {{{2}, {3}}}", TopLeft.X, TopLeft.Y, BottomRight.X, BottomRight.Y);
         }
 
-        public Bounds ApplyVelocity (Vector2 velocity) {
+        public Bounds ApplyVelocity (in Vector2 velocity) {
             var bounds = this;
 
             if (velocity.X < 0)
@@ -130,22 +120,18 @@ namespace Squared.Game {
             return bounds;
         }
 
-        public bool Intersects (Bounds rhs) {
-            return Intersect(ref this, ref rhs);
+        public bool Intersects (in Bounds rhs) {
+            return Intersect(this, in rhs);
         }
 
-        public static bool Intersect (ref Bounds lhs, ref Bounds rhs) {
+        public static bool Intersect (in Bounds lhs, in Bounds rhs) {
             return (rhs.TopLeft.X <= lhs.BottomRight.X) &&
                    (lhs.TopLeft.X <= rhs.BottomRight.X) &&
                    (rhs.TopLeft.Y <= lhs.BottomRight.Y) &&
                    (lhs.TopLeft.Y <= rhs.BottomRight.Y);
         }
 
-        public static Bounds? FromIntersection (Bounds lhs, Bounds rhs) {
-            return FromIntersection(ref lhs, ref rhs);
-        }
-
-        public static Bounds? FromIntersection (ref Bounds lhs, ref Bounds rhs) {
+        public static Bounds? FromIntersection (in Bounds lhs, in Bounds rhs) {
             Vector2 tl = Vector2.Zero, br = Vector2.Zero;
             tl.X = Math.Max(lhs.TopLeft.X, rhs.TopLeft.X);
             tl.Y = Math.Max(lhs.TopLeft.Y, rhs.TopLeft.Y);
@@ -159,11 +145,7 @@ namespace Squared.Game {
             }
         }
 
-        public static Bounds FromUnion (Bounds lhs, Bounds rhs) {
-            return FromUnion(ref lhs, ref rhs);
-        }
-
-        public static Bounds FromUnion (ref Bounds lhs, ref Bounds rhs) {
+        public static Bounds FromUnion (in Bounds lhs, in Bounds rhs) {
             Vector2 tl = Vector2.Zero, br = Vector2.Zero;
             tl.X = Math.Min(lhs.TopLeft.X, rhs.TopLeft.X);
             tl.Y = Math.Min(lhs.TopLeft.Y, rhs.TopLeft.Y);
@@ -194,7 +176,7 @@ namespace Squared.Game {
             };
         }
 
-        public Bounds Translate (Vector2 velocity) {
+        public Bounds Translate (in Vector2 velocity) {
             return new Bounds {
                 TopLeft = TopLeft + velocity,
                 BottomRight = BottomRight + velocity
@@ -228,14 +210,14 @@ namespace Squared.Game {
             };
         }
 
-        public Bounds Scale (Vector2 scale) {
+        public Bounds Scale (in Vector2 scale) {
             return new Bounds {
                 TopLeft = TopLeft * scale,
                 BottomRight = BottomRight * scale
             };
         }
 
-        public bool Intersection (ref Bounds lhs, ref Bounds rhs, out Bounds result) {
+        public bool Intersection (in Bounds lhs, in Bounds rhs, out Bounds result) {
             var x1 = Math.Max(lhs.TopLeft.X, rhs.TopLeft.X);
             var y1 = Math.Max(lhs.TopLeft.Y, rhs.TopLeft.Y);
             var x2 = Math.Min(lhs.BottomRight.X, rhs.BottomRight.X);
@@ -254,7 +236,7 @@ namespace Squared.Game {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Bounds FromPositionAndSize (Vector2 position, Vector2 size) {
+        public static Bounds FromPositionAndSize (in Vector2 position, in Vector2 size) {
             return new Bounds(
                 position, position + size
             );

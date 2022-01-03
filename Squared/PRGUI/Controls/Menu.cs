@@ -638,13 +638,13 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        private bool UpdatePosition (Vector2 newPosition, ref RectF parentRect, ref RectF box, bool updateDesiredPosition) {
+        private bool UpdatePosition (in Vector2 _newPosition, in RectF parentRect, in RectF box, bool updateDesiredPosition) {
             var effectiveSize = box.Size + Margins.Size;
             var availableSpaceX = Math.Max(0, parentRect.Width - effectiveSize.X);
             var availableSpaceY = Math.Max(0, parentRect.Height - effectiveSize.Y);
-            newPosition = new Vector2(
-                Arithmetic.Saturate(newPosition.X, availableSpaceX),
-                Arithmetic.Saturate(newPosition.Y, availableSpaceY)
+            var newPosition = new Vector2(
+                Arithmetic.Saturate(_newPosition.X, availableSpaceX),
+                Arithmetic.Saturate(_newPosition.Y, availableSpaceY)
             ).Floor();
 
             var changed = Position != newPosition;

@@ -189,7 +189,7 @@ namespace Squared.PRGUI.Layout {
             return new ChildrenEnumerable(this, parent);
         }
 
-        private unsafe void ApplyFloatingPosition (LayoutItem *pItem, ref RectF parentRect, int idim, int wdim) {
+        private unsafe void ApplyFloatingPosition (LayoutItem *pItem, in RectF parentRect, int idim, int wdim) {
             if (!pItem->Flags.IsFlagged(ControlFlags.Layout_Floating) && !pItem->Flags.IsFlagged(ControlFlags.Layout_Stacked))
                 return;
             var pRect = RectPtr(pItem->Key);
@@ -394,7 +394,7 @@ namespace Squared.PRGUI.Layout {
             return pItem->FixedSize;
         }
 
-        public unsafe void SetFixedSize (ControlKey key, Vector2 size) {
+        public unsafe void SetFixedSize (ControlKey key, in Vector2 size) {
             var pItem = LayoutPtr(key);
             pItem->FixedSize = size;
 
@@ -415,13 +415,13 @@ namespace Squared.PRGUI.Layout {
             SetFixedSize(key, new Vector2(width, height));
         }
 
-        public unsafe void SetSizeConstraints (ControlKey key, Vector2? minimumSize = null, Vector2? maximumSize = null) {
+        public unsafe void SetSizeConstraints (ControlKey key, in Vector2? minimumSize = null, in Vector2? maximumSize = null) {
             var pItem = LayoutPtr(key);
             pItem->MinimumSize = minimumSize ?? LayoutItem.NoSize;
             pItem->MaximumSize = maximumSize ?? LayoutItem.NoSize;
         }
 
-        public void SetSizeConstraints (ControlKey key, ref ControlDimension width, ref ControlDimension height) {
+        public void SetSizeConstraints (ControlKey key, in ControlDimension width, in ControlDimension height) {
             SetFixedSize(key, width.Fixed ?? LayoutItem.NoValue, height.Fixed ?? LayoutItem.NoValue);
             SetSizeConstraints(
                 key, new Vector2(width.Minimum ?? LayoutItem.NoValue, height.Minimum ?? LayoutItem.NoValue), 
@@ -516,12 +516,12 @@ namespace Squared.PRGUI.Layout {
             pItem->Tag = tag;
         }
 
-        public unsafe void SetMargins (ControlKey key, Margins m) {
+        public unsafe void SetMargins (ControlKey key, in Margins m) {
             var pItem = LayoutPtr(key);
             pItem->Margins = m;
         }
 
-        public unsafe void SetPadding (ControlKey key, Margins m) {
+        public unsafe void SetPadding (ControlKey key, in Margins m) {
             var pItem = LayoutPtr(key);
             pItem->Padding = m;
         }
@@ -707,7 +707,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe void GetComputedMaximumSize (LayoutItem * pItem, Vector2? parentConstraint, out Vector2 result) {
+        private unsafe void GetComputedMaximumSize (LayoutItem * pItem, in Vector2? parentConstraint, out Vector2 result) {
             result = pItem->FixedSize;
             if (result.X < 0)
                 result.X = pItem->MaximumSize.X;
@@ -1348,7 +1348,7 @@ namespace Squared.PRGUI.Layout {
             foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);
-                ApplyFloatingPosition(pChild, ref contentRect, idim, idim + 2);
+                ApplyFloatingPosition(pChild, in contentRect, idim, idim + 2);
                 Arrange(pChild, dim, constrainChildSize);
             }
         }

@@ -993,7 +993,7 @@ namespace Squared.PRGUI {
         internal int HiddenCount;
         internal int Depth;
 
-        private T GetStackTop<T> (ref DenseList<T> stack) {
+        private T GetStackTop<T> (in DenseList<T> stack) {
             stack.TryGetItem(stack.Count - 1, out T result);
             return result;
         }
@@ -1008,17 +1008,17 @@ namespace Squared.PRGUI {
             stack.RemoveAt(stack.Count - 1);
         }
 
-        public IDecorationProvider DecorationProvider => GetStackTop(ref DecorationProviderStack) ?? UIContext?.Decorations;
+        public IDecorationProvider DecorationProvider => GetStackTop(in DecorationProviderStack) ?? UIContext?.Decorations;
         public static void PushDecorationProvider (ref UIOperationContext context, IDecorationProvider value) => 
             StackPush(ref context.DecorationProviderStack, value);
         public static void PopDecorationProvider (ref UIOperationContext context) => 
             StackPop(ref context.DecorationProviderStack);
-        public IDecorator DefaultDecorator => GetStackTop(ref DecoratorStack);
+        public IDecorator DefaultDecorator => GetStackTop(in DecoratorStack);
         public static void PushDecorator (ref UIOperationContext context, IDecorator value) => 
             StackPush(ref context.DecoratorStack, value);
         public static void PopDecorator (ref UIOperationContext context) => 
             StackPop(ref context.DecoratorStack);
-        public IDecorator DefaultTextDecorator => GetStackTop(ref TextDecoratorStack);
+        public IDecorator DefaultTextDecorator => GetStackTop(in TextDecoratorStack);
         public static void PushTextDecorator (ref UIOperationContext context, IDecorator value) => 
             StackPush(ref context.TextDecoratorStack, value);
         public static void PopTextDecorator (ref UIOperationContext context) => 

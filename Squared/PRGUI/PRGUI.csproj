@@ -11,7 +11,6 @@
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <LangVersion>latest</LangVersion>
     <OutputPath>bin\$(Platform)\$(Configuration)</OutputPath>
-    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'x86'">
     <EnableFNA>false</EnableFNA>

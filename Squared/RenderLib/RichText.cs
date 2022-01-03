@@ -109,7 +109,7 @@ namespace Squared.Render.Text {
         }
     }
 
-    public delegate void RichStyleApplier (ref RichStyle style, ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state);
+    public delegate void RichStyleApplier (in RichStyle style, ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state);
 
     public struct RichParseError {
         public AbstractString Text;
@@ -459,7 +459,7 @@ namespace Squared.Render.Text {
                     } else if (commandMode && bracketed.IsNullOrWhiteSpace) {
                         state.Reset(ref layoutEngine);
                     } else if (commandMode && (Styles != null) && bracketed.StartsWith(".") && Styles.TryGetValue(bracketed.Substring(1), out style)) {
-                        ApplyStyle(ref layoutEngine, ref state, ref style);
+                        ApplyStyle(ref layoutEngine, ref state, in style);
                     } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed.ToString(), out image)) {
                         if (!DisableImages)
                             AppendImage(ref layoutEngine, image);
@@ -626,7 +626,7 @@ namespace Squared.Render.Text {
             try {
                 styleName = styleName ?? DefaultStyle;
                 if (!string.IsNullOrWhiteSpace(styleName) && Styles.TryGetValue(styleName, out RichStyle defaultStyle))
-                    ApplyStyle(ref layoutEngine, ref state, ref defaultStyle);
+                    ApplyStyle(ref layoutEngine, ref state, in defaultStyle);
 
                 AppendRichRange(ref layoutEngine, ref state, text, overrideSuppress, ref referencedImages, ref parseErrors);
 
@@ -641,14 +641,14 @@ namespace Squared.Render.Text {
         }
 
         private static void ApplyStyle (
-            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, ref RichStyle style
+            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, in RichStyle style
         ) {
             state.GlyphSource = style.GlyphSource ?? state.GlyphSource;
             layoutEngine.overrideColor = style.Color ?? layoutEngine.overrideColor;
             layoutEngine.scale = style.Scale * state.InitialScale ?? state.InitialScale;
             layoutEngine.spacing = style.Spacing ?? state.InitialSpacing;
             if (style.Apply != null)
-                style.Apply(ref style, ref layoutEngine, ref state);
+                style.Apply(in style, ref layoutEngine, ref state);
         }
 
         private void AppendImage (ref StringLayoutEngine layoutEngine, RichImage image) {

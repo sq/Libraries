@@ -447,7 +447,7 @@ namespace Squared.PRGUI.Controls {
                 selectedIndex = children.IndexOf(selectedItem), 
                 startOffset = (
                     (selectedIndex >= 0) &&
-                    box.Intersects(ref childRect)
+                    box.Intersects(in childRect)
                 )
                     // If we have a selected item and the selected item is visible, begin painting
                     //  from its position

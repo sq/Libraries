@@ -145,13 +145,13 @@ namespace Squared.PRGUI.Controls {
                 MostRecentUnmaximizedRect = MostRecentFullSize.Value;
         }
 
-        private bool UpdatePosition (Vector2 newPosition, ref RectF parentRect, ref RectF box, bool updateDesiredPosition) {
+        private bool UpdatePosition (in Vector2 _newPosition, in RectF parentRect, in RectF box, bool updateDesiredPosition) {
             var effectiveSize = box.Size + Margins.Size;
             var availableSpaceX = Math.Max(0, parentRect.Width - effectiveSize.X);
             var availableSpaceY = Math.Max(0, parentRect.Height - effectiveSize.Y);
-            newPosition = new Vector2(
-                Arithmetic.Saturate(newPosition.X, availableSpaceX),
-                Arithmetic.Saturate(newPosition.Y, availableSpaceY)
+            var newPosition = new Vector2(
+                Arithmetic.Saturate(_newPosition.X, availableSpaceX),
+                Arithmetic.Saturate(_newPosition.Y, availableSpaceY)
             ).Floor();
 
             var changed = Position != newPosition;
@@ -205,7 +205,7 @@ namespace Squared.PRGUI.Controls {
                     // FIXME: Scale the mouse anchor based on the new size vs the old maximized size
                     Maximized = false;
                     Aligner.GetParentContentRect(out RectF parentRect);
-                    UpdatePosition(newPosition, ref parentRect, ref MostRecentUnmaximizedRect, true);
+                    UpdatePosition(in newPosition, in parentRect, in MostRecentUnmaximizedRect, true);
                     Aligner.ComputeNewAlignment = true;
                 } else if (shouldMaximize || Maximized) {
                     Maximized = true;
@@ -213,7 +213,7 @@ namespace Squared.PRGUI.Controls {
                 } else {
                     Aligner.GetParentContentRect(out RectF parentRect);
                     var didDrag = Dragging && (delta.Length() >= 2);
-                    UpdatePosition(newPosition, ref parentRect, ref args.Box, didDrag);
+                    UpdatePosition(in newPosition, in parentRect, in args.Box, didDrag);
                     if (didDrag)
                         Aligner.WasPositionSetByUser = true;
                     Aligner.ComputeNewAlignment = didDrag;

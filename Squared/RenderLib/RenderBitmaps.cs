@@ -1582,7 +1582,7 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CheckValid (in BitmapDrawCall drawCall, ref LocalObjectCache<object> textureCache) {
+        public static bool CheckValid (in BitmapDrawCall drawCall, LocalObjectCache<object> textureCache) {
             if (ValidateFields && !CheckFieldValidity(in drawCall))
                 return false;
 

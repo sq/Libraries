@@ -1428,7 +1428,7 @@ namespace Squared.PRGUI {
         ) {
             var psize = PaddingScaleRatio * SpacingScaleRatio;
             var padding = Scrollbar.Padding;
-            Margins.Scale(ref padding, ref psize);
+            Margins.Scale(ref padding, in psize);
             settings.Box.SnapAndInset(out Vector2 ba, out Vector2 bb, padding + Scrollbar.UnscaledPadding);
 
             var vRadius = new Vector2(ScrollbarRadius);

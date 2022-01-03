@@ -436,7 +436,7 @@ namespace Squared.PRGUI.Controls {
                 thisControl.Rect.Left + shrink, thisControl.Rect.Top + shrink,
                 DisclosureArrowPadding - (shrink * 2), MostRecentTitleBox.Height - (shrink * 2)
             );
-            if (!thisControl.ClippedRect.Intersection(ref disclosureArrowBox, out RectF clippedArrowBox))
+            if (!thisControl.ClippedRect.Intersection(in disclosureArrowBox, out RectF clippedArrowBox))
                 return 0;
             var closestPoint = disclosureArrowBox.Center;
             var distanceSquared = (closestPoint - position).LengthSquared();

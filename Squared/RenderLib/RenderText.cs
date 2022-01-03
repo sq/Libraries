@@ -547,7 +547,7 @@ namespace Squared.Render.Text {
             for (int i = 0, c = boxes.Count; i < c; i++) {
                 boxes.GetItem(i, out b);
                 b.BottomRight.X += (leftPad ?? 0f);
-                if (!Bounds.Intersect(ref b, ref tempBounds))
+                if (!Bounds.Intersect(b, tempBounds))
                     continue;
                 var oldX = x;
                 var newX = Math.Max(x, b.BottomRight.X);
@@ -1327,7 +1327,7 @@ namespace Squared.Render.Text {
                 // HACK
                 if (b.BottomRight.X <= (rightEdge - 2f))
                     continue;
-                if (!Bounds.Intersect(ref row, ref b))
+                if (!Bounds.Intersect(row, b))
                     continue;
                 rightEdge = Math.Min(b.TopLeft.X, rightEdge);
             }

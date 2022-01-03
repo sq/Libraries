@@ -689,12 +689,12 @@ namespace Squared.Render.Convenience {
         }
 
         public ImperativeRenderer MakeSubgroup (
-            ref ViewTransform viewTransform, bool nextLayer = true, 
+            in ViewTransform viewTransform, bool nextLayer = true, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
             string name = null, int? layer = null
         ) {
             ImperativeRenderer result;
-            MakeSubgroup(out result, ref viewTransform, nextLayer, before, after, userData, name, layer);
+            MakeSubgroup(out result, in viewTransform, nextLayer, before, after, userData, name, layer);
             return result;
         }
 
@@ -721,7 +721,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void MakeSubgroup (
-            out ImperativeRenderer result, ref ViewTransform viewTransform, 
+            out ImperativeRenderer result, in ViewTransform viewTransform, 
             bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
             string name = null, int? layer = null
         ) {

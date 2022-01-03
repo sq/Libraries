@@ -491,7 +491,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        public bool Intersection (ref RectF rhs, out RectF result) {
+        public bool Intersection (in RectF rhs, out RectF result) {
             var e1 = Extent;
             var e2 = rhs.Extent;
             var x1 = Math.Max(Left, rhs.Left);
@@ -506,7 +506,7 @@ namespace Squared.PRGUI {
             return ((result.Width > 0) && (result.Height > 0));
         }
 
-        public bool Intersects (ref RectF rhs) {
+        public bool Intersects (in RectF rhs) {
             Vector2 tl, br;
             tl.X = Math.Max(Left, rhs.Left);
             tl.Y = Math.Max(Top, rhs.Top);
@@ -515,7 +515,7 @@ namespace Squared.PRGUI {
             return (br.X > tl.X) && (br.Y > tl.Y);
         }
 
-        public static RectF Lerp (RectF lhs, RectF rhs, float t) {
+        public static RectF Lerp (in RectF lhs, in RectF rhs, float t) {
             return new RectF(
                 Arithmetic.Lerp(lhs.Left, rhs.Left, t),
                 Arithmetic.Lerp(lhs.Top, rhs.Top, t),
@@ -524,14 +524,14 @@ namespace Squared.PRGUI {
             );
         }
 
-        public bool Contains (ref RectF rhs) {
+        public bool Contains (in RectF rhs) {
             return (rhs.Left >= Left) &&
                 (rhs.Extent.X <= (Left + Width)) &&
                 (rhs.Top >= Top) &&
                 (rhs.Extent.Y <= (Top + Height));
         }
 
-        public bool Contains (Vector2 position) {
+        public bool Contains (in Vector2 position) {
             return (position.X >= Left) &&
                 (position.X <= (Left + Width)) &&
                 (position.Y >= Top) &&
@@ -577,7 +577,7 @@ namespace Squared.PRGUI {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Equals (RectF rhs) {
+        public bool Equals (in RectF rhs) {
             return (Left == rhs.Left) &&
                 (Top == rhs.Top) &&
                 (Width == rhs.Width) &&
@@ -595,10 +595,10 @@ namespace Squared.PRGUI {
         }
 
         public override bool Equals (object obj) {
-            if (!(obj is RectF))
+            if (obj is RectF r)
+                return Equals(r);
+            else
                 return false;
-
-            return Equals((RectF)obj);
         }
 
         public static bool operator == (RectF lhs, RectF rhs) {
@@ -708,7 +708,7 @@ namespace Squared.PRGUI {
                 margins.Values[i] *= scale;
         }
 
-        public static void Scale (ref Margins margins, ref Vector2 scale) {
+        public static void Scale (ref Margins margins, in Vector2 scale) {
             margins.Left *= scale.X;
             margins.Top *= scale.Y;
             margins.Right *= scale.X;
@@ -716,7 +716,7 @@ namespace Squared.PRGUI {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Add (ref Margins lhs, Margins rhs, out Margins result) {
+        public static void Add (in Margins lhs, in Margins rhs, out Margins result) {
             result = lhs;
             for (int i = 0; i < 4; i++)
                 result.Values[i] += rhs.Values[i];

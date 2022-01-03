@@ -154,7 +154,7 @@ namespace Squared.PRGUI {
                     Rect = control.GetRect(context: Context)
                 };
 
-                if (!result.Rect.Intersection(ref clip, out result.ClippedRect))
+                if (!result.Rect.Intersection(in clip, out result.ClippedRect))
                     continue;
 
                 var inside = result.ClippedRect.Contains(position);

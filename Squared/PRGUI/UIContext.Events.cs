@@ -514,7 +514,7 @@ namespace Squared.PRGUI {
                     continue;
 
                 parentRect = control.GetRect(contentRect: true);
-                controlRect.Intersection(ref parentRect, out intersectedRect);
+                controlRect.Intersection(in parentRect, out intersectedRect);
                 if (!intersectedRect.Equals(controlRect))
                     return result;
             }
