@@ -238,8 +238,8 @@ namespace Squared.PRGUI.Layout {
             var newIndex = Layout.Count;
             newData._Key.ID = newIndex;
 
-            Layout.Add(ref newData);
-            Boxes.Add(ref RectTemplate);
+            Layout.Add(in newData);
+            Boxes.Add(in RectTemplate);
 
             _Count = newIndex + 1;
 
@@ -996,7 +996,7 @@ namespace Squared.PRGUI.Layout {
                         // FIXME: Is this correct?
                         childRect[idim] = ix0;
                         childRect[wdim] = finalSize;
-                        SetRect(child, ref childRect);
+                        SetRect(child, in childRect);
                         CheckConstraints(child, idim);
                     }
 
@@ -1160,7 +1160,7 @@ namespace Squared.PRGUI.Layout {
                 }
 
                 childRect[idim] += offset;
-                SetRect(child, ref childRect);
+                SetRect(child, in childRect);
                 CheckConstraints(child, idim);
             }
         }
@@ -1226,7 +1226,7 @@ namespace Squared.PRGUI.Layout {
                 rect[wdim] = Constrain(unconstrained, minimum.GetElement(idim), maximum.GetElement(idim));
                 float extent = rect[idim] + rect[wdim];
 
-                SetRect(item, ref rect);
+                SetRect(item, in rect);
                 CheckConstraints(item, idim);
                 item = pItem->NextSibling;
             }

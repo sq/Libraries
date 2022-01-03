@@ -422,9 +422,14 @@ namespace Squared.Threading {
     }
 
     public class Future<T> : IDisposable, IFuture {
-        private struct Handler {
-            public Delegate Delegate;
-            public object UserData;
+        private readonly struct Handler {
+            public readonly Delegate Delegate;
+            public readonly object UserData;
+
+            public Handler (Delegate handler, object userData) {
+                Delegate = handler;
+                UserData = userData;
+            }
 
             public void Invoke (Future<T> future) {
                 try {
@@ -587,10 +592,7 @@ namespace Squared.Threading {
             if (handler == null)
                 return false;
 
-            var item = new Handler {
-                Delegate = handler,
-                UserData = userData,
-            };
+            var item = new Handler(handler, userData);
 
             int oldState = TrySetIndeterminate();
                 

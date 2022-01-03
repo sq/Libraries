@@ -260,11 +260,11 @@ namespace Squared.PRGUI.Layout {
             return interior;
         }
 
-        private void SetRect (ControlKey key, ref RectF newRect) {
+        private void SetRect (ControlKey key, in RectF newRect) {
             if (key.IsInvalid)
                 throw new ArgumentOutOfRangeException("key");
 
-            Boxes.DangerousSetItem(key.ID, ref newRect);
+            Boxes.DangerousSetItem(key.ID, in newRect);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

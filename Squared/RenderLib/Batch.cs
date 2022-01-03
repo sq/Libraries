@@ -493,7 +493,7 @@ namespace Squared.Render {
         }
 
         protected void Add (ref T item) {
-            _DrawCalls.Add(ref item);
+            _DrawCalls.Add(in item);
         }
 
         protected override void OnReleaseResources() {

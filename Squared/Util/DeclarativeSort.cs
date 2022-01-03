@@ -10,14 +10,14 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Squared.Util.DeclarativeSort {
-    public struct Tags {
+    public readonly struct Tags {
         internal static int NextId = 0;
         internal static readonly Dictionary<int, Tag> Registry = new Dictionary<int, Tag>();
         internal static readonly Dictionary<Tag, Tags> NullTransitionCache = new Dictionary<Tag, Tags>(Tag.EqualityComparer.Instance);
 
         public static readonly Tags Null = default(Tags);
 
-        private int _Id;
+        private readonly int _Id;
         public int Id {
             get {
                 return (_Id < 0) ? -_Id : _Id;

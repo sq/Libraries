@@ -1275,7 +1275,7 @@ namespace Squared.PRGUI {
                 else
                     subgroup.Draw(ref dc);
             } else if (Appearance.Overlay) {
-                passSet.OverlayQueue.Add(ref dc);
+                passSet.OverlayQueue.Add(in dc);
             } else {
                 passSet.Above.Draw(ref dc, blendState: RenderStates.PorterDuffOver);
                 passSet.Above.Layer += 1;

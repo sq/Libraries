@@ -45,7 +45,7 @@ namespace Squared.Util {
         }
     }
 
-    public struct Tween<T> 
+    public readonly struct Tween<T> 
         where T : struct {
 
         private static readonly BoundInterpolatorSource<T, Tween<T>> GetValue;
@@ -60,7 +60,7 @@ namespace Squared.Util {
             GetValue = _GetValue;
         }
 
-        private static T _GetValue (ref Tween<T> tween, int index) {
+        private static T _GetValue (in Tween<T> tween, int index) {
             if (index == 0)
                 return tween.From;
             else if (index == 1)
@@ -190,7 +190,7 @@ namespace Squared.Util {
             } else if (progress <= 0f)
                 result = From;
             else if (Interpolator != null)
-                result = Interpolator(GetValue, ref this, 0, progress);
+                result = Interpolator(GetValue, in this, 0, progress);
             else
                 result = From;
 

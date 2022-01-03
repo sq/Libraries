@@ -91,7 +91,7 @@ namespace Squared.Render {
                         if (!BitmapDrawCall.CheckValid(ref drawCallsRhsBuffer[i + b.Offset]))
                             throw new Exception("Invalid draw call in batch");
 
-                        bl._DrawCalls.Add(ref drawCallsRhsBuffer[i + b.Offset]);
+                        bl._DrawCalls.Add(in drawCallsRhsBuffer[i + b.Offset]);
                     }
                 }
 
@@ -222,7 +222,7 @@ namespace Squared.Render {
             if (!BitmapDrawCall.CheckValid(ref item))
                 throw new InvalidOperationException("Invalid draw call");
 
-            _DrawCalls.Add(ref item);
+            _DrawCalls.Add(in item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -230,7 +230,7 @@ namespace Squared.Render {
             if (!BitmapDrawCall.CheckValid(ref item))
                 throw new InvalidOperationException("Invalid draw call");
 
-            _DrawCalls.Add(ref item);
+            _DrawCalls.Add(in item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -240,7 +240,7 @@ namespace Squared.Render {
             if (material != null)
                 throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
 
-            _DrawCalls.Add(ref item);
+            _DrawCalls.Add(in item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -319,7 +319,7 @@ namespace Squared.Render {
                 if (hasSortKey)
                     item.SortKey = _sortKey;
 
-                DenseList<BitmapDrawCall>.UnsafeAddWithKnownCapacity(ref _DrawCalls, ref item);
+                DenseList<BitmapDrawCall>.UnsafeAddWithKnownCapacity(ref _DrawCalls, in item);
             }
         }
         

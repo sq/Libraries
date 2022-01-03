@@ -488,7 +488,7 @@ namespace Squared.Render {
         private void Set (Entry entry) {
             var index = Find(entry.Name);
             if (index < 0)
-                Entries.Add(ref entry);
+                Entries.Add(in entry);
             else
                 Entries[index] = entry;
         }

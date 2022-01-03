@@ -271,7 +271,7 @@ namespace Squared.Util {
             for (int i = 0, c = Count; i < c; i++) {
                 GetItem(i, out T item);
                 var items = selector(item);
-                result.AddRange(ref items);
+                result.AddRange(in items);
             }
             return result;
         }
@@ -375,13 +375,13 @@ namespace Squared.Util {
 
         public DenseList<T> Concat (DenseList<T> rhs) {
             Clone(out DenseList<T> result);
-            result.AddRange(ref rhs);
+            result.AddRange(in rhs);
             return result;
         }
 
-        public DenseList<T> Concat (ref DenseList<T> rhs) {
+        public DenseList<T> Concat (in DenseList<T> rhs) {
             Clone(out DenseList<T> result);
-            result.AddRange(ref rhs);
+            result.AddRange(in rhs);
             return result;
         }
 
@@ -581,7 +581,7 @@ namespace Squared.Util {
             var result = new DenseList<TResult>();
             Reset();
             while (MoveNext())
-                result.Add(ref _Current);
+                result.Add(in _Current);
             return result.ToArray();
         }
 
@@ -597,7 +597,7 @@ namespace Squared.Util {
             var result = new DenseList<TResult>();
             Reset();
             while (MoveNext())
-                result.Add(ref _Current);
+                result.Add(in _Current);
             return result;
         }
 
@@ -745,7 +745,7 @@ namespace Squared.Util {
                 _Current = _Enumerator.Current;
                 if ((_SeenItemSet != null) && _SeenItemSet.Contains(_Current))
                     continue;
-                else if (_SeenItems.IndexOf(ref _Current, _Comparer) >= 0)
+                else if (_SeenItems.IndexOf(in _Current, _Comparer) >= 0)
                     continue;
 
                 if (_SeenItems.Count >= 4) {
@@ -758,7 +758,7 @@ namespace Squared.Util {
                 if (_SeenItemSet != null)
                     _SeenItemSet.Add(_Current);
                 else
-                    _SeenItems.Add(ref _Current);
+                    _SeenItems.Add(in _Current);
 
                 return true;
             }
@@ -815,7 +815,7 @@ namespace Squared.Util {
             var result = new DenseList<T>();
             Reset();
             while (MoveNext())
-                result.Add(ref _Current);
+                result.Add(in _Current);
             return result.ToArray();
         }
 
@@ -831,7 +831,7 @@ namespace Squared.Util {
             var result = new DenseList<T>();
             Reset();
             while (MoveNext())
-                result.Add(ref _Current);
+                result.Add(in _Current);
             return result;
         }
 

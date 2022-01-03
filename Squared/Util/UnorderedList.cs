@@ -122,7 +122,7 @@ namespace Squared.Util {
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void SetCurrent (ref T newValue) {
+            public void SetCurrent (in T newValue) {
                 _List._Items[_Index + _Offset] = newValue;
             }
 
@@ -294,10 +294,10 @@ namespace Squared.Util {
         }
 
         public void InsertOrdered (int index, T item) {
-            InsertOrdered(index, ref item);
+            InsertOrdered(index, in item);
         }
 
-        public void InsertOrdered (int index, ref T item) {
+        public void InsertOrdered (int index, in T item) {
             EnsureCapacity(_Count + 1);
             if ((index < 0) || (index > _Count + 1))
                 throw new ArgumentOutOfRangeException(nameof(index));
@@ -336,7 +336,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (ref T item) {
+        public void Add (in T item) {
             int newCount = _Count + 1;
             EnsureCapacity(newCount);
 
@@ -439,7 +439,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void DangerousSetItem (int index, ref T newValue) {
+        public void DangerousSetItem (int index, in T newValue) {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();
 
@@ -584,7 +584,7 @@ namespace Squared.Util {
         public void CopyTo (UnorderedList<T> output) {
             output.EnsureCapacity(output.Count + Count);
             for (int i = 0; i < _Count; i++)
-                output.Add(ref _Items[_BufferOffset + i]);
+                output.Add(in _Items[_BufferOffset + i]);
         }
 
         public void CopyTo (T[] buffer, int offset, int count) {

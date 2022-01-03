@@ -643,7 +643,7 @@ namespace Squared.Render {
 
             ThreadGroup.NotifyQueuesChanged();
             PrepareManager.AssertEmpty();
-            frame.BatchesToRelease.AddRange(ref context.BatchesToRelease);
+            frame.BatchesToRelease.AddRange(in context.BatchesToRelease);
         }
 
         internal void ParallelPrepareBatches (Frame frame) {
@@ -652,7 +652,7 @@ namespace Squared.Render {
 
             PrepareManager.Wait();
             PrepareManager.AssertEmpty();
-            frame.BatchesToRelease.AddRange(ref context.BatchesToRelease);
+            frame.BatchesToRelease.AddRange(in context.BatchesToRelease);
         }
 
         internal int PickFrameIndex () {

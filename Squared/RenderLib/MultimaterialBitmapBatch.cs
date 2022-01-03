@@ -102,7 +102,7 @@ namespace Squared.Render {
                 throw new InvalidOperationException("Draw call has no material and this batch has no material");
 
             var dc = new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2);
-            _DrawCalls.Add(ref dc);
+            _DrawCalls.Add(in dc);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -115,7 +115,7 @@ namespace Squared.Render {
                 throw new InvalidOperationException("Draw call has no material and this batch has no material");
 
             var dc = new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2);
-            _DrawCalls.Add(ref dc);
+            _DrawCalls.Add(in dc);
         }
 
         public void AddRange (
@@ -154,7 +154,7 @@ namespace Squared.Render {
                 dc.SamplerState1 = samplerState1;
                 dc.SamplerState2 = samplerState2;
 
-                _DrawCalls.Add(ref dc);
+                _DrawCalls.Add(in dc);
             }
         }
 

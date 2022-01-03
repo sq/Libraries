@@ -28,7 +28,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace Squared.Util {
-    public struct FastCLRSorterRef<TElement, TComparer>
+    public readonly struct FastCLRSorterRef<TElement, TComparer>
         where TComparer : IRefComparer<TElement>
     {
         internal const int IntrosortSizeThreshold = 16;
@@ -209,7 +209,7 @@ namespace Squared.Util {
         }
     }
 
-    public struct FastCLRSorter<TElement, TComparer>
+    public readonly struct FastCLRSorter<TElement, TComparer>
         where TComparer : IComparer<TElement>
     {
         internal const int IntrosortSizeThreshold = 16;

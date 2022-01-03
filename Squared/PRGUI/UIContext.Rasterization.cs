@@ -123,7 +123,7 @@ namespace Squared.PRGUI {
                 }
             }
 
-            result.UsedRectangles.Add(ref rectangle);
+            result.UsedRectangles.Add(in rectangle);
             return result;
         }
 

@@ -7,8 +7,8 @@ using System.Text;
 namespace Squared.Util {
     public delegate T InterpolatorSource<out T> (int index) where T : struct;
     public delegate T Interpolator<T> (InterpolatorSource<T> data, int dataOffset, float positionInWindow) where T : struct;
-    public delegate T BoundInterpolatorSource<out T, U> (ref U obj, int index) where T : struct;
-    public delegate T BoundInterpolator<T, U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) where T : struct;
+    public delegate T BoundInterpolatorSource<out T, U> (in U obj, int index) where T : struct;
+    public delegate T BoundInterpolator<T, U> (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) where T : struct;
 
     public static class Interpolators<T>
         where T : struct {
@@ -191,22 +191,22 @@ namespace Squared.Util {
             return _Hermite(a, u, d, v, positionInWindow, t2, tSquared, s, s2, sSquared);
         }
 
-        public static T Null<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
-            return data(ref obj, dataOffset);
+        public static T Null<U> (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) {
+            return data(in obj, dataOffset);
         }
 
-        public static T Linear<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+        public static T Linear<U> (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) {
             return _Linear(
-                data(ref obj, dataOffset),
-                data(ref obj, dataOffset + 1),
+                data(in obj, dataOffset),
+                data(in obj, dataOffset + 1),
                 positionInWindow
             );
         }
 
-        public static T Cosine<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+        public static T Cosine<U> (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) {
             return _Cosine(
-                data(ref obj, dataOffset),
-                data(ref obj, dataOffset + 1),
+                data(in obj, dataOffset),
+                data(in obj, dataOffset + 1),
                 positionInWindow
             );
         }
@@ -214,7 +214,7 @@ namespace Squared.Util {
         private sealed class ExponentialInterpolator {
             public float ExponentIn, ExponentMidpoint, ExponentOut;
 
-            public T Interpolate<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+            public T Interpolate<U> (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) {
                 var centered = positionInWindow - 0.5f;
                 var exponent1 = Arithmetic.Lerp(ExponentIn, ExponentMidpoint, positionInWindow * 2f);
                 var exponent2 = Arithmetic.Lerp(ExponentMidpoint, ExponentOut, centered);
@@ -228,8 +228,8 @@ namespace Squared.Util {
                         : 0;
                 var finalPosition = (left + right) / 2f;
                 return _Linear(
-                    data(ref obj, dataOffset),
-                    data(ref obj, dataOffset + 1),
+                    data(in obj, dataOffset),
+                    data(in obj, dataOffset + 1),
                     (float)finalPosition
                 );
             }
@@ -321,11 +321,11 @@ namespace Squared.Util {
                 Interpolate = _Interpolate;
             }
 
-            private T _Interpolate (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+            private T _Interpolate (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) {
                 var t = Ease.GetT(positionInWindow);
                 return _Linear(
-                    data(ref obj, dataOffset),
-                    data(ref obj, dataOffset + 1),
+                    data(in obj, dataOffset),
+                    data(in obj, dataOffset + 1),
                     t
                 );
             }
@@ -342,34 +342,34 @@ namespace Squared.Util {
             }
         }
 
-        public static T Cubic<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+        public static T Cubic<U> (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) {
             if (positionInWindow < 0) {
                 var n = Math.Ceiling(Math.Abs(positionInWindow));
                 positionInWindow += (float)n;
                 dataOffset -= (int)n;
             }
 
-            T a = data(ref obj, dataOffset - 1);
-            T b = data(ref obj, dataOffset);
-            T c = data(ref obj, dataOffset + 1);
-            T d = data(ref obj, dataOffset + 2);
+            T a = data(in obj, dataOffset - 1);
+            T b = data(in obj, dataOffset);
+            T c = data(in obj, dataOffset + 1);
+            T d = data(in obj, dataOffset + 2);
             T p = _CubicP(a, b, c, d);
             float x2 = positionInWindow * positionInWindow;
             float x3 = positionInWindow * x2;
             return _CubicR(a, b, c, d, p, positionInWindow, x2, x3);
         }
 
-        public static T Hermite<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+        public static T Hermite<U> (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) {
             if (positionInWindow < 0) {
                 var n = Math.Ceiling(Math.Abs(positionInWindow));
                 positionInWindow += (float)n;
                 dataOffset -= (int)n;
             }
 
-            T a = data(ref obj, dataOffset);
-            T u = data(ref obj, dataOffset + 1);
-            T d = data(ref obj, dataOffset + 2);
-            T v = data(ref obj, dataOffset + 3);
+            T a = data(in obj, dataOffset);
+            T u = data(in obj, dataOffset + 1);
+            T d = data(in obj, dataOffset + 2);
+            T v = data(in obj, dataOffset + 3);
 
             var tSquared = positionInWindow * positionInWindow;
             var t2 = positionInWindow * 2;
