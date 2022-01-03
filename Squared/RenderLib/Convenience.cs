@@ -457,12 +457,25 @@ namespace Squared.Render.Convenience {
                 if (previousIndex == 0)
                     return;
                 else if (Count == 0) {
-                    SetItemAtIndex(0, ref item);
+                    Batch0 = item;
                     Count += 1;
                     return;
                 }
 
                 InsertAtFront_Slow(ref item, previousIndex);
+            }
+
+            internal static ref CachedBatch ItemAtIndex (ref CachedBatches @this, int index) {
+                switch (index) {
+                    default:
+                        return ref @this.Batch0;
+                    case 1:
+                        return ref @this.Batch1;
+                    case 2:
+                        return ref @this.Batch2;
+                    case 3:
+                        return ref @this.Batch3;
+                }
             }
 
             private void InsertAtFront_Slow (ref CachedBatch item, int previousIndex) {
@@ -479,55 +492,17 @@ namespace Squared.Render.Convenience {
                     if (i == previousIndex)
                         continue;
 
-                    CachedBatch temp;
-                    GetItemAtIndex(i, out temp);
-                    SetItemAtIndex(writePosition, ref temp);
+                    ref var source = ref ItemAtIndex(ref this, i);
+                    ref var destination = ref ItemAtIndex(ref this, writePosition);
+                    destination = source;
                     writePosition -= 1;
                 }
 
-                SetItemAtIndex(0, ref item);
+                Batch0 = item;
 
                 if (previousIndex < 0) {
                     if (Count < Capacity)
                         Count += 1;
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool GetItemAtIndex(int index, out CachedBatch result) {
-                switch (index) {
-                    default:
-                        result = Batch0;
-                        return (index == 0);
-                    case 1:
-                        result = Batch1;
-                        return true;
-                    case 2:
-                        result = Batch2;
-                        return true;
-                    case 3:
-                        result = Batch3;
-                        return true;
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private bool SetItemAtIndex (int index, ref CachedBatch value) {
-                switch (index) {
-                    case 0:
-                        Batch0 = value;
-                        return true;
-                    case 1:
-                        Batch1 = value;
-                        return true;
-                    case 2:
-                        Batch2 = value;
-                        return true;
-                    case 3:
-                        Batch3 = value;
-                        return true;
-                    default:
-                        return false;
                 }
             }
         }
@@ -1931,14 +1906,12 @@ namespace Squared.Render.Convenience {
         public override string ToString () {
             var callCount = 0;
             for (int i = 0; i < Cache.Count; i++) {
-                CachedBatch cb;
-                if (Cache.GetItemAtIndex(i, out cb)) {
-                    var lb = cb.Batch as IListBatch;
-                    if (lb == null)
-                        continue;
+                ref var cb = ref CachedBatches.ItemAtIndex(ref Cache, i);
+                var lb = cb.Batch as IListBatch;
+                if (lb == null)
+                    continue;
 
-                    callCount += lb.Count;
-                }
+                callCount += lb.Count;
             }
 
             return string.Format("IR @ [c:{0} l:{1}] b: {2} c: {3}", Container, Layer, Cache.Count, callCount);

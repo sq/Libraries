@@ -607,7 +607,7 @@ namespace Squared.Render {
 
         private void Apply (Effect effect, MaterialEffectParameters cache) {
             for (int i = 0, c = Entries.Count; i < c; i++) {
-                Entries.GetItem(i, out Entry entry);
+                ref var entry = ref Entries.Item(i);
                 var p = cache[entry.Name];
                 if (p == null)
                     continue;
