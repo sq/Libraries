@@ -428,6 +428,11 @@ namespace Squared.Util {
                 new int[] { 4, 3 },
                 denseWhereExtension.ToArray()
             );
+
+            Assert.AreEqual(
+                items.ToArray().Sum(),
+                items.Reduce(0, (value, item) => value + item)
+            );
         }
 
         [Test]

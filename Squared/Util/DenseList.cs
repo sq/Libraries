@@ -645,6 +645,16 @@ namespace Squared.Util {
             return Items.ReserveSpace(count);
         }
 
+        public bool Remove<TComparer> (T item, TComparer comparer)
+            where TComparer : IEqualityComparer<T>            
+        {
+            var index = IndexOf(ref item, comparer);
+            if (index < 0)
+                return false;
+            RemoveAt(index);
+            return true;
+        }
+
         public bool Remove (T item) {
             var index = IndexOf(ref item);
             if (index < 0)

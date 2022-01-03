@@ -371,6 +371,13 @@ namespace Squared.Util {
             return result;
         }
 
+        public U Reduce<U> (U initialValue, Func<U, T, U> reducer) {
+            var result = initialValue;
+            for (int i = 0, c = Count; i < c; i++)
+                result = reducer(result, this[i]);
+            return result;
+        }
+
         // It's unfortunate that this returns an interface, which means calls to it will box the result.
         // Not much we can do about it though.
         IOrderedEnumerable<T> IOrderedEnumerable<T>.CreateOrderedEnumerable<TKey> (Func<T, TKey> keySelector, IComparer<TKey> comparer, bool descending) {
@@ -572,6 +579,13 @@ namespace Squared.Util {
             return result;
         }
 
+        public U Reduce<U> (U initialValue, Func<U, TResult, U> reducer) {
+            var result = initialValue;
+            foreach (var item in this)
+                result = reducer(result, item);
+            return result;
+        }
+
         public DenseQuery<T, TEnumerator, TResult> GetEnumerator () {
             if (_HasMoved) {
                 CloneInto(out DenseQuery<T, TEnumerator, TResult> result);
@@ -738,6 +752,13 @@ namespace Squared.Util {
                 _Comparer = _Comparer,
             };
             _Enumerator.CloneInto(out result._Enumerator);
+        }
+
+        public U Reduce<U> (U initialValue, Func<U, T, U> reducer) {
+            var result = initialValue;
+            foreach (var item in this)
+                result = reducer(result, item);
+            return result;
         }
 
         // FIXME: Don't make a temporary copy?
