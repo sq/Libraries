@@ -435,6 +435,13 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Contains<TComparer> (T value, TComparer comparer)
+            where TComparer : IEqualityComparer<T>
+        {
+            return IndexOf(value, comparer) >= 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf (T value) {
             return IndexOf(ref value, EqualityComparer<T>.Default);
         }
