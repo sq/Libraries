@@ -429,16 +429,16 @@ namespace Squared.Render.Convenience {
                 }
 
                 int i;
-                if (CachedBatch.KeysEqual(in Batch0, in result) && Batch0.Batch.AreParametersEqual(ref parameters)) {
+                if (CachedBatch.KeysEqual(Batch0, result) && Batch0.Batch.AreParametersEqual(parameters)) {
                     result = Batch0;
                     i = 0;
-                } else if (CachedBatch.KeysEqual(in Batch1, in result) && Batch1.Batch.AreParametersEqual(ref parameters)) {
+                } else if (CachedBatch.KeysEqual(Batch1, result) && Batch1.Batch.AreParametersEqual(parameters)) {
                     result = Batch1;
                     i = 1;
-                } else if (CachedBatch.KeysEqual(in Batch2, in result) && Batch2.Batch.AreParametersEqual(ref parameters)) {
+                } else if (CachedBatch.KeysEqual(Batch2, result) && Batch2.Batch.AreParametersEqual(parameters)) {
                     result = Batch2;
                     i = 2;
-                } else if (CachedBatch.KeysEqual(in Batch3, in result) && Batch3.Batch.AreParametersEqual(ref parameters)) {
+                } else if (CachedBatch.KeysEqual(Batch3, result) && Batch3.Batch.AreParametersEqual(parameters)) {
                     result = Batch3;
                     i = 3;
                 } else {
@@ -839,9 +839,9 @@ namespace Squared.Render.Convenience {
                         material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState, UseDiscard);
 
                     var mmbb = (MultimaterialBitmapBatch)batch;
-                    mmbb.Add(ref drawCall, material, samplerState, samplerState2);
+                    mmbb.Add(in drawCall, material, samplerState, samplerState2);
                 } else {
-                    batch.Add(ref drawCall);
+                    batch.Add(in drawCall);
                 }
             }
         }

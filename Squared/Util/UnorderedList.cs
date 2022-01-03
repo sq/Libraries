@@ -293,10 +293,6 @@ namespace Squared.Util {
             _BufferSize = newBuffer.Count;
         }
 
-        public void InsertOrdered (int index, T item) {
-            InsertOrdered(index, in item);
-        }
-
         public void InsertOrdered (int index, in T item) {
             EnsureCapacity(_Count + 1);
             if ((index < 0) || (index > _Count + 1))
@@ -324,15 +320,6 @@ namespace Squared.Util {
             var growth = size - _Count;
             Array.Clear(_Items, _BufferOffset + _Count, growth);
             _Count = size;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (T item) {
-            int newCount = _Count + 1;
-            EnsureCapacity(newCount);
-
-            _Items[_BufferOffset + newCount - 1] = item;
-            _Count = newCount;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -397,7 +384,7 @@ namespace Squared.Util {
             }
         }
 
-        public bool Contains (T item) {
+        public bool Contains (in T item) {
             var index = Array.IndexOf(_Items, item, _BufferOffset, _Count);
             return (index >= 0);
         }

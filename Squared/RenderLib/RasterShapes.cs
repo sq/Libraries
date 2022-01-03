@@ -485,7 +485,7 @@ namespace Squared.Render.RasterShape {
 
         internal int IsEnabled;
 
-        public bool Equals (ref RasterShadowSettings rhs) {
+        public bool Equals (in RasterShadowSettings rhs) {
             return (IsEnabled == rhs.IsEnabled) &&
                 (Offset == rhs.Offset) &&
                 (Softness == rhs.Softness) &&
@@ -495,13 +495,9 @@ namespace Squared.Render.RasterShape {
                 (Inside == rhs.Inside);
         }
 
-        public bool Equals (RasterShadowSettings rhs) {
-            return Equals(ref rhs);
-        }
-
         public override bool Equals (object obj) {
-            if (obj is RasterShadowSettings)
-                return Equals((RasterShadowSettings)obj);
+            if (obj is RasterShadowSettings rss)
+                return Equals(rss);
             else
                 return false;
         }
@@ -679,7 +675,7 @@ namespace Squared.Render.RasterShape {
                     if (
                         ((dc.Type != lastType) && (!UseUbershader || dc.Type == RasterShapeType.Polygon || lastType == RasterShapeType.Polygon)) ||
                         (dc.BlendInLinearSpace != lastBlend) ||
-                        !dc.Shadow.Equals(ref lastShadow) ||
+                        !dc.Shadow.Equals(in lastShadow) ||
                         (dc.IsSimple != lastIsSimple) ||
                         !dc.TextureSettings.Equals(lastTextureSettings)
                     ) {
@@ -910,7 +906,7 @@ namespace Squared.Render.RasterShape {
         new public void Add (ref RasterShapeDrawCall dc) {
             // FIXME
             dc.Index = _DrawCalls.Count;
-            dc.IsSimple = (dc.OuterColor4.FastEquals(ref dc.InnerColor4) || (dc.Fill.Mode == RasterFillMode.None)) ? 1 : 0;
+            dc.IsSimple = (dc.OuterColor4.FastEquals(in dc.InnerColor4) || (dc.Fill.Mode == RasterFillMode.None)) ? 1 : 0;
             dc.PackedFlags = (
                 (int)dc.Type | (dc.IsSimple << 16) | (dc.Shadow.IsEnabled << 17) | ((dc.BlendInLinearSpace ? 1 : 0) << 18) |
                 ((dc.Shadow.Inside ? 1 : 0) << 19) | ((dc.SoftOutline ? 1 : 0) << 20)

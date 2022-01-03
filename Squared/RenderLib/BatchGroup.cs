@@ -54,7 +54,7 @@ namespace Squared.Render {
                     if (ViewTransformModifier != null)
                         vt = ViewTransformModifier(vt, _UserData);
                     // FIXME: We shouldn't need force: true
-                    MaterialSet.PushViewTransform(ref vt, force: true);
+                    MaterialSet.PushViewTransform(in vt, force: true);
                     pop = true;
                 }
             }

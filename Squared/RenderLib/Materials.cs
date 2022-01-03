@@ -419,7 +419,7 @@ namespace Squared.Render {
             public object ReferenceValue;
             public EntryUnion PrimitiveValue;
 
-            public static bool Equals (ref Entry lhs, ref Entry rhs) {
+            public static bool Equals (in Entry lhs, in Entry rhs) {
                 if (lhs.ValueType != rhs.ValueType)
                     return false;
 
@@ -485,7 +485,7 @@ namespace Squared.Render {
             return true;
         }
 
-        private void Set (Entry entry) {
+        private void Set (in Entry entry) {
             var index = Find(entry.Name);
             if (index < 0)
                 Entries.Add(in entry);
@@ -533,7 +533,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Add (string name, Vector2 value) {
+        public void Add (string name, in Vector2 value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V2,
@@ -543,7 +543,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Add (string name, Vector3 value) {
+        public void Add (string name, in Vector3 value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V3,
@@ -553,7 +553,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Add (string name, Vector4 value) {
+        public void Add (string name, in Vector4 value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V4,
@@ -563,7 +563,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Add (string name, Quaternion value) {
+        public void Add (string name, in Quaternion value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.Q,
@@ -573,7 +573,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Add (string name, ref Matrix value) {
+        public void Add (string name, in Matrix value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.M,
@@ -615,7 +615,7 @@ namespace Squared.Render {
             }
         }
 
-        private static void ApplyEntry (Entry entry, EffectParameter p) {
+        private static void ApplyEntry (in Entry entry, EffectParameter p) {
             var r = entry.ReferenceValue;
             switch (entry.ValueType) {
                 case EntryValueType.Texture:
@@ -670,19 +670,19 @@ namespace Squared.Render {
             }
         }
 
-        public bool Equals (ref MaterialParameterValues pRhs) {
+        public bool Equals (in MaterialParameterValues pRhs) {
             if (Entries.Count != pRhs.Entries.Count)
                 return false;
             if (Entries.Count == 0)
                 return true;
 
             for (int i = 0, c = Entries.Count; i < c; i++) {
-                Entries.TryGetItem(i, out Entry lhs);
+                ref var lhs = ref Entries.Item(i);
                 var j = pRhs.Find(lhs.Name);
                 if (j < 0)
                     return false;
                 pRhs.Entries.TryGetItem(j, out Entry rhs);
-                if (!Entry.Equals(ref lhs, ref rhs))
+                if (!Entry.Equals(in lhs, in rhs))
                     return false;
             }
 
@@ -695,7 +695,7 @@ namespace Squared.Render {
 
         public override bool Equals (object obj) {
             if (obj is MaterialParameterValues mpv)
-                return Equals(ref mpv);
+                return Equals(in mpv);
             else
                 return false;
         }

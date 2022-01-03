@@ -264,7 +264,7 @@ namespace Squared.PRGUI.Layout {
             if (key.IsInvalid)
                 throw new ArgumentOutOfRangeException("key");
 
-            Boxes.DangerousSetItem(key.ID, in newRect);
+            Boxes.DangerousSetItem(key.ID, newRect);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -651,11 +651,7 @@ namespace Squared.PRGUI {
             return 0;
         }
 
-        public bool Equals (Margins rhs) {
-            return Equals(ref rhs);
-        }
-
-        public bool Equals (ref Margins rhs) {
+        public bool Equals (in Margins rhs) {
             return (Left == rhs.Left) &&
                 (Top == rhs.Top) &&
                 (Right == rhs.Right) &&
@@ -663,8 +659,8 @@ namespace Squared.PRGUI {
         }
 
         public override bool Equals (object obj) {
-            if (obj is Margins)
-                return Equals((Margins)obj);
+            if (obj is Margins m)
+                return Equals(in m);
             else
                 return false;
         }

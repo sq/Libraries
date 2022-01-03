@@ -122,7 +122,7 @@ namespace Squared.Render {
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             unchecked {
                 Buffer.F1 = x.SortOrder; Buffer.F2 = y.SortOrder;
-                var result = FastMath.CompareF(ref Buffer);
+                var result = FastMath.CompareF(in Buffer);
                 if (result == 0)
                     result = x.Textures.CompareTo(in y.Textures);
                 return result;
@@ -144,7 +144,7 @@ namespace Squared.Render {
                 var result = x.Textures.CompareTo(in y.Textures);
                 if (result == 0) {
                     Buffer.F1 = y.SortOrder; Buffer.F2 = x.SortOrder;
-                    result = FastMath.CompareF(ref Buffer);
+                    result = FastMath.CompareF(in Buffer);
                 }
                 return result;
             }
@@ -175,8 +175,7 @@ namespace Squared.Render {
             get; set;
         }
 
-        void Add (BitmapDrawCall item);
-        void Add (ref BitmapDrawCall item);
+        void Add (in BitmapDrawCall item);
         void AddRange (ArraySegment<BitmapDrawCall> items);
     }
 
@@ -505,7 +504,7 @@ namespace Squared.Render {
                         }
 
                         ref var call = ref callArray[callIndex + drawCalls.Offset];
-                        bool texturesEqual = call.Textures.Equals(ref currentTextures);
+                        bool texturesEqual = call.Textures.Equals(in currentTextures);
 
                         if (!texturesEqual) {
                             if (vertCount > 0)
@@ -629,7 +628,7 @@ namespace Squared.Render {
             bool force, LocalObjectCache<object> textureCache
         ) {
             var changedTextures = false;
-            if (!nb.TextureSet.Equals(ref cnbs.Textures) || force) {
+            if (!nb.TextureSet.Equals(in cnbs.Textures) || force) {
                 changedTextures = true;
                 cnbs.Textures = nb.TextureSet;
                 var tex1 = nb.TextureSet.Texture1;
@@ -1109,7 +1108,7 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Equals (ref TextureSet rhs) {
+        public bool Equals (in TextureSet rhs) {
             return (Texture1 == rhs.Texture1) && 
                 (Texture2 == rhs.Texture2);
         }
@@ -1117,7 +1116,7 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override bool Equals (object obj) {
             if (obj is TextureSet rhs) {
-                return Equals(ref rhs);
+                return Equals(rhs);
             } else {
                 return false;
             }

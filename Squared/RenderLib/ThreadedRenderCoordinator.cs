@@ -460,7 +460,7 @@ namespace Squared.Render {
 
             var vt = pd.ViewTransform ??
                 ViewTransform.CreateOrthographic(pd.RenderTarget.Width, pd.RenderTarget.Height);
-            pd.Materials.PushViewTransform(ref vt);
+            pd.Materials.PushViewTransform(in vt);
             dm.Device.Clear(Color.Transparent);
         }
 
@@ -975,7 +975,7 @@ namespace Squared.Render {
                     frame.ChangeRenderTargets = false;
                     frame.Label = description;
                     if (viewTransform.HasValue)
-                        materials.PushViewTransform(ref viewTransform);
+                        materials.PushViewTransform(in viewTransform);
                     else
                         materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
 

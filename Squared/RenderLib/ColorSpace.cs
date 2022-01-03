@@ -306,7 +306,7 @@ namespace Squared.Render {
                 return false;
 
             if (IsVector4) {
-                return Vector4.FastEquals(ref rhs.Vector4);
+                return Vector4.FastEquals(in rhs.Vector4);
             } else {
                 return Color == rhs.Color;
             }

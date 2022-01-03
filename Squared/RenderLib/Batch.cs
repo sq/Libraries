@@ -15,7 +15,7 @@ namespace Squared.Render {
         void Prepare (Batch.PrepareContext context);
         void Suspend ();
 
-        bool AreParametersEqual (ref MaterialParameterValues rhs);
+        bool AreParametersEqual (in MaterialParameterValues rhs);
     }
 
     public abstract class Batch : IBatch {
@@ -173,8 +173,8 @@ namespace Squared.Render {
             }
         }
 
-        bool IBatch.AreParametersEqual (ref MaterialParameterValues rhs) {
-            return MaterialParameters.Equals(ref rhs);
+        bool IBatch.AreParametersEqual (in MaterialParameterValues rhs) {
+            return MaterialParameters.Equals(in rhs);
         }
 
         protected void Initialize (IBatchContainer container, int layer, Material material, bool addToContainer) {
@@ -486,10 +486,6 @@ namespace Squared.Render {
 
         public void EnsureCapacity (int capacity, bool lazy = false) {
             _DrawCalls.EnsureCapacity(capacity, lazy);
-        }
-
-        protected void Add (T item) {
-            _DrawCalls.Add(item);
         }
 
         protected void Add (in T item) {

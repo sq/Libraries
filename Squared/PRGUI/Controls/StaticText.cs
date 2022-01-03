@@ -332,7 +332,7 @@ namespace Squared.PRGUI.Controls {
             if (
                 (_CachedTextDecorations != textDecorations) ||
                 (_CachedDecorations != decorations) ||
-                !_CachedPadding.Equals(ref computedPadding)
+                !_CachedPadding.Equals(in computedPadding)
             ) {
                 ResetAutoSize();
             }

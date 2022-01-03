@@ -243,7 +243,7 @@ namespace Squared.Util {
                 return IndexOf(predicate) >= 0;
         }
 
-        public bool Any<TUserData> (Predicate<TUserData> predicate, TUserData userData) {
+        public bool Any<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
             if (Count == 0)
                 return false;
             else
@@ -381,12 +381,6 @@ namespace Squared.Util {
             where TComparer : IComparer<TKey> 
         {
             Sort(new OrderByAdapter<TKey, TComparer>(keySelector, comparer, descending ? -1 : 1));
-        }
-
-        public DenseList<T> Concat (DenseList<T> rhs) {
-            Clone(out DenseList<T> result);
-            result.AddRange(in rhs);
-            return result;
         }
 
         public DenseList<T> Concat (in DenseList<T> rhs) {

@@ -42,7 +42,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe void GetItemAtIndex (int index, out T result) {
+        private unsafe void GetInlineItemAtIndex (int index, out T result) {
             switch (index) {
                 case 0:
                     result = Item1;
@@ -60,7 +60,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe void SetItemAtIndex (int index, in T value) {
+        private unsafe void SetInlineItemAtIndex (int index, in T value) {
             switch (index) {
                 case 0:
                     Item1 = value;
@@ -248,16 +248,6 @@ namespace Squared.Util {
         T IList<T>.this[int index] { get => this[index]; set => this[index] = value; }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (T item) {
-            Add(in item);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Insert (int index, T item) {
-            Insert(index, in item);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Insert (int index, in T item) {
             if (index == Count) {
                 Add(in item);
@@ -340,19 +330,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T FirstOrDefault () {
-            if (Count <= 0)
-                return default(T);
-
-            var items = _Items;
-            if (items != null)
-                return items.DangerousGetItem(0);
-            else
-                return Item1;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T FirstOrDefault (T defaultValue) {
+        public T FirstOrDefault (in T defaultValue = default) {
             if (Count <= 0)
                 return defaultValue;
 
@@ -364,7 +342,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T FirstOrDefault (Func<T, bool> predicate, T defaultValue = default) {
+        public T FirstOrDefault (Func<T, bool> predicate, in T defaultValue = default) {
             if (Count <= 0)
                 return defaultValue;
             var index = IndexOf(predicate);
@@ -383,19 +361,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T LastOrDefault () {
-            if (Count <= 0)
-                return default(T);
-
-            var items = _Items;
-            if (items != null)
-                return items.DangerousGetItem(items.Count - 1);
-            else
-                return this[Count - 1];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T LastOrDefault (T defaultValue) {
+        public T LastOrDefault (in T defaultValue = default) {
             if (Count <= 0)
                 return defaultValue;
 
@@ -407,32 +373,20 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Contains (T value) {
+        public bool Contains (in T value) {
             return IndexOf(in value) >= 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Contains<TComparer> (T value, TComparer comparer)
+        public bool Contains<TComparer> (in T value, TComparer comparer)
             where TComparer : IEqualityComparer<T>
         {
             return IndexOf(in value, comparer) >= 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf (T value) {
-            return IndexOf(in value, EqualityComparer<T>.Default);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf (in T value) {
             return IndexOf(in value, EqualityComparer<T>.Default);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf<TComparer> (T value, TComparer comparer)
-            where TComparer : IEqualityComparer<T>
-        {
-            return IndexOf(in value, comparer);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -514,7 +468,7 @@ namespace Squared.Util {
         private void Add_Fast (in T item) {
             var count = _Count;
             _Count = count + 1;
-            SetItemAtIndex(count, in item);
+            SetInlineItemAtIndex(count, in item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -537,11 +491,6 @@ namespace Squared.Util {
             } else {
                 Add_Fast(in item);
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddRange (DenseList<T> items) {
-            AddRange(in items);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -634,7 +583,7 @@ namespace Squared.Util {
             return _Items.ReserveSpace(count);
         }
 
-        public bool Remove<TComparer> (T item, TComparer comparer)
+        public bool Remove<TComparer> (in T item, TComparer comparer)
             where TComparer : IEqualityComparer<T>            
         {
             var index = IndexOf(in item, comparer);
@@ -644,7 +593,7 @@ namespace Squared.Util {
             return true;
         }
 
-        public bool Remove (T item) {
+        public bool Remove (in T item) {
             var index = IndexOf(in item);
             if (index < 0)
                 return false;
@@ -740,7 +689,7 @@ namespace Squared.Util {
             } else {
                 _Count = count;
                 for (int i = 0; i < count; i++)
-                    SetItemAtIndex(i, in data[sourceOffset]);
+                    SetInlineItemAtIndex(i, in data[sourceOffset]);
             }
         }
 
@@ -760,7 +709,7 @@ namespace Squared.Util {
                 var alloc = BufferPool<T>.Allocate(4);
                 var buf = alloc.Data;
                 for (int i = 0; i < _Count; i++)
-                    GetItemAtIndex(i, out buf[i]);
+                    GetInlineItemAtIndex(i, out buf[i]);
                 return new Buffer {
                     IsTemporary = true,
                     Data = buf,
@@ -785,7 +734,7 @@ namespace Squared.Util {
             else {
                 var result = new T[_Count];
                 for (int i = 0; i < result.Length; i++)
-                    GetItemAtIndex(i, out result[i]);
+                    GetInlineItemAtIndex(i, out result[i]);
                 return result;
             }
         }
@@ -843,11 +792,6 @@ namespace Squared.Util {
                     return i;
             }
             return -1;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf<TUserData> (Predicate<TUserData> predicate, TUserData userData) {
-            return IndexOf(predicate, in userData);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

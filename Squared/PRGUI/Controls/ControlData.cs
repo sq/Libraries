@@ -20,10 +20,9 @@ namespace Squared.PRGUI.Controls {
                 return false;
             }
 
-            IControlData item;
             for (int i = 0, c = Items.Count; i < c; i++) {
-                Items.GetItem(i, out item);
-                if (item.KeyEquals(ref key)) {
+                ref var item = ref Items.Item(i);
+                if (item.KeyEquals(in key)) {
                     result = (ControlData<T>)item;
                     return true;
                 }
@@ -83,10 +82,9 @@ namespace Squared.PRGUI.Controls {
                 return false;
             var key = new ControlDataKey { Type = typeof(T), Key = name };
 
-            IControlData item;
             for (int i = 0, c = Items.Count; i < c; i++) {
-                Items.GetItem(i, out item);
-                if (item.KeyEquals(ref key)) {
+                ref var item = ref Items.Item(i);
+                if (item.KeyEquals(in key)) {
                     Items.RemoveAt(i);
                     return true;
                 }
@@ -141,7 +139,7 @@ namespace Squared.PRGUI.Controls {
     }
 
     internal interface IControlData {
-        bool KeyEquals (ref ControlDataKey key);
+        bool KeyEquals (in ControlDataKey key);
         string Key { get; }
         Type Type { get; }
         object Value { get; set; }
@@ -160,8 +158,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public bool KeyEquals (ref ControlDataKey key) {
-            return Key.Equals(ref key);
+        public bool KeyEquals (in ControlDataKey key) {
+            return Key.Equals(in key);
         }
     }
 
@@ -169,19 +167,14 @@ namespace Squared.PRGUI.Controls {
         public Type Type;
         public string Key;
 
-        public bool Equals (ref ControlDataKey rhs) {
-            return (Type == rhs.Type) &&
-                string.Equals(Key, rhs.Key);
-        }
-
-        public bool Equals (ControlDataKey rhs) {
+        public bool Equals (in ControlDataKey rhs) {
             return (Type == rhs.Type) &&
                 string.Equals(Key, rhs.Key);
         }
 
         public override bool Equals (object obj) {
-            if (obj is ControlDataKey)
-                return Equals((ControlDataKey)obj);
+            if (obj is ControlDataKey cdk)
+                return Equals(in cdk);
             else
                 return false;
         }

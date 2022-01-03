@@ -218,29 +218,21 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        new public void Add (BitmapDrawCall item) {
+        new public void Add (in BitmapDrawCall item) {
             if (!BitmapDrawCall.CheckValid(in item))
                 throw new InvalidOperationException("Invalid draw call");
 
-            _DrawCalls.Add(in item);
+            _DrawCalls.Add(item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        new public void Add (ref BitmapDrawCall item) {
-            if (!BitmapDrawCall.CheckValid(in item))
-                throw new InvalidOperationException("Invalid draw call");
-
-            _DrawCalls.Add(in item);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (ref BitmapDrawCall item, Material material) {
+        public void Add (in BitmapDrawCall item, Material material) {
             if (!BitmapDrawCall.CheckValid(in item))
                 throw new InvalidOperationException("Invalid draw call");
             if (material != null)
                 throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
 
-            _DrawCalls.Add(in item);
+            _DrawCalls.Add(item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -319,7 +311,7 @@ namespace Squared.Render {
                 if (hasSortKey)
                     item.SortKey = _sortKey;
 
-                DenseList<BitmapDrawCall>.UnsafeAddWithKnownCapacity(ref _DrawCalls, in item);
+                DenseList<BitmapDrawCall>.UnsafeAddWithKnownCapacity(ref _DrawCalls, item);
             }
         }
         

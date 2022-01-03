@@ -267,20 +267,15 @@ namespace Squared.Game {
             );
         }
 
-        public bool Equals (ref Bounds rhs) {
+        public bool Equals (in Bounds rhs) {
             return (TopLeft == rhs.TopLeft) && (BottomRight == rhs.BottomRight);
         }
 
-        public bool Equals (Bounds rhs) {
-            return Equals(ref rhs);
-        }
-
         public override bool Equals (object rhs) {
-            if (!(rhs is Bounds))
+            if (rhs is Bounds brhs)
+                return Equals(in brhs);
+            else
                 return false;
-
-            var brhs = (Bounds)rhs;
-            return Equals(ref brhs);
         }
 
         public static bool operator == (Bounds lhs, Bounds rhs) {

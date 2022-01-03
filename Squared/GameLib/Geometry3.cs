@@ -217,20 +217,15 @@ namespace Squared.Game {
             );
         }
 
-        public bool Equals (ref Bounds3 rhs) {
+        public bool Equals (in Bounds3 rhs) {
             return (Minimum == rhs.Minimum) && (Maximum == rhs.Maximum);
         }
 
-        public bool Equals (Bounds3 rhs) {
-            return Equals(ref rhs);
-        }
-
         public override bool Equals (object rhs) {
-            if (!(rhs is Bounds3))
+            if (rhs is Bounds3 brhs)
+                return Equals(brhs);
+            else
                 return false;
-
-            var brhs = (Bounds3)rhs;
-            return Equals(ref brhs);
         }
 
         public static bool operator == (Bounds3 lhs, Bounds3 rhs) {

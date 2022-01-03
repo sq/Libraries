@@ -154,7 +154,7 @@ namespace Squared.Game {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe bool FastEquals (this Vector3 lhs, ref Vector3 rhs) {
+        public static unsafe bool FastEquals (this in Vector3 lhs, in Vector3 rhs) {
             return (lhs.X == rhs.X) &&
                 (lhs.Y == rhs.Y) &&
                 (lhs.Z == rhs.Z);
@@ -172,7 +172,7 @@ namespace Squared.Game {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe bool FastEquals (this Vector4 lhs, ref Vector4 rhs) {
+        public static unsafe bool FastEquals (this in Vector4 lhs, in Vector4 rhs) {
             return (lhs.X == rhs.X) &&
                 (lhs.Y == rhs.Y) &&
                 (lhs.Z == rhs.Z) &&

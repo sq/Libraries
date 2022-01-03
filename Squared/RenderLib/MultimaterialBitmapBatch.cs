@@ -25,7 +25,7 @@ namespace Squared.Render {
         public SamplerState SamplerState1, SamplerState2;
 
         public MaterialBitmapDrawCall (
-            ref BitmapDrawCall drawCall, Material material, 
+            in BitmapDrawCall drawCall, Material material, 
             SamplerState samplerState1, SamplerState samplerState2
         ) {
             DrawCall = drawCall;
@@ -77,23 +77,18 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (BitmapDrawCall item) {
-            Add(item, Material, null, null);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (ref BitmapDrawCall item) {
-            Add(ref item, Material, null, null);
+        public void Add (in BitmapDrawCall item) {
+            Add(in item, Material, null, null);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (ArraySegment<BitmapDrawCall> items) {
             for (int i = 0; i < items.Count; i++)
-                Add(ref items.Array[i + items.Offset]);
+                Add(in items.Array[i + items.Offset]);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (BitmapDrawCall item, Material material, SamplerState samplerState1 = null, SamplerState samplerState2 = null) {
+        public void Add (in BitmapDrawCall item, Material material, SamplerState samplerState1 = null, SamplerState samplerState2 = null) {
             if (!BitmapDrawCall.CheckValid(in item))
                 throw new InvalidOperationException("Invalid draw call");
 
@@ -101,20 +96,7 @@ namespace Squared.Render {
             if ((dcm == null) || (dcm.Effect == null))
                 throw new InvalidOperationException("Draw call has no material and this batch has no material");
 
-            var dc = new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2);
-            _DrawCalls.Add(in dc);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (ref BitmapDrawCall item, Material material, SamplerState samplerState1 = null, SamplerState samplerState2 = null) {
-            if (!BitmapDrawCall.CheckValid(in item))
-                throw new InvalidOperationException("Invalid draw call");
-
-            var dcm = material ?? Material;
-            if ((dcm == null) || (dcm.Effect == null))
-                throw new InvalidOperationException("Draw call has no material and this batch has no material");
-
-            var dc = new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2);
+            var dc = new MaterialBitmapDrawCall(in item, dcm, samplerState1, samplerState2);
             _DrawCalls.Add(in dc);
         }
 
@@ -262,7 +244,7 @@ namespace Squared.Render {
                 int currentRangeStart = -1;
 
                 for (var i = 0; i < count; i++) {
-                    var dc = drawCalls[i + b.Offset];
+                    ref var dc = ref drawCalls[i + b.Offset];
                     var material = dc.Material;
                     if (material == null)
                         throw new Exception("Missing material for draw call");
@@ -275,7 +257,7 @@ namespace Squared.Render {
                         (material != currentMaterial) ||
                         (currentSamplerState1 != ss1) ||
                         (currentSamplerState2 != ss2) ||
-                        !currentTextures.Equals(ref dc.DrawCall.Textures)
+                        !currentTextures.Equals(in dc.DrawCall.Textures)
                     );
 
                     if ((startNewRange) || (currentRangeStart == -1)) {
