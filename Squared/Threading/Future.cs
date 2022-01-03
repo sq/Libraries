@@ -421,11 +421,19 @@ namespace Squared.Threading {
     }
 
     public class Future<T> : IDisposable, IFuture {
+        private enum HandlerType : byte {
+            Resolved,
+            Completed,
+            Disposed
+        }
+
         private readonly struct Handler {
+            public readonly HandlerType Type;
             public readonly Delegate Delegate;
             public readonly object UserData;
 
-            public Handler (Delegate handler, object userData) {
+            public Handler (HandlerType type, Delegate handler, object userData) {
+                Type = type;
                 Delegate = handler;
                 UserData = userData;
             }
@@ -461,8 +469,7 @@ namespace Squared.Threading {
         private const int State_Disposing = 5;
 
         private volatile int _State = State_Empty;
-        // TODO: Switch to a single list and set a flag in each handler that specifies whether it's a complete, resolve or dispose handler
-        private DenseList<Handler> _OnCompletes, _OnDisposes;
+        private DenseList<Handler> _Handlers;
         private object _Error = null;
         private Action _OnErrorChecked = null;
         private T _Result = default(T);
@@ -520,18 +527,19 @@ namespace Squared.Threading {
             }
         }
 
-        private void InvokeHandlers (ref DenseList<Handler> handlers, ref DenseList<Handler> otherListToClear) {
-            if (handlers.Count <= 0)
+        private void InvokeHandlers (HandlerType type) {
+            var c = _Handlers.Count;
+            if (c <= 0)
                 return;
 
             try {
-                otherListToClear.Clear();
-                for (int i = 0, c = handlers.Count; i < c; i++) {
-                    handlers.GetItem(i, out Handler h);
-                    h.Invoke(this);
+                for (int i = 0; i < c; i++) {
+                    ref var handler = ref _Handlers.Item(i);
+                    if ((handler.Type == type) || (handler.Type == HandlerType.Resolved))
+                        handler.Invoke(this);
                 }
             } finally {
-                handlers.Clear();
+                _Handlers.Clear();
             }
         }
 
@@ -588,39 +596,52 @@ namespace Squared.Threading {
         }
 
         /// <returns>Whether the future is already complete and handlers were run</returns>
-        private bool RegisterHandler_Impl (Delegate handler, ref DenseList<Handler> list, bool forDispose, object userData = null) {
+        private bool RegisterHandler_Impl (Delegate handler, HandlerType type, object userData = null) {
             if (handler == null)
                 return false;
 
-            var item = new Handler(handler, userData);
+            var item = new Handler(type, handler, userData);
 
             int oldState = TrySetIndeterminate();
                 
             if (oldState == State_Empty) {
-                list.Add(item);
+                _Handlers.Add(item);
                 ClearIndeterminate(State_Empty);
                 return false;
-            } else if (
-                (oldState == State_CompletedWithValue) ||
-                (oldState == State_CompletedWithError) ||
-                (oldState == State_Disposed) ||
-                (oldState == State_Disposing)
-            ) {
-                if (forDispose) {
-                    if ((oldState == State_Disposed) || (oldState == State_Disposing)) {
-                        item.Invoke(this);
-                        return true;
-                    }
-                } else {
-                    if ((oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError)) {
-                        item.Invoke(this);
-                        return true;
-                    }
-                }
-                return false;
-            } else {
-                throw new ThreadStateException("Failed to register future handler due to a thread state error");
             }
+
+            var runCompletedHandler = (oldState == State_CompletedWithValue) ||
+                (oldState == State_CompletedWithError);
+            var runDisposedHandler = (oldState == State_Disposed) ||
+                (oldState == State_Disposing);
+
+            if (!runCompletedHandler && !runDisposedHandler)
+                throw new ThreadStateException("Failed to register future handler due to a thread state error");
+
+            switch (type) {
+                case HandlerType.Completed:
+                    if (runCompletedHandler) {
+                        item.Invoke(this);
+                        return true;
+                    }
+                    break;
+                case HandlerType.Disposed:
+                    if (runDisposedHandler) {
+                        item.Invoke(this);
+                        return true;
+                    }
+                    break;
+                case HandlerType.Resolved:
+                    if (runCompletedHandler || runDisposedHandler) {
+                        item.Invoke(this);
+                        return true;
+                    }
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(type));
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -628,8 +649,8 @@ namespace Squared.Threading {
         /// </summary>
         public void RegisterHandlers (Action onComplete, Action onDispose) {
             // FIXME: Set state to indeterminate once instead of twice
-            if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
-                RegisterHandler_Impl(onDispose, ref _OnDisposes, true);
+            if (!RegisterHandler_Impl(onComplete, HandlerType.Completed))
+                RegisterHandler_Impl(onDispose, HandlerType.Disposed);
         }
 
         /// <summary>
@@ -637,8 +658,8 @@ namespace Squared.Threading {
         /// </summary>
         public void RegisterHandlers (OnFutureResolved<T> onComplete, OnFutureResolved onDispose) {
             // FIXME: Set state to indeterminate once instead of twice
-            if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
-                RegisterHandler_Impl(onDispose, ref _OnDisposes, true);
+            if (!RegisterHandler_Impl(onComplete, HandlerType.Completed))
+                RegisterHandler_Impl(onDispose, HandlerType.Disposed);
         }
 
         /// <summary>
@@ -646,8 +667,8 @@ namespace Squared.Threading {
         /// </summary>
         void IFuture.RegisterHandlers (OnFutureResolved onComplete, OnFutureResolved onDispose) {
             // FIXME: Set state to indeterminate once instead of twice
-            if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false))
-                RegisterHandler_Impl(onDispose, ref _OnDisposes, true);
+            if (!RegisterHandler_Impl(onComplete, HandlerType.Completed))
+                RegisterHandler_Impl(onDispose, HandlerType.Disposed);
         }
 
         /// <summary>
@@ -655,113 +676,107 @@ namespace Squared.Threading {
         /// </summary>
         void IFuture.RegisterHandlers (OnFutureResolvedWithData onComplete, OnFutureResolvedWithData onDispose, object userData) {
             // FIXME: Set state to indeterminate once instead of twice
-            if (!RegisterHandler_Impl(onComplete, ref _OnCompletes, false, userData))
-                RegisterHandler_Impl(onDispose, ref _OnDisposes, true, userData);
+            if (!RegisterHandler_Impl(onComplete, HandlerType.Completed, userData))
+                RegisterHandler_Impl(onDispose, HandlerType.Disposed, userData);
         }
 
         void IFuture.RegisterOnResolved (OnFutureResolved handler) {
-            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false))
-                RegisterHandler_Impl(handler, ref _OnDisposes, true);
+            RegisterHandler_Impl(handler, HandlerType.Resolved, false);
         }
 
         void IFuture.RegisterOnResolved (Action handler) {
-            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false))
-                RegisterHandler_Impl(handler, ref _OnDisposes, true);
+            RegisterHandler_Impl(handler, HandlerType.Resolved, false);
         }
 
         /// <summary>
         /// Registers a handler to be notified upon future completion or disposal.
         /// </summary>
         public void RegisterOnResolved (OnFutureResolved handler) {
-            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false))
-                RegisterHandler_Impl(handler, ref _OnDisposes, true);
+            RegisterHandler_Impl(handler, HandlerType.Resolved);
         }
 
         /// <summary>
         /// Registers a handler to be notified upon future completion or disposal.
         /// </summary>
         public void RegisterOnResolved2 (OnFutureResolved<T> handler) {
-            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false))
-                RegisterHandler_Impl(handler, ref _OnDisposes, true);
+            RegisterHandler_Impl(handler, HandlerType.Resolved);
         }
 
         /// <summary>
         /// Registers a handler to be notified upon future completion or disposal.
         /// </summary>
         public void RegisterOnResolved (OnFutureResolvedWithData handler, object userData) {
-            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false, userData))
-                RegisterHandler_Impl(handler, ref _OnDisposes, true, userData);
+            RegisterHandler_Impl(handler, HandlerType.Resolved, userData);
         }
 
         /// <summary>
         /// Registers a handler to be notified upon future completion or disposal.
         /// </summary>
         public void RegisterOnResolved2 (OnFutureResolvedWithData<T> handler, object userData) {
-            if (!RegisterHandler_Impl(handler, ref _OnCompletes, false, userData))
-                RegisterHandler_Impl(handler, ref _OnDisposes, true, userData);
+            RegisterHandler_Impl(handler, HandlerType.Resolved, userData);
         }
 
         /// <summary>
         /// Registers a handler to be notified upon future completion. If the future is disposed, this will not run.
         /// </summary>
         public void RegisterOnComplete (Action handler) {
-            RegisterHandler_Impl(handler, ref _OnCompletes, false);
+            RegisterHandler_Impl(handler, HandlerType.Completed);
         }
 
         /// <summary>
         /// Registers a handler to be notified upon future completion. If the future is disposed, this will not run.
         /// </summary>
         public void RegisterOnComplete (OnFutureResolved handler) {
-            RegisterHandler_Impl(handler, ref _OnCompletes, false);
+            RegisterHandler_Impl(handler, HandlerType.Completed);
         }
 
         /// <summary>
         /// Registers a handler to be notified upon future completion. If the future is disposed, this will not run.
         /// </summary>
         public void RegisterOnComplete2 (OnFutureResolved<T> handler) {
-            RegisterHandler_Impl(handler, ref _OnCompletes, false);
+            RegisterHandler_Impl(handler, HandlerType.Completed);
         }
 
         /// <summary>
         /// Registers a handler to be notified upon future completion. If the future is disposed, this will not run.
         /// </summary>
         public void RegisterOnComplete (OnFutureResolvedWithData handler, object userData) {
-            RegisterHandler_Impl(handler, ref _OnCompletes, false, userData);
+            RegisterHandler_Impl(handler, HandlerType.Completed, userData);
         }
 
         /// <summary>
         /// Registers a handler to be notified upon future completion. If the future is disposed, this will not run.
         /// </summary>
         public void RegisterOnComplete (OnFutureResolvedWithData<T> handler, object userData) {
-            RegisterHandler_Impl(handler, ref _OnCompletes, false, userData);
+            RegisterHandler_Impl(handler, HandlerType.Completed, userData);
         }
 
         /// <summary>
         /// Registers a handlers to be notified upon future disposal. If the future is completed, this will not run.
         /// </summary>
         public void RegisterOnDispose (Action handler) {
-            RegisterHandler_Impl(handler, ref _OnDisposes, true);
+            RegisterHandler_Impl(handler, HandlerType.Disposed);
         }
 
         /// <summary>
         /// Registers a handlers to be notified upon future disposal. If the future is completed, this will not run.
         /// </summary>
         public void RegisterOnDispose (OnFutureResolved handler) {
-            RegisterHandler_Impl(handler, ref _OnDisposes, true);
+            RegisterHandler_Impl(handler, HandlerType.Disposed);
         }
 
         /// <summary>
         /// Registers a handlers to be notified upon future disposal. If the future is completed, this will not run.
         /// </summary>
         public void RegisterOnDispose (OnFutureResolvedWithData<T> handler, object userData) {
-            RegisterHandler_Impl(handler, ref _OnDisposes, true);
+            RegisterHandler_Impl(handler, HandlerType.Disposed, userData);
         }
 
         /// <summary>
         /// Registers a handlers to be notified upon future disposal. If the future is completed, this will not run.
         /// </summary>
         public void RegisterOnDispose (OnFutureResolvedWithData handler, object userData) {
-            RegisterHandler_Impl(handler, ref _OnDisposes, true);
+            RegisterHandler_Impl(handler, HandlerType.Disposed, userData);
         }
         
         /// <summary>
@@ -981,7 +996,7 @@ namespace Squared.Threading {
                 throw new ThreadStateException("Future state was not indeterminate");
 
             if ((newState == State_CompletedWithValue) || (newState == State_CompletedWithError))
-                InvokeHandlers(ref _OnCompletes, ref _OnDisposes);
+                InvokeHandlers(HandlerType.Completed);
         }
 
         /// <summary>
@@ -1098,7 +1113,7 @@ namespace Squared.Threading {
             }
 
             // FIXME: Possible leak / failure to invoke, but probably fine?
-            InvokeHandlers(ref _OnDisposes, ref _OnCompletes);
+            InvokeHandlers(HandlerType.Disposed);
 
             if (Interlocked.Exchange(ref _State, State_Disposed) != State_Disposing)
                 throw new ThreadStateException("Future state was not disposing");
