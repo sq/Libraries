@@ -89,13 +89,6 @@ namespace Squared.Util {
                     }
                 }
             }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void Add (ref InlineStorage storage, ref T item) {
-                var i = storage.Count;
-                storage.Count++;
-                storage.SetItemAtIndex(i, in item);
-            }
         }
 
         private object _ListPoolOrAllocator;
@@ -224,7 +217,7 @@ namespace Squared.Util {
         public DenseListPin<J, T> Pin<J> ()
             where J : struct
         {
-            return new DenseListPin<J, T>(ref this);
+            return new DenseListPin<J, T>(in this);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -817,7 +810,7 @@ namespace Squared.Util {
             public T Value;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public IndexAndValue (ref DenseList<T> list, int[] indices, int index) {
+            public IndexAndValue (in DenseList<T> list, int[] indices, int index) {
                 if (indices != null) {
                     if (index >= indices.Length) {
                         Index = -1;
@@ -845,22 +838,22 @@ namespace Squared.Util {
                 field = value.Value;
         }
 
-        private int IndexOf_Small<TUserData> (Predicate<TUserData> predicate, ref TUserData userData) {
-            if ((Storage.Count > 0) && predicate(ref Storage.Item1, ref userData))
+        private int IndexOf_Small<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
+            if ((Storage.Count > 0) && predicate(in Storage.Item1, in userData))
                 return 0;
-            if ((Storage.Count > 1) && predicate(ref Storage.Item2, ref userData))
+            if ((Storage.Count > 1) && predicate(in Storage.Item2, in userData))
                 return 1;
-            if ((Storage.Count > 2) && predicate(ref Storage.Item3, ref userData))
+            if ((Storage.Count > 2) && predicate(in Storage.Item3, in userData))
                 return 2;
-            if ((Storage.Count > 3) && predicate(ref Storage.Item4, ref userData))
+            if ((Storage.Count > 3) && predicate(in Storage.Item4, in userData))
                 return 3;
             return -1;
         }
 
-        private int IndexOf_Large<TUserData> (Predicate<TUserData> predicate, ref TUserData userData) {
+        private int IndexOf_Large<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
             var buffer = Items.GetBuffer();
             for (int i = 0, c = Items.Count; i < c; i++) {
-                if (predicate(ref buffer.Array[i + buffer.Offset], ref userData))
+                if (predicate(in buffer.Array[i + buffer.Offset], in userData))
                     return i;
             }
             return -1;
@@ -868,21 +861,26 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf<TUserData> (Predicate<TUserData> predicate, TUserData userData) {
+            return IndexOf(predicate, in userData);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int IndexOf<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
             if (HasList) {
-                return IndexOf_Large(predicate, ref userData);
+                return IndexOf_Large(predicate, in userData);
             } else {
-                return IndexOf_Small(predicate, ref userData);
+                return IndexOf_Small(predicate, in userData);
             }
         }
 
         private int IndexOf_Small (Predicate predicate) {
-            if ((Storage.Count > 0) && predicate(ref Storage.Item1))
+            if ((Storage.Count > 0) && predicate(in Storage.Item1))
                 return 0;
-            if ((Storage.Count > 1) && predicate(ref Storage.Item2))
+            if ((Storage.Count > 1) && predicate(in Storage.Item2))
                 return 1;
-            if ((Storage.Count > 2) && predicate(ref Storage.Item3))
+            if ((Storage.Count > 2) && predicate(in Storage.Item3))
                 return 2;
-            if ((Storage.Count > 3) && predicate(ref Storage.Item4))
+            if ((Storage.Count > 3) && predicate(in Storage.Item4))
                 return 3;
             return -1;
         }
@@ -890,7 +888,7 @@ namespace Squared.Util {
         private int IndexOf_Large (Predicate predicate) {
             var buffer = Items.GetBuffer();
             for (int i = 0, c = Items.Count; i < c; i++) {
-                if (predicate(ref buffer.Array[i + buffer.Offset]))
+                if (predicate(in buffer.Array[i + buffer.Offset]))
                     return i;
             }
             return -1;
@@ -961,10 +959,10 @@ namespace Squared.Util {
             if ((indices != null) && (indices.Length < count))
                 throw new ArgumentOutOfRangeException("indices", "index array length must must match or exceed number of elements");
 
-            IndexAndValue v1 = new IndexAndValue(ref this, indices, 0),
-                v2 = new IndexAndValue(ref this, indices, 1),
-                v3 = new IndexAndValue(ref this, indices, 2),
-                v4 = new IndexAndValue(ref this, indices, 3);
+            IndexAndValue v1 = new IndexAndValue(in this, indices, 0),
+                v2 = new IndexAndValue(in this, indices, 1),
+                v3 = new IndexAndValue(in this, indices, 2),
+                v4 = new IndexAndValue(in this, indices, 3);
 
             IndexAndValue va, vb;
             if (CompareValues(comparer, ref v1, ref v2) <= 0) {
@@ -1108,23 +1106,23 @@ namespace Squared.Util {
                 return default;
 
             var e = GetEnumerator();
-            return new DenseQuery<T, Enumerator, U>(ref e, DenseQuery<T, Enumerator, U>.CastSelector, false);
+            return new DenseQuery<T, Enumerator, U>(in e, DenseQuery<T, Enumerator, U>.CastSelector, false);
         }
 
         public Enumerator GetEnumerator () {
-            return new Enumerator(ref this);
+            return new Enumerator(in this);
         }
 
         IEnumerator<T> IEnumerable<T>.GetEnumerator () {
             if (Count == 0)
                 return BoxedEmptyEnumerator.Instance;
-            return new Enumerator(ref this);
+            return new Enumerator(in this);
         }
 
         IEnumerator IEnumerable.GetEnumerator () {
             if (Count == 0)
                 return BoxedEmptyEnumerator.Instance;
-            return new Enumerator(ref this);
+            return new Enumerator(in this);
         }
 
         int IList<T>.IndexOf (T item) {

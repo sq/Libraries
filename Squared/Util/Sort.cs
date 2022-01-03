@@ -6,6 +6,7 @@ using System.Text;
 
 namespace Squared.Util {
     public interface IRefComparer<T> {
+        // TODO: Change this to 'in'
         int Compare (ref T lhs, ref T rhs);
     }
 

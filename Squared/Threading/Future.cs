@@ -462,6 +462,7 @@ namespace Squared.Threading {
         private const int State_Disposing = 5;
 
         private volatile int _State = State_Empty;
+        // TODO: Switch to a single list and set a flag in each handler that specifies whether it's a complete, resolve or dispose handler
         private DenseList<Handler> _OnCompletes, _OnDisposes;
         private object _Error = null;
         private Action _OnErrorChecked = null;

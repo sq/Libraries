@@ -492,7 +492,7 @@ namespace Squared.Render {
             _DrawCalls.Add(item);
         }
 
-        protected void Add (ref T item) {
+        protected void Add (in T item) {
             _DrawCalls.Add(in item);
         }
 

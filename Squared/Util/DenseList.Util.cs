@@ -56,8 +56,8 @@ namespace Squared.Util {
     }
 
     public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T>, IOrderedEnumerable<T> {
-        public delegate bool Predicate<TUserData> (ref T item, ref TUserData userData);
-        public delegate bool Predicate (ref T item);
+        public delegate bool Predicate<TUserData> (in T item, in TUserData userData);
+        public delegate bool Predicate (in T item);
 
         private static T[] EmptyArray;
 
@@ -92,7 +92,7 @@ namespace Squared.Util {
             private readonly T[] Items;
             private readonly int Offset, Count;
 
-            internal Enumerator (ref DenseList<T> list) {
+            internal Enumerator (in DenseList<T> list) {
                 Index = -1;
                 Count = list.Count;
                 HasList = list.HasList;
@@ -187,7 +187,6 @@ namespace Squared.Util {
                     }
                 }
 
-                result = default;
                 return false;
             }
 
@@ -247,7 +246,7 @@ namespace Squared.Util {
         public DenseDistinct<T, Enumerator, IEqualityComparer<T>> Distinct () {
             var e = GetEnumerator();
             return new DenseDistinct<T, Enumerator, IEqualityComparer<T>>(
-                ref e, EqualityComparer<T>.Default, null
+                in e, EqualityComparer<T>.Default, null
             );
         }
 
@@ -256,7 +255,7 @@ namespace Squared.Util {
         {
             var e = GetEnumerator();
             return new DenseDistinct<T, Enumerator, TEqualityComparer>(
-                ref e, comparer, hash
+                in e, comparer, hash
             );
         }
 
@@ -296,7 +295,7 @@ namespace Squared.Util {
                 return default;
 
             var e = GetEnumerator();
-            var result = new DenseQuery<T, Enumerator, U>(ref e, selector, false);
+            var result = new DenseQuery<T, Enumerator, U>(in e, selector, false);
             if (where != null)
                 result.PostPredicates.Add(where);
             return result;
@@ -307,7 +306,7 @@ namespace Squared.Util {
                 return default;
 
             var e = GetEnumerator();
-            var result = new DenseQuery<T, Enumerator, T>(ref e, NullSelector, true);
+            var result = new DenseQuery<T, Enumerator, T>(in e, NullSelector, true);
             result.PrePredicates.Add(predicate);
             return result;
         }
@@ -415,7 +414,7 @@ namespace Squared.Util {
         public GCHandle Buffer;
         private object Boxed;
 
-        public DenseListPin (ref DenseList<J> list) {
+        public DenseListPin (in DenseList<J> list) {
             if (list.HasList) {
                 IsBuffer = true;
                 Boxed = list.Items.GetBuffer();
@@ -459,7 +458,7 @@ namespace Squared.Util {
         object IEnumerator.Current => _Current;
 
         internal DenseQuery (
-            ref TEnumerator enumerator, Func<T, TResult> selector, bool isNullSelector
+            in TEnumerator enumerator, Func<T, TResult> selector, bool isNullSelector
         ) {
             _IsNullSelector = isNullSelector;
             Selector = selector;
@@ -561,7 +560,7 @@ namespace Squared.Util {
         public DenseQuery<TResult, DenseQuery<T, TEnumerator, TResult>, V> Select<V> (Func<TResult, V> selector, Func<V, bool> where = null) {
             var source = GetEnumerator();
             var result = new DenseQuery<TResult, DenseQuery<T, TEnumerator, TResult>, V>(
-                ref source, selector, false
+                in source, selector, false
             );
             if (where != null)
                 result.PostPredicates.Add(where);
@@ -628,7 +627,7 @@ namespace Squared.Util {
         public DenseDistinct<TResult, DenseQuery<T, TEnumerator, TResult>, IEqualityComparer<TResult>> Distinct () {
             var e = GetEnumerator();
             return new DenseDistinct<TResult, DenseQuery<T, TEnumerator, TResult>, IEqualityComparer<TResult>>(
-                ref e, EqualityComparer<TResult>.Default, null
+                in e, EqualityComparer<TResult>.Default, null
             );
         }
 
@@ -637,7 +636,7 @@ namespace Squared.Util {
         ) where TEqualityComparer : IEqualityComparer<TResult> {
             var e = GetEnumerator();
             return new DenseDistinct<TResult, DenseQuery<T, TEnumerator, TResult>, TEqualityComparer>(
-                ref e, comparer, hash
+                in e, comparer, hash
             );
         }
 
@@ -688,7 +687,7 @@ namespace Squared.Util {
         object IEnumerator.Current => _Current;
 
         internal DenseDistinct (
-            ref TEnumerator enumerator, TEqualityComparer comparer, HashSet<T> seenItemSet
+            in TEnumerator enumerator, TEqualityComparer comparer, HashSet<T> seenItemSet
         ) {
             _Enumerator = enumerator;
             _Current = default;
@@ -789,13 +788,13 @@ namespace Squared.Util {
         ) where TEqualityComparer2 : IEqualityComparer<T> {
             var items = ToDenseList();
             var e = items.GetEnumerator();
-            return new DenseDistinct<T, DenseList<T>.Enumerator, TEqualityComparer2>(ref e, comparer, hash);
+            return new DenseDistinct<T, DenseList<T>.Enumerator, TEqualityComparer2>(in e, comparer, hash);
         }
 
         public DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, V> Select<V> (Func<T, V> selector, Func<V, bool> where = null) {
             var source = GetEnumerator();
             var result = new DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, V>(
-                ref source, selector, false
+                in source, selector, false
             );
             if (where != null)
                 result.PostPredicates.Add(where);
@@ -805,7 +804,7 @@ namespace Squared.Util {
         public DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, T> Where (Func<T, bool> predicate) {
             var source = GetEnumerator();
             var result = new DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, T>(
-                ref source, DenseList<T>.NullSelector, true
+                in source, DenseList<T>.NullSelector, true
             );
             result.PrePredicates.Add(predicate);
             return result;

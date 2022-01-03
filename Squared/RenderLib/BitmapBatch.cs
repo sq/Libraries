@@ -88,7 +88,7 @@ namespace Squared.Render {
                     var drawCallsRhsBuffer = b.Data;
 
                     for (int i = 0, l = b.Count; i < l; i++) {
-                        if (!BitmapDrawCall.CheckValid(ref drawCallsRhsBuffer[i + b.Offset]))
+                        if (!BitmapDrawCall.CheckValid(in drawCallsRhsBuffer[i + b.Offset]))
                             throw new Exception("Invalid draw call in batch");
 
                         bl._DrawCalls.Add(in drawCallsRhsBuffer[i + b.Offset]);
@@ -219,7 +219,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         new public void Add (BitmapDrawCall item) {
-            if (!BitmapDrawCall.CheckValid(ref item))
+            if (!BitmapDrawCall.CheckValid(in item))
                 throw new InvalidOperationException("Invalid draw call");
 
             _DrawCalls.Add(in item);
@@ -227,7 +227,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         new public void Add (ref BitmapDrawCall item) {
-            if (!BitmapDrawCall.CheckValid(ref item))
+            if (!BitmapDrawCall.CheckValid(in item))
                 throw new InvalidOperationException("Invalid draw call");
 
             _DrawCalls.Add(in item);
@@ -235,7 +235,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (ref BitmapDrawCall item, Material material) {
-            if (!BitmapDrawCall.CheckValid(ref item))
+            if (!BitmapDrawCall.CheckValid(in item))
                 throw new InvalidOperationException("Invalid draw call");
             if (material != null)
                 throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
@@ -290,7 +290,7 @@ namespace Squared.Render {
             _DrawCalls.EnsureCapacity(newCount);
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];
-                if (!BitmapDrawCall.CheckValid(ref item))
+                if (!BitmapDrawCall.CheckValid(in item))
                     continue;
 
                 if (hasScale) {

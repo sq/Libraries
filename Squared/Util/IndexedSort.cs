@@ -117,13 +117,21 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int ScanLeft (int left, ref TElement pivot) {
-            while (Comparer.Compare(ref Items.Array[Items.Offset + Indices.Array[Indices.Offset + ++left]], ref pivot) < 0) ;
+            var array = Items.Array;
+            var offset = Items.Offset;
+            var indexArray = Indices.Array;
+            var indexOffset = Indices.Offset;
+            while (Comparer.Compare(ref array[offset + indexArray[indexOffset + ++left]], ref pivot) < 0) ;
             return left;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int ScanRight (int right, ref TElement pivot) {
-            while (Comparer.Compare(ref pivot, ref Items.Array[Items.Offset + Indices.Array[Indices.Offset + --right]]) < 0) ;
+            var array = Items.Array;
+            var offset = Items.Offset;
+            var indexArray = Indices.Array;
+            var indexOffset = Indices.Offset;
+            while (Comparer.Compare(ref pivot, ref array[offset + indexArray[indexOffset + --right]]) < 0) ;
             return right;
         }
 
@@ -191,21 +199,26 @@ namespace Squared.Util {
         }
 
         private void InsertionSort (int lo, int hi) {
+            var array = Items.Array;
+            var offset = Items.Offset;
+            var indexArray = Indices.Array;
+            var indexOffset = Indices.Offset;
+
             int i, j, tIndex, t;
             for (i = lo; i < hi; i++)
             {
                 j = i;
                 tIndex = i + 1;
-                t = Indices.Array[Indices.Offset + tIndex];
+                t = indexArray[indexOffset + tIndex];
 
-                while (j >= lo && Comparer.Compare(ref Items.Array[Items.Offset + t], ref Items.Array[Items.Offset + Indices.Array[Indices.Offset + j]]) < 0)
+                while (j >= lo && Comparer.Compare(ref array[offset + t], ref array[offset + indexArray[indexOffset + j]]) < 0)
                 {
-                    Indices.Array[Indices.Offset + j + 1] = Indices.Array[Indices.Offset + j];
-                    Indices.Array[Indices.Offset + j + 1] = Indices.Array[Indices.Offset + j];
+                    indexArray[indexOffset + j + 1] = indexArray[indexOffset + j];
+                    indexArray[indexOffset + j + 1] = indexArray[indexOffset + j];
                     j--;
                 }
 
-                Indices.Array[Indices.Offset + j + 1] = t;
+                indexArray[indexOffset + j + 1] = t;
             }
         }
     }

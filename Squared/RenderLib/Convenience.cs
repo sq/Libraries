@@ -336,7 +336,7 @@ namespace Squared.Render.Convenience {
             public bool ZBufferOnlySorting;
             public bool DepthPrePass;
             
-            public static bool KeysEqual (ref CachedBatch lhs, ref CachedBatch rhs) {
+            public static bool KeysEqual (in CachedBatch lhs, in CachedBatch rhs) {
                 var result = (
                     (lhs.BatchType == rhs.BatchType) &&
                     (lhs.Container == rhs.Container) &&
@@ -358,10 +358,8 @@ namespace Squared.Render.Convenience {
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public override bool Equals (object obj) {
-                if (obj is CachedBatch) {
-                    var cb = (CachedBatch)obj;
-                    return KeysEqual(ref this, ref cb);
-                }
+                if (obj is CachedBatch cb)
+                    return KeysEqual(in this, in cb);
 
                 return false;
             }
@@ -431,28 +429,28 @@ namespace Squared.Render.Convenience {
                 }
 
                 int i;
-                if (CachedBatch.KeysEqual(ref Batch0, ref result) && Batch0.Batch.AreParametersEqual(ref parameters)) {
+                if (CachedBatch.KeysEqual(in Batch0, in result) && Batch0.Batch.AreParametersEqual(ref parameters)) {
                     result = Batch0;
                     i = 0;
-                } else if (CachedBatch.KeysEqual(ref Batch1, ref result) && Batch1.Batch.AreParametersEqual(ref parameters)) {
+                } else if (CachedBatch.KeysEqual(in Batch1, in result) && Batch1.Batch.AreParametersEqual(ref parameters)) {
                     result = Batch1;
                     i = 1;
-                } else if (CachedBatch.KeysEqual(ref Batch2, ref result) && Batch2.Batch.AreParametersEqual(ref parameters)) {
+                } else if (CachedBatch.KeysEqual(in Batch2, in result) && Batch2.Batch.AreParametersEqual(ref parameters)) {
                     result = Batch2;
                     i = 2;
-                } else if (CachedBatch.KeysEqual(ref Batch3, ref result) && Batch3.Batch.AreParametersEqual(ref parameters)) {
+                } else if (CachedBatch.KeysEqual(in Batch3, in result) && Batch3.Batch.AreParametersEqual(ref parameters)) {
                     result = Batch3;
                     i = 3;
                 } else {
                     return false;
                 }
 
-                InsertAtFront(ref result, i);
+                InsertAtFront(in result, i);
                 return (result.Batch != null);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void InsertAtFront (ref CachedBatch item, int previousIndex) {
+            public void InsertAtFront (in CachedBatch item, int previousIndex) {
                 // No-op
                 if (previousIndex == 0)
                     return;
@@ -462,7 +460,7 @@ namespace Squared.Render.Convenience {
                     return;
                 }
 
-                InsertAtFront_Slow(ref item, previousIndex);
+                InsertAtFront_Slow(in item, previousIndex);
             }
 
             internal static ref CachedBatch ItemAtIndex (ref CachedBatches @this, int index) {
@@ -478,7 +476,7 @@ namespace Squared.Render.Convenience {
                 }
             }
 
-            private void InsertAtFront_Slow (ref CachedBatch item, int previousIndex) {
+            private void InsertAtFront_Slow (in CachedBatch item, int previousIndex) {
                 // Move items back to create space for the item at the front
                 int writePosition;
                 if (Count == Capacity) {
@@ -1774,7 +1772,7 @@ namespace Squared.Render.Convenience {
 
                 bb.Sorter = DeclarativeSorter;
                 cacheEntry.Batch = bb;
-                Cache.InsertAtFront(ref cacheEntry, -1);
+                Cache.InsertAtFront(in cacheEntry, -1);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
@@ -1827,7 +1825,7 @@ namespace Squared.Render.Convenience {
                 var b = GeometryBatch.New(Container, actualLayer, material);
                 b.MaterialParameters = Parameters;
                 cacheEntry.Batch = b;
-                Cache.InsertAtFront(ref cacheEntry, -1);
+                Cache.InsertAtFront(in cacheEntry, -1);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
@@ -1894,7 +1892,7 @@ namespace Squared.Render.Convenience {
                 // FIXME: why the hell
                 batch.UseUbershader = RasterUseUbershader;
                 cacheEntry.Batch = batch;
-                Cache.InsertAtFront(ref cacheEntry, -1);
+                Cache.InsertAtFront(in cacheEntry, -1);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)

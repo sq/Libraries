@@ -231,7 +231,7 @@ namespace Squared.Render {
                 return;
             }
 
-            base.Add(ref item);
+            base.Add(in item);
         }
 
         protected override void Prepare (PrepareManager manager) {
@@ -429,7 +429,7 @@ namespace Squared.Render {
         new public void Add (ref NativeDrawCall item) {
             if (item.PrimitiveCount < 1)
                 throw new ArgumentException("At least one primitive must be drawn", "item.PrimitiveCount");
-            base.Add(ref item);
+            base.Add(in item);
         }
 
         protected override void Prepare (PrepareManager manager) {

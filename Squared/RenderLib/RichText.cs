@@ -96,8 +96,8 @@ namespace Squared.Render.Text {
                                 });
                         } else {
                             result.Add(new RichRule {
-                                Key = new AbstractString(ref text, keyStart, keyEnd.Value - keyStart),
-                                Value = new AbstractString(ref text, valueStart.Value, i - valueStart.Value),
+                                Key = new AbstractString(in text, keyStart, keyEnd.Value - keyStart),
+                                Value = new AbstractString(in text, valueStart.Value, i - valueStart.Value),
                             });
                             keyStart = i + 1;
                             keyEnd = valueStart = null;
@@ -680,7 +680,7 @@ namespace Squared.Render.Text {
                 var ch = text[i];
                 if (ch == close) {
                     currentRangeStart = i + 1;
-                    return new AbstractString(ref text, start, i - start);
+                    return new AbstractString(in text, start, i - start);
                 } else if (terminators.Contains(ch) || (ch < ' ')) {
                     i = start;
                     return default;

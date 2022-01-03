@@ -506,7 +506,7 @@ namespace Squared.Util {
                 Values = new T[2];
             }
 
-            public static InterpolatorSource<T> Get (ref T a, ref T b) {
+            public static InterpolatorSource<T> Get (in T a, in T b) {
                 Values[0] = a;
                 Values[1] = b;
                 return Source;
@@ -535,7 +535,16 @@ namespace Squared.Util {
             where T : struct {
 
             return Interpolators<T>.Linear(
-                LerpSource<T>.Get(ref a, ref b),
+                LerpSource<T>.Get(in a, in b),
+                0, Saturate(x)
+            );
+        }
+
+        public static T Lerp<T> (in T a, in T b, float x) 
+            where T : struct {
+
+            return Interpolators<T>.Linear(
+                LerpSource<T>.Get(in a, in b),
                 0, Saturate(x)
             );
         }

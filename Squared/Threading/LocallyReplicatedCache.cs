@@ -168,10 +168,14 @@ namespace Squared.Threading {
         }
     }
 
-    public struct LocalObjectCache<TObject>
+    public readonly struct LocalObjectCache<TObject>
         where TObject : class
     {
-        internal LocallyReplicatedCache<LocallyReplicatedObjectCache<TObject>.Entry>.Table Table;
+        internal readonly LocallyReplicatedCache<LocallyReplicatedObjectCache<TObject>.Entry>.Table Table;
+
+        internal LocalObjectCache (LocallyReplicatedCache<LocallyReplicatedObjectCache<TObject>.Entry>.Table table) {
+            Table = table;
+        }
 
         public TObject GetValue (Id id) {
             if (id <= 0)
@@ -237,9 +241,7 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public LocalObjectCache<TObject> GetCurrentLocalCache () {
-            return new LocalObjectCache<TObject> {
-                Table = Cache.GetCurrentLocalCache()
-            };
+            return new LocalObjectCache<TObject>(Cache.GetCurrentLocalCache());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

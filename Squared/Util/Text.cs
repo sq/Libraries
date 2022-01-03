@@ -228,7 +228,7 @@ namespace Squared.Util.Text {
         }
     }
 
-    public struct AbstractString : IEquatable<AbstractString> {
+    public readonly struct AbstractString : IEquatable<AbstractString> {
         public static readonly AbstractString Empty;
 
         // NOTE: We seed all these hash providers to 0 to ensure we get the same hash no matter what thread we're on
@@ -301,7 +301,7 @@ namespace Squared.Util.Text {
             ArraySegment = array;
         }
 
-        public AbstractString (ref AbstractString text, int start, int length) {
+        public AbstractString (in AbstractString text, int start, int length) {
             if (length == 0) {
                 this = default;
                 return;

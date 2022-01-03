@@ -1550,7 +1550,7 @@ namespace Squared.Render {
             return true;
         }
 
-        public static bool CheckFieldValidity (ref BitmapDrawCall drawCall) {
+        public static bool CheckFieldValidity (in BitmapDrawCall drawCall) {
             if (!drawCall.Position.IsFinite())
                 return false;
             if (!drawCall.TextureRegion.TopLeft.IsFinite())
@@ -1575,15 +1575,15 @@ namespace Squared.Render {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (ValidateFields)
-                    return CheckFieldValidity(ref this);
+                    return CheckFieldValidity(in this);
                 else
                     return true;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CheckValid (ref BitmapDrawCall drawCall) {
-            if (ValidateFields && !CheckFieldValidity(ref drawCall))
+        public static bool CheckValid (in BitmapDrawCall drawCall) {
+            if (ValidateFields && !CheckFieldValidity(in drawCall))
                 return false;
 
 #if DEBUG
@@ -1595,8 +1595,8 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CheckValid (ref BitmapDrawCall drawCall, ref LocalObjectCache<object> textureCache) {
-            if (ValidateFields && !CheckFieldValidity(ref drawCall))
+        public static bool CheckValid (in BitmapDrawCall drawCall, ref LocalObjectCache<object> textureCache) {
+            if (ValidateFields && !CheckFieldValidity(in drawCall))
                 return false;
 
 #if DEBUG
@@ -1610,7 +1610,7 @@ namespace Squared.Render {
         public bool IsValid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return CheckValid(ref this);
+                return CheckValid(in this);
             }
         }
 
