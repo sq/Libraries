@@ -544,14 +544,16 @@ namespace Squared.Render.RasterShape {
     public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
         private sealed class RasterShapeDrawCallSorter : IRefComparer<RasterShapeDrawCall>, IComparer<RasterShapeDrawCall> {
             public int Compare (ref RasterShapeDrawCall lhs, ref RasterShapeDrawCall rhs) {
-                var result = lhs.SortKey - rhs.SortKey;
-                if (result == 0)
-                    result = lhs.PackedFlags - rhs.PackedFlags;
-                if (result == 0)
-                    result = lhs.TextureSettings.GetHashCode() - rhs.TextureSettings.GetHashCode();
-                if (result == 0)
-                    result = lhs.Index - rhs.Index;
-                return result;
+                unchecked {
+                    var result = lhs.SortKey - rhs.SortKey;
+                    if (result == 0)
+                        result = lhs.PackedFlags - rhs.PackedFlags;
+                    if (result == 0)
+                        result = lhs.TextureSettings.GetHashCode() - rhs.TextureSettings.GetHashCode();
+                    if (result == 0)
+                        result = lhs.Index - rhs.Index;
+                    return result;
+                }
             }
 
             public int Compare (RasterShapeDrawCall lhs, RasterShapeDrawCall rhs) {

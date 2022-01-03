@@ -44,30 +44,30 @@ namespace Squared.Render.Resources {
             public long WaitDuration, PreloadDuration;
 
             void IWorkItem.Execute () {
+                var createStarted = Provider.Now;
+                Future<T> instance = null;
                 using (Stream) {
                     try {
                         // Console.WriteLine($"CreateInstance('{Name}') on thread {Thread.CurrentThread.Name}");
-                        var createStarted = Provider.Now;
-                        var instance = Provider.CreateInstance(Name, Stream, Data, PreloadedData, Async);
-                        if (instance.Completed) {
-                            var createElapsed = Provider.Now - createStarted;
-                            Provider.FireLoadEvent(Name, instance.Result, WaitDuration, PreloadDuration, createElapsed);
-                            Future.SetResult2(instance.Result, null);
-                        } else
-                            instance.RegisterOnComplete((_) => {
-                                var createElapsed = Provider.Now - createStarted;
-                                instance.GetResult(out T value, out Exception err);
-                                if (err == null)
-                                    Provider.FireLoadEvent(Name, value, WaitDuration, PreloadDuration, createElapsed);
-
-                                Future.SetResult(value, err);
-                            });
+                        instance = Provider.CreateInstance(Name, Stream, Data, PreloadedData, Async);
+                        if (instance.Completed)
+                            OnCompleted(instance);
+                        else
+                            instance.RegisterOnComplete(OnCompleted);
                     } catch (Exception exc) {
                         Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
                     } finally {
                         lock (Provider.PendingLoadLock)
                             Provider._PendingLoads--;
                     }
+                }
+
+                void OnCompleted (IFuture _) {
+                    var createElapsed = Provider.Now - createStarted;
+                    instance.GetResult(out T value, out Exception err);
+                    if (err == null)
+                        Provider.FireLoadEvent(Name, value, WaitDuration, PreloadDuration, createElapsed);
+                    Future.SetResult(value, err);
                 }
             }
         }

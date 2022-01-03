@@ -103,17 +103,8 @@ namespace Squared.Render {
         public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             var result = Comparer.Compare(x, y);
 
-            if (result == 0) {
-                var hashX = x.Textures.GetHashCode();
-                var hashY = y.Textures.GetHashCode();
-                result = (hashX > hashY)
-                ? 1
-                : (
-                    (hashX < hashY)
-                    ? -1
-                    : 0
-                );
-            }
+            if (result == 0)
+                result = x.Textures.CompareTo(in y.Textures);
 
             return result;
         }
@@ -133,7 +124,7 @@ namespace Squared.Render {
                 Buffer.F1 = x.SortOrder; Buffer.F2 = y.SortOrder;
                 var result = FastMath.CompareF(ref Buffer);
                 if (result == 0)
-                    result = (x.Textures.HashCode - y.Textures.HashCode);
+                    result = x.Textures.CompareTo(in y.Textures);
                 return result;
             }
         }
@@ -150,7 +141,7 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             unchecked {
-                var result = (x.Textures.HashCode - y.Textures.HashCode);
+                var result = x.Textures.CompareTo(in y.Textures);
                 if (result == 0) {
                     Buffer.F1 = y.SortOrder; Buffer.F2 = x.SortOrder;
                     result = FastMath.CompareF(ref Buffer);
@@ -169,7 +160,7 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             unchecked {
-                return (x.Textures.HashCode - y.Textures.HashCode);
+                return x.Textures.CompareTo(in y.Textures);
             }
         }
 
@@ -531,14 +522,12 @@ namespace Squared.Render {
                         ref var resultVertex = ref pVertices[vertexWritePosition];
 
                         var ws = (short)((call.WorldSpace ?? worldSpace) ? 1 : 0);
-                        resultVertex = new BitmapVertex {
-                            Texture1Region = call.TextureRegion.ToVector4(),
-                            MultiplyColor = call.MultiplyColor,
-                            AddColor = call.AddColor,
-                            UserData = call.UserData,
-                            WorldSpace = ws,
-                            TexID = (short)call.Textures.Texture1.Id
-                        };
+                        resultVertex.MultiplyColor = call.MultiplyColor;
+                        resultVertex.AddColor = call.AddColor;
+                        resultVertex.UserData = call.UserData;
+                        resultVertex.WorldSpace = ws;
+                        resultVertex.TexID = (short)call.Textures.Texture1.Id;
+                        resultVertex.Texture1Region = call.TextureRegion.ToVector4();
                         resultVertex.PositionAndRotation.X = call.Position.X;
                         resultVertex.PositionAndRotation.Y = call.Position.Y;
                         resultVertex.PositionAndRotation.Z = call.SortOrder * zBufferFactor;
@@ -547,7 +536,7 @@ namespace Squared.Render {
                         resultVertex.ScaleOrigin.Y = call.Scale.Y;
                         resultVertex.ScaleOrigin.Z = call.Origin.X;
                         resultVertex.ScaleOrigin.W = call.Origin.Y;
-                        if (call.TextureRegion2.TopLeft == call.TextureRegion2.BottomRight)
+                        if (!call.TextureRegion2.HasValue)
                             resultVertex.Texture2Region = resultVertex.Texture1Region;
                         else
                             resultVertex.Texture2Region = call.TextureRegion2.ToVector4();
@@ -876,13 +865,13 @@ namespace Squared.Render {
         }
     }
 
-    public struct AbstractTextureReference {
+    public readonly struct AbstractTextureReference {
         public sealed class Comparer : IEqualityComparer<AbstractTextureReference>, IComparer<AbstractTextureReference> {
             public static Comparer Instance = new Comparer();
 
             public int Compare (AbstractTextureReference x, AbstractTextureReference y) {
                 unchecked {
-                    return x._Id - y._Id;
+                    return x.Id - y.Id;
                 }
             }
 
@@ -901,44 +890,40 @@ namespace Squared.Render {
             new LocallyReplicatedObjectCache<object>();
 
         static AbstractTextureReference () {
-            Invalid = new AbstractTextureReference {
-                _Id = -9958923
-            };
+            Invalid = new AbstractTextureReference(-9958923);
         }
 
-        private int _Id;
+        public readonly int Id;
         public object Reference {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return Cache.GetValue(_Id);
+                return Cache.GetValue(Id);
             }
         }
 
-        public int Id { 
-            get {
-                return _Id;
-            }
+        private AbstractTextureReference (int id) {
+            Id = id;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public AbstractTextureReference (Texture2D tex) {
-            _Id = Cache.GetId(tex);
+            Id = Cache.GetId(tex);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public AbstractTextureReference (IDynamicTexture tex) {
-            _Id = Cache.GetId(tex);
+            Id = Cache.GetId(tex);
         }
 
         public bool IsInitialized {
             get {
-                return (_Id != 0);
+                return (Id != 0);
             }
         }
 
         public bool IsNull {
             get {
-                if (_Id == 0)
+                if (Id == 0)
                     return true;
 
                 var obj = Reference;
@@ -951,7 +936,7 @@ namespace Squared.Render {
 
         public bool IsDisposedOrNull {
             get {
-                if (_Id == 0)
+                if (Id == 0)
                     return true;
 
                 var obj = Reference;
@@ -968,7 +953,7 @@ namespace Squared.Render {
 
         public bool IsDisposed {
             get {
-                if (_Id == 0)
+                if (Id == 0)
                     return false;
 
                 var obj = Reference;
@@ -984,7 +969,7 @@ namespace Squared.Render {
         }
 
         public Texture2D GetInstance (LocalObjectCache<object> cache) {
-            var obj = cache.GetValue(_Id);
+            var obj = cache.GetValue(Id);
             var dyn = obj as IDynamicTexture;
             if (dyn != null)
                 return dyn.Texture;
@@ -1006,12 +991,12 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
-            return _Id.GetHashCode();
+            return Id.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (AbstractTextureReference rhs) {
-            return _Id == rhs._Id;
+            return Id == rhs.Id;
         }
 
         public override bool Equals (object obj) {
@@ -1070,15 +1055,14 @@ namespace Squared.Render {
             else if (IsDisposed)
                 return "{disposed}";
             else
-                return _Id.ToString();
+                return Id.ToString();
         }
     }
 
-    public struct TextureSet {
+    public readonly struct TextureSet : IComparable<TextureSet> {
         public static readonly TextureSet Invalid;
 
         public readonly AbstractTextureReference Texture1, Texture2;
-        internal int HashCode;
 
         static TextureSet () {
             Invalid = new TextureSet(AbstractTextureReference.Invalid, AbstractTextureReference.Invalid);
@@ -1088,32 +1072,24 @@ namespace Squared.Render {
         public TextureSet (AbstractTextureReference texture1) {
             Texture1 = texture1;
             Texture2 = default(AbstractTextureReference);
-            HashCode = texture1.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (AbstractTextureReference texture1, AbstractTextureReference texture2) {
             Texture1 = texture1;
             Texture2 = texture2;
-            HashCode = texture1.GetHashCode();
-            if (texture2 != default(AbstractTextureReference))
-                HashCode ^= texture2.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1) {
             Texture1 = texture1;
             Texture2 = default(AbstractTextureReference);
-            HashCode = texture1.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1, Texture2D texture2) {
             Texture1 = texture1;
             Texture2 = texture2;
-            HashCode = texture1.GetHashCode();
-            if (texture2 != null)
-                HashCode ^= texture2.GetHashCode();
         }
 
         public Texture2D this[int index] {
@@ -1134,16 +1110,13 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (ref TextureSet rhs) {
-            return (HashCode == rhs.HashCode) && 
-                (Texture1 == rhs.Texture1) && 
-                (Texture2 == rhs.Texture2) &&
-                (Texture1.Equals(rhs.Texture1));
+            return (Texture1 == rhs.Texture1) && 
+                (Texture2 == rhs.Texture2);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override bool Equals (object obj) {
-            if (obj is TextureSet) {
-                var rhs = (TextureSet)obj;
+            if (obj is TextureSet rhs) {
                 return Equals(ref rhs);
             } else {
                 return false;
@@ -1152,7 +1125,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator == (TextureSet lhs, TextureSet rhs) {
-            return (lhs.HashCode == rhs.HashCode) && (lhs.Texture1 == rhs.Texture1) && (lhs.Texture2 == rhs.Texture2);
+            return (lhs.Texture1 == rhs.Texture1) && (lhs.Texture2 == rhs.Texture2);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1162,7 +1135,22 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
-            return HashCode;
+            return (Texture1.Id ^ Texture2.Id).GetHashCode();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int CompareTo (TextureSet rhs) {
+            return CompareTo(in rhs);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int CompareTo (in TextureSet rhs) {
+            unchecked {
+                var result = Texture1.Id - rhs.Texture1.Id;
+                if (result == 0)
+                    result = Texture2.Id - rhs.Texture2.Id;
+                return result;
+            }
         }
     }
 
@@ -1557,7 +1545,7 @@ namespace Squared.Render {
                 return false;
             if (!drawCall.TextureRegion.BottomRight.IsFinite())
                 return false;
-            if (drawCall.TextureRegion2.TopLeft != drawCall.TextureRegion2.BottomRight) {
+            if (drawCall.TextureRegion2.HasValue) {
                 if (!drawCall.TextureRegion2.TopLeft.IsFinite())
                     return false;
                 if (!drawCall.TextureRegion2.BottomRight.IsFinite())

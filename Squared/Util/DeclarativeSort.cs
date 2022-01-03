@@ -287,7 +287,9 @@ namespace Squared.Util.DeclarativeSort {
             public static readonly Comparer Instance = new Comparer();
 
             public int Compare (Tag x, Tag y) {
-                return y.Id - x.Id;
+                unchecked {
+                    return y.Id - x.Id;
+                }
             }
         }
 

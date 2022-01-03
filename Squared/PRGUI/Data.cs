@@ -409,16 +409,24 @@ namespace Squared.PRGUI {
     public unsafe struct RectF {
         [FieldOffset(0)]
         public fixed float Values[4];
+
+        [FieldOffset(0)]
+        public Vector2 Position;
         [FieldOffset(0)]
         public float Left;
         [FieldOffset(4)]
         public float Top;
+
+        [FieldOffset(8)]
+        public Vector2 Size;
         [FieldOffset(8)]
         public float Width;
         [FieldOffset(12)]
         public float Height;
 
         public RectF (float left, float top, float width, float height) {
+            Position = default;
+            Size = default;
             Left = left;
             Top = top;
             Width = width;
@@ -426,10 +434,9 @@ namespace Squared.PRGUI {
         }
 
         public RectF (Vector2 origin, Vector2 size) {
-            Left = origin.X;
-            Top = origin.Y;
-            Width = size.X;
-            Height = size.Y;
+            Left = Top = Width = Height = default;
+            Position = origin;
+            Size = size;
         }
 
         public float this [uint index] {
@@ -467,28 +474,6 @@ namespace Squared.PRGUI {
                     throw new ArgumentOutOfRangeException(nameof(index));
 #endif
                 Values[index] = value;
-            }
-        }
-
-        public Vector2 Position {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get {
-                return new Vector2(Left, Top);
-            }
-            set {
-                Left = value.X;
-                Top = value.Y;
-            }
-        }
-
-        public Vector2 Size {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get {
-                return new Vector2(Width, Height);
-            }
-            set {
-                Width = value.X;
-                Height = value.Y;
             }
         }
 

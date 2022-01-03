@@ -35,8 +35,9 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T Item<T> (this ref DenseList<T> list, int index) {
-            if (list.Items != null)
-                return ref list.Items.DangerousItem(index);
+            var items = list._Items;
+            if (items != null)
+                return ref items.DangerousItem(index);
             
             switch (index) {
                 case 0:
@@ -95,14 +96,15 @@ namespace Squared.Util {
             internal Enumerator (in DenseList<T> list) {
                 Index = -1;
                 Count = list.Count;
-                HasList = list.HasList;
                 Item1 = list.Item1;
                 Item2 = list.Item2;
                 Item3 = list.Item3;
                 Item4 = list.Item4;
 
-                if (HasList) {
-                    var buffer = list.Items.GetBuffer();
+                var items = list._Items;
+                HasList = items != null;
+                if (items != null) {
+                    var buffer = items.GetBuffer();
                     Offset = buffer.Offset;
                     Items = buffer.Array;
                 } else {
@@ -239,6 +241,13 @@ namespace Squared.Util {
                 return false;
             else
                 return IndexOf(predicate) >= 0;
+        }
+
+        public bool Any<TUserData> (Predicate<TUserData> predicate, TUserData userData) {
+            if (Count == 0)
+                return false;
+            else
+                return IndexOf(predicate, userData) >= 0;
         }
 
         public bool All (Func<T, bool> predicate) {
@@ -419,7 +428,7 @@ namespace Squared.Util {
         public DenseListPin (in DenseList<J> list) {
             if (list.HasList) {
                 IsBuffer = true;
-                Boxed = list.Items.GetBuffer();
+                Boxed = list._Items.GetBuffer();
                 Buffer = GCHandle.Alloc(Boxed);
             } else {
                 IsBuffer = false;

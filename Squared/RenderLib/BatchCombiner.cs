@@ -20,11 +20,13 @@ namespace Squared.Render {
             else if (y == null)
                 return 1;
 
-            var typeResult = x.TypeId - y.TypeId;
-            if (typeResult == 0)
-                return x.Layer - y.Layer;
-            else
-                return typeResult;
+            unchecked {
+                var typeResult = x.TypeId - y.TypeId;
+                if (typeResult == 0)
+                    return x.Layer - y.Layer;
+                else
+                    return typeResult;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

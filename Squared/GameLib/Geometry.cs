@@ -214,6 +214,13 @@ namespace Squared.Game {
             }
         }
 
+        public bool HasValue {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                return (BottomRight.X != TopLeft.X) || (BottomRight.Y != TopLeft.Y);
+            }
+        }
+
         public Bounds Scale (float scale) {
             return new Bounds {
                 TopLeft = TopLeft * scale,

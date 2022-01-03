@@ -363,11 +363,6 @@ namespace Squared.Render.STB {
 
             var f = new Future<Texture2D>();
             int itemsPending = 1;
-            var onItemComplete = (OnWorkItemComplete<UploadMipWorkItem>)((ref UploadMipWorkItem wi) => {
-                if (Interlocked.Decrement(ref itemsPending) != 0)
-                    return;
-                f.SetResult(result, null);
-            });
 
             var queue = coordinator.ThreadGroup.GetQueueForType<UploadMipWorkItem>(mainThread);
             for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
@@ -397,7 +392,7 @@ namespace Squared.Render.STB {
                 if (async) {
                     // FIXME
                     Interlocked.Increment(ref itemsPending);
-                    queue.Enqueue(workItem, onItemComplete);
+                    queue.Enqueue(workItem, OnItemComplete);
                 } else
                     workItem.Execute();
 
@@ -417,6 +412,12 @@ namespace Squared.Render.STB {
                 Debug.Print($"Uploading mipped texture took {UploadTimer.Elapsed.TotalMilliseconds}ms");
 
             return f;
+
+            void OnItemComplete (ref UploadMipWorkItem wi) {
+                if (Interlocked.Decrement(ref itemsPending) != 0)
+                    return;
+                f.SetResult(result, null);
+            }
         }
 
         public void AddRef () {

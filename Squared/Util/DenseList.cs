@@ -22,13 +22,13 @@ namespace Squared.Util {
         //  at the elements
         internal T Item1, Item2, Item3, Item4;
         internal int _Count;
-        internal UnorderedList<T> Items;
+        internal UnorderedList<T> _Items;
 
         private object _ListPoolOrAllocator;
         public object ListPoolOrAllocator {
             get => _ListPoolOrAllocator;
             set {
-                if ((_ListPoolOrAllocator != null) && (Count > 0))
+                if ((_ListPoolOrAllocator != null) && (Count > 0) && (_ListPoolOrAllocator != value))
                     throw new InvalidOperationException("A list pool or allocator is already set and this list is not empty");
                 _ListPoolOrAllocator = value;
             }
@@ -98,7 +98,7 @@ namespace Squared.Util {
 
         public bool HasList {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (Items != null);
+            get => (_Items != null);
         }
 
         public DenseList<T> Clone () {
@@ -108,19 +108,21 @@ namespace Squared.Util {
         }
 
         public void CopyTo (ref DenseList<T> output) {
-            if (HasList) {
+            var items = _Items;
+            if (items != null) {
                 if (output.HasList) {
-                    Items.CopyTo(output.Items);
+                    items.CopyTo(output._Items);
                 } else {
-                    for (int i = 0, c = Items.Count; i < c; i++) {
-                        ref var item = ref Ext.Item(ref this, i);
+                    for (int i = 0, c = items.Count; i < c; i++) {
+                        ref var item = ref items.DangerousItem(i);
                         output.Add(in item);
                     }
                 }
             } else if (output.HasList) {
+                var outItems = output._Items;
                 for (int i = 0, c = Count; i < c; i++) {
                     ref var item = ref Ext.Item(ref this, i);
-                    output.Items.Add(in item);
+                    outItems.Add(in item);
                 }
             } else {
                 for (int i = 0, c = Count; i < c; i++) {
@@ -135,11 +137,11 @@ namespace Squared.Util {
                 output = default(DenseList<T>);
                 UnorderedList<T> newItems;
                 if (output.HasList) {
-                    newItems = output.Items;
+                    newItems = output._Items;
                 } else {
-                    newItems = output.Items = new UnorderedList<T>(Items.Count);
+                    newItems = output._Items = new UnorderedList<T>(_Items.Count);
                 }
-                Items.CopyTo(newItems);
+                _Items.CopyTo(newItems);
             } else {
                 output = this;
             }
@@ -152,11 +154,11 @@ namespace Squared.Util {
 
                 UnorderedList<T> newItems;
                 if (output.HasList) {
-                    newItems = output.Items;
+                    newItems = output._Items;
                 } else {
-                    newItems = output.Items = new UnorderedList<T>(Items.Count);
+                    newItems = output._Items = new UnorderedList<T>(_Items.Count);
                 }
-                Items.CopyTo(newItems);
+                _Items.CopyTo(newItems);
             } else if ((_Count > 0) || !outputIsEmpty) {
                 output = this;
             }
@@ -170,15 +172,14 @@ namespace Squared.Util {
                 _ListCapacity = Math.Max(capacity, _ListCapacity);
             } else {
                 EnsureList(capacity);
-                Items.EnsureCapacity(capacity);
+                _Items.EnsureCapacity(capacity);
             }
         }
 
         public void Clear () {
             Item1 = Item2 = Item3 = Item4 = default;
             _Count = 0;
-            if (HasList)
-                Items.Clear();
+            _Items?.Clear();
         }
 
         public DenseListPin<J, T> Pin<J> ()
@@ -188,6 +189,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        // TODO: Make this return the list to avoid extra field reads
         public void EnsureList (int? capacity = null) {
             if (HasList)
                 return;
@@ -206,21 +208,23 @@ namespace Squared.Util {
             else
                 ;
 
+            UnorderedList<T> items;
             if (ListPool != null)
-                Items = ListPool.Allocate(capacity, false);
+                items = ListPool.Allocate(capacity, false);
             else if (capacity.HasValue)
-                Items = new UnorderedList<T>(capacity.Value, Allocator);
+                items = new UnorderedList<T>(capacity.Value, Allocator);
             else
-                Items = new UnorderedList<T>(Allocator);
+                items = new UnorderedList<T>(Allocator);
 
+            _Items = items;
             if (_Count > 0)
-                Items.Add(in Item1);
+                items.Add(in Item1);
             if (_Count > 1)
-                Items.Add(in Item2);
+                items.Add(in Item2);
             if (_Count > 2)
-                Items.Add(in Item3);
+                items.Add(in Item3);
             if (_Count > 3)
-                Items.Add(in Item4);
+                items.Add(in Item4);
 
             Item1 = Item2 = Item3 = Item4 = default;
             _Count = 0;
@@ -229,8 +233,9 @@ namespace Squared.Util {
         public int Count {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                if (HasList)
-                    return Items._Count;
+                var items = _Items;
+                if (items != null)
+                    return items._Count;
                 else
                     return _Count;
             }
@@ -264,13 +269,14 @@ namespace Squared.Util {
 
         private void Insert_Slow (int index, in T item) {
             EnsureList();
-            Items.InsertOrdered(index, in item);
+            _Items.InsertOrdered(index, in item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GetItem (int index, out T result) {
-            if (Items != null) {
-                Items.DangerousGetItem(index, out result);
+            var items = _Items;
+            if (items != null) {
+                items.DangerousGetItem(index, out result);
                 return;
             }
 
@@ -297,8 +303,9 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetItem (int index, out T result) {
-            if (Items != null)
-                return Items.DangerousTryGetItem(index, out result);
+            var items = _Items;
+            if (items != null)
+                return items.DangerousTryGetItem(index, out result);
 
             if (index >= _Count) {
                 result = default(T);
@@ -336,8 +343,10 @@ namespace Squared.Util {
         public T FirstOrDefault () {
             if (Count <= 0)
                 return default(T);
-            else if (HasList)
-                return Items.DangerousGetItem(0);
+
+            var items = _Items;
+            if (items != null)
+                return items.DangerousGetItem(0);
             else
                 return Item1;
         }
@@ -346,8 +355,10 @@ namespace Squared.Util {
         public T FirstOrDefault (T defaultValue) {
             if (Count <= 0)
                 return defaultValue;
-            else if (HasList)
-                return Items.DangerousGetItem(0);
+
+            var items = _Items;
+            if (items != null)
+                return items.DangerousGetItem(0);
             else
                 return Item1;
         }
@@ -375,8 +386,10 @@ namespace Squared.Util {
         public T LastOrDefault () {
             if (Count <= 0)
                 return default(T);
-            else if (HasList)
-                return Items.DangerousGetItem(Items.Count - 1);
+
+            var items = _Items;
+            if (items != null)
+                return items.DangerousGetItem(items.Count - 1);
             else
                 return this[Count - 1];
         }
@@ -385,8 +398,10 @@ namespace Squared.Util {
         public T LastOrDefault (T defaultValue) {
             if (Count <= 0)
                 return defaultValue;
-            else if (HasList)
-                return Items.DangerousGetItem(Items.Count - 1);
+
+            var items = _Items;
+            if (items != null)
+                return items.DangerousGetItem(items.Count - 1);
             else
                 return this[Count - 1];
         }
@@ -438,8 +453,9 @@ namespace Squared.Util {
         public T this [int index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                if (Items != null)
-                    return Items.DangerousGetItem(index);
+                var items = _Items;
+                if (items != null)
+                    return items.DangerousGetItem(index);
 
                 if (index >= _Count)
                     throw new IndexOutOfRangeException();
@@ -464,8 +480,9 @@ namespace Squared.Util {
         }
 
         public void SetItem (int index, in T value) {
-            if (Items != null) {
-                Items.DangerousSetItem(index, in value);
+            var items = _Items;
+            if (items != null) {
+                items.DangerousSetItem(index, in value);
                 return;
             }
 
@@ -490,7 +507,7 @@ namespace Squared.Util {
 
         private void Add_Slow (in T item) {
             EnsureList();
-            Items.Add(in item);
+            _Items.Add(in item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -502,8 +519,9 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void UnsafeAddWithKnownCapacity (ref DenseList<T> list, in T item) {
-            if (list.HasList) {
-                list.Items.Add(in item);
+            var items = list._Items;
+            if (items != null) {
+                items.Add(in item);
                 return;
             }
 
@@ -514,7 +532,7 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (in T item) {
-            if ((Items != null) || (_Count >= 4)) {
+            if ((_Items != null) || (_Count >= 4)) {
                 Add_Slow(in item);
             } else {
                 Add_Fast(in item);
@@ -550,7 +568,7 @@ namespace Squared.Util {
                     Add(in items[offset + i]);
             } else {
                 EnsureCapacity(newCount);
-                Items.AddRange(items, offset, count);
+                _Items.AddRange(items, offset, count);
             }
         }
 
@@ -613,7 +631,7 @@ namespace Squared.Util {
         public ArraySegment<T> ReserveSpace (int count) {
             // FIXME: Slow
             EnsureList(count);
-            return Items.ReserveSpace(count);
+            return _Items.ReserveSpace(count);
         }
 
         public bool Remove<TComparer> (T item, TComparer comparer)
@@ -660,14 +678,14 @@ namespace Squared.Util {
                 _Count--;
             } else {
                 EnsureList();
-                Items.RemoveAtOrdered(index);
+                _Items.RemoveAtOrdered(index);
             }
         }
 
         public void RemoveRange (int index, int count) {
             // FIXME: Slow
             EnsureList();
-            Items.DangerousRemoveRange(index, count);
+            _Items.DangerousRemoveRange(index, count);
         }
 
         public void RemoveTail (int count) {
@@ -682,7 +700,7 @@ namespace Squared.Util {
                 return;
             }
 
-            Items.DangerousRemoveRange(Items.Count - count, count);
+            _Items.DangerousRemoveRange(_Items.Count - count, count);
         }
 
         public int CountWhere (Func<T, bool> predicate) {
@@ -717,8 +735,8 @@ namespace Squared.Util {
 
             if ((count > 4) || HasList) {
                 EnsureList(count);
-                Items.Clear();
-                Items.AddRange(data, sourceOffset, count);
+                _Items.Clear();
+                _Items.AddRange(data, sourceOffset, count);
             } else {
                 _Count = count;
                 for (int i = 0; i < count; i++)
@@ -731,12 +749,12 @@ namespace Squared.Util {
                 EnsureList();
 
             if (HasList) {
-                var segment = Items.GetBuffer();
+                var segment = _Items.GetBuffer();
                 return new Buffer {
                     IsTemporary = false,
                     Offset = segment.Offset,
                     Data = segment.Array,
-                    Count = Items.Count
+                    Count = _Items.Count
                 };
             } else {
                 var alloc = BufferPool<T>.Allocate(4);
@@ -763,7 +781,7 @@ namespace Squared.Util {
             }
 
             else if (HasList)
-                return Items.ToArray();
+                return _Items.ToArray();
             else {
                 var result = new T[_Count];
                 for (int i = 0; i < result.Length; i++)
@@ -818,9 +836,9 @@ namespace Squared.Util {
             return -1;
         }
 
-        private int IndexOf_Large<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
-            var buffer = Items.GetBuffer();
-            for (int i = 0, c = Items.Count; i < c; i++) {
+        private static int IndexOf_Large<TUserData> (UnorderedList<T> items, Predicate<TUserData> predicate, in TUserData userData) {
+            var buffer = items.GetBuffer();
+            for (int i = 0, c = items.Count; i < c; i++) {
                 if (predicate(in buffer.Array[i + buffer.Offset], in userData))
                     return i;
             }
@@ -834,8 +852,9 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
-            if (HasList) {
-                return IndexOf_Large(predicate, in userData);
+            var items = _Items;
+            if (items != null) {
+                return IndexOf_Large(items, predicate, in userData);
             } else {
                 return IndexOf_Small(predicate, in userData);
             }
@@ -853,9 +872,9 @@ namespace Squared.Util {
             return -1;
         }
 
-        private int IndexOf_Large (Predicate predicate) {
-            var buffer = Items.GetBuffer();
-            for (int i = 0, c = Items.Count; i < c; i++) {
+        private static int IndexOf_Large (UnorderedList<T> items, Predicate predicate) {
+            var buffer = items.GetBuffer();
+            for (int i = 0, c = items.Count; i < c; i++) {
                 if (predicate(in buffer.Array[i + buffer.Offset]))
                     return i;
             }
@@ -864,8 +883,9 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf (Predicate predicate) {
-            if (HasList) {
-                return IndexOf_Large(predicate);
+            var items = _Items;
+            if (items != null) {
+                return IndexOf_Large(items, predicate);
             } else {
                 return IndexOf_Small(predicate);
             }
@@ -884,8 +904,8 @@ namespace Squared.Util {
         }
 
         private int IndexOf_Large (Func<T, bool> predicate) {
-            var buffer = Items.GetBuffer();
-            for (int i = 0, c = Items.Count; i < c; i++) {
+            var buffer = _Items.GetBuffer();
+            for (int i = 0, c = _Items.Count; i < c; i++) {
                 if (predicate(buffer.Array[i + buffer.Offset]))
                     return i;
             }
@@ -1003,9 +1023,9 @@ namespace Squared.Util {
             where TComparer : IRefComparer<T> 
         {
             if (indices != null)
-                Items.IndexedSortRef(comparer, indices);
+                _Items.IndexedSortRef(comparer, indices);
             else
-                Items.FastCLRSortRef(comparer);
+                _Items.FastCLRSortRef(comparer);
         }
 
         /// <summary>
@@ -1041,7 +1061,7 @@ namespace Squared.Util {
             if (!HasList)
                 EnsureList();
 
-            Items.FastCLRSortRef(comparer, offset, count);
+            _Items.FastCLRSortRef(comparer, offset, count);
         }
 
         /// <summary>
@@ -1065,9 +1085,9 @@ namespace Squared.Util {
             Item1 = Item2 = Item3 = Item4 = default;
             _Count = 0;
             if (ListPool != null)
-                ListPool.Release(ref Items);
+                ListPool.Release(ref _Items);
             else
-                Items = null;
+                _Items = null;
         }
 
         public DenseQuery<T, Enumerator, U> Cast<U> () {
