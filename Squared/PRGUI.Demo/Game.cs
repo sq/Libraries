@@ -1139,7 +1139,7 @@ namespace PRGUI.Demo {
             CanvasEllipsePosition = args.LocalPosition;
         }
 
-        private void Canvas_OnPaint (ref ImperativeRenderer renderer, ref RectF contentRect) {
+        private void Canvas_OnPaint (ref ImperativeRenderer renderer, in RectF contentRect) {
             var position = CanvasEllipsePosition ?? contentRect.Center;
             renderer.AutoIncrementLayer = true;
             renderer.RasterizeRectangle(contentRect.Position, contentRect.Extent, 0f, Color.Red);

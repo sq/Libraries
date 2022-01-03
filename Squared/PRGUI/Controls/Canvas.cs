@@ -18,7 +18,7 @@ using Squared.Util;
 using Squared.Util.Event;
 
 namespace Squared.PRGUI.Controls {
-    public delegate void CanvasPaintHandler (ref ImperativeRenderer renderer, ref RectF contentRect);
+    public delegate void CanvasPaintHandler (ref ImperativeRenderer renderer, in RectF contentRect);
 
     public class Canvas : Control {
         public event CanvasPaintHandler OnPaint;
@@ -100,13 +100,13 @@ namespace Squared.PRGUI.Controls {
             return provider.Canvas ?? base.GetDefaultDecorator(provider) ?? provider.None;
         }
 
-        protected virtual void Paint (ref ImperativeRenderer renderer, ref RectF contentRect) {
+        protected virtual void Paint (ref ImperativeRenderer renderer, in RectF contentRect) {
             if (DisabledDueToException)
                 return;
 
             try {
                 if (OnPaint != null)
-                    OnPaint(ref renderer, ref contentRect);
+                    OnPaint(ref renderer, in contentRect);
             } catch (Exception exc) {
                 Context.Log($"Unhandled exception in canvas {this}: {exc}");
                 DisabledDueToException = true;
@@ -147,7 +147,7 @@ namespace Squared.PRGUI.Controls {
             )) {
                 var contentRenderer = new ImperativeRenderer(container, context.Materials);
                 contentRenderer.BlendState = BlendState.NonPremultiplied;
-                Paint(ref contentRenderer, ref box);
+                Paint(ref contentRenderer, in box);
             }
         }
 
@@ -165,7 +165,7 @@ namespace Squared.PRGUI.Controls {
                 AutoDisposeBuffer(renderer.Container.Coordinator);
                 contentRenderer = renderer.MakeSubgroup();
                 contentRenderer.BlendState = BlendState;
-                Paint(ref contentRenderer, ref settings.ContentBox);
+                Paint(ref contentRenderer, in settings.ContentBox);
             } else {
                 renderer.Draw(
                     Buffer.Get(),

@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Linq;
 using System.Linq.Expressions;
-using Squared.Util.Bind;
-using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
+using System.Threading;
 using Squared.Util;
+using Squared.Util.Bind;
 
 namespace Squared.Threading {
     public delegate void OnFutureResolved (IFuture future);
@@ -1169,50 +1168,50 @@ namespace Squared.Threading {
     public static class FutureExtensionMethods {
         private static OnFutureResolvedWithData BindHandler = _BindHandler;
 
-        private static void _BindHandler (IFuture future, object _target) {
-            var target = (IFuture)_target;
-            future.GetResult(out object result, out Exception error);
+        private static void _BindHandler (IFuture source, object _receiver) {
+            var receiver = (IFuture)_receiver;
+            source.GetResult(out object result, out Exception error);
             // FIXME: SetResult2?
-            target.SetResult(result, error);
+            receiver.SetResult(result, error);
         }
 
         /// <summary>
         /// Causes this future to become completed when the specified future is completed.
         /// </summary>
-        public static void Bind (this IFuture future, IFuture target) {
-            target.RegisterOnResolved(BindHandler, target);
+        public static void Bind (this IFuture receiver, IFuture source) {
+            source.RegisterOnResolved(BindHandler, receiver);
         }
 
         /// <summary>
         /// Causes the result of this future to be stored into the specified member when it is completed.
         /// </summary>
-        public static IFuture Bind<T> (this IFuture future, Expression<Func<T>> target) {
-            var member = BoundMember.New(target);
+        public static IFuture Bind<T> (this IFuture source, Expression<Func<T>> receiver) {
+            var member = BoundMember.New(receiver);
 
             // FIXME: Use UserData version?
-            future.RegisterOnComplete((_) => {
+            source.RegisterOnComplete((_) => {
                 Exception error;
                 object result;
-                if (future.GetResult(out result, out error))
+                if (source.GetResult(out result, out error))
                     ((IBoundMember)member).Value = result;
             });
 
-            return future;
+            return source;
         }
 
         /// <summary>
         /// Causes the result of this future to be stored into the specified member when it is completed.
         /// </summary>
-        public static Future<T> Bind<T> (this Future<T> future, Expression<Func<T>> target) {
-            var member = BoundMember.New(target);
+        public static Future<T> Bind<T> (this Future<T> source, Expression<Func<T>> receiver) {
+            var member = BoundMember.New(receiver);
 
-            future.RegisterOnComplete((f) => {
+            source.RegisterOnComplete((f) => {
                 T result;
-                if (future.GetResult(out result))
+                if (source.GetResult(out result))
                     member.Value = result;
             });
             
-            return future;
+            return source;
         }
 
         public static void AssertSucceeded (this IFuture future) {
