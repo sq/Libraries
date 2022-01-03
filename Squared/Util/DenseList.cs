@@ -15,81 +15,14 @@ namespace Squared.Util {
         void Release (ref UnorderedList<T> items);
     }
 
+    [StructLayout(LayoutKind.Sequential)]
     public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct InlineStorage {
-            public T Item1, Item2, Item3, Item4;
-            public int Count;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public unsafe void GetItemAtIndex (int index, out T result) {
-                switch (index) {
-                    case 0:
-                        result = Item1;
-                        return;
-                    case 1:
-                        result = Item2;
-                        return;
-                    case 2:
-                        result = Item3;
-                        return;
-                    default:
-                        result = Item4;
-                        return;
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public unsafe void SetItemAtIndex (int index, in T value) {
-                switch (index) {
-                    case 0:
-                        Item1 = value;
-                        return;
-                    case 1:
-                        Item2 = value;
-                        return;
-                    case 2:
-                        Item3 = value;
-                        return;
-                    default:
-                        Item4 = value;
-                        return;
-                }
-            }
-
-            public unsafe T this[int index] {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get {
-                    switch (index) {
-                        case 0:
-                            return Item1;
-                        case 1:
-                            return Item2;
-                        case 2:
-                            return Item3;
-                        default:
-                            return Item4;
-                    }
-                }
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                set {
-                    switch (index) {
-                        case 0:
-                            Item1 = value;
-                            return;
-                        case 1:
-                            Item2 = value;
-                            return;
-                        case 2:
-                            Item3 = value;
-                            return;
-                        default:
-                            Item4 = value;
-                            return;
-                    }
-                }
-            }
-        }
+        // NOTE: It is important for the items to be at the front of the list,
+        //  so that if it is boxed and pinned the pin pointer is aimed directly
+        //  at the elements
+        internal T Item1, Item2, Item3, Item4;
+        internal int _Count;
+        internal UnorderedList<T> Items;
 
         private object _ListPoolOrAllocator;
         public object ListPoolOrAllocator {
@@ -108,8 +41,41 @@ namespace Squared.Util {
             }
         }
 
-        internal InlineStorage Storage;
-        internal UnorderedList<T> Items;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe void GetItemAtIndex (int index, out T result) {
+            switch (index) {
+                case 0:
+                    result = Item1;
+                    return;
+                case 1:
+                    result = Item2;
+                    return;
+                case 2:
+                    result = Item3;
+                    return;
+                default:
+                    result = Item4;
+                    return;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe void SetItemAtIndex (int index, in T value) {
+            switch (index) {
+                case 0:
+                    Item1 = value;
+                    return;
+                case 1:
+                    Item2 = value;
+                    return;
+                case 2:
+                    Item3 = value;
+                    return;
+                default:
+                    Item4 = value;
+                    return;
+            }
+        }
 
         public DenseList (T[] items) 
             : this (items, 0, items.Length) {
@@ -191,7 +157,7 @@ namespace Squared.Util {
                     newItems = output.Items = new UnorderedList<T>(Items.Count);
                 }
                 Items.CopyTo(newItems);
-            } else if ((Storage.Count > 0) || !outputIsEmpty) {
+            } else if ((_Count > 0) || !outputIsEmpty) {
                 output = this;
             }
         }
@@ -209,7 +175,8 @@ namespace Squared.Util {
         }
 
         public void Clear () {
-            Storage = default;
+            Item1 = Item2 = Item3 = Item4 = default;
+            _Count = 0;
             if (HasList)
                 Items.Clear();
         }
@@ -246,16 +213,17 @@ namespace Squared.Util {
             else
                 Items = new UnorderedList<T>(Allocator);
 
-            if (Storage.Count > 0)
-                Items.Add(in Storage.Item1);
-            if (Storage.Count > 1)
-                Items.Add(in Storage.Item2);
-            if (Storage.Count > 2)
-                Items.Add(in Storage.Item3);
-            if (Storage.Count > 3)
-                Items.Add(in Storage.Item4);
+            if (_Count > 0)
+                Items.Add(in Item1);
+            if (_Count > 1)
+                Items.Add(in Item2);
+            if (_Count > 2)
+                Items.Add(in Item3);
+            if (_Count > 3)
+                Items.Add(in Item4);
 
-            Storage = default(InlineStorage);
+            Item1 = Item2 = Item3 = Item4 = default;
+            _Count = 0;
         }
 
         public int Count {
@@ -264,7 +232,7 @@ namespace Squared.Util {
                 if (HasList)
                     return Items._Count;
                 else
-                    return Storage.Count;
+                    return _Count;
             }
         }
 
@@ -306,21 +274,21 @@ namespace Squared.Util {
                 return;
             }
 
-            if (index >= Storage.Count)
+            if (index >= _Count)
                 throw new IndexOutOfRangeException();
 
             switch (index) {
                 case 0:
-                    result = Storage.Item1;
+                    result = Item1;
                     return;
                 case 1:
-                    result = Storage.Item2;
+                    result = Item2;
                     return;
                 case 2:
-                    result = Storage.Item3;
+                    result = Item3;
                     return;
                 case 3:
-                    result = Storage.Item4;
+                    result = Item4;
                     return;
                 default:
                     throw new IndexOutOfRangeException();
@@ -332,23 +300,23 @@ namespace Squared.Util {
             if (Items != null)
                 return Items.DangerousTryGetItem(index, out result);
 
-            if (index >= Storage.Count) {
+            if (index >= _Count) {
                 result = default(T);
                 return false;
             }
 
             switch (index) {
                 case 0:
-                    result = Storage.Item1;
+                    result = Item1;
                     return true;
                 case 1:
-                    result = Storage.Item2;
+                    result = Item2;
                     return true;
                 case 2:
-                    result = Storage.Item3;
+                    result = Item3;
                     return true;
                 case 3:
-                    result = Storage.Item4;
+                    result = Item4;
                     return true;
                 default:
                     result = default(T);
@@ -371,7 +339,7 @@ namespace Squared.Util {
             else if (HasList)
                 return Items.DangerousGetItem(0);
             else
-                return Storage.Item1;
+                return Item1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -381,7 +349,7 @@ namespace Squared.Util {
             else if (HasList)
                 return Items.DangerousGetItem(0);
             else
-                return Storage.Item1;
+                return Item1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -473,18 +441,18 @@ namespace Squared.Util {
                 if (Items != null)
                     return Items.DangerousGetItem(index);
 
-                if (index >= Storage.Count)
+                if (index >= _Count)
                     throw new IndexOutOfRangeException();
 
                 switch (index) {
                     case 0:
-                        return Storage.Item1;
+                        return Item1;
                     case 1:
-                        return Storage.Item2;
+                        return Item2;
                     case 2:
-                        return Storage.Item3;
+                        return Item3;
                     case 3:
-                        return Storage.Item4;
+                        return Item4;
                     default:
                         throw new IndexOutOfRangeException();
                 }
@@ -501,21 +469,21 @@ namespace Squared.Util {
                 return;
             }
 
-            if (index >= Storage.Count)
+            if (index >= _Count)
                 throw new IndexOutOfRangeException();
 
             switch (index) {
                 case 0:
-                    Storage.Item1 = value;
+                    Item1 = value;
                     return;
                 case 1:
-                    Storage.Item2 = value;
+                    Item2 = value;
                     return;
                 case 2:
-                    Storage.Item3 = value;
+                    Item3 = value;
                     return;
                 case 3:
-                    Storage.Item4 = value;
+                    Item4 = value;
                     return;
             }
         }
@@ -527,9 +495,9 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Add_Fast (in T item) {
-            var count = Storage.Count;
-            Storage.Count = count + 1;
-            Storage.SetItemAtIndex(count, in item);
+            var count = _Count;
+            _Count = count + 1;
+            SetItemAtIndex(count, in item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -539,14 +507,14 @@ namespace Squared.Util {
                 return;
             }
 
-            var count = list.Storage.Count;
-            list.Storage.Count = count + 1;
-            list.Storage.SetItemAtIndex(count, in item);
+            var count = list._Count;
+            list._Count = count + 1;
+            list.SetItem(count, in item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (in T item) {
-            if ((Items != null) || (Storage.Count >= 4)) {
+            if ((Items != null) || (_Count >= 4)) {
                 Add_Slow(in item);
             } else {
                 Add_Fast(in item);
@@ -576,7 +544,7 @@ namespace Squared.Util {
             if (count < 1)
                 return;
 
-            var newCount = Storage.Count + count;
+            var newCount = _Count + count;
             if (newCount <= 4) {
                 for (int i = 0; i < count; i++)
                     Add(in items[offset + i]);
@@ -668,28 +636,28 @@ namespace Squared.Util {
 
         public void RemoveAt (int index) {
             // FIXME: Slow
-            if ((index < Storage.Count) && !HasList) {
+            if ((index < _Count) && !HasList) {
                 switch (index) {
                     case 0:
-                        Storage.Item1 = Storage.Item2;
-                        Storage.Item2 = Storage.Item3;
-                        Storage.Item3 = Storage.Item4;
-                        Storage.Item4 = default(T);
+                        Item1 = Item2;
+                        Item2 = Item3;
+                        Item3 = Item4;
+                        Item4 = default(T);
                         break;
                     case 1:
-                        Storage.Item2 = Storage.Item3;
-                        Storage.Item3 = Storage.Item4;
-                        Storage.Item4 = default(T);
+                        Item2 = Item3;
+                        Item3 = Item4;
+                        Item4 = default(T);
                         break;
                     case 2:
-                        Storage.Item3 = Storage.Item4;
-                        Storage.Item4 = default(T);
+                        Item3 = Item4;
+                        Item4 = default(T);
                         break;
                     case 3:
-                        Storage.Item4 = default(T);
+                        Item4 = default(T);
                         break;
                 }
-                Storage.Count--;
+                _Count--;
             } else {
                 EnsureList();
                 Items.RemoveAtOrdered(index);
@@ -709,7 +677,7 @@ namespace Squared.Util {
                 throw new ArgumentException("count");
 
             if (!HasList) {
-                Storage.Count -= count;
+                _Count -= count;
                 // FIXME: Element leak
                 return;
             }
@@ -752,9 +720,9 @@ namespace Squared.Util {
                 Items.Clear();
                 Items.AddRange(data, sourceOffset, count);
             } else {
-                Storage.Count = count;
+                _Count = count;
                 for (int i = 0; i < count; i++)
-                    Storage.SetItemAtIndex(i, in data[sourceOffset]);
+                    SetItemAtIndex(i, in data[sourceOffset]);
             }
         }
 
@@ -773,13 +741,13 @@ namespace Squared.Util {
             } else {
                 var alloc = BufferPool<T>.Allocate(4);
                 var buf = alloc.Data;
-                for (int i = 0; i < Storage.Count; i++)
-                    Storage.GetItemAtIndex(i, out buf[i]);
+                for (int i = 0; i < _Count; i++)
+                    GetItemAtIndex(i, out buf[i]);
                 return new Buffer {
                     IsTemporary = true,
                     Data = buf,
                     BufferPoolAllocation = alloc,
-                    Count = Storage.Count
+                    Count = _Count
                 };
             }
         }
@@ -797,9 +765,9 @@ namespace Squared.Util {
             else if (HasList)
                 return Items.ToArray();
             else {
-                var result = new T[Storage.Count];
+                var result = new T[_Count];
                 for (int i = 0; i < result.Length; i++)
-                    Storage.GetItemAtIndex(i, out result[i]);
+                    GetItemAtIndex(i, out result[i]);
                 return result;
             }
         }
@@ -839,13 +807,13 @@ namespace Squared.Util {
         }
 
         private int IndexOf_Small<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
-            if ((Storage.Count > 0) && predicate(in Storage.Item1, in userData))
+            if ((_Count > 0) && predicate(in Item1, in userData))
                 return 0;
-            if ((Storage.Count > 1) && predicate(in Storage.Item2, in userData))
+            if ((_Count > 1) && predicate(in Item2, in userData))
                 return 1;
-            if ((Storage.Count > 2) && predicate(in Storage.Item3, in userData))
+            if ((_Count > 2) && predicate(in Item3, in userData))
                 return 2;
-            if ((Storage.Count > 3) && predicate(in Storage.Item4, in userData))
+            if ((_Count > 3) && predicate(in Item4, in userData))
                 return 3;
             return -1;
         }
@@ -874,13 +842,13 @@ namespace Squared.Util {
         }
 
         private int IndexOf_Small (Predicate predicate) {
-            if ((Storage.Count > 0) && predicate(in Storage.Item1))
+            if ((_Count > 0) && predicate(in Item1))
                 return 0;
-            if ((Storage.Count > 1) && predicate(in Storage.Item2))
+            if ((_Count > 1) && predicate(in Item2))
                 return 1;
-            if ((Storage.Count > 2) && predicate(in Storage.Item3))
+            if ((_Count > 2) && predicate(in Item3))
                 return 2;
-            if ((Storage.Count > 3) && predicate(in Storage.Item4))
+            if ((_Count > 3) && predicate(in Item4))
                 return 3;
             return -1;
         }
@@ -904,13 +872,13 @@ namespace Squared.Util {
         }
 
         private int IndexOf_Small (Func<T, bool> predicate) {
-            if ((Storage.Count > 0) && predicate(Storage.Item1))
+            if ((_Count > 0) && predicate(Item1))
                 return 0;
-            if ((Storage.Count > 1) && predicate(Storage.Item2))
+            if ((_Count > 1) && predicate(Item2))
                 return 1;
-            if ((Storage.Count > 2) && predicate(Storage.Item3))
+            if ((_Count > 2) && predicate(Item3))
                 return 2;
-            if ((Storage.Count > 3) && predicate(Storage.Item4))
+            if ((_Count > 3) && predicate(Item4))
                 return 3;
             return -1;
         }
@@ -952,7 +920,7 @@ namespace Squared.Util {
         private void Sort_Small<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IRefComparer<T>
         {
-            var count = Storage.Count;
+            var count = _Count;
             if (count <= 1)
                 return;
 
@@ -974,7 +942,7 @@ namespace Squared.Util {
             if (count == 2) {
                 v1 = va;
                 v2 = vb;
-            } else if (Storage.Count == 3) {
+            } else if (_Count == 3) {
                 if (CompareValues(comparer, ref vb, ref v3) <= 0) {
                     v1 = va;
                     v2 = vb;
@@ -1023,12 +991,12 @@ namespace Squared.Util {
                 ;
             }
 
-            FlushValueOrIndex(ref v1, 0, ref Storage.Item1, indices);
-            FlushValueOrIndex(ref v2, 1, ref Storage.Item2, indices);
+            FlushValueOrIndex(ref v1, 0, ref Item1, indices);
+            FlushValueOrIndex(ref v2, 1, ref Item2, indices);
             if (count > 2)
-                FlushValueOrIndex(ref v3, 2, ref Storage.Item3, indices);
+                FlushValueOrIndex(ref v3, 2, ref Item3, indices);
             if (count > 3)
-                FlushValueOrIndex(ref v4, 3, ref Storage.Item4, indices);
+                FlushValueOrIndex(ref v4, 3, ref Item4, indices);
         }
 
         private void Sort_Large<TComparer> (TComparer comparer, int[] indices)
@@ -1094,7 +1062,8 @@ namespace Squared.Util {
         }
 
         public void Dispose () {
-            Storage = default;
+            Item1 = Item2 = Item3 = Item4 = default;
+            _Count = 0;
             if (ListPool != null)
                 ListPool.Release(ref Items);
             else

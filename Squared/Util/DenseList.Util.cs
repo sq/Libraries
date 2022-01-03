@@ -40,13 +40,13 @@ namespace Squared.Util {
             
             switch (index) {
                 case 0:
-                    return ref list.Storage.Item1;
+                    return ref list.Item1;
                 case 1:
-                    return ref list.Storage.Item2;
+                    return ref list.Item2;
                 case 2:
-                    return ref list.Storage.Item3;
+                    return ref list.Item3;
                 case 3:
-                    return ref list.Storage.Item4;
+                    return ref list.Item4;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(index));
             }
@@ -87,7 +87,7 @@ namespace Squared.Util {
         public struct Enumerator : IEnumerator<T>, IDenseQuerySource<Enumerator> {
             private int Index;
 
-            private readonly InlineStorage Storage;
+            private readonly T Item1, Item2, Item3, Item4;
             private readonly bool HasList;
             private readonly T[] Items;
             private readonly int Offset, Count;
@@ -96,15 +96,17 @@ namespace Squared.Util {
                 Index = -1;
                 Count = list.Count;
                 HasList = list.HasList;
+                Item1 = list.Item1;
+                Item2 = list.Item2;
+                Item3 = list.Item3;
+                Item4 = list.Item4;
 
                 if (HasList) {
-                    Storage = default;
                     var buffer = list.Items.GetBuffer();
                     Offset = buffer.Offset;
                     Items = buffer.Array;
                 } else {
                     Offset = 0;
-                    Storage = list.Storage;
                     Items = null;
                 }
             }
@@ -116,13 +118,13 @@ namespace Squared.Util {
                         return Items[Index];
                     else switch (Index) {
                         case 0:
-                            return Storage.Item1;
+                            return Item1;
                         case 1:
-                            return Storage.Item2;
+                            return Item2;
                         case 2:
-                            return Storage.Item3;
+                            return Item3;
                         case 3:
-                            return Storage.Item4;
+                            return Item4;
                     }
 
                     throw new InvalidOperationException("No current value");
@@ -136,13 +138,13 @@ namespace Squared.Util {
                         return Items[Index];
                     else switch (Index) {
                         case 0:
-                            return Storage.Item1;
+                            return Item1;
                         case 1:
-                            return Storage.Item2;
+                            return Item2;
                         case 2:
-                            return Storage.Item3;
+                            return Item3;
                         case 3:
-                            return Storage.Item4;
+                            return Item4;
                     }
 
                     throw new InvalidOperationException("No current value");
@@ -171,16 +173,16 @@ namespace Squared.Util {
                         return false;
                     } else switch (Index) {
                         case 0:
-                            result = Storage.Item1;
+                            result = Item1;
                             return true;
                         case 1:
-                            result = Storage.Item2;
+                            result = Item2;
                             return true;
                         case 2:
-                            result = Storage.Item3;
+                            result = Item3;
                             return true;
                         case 3:
-                            result = Storage.Item4;
+                            result = Item4;
                             return true;
                         default:
                             return false;
@@ -421,7 +423,7 @@ namespace Squared.Util {
                 Buffer = GCHandle.Alloc(Boxed);
             } else {
                 IsBuffer = false;
-                Boxed = list.Storage;
+                Boxed = list;
                 Buffer = GCHandle.Alloc(Boxed);
             }
         }
