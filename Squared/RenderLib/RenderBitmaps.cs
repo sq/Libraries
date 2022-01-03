@@ -1415,7 +1415,7 @@ namespace Squared.Render {
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                TextureRegion = Texture.BoundsFromRectangle(ref value);
+                TextureRegion = Texture.BoundsFromRectangle(in value);
             }
         }
 

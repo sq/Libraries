@@ -99,7 +99,7 @@ namespace Squared.Render {
 
             result.Initialize(container, layer, before, after, userData, materialSet);
             if (viewTransform.HasValue)
-                result.SetViewTransform(ref viewTransform);
+                result.SetViewTransform(in viewTransform);
             result.SingleAuto = renderTarget;
             result.Single = null;
             result.Multiple = null;
@@ -126,7 +126,7 @@ namespace Squared.Render {
 
             result.Initialize(container, layer, before, after, userData, materialSet);
             if (viewTransform.HasValue)
-                result.SetViewTransform(ref viewTransform);
+                result.SetViewTransform(in viewTransform);
             result.Single = renderTarget;
             result.SingleAuto = null;
             result.Multiple = null;
@@ -174,7 +174,7 @@ namespace Squared.Render {
 
             result.Initialize(container, layer, before, after, userData, materialSet);
             if (viewTransform.HasValue)
-                result.SetViewTransform(ref viewTransform);
+                result.SetViewTransform(in viewTransform);
             result.Single = null;
             result.SingleAuto = null;
             result.Multiple = renderTargets;
@@ -231,7 +231,7 @@ namespace Squared.Render {
         }
 
         public void SetViewTransform (
-            ref ViewTransform viewTransform
+            in ViewTransform viewTransform
         ) {
             if (MaterialSet == null)
                 throw new ArgumentException("No view transform can be applied without a material set");
@@ -240,7 +240,7 @@ namespace Squared.Render {
         }
 
         public void SetViewTransform (
-            ref ViewTransform? viewTransform
+            in ViewTransform? viewTransform
         ) {
             if (viewTransform.HasValue && (MaterialSet == null))
                 throw new ArgumentException("No view transform can be applied without a material set");

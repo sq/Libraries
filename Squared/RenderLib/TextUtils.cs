@@ -1250,7 +1250,7 @@ namespace Squared.Render.Text {
                 Character = ch,
                 Texture = Texture,
                 RectInTexture = rect,
-                BoundsInTexture = Texture.BoundsFromRectangle(ref rect),
+                BoundsInTexture = Texture.BoundsFromRectangle(in rect),
                 XOffset = cropping.X,
                 YOffset = cropping.Y,
                 LeftSideBearing = kerning.X,

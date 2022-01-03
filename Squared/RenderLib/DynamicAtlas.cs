@@ -561,12 +561,8 @@ namespace Squared.Render {
             Invalidate();
         }
 
-        public Bounds BoundsFromRectangle (Rectangle rectangle) {
-            return GameExtensionMethods.BoundsFromRectangle(Width, Height, ref rectangle);
-        }
-
-        public Bounds BoundsFromRectangle (ref Rectangle rectangle) {
-            return GameExtensionMethods.BoundsFromRectangle(Width, Height, ref rectangle);
+        public Bounds BoundsFromRectangle (in Rectangle rectangle) {
+            return GameExtensionMethods.BoundsFromRectangle(Width, Height, in rectangle);
         }
 
         public void Dispose () {

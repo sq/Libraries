@@ -635,7 +635,7 @@ namespace Squared.Render.RasterShape {
             ListBatch<RasterShapeDrawCall>.AdjustPoolCapacities(smallItemSizeLimit, largeItemSizeLimit, smallPoolCapacity, largePoolCapacity);
         }
 
-        private static bool ShouldBeShadowed (ref RasterShadowSettings shadow) {
+        private static bool ShouldBeShadowed (in RasterShadowSettings shadow) {
             return !shadow.Color.IsTransparent && (
                 (shadow.Softness >= 0.1) || 
                 (shadow.Expansion >= 0.1) ||
@@ -685,7 +685,7 @@ namespace Squared.Render.RasterShape {
                             BlendInLinearSpace = lastBlend,
                             Type = lastType,
                             Shadow = lastShadow,
-                            Shadowed = ShouldBeShadowed(ref lastShadow),
+                            Shadowed = ShouldBeShadowed(in lastShadow),
                             Simple = lastIsSimple != 0,
                             TextureSettings = lastTextureSettings
                         });
@@ -722,7 +722,7 @@ namespace Squared.Render.RasterShape {
                     BlendInLinearSpace = lastBlend,
                     Type = lastType,
                     Shadow = lastShadow,
-                    Shadowed = ShouldBeShadowed(ref lastShadow),
+                    Shadowed = ShouldBeShadowed(in lastShadow),
                     Simple = lastIsSimple != 0,
                     TextureSettings = lastTextureSettings
                 });
@@ -899,19 +899,16 @@ namespace Squared.Render.RasterShape {
             _SoftwareBuffer = null;
         }
 
-        new public void Add (RasterShapeDrawCall dc) {
-            Add(ref dc);
-        }
-
-        new public void Add (ref RasterShapeDrawCall dc) {
+        new public void Add (in RasterShapeDrawCall dc) {
+            var result = dc;
             // FIXME
-            dc.Index = _DrawCalls.Count;
-            dc.IsSimple = (dc.OuterColor4.FastEquals(in dc.InnerColor4) || (dc.Fill.Mode == RasterFillMode.None)) ? 1 : 0;
-            dc.PackedFlags = (
-                (int)dc.Type | (dc.IsSimple << 16) | (dc.Shadow.IsEnabled << 17) | ((dc.BlendInLinearSpace ? 1 : 0) << 18) |
-                ((dc.Shadow.Inside ? 1 : 0) << 19) | ((dc.SoftOutline ? 1 : 0) << 20)
+            result.Index = _DrawCalls.Count;
+            result.IsSimple = (result.OuterColor4.FastEquals(in result.InnerColor4) || (result.Fill.Mode == RasterFillMode.None)) ? 1 : 0;
+            result.PackedFlags = (
+                (int)result.Type | (result.IsSimple << 16) | (result.Shadow.IsEnabled << 17) | ((result.BlendInLinearSpace ? 1 : 0) << 18) |
+                ((result.Shadow.Inside ? 1 : 0) << 19) | ((result.SoftOutline ? 1 : 0) << 20)
             );
-            _DrawCalls.Add(in dc);
+            _DrawCalls.Add(in result);
         }
 
         public static RasterShapeBatch New (

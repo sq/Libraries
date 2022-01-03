@@ -309,7 +309,7 @@ namespace Squared.Render.Text {
 
                 if (texRegion.Atlas != null) {
                     glyph.Texture = texRegion.Atlas;
-                    glyph.BoundsInTexture = texRegion.Atlas.BoundsFromRectangle(ref rect);
+                    glyph.BoundsInTexture = texRegion.Atlas.BoundsFromRectangle(in rect);
                 }
 
                 // HACK

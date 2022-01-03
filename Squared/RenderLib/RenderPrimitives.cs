@@ -58,7 +58,7 @@ namespace Squared.Render.Internal {
             Count = 0;
         }
 
-        public void Write (T newVertex) {
+        public void Write (in T newVertex) {
             if (Count >= Storage.Count)
                 throw new InvalidOperationException();
 
@@ -66,25 +66,7 @@ namespace Squared.Render.Internal {
             Count += 1;
         }
 
-        public void Write (ref T newVertex) {
-            if (Count >= Storage.Count)
-                throw new InvalidOperationException();
-
-            Storage.Array[Storage.Offset + Count] = newVertex;
-            Count += 1;
-        }
-
-        public void Write (int index, T newVertex) {
-            if (index >= Storage.Count)
-                throw new InvalidOperationException();
-
-            Count = Math.Max(Count, index + 1);
-            index += Storage.Offset;
-
-            Storage.Array[index] = newVertex;
-        }
-
-        public void Write (int index, ref T newVertex) {
+        public void Write (int index, in T newVertex) {
             if (index >= Storage.Count)
                 throw new InvalidOperationException();
 
@@ -182,11 +164,7 @@ namespace Squared.Render {
             _UserData = userData;
         }
 
-        new public void Add (PrimitiveDrawCall<T> item) {
-            Add(ref item);
-        }
-
-        new public void Add (ref PrimitiveDrawCall<T> item) {
+        new public void Add (in PrimitiveDrawCall<T> item) {
             if (item.Vertices == null)
                 return;
 
@@ -422,11 +400,7 @@ namespace Squared.Render {
             _UserData = userData;
         }
 
-        new public void Add (NativeDrawCall item) {
-            Add(ref item);
-        }
-
-        new public void Add (ref NativeDrawCall item) {
+        new public void Add (in NativeDrawCall item) {
             if (item.PrimitiveCount < 1)
                 throw new ArgumentException("At least one primitive must be drawn", "item.PrimitiveCount");
             base.Add(in item);

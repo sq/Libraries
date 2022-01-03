@@ -152,7 +152,7 @@ namespace Squared.Render {
             Count = VertexCount = IndexCount = 0;
         }
 
-        protected void Add (ref GeometryDrawCall drawCall, int vertexCount, int indexCount) {
+        protected void Add (in GeometryDrawCall drawCall, int vertexCount, int indexCount) {
             Count += 1;
             VertexCount += vertexCount;
             IndexCount += indexCount;
@@ -305,7 +305,7 @@ namespace Squared.Render {
                 Color0 = outlineColor
             };
 
-            Add(ref dc, 4, OutlinedQuadIndices.Length);
+            Add(in dc, 4, OutlinedQuadIndices.Length);
         }
 
         protected static void _PrepareOutlinedQuad (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall dc) {
@@ -333,7 +333,7 @@ namespace Squared.Render {
                 Color0 = fillColor
             };
 
-            Add(ref dc, 4, QuadIndices.Length);
+            Add(in dc, 4, QuadIndices.Length);
         }
 
         protected static void _PrepareQuad (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall dc) {
@@ -364,7 +364,7 @@ namespace Squared.Render {
                 Color3 = bottomRightColor
             };
 
-            Add(ref dc, 4, QuadIndices.Length);
+            Add(in dc, 4, QuadIndices.Length);
         }
 
         protected static void _PrepareGradientQuad (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall dc) {
@@ -390,7 +390,7 @@ namespace Squared.Render {
                 Scalar0 = borderSize
             };
 
-            Add(ref dc, 8, QuadBorderIndices.Length);
+            Add(in dc, 8, QuadBorderIndices.Length);
         }
 
         protected static void _PrepareQuadBorder (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall dc) {
@@ -405,26 +405,26 @@ namespace Squared.Render {
             var vInner = new GeometryVertex(new Vector3(tl.X, tl.Y, dc.Z), dc.Color0);
             var vOuter = new GeometryVertex(new Vector3(tl.X - border, tl.Y - border, dc.Z), dc.Color1);
 
-            vw.Write(ref vInner);
-            vw.Write(ref vOuter);
+            vw.Write(in vInner);
+            vw.Write(in vOuter);
 
             vInner.Position.X = br.X;
             vOuter.Position.X = br.X + border;
 
-            vw.Write(ref vInner);
-            vw.Write(ref vOuter);
+            vw.Write(in vInner);
+            vw.Write(in vOuter);
 
             vInner.Position.Y = br.Y;
             vOuter.Position.Y = br.Y + border;
 
-            vw.Write(ref vInner);
-            vw.Write(ref vOuter);
+            vw.Write(in vInner);
+            vw.Write(in vOuter);
 
             vInner.Position.X = tl.X;
             vOuter.Position.X = tl.X - border;
 
-            vw.Write(ref vInner);
-            vw.Write(ref vOuter);
+            vw.Write(in vInner);
+            vw.Write(in vOuter);
 
             iw.Write(QuadBorderIndices);
         }
@@ -453,7 +453,7 @@ namespace Squared.Render {
                 Color1 = secondColor
             };
 
-            Add(ref dc, 2, LineIndices.Length);
+            Add(in dc, 2, LineIndices.Length);
         }
 
         protected static void _PrepareLine (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall dc) {
@@ -510,7 +510,7 @@ namespace Squared.Render {
 
             int numPoints = ComputeRingPoints(ref outerRadius, quality);
 
-            Add(ref dc, numPoints * 2, (numPoints - 1) * 6);
+            Add(in dc, numPoints * 2, (numPoints - 1) * 6);
         }
 
         public static unsafe void _PrepareRing (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall dc) {

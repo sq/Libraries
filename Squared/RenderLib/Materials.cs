@@ -470,9 +470,11 @@ namespace Squared.Render {
             Entries.RemoveAt(index);
         }
 
-        public void AddRange (ref MaterialParameterValues rhs) {
-            foreach (var entry in rhs.Entries)
-                Set(entry);
+        public void AddRange (in MaterialParameterValues rhs) {
+            for (int i = 0, c = rhs.Entries.Count; i < c; i++) {
+                ref readonly var entry = ref rhs.Entries.ReadItem(i);
+                Set(in entry);
+            }
         }
 
         internal bool TryGet (string name, out Entry result) {

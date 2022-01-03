@@ -318,7 +318,7 @@ namespace Squared.PRGUI.Controls {
 
                 // HACK
                 var p = renderer.Parameters;
-                renderer.Parameters.AddRange(ref MaterialParameters);
+                renderer.Parameters.AddRange(in MaterialParameters);
                 renderer.Draw(ref drawCall, material: Material ?? material, blendState: BlendState ?? Context.PickDefaultBlendState(drawCall.Texture));
                 renderer.Parameters = p;
             }

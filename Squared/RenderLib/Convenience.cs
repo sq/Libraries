@@ -726,7 +726,7 @@ namespace Squared.Render.Convenience {
             string name = null, int? layer = null
         ) {
             MakeSubgroup(out result, nextLayer, before, after, userData, name, layer);
-            ((BatchGroup)result.Container).SetViewTransform(ref viewTransform);
+            ((BatchGroup)result.Container).SetViewTransform(in viewTransform);
         }
 
         public ImperativeRenderer Clone (bool nextLayer = true) {
@@ -860,7 +860,7 @@ namespace Squared.Render.Convenience {
             var textureRegion = Bounds.Unit;
             if (sourceRectangle.HasValue) {
                 var sourceRectangleValue = sourceRectangle.Value;
-                textureRegion = GameExtensionMethods.BoundsFromRectangle(texture.Width, texture.Height, ref sourceRectangleValue);
+                textureRegion = GameExtensionMethods.BoundsFromRectangle(texture.Width, texture.Height, in sourceRectangleValue);
             }
 
             var drawCall = new BitmapDrawCall(
@@ -964,7 +964,7 @@ namespace Squared.Render.Convenience {
             var drawCall = new BitmapDrawCall(texture, new Vector2(destRectangle.X, destRectangle.Y));
             if (sourceRectangle.HasValue) {
                 var sr = sourceRectangle.Value;
-                drawCall.TextureRegion = texture.BoundsFromRectangle(ref sr);
+                drawCall.TextureRegion = texture.BoundsFromRectangle(in sr);
                 drawCall.Scale = new Vector2(destRectangle.Width / (float)sr.Width, destRectangle.Height / (float)sr.Height);
             } else {
                 drawCall.Scale = new Vector2(destRectangle.Width / (float)texture.Width, destRectangle.Height / (float)texture.Height);

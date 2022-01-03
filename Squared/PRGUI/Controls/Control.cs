@@ -1256,7 +1256,7 @@ namespace Squared.PRGUI {
             var dc = new BitmapDrawCall(
                 // FIXME
                 rt.Instance.Get(), pos,
-                GameExtensionMethods.BoundsFromRectangle((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y, ref sourceRect),
+                GameExtensionMethods.BoundsFromRectangle((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y, in sourceRect),
                 new Color(effectiveOpacity, effectiveOpacity, effectiveOpacity, effectiveOpacity), scale: 1.0f / Context.ScratchScaleFactor
             );
 

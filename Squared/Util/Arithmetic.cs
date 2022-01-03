@@ -946,16 +946,18 @@ namespace Squared.Util {
             // If it was passed by value it'd be copied per-call, which is pointless
 
             unchecked {
+                var shiftI1 = (buf.I1 >> 31);
+
                 // Precomputing these shifts once and storing them in locals creates memory
                 //  loads/stores so it's better to just compute over and over, it produces
                 //  fewer insns and theoretically doesn't hit stack/mem as much
-                if ((buf.I1 >> 31) != (buf.I2 >> 31))
-                    return (buf.I1 >> 31) - (buf.I2 >> 31);
+                if (shiftI1 != (buf.I2 >> 31))
+                    return shiftI1 - (buf.I2 >> 31);
 
                 // Storing these expressions into locals raises overhead, so just write them out bare
                 return (int)(buf.U1 - buf.U2) * 
                     // We use a bit shift instead of a * 2 because it seems to be faster
-                    (((buf.I1 >> 31) << 1) + 1);
+                    ((shiftI1 << 1) + 1);
             }
         }
 

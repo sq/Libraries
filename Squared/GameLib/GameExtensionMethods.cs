@@ -78,10 +78,10 @@ namespace Squared.Game {
                 return default(Bounds);
 
             Rectangle r = new Rectangle(0, 0, @this.Width, @this.Height);
-            return BoundsFromRectangle(@this, ref r);
+            return BoundsFromRectangle(@this, in r);
         }
 
-        public static Bounds BoundsFromRectangle (int width, int height, ref Rectangle rectangle) {
+        public static Bounds BoundsFromRectangle (int width, int height, in Rectangle rectangle) {
             float fw = width;
             float fh = height;
             float rw = rectangle.Width;
@@ -94,15 +94,11 @@ namespace Squared.Game {
             return new Bounds(tl, br);
         }
 
-        public static Bounds BoundsFromRectangle (this Texture2D @this, ref Rectangle rectangle) {
+        public static Bounds BoundsFromRectangle (this Texture2D @this, in Rectangle rectangle) {
             if (@this == null)
                 return default(Bounds);
 
-            return BoundsFromRectangle(@this.Width, @this.Height, ref rectangle);
-        }
-
-        public static Bounds BoundsFromRectangle (this Texture2D @this, Rectangle rectangle) {
-            return @this.BoundsFromRectangle(ref rectangle);
+            return BoundsFromRectangle(@this.Width, @this.Height, in rectangle);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

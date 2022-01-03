@@ -90,7 +90,7 @@ namespace Squared.Render {
         public static pSRGBColor LinearLerp (pSRGBColor a, pSRGBColor b, float t) {
             Vector4 vA = a.ToPLinear(), vB = b.ToPLinear(), result;
             Vector4.Lerp(ref vA, ref vB, t, out result);
-            return FromPLinear(ref result);
+            return FromPLinear(in result);
         }
 
         public static pSRGBColor Lerp (pSRGBColor a, pSRGBColor b, float t) {
@@ -100,7 +100,7 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public pSRGBColor (ref Vector4 v4, bool isPremultiplied = true) {
+        public pSRGBColor (in Vector4 v4, bool isPremultiplied = true) {
             IsVector4 = true;
             if (!isPremultiplied) {
                 float a = v4.W;
@@ -216,9 +216,9 @@ namespace Squared.Render {
             );
         }
 
-        public static pSRGBColor FromPLinear (ref Vector4 pLinear) {
+        public static pSRGBColor FromPLinear (in Vector4 pLinear) {
             if (pLinear.W <= 0)
-                return new pSRGBColor(ref pLinear, true);
+                return new pSRGBColor(in pLinear, true);
 
             var linear = pLinear / pLinear.W;
             linear.W = pLinear.W;
@@ -246,10 +246,6 @@ namespace Squared.Render {
                 var v = ToVector4();
                 return Math.Abs(v.X - v.Y) + Math.Abs(v.Z - v.Y) + Math.Abs(v.Z - v.X);
             }
-        }
-
-        public static pSRGBColor FromPLinear (Vector4 v) {
-            return FromPLinear(ref v);
         }
 
         public static pSRGBColor operator - (pSRGBColor a, pSRGBColor b) {

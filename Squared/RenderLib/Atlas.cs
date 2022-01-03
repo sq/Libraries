@@ -177,7 +177,7 @@ namespace Squared.Render.Atlases {
                         (CellHeight * y) + MarginTop,
                         CellWidth, CellHeight
                     );
-                    var bounds = Texture.BoundsFromRectangle(ref rectangle);
+                    var bounds = Texture.BoundsFromRectangle(in rectangle);
                     var cell = new Cell(this, i, ref bounds, ref rectangle);
 
                     Cells.Add(cell);

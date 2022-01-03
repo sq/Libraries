@@ -34,6 +34,26 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref readonly T ReadItem<T> (this in DenseList<T> list, int index) {
+            var items = list._Items;
+            if (items != null)
+                return ref items.DangerousItem(index);
+            
+            switch (index) {
+                case 0:
+                    return ref list.Item1;
+                case 1:
+                    return ref list.Item2;
+                case 2:
+                    return ref list.Item3;
+                case 3:
+                    return ref list.Item4;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index));
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T Item<T> (this ref DenseList<T> list, int index) {
             var items = list._Items;
             if (items != null)
