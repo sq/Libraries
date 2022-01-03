@@ -11,6 +11,7 @@
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <LangVersion>latest</LangVersion>
     <OutputPath>bin\$(Platform)\$(Configuration)</OutputPath>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'x86'">
     <EnableFNA>false</EnableFNA>
@@ -30,6 +31,8 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib">
@@ -95,24 +98,6 @@
     <IncludeSquaredGame>true</IncludeSquaredGame>
     <IncludeSquaredRender>true</IncludeSquaredRender>
     <IncludeSquaredTask>true</IncludeSquaredTask>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|FNA-x64'">
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|FNA'">
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|FNA'">
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|FNA-x64'">
-    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <Import Project="$(SquaredPath)\Squared\SquaredGameLibraries.targets" />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
