@@ -80,9 +80,7 @@ namespace Squared.Threading {
             }
 
             public void OnCompleted (Action continuation) {
-                // FIXME: Use UserData
-                var oc = Registration.OnComplete(continuation);
-                ((IFuture)Future).RegisterOnResolved(oc);
+                Future.RegisterOnResolved(Registration.OnCompleteWithUserData(continuation), Registration);
             }
 
             public bool IsCompleted {
@@ -132,9 +130,7 @@ namespace Squared.Threading {
             }
 
             public void OnCompleted (Action continuation) {
-                // FIXME: Use UserData
-                var oc = Registration.OnComplete(continuation);
-                Future.RegisterOnResolved(oc);
+                Future.RegisterOnResolved(Registration.OnCompleteWithUserData(continuation), Registration);
             }
 
             public bool IsCompleted {
@@ -168,9 +164,7 @@ namespace Squared.Threading {
             }
 
             public void OnCompleted (Action continuation) {
-                // FIXME: Use UserData
-                var oc = Registration.OnComplete(continuation);
-                ((IFuture)Future).RegisterOnResolved(oc);
+                Future.RegisterOnResolved(Registration.OnCompleteWithUserData(continuation), Registration);
             }
 
             public bool IsCompleted {

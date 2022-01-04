@@ -216,6 +216,11 @@ namespace Squared.Render.Text {
         private static readonly List<AsyncRichImage> EmptyDependencies = new List<AsyncRichImage>();
 
         // FIXME: Garbage
+        // Unfortunately DenseList is a bad choice here because these values are all REALLY big
+        //  so it would increase the size of every DynamicStringLayout instance considerably
+        // Maybe create a single 'DynamicStringLayoutRichState' class that holds dense lists
+        //  for all of these and allocate it on demand? Then in the ideal case it's one
+        //  allocation instead of dozens
         public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Markers ?? EmptyMarkers;
         public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _HitTests ?? EmptyHitTests;
         public IReadOnlyList<LayoutMarker> RichMarkers => _RichMarkers ?? EmptyRichMarkers;

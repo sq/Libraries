@@ -31,7 +31,7 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnComplete(Registration.OnComplete(continuation));
+                Future.RegisterOnComplete(Registration.OnCompleteWithUserData(continuation), Registration);
             }
 
             public bool IsCompleted {
@@ -61,7 +61,7 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnComplete(Registration.OnComplete(continuation));
+                Future.RegisterOnComplete(Registration.OnCompleteWithUserData(continuation), Registration);
             }
 
             public bool IsCompleted {
@@ -112,7 +112,7 @@ namespace Squared.Task {
 
             public void OnCompleted (Action continuation) {
                 // FIXME: Use UserData
-                Ready.RegisterOnComplete(Registration.OnComplete(continuation));
+                Ready.RegisterOnComplete(Registration.OnCompleteWithUserData(continuation), Registration);
             }
 
             public bool IsCompleted {

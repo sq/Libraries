@@ -29,6 +29,7 @@ namespace Squared.Threading.AsyncAwait {
             public readonly IWorkItemQueueTarget Scheduler;
 
             private Action Continuation;
+            private static OnFutureResolvedWithData _OnCompleteWithUserData = __OnCompleteWithUserData;
 
             public Registration (IWorkItemQueueTarget scheduler) {
                 Scope = CancellationScope.Current;
@@ -38,12 +39,29 @@ namespace Squared.Threading.AsyncAwait {
                     throw new InvalidOperationException("No implicitly active TaskScheduler on this thread.");
             }
 
-            public Squared.Threading.OnFutureResolved OnComplete (Action continuation) {
+            public OnFutureResolved OnComplete (Action continuation) {
                 if ((Continuation != null) && (Continuation != continuation))
                     throw new InvalidOperationException("Continuation already registered");
 
                 Continuation = continuation;
                 return _OnComplete;
+            }
+
+            public OnFutureResolvedWithData OnCompleteWithUserData (Action continuation) {
+                if ((Continuation != null) && (Continuation != continuation))
+                    throw new InvalidOperationException("Continuation already registered");
+
+                Continuation = continuation;
+                return _OnCompleteWithUserData;
+            }
+
+            private static void __OnCompleteWithUserData (IFuture f, object _registration) {
+                var registration = (Registration)_registration;
+                // FIXME: Is this right?
+                if ((registration.Scheduler == null) && !StrictMode)
+                    registration.Continuation();
+                else
+                    registration.Scheduler.QueueWorkItem(registration.Continuation);
             }
 
             private void _OnComplete (IFuture f) {

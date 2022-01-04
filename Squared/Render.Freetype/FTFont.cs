@@ -266,25 +266,27 @@ namespace Squared.Render.Text {
                     index, flags, Font.Monochrome ? LoadTarget.Mono : LoadTarget.Normal
                 );
 
+                var sizeMetrics = size.Metrics;
+
                 var ftgs = Font.Face.Glyph;
-                var scaleX = size.Metrics.ScaleX;
-                var scaleY = size.Metrics.ScaleY;
+                var scaleX = sizeMetrics.ScaleX;
+                var scaleY = sizeMetrics.ScaleY;
                 var bitmap = ftgs.Bitmap;
 
                 DynamicAtlas<Color>.Reservation texRegion = default(DynamicAtlas<Color>.Reservation);
                 if ((bitmap.Width > 0) && (bitmap.Rows > 0))
                     texRegion = Upload(bitmap);
 
-                var ascender = size.Metrics.Ascender.ToSingle();
-                var metrics = ftgs.Metrics;
-                var advance = metrics.HorizontalAdvance.ToSingle();
+                var ascender = sizeMetrics.Ascender.ToSingle();
+                var glyphMetrics = ftgs.Metrics;
+                var advance = glyphMetrics.HorizontalAdvance.ToSingle();
                 if (ch == '\t')
                     advance *= Font.TabSize;
 
                 var scaleFactor = 100f / Font.DPIPercent;
 
-                var widthMetric = metrics.Width.ToSingle();
-                var bearingXMetric = metrics.HorizontalBearingX.ToSingle();
+                var widthMetric = glyphMetrics.Width.ToSingle();
+                var bearingXMetric = glyphMetrics.HorizontalBearingX.ToSingle();
 
                 var rect = texRegion.Rectangle;
 
@@ -295,16 +297,16 @@ namespace Squared.Render.Text {
                     RightSideBearing = (
                         advance -
                             widthMetric -
-                            metrics.HorizontalBearingX.ToSingle()
+                            glyphMetrics.HorizontalBearingX.ToSingle()
                     ),
                     XOffset = ftgs.BitmapLeft - bearingXMetric - Font.GlyphMargin,
                     YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin + Font.VerticalOffset + VerticalOffset,
                     RectInTexture = rect,
                     // FIXME: This will become invalid if the extra spacing changes
                     // FIXME: Scale the spacing appropriately based on ratios
-                    LineSpacing = size.Metrics.Height.ToSingle() + ExtraLineSpacing,
+                    LineSpacing = sizeMetrics.Height.ToSingle() + ExtraLineSpacing,
                     DefaultColor = defaultColor,
-                    Baseline = size.Metrics.Ascender.ToSingle()
+                    Baseline = sizeMetrics.Ascender.ToSingle()
                 };
 
                 if (texRegion.Atlas != null) {
