@@ -187,15 +187,15 @@ namespace Squared.PRGUI.Layout {
             return masked == (int)flag;
         }
 
-        public static float GetOrigin (this Bounds bounds, LayoutDimensions dimension) {
+        public static float GetOrigin (this in Bounds bounds, LayoutDimensions dimension) {
             return (dimension == LayoutDimensions.X) ? bounds.TopLeft.X : bounds.TopLeft.Y;
         }
 
-        public static float GetSize (this Bounds bounds, LayoutDimensions dimension) {
+        public static float GetSize (this in Bounds bounds, LayoutDimensions dimension) {
             return (dimension == LayoutDimensions.X) ? bounds.Size.X : bounds.Size.Y;
         }
 
-        public static float GetExtent (this Bounds bounds, LayoutDimensions dimension) {
+        public static float GetExtent (this in Bounds bounds, LayoutDimensions dimension) {
             return (dimension == LayoutDimensions.X) ? bounds.BottomRight.X : bounds.BottomRight.Y;
         }
 
@@ -236,17 +236,17 @@ namespace Squared.PRGUI.Layout {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float GetElement (this ref Vector2 v, uint index) {
-            return GetElement(ref v, (int)index);
+        public static float GetElement (this in Vector2 v, uint index) {
+            return GetElement(in v, (int)index);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float GetElement (this ref Vector4 v, uint index) {
-            return GetElement(ref v, (int)index);
+        public static float GetElement (this in Vector4 v, uint index) {
+            return GetElement(in v, (int)index);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float GetElement (this ref Vector2 v, int index) {
+        public static float GetElement (this in Vector2 v, int index) {
             switch (index) {
                 case 0:
                     return v.X;
@@ -257,7 +257,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float GetElement (this ref Vector4 v, int index) {
+        public static float GetElement (this in Vector4 v, int index) {
             switch (index) {
                 case 0:
                     return v.X;

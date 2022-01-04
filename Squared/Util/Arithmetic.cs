@@ -102,13 +102,13 @@ namespace Squared.Util {
 
     public static class Arithmetic {
         public static class OperatorCache<T> {
-            public static BinaryOperatorMethod<T, T> Add, Subtract, Divide, Multiply;
+            public static readonly BinaryOperatorMethod<T, T> Add, Subtract, Divide, Multiply;
 
             static OperatorCache () {
-                Add = Arithmetic.GetOperator<T, T>(Operators.Add);
-                Subtract = Arithmetic.GetOperator<T, T>(Operators.Subtract);
-                Divide = Arithmetic.GetOperator<T, T>(Operators.Divide);
-                Multiply = Arithmetic.GetOperator<T, T>(Operators.Multiply);
+                Add = GetOperator<T, T>(Operators.Add);
+                Subtract = GetOperator<T, T>(Operators.Subtract);
+                Divide = GetOperator<T, T>(Operators.Divide);
+                Multiply = GetOperator<T, T>(Operators.Multiply);
             }
         }
 
@@ -134,15 +134,15 @@ namespace Squared.Util {
             public bool IsComparison, IsUnary;
         }
 
-        internal static Dictionary<Operators, OperatorInfo> _OperatorInfo = new Dictionary<Operators, OperatorInfo> {
-            { Operators.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition", Sigil = "+" } },
-            { Operators.Subtract, new OperatorInfo { OpCode = OpCodes.Sub, MethodName = "op_Subtraction", Sigil = "-" } },
-            { Operators.Multiply, new OperatorInfo { OpCode = OpCodes.Mul, MethodName = "op_Multiply", Sigil = "*" } },
-            { Operators.Divide, new OperatorInfo { OpCode = OpCodes.Div, MethodName = "op_Division", Sigil = "/" } },
-            { Operators.Modulo, new OperatorInfo { OpCode = OpCodes.Rem, MethodName = "op_Modulus", Sigil = "%" } },
-            { Operators.Equality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality", Sigil = "==", IsComparison = true } },
-            { Operators.Inequality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Inequality", Sigil = "!=", IsComparison = true } },
-            { Operators.Negation, new OperatorInfo { OpCode = OpCodes.Neg, MethodName = "op_UnaryNegation", Sigil = "-", IsUnary = true } },
+        internal static Dictionary<int, OperatorInfo> _OperatorInfo = new Dictionary<int, OperatorInfo> {
+            { (int)Operators.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition", Sigil = "+" } },
+            { (int)Operators.Subtract, new OperatorInfo { OpCode = OpCodes.Sub, MethodName = "op_Subtraction", Sigil = "-" } },
+            { (int)Operators.Multiply, new OperatorInfo { OpCode = OpCodes.Mul, MethodName = "op_Multiply", Sigil = "*" } },
+            { (int)Operators.Divide, new OperatorInfo { OpCode = OpCodes.Div, MethodName = "op_Division", Sigil = "/" } },
+            { (int)Operators.Modulo, new OperatorInfo { OpCode = OpCodes.Rem, MethodName = "op_Modulus", Sigil = "%" } },
+            { (int)Operators.Equality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality", Sigil = "==", IsComparison = true } },
+            { (int)Operators.Inequality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Inequality", Sigil = "!=", IsComparison = true } },
+            { (int)Operators.Negation, new OperatorInfo { OpCode = OpCodes.Neg, MethodName = "op_UnaryNegation", Sigil = "-", IsUnary = true } },
         };
 
         internal static Dictionary<Type, int> _TypeRanking = new Dictionary<Type, int> {
@@ -208,7 +208,7 @@ namespace Squared.Util {
             Type delegateType = typeof(TDelegate);
 
             DynamicMethod dm = new DynamicMethod(
-                _OperatorInfo[op].MethodName,
+                _OperatorInfo[(int)op].MethodName,
                 argumentTypes[0],
                 argumentTypes,
                 true
@@ -253,14 +253,14 @@ namespace Squared.Util {
 #endif
 
         public static string GetSigil (Operators op) {
-            return _OperatorInfo[op].Sigil;
+            return _OperatorInfo[(int)op].Sigil;
         }
 
         private static ThreadLocal<Type[]> UnaryScratchArray = new ThreadLocal<Type[]>(() => new Type[1]);
         private static ThreadLocal<Type[]> BinaryScratchArray = new ThreadLocal<Type[]>(() => new Type[2]);
 
         public static UnaryOperatorMethod<T> GetOperator<T> (Operators op, bool optional = false) {
-            if (!_OperatorInfo[op].IsUnary)
+            if (!_OperatorInfo[(int)op].IsUnary)
                 throw new InvalidOperationException("Operator is not unary");
 
             var usa = UnaryScratchArray.Value;
@@ -269,7 +269,7 @@ namespace Squared.Util {
         }
 
         public static BinaryOperatorMethod<T, U> GetOperator<T, U> (Operators op, bool optional = false) {
-            if (_OperatorInfo[op].IsUnary)
+            if (_OperatorInfo[(int)op].IsUnary)
                 throw new InvalidOperationException("Operator is not binary");
 
             var bsa = BinaryScratchArray.Value;
@@ -695,7 +695,7 @@ namespace Squared.Util {
         internal static OperatorInfo GetOperatorInfo (ExpressionType et) {
             OperatorInfo oi;
 
-            if (!_OperatorInfo.TryGetValue(GetOperator(et), out oi))
+            if (!_OperatorInfo.TryGetValue((int)GetOperator(et), out oi))
                 throw new InvalidOperationException(String.Format("Operator {0} not supported in expressions", et));
 
             return oi;
@@ -852,7 +852,7 @@ namespace Squared.Util {
             if (argumentTypes.Length >= 2)
                 ilGenerator.Emit(OpCodes.Ldarg_1);
 
-            var oi = _OperatorInfo[op];
+            var oi = _OperatorInfo[(int)op];
             var result = GenerateOperatorIL(ilGenerator, argumentTypes, oi.MethodName, oi.OpCode);
 
             ilGenerator.Emit(OpCodes.Ret);

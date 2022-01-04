@@ -966,66 +966,12 @@ namespace Squared.Render.Text {
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
                     suppress = true;
 
-                char ch1 = text[i],
-                    ch2 = i < (l - 1)
-                        ? text[i + 1]
-                        : '\0';
+                DecodeCodepoint(ref text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
 
-                int currentCodepointSize = 1;
-                uint codepoint;
-                if (Unicode.DecodeSurrogatePair(ch1, ch2, out codepoint)) {
-                    currentCodepointSize = 2;
-                    currentCharacterIndex++;
-                    i++;
-                } else if (ch1 == '\r') {
-                    if (ch2 == '\n') {
-                        currentCodepointSize = 2;
-                        ch1 = ch2;
-                        i++;
-                        currentCharacterIndex++;
-                    }
-                }
-
-                codepoint = replacementCodepoint ?? codepoint;
-
-                bool isWhiteSpace = (char.IsWhiteSpace(ch1) && !replacementCodepoint.HasValue),
-                    forcedWrap = false, lineBreak = false,
-                    deadGlyph = false, isWordWrapPoint, didWrapWord = false;
-                if (splitAtWrapCharactersOnly)
-                    isWordWrapPoint = (WordWrapCharacters.IndexOf(codepoint) >= 0);
-                else
-                    isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1) ||
-                        replacementCodepoint.HasValue || (WordWrapCharacters.IndexOf(codepoint) >= 0);
-                Glyph glyph;
-                KerningAdjustment kerningAdjustment;
-
-                if (codepoint > 255) {
-                    // HACK: Attempt to word-wrap at "other" punctuation in non-western character sets, which will include things like commas
-                    // This is less than ideal but .NET does not appear to expose the classification tables needed to do this correctly
-                    var category = CharUnicodeInfo.GetUnicodeCategory(ch1);
-                    if (category == UnicodeCategory.OtherPunctuation)
-                        isWordWrapPoint = true;
-                }
-
-                if (ch1 == '\n')
-                    lineBreak = true;
-
-                if (lineBreak) {
-                    if (lineLimit.HasValue) {
-                        lineLimit--;
-                        if (lineLimit.Value <= 0)
-                            suppress = true;
-                    }
-                    if (lineBreakLimit.HasValue) {
-                        lineBreakLimit--;
-                        if (lineBreakLimit.Value <= 0)
-                            suppress = true;
-                    }
-                    if (!suppress && includeTrailingWhitespace)
-                        newLinePending = true;
-                } else if (lineLimit.HasValue && lineLimit.Value <= 0) {
-                    suppress = true;
-                }
+                AnalyzeWhitespace(
+                    ch1, codepoint, out bool isWhiteSpace, out bool forcedWrap, out bool lineBreak, 
+                    out bool deadGlyph, out bool isWordWrapPoint, out bool didWrapWord
+                );
 
                 if (isWordWrapPoint) {
                     _wordIndex++;
@@ -1045,49 +991,11 @@ namespace Squared.Render.Text {
                     }
                 }
 
-                deadGlyph = !font.GetGlyph(codepoint, out glyph);
-
-                float glyphLineSpacing = glyph.LineSpacing * effectiveScale;
-                float glyphBaseline = glyph.Baseline * effectiveScale;
-                if (deadGlyph) {
-                    if (currentLineSpacing > 0) {
-                        glyphLineSpacing = currentLineSpacing;
-                        glyphBaseline = currentBaseline;
-                    } else {
-                        Glyph space;
-                        if (font.GetGlyph(' ', out space)) {
-                            glyphLineSpacing = space.LineSpacing * effectiveScale;
-                            glyphBaseline = space.Baseline * effectiveScale;
-                        }
-                    }
-                }
-
-                // glyph.LeftSideBearing *= effectiveSpacing;
-                float leftSideDelta = 0;
-                if (effectiveSpacing >= 0)
-                    glyph.LeftSideBearing *= effectiveSpacing;
-                else
-                    leftSideDelta = Math.Abs(glyph.LeftSideBearing * effectiveSpacing);
-                glyph.RightSideBearing *= effectiveSpacing;
-                glyph.RightSideBearing -= leftSideDelta;
-
-                if (initialLineSpacing <= 0)
-                    initialLineSpacing = glyphLineSpacing;
-                ProcessLineSpacingChange(buffer, glyphLineSpacing, glyphBaseline);
-
-                // FIXME: Don't key kerning adjustments off 'char'
-                if ((kerningAdjustments != null) && kerningAdjustments.TryGetValue(ch1, out kerningAdjustment)) {
-                    glyph.LeftSideBearing += kerningAdjustment.LeftSideBearing;
-                    glyph.Width += kerningAdjustment.Width;
-                    glyph.RightSideBearing += kerningAdjustment.RightSideBearing;
-                }
-
-                // MonoGame#1355 rears its ugly head: If a character with negative left-side bearing is at the start of a line,
-                //  we need to compensate for the bearing to prevent the character from extending outside of the layout bounds
-                if (_colIndex == 0) {
-                    if (glyph.LeftSideBearing < 0)
-                        glyph.LeftSideBearing = 0;
-                }
+                BuildGlyphInformation(
+                    font, kerningAdjustments, effectiveScale, effectiveSpacing, ch1, codepoint,
+                    out deadGlyph, out Glyph glyph, out KerningAdjustment kerningAdjustment,
+                    out float glyphLineSpacing, out float glyphBaseline
+                );
 
                 x =
                     characterOffset.X +
@@ -1104,89 +1012,11 @@ namespace Squared.Render.Text {
                         forcedWrap = true;
                 }
 
-                if (forcedWrap) {
-                    var currentWordSize = x - wordStartOffset.X;
+                if (forcedWrap)
+                    PerformForcedWrap(x, ref lineBreak, ref didWrapWord, glyphLineSpacing, glyphBaseline);
 
-                    if (
-                        wordWrap && !wordWrapSuppressed && 
-                        // FIXME: If boxes shrink the current line too far, we want to just keep wrapping until we have enough room
-                        //  instead of giving up
-                        (currentWordSize <= currentLineBreakAtX) &&
-                        (wordStartColumn > 0)
-                    ) {
-                        if (lineLimit.HasValue)
-                            lineLimit--;
-                        WrapWord(buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, glyphLineSpacing, glyphBaseline, currentWordSize);
-                        wordWrapSuppressed = true;
-                        lineBreak = true;
-                        didWrapWord = true;
-
-                        // FIXME: While this will abort when the line limit is reached, we need to erase the word we wrapped to the next line
-                        if (lineLimit.HasValue && lineLimit.Value <= 0)
-                            suppress = true;
-                    } else if (characterWrap) {
-                        if (lineLimit.HasValue)
-                            lineLimit--;
-                        characterOffset.X = xOffsetOfWrappedLine;
-                        AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing, leftPad: xOffsetOfWrappedLine);
-                        characterOffset.Y += currentLineSpacing;
-                        initialLineSpacing = currentLineSpacing = glyphLineSpacing;
-                        currentBaseline = glyphBaseline;
-                        baselineAdjustmentStart = bufferWritePosition;
-
-                        maxX = Math.Max(maxX, currentLineMaxX);
-                        wordStartWritePosition = bufferWritePosition;
-                        wordStartOffset = characterOffset;
-                        wordStartColumn = _colIndex;
-                        lineBreak = true;
-
-                        if (lineLimit.HasValue && lineLimit.Value <= 0)
-                            suppress = true;
-                    } else if (hideOverflow) {
-                        // If wrapping is disabled but we've hit the line break boundary, we want to suppress glyphs from appearing
-                        //  until the beginning of the next line (i.e. hard line break), but continue performing layout
-                        suppressUntilNextLine = true;
-                    } else {
-                        // Just overflow. Hooray!
-                    }
-                }
-
-                if (lineBreak) {
-                    // FIXME: We also want to expand markers to enclose the overhang
-                    currentLineMaxX += currentXOverhang;
-                    currentLineMaxXUnconstrained += currentXOverhang;
-
-                    if (!forcedWrap) {
-                        var spacingForThisLineBreak = currentLineSpacing + extraLineBreakSpacing;
-                        if (!suppress) {
-                            characterOffset.X = xOffsetOfNewLine;
-                            // FIXME: didn't we already do this?
-                            characterOffset.Y += spacingForThisLineBreak;
-                            maxX = Math.Max(maxX, currentLineMaxX);
-                        }
-                        characterOffsetUnconstrained.X = xOffsetOfNewLine;
-                        AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, spacingForThisLineBreak, leftPad: xOffsetOfNewLine);
-                        AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, spacingForThisLineBreak, leftPad: xOffsetOfNewLine);
-                        characterOffsetUnconstrained.Y += spacingForThisLineBreak;
-
-                        maxXUnconstrained = Math.Max(maxXUnconstrained, currentLineMaxXUnconstrained);
-                        currentLineMaxXUnconstrained = 0;
-                        initialLineSpacing = currentLineSpacing = 0;
-                        currentBaseline = 0;
-                        baselineAdjustmentStart = bufferWritePosition;
-                        suppressUntilNextLine = false;
-                    }
-
-                    ComputeLineBreakAtX();
-                    initialLineXOffset = characterOffset.X;
-                    if (!suppress) {
-                        currentLineMaxX = 0;
-                        currentLineWhitespaceMaxX = 0;
-                        currentLineWrapPointLeft = 0;
-                    }
-                    _rowIndex += 1;
-                    _colIndex = 0;
-                }
+                if (lineBreak)
+                    PerformLineBreak(forcedWrap);
 
                 // HACK: Recompute after wrapping
                 x =
@@ -1195,37 +1025,11 @@ namespace Squared.Render.Text {
                 var yOffset = currentBaseline - glyphBaseline;
                 var xUnconstrained = x - characterOffset.X + characterOffsetUnconstrained.X;
 
-                if (deadGlyph || isWhiteSpace) {
-                    var whitespaceBounds = Bounds.FromPositionAndSize(
-                        new Vector2(characterOffset.X, characterOffset.Y + yOffset),
-                        new Vector2(x - characterOffset.X, glyph.LineSpacing * effectiveScale)
-                    );
-                    // HACK: Why is this necessary?
-                    whitespaceBounds.TopLeft.Y = Math.Max(whitespaceBounds.TopLeft.Y, whitespaceBounds.BottomRight.Y - currentLineSpacing);
+                if (deadGlyph || isWhiteSpace)
+                    ProcessDeadGlyph(effectiveScale, x, isWhiteSpace, deadGlyph, glyph, yOffset);
 
-                    // FIXME: is the center X right?
-                    // ProcessHitTests(ref whitespaceBounds, whitespaceBounds.Center.X);
-                    // HACK: AppendCharacter will invoke ProcessMarkers anyway
-                    // ProcessMarkers(ref whitespaceBounds, currentCodepointSize, null, false, didWrapWord);
-
-                    // Ensure that trailing spaces are factored into total size
-                    if (isWhiteSpace)
-                        maxX = Math.Max(maxX, whitespaceBounds.BottomRight.X);
-                }
-
-                if (deadGlyph) {
-                    previousGlyphWasDead = true;
-                    currentCharacterIndex++;
-                    characterSkipCount--;
-                    if (characterLimit.HasValue)
-                        characterLimit--;
+                if (deadGlyph)
                     continue;
-                }
-
-                if (isWhiteSpace)
-                    previousGlyphWasDead = true;
-                else
-                    previousGlyphWasDead = false;
 
                 if (!ComputeSuppress(overrideSuppress))
                     characterOffset.X += (glyph.CharacterSpacing * effectiveScale);
@@ -1274,10 +1078,10 @@ namespace Squared.Render.Text {
                 }
 
                 AppendDrawCall(
-                    ref drawCall, 
-                    x, currentCodepointSize, 
-                    isWhiteSpace, glyphLineSpacing, 
-                    yOffset, xUnconstrained, ref testBounds, 
+                    ref drawCall,
+                    x, currentCodepointSize,
+                    isWhiteSpace, glyphLineSpacing,
+                    yOffset, xUnconstrained, ref testBounds,
                     lineBreak, didWrapWord, overrideSuppress
                 );
 
@@ -1313,6 +1117,239 @@ namespace Squared.Render.Text {
             }
 
             return segment;
+        }
+
+        private void AnalyzeWhitespace (char ch1, uint codepoint, out bool isWhiteSpace, out bool forcedWrap, out bool lineBreak, out bool deadGlyph, out bool isWordWrapPoint, out bool didWrapWord) {
+            isWhiteSpace = (char.IsWhiteSpace(ch1) && !replacementCodepoint.HasValue);
+            forcedWrap = false;
+            lineBreak = false;
+            deadGlyph = false;
+            didWrapWord = false;
+            if (splitAtWrapCharactersOnly)
+                isWordWrapPoint = (WordWrapCharacters.IndexOf(codepoint) >= 0);
+            else
+                isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1) ||
+                    replacementCodepoint.HasValue || (WordWrapCharacters.IndexOf(codepoint) >= 0);
+
+            if (codepoint > 255) {
+                // HACK: Attempt to word-wrap at "other" punctuation in non-western character sets, which will include things like commas
+                // This is less than ideal but .NET does not appear to expose the classification tables needed to do this correctly
+                var category = CharUnicodeInfo.GetUnicodeCategory(ch1);
+                if (category == UnicodeCategory.OtherPunctuation)
+                    isWordWrapPoint = true;
+            }
+
+            if (ch1 == '\n')
+                lineBreak = true;
+
+            if (lineBreak) {
+                if (lineLimit.HasValue) {
+                    lineLimit--;
+                    if (lineLimit.Value <= 0)
+                        suppress = true;
+                }
+                if (lineBreakLimit.HasValue) {
+                    lineBreakLimit--;
+                    if (lineBreakLimit.Value <= 0)
+                        suppress = true;
+                }
+                if (!suppress && includeTrailingWhitespace)
+                    newLinePending = true;
+            } else if (lineLimit.HasValue && lineLimit.Value <= 0) {
+                suppress = true;
+            }
+        }
+
+        private void DecodeCodepoint (ref AbstractString text, ref int i, int l, out char ch1, out int currentCodepointSize, out uint codepoint) {
+            char ch2 = i < (l - 1)
+                    ? text[i + 1]
+                    : '\0';
+            ch1 = text[i];
+            currentCodepointSize = 1;
+            if (Unicode.DecodeSurrogatePair(ch1, ch2, out codepoint)) {
+                currentCodepointSize = 2;
+                currentCharacterIndex++;
+                i++;
+            } else if (ch1 == '\r') {
+                if (ch2 == '\n') {
+                    currentCodepointSize = 2;
+                    ch1 = ch2;
+                    i++;
+                    currentCharacterIndex++;
+                }
+            }
+
+            codepoint = replacementCodepoint ?? codepoint;
+        }
+
+        private void BuildGlyphInformation<TGlyphSource> (
+            TGlyphSource font, Dictionary<char, KerningAdjustment> kerningAdjustments, float effectiveScale, float effectiveSpacing, 
+            char ch1, uint codepoint, out bool deadGlyph, out Glyph glyph, out KerningAdjustment kerningAdjustment, out float glyphLineSpacing, out float glyphBaseline
+        ) where TGlyphSource : IGlyphSource {
+            deadGlyph = !font.GetGlyph(codepoint, out glyph);
+
+            glyphLineSpacing = glyph.LineSpacing * effectiveScale;
+            glyphBaseline = glyph.Baseline * effectiveScale;
+            if (deadGlyph) {
+                if (currentLineSpacing > 0) {
+                    glyphLineSpacing = currentLineSpacing;
+                    glyphBaseline = currentBaseline;
+                } else {
+                    Glyph space;
+                    if (font.GetGlyph(' ', out space)) {
+                        glyphLineSpacing = space.LineSpacing * effectiveScale;
+                        glyphBaseline = space.Baseline * effectiveScale;
+                    }
+                }
+            }
+
+            // glyph.LeftSideBearing *= effectiveSpacing;
+            float leftSideDelta = 0;
+            if (effectiveSpacing >= 0)
+                glyph.LeftSideBearing *= effectiveSpacing;
+            else
+                leftSideDelta = Math.Abs(glyph.LeftSideBearing * effectiveSpacing);
+            glyph.RightSideBearing *= effectiveSpacing;
+            glyph.RightSideBearing -= leftSideDelta;
+
+            if (initialLineSpacing <= 0)
+                initialLineSpacing = glyphLineSpacing;
+            ProcessLineSpacingChange(buffer, glyphLineSpacing, glyphBaseline);
+
+            // FIXME: Don't key kerning adjustments off 'char'
+            if (kerningAdjustments != null) {
+                if (kerningAdjustments.TryGetValue(ch1, out kerningAdjustment)) {
+                    glyph.LeftSideBearing += kerningAdjustment.LeftSideBearing;
+                    glyph.Width += kerningAdjustment.Width;
+                    glyph.RightSideBearing += kerningAdjustment.RightSideBearing;
+                }
+            } else {
+                kerningAdjustment = default;
+            }
+
+            // MonoGame#1355 rears its ugly head: If a character with negative left-side bearing is at the start of a line,
+            //  we need to compensate for the bearing to prevent the character from extending outside of the layout bounds
+            if (_colIndex == 0) {
+                if (glyph.LeftSideBearing < 0)
+                    glyph.LeftSideBearing = 0;
+            }
+        }
+
+        private void ProcessDeadGlyph (float effectiveScale, float x, bool isWhiteSpace, bool deadGlyph, Glyph glyph, float yOffset) {
+            if (deadGlyph || isWhiteSpace) {
+                var whitespaceBounds = Bounds.FromPositionAndSize(
+                    new Vector2(characterOffset.X, characterOffset.Y + yOffset),
+                    new Vector2(x - characterOffset.X, glyph.LineSpacing * effectiveScale)
+                );
+                // HACK: Why is this necessary?
+                whitespaceBounds.TopLeft.Y = Math.Max(whitespaceBounds.TopLeft.Y, whitespaceBounds.BottomRight.Y - currentLineSpacing);
+
+                // FIXME: is the center X right?
+                // ProcessHitTests(ref whitespaceBounds, whitespaceBounds.Center.X);
+                // HACK: AppendCharacter will invoke ProcessMarkers anyway
+                // ProcessMarkers(ref whitespaceBounds, currentCodepointSize, null, false, didWrapWord);
+
+                // Ensure that trailing spaces are factored into total size
+                if (isWhiteSpace)
+                    maxX = Math.Max(maxX, whitespaceBounds.BottomRight.X);
+            }
+
+            if (deadGlyph) {
+                previousGlyphWasDead = true;
+                currentCharacterIndex++;
+                characterSkipCount--;
+                if (characterLimit.HasValue)
+                    characterLimit--;
+            }
+
+            if (isWhiteSpace)
+                previousGlyphWasDead = true;
+            else
+                previousGlyphWasDead = false;
+        }
+
+        private void PerformLineBreak (bool forcedWrap) {
+            // FIXME: We also want to expand markers to enclose the overhang
+            currentLineMaxX += currentXOverhang;
+            currentLineMaxXUnconstrained += currentXOverhang;
+
+            if (!forcedWrap) {
+                var spacingForThisLineBreak = currentLineSpacing + extraLineBreakSpacing;
+                if (!suppress) {
+                    characterOffset.X = xOffsetOfNewLine;
+                    // FIXME: didn't we already do this?
+                    characterOffset.Y += spacingForThisLineBreak;
+                    maxX = Math.Max(maxX, currentLineMaxX);
+                }
+                characterOffsetUnconstrained.X = xOffsetOfNewLine;
+                AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, spacingForThisLineBreak, leftPad: xOffsetOfNewLine);
+                AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, spacingForThisLineBreak, leftPad: xOffsetOfNewLine);
+                characterOffsetUnconstrained.Y += spacingForThisLineBreak;
+
+                maxXUnconstrained = Math.Max(maxXUnconstrained, currentLineMaxXUnconstrained);
+                currentLineMaxXUnconstrained = 0;
+                initialLineSpacing = currentLineSpacing = 0;
+                currentBaseline = 0;
+                baselineAdjustmentStart = bufferWritePosition;
+                suppressUntilNextLine = false;
+            }
+
+            ComputeLineBreakAtX();
+            initialLineXOffset = characterOffset.X;
+            if (!suppress) {
+                currentLineMaxX = 0;
+                currentLineWhitespaceMaxX = 0;
+                currentLineWrapPointLeft = 0;
+            }
+            _rowIndex += 1;
+            _colIndex = 0;
+        }
+
+        private void PerformForcedWrap (float x, ref bool lineBreak, ref bool didWrapWord, float glyphLineSpacing, float glyphBaseline) {
+            var currentWordSize = x - wordStartOffset.X;
+
+            if (
+                wordWrap && !wordWrapSuppressed &&
+                // FIXME: If boxes shrink the current line too far, we want to just keep wrapping until we have enough room
+                //  instead of giving up
+                (currentWordSize <= currentLineBreakAtX) &&
+                (wordStartColumn > 0)
+            ) {
+                if (lineLimit.HasValue)
+                    lineLimit--;
+                WrapWord(buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, glyphLineSpacing, glyphBaseline, currentWordSize);
+                wordWrapSuppressed = true;
+                lineBreak = true;
+                didWrapWord = true;
+
+                // FIXME: While this will abort when the line limit is reached, we need to erase the word we wrapped to the next line
+                if (lineLimit.HasValue && lineLimit.Value <= 0)
+                    suppress = true;
+            } else if (characterWrap) {
+                if (lineLimit.HasValue)
+                    lineLimit--;
+                characterOffset.X = xOffsetOfWrappedLine;
+                AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing, leftPad: xOffsetOfWrappedLine);
+                characterOffset.Y += currentLineSpacing;
+                initialLineSpacing = currentLineSpacing = glyphLineSpacing;
+                currentBaseline = glyphBaseline;
+                baselineAdjustmentStart = bufferWritePosition;
+
+                maxX = Math.Max(maxX, currentLineMaxX);
+                wordStartWritePosition = bufferWritePosition;
+                wordStartOffset = characterOffset;
+                wordStartColumn = _colIndex;
+                lineBreak = true;
+
+                if (lineLimit.HasValue && lineLimit.Value <= 0)
+                    suppress = true;
+            } else if (hideOverflow) {
+                // If wrapping is disabled but we've hit the line break boundary, we want to suppress glyphs from appearing
+                //  until the beginning of the next line (i.e. hard line break), but continue performing layout
+                suppressUntilNextLine = true;
+            } else {
+                // Just overflow. Hooray!
+            }
         }
 
         private void ComputeLineBreakAtX () {

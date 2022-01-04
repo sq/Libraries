@@ -15,34 +15,34 @@ namespace Squared.Game {
             return ((float)random.NextDouble() * (max - min)) + min;
         }
 
-        public static Vector2 Perpendicular (this Vector2 vector) {
+        public static Vector2 Perpendicular (this in Vector2 vector) {
             return new Vector2(-vector.Y, vector.X);
         }
 
-        public static Vector2 PerpendicularLeft (this Vector2 vector) {
+        public static Vector2 PerpendicularLeft (this in Vector2 vector) {
             return new Vector2(vector.Y, -vector.X);
         }
 
-        public static Vector2 Floor (this Vector2 vector) {
+        public static Vector2 Floor (this in Vector2 vector) {
             return new Vector2((float)Math.Floor(vector.X), (float)Math.Floor(vector.Y));
         }
 
-        public static Vector2 Ceiling (this Vector2 vector) {
+        public static Vector2 Ceiling (this in Vector2 vector) {
             return new Vector2((float)Math.Ceiling(vector.X), (float)Math.Ceiling(vector.Y));
         }
 
-        public static Vector2 Round (this Vector2 vector) {
+        public static Vector2 Round (this in Vector2 vector) {
             return new Vector2((float)Math.Round(vector.X, MidpointRounding.AwayFromZero), (float)Math.Round(vector.Y, MidpointRounding.AwayFromZero));
         }
 
-        public static Vector2 Round (this Vector2 vector, int decimals) {
+        public static Vector2 Round (this in Vector2 vector, int decimals) {
             return new Vector2(
                 (float)Math.Round(vector.X, decimals, MidpointRounding.AwayFromZero), 
                 (float)Math.Round(vector.Y, decimals, MidpointRounding.AwayFromZero)
             );
         }
 
-        public static Vector3 Round (this Vector3 vector) {
+        public static Vector3 Round (this in Vector3 vector) {
             return new Vector3(
                 (float)Math.Round(vector.X, MidpointRounding.AwayFromZero), 
                 (float)Math.Round(vector.Y, MidpointRounding.AwayFromZero), 
@@ -50,7 +50,7 @@ namespace Squared.Game {
             );
         }
 
-        public static Vector3 Round (this Vector3 vector, int decimals) {
+        public static Vector3 Round (this in Vector3 vector, int decimals) {
             return new Vector3(
                 (float)Math.Round(vector.X, decimals, MidpointRounding.AwayFromZero), 
                 (float)Math.Round(vector.Y, decimals, MidpointRounding.AwayFromZero), 
@@ -58,7 +58,7 @@ namespace Squared.Game {
             );
         }
 
-        public static Vector2 Rotate (this Vector2 vector, float radians) {
+        public static Vector2 Rotate (this in Vector2 vector, float radians) {
             var cos = (float)Math.Cos(radians);
             var sin = (float)Math.Sin(radians);
             return new Vector2(
@@ -102,19 +102,19 @@ namespace Squared.Game {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsFinite (this Vector2 v) {
+        public static bool IsFinite (this in Vector2 v) {
             return Arithmetic.IsFinite(v.X) && Arithmetic.IsFinite(v.Y);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsFinite (this Vector3 v) {
+        public static bool IsFinite (this in Vector3 v) {
             return Arithmetic.IsFinite(v.X) &&
                 Arithmetic.IsFinite(v.Y) &&
                 Arithmetic.IsFinite(v.Z);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool AssertFinite (this Vector4 v) {
+        public static bool AssertFinite (this in Vector4 v) {
             return Arithmetic.IsFinite(v.X) &&
                 Arithmetic.IsFinite(v.Y) &&
                 Arithmetic.IsFinite(v.Z) &&
@@ -134,7 +134,7 @@ namespace Squared.Game {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe bool FastEquals (this Vector2 lhs, ref Vector2 rhs) {
+        public static unsafe bool FastEquals (this in Vector2 lhs, in Vector2 rhs) {
             return (lhs.X == rhs.X) &&
                 (lhs.Y == rhs.Y);
             /*

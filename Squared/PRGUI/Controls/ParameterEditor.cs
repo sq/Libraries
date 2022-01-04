@@ -302,7 +302,7 @@ namespace Squared.PRGUI.Controls {
                     return CachedFractionD.Value;
 
                 // FIXME: Handle omitted minimum?
-                var sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract);
+                var sub = Arithmetic.OperatorCache<T>.Subtract;
                 var range = sub(_Maximum.Value, _Minimum.Value);
                 var result = Convert.ToDouble(sub(_Value, _Minimum.Value)) / Convert.ToDouble(range);
                 CachedFractionValue = _Value;
@@ -458,8 +458,8 @@ namespace Squared.PRGUI.Controls {
         private bool TrySetNewFractionalValue (double fraction) {
             if (!_Maximum.HasValue || !_Minimum.HasValue)
                 return false;
-            var sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract);
-            var add = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Add);
+            var sub = Arithmetic.OperatorCache<T>.Subtract;
+            var add = Arithmetic.OperatorCache<T>.Add;
             var range = sub(_Maximum.Value, _Minimum.Value);
             var offset = Convert.ToDouble(range) * fraction;
             var result = add(_Minimum.Value, (T)Convert.ChangeType(offset, typeof(T)));

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -142,6 +143,8 @@ namespace Squared.PRGUI {
 
         public Material TextMaterial, ShadedTextMaterial, SelectedTextMaterial;
 
+        // This method is huge and basically runs once so the JIT shouldn't waste time optimizing it
+        [MethodImpl(MethodImplOptions.NoOptimization)]
         public DefaultDecorations (DefaultMaterialSet materials, float defaultMargin = 6, float defaultMarginCollapsed = 4) {
             Materials = materials;
 

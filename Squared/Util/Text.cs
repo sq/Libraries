@@ -133,7 +133,7 @@ namespace Squared.Util.Text {
         public AbstractString String;
         public int StartOffset;
 
-        public CodepointEnumerable (AbstractString str, int startOffset = 0) {
+        public CodepointEnumerable (in AbstractString str, int startOffset = 0) {
             String = str;
             StartOffset = startOffset;
         }

@@ -1178,7 +1178,9 @@ namespace Squared.Render.Text {
             return result;
         }
 
-        public static bool GetGlyph (this IGlyphSource source, char ch, out Glyph result) {
+        public static bool GetGlyph<TSource> (this TSource source, char ch, out Glyph result)
+            where TSource : IGlyphSource
+        {
             return source.GetGlyph((uint)ch, out result);
         }
 

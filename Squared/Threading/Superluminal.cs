@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Squared.Util;
 
@@ -125,28 +126,36 @@ namespace Squared.Threading.Profiling {
             _BeginEventWide(scopeId, _data, (color << 8) | 0xFF);
         }
 
-        public static unsafe void BeginEventFormat<T1> (string scopeId, string dataFormat, T1 arg1, UInt32 color = 0xFFFFFFu) {
+        private static readonly ThreadLocal<StringBuilder> FormatBuilder = new ThreadLocal<StringBuilder>(() => new StringBuilder());
+
+        public static unsafe void BeginEventFormat<T1> (string scopeId, string dataFormat, in T1 arg1, UInt32 color = 0xFFFFFFu) {
             if (!Enabled)
                 return;
 
-            var data = string.Format(dataFormat, arg1);
-            BeginEvent(scopeId, data, color);
+            var builder = FormatBuilder.Value;
+            builder.Clear();
+            builder.AppendFormat(dataFormat, arg1);
+            BeginEvent(scopeId, builder.ToString(), color);
         }
 
-        public static unsafe void BeginEventFormat<T1, T2> (string scopeId, string dataFormat, T1 arg1, T2 arg2, UInt32 color = 0xFFFFFFu) {
+        public static unsafe void BeginEventFormat<T1, T2> (string scopeId, string dataFormat, in T1 arg1, in T2 arg2, UInt32 color = 0xFFFFFFu) {
             if (!Enabled)
                 return;
 
-            var data = string.Format(dataFormat, arg1, arg2);
-            BeginEvent(scopeId, data, color);
+            var builder = FormatBuilder.Value;
+            builder.Clear();
+            builder.AppendFormat(dataFormat, arg1, arg2);
+            BeginEvent(scopeId, builder.ToString(), color);
         }
 
-        public static unsafe void BeginEventFormat<T1, T2, T3> (string scopeId, string dataFormat, T1 arg1, T2 arg2, T3 arg3, UInt32 color = 0xFFFFFFu) {
+        public static unsafe void BeginEventFormat<T1, T2, T3> (string scopeId, string dataFormat, in T1 arg1, in T2 arg2, in T3 arg3, UInt32 color = 0xFFFFFFu) {
             if (!Enabled)
                 return;
 
-            var data = string.Format(dataFormat, arg1, arg2, arg3);
-            BeginEvent(scopeId, data, color);
+            var builder = FormatBuilder.Value;
+            builder.Clear();
+            builder.AppendFormat(dataFormat, arg1, arg2, arg3);
+            BeginEvent(scopeId, builder.ToString(), color);
         }
 
         public static unsafe void EndEvent () {
