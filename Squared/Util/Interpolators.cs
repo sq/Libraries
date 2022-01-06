@@ -495,6 +495,15 @@ namespace Squared.Util {
                 return Linear;
             }
         }
+
+        /// <summary>
+        /// Dummy method you can call to ensure that everything related to interpolating this type has
+        ///  been initialized
+        /// </summary>
+        public static void Initialize () {
+            var temp = Default;
+            var temp2 = BoundDefaultCache<Tween<T>>.Linear;
+        }
     }
 
     public static class InterpolatorExtensions {

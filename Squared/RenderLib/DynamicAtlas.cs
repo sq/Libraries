@@ -20,7 +20,7 @@ namespace Squared.Render {
         Texture2D Texture { get; }
     }
 
-    public unsafe delegate void MipGenerator<T> (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) where T : struct;
+    public unsafe delegate void MipGenerator<T> (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) where T : unmanaged;
 
     public static class MipGenerator {
         public sealed class WithGammaRamp {
@@ -181,7 +181,7 @@ namespace Squared.Render {
     }
 
     public sealed class DynamicAtlas<T> : IDisposable, IDynamicTexture
-        where T : struct 
+        where T : unmanaged
     {
         public readonly object Tag = null;
         public bool DebugColors = false;

@@ -432,36 +432,6 @@ namespace Squared.Util {
         }
     }
 
-    public struct DenseListPin<T, J> : IDisposable 
-        where T : struct
-    {
-        private bool IsBuffer;
-        public GCHandle Buffer;
-        private object Boxed;
-
-        public DenseListPin (in DenseList<J> list) {
-            if (list.HasList) {
-                IsBuffer = true;
-                Boxed = list._Items.GetBuffer();
-                Buffer = GCHandle.Alloc(Boxed);
-            } else {
-                IsBuffer = false;
-                Boxed = list;
-                Buffer = GCHandle.Alloc(Boxed);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe void* GetItems () {
-            return (void*)Buffer.AddrOfPinnedObject();
-        }
-
-        public void Dispose () {
-            if (IsBuffer)
-                Buffer.Free();
-        }
-    }
-
     public struct DenseQuery<T, TEnumerator, TResult> : 
         IEnumerable<TResult>, IEnumerator<TResult>, 
         IDenseQuerySource<DenseQuery<T, TEnumerator, TResult>>

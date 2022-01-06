@@ -720,14 +720,14 @@ namespace Squared.Render.Evil {
 
         public static void GetDataFast<T> (
             this Texture2D texture, T[] buffer
-        ) where T : struct {
+        ) where T : unmanaged {
             texture.GetData(buffer);
         }
 
         public static void GetDataFast<T> (
             this Texture2D texture, int level, Rectangle? rect, 
             T[] data, int startIndex, int elementCount
-        ) where T : struct {
+        ) where T : unmanaged {
             texture.GetData(level, rect, data, startIndex, elementCount);
         }
 
@@ -760,14 +760,14 @@ namespace Squared.Render.Evil {
 
         public static void GetDataFast<T> (
             this Texture2D texture, T[] data
-        ) where T : struct {
+        ) where T : unmanaged {
             texture.GetData(data);
         }
 
         public static void GetDataFast<T> (
             this Texture2D texture, int level, Rectangle? rect, 
             T[] data, int startIndex, int elementCount
-        ) where T : struct {
+        ) where T : unmanaged {
             texture.GetData(level, rect, data, startIndex, elementCount);
         }
 #endif

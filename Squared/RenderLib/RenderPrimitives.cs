@@ -14,7 +14,7 @@ using System.Runtime.CompilerServices;
 
 namespace Squared.Render.Internal {
     public struct VertexBuffer<T> : IDisposable
-        where T : struct {
+        where T : unmanaged {
 
         public readonly ArraySegment<T> Storage;
         public int Count;
@@ -46,7 +46,7 @@ namespace Squared.Render.Internal {
     }
 
     public struct VertexWriter<T>
-        where T : struct {
+        where T : unmanaged {
 
         public readonly ArraySegment<T> Storage;
         public int IndexOffset;
@@ -87,7 +87,7 @@ namespace Squared.Render.Internal {
         }
 
         public IndexWriter GetWriter<T>(int capacity, ref VertexWriter<T> vertexWriter) 
-            where T : struct {
+            where T : unmanaged {
             var offset = Count;
             var newCount = Count + capacity;
 
@@ -151,7 +151,7 @@ namespace Squared.Render.Internal {
 
 namespace Squared.Render {
     public sealed class PrimitiveBatch<T> : ListBatch<PrimitiveDrawCall<T>>
-        where T : struct, IVertexType {
+        where T : unmanaged, IVertexType {
 
         private readonly PrimitiveDrawCallComparer<T> _Comparer = new PrimitiveDrawCallComparer<T>();
         private Action<DeviceManager, object> _BatchSetup;
@@ -272,13 +272,13 @@ namespace Squared.Render {
 
     public static class PrimitiveDrawCall {
         public static PrimitiveDrawCall<T> New<T> (PrimitiveType primitiveType, T[] vertices)
-            where T : struct {
+            where T : unmanaged {
 
             return New<T>(primitiveType, vertices, 0, primitiveType.ComputePrimitiveCount(vertices.Length));
         }
 
         public static PrimitiveDrawCall<T> New<T> (PrimitiveType primitiveType, T[] vertices, int vertexOffset, int primitiveCount)
-            where T : struct {
+            where T : unmanaged {
 
             return new PrimitiveDrawCall<T>(
                 primitiveType,
@@ -289,7 +289,7 @@ namespace Squared.Render {
         }
 
         public static PrimitiveDrawCall<T> New<T> (PrimitiveType primitiveType, T[] vertices, int vertexOffset, int vertexCount, short[] indices, int indexOffset, int primitiveCount)
-            where T : struct {
+            where T : unmanaged {
 
             return new PrimitiveDrawCall<T>(
                 primitiveType,
@@ -304,7 +304,7 @@ namespace Squared.Render {
     }
 
     public sealed class PrimitiveDrawCallComparer<T> : IRefComparer<PrimitiveDrawCall<T>>, IComparer<PrimitiveDrawCall<T>>
-        where T : struct
+        where T : unmanaged
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref PrimitiveDrawCall<T> x, ref PrimitiveDrawCall<T> y) {
@@ -326,10 +326,10 @@ namespace Squared.Render {
     }
 
     public delegate void PrimitiveBeforeDraw<T> (DeviceManager dm, ref PrimitiveDrawCall<T> drawCall, int index)
-        where T : struct;
+        where T : unmanaged;
 
     public struct PrimitiveDrawCall<T> 
-        where T : struct {
+        where T : unmanaged {
 
         public readonly PrimitiveType PrimitiveType;
         public readonly short[] Indices;

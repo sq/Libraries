@@ -43,7 +43,7 @@ namespace Squared.Render.Internal {
     }
 
     public sealed class BufferGenerator<TVertex> : IBufferGenerator
-        where TVertex : struct
+        where TVertex : unmanaged
     {
         protected sealed class SoftwareBufferPool : BaseObjectPool<SoftwareBuffer> {
             public readonly BufferGenerator<TVertex> BufferGenerator;
@@ -660,7 +660,7 @@ namespace Squared.Render.Internal {
     }
 
     public sealed class XNABufferPair<TVertex> : IHardwareBuffer
-        where TVertex : struct 
+        where TVertex : unmanaged
     {
         internal volatile int _IsValid = 0, _IsActive = 0;
         private int _LastFrameValidated, _LastFrameInvalidated;

@@ -182,12 +182,6 @@ namespace Squared.Util {
             _Items?.Clear();
         }
 
-        public DenseListPin<J, T> Pin<J> ()
-            where J : struct
-        {
-            return new DenseListPin<J, T>(in this);
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         // TODO: Make this return the list to avoid extra field reads
         public void EnsureList (int? capacity = null) {
