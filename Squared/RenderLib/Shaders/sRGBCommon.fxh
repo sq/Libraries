@@ -1,3 +1,5 @@
+#pragma warning ( disable: 3571 )
+
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
 float3 SRGBToLinear (float3 srgb) {

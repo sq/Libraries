@@ -1,3 +1,5 @@
+#pragma warning ( disable: 3571 )
+
 #ifndef BACKGROUND_MIP_BIAS
 #define BACKGROUND_MIP_BIAS -0.5
 #endif
