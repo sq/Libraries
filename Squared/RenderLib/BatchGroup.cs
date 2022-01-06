@@ -293,9 +293,9 @@ namespace Squared.Render {
 
         public override string ToString () {
             if (Name != null)
-                return string.Format("{4} '{0}' #{1} {2} layer={5} material={3}", Name, Index, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
+                return string.Format("{4} '{0}' #{1} {2} layer={5} material={3}", Name, InstanceId, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
             else
-                return string.Format("{4} #{1} {2} layer={5} material={3}", Name, Index, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
+                return string.Format("{4} #{1} {2} layer={5} material={3}", Name, InstanceId, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
         }
     }
 

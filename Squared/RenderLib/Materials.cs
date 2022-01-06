@@ -13,6 +13,7 @@ using Squared.Render.Evil;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Collections;
+using System.Runtime.CompilerServices;
 
 namespace Squared.Render {
     public sealed class Material : IDisposable {
@@ -449,10 +450,21 @@ namespace Squared.Render {
             }
         }
 
+        private bool IsCleared;
         private DenseList<Entry> Entries;
+        
+        public int Count {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                return IsCleared ? 0 : Entries.Count;
+            }
+        }
 
         private int Find (string name) {
-            for (int i = 0, c = Entries.Count; i < c; i++)
+            if (IsCleared)
+                return -1;
+
+            for (int i = 0, c = Count; i < c; i++)
                 if (Entries[i].Name == name)
                     return i;
 
@@ -460,7 +472,9 @@ namespace Squared.Render {
         }
 
         public void Clear () {
-            Entries.Clear();
+            if (Entries.Count > 0)
+                IsCleared = true;
+            // Entries.Clear();
         }
 
         public void Clear (string name) {
@@ -471,7 +485,7 @@ namespace Squared.Render {
         }
 
         public void AddRange (in MaterialParameterValues rhs) {
-            for (int i = 0, c = rhs.Entries.Count; i < c; i++) {
+            for (int i = 0, c = rhs.Count; i < c; i++) {
                 ref readonly var entry = ref rhs.Entries.ReadItem(i);
                 Set(in entry);
             }
@@ -487,7 +501,16 @@ namespace Squared.Render {
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void AutoClear () {
+            if (!IsCleared)
+                return;
+            Entries.Clear();
+            IsCleared = false;
+        }
+
         private void Set (in Entry entry) {
+            AutoClear();
             var index = Find(entry.Name);
             if (index < 0)
                 Entries.Add(in entry);
@@ -608,7 +631,7 @@ namespace Squared.Render {
         }
 
         private void Apply (Effect effect, MaterialEffectParameters cache) {
-            for (int i = 0, c = Entries.Count; i < c; i++) {
+            for (int i = 0, c = Count; i < c; i++) {
                 ref var entry = ref Entries.Item(i);
                 var p = cache[entry.Name];
                 if (p == null)
@@ -673,12 +696,13 @@ namespace Squared.Render {
         }
 
         public bool Equals (in MaterialParameterValues pRhs) {
-            if (Entries.Count != pRhs.Entries.Count)
+            var count = Count;
+            if (count != pRhs.Count)
                 return false;
-            if (Entries.Count == 0)
+            if (count == 0)
                 return true;
 
-            for (int i = 0, c = Entries.Count; i < c; i++) {
+            for (int i = 0; i < count; i++) {
                 ref var lhs = ref Entries.Item(i);
                 var j = pRhs.Find(lhs.Name);
                 if (j < 0)
@@ -692,7 +716,7 @@ namespace Squared.Render {
         }
 
         public override int GetHashCode () {
-            return Entries.Count;
+            return Count;
         }
 
         public override bool Equals (object obj) {

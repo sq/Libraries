@@ -459,13 +459,6 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void Add_Fast (in T item) {
-            var count = _Count;
-            _Count = count + 1;
-            SetInlineItemAtIndex(count, in item);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void UnsafeAddWithKnownCapacity (ref DenseList<T> list, in T item) {
             var items = list._Items;
             if (items != null) {
@@ -480,10 +473,11 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (in T item) {
-            if ((_Items != null) || (_Count >= 4)) {
+            if ((_Count >= 4) || (_Items != null)) {
                 Add_Slow(in item);
             } else {
-                Add_Fast(in item);
+                SetInlineItemAtIndex(_Count, in item);
+                _Count += 1;
             }
         }
 

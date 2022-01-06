@@ -56,6 +56,11 @@ namespace Squared.Render {
         public struct PrepareState {
             public volatile PrepareStateFlags Flags;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Reset () {
+                Flags = default;
+            }
+
             public bool IsInitialized {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => (Flags & PrepareStateFlags.Initialized) == PrepareStateFlags.Initialized;
@@ -138,7 +143,7 @@ namespace Squared.Render {
         public Material Material;
         public MaterialParameterValues MaterialParameters;
 
-        internal long Index;
+        internal long InstanceId;
         internal bool ReleaseAfterDraw;
         internal bool Released;
         internal IBatchPool Pool;
@@ -161,6 +166,8 @@ namespace Squared.Render {
             }
 
             State = new PrepareState();
+
+            InstanceId = Interlocked.Increment(ref _BatchCount);
         }
 
         /// <summary>
@@ -195,12 +202,7 @@ namespace Squared.Render {
             MaterialParameters.Clear();
             TimesIssued = 0;
 
-            Index = Interlocked.Increment(ref _BatchCount);
-
-            Thread.MemoryBarrier();
-            State.IsCombined = false;
-            State.IsInitialized = true;
-            State.IsPrepared = State.IsPrepareQueued = State.IsIssued = false;
+            State.Reset();
             Thread.MemoryBarrier();
 
 #if DEBUG
@@ -378,7 +380,9 @@ namespace Squared.Render {
         }
 
         public override int GetHashCode() {
-            return (int)Index;
+            unchecked {
+                return (int)InstanceId;
+            }
         }
 
         public static long LifetimeCount {
@@ -416,9 +420,9 @@ namespace Squared.Render {
 
         public override string ToString () {
             if (Name != null)
-                return string.Format("{0} '{5}' #{1} {2} layer={4} material={3}", GetType().Name, Index, StateString, Material, Layer, Name);
+                return string.Format("{0} '{5}' #{1} {2} layer={4} material={3}", GetType().Name, InstanceId, StateString, Material, Layer, Name);
             else
-                return string.Format("{0} #{1} {2} layer={4} material={3}", GetType().Name, Index, StateString, Material, Layer);
+                return string.Format("{0} #{1} {2} layer={4} material={3}", GetType().Name, InstanceId, StateString, Material, Layer);
         }
 
         internal bool IsPrepareQueued => State.IsPrepareQueued;
