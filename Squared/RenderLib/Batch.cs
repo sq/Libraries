@@ -58,7 +58,7 @@ namespace Squared.Render {
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Reset () {
-                Flags = default;
+                Flags = PrepareStateFlags.Initialized;
             }
 
             public bool IsInitialized {
