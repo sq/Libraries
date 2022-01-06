@@ -251,7 +251,7 @@ namespace Squared.Render {
         }
 
         private UniformBinding<T> GetUniformBindingSlow<T> (Material material, TypedUniform<T> uniform)
-            where T: struct
+            where T: unmanaged
         {
             var effect = material.Effect;
             if (effect == null)
@@ -282,7 +282,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal UniformBinding<T> GetUniformBinding<T> (Material material, TypedUniform<T> uniform)
-            where T: struct
+            where T: unmanaged
         {
             if (IsDisposed)
                 throw new ObjectDisposedException("MaterialSetBase");

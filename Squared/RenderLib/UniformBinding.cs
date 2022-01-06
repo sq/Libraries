@@ -26,47 +26,15 @@ namespace Squared.Render {
 
     public static class UniformBindingExtensions {
         public static UniformBinding<T> Cast<T> (this IUniformBinding iub)
-            where T : struct
+            where T : unmanaged
         {
             return (UniformBinding<T>)iub;
         }
     }
 
-#region Direct3D
-#if !SDL2 && !MONOGAME && !FNA
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    unsafe delegate void* DGetParameterDesc (
-        void* _this, void* hParameter, out D3DXPARAMETER_DESC pDesc
-    );
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    unsafe delegate void* DGetParameter (
-        void* _this, void* hEnclosingParameter, uint index
-    );
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    unsafe delegate void* DGetParameterByName (
-        void* _this, void* hEnclosingParameter, 
-        [MarshalAs(UnmanagedType.LPStr), In]
-        string name
-    );
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    unsafe delegate int DSetRawValue (
-        void* _this, void* hParameter, 
-        [In] void* pData, 
-        uint byteOffset, uint countBytes
-    );
-#endif
-#endregion
-
     public unsafe partial class UniformBinding<T> : IUniformBinding 
-        where T : struct
+        where T : unmanaged
     {
-        public class ValueContainer {
-            public T Current;
-        }
-
         public static void ValidateFieldType (string name, Type type) {
             if (type == typeof(Matrix))
                 return;
@@ -77,114 +45,6 @@ namespace Squared.Render {
             throw new InvalidUniformMemberException(name, type);
         }
 
-        #region Direct3D
-#if !SDL2 && !MONOGAME && !FNA
-        private static class KnownMethodSlots {
-            public static uint 
-                GetParameterDesc = 0, GetParameter = 0, 
-                GetParameterByName = 0, SetRawValue = 0;
-
-            static KnownMethodSlots () {
-                var iface = typeof(ID3DXEffect);
-                var firstSlot = Marshal.GetStartComSlot(iface);
-                var lastSlot = Marshal.GetEndComSlot(iface);
-
-                for (var i = firstSlot; i <= lastSlot; i++) {
-                    ComMemberType mt = ComMemberType.Method;
-                    var mi = Marshal.GetMethodInfoForComSlot(iface, i, ref mt);
-                    var targetField = typeof(KnownMethodSlots).GetField(mi.Name);
-                    if (targetField == null)
-                        continue;
-                    targetField.SetValue(null, (uint)i);
-                }
-            }
-        }
-
-        private struct NativeBinding {
-            public bool         IsValid;
-            public Fixup[]      Fixups;
-            public uint         UploadSize;
-            public DSetRawValue pSetRawValue;
-            public void*        pUnboxedEffect;
-            public void*        hParameter;
-        }
-
-        private NativeBinding CurrentNativeBinding;
-
-        private void CreateNativeBinding (out NativeBinding result) {
-            var pUnboxedEffect = Effect.GetUnboxedID3DXEffect();
-            result = default(NativeBinding);
-
-            var pGetParameterByName = COMUtils.GetMethodFromVTable<DGetParameterByName>(
-                pUnboxedEffect, KnownMethodSlots.GetParameterByName
-            );
-
-            var hParameter = pGetParameterByName(pUnboxedEffect, null, Name);
-            if (hParameter == null)
-                throw new UniformBindingException("Could not find d3dx parameter for uniform " + Name);
-
-            var layout = new Layout(Type, pUnboxedEffect, hParameter);
-
-            result = new NativeBinding {
-                pUnboxedEffect = pUnboxedEffect,
-                hParameter = hParameter,
-                Fixups = layout.Fixups,
-                UploadSize = layout.UploadSize
-            };
-
-            result.pSetRawValue = COMUtils.GetMethodFromVTable<DSetRawValue>(result.pUnboxedEffect, KnownMethodSlots.SetRawValue);
-
-            result.IsValid = true;
-        }
-
-        private void GetCurrentNativeBinding (out NativeBinding nativeBinding) {
-            lock (Lock) {
-                if (!CurrentNativeBinding.IsValid) {
-                    IsDirty = true;
-                    CreateNativeBinding(out CurrentNativeBinding);
-                }
-
-                nativeBinding = CurrentNativeBinding;
-            }
-        }
-
-        private void NativeFlush () {
-            NativeBinding nb;
-            GetCurrentNativeBinding(out nb);
-
-            if (!IsDirty && nb.IsValid)
-                return;
-
-            ScratchBuffer.Write<T>(0, _ValueContainer.Current);
-
-            var pScratch = ScratchBuffer.DangerousGetHandle();
-            var pUpload  = UploadBuffer.DangerousGetHandle();
-
-            // Fix-up matrices because the in-memory order is transposed :|
-            foreach (var fixup in nb.Fixups) {
-                var pSource = (pScratch + fixup.FromOffset);
-                var pDest = (pUpload + fixup.ToOffset);
-
-                if (fixup.TransposeMatrix)
-                    InPlaceTranspose((float*)pSource);
-
-                Buffer.MemoryCopy(
-                    pSource.ToPointer(),
-                    pDest.ToPointer(),
-                    fixup.DataSize, fixup.DataSize
-                );
-            }
-
-            // HACK: Bypass the COM wrapper and invoke directly from the vtable.
-            var hr = nb.pSetRawValue(nb.pUnboxedEffect, nb.hParameter, pUpload.ToPointer(), 0, nb.UploadSize);
-            Marshal.ThrowExceptionForHR(hr);
-            // pEffect.SetRawValue(hParameter, pUpload.ToPointer(), 0, UploadSize);
-        }
-#endif
-#endregion
-
-#region FNA
-#if FNA
         private Layout NativeLayout;
 
         unsafe void NativeFlush () {
@@ -195,48 +55,26 @@ namespace Squared.Render {
             if (!NativeLayout.IsValid)
                 return;
 
-            ScratchBuffer.Write<T>(0, _ValueContainer.Current);
+            fixed (T* pScratchT = &_Value) {
+                var pScratch = (byte*)pScratchT;
+                foreach (var m in NativeLayout.Members) {
+                    var srcPtr = (pScratch + m.ManagedOffset);
+                    var destPtr = m.NativePointer.ToPointer();
 
-            var pScratch = ScratchBuffer.DangerousGetHandle();
-            foreach (var m in NativeLayout.Members) {
-                var srcPtr = (pScratch + m.ManagedOffset).ToPointer();
-                var destPtr = m.NativePointer.ToPointer();
+                    Buffer.MemoryCopy(srcPtr, destPtr, m.NativeSize, m.ManagedSize);
 
-                Buffer.MemoryCopy(srcPtr, destPtr, m.NativeSize, m.ManagedSize);
-
-                // Convert from HLSL row/column order to GLSL (funny that D3DX9 uses this order too...)
-                if (m.FieldType == typeof(Matrix))
-                    InPlaceTranspose((float*)destPtr);
-            }
-        }
-#endif
-#endregion
-
-        private class Storage : SafeBuffer {
-            public Storage () 
-                : base(true) 
-            {
-                // HACK: If this isn't big enough, you screwed up
-                const int size = 1024 * 4;
-                Initialize(size);
-                SetHandle(Marshal.AllocHGlobal(size));
-            }
-
-            protected override bool ReleaseHandle () {
-                Marshal.FreeHGlobal(DangerousGetHandle());
-                return true;
+                    // Convert from HLSL row/column order to GLSL (funny that D3DX9 uses this order too...)
+                    if (m.FieldType == typeof(Matrix))
+                        InPlaceTranspose((float*)destPtr);
+                }
             }
         }
 
         private readonly object         Lock = new object();
 
-        private readonly ValueContainer _ValueContainer = new ValueContainer();
-        // The latest value is written into this buffer
-        private readonly SafeBuffer     ScratchBuffer;
-        // And then transferred and mutated in this buffer before being sent to D3D
-        private readonly SafeBuffer     UploadBuffer;
+        private T                       _Value;
 
-        private delegate void CompatibilitySetter (ref T value);
+        private delegate void CompatibilitySetter (in T value);
         private CompatibilitySetter CurrentCompatibilityBinding;
 
         public  bool   IsDirty    { get; private set; }
@@ -254,19 +92,15 @@ namespace Squared.Render {
             Effect = effect;
             Name = uniformName;
 
-            ScratchBuffer = new Storage();
-            UploadBuffer = new Storage();
             IsDirty = true;
 
             UniformBinding.Register(effect, this);
 
-#if FNA
             var parameter = effect.Parameters[uniformName];
             if (parameter == null)
                 NativeLayout = default(Layout);
             else
                 NativeLayout = new Layout(Type, parameter);
-#endif
         }
 
         public static UniformBinding<T> TryCreate (Effect effect, string uniformName) {
@@ -278,14 +112,11 @@ namespace Squared.Render {
             return new UniformBinding<T>(effect, uniformName);
         }
 
-        /// <summary>
-        /// If you retain this you are a bad person and I'm ashamed of you! Don't do that!!!
-        /// </summary>
-        public ValueContainer Value {
+        public ref T Value {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 IsDirty = true;
-                return _ValueContainer;
+                return ref _Value;
             }
         }
 
@@ -369,7 +200,7 @@ namespace Squared.Render {
         private void CompatibilityFlush () {
             CompatibilitySetter setter;
             GetCurrentCompatibilityBinding(out setter);
-            setter(ref _ValueContainer.Current);
+            setter(in _Value);
         }
 
         public void Flush () {
@@ -394,9 +225,6 @@ namespace Squared.Render {
         }
 
         private void ReleaseBindings () {
-#if !SDL2 && !MONOGAME && !FNA
-            CurrentNativeBinding = default(NativeBinding);
-#endif
             // TODO: Should we invalidate the compatibility binding here? I don't think that needs to happen
         }
 
@@ -405,8 +233,6 @@ namespace Squared.Render {
                 return;
 
             IsDisposed = true;
-            ScratchBuffer.Dispose();
-            UploadBuffer.Dispose();
 
             lock (Lock)
                 ReleaseBindings();
@@ -417,21 +243,12 @@ namespace Squared.Render {
         // Making a dictionary larger increases performance
         private const int BindingDictionaryCapacity = 4096;
 
-        // Set this to false to force a slower compatibility mode that works with FNA and MonoGame
-        public static bool ForceCompatibilityMode =
-#if SDL2 || FNA
-            false;
-#elif MONOGAME
-            true;
-#else
-            false;
-#endif
-
-        public static bool IgnoreMissingUniforms =
 #if FNA
-            true;
+        public static bool ForceCompatibilityMode = false;
+        public static bool IgnoreMissingUniforms = true;
 #else
-            false;
+        public static bool ForceCompatibilityMode = true;
+        public static bool IgnoreMissingUniforms = false;
 #endif
 
         private static readonly Dictionary<Effect, List<IUniformBinding>> BindingsByEffect =
@@ -593,7 +410,7 @@ namespace Squared.Render {
     }
 
     public sealed class TypedUniform<T> : IDisposable, ITypedUniform
-        where T: struct 
+        where T: unmanaged
     {
         internal readonly UniformBindingKey KeyTemplate;
         public readonly MaterialSetBase MaterialSet;
@@ -624,7 +441,7 @@ namespace Squared.Render {
             if (ub == null)
                 return false;
 
-            ub.Value.Current = value;
+            ub.Value = value;
             return true;
         }
 
