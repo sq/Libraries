@@ -30,81 +30,106 @@ namespace Squared.Util {
         private static HermiteFn _Hermite = null;
 
         static Interpolators () {
-            var m_lerp = (
-                typeof(T).GetMethod(
-                    "Lerp", BindingFlags.Static | BindingFlags.Public, null, 
-                    new[] { typeof(T), typeof(T), typeof(float) }, null
-                )?.CreateDelegate(typeof(LinearFn))) as LinearFn;
-            CompileFallbackExpressions(m_lerp);
-            CompileNativeExpressions(m_lerp);
+            FindPrecompiledExpressions(typeof(T));
+            FindPrecompiledExpressions(typeof(DefaultInterpolators));
+            CompileNativeExpressions();
+            CompileFallbackExpressions();
         }
 
-        private static void CompileFallbackExpressions (LinearFn m_lerp) {
-            var m_sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract, optional: m_lerp != null);
-            var m_add = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Add, optional: m_lerp != null);
-            var m_mul_float = Arithmetic.GetOperator<T, float>(Arithmetic.Operators.Multiply, optional: m_lerp != null);
+        private static bool FindPrecompiledExpression<TDelegate> (out TDelegate result, Type type, string name, Type[] signature)
+            where TDelegate : Delegate {
+            var method = type.GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static, null, signature, null);
+            if (method != null) {
+                result = (TDelegate)Delegate.CreateDelegate(typeof(TDelegate), method, false);
+                if (result == null)
+                    System.Diagnostics.Debug.WriteLine($"Failed to bind method '{type.FullName}.{method.Name}' as a delegate of type {typeof(TDelegate).FullName}");
+                return result != null;
+            } else {
+                result = null;
+                return false;
+            }
+        }
 
-            if (m_lerp != null)
-                _Linear = m_lerp;
-            else
+        private static void FindPrecompiledExpressions (Type type) {
+            var basicSignature = new[] { typeof(T), typeof(T), typeof(float) };
+            if (_Linear == null) {
+                if (!FindPrecompiledExpression(out _Linear, type, "Lerp", basicSignature))
+                    FindPrecompiledExpression(out _Linear, type, "Linear", basicSignature);
+            }
+            if (_Cosine == null) {
+                FindPrecompiledExpression(out _Cosine, type, "Cosine", basicSignature);
+            }
+        }
+
+        private static void CompileFallbackExpressions () {
+            var m_sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract, optional: _Linear != null);
+            var m_add = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Add, optional: _Linear != null);
+            var m_mul_float = Arithmetic.GetOperator<T, float>(Arithmetic.Operators.Multiply, optional: _Linear != null);
+
+            if (_Linear == null)
                 _Linear = (a, b, x) => {
                     return m_add(a, m_mul_float(m_sub(b, a), x));
                 };
 
-            if (m_lerp != null)
-                _Cosine = (a, b, x) => {
-                    var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
-                    return m_lerp(a, b, temp);
+            if (_Cosine == null) {
+                if (_Linear != null)
+                    _Cosine = (a, b, x) => {
+                        var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
+                        return _Linear(a, b, temp);
+                    };
+                else
+                    _Cosine = (a, b, x) => {
+                        var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
+                        return m_add(a, m_mul_float(m_sub(b, a), temp));
+                    };
+            }
+
+            if (_CubicP == null)
+                _CubicP = (a, b, c, d) => {
+                    return m_sub(m_sub(d, c), m_sub(a, b));
                 };
-            else
-                _Cosine = (a, b, x) => {
-                    var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
-                    return m_add(a, m_mul_float(m_sub(b, a), temp));
-                };
 
-            _CubicP = (a, b, c, d) => {
-                return m_sub(m_sub(d, c), m_sub(a, b));
-            };
-
-            _CubicR = (a, b, c, d, p, x, x2, x3) => {
-                return m_add(
-                    m_add(
-                        m_mul_float(p, x3),
-                        m_mul_float(
-                            m_sub(
-                                m_sub(a, b),
-                                p
-                            ),
-                            x2
-                        )
-                    ),
-                    m_add(
-                        m_mul_float(
-                            m_sub(c, a),
-                            x
-                        ),
-                        b
-                    )
-                );
-            };
-
-            _Hermite = (a, u, d, v, t, t2, tSquared, s, s2, sSquared) => {
-                return m_sub(
-                    m_add(
+            if (_CubicR == null)
+                _CubicR = (a, b, c, d, p, x, x2, x3) => {
+                    return m_add(
                         m_add(
-                            m_mul_float(a, sSquared * (1 + t2)),
-                            m_mul_float(d, tSquared * (1 + s2))
+                            m_mul_float(p, x3),
+                            m_mul_float(
+                                m_sub(
+                                    m_sub(a, b),
+                                    p
+                                ),
+                                x2
+                            )
                         ),
-                        m_mul_float(u, sSquared * t)
-                    ),
-                    m_mul_float(v, s * tSquared)
-                );
-            };
+                        m_add(
+                            m_mul_float(
+                                m_sub(c, a),
+                                x
+                            ),
+                            b
+                        )
+                    );
+                };
+
+            if (_Hermite == null)
+                _Hermite = (a, u, d, v, t, t2, tSquared, s, s2, sSquared) => {
+                    return m_sub(
+                        m_add(
+                            m_add(
+                                m_mul_float(a, sSquared * (1 + t2)),
+                                m_mul_float(d, tSquared * (1 + s2))
+                            ),
+                            m_mul_float(u, sSquared * t)
+                        ),
+                        m_mul_float(v, s * tSquared)
+                    );
+                };
         }
 
-        private static void CompileNativeExpressions (LinearFn m_lerp) {
+        private static void CompileNativeExpressions () {
 #if !DYNAMICMETHOD
-            if (m_lerp == null)
+            if (_Linear == null)
                 Arithmetic.CompileExpression(
                     (a, b, x) =>
                         a + ((b - a) * x),
@@ -112,24 +137,26 @@ namespace Squared.Util {
                 );
 
             // FIXME: This is the best we can do
-            if (m_lerp == null)
+            if (_Cosine == null)
                 Arithmetic.CompileExpression(
                     (a, b, x) =>
                         a + ((b - a) * ((1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f)),
                     out _Cosine
                 );
 
-            Arithmetic.CompileExpression(
-                (a, b, c, d) =>
-                    (d - c) - (a - b),
-                out _CubicP
-            );
+            if (_CubicP == null)
+                Arithmetic.CompileExpression(
+                    (a, b, c, d) =>
+                        (d - c) - (a - b),
+                    out _CubicP
+                );
 
-            Arithmetic.CompileExpression(
-                (a, b, c, d, p, x, x2, x3) =>
-                    (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b,
-                out _CubicR
-            );
+            if (_CubicR == null)
+                Arithmetic.CompileExpression(
+                    (a, b, c, d, p, x, x2, x3) =>
+                        (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b,
+                    out _CubicR
+                );
 #endif
         }
 
@@ -512,5 +539,19 @@ namespace Squared.Util {
         {
             return Interpolators<T>.Interpolate(interpolator, a, b, progress);
         }
+    }
+
+    internal static class DefaultInterpolators {
+        public static float Linear (float a, float b, float t) =>
+            a + ((b - a) * t);
+
+        public static float Cosine (float a, float b, float t) =>
+            a + ((b - a) * ((1.0f - (float)Math.Cos(t * Math.PI)) * 0.5f));
+
+        public static double Linear (double a, double b, float t) =>
+            a + ((b - a) * t);
+
+        public static double Cosine (double a, double b, float t) =>
+            a + ((b - a) * ((1.0f - (float)Math.Cos(t * Math.PI)) * 0.5f));
     }
 }
