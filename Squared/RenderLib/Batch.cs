@@ -482,6 +482,10 @@ namespace Squared.Render {
             _ListPool.LargePoolCapacity = largePoolCapacity.GetValueOrDefault(_ListPool.LargePoolCapacity);
         }
 
+        public static void ConfigureClearBehavior (bool enableFastClear) {
+            _ListPool.FastClearEnabled = enableFastClear;
+        }
+
         public int Count {
             get {
                 return _DrawCalls.Count;

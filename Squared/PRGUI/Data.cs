@@ -390,7 +390,7 @@ namespace Squared.PRGUI.Layout {
             if (BoxesPin.IsAllocated)
                 BoxesPin.Free();
             Layout.Clear();
-            Boxes.Clear();
+            Boxes.UnsafeFastClear();
             _Count = 0;
         }
 

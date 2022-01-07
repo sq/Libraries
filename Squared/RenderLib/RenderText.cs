@@ -322,7 +322,7 @@ namespace Squared.Render.Text {
             Markers.Sort(LayoutMarker.Comparer.Instance);
             for (int i = 0; i < Markers.Count; i++) {
                 var m = Markers[i];
-                m.Bounds.Clear();
+                m.Bounds.UnsafeFastClear();
                 Markers[i] = m;
             }
 

@@ -337,8 +337,11 @@ namespace Squared.Threading {
         }
 
         private void WakeAllThreads () {
-            foreach (var thread in Threads)
+            for (int i = 0, l = Threads.Length; i < l; i++) {
+                var thread = Threads[i];
+                // The thread(s) may be null if we were disposed
                 thread?.Wake();
+            }
         }
 
         public void Dispose () {

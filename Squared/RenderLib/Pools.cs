@@ -119,6 +119,7 @@ namespace Squared.Render {
         public readonly int InitialItemSize;
         public          int SmallPoolMaxItemSize;
         public          int LargePoolMaxItemSize;
+        public         bool FastClearEnabled = false;
 
         private ThreadGroup _ThreadGroup;
         private WorkQueue<ListClearWorkItem> _ClearQueue;
@@ -221,9 +222,13 @@ namespace Squared.Render {
         }
 
         private void ClearAndReturn (UnorderedList<T> list, UnorderedList<UnorderedList<T>> pool, int limit, WorkQueueNotifyMode notifyMode = WorkQueueNotifyMode.Stochastically) {
-            if ((list.Count > DeferredClearSizeThreshold) && (_ClearQueue != null)) {
+            if (
+                !FastClearEnabled &&
+                (list.Count > DeferredClearSizeThreshold) && 
+                (_ClearQueue != null)
+            ) {
                 _ClearQueue.Enqueue(new ListClearWorkItem {
-                    List = list
+                    List = list,
                 }, notifyChanged: notifyMode);
                 return;
             }
@@ -234,7 +239,10 @@ namespace Squared.Render {
             if (pool.Count >= limit)
                 return;
 
-            list.Clear();
+            if (FastClearEnabled)
+                list.UnsafeFastClear();
+            else
+                list.Clear();
 
             lock (pool) {
                 if (pool.Count >= limit)

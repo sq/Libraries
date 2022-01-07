@@ -176,6 +176,11 @@ namespace Squared.Util {
             }
         }
 
+        public void UnsafeFastClear () {
+            _Count = 0;
+            _Items?.UnsafeFastClear();
+        }
+
         public void Clear () {
             Item1 = Item2 = Item3 = Item4 = default;
             _Count = 0;

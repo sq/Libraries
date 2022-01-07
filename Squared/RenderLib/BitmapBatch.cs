@@ -26,6 +26,9 @@ namespace Squared.Render {
             UnorderedList<BitmapDrawCall>.FirstGrowTarget = 512;
 
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
+            // We can safely enable fast clear because BitmapDrawCall does not contain any object references,
+            //  so leaving old garbage data around will not cause any problems
+            ConfigureClearBehavior(true);
         }
 
         sealed class BitmapBatchCombiner : IBatchCombiner {

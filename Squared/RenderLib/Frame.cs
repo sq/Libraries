@@ -88,8 +88,9 @@ namespace Squared.Render {
         }
 
         public void Add (Batch batch) {
-            if (State != (int)States.Initialized)
-                throw new InvalidOperationException();
+            var state = State;
+            if (state != (int)States.Initialized)
+                throw new InvalidOperationException($"Frame state should have been initialized but was {(States)state}");
 
             if (batch == null)
                 throw new ArgumentNullException("batch");

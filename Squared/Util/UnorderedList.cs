@@ -558,6 +558,14 @@ namespace Squared.Util {
             _Count = 0;
         }
 
+        /// <summary>
+        /// Sets the count to 0 without clearing the contents of the internal buffer.
+        /// Don't use this unless you know what you're doing! 
+        /// </summary>
+        public void UnsafeFastClear () {
+            _Count = 0;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T[] GetBufferArray () {
             if (_BufferOffset != 0)
