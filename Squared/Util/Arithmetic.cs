@@ -502,7 +502,12 @@ namespace Squared.Util {
             static T[] Values;
 
             static LerpSource () {
-                Source = (i) => (i >= 1) ? Values[1] : Values[0];
+                Source = (i) => {
+                    if (i >= 1)
+                        return ref Values[1];
+                    else
+                        return ref Values[0];
+                };
                 Values = new T[2];
             }
 

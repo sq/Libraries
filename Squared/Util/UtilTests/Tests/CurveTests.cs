@@ -207,8 +207,12 @@ namespace Squared.Util {
             var floats = new float[] { 0.0f, 1.0f };
             var doubles = new double[] { 0.0, 1.0 };
 
-            InterpolatorSource<float> floatWindow = (i) => floats[i];
-            InterpolatorSource<double> doubleWindow = (i) => doubles[i];
+            InterpolatorSource<float> floatWindow = (i) => {
+                return ref floats[i];
+            };
+            InterpolatorSource<double> doubleWindow = (i) => {
+                return ref doubles[i];
+            };
 
             Assert.AreEqual(
                 0.5f,

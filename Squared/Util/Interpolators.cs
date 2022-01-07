@@ -5,9 +5,9 @@ using System.Reflection;
 using System.Text;
 
 namespace Squared.Util {
-    public delegate T InterpolatorSource<out T> (int index) where T : struct;
+    public delegate ref readonly T InterpolatorSource<T> (int index) where T : struct;
     public delegate T Interpolator<T> (InterpolatorSource<T> data, int dataOffset, float positionInWindow) where T : struct;
-    public delegate T BoundInterpolatorSource<out T, U> (in U obj, int index) where T : struct;
+    public delegate ref readonly T BoundInterpolatorSource<T, U> (in U obj, int index) where T : struct;
     public delegate T BoundInterpolator<T, U> (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) where T : struct;
 
     public static class Interpolators<T>
@@ -84,12 +84,14 @@ namespace Squared.Util {
                     };
             }
 
-            if (_CubicP == null)
+            if ((_CubicP == null) && (m_sub != null))
                 _CubicP = (a, b, c, d) => {
                     return m_sub(m_sub(d, c), m_sub(a, b));
                 };
 
-            if (_CubicR == null)
+            if ((_CubicR == null) && (m_add != null) &&
+                (m_mul_float != null) && (m_sub != null)
+            )
                 _CubicR = (a, b, c, d, p, x, x2, x3) => {
                     return m_add(
                         m_add(
@@ -112,7 +114,8 @@ namespace Squared.Util {
                     );
                 };
 
-            if (_Hermite == null)
+            if ((_Hermite == null) && (m_add != null) &&
+                (m_sub != null) && (m_mul_float != null))
                 _Hermite = (a, u, d, v, t, t2, tSquared, s, s2, sSquared) => {
                     return m_sub(
                         m_add(
@@ -412,11 +415,11 @@ namespace Squared.Util {
         private static int _NumTemporaryValues = 0;
         private static InterpolatorSource<T> _TemporarySource;
 
-        private static T TemporarySource (int index) {
-            return _TemporaryValues[Arithmetic.Wrap(index, 0, _NumTemporaryValues - 1)];
+        private static ref readonly T TemporarySource (int index) {
+            return ref _TemporaryValues[Arithmetic.Wrap(index, 0, _NumTemporaryValues - 1)];
         }
 
-        public static T Interpolate (Interpolator<T> interpolator, T a, T b, float progress) {
+        public static T Interpolate (Interpolator<T> interpolator, in T a, in T b, float progress) {
             if ((_TemporaryValues == null) || (_TemporaryValues.Length < 2))
                 _TemporaryValues = new T[2];
             if (_TemporarySource == null)
@@ -534,7 +537,7 @@ namespace Squared.Util {
     }
 
     public static class InterpolatorExtensions {
-        public static T Interpolate<T> (this Interpolator<T> interpolator, T a, T b, float progress) 
+        public static T Interpolate<T> (this Interpolator<T> interpolator, in T a, in T b, float progress) 
             where T : struct
         {
             return Interpolators<T>.Interpolate(interpolator, a, b, progress);

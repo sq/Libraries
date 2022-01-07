@@ -915,11 +915,11 @@ namespace Squared.Threading {
         /// Returns the future's result if it contains one. 
         /// If it failed, a FutureException will be thrown, with the original exception as its InnerException.
         /// </summary>
-        public T Result {
+        public ref readonly T Result {
             get {
                 int state = _State;
                 if (state == State_CompletedWithValue) {
-                    return _Result;
+                    return ref _Result;
                 } else if (state == State_CompletedWithError) {
                     OnErrorCheck();
                     throw new FutureException("Future's result was an error", InternalError);
@@ -934,11 +934,11 @@ namespace Squared.Threading {
         /// Returns the future's result if it contains one.
         /// If it failed, the exception responsible will be rethrown with its stack preserved (if possible).
         /// </summary>
-        public T Result2 {
+        public ref readonly T Result2 {
             get {
                 int state = _State;
                 if (state == State_CompletedWithValue) {
-                    return _Result;
+                    return ref _Result;
                 } else if (state == State_CompletedWithError) {
                     OnErrorCheck();
                     if (_Error is ExceptionDispatchInfo edi) {
@@ -1104,7 +1104,7 @@ namespace Squared.Threading {
         /// Sets the result of this future along with information on the responsible exception (if any).
         /// This information will be used to rethrow with stack preserved, as necessary.
         /// </summary>
-        public void SetResult2 (T result, ExceptionDispatchInfo errorInfo) {
+        public void SetResult2 (in T result, ExceptionDispatchInfo errorInfo) {
             if (!SetResultPrologue())
                 return;
 
@@ -1119,7 +1119,7 @@ namespace Squared.Threading {
         /// Sets the result of this future along with the responsible exception (if any).
         /// The exception will be wrapped instead of being rethrown.
         /// </summary>
-        public void SetResult (T result, Exception error) {
+        public void SetResult (in T result, Exception error) {
             if (!SetResultPrologue())
                 return;
 
@@ -1135,7 +1135,7 @@ namespace Squared.Threading {
         /// The exception will be wrapped instead of being rethrown.
         /// If the future already has a result or has been disposed, this method will return false.
         /// </summary>
-        public bool TrySetResult (T result, Exception error) {
+        public bool TrySetResult (in T result, Exception error) {
             if (!SetResultPrologue())
                 return false;
 

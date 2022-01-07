@@ -60,11 +60,11 @@ namespace Squared.Util {
             GetValue = _GetValue;
         }
 
-        private static T _GetValue (in Tween<T> tween, int index) {
+        private static ref readonly T _GetValue (in Tween<T> tween, int index) {
             if (index == 0)
-                return tween.From;
+                return ref tween.From;
             else if (index == 1)
-                return tween.To;
+                return ref tween.To;
             else
                 throw new ArgumentOutOfRangeException(nameof(index));
         }

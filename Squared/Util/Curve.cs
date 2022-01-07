@@ -61,7 +61,7 @@ namespace Squared.Util {
 
         public event EventHandler Changed;
 
-        protected readonly List<Point> _Items = new List<Point>();
+        protected readonly UnorderedList<Point> _Items = new UnorderedList<Point>();
         protected Interpolator<TValue> _DefaultInterpolator;
 
         private PointPositionComparer _PositionComparer = new PointPositionComparer();
@@ -80,13 +80,15 @@ namespace Squared.Util {
 
         public float Start {
             get {
-                return _Items[0].Position;
+                ref var item = ref _Items.DangerousItem(0);
+                return item.Position;
             }
         }
 
         public float End {
             get {
-                return _Items[_Items.Count - 1].Position;
+                ref var item = ref _Items.DangerousItem(_Items.Count - 1);
+                return item.Position;
             }
         }
 
@@ -119,9 +121,9 @@ namespace Squared.Util {
             if (count < 1)
                 return firstIndex;
 
-            if (_Items[lastIndex].Position < position)
+            if (_Items.DangerousItem(lastIndex).Position < position)
                 return lastIndex;
-            else if (_Items[firstIndex].Position > position)
+            else if (_Items.DangerousItem(firstIndex).Position > position)
                 return firstIndex;
 
             while (low <= high) {
@@ -131,10 +133,11 @@ namespace Squared.Util {
                 index = (low + high) / 2;
                 nextIndex = (index >= max) ? max : index + 1;
 
-                var indexItem = _Items[index];
+                ref var indexItem = ref _Items.DangerousItem(index);
 
                 if (indexItem.Position < position) {
-                    if (_Items[nextIndex].Position > position) {
+                    ref var nextItem = ref _Items.DangerousItem(nextIndex);
+                    if (nextItem.Position > position) {
                         return index;
                     } else {
                         low = index + 1;
@@ -149,7 +152,7 @@ namespace Squared.Util {
             return count - 1;
         }
         
-        public float GetPositionAtIndex (int index) {
+        public ref readonly float GetPositionAtIndex (int index) {
             var max = _Items.Count - 1;
             index = (index < 0)
                 ? 0
@@ -157,10 +160,11 @@ namespace Squared.Util {
                     ? max
                     : index);
 
-            return _Items[index].Position;
+            ref var item = ref _Items.DangerousItem(index);
+            return ref item.Position;
         }
 
-        public TData GetDataAtIndex (int index) {
+        public ref readonly TData GetDataAtIndex (int index) {
             var max = _Items.Count - 1;
             index = (index < 0)
                 ? 0
@@ -168,10 +172,11 @@ namespace Squared.Util {
                     ? max
                     : index);
 
-            return _Items[index].Data;
+            ref var item = ref _Items.DangerousItem(index);
+            return ref item.Data;
         }
 
-        public TValue GetValueAtIndex (int index) {
+        public ref readonly TValue GetValueAtIndex (int index) {
             var max = _Items.Count - 1;
             index = (index < 0)
                 ? 0
@@ -179,7 +184,8 @@ namespace Squared.Util {
                     ? max
                     : index);
 
-            return _Items[index].Value;
+            ref var item = ref _Items.DangerousItem(index);
+            return ref item.Value;
         }
 
         public TValue GetValueAtPosition (float position) {
@@ -200,9 +206,9 @@ namespace Squared.Util {
 
             int i = 0;
             while (i < _Items.Count) {
-                float position = _Items[i].Position;
+                float position = _Items.DangerousGetItem(i).Position;
                 if ((position <= newStartPosition) || (position >= newEndPosition)) {
-                    _Items.RemoveAt(i);
+                    _Items.DangerousRemoveAt(i);
                 } else {
                     i++;
                 }
@@ -216,11 +222,11 @@ namespace Squared.Util {
 
         public bool RemoveAtPosition (float position, float precision = 0.01f) {
             var index = GetLowerIndexForPosition(position);
-            var item = _Items[index];
+            var item = _Items.DangerousGetItem(index);
             if (Math.Abs(item.Position - position) > precision)
                 return false;
 
-            _Items.RemoveAt(index);
+            _Items.DangerousRemoveAt(index);
 
             if (_Items.Count == 0)
                 _Items.Add(default(Point));
@@ -238,8 +244,9 @@ namespace Squared.Util {
                 Data = data
             };
 
-            if ((oldIndex < _Items.Count) && (_Items[oldIndex].Position == position)) {
-                _Items[oldIndex] = newItem;
+            var ok = _Items.DangerousTryGetItem(oldIndex, out Point oldItem);
+            if (ok && (oldItem.Position == position)) {
+                _Items.DangerousSetItem(oldIndex, newItem);
             } else {
                 _Items.Add(newItem);
                 _Items.Sort(_PositionComparer);
@@ -328,8 +335,8 @@ namespace Squared.Util {
         protected override T GetValueAtPosition (float position, int firstIndex, int lastIndex) {
             int index = GetLowerIndexForPosition(position, firstIndex, lastIndex);
 
-            var lowerItem = _Items[index];
-            var upperItem = _Items[(index == lastIndex) ? lastIndex : index + 1];
+            ref var lowerItem = ref _Items.DangerousItem(index);
+            ref var upperItem = ref _Items.DangerousItem((index == lastIndex) ? lastIndex : index + 1);
 
             var rangeSize = upperItem.Position - lowerItem.Position;
             if (rangeSize > 0) {
@@ -340,7 +347,7 @@ namespace Squared.Util {
                 else if (offset > 1.0f)
                     offset = 1.0f;
 
-                var interpolator = _Items[index].Data.Interpolator ?? DefaultInterpolator;
+                var interpolator = lowerItem.Data.Interpolator ?? DefaultInterpolator;
                 return interpolator(_InterpolatorSource, index, offset);
             } else {
                 return lowerItem.Value;
@@ -382,8 +389,8 @@ namespace Squared.Util {
 
         protected override T GetValueAtPosition (float position, int firstIndex, int lastIndex) {
             int index = GetLowerIndexForPosition(position, firstIndex, lastIndex);
-            var lowerItem = _Items[index];
-            var upperItem = _Items[Math.Min(index + 1, _Items.Count - 1)];
+            ref var lowerItem = ref _Items.DangerousItem(index);
+            ref var upperItem = ref _Items.DangerousItem(Math.Min(index + 1, _Items.Count - 1));
 
             if (lowerItem.Position < upperItem.Position) {
                 float offset = (position - lowerItem.Position) / (upperItem.Position - lowerItem.Position);
@@ -399,7 +406,7 @@ namespace Squared.Util {
             }
         }
 
-        private T GetHermiteInputForIndex (int index) {
+        private ref readonly T GetHermiteInputForIndex (int index) {
             int quadIndex = index / 4, itemInQuad = index % 4;
             if (quadIndex < 0)
                 quadIndex = 0;
@@ -407,14 +414,14 @@ namespace Squared.Util {
 
             switch (itemInQuad) {
                 case 0: // A
-                    return GetValueAtIndex(aIndex);
+                    return ref GetValueAtIndex(aIndex);
                 case 1: // U
-                    return GetDataAtIndex(aIndex).Velocity;
+                    return ref GetDataAtIndex(aIndex).Velocity;
                 case 2: // D
-                    return GetValueAtIndex(dIndex);
+                    return ref GetValueAtIndex(dIndex);
                 default:
                 case 3: // V
-                    return GetDataAtIndex(dIndex).Velocity;
+                    return ref GetDataAtIndex(dIndex).Velocity;
             }
         }
 
@@ -444,13 +451,13 @@ namespace Squared.Util {
             float tensionFactor = (1f / 2f) * (1f - tension);
 
             for (int start = 1, end = _Items.Count - 2, i = start; i <= end; i++) {
-                var previous = _Items[i - 1];
-                var pt = _Items[i];
-                var next = _Items[i + 1];
+                var previous = _Items.DangerousGetItem(i - 1);
+                var pt = _Items.DangerousGetItem(i);
+                var next = _Items.DangerousGetItem(i + 1);
 
                 var tangent = _Sub(next.Value, previous.Value);
                 pt.Data.Velocity = _Mul(tangent, tensionFactor);
-                _Items[i] = pt;
+                _Items.DangerousSetItem(i, in pt);
             }
         }
 
