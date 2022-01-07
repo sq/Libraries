@@ -433,41 +433,49 @@ namespace Squared.Render {
         }
 
         protected bool CreateNewNativeBatch (
-            BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref TextureSet currentTextures,
-            ref int vertCount, ref int vertOffset, Material material, 
-            SamplerState samplerState1, SamplerState samplerState2,
-            LocalObjectCache<object> textureCache
+            BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, 
+            ref BatchBuilderState state, ref BatchBuilderParameters parameters
         ) {
-            if (!currentTextures.Texture1.IsInitialized)
+            if (!state.currentTextures.Texture1.IsInitialized)
                 return false;
 
             var nb = new NativeBatch(
-                softwareBuffer, currentTextures,
-                vertOffset, vertCount,
-                material, samplerState1, samplerState2,
-                textureCache
+                softwareBuffer, state.currentTextures,
+                state.vertOffset, state.vertCount,
+                parameters.material, parameters.samplerState1, parameters.samplerState2,
+                parameters.textureCache
             );
             if (nb.Invalid)
                 return false;
             _NativeBatches.Add(nb);
 
-            vertOffset += vertCount;
-            vertCount = 0;
+            state.vertOffset += state.vertCount;
+            state.vertCount = 0;
 
             return true;
         }
 
+        protected struct BatchBuilderParameters {
+            public Material material;
+            public SamplerState samplerState1, samplerState2;
+            public LocalObjectCache<object> textureCache;
+        }
+
+        protected struct BatchBuilderState {
+            public int totalVertCount, vertCount, vertOffset,
+                vertexWritePosition;
+            public TextureSet currentTextures;
+        }
+
         protected unsafe bool FillOneSoftwareBuffer (
             int[] indices, ArraySegment<BitmapDrawCall> drawCalls, ref int drawCallsPrepared, int count,
-            Material material, SamplerState samplerState1, SamplerState samplerState2, LocalObjectCache<object> textureCache,
+            ref BatchBuilderParameters parameters,            
             out bool failed
         ) {
-            int totalVertCount = 0;
-            int vertCount = 0, vertOffset = 0;
+            var state = new BatchBuilderState {
+                currentTextures = TextureSet.Invalid
+            };
             int nativeBatchSizeLimit = NativeBatchSize;
-            int vertexWritePosition = 0;
-
-            TextureSet currentTextures = TextureSet.Invalid;
 
             var remainingDrawCalls = (count - drawCallsPrepared);
             var remainingVertices = remainingDrawCalls;
@@ -487,7 +495,7 @@ namespace Squared.Render {
             unchecked {
                 fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset]) {
                     for (int i = drawCallsPrepared; i < count; i++) {
-                        if (totalVertCount >= nativeBatchSizeLimit) {
+                        if (state.totalVertCount >= nativeBatchSizeLimit) {
                             result = false;
                             break;
                         }
@@ -504,58 +512,59 @@ namespace Squared.Render {
                         }
 
                         ref var call = ref callArray[callIndex + drawCalls.Offset];
-                        bool texturesEqual = call.Textures.Equals(in currentTextures);
+                        bool texturesEqual = call.Textures.Equals(in state.currentTextures);
 
                         if (!texturesEqual) {
-                            if (vertCount > 0)
+                            if (state.vertCount > 0)
                                 failed |= !CreateNewNativeBatch(
-                                    softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset,
-                                    material, samplerState1, samplerState2, textureCache
+                                    softwareBuffer, ref state, ref parameters
                                 );
 
-                            currentTextures = call.Textures;
+                            state.currentTextures = call.Textures;
                             if (failed)
                                 break;
                         }
 
-                        ref var resultVertex = ref pVertices[vertexWritePosition];
+                        ref var resultVertex = ref pVertices[state.vertexWritePosition];
 
-                        var ws = (short)((call.WorldSpace ?? worldSpace) ? 1 : 0);
-                        resultVertex.MultiplyColor = call.MultiplyColor;
-                        resultVertex.AddColor = call.AddColor;
-                        resultVertex.UserData = call.UserData;
-                        resultVertex.WorldSpace = ws;
-                        resultVertex.TexID = (short)call.Textures.Texture1.Id;
-                        resultVertex.Texture1Region = call.TextureRegion.ToVector4();
                         resultVertex.PositionAndRotation.X = call.Position.X;
                         resultVertex.PositionAndRotation.Y = call.Position.Y;
                         resultVertex.PositionAndRotation.Z = call.SortOrder * zBufferFactor;
                         resultVertex.PositionAndRotation.W = call.Rotation;
+                        resultVertex.Texture1Region = call.TextureRegion.ToVector4();
+                        if (!call.TextureRegion2.HasValue)
+                            // HACK: We use this as a 'no value' flag so that the vertex shader can
+                            //  just copy Texture1Region
+                            // If we were to copy Texture1Region into Texture2Region it would create
+                            //  a very expensive execution stall and burn memory bandwidth
+                            resultVertex.Texture2Region.X = -99999f;
+                        else
+                            resultVertex.Texture2Region = call.TextureRegion2.ToVector4();
+                        resultVertex.UserData = call.UserData;
                         resultVertex.ScaleOrigin.X = call.Scale.X;
                         resultVertex.ScaleOrigin.Y = call.Scale.Y;
                         resultVertex.ScaleOrigin.Z = call.Origin.X;
                         resultVertex.ScaleOrigin.W = call.Origin.Y;
-                        if (!call.TextureRegion2.HasValue)
-                            resultVertex.Texture2Region = resultVertex.Texture1Region;
-                        else
-                            resultVertex.Texture2Region = call.TextureRegion2.ToVector4();
+                        resultVertex.MultiplyColor = call.MultiplyColor;
+                        resultVertex.AddColor = call.AddColor;
+                        resultVertex.WorldSpace = (short)((call.WorldSpace ?? worldSpace) ? 1 : 0);
+                        resultVertex.TexID = (short)call.Textures.Texture1.Id;
 
-                        vertexWritePosition += 1;
-                        totalVertCount += 1;
-                        vertCount += 1;
+                        state.vertexWritePosition += 1;
+                        state.totalVertCount += 1;
+                        state.vertCount += 1;
 
                         drawCallsPrepared += 1;
                     }
                 }
             }
 
-            if (vertexWritePosition > softwareBuffer.Vertices.Count)
+            if (state.vertexWritePosition > softwareBuffer.Vertices.Count)
                 throw new InvalidOperationException("Wrote too many vertices");
 
-            if (vertCount > 0) {
+            if (state.vertCount > 0) {
                 failed |= !CreateNewNativeBatch(
-                    softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset,
-                    material, samplerState1, samplerState2, textureCache
+                    softwareBuffer, ref state, ref parameters
                 );
             }
 

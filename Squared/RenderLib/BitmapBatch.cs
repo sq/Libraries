@@ -360,10 +360,16 @@ namespace Squared.Render {
             using (var callBuffer = _DrawCalls.GetBuffer(false)) {
                 var callSegment = new ArraySegment<BitmapDrawCall>(callBuffer.Data, callBuffer.Offset, callBuffer.Count);
                 int drawCallsPrepared = 0;
+                var parameters = new BatchBuilderParameters {
+                    material = Material,
+                    samplerState1 = SamplerState,
+                    samplerState2 = SamplerState2,
+                    textureCache = textureCache
+                };
                 while (drawCallsPrepared < count) {
                     FillOneSoftwareBuffer(
                         indexArray, callSegment, ref drawCallsPrepared, count,
-                        Material, SamplerState, SamplerState2, textureCache, out bool failed
+                        ref parameters, out bool failed
                     );
                     if (failed)
                         return false;

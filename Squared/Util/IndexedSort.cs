@@ -115,7 +115,6 @@ namespace Squared.Util {
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int ScanLeft (int left, ref TElement pivot) {
             var array = Items.Array;
             var offset = Items.Offset;
@@ -125,7 +124,6 @@ namespace Squared.Util {
             return left;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int ScanRight (int right, ref TElement pivot) {
             var array = Items.Array;
             var offset = Items.Offset;
@@ -213,7 +211,6 @@ namespace Squared.Util {
 
                 while (j >= lo && Comparer.Compare(ref array[offset + t], ref array[offset + indexArray[indexOffset + j]]) < 0)
                 {
-                    indexArray[indexOffset + j + 1] = indexArray[indexOffset + j];
                     indexArray[indexOffset + j + 1] = indexArray[indexOffset + j];
                     j--;
                 }

@@ -59,11 +59,13 @@ inline float2 ComputeTexCoord (
 
 inline float2 ComputeTexCoord2 (
     in float2 cornerWeight,
-    in float4 texRgn,
+    in float4 texRgn1, 
+    in float4 texRgn2,
     out float4 newTexRgn
 ) {
-    float2 texTL = min(texRgn.xy, texRgn.zw);
-    float2 texBR = max(texRgn.xy, texRgn.zw);
+    float4 actualRgn = (texRgn2.x <= -99999) ? texRgn1 : texRgn2;
+    float2 texTL = min(actualRgn.xy, actualRgn.zw);
+    float2 texBR = max(actualRgn.xy, actualRgn.zw);
     newTexRgn = float4(texTL.x, texTL.y, texBR.x, texBR.y);
     return lerp(texTL, texBR, cornerWeight);
 }
@@ -106,7 +108,7 @@ void ScreenSpaceVertexShader (
     float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerWeights, regionSize);
     texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
-    texCoord2 = ComputeTexCoord2(cornerWeights.xy, texRgn2, newTexRgn2);
+    texCoord2 = ComputeTexCoord2(cornerWeights.xy, texRgn1, texRgn2, newTexRgn2);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, positionAndRotation.w);
     
     positionAndRotation.xy += rotatedCorner;
@@ -133,7 +135,7 @@ void WorldSpaceVertexShader (
     float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerWeights, regionSize);
     texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
-    texCoord2 = ComputeTexCoord2(cornerWeights.xy, texRgn2, newTexRgn2);
+    texCoord2 = ComputeTexCoord2(cornerWeights.xy, texRgn1, texRgn2, newTexRgn2);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, positionAndRotation.w);
     
     positionAndRotation.xy += rotatedCorner - GetViewportPosition().xy;
@@ -163,7 +165,7 @@ void GenericVertexShader (
     float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerWeights, regionSize);
     texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
-    texCoord2 = ComputeTexCoord2(cornerWeights.xy, texRgn2, newTexRgn2);
+    texCoord2 = ComputeTexCoord2(cornerWeights.xy, texRgn1, texRgn2, newTexRgn2);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, positionAndRotation.w);
     
     float2 adjustedPosition = positionAndRotation.xy + rotatedCorner;

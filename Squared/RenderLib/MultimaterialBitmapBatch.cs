@@ -204,9 +204,15 @@ namespace Squared.Render {
                 var callSegment = new ArraySegment<BitmapDrawCall>(data, 0, count);
                 int drawCallsPrepared = 0;
                 bool failed = false;
+                var parameters = new BatchBuilderParameters {
+                    material = material,
+                    samplerState1 = ss1,
+                    samplerState2 = ss2,
+                    textureCache = textureCache
+                };
                 while (!failed && !FillOneSoftwareBuffer(
                     indexArray, callSegment, ref drawCallsPrepared, count,
-                    material, ss1, ss2, textureCache, out failed
+                    ref parameters, out failed
                 ));
 
                 return !failed;
