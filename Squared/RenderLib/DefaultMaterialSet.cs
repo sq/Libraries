@@ -381,7 +381,7 @@ namespace Squared.Render {
 
         private readonly Action<Material, FrameParams> _ApplyParamsDelegate;
         protected readonly RefMaterialAction<ViewTransform> _ApplyViewTransformDelegate; 
-        protected readonly Stack<ViewTransform> ViewTransformStack = new Stack<ViewTransform>();
+        protected readonly UnorderedList<ViewTransform> ViewTransformStack = new UnorderedList<ViewTransform>();
 
         /// <summary>
         /// If true, view transform changes are lazily applied at the point each material is activated
@@ -875,7 +875,7 @@ namespace Squared.Render {
         public void AutoSetViewTransform () {
             ViewTransformStack.Clear();
 
-            ViewTransformStack.Push(ViewTransform.CreateOrthographic(
+            ViewTransformStack.Add(ViewTransform.CreateOrthographic(
                 Coordinator.Device.PresentationParameters.BackBufferWidth,
                 Coordinator.Device.PresentationParameters.BackBufferHeight
             ));
@@ -883,15 +883,22 @@ namespace Squared.Render {
 
         public int ViewTransformStackDepth => ViewTransformStack.Count;
 
-        public ViewTransform ViewTransform {
+        public ref readonly ViewTransform ViewTransform {
             get {
-                return ViewTransformStack.Peek();
+                return ref ViewTransformStack.DangerousReadItem(ViewTransformStack.Count - 1);
             }
-            set {
-                ViewTransformStack.Pop();
-                ViewTransformStack.Push(value);
-                ApplyViewTransform(value, !LazyViewTransformChanges);
+        }
+
+        private ref ViewTransform ViewTransformMutable {
+            get {
+                return ref ViewTransformStack.DangerousItem(ViewTransformStack.Count - 1);
             }
+        }
+
+        public void SetViewTransform (in ViewTransform value) {
+            ref var item = ref ViewTransformMutable;
+            item = value;
+            ApplyViewTransform(value, !LazyViewTransformChanges);
         }
 
         public Vector2 ViewportZRange {
@@ -899,9 +906,8 @@ namespace Squared.Render {
                 return ViewTransform.ZRange;
             }
             set {
-                var vt = ViewTransformStack.Peek();
-                vt.ZRange = value;
-                ViewTransform = vt;
+                ref var item = ref ViewTransformMutable;
+                item.ZRange = value;
             }
         }
 
@@ -910,9 +916,8 @@ namespace Squared.Render {
                 return ViewTransform.Scale;
             }
             set {
-                var vt = ViewTransformStack.Peek();
-                vt.Scale = value;
-                ViewTransform = vt;
+                ref var item = ref ViewTransformMutable;
+                item.Scale = value;
             }
         }
 
@@ -921,9 +926,8 @@ namespace Squared.Render {
                 return ViewTransform.Position;
             }
             set {
-                var vt = ViewTransformStack.Peek();
-                vt.Position = value;
-                ViewTransform = vt;
+                ref var item = ref ViewTransformMutable;
+                item.Position = value;
             }
         }
 
@@ -932,9 +936,8 @@ namespace Squared.Render {
                 return ViewTransform.Projection;
             }
             set {
-                var vt = ViewTransformStack.Peek();
-                vt.Projection = value;
-                ViewTransform = vt;
+                ref var item = ref ViewTransformMutable;
+                item.Projection = value;
             }
         }
 
@@ -943,9 +946,8 @@ namespace Squared.Render {
                 return ViewTransform.ModelView;
             }
             set {
-                var vt = ViewTransformStack.Peek();
-                vt.ModelView = value;
-                ViewTransform = vt;
+                ref var item = ref ViewTransformMutable;
+                item.ModelView = value;
             }
         }
 
@@ -954,8 +956,8 @@ namespace Squared.Render {
         /// If the viewTransform argument is null, the current transform is pushed instead.
         /// </summary>
         public void PushViewTransform (in ViewTransform? viewTransform) {
-            var vt = viewTransform ?? ViewTransformStack.Peek();
-            ViewTransformStack.Push(vt);
+            var vt = viewTransform ?? ViewTransform;
+            ViewTransformStack.Add(vt);
             ApplyViewTransform(in vt, !LazyViewTransformChanges);
         }
 
@@ -963,7 +965,7 @@ namespace Squared.Render {
         /// Immediately changes the view transform of the material set, without waiting for a clear.
         /// </summary>
         public void PushViewTransform (in ViewTransform viewTransform, bool force = false) {
-            ViewTransformStack.Push(viewTransform);
+            ViewTransformStack.Add(viewTransform);
             ApplyViewTransform(in viewTransform, force || !LazyViewTransformChanges);
         }
 
@@ -971,18 +973,17 @@ namespace Squared.Render {
         /// Immediately restores the previous view transform of the material set, without waiting for a clear.
         /// </summary>
         public void PopViewTransform (out ViewTransform previous, bool force = false) {
-            previous = ViewTransformStack.Pop();
-            var current = ViewTransformStack.Peek();
-            ApplyViewTransform(in current, force || !LazyViewTransformChanges);
+            previous = ViewTransform;
+            ViewTransformStack.DangerousRemoveAt(ViewTransformStack.Count - 1);
+            ApplyViewTransform(in ViewTransform, force || !LazyViewTransformChanges);
         }
 
         /// <summary>
         /// Immediately restores the previous view transform of the material set, without waiting for a clear.
         /// </summary>
         public void PopViewTransform (bool force = false) {
-            ViewTransformStack.Pop();
-            var current = ViewTransformStack.Peek();
-            ApplyViewTransform(in current, force || !LazyViewTransformChanges);
+            ViewTransformStack.DangerousRemoveAt(ViewTransformStack.Count - 1);
+            ApplyViewTransform(in ViewTransform, force || !LazyViewTransformChanges);
         }
 
         private FrameParams? LastAppliedFrameParams;
@@ -1019,7 +1020,7 @@ namespace Squared.Render {
                 ForEachMaterial(_ApplyParamsDelegate, @params);
             }
 
-            var vt = ViewTransformStack.Peek();
+            ref readonly var vt = ref ViewTransform;
             if (!LastAppliedViewTransform.HasValue ||
                 !LastAppliedViewTransform.Value.Equals(in vt))
                 ApplyViewTransform(in vt, force || !LazyViewTransformChanges);

@@ -620,7 +620,7 @@ namespace Squared.Render {
             manager.SetViewport(newViewport);
 
             if (UpdateViewTransform)
-                MaterialSet.ViewTransform = ViewTransform.CreateOrthographic(newViewport);
+                MaterialSet.SetViewTransform(ViewTransform.CreateOrthographic(newViewport));
         }
 
         public static void AddNew (IBatchContainer container, int layer, Material material, Rectangle? viewport, bool updateViewTransform = false, DefaultMaterialSet materialSet = null) {

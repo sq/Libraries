@@ -681,7 +681,7 @@ namespace Squared.Render.Convenience {
 
         public ImperativeRenderer MakeSubgroup (
             bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
-            string name = null, int? layer = null, Func<ViewTransform, object, ViewTransform> viewTransformModifier = null
+            string name = null, int? layer = null, ViewTransformModifier viewTransformModifier = null
         ) {
             ImperativeRenderer result;
             MakeSubgroup(out result, nextLayer, before, after, userData, name, layer, viewTransformModifier);
@@ -700,7 +700,7 @@ namespace Squared.Render.Convenience {
 
         public void MakeSubgroup (
             out ImperativeRenderer result, bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
-            string name = null, int? layer = null, Func<ViewTransform, object, ViewTransform> viewTransformModifier = null
+            string name = null, int? layer = null, ViewTransformModifier viewTransformModifier = null
         ) {
             result = this;
             var group = BatchGroup.New(
@@ -722,7 +722,8 @@ namespace Squared.Render.Convenience {
 
         public void MakeSubgroup (
             out ImperativeRenderer result, in ViewTransform viewTransform, 
-            bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
+            bool nextLayer = true, Action<DeviceManager, object> before = null, 
+            Action<DeviceManager, object> after = null, object userData = null,
             string name = null, int? layer = null
         ) {
             MakeSubgroup(out result, nextLayer, before, after, userData, name, layer);
@@ -740,7 +741,8 @@ namespace Squared.Render.Convenience {
 
         public ImperativeRenderer ForRenderTarget (
             AutoRenderTarget renderTarget, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null, string name = null, int? layer = null, IBatchContainer newContainer = null, ViewTransform? viewTransform = null
+            object userData = null, string name = null, int? layer = null, IBatchContainer newContainer = null, 
+            in ViewTransform? viewTransform = null
         ) {
             var result = this;
             var group = BatchGroup.ForRenderTarget(
@@ -759,7 +761,8 @@ namespace Squared.Render.Convenience {
 
         public ImperativeRenderer ForRenderTarget (
             RenderTarget2D renderTarget, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null, string name = null, int? layer = null, IBatchContainer newContainer = null, ViewTransform? viewTransform = null
+            object userData = null, string name = null, int? layer = null, IBatchContainer newContainer = null, 
+            in ViewTransform? viewTransform = null
         ) {
             var result = this;
             var group = BatchGroup.ForRenderTarget(
@@ -893,7 +896,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, 
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
-            Material material = null, Vector4 userData = default(Vector4)
+            Material material = null, in Vector4 userData = default(Vector4)
         ) {
             var drawCall = new BitmapDrawCall(texture, position);
             if (sourceRectangle.HasValue)
@@ -926,7 +929,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
-            Material material = null, Vector4 userData = default(Vector4)
+            Material material = null, in Vector4 userData = default(Vector4)
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(x, y));
             if (sourceRectangle.HasValue)
@@ -959,7 +962,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
-            Material material = null, Vector4 userData = default(Vector4)
+            Material material = null, in Vector4 userData = default(Vector4)
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(destRectangle.X, destRectangle.Y));
             if (sourceRectangle.HasValue) {
@@ -994,7 +997,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
-            Material material = null, Vector2? scale = null, Vector4? userData = null,
+            Material material = null, Vector2? scale = null, in Vector4? userData = null,
             float? multiplyOpacity = null
         ) {
             using (var batch = GetBitmapBatch(

@@ -1204,7 +1204,7 @@ namespace Squared.PRGUI {
             return true;
         }
 
-        private static readonly Func<ViewTransform, object, ViewTransform> ApplyLocalTransformMatrix = _ApplyLocalTransformMatrix;
+        private static readonly ViewTransformModifier ApplyLocalTransformMatrix = _ApplyLocalTransformMatrix;
         private static readonly Action<DeviceManager, object> BeforeComposite = _BeforeIssueComposite,
             AfterComposite = _AfterIssueComposite;
 
@@ -1223,13 +1223,12 @@ namespace Squared.PRGUI {
             control.Appearance.Compositor?.AfterIssueComposite(control, dm, ref control.MostRecentCompositeDrawCall);
         }
 
-        private static ViewTransform _ApplyLocalTransformMatrix (ViewTransform vt, object _control) {
+        private static void _ApplyLocalTransformMatrix (ref ViewTransform vt, object _control) {
             var control = (Control)_control;
             control.Appearance.GetFinalTransformMatrix(
                 control.MostRecentCompositeBox, control.Context.NowL, out Matrix transform
             );
             vt.ModelView *= transform;
-            return vt;
         }
 
         private void RasterizeIntoPrepass (

@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Squared.Render {
+    public delegate void ViewTransformModifier (ref ViewTransform vt, object userData);
+
     public class BatchGroup : ListBatch<Batch>, IBatchContainer {
         /// <summary>
         /// A material set view transforms are pushed to.
@@ -20,7 +22,7 @@ namespace Squared.Render {
         /// <summary>
         /// A function that is called to process and modify the current view transform for the duration of the batch group.
         /// </summary>
-        public Func<ViewTransform, object, ViewTransform> ViewTransformModifier;
+        public ViewTransformModifier ViewTransformModifier;
 
         public OcclusionQuery OcclusionQuery;
 
@@ -52,7 +54,7 @@ namespace Squared.Render {
                 if (ViewTransform.HasValue || ViewTransformModifier != null) {
                     var vt = ViewTransform ?? MaterialSet.ViewTransform;
                     if (ViewTransformModifier != null)
-                        vt = ViewTransformModifier(vt, _UserData);
+                        ViewTransformModifier(ref vt, _UserData);
                     // FIXME: We shouldn't need force: true
                     MaterialSet.PushViewTransform(in vt, force: true);
                     pop = true;
@@ -87,7 +89,7 @@ namespace Squared.Render {
             IBatchContainer container, int layer, AutoRenderTarget renderTarget, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
             object userData = null, 
-            DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
+            DefaultMaterialSet materialSet = null, in ViewTransform? viewTransform = null, 
             string name = null, bool? ignoreInvalidTargets = null
         ) {
             if (container == null)
@@ -114,7 +116,7 @@ namespace Squared.Render {
             IBatchContainer container, int layer, RenderTarget2D renderTarget, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
             object userData = null, 
-            DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
+            DefaultMaterialSet materialSet = null, in ViewTransform? viewTransform = null, 
             string name = null, bool? ignoreInvalidTargets = null
         ) {
             if (container == null)
@@ -141,7 +143,7 @@ namespace Squared.Render {
             IBatchContainer container, int layer, RenderTarget2D[] renderTargets, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
             object userData = null, 
-            DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
+            DefaultMaterialSet materialSet = null, in ViewTransform? viewTransform = null, 
             string name = null, bool? ignoreInvalidTargets = null
         ) {
             var bindings = new RenderTargetBinding[renderTargets.Length];
@@ -157,7 +159,7 @@ namespace Squared.Render {
             IBatchContainer container, int layer, RenderTargetBinding[] renderTargets, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
             object userData = null, 
-            DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
+            DefaultMaterialSet materialSet = null, in ViewTransform? viewTransform = null, 
             string name = null, bool? ignoreInvalidTargets = null
         ) {
             if (container == null)
@@ -222,7 +224,7 @@ namespace Squared.Render {
         }
 
         public void SetViewTransform (
-            Func<ViewTransform, object, ViewTransform> modifier
+            ViewTransformModifier modifier
         ) {
             if ((modifier != null) && (MaterialSet == null))
                 throw new ArgumentException("No view transform can be applied without a material set");

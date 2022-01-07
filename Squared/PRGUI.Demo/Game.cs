@@ -1245,7 +1245,7 @@ namespace PRGUI.Demo {
         private void Window_ClientSizeChanged (object sender, EventArgs e) {
             var pp = GraphicsDevice.PresentationParameters;
             RenderCoordinator.WaitForActiveDraws();
-            Materials.ViewTransform = ViewTransform.CreateOrthographic(pp.BackBufferWidth, pp.BackBufferHeight);
+            Materials.SetViewTransform(ViewTransform.CreateOrthographic(pp.BackBufferWidth, pp.BackBufferHeight));
             Context.CanvasSize = new Vector2(pp.BackBufferWidth, pp.BackBufferHeight);
             Context.Update();
             UIRenderTarget.Resize(pp.BackBufferWidth, pp.BackBufferHeight);
