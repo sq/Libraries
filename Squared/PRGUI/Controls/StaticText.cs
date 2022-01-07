@@ -574,7 +574,7 @@ namespace Squared.PRGUI.Controls {
                 overrideColor = null;
             Material material;
             var textDecorations = GetTextDecorator(context.DecorationProvider, context.DefaultTextDecorator);
-            GetTextSettings(ref context, textDecorations, decorations, settings.State, out material, ref defaultColor);
+            GetTextSettings(ref context, textDecorations, decorations, settings.State, out material, ref defaultColor, out Vector4 userData);
 
             Content.DefaultColor = defaultColor ?? Color.White;
 
@@ -665,7 +665,7 @@ namespace Squared.PRGUI.Controls {
                 segment, offset: (textOffset + ca).Floor(),
                 material: material, samplerState: RenderStates.Text,
                 scale: textScale, multiplyColor: overrideColor?.ToColor(),
-                userData: RasterizerUserData, multiplyOpacity: multiplyOpacity 
+                userData: RasterizerUserData ?? userData, multiplyOpacity: multiplyOpacity 
             );
 
             _LastDrawOffset = textOffset.Floor();
@@ -726,8 +726,11 @@ namespace Squared.PRGUI.Controls {
             return SyncWithCurrentFont(font);
         }
 
-        protected bool GetTextSettings (ref UIOperationContext context, IDecorator textDecorations, IDecorator decorations, ControlStates state, out Material material, ref Color? color) {
-            (textDecorations ?? decorations).GetTextSettings(ref context, state, out material, ref color);
+        protected bool GetTextSettings (
+            ref UIOperationContext context, IDecorator textDecorations, IDecorator decorations, ControlStates state, 
+            out Material material, ref Color? color, out Vector4 userData
+        ) {
+            (textDecorations ?? decorations).GetTextSettings(ref context, state, out material, ref color, out userData);
             SyncWithCurrentFont(Appearance.GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource);
             if (TextMaterial != null)
                 material = TextMaterial;

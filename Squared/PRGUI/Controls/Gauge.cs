@@ -194,7 +194,7 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             var decorations = GetDefaultDecorator(Context.Decorations);
             Color? color = null;
-            decorations.GetTextSettings(ref UIOperationContext.Default, default(ControlStates), out Render.Material temp, ref color);
+            decorations.GetTextSettings(ref UIOperationContext.Default, default(ControlStates), out Render.Material temp, ref color, out _);
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             if ((Direction == GaugeDirection.Clockwise) || (Direction == GaugeDirection.CounterClockwise)) {
                 var m = Math.Max(ControlMinimumLength, ControlMinimumHeight);

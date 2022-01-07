@@ -130,12 +130,13 @@ namespace Squared.PRGUI.Controls {
                 material = null;
                 return null;
             }
-            decorations.GetTextSettings(ref context, state, out material, ref color);
+            decorations.GetTextSettings(ref context, state, out material, ref color, out Vector4 userData);
             TitleLayout.SetText(Title, true, true);
             var wasValid = TitleLayout.IsValid;
             TitleLayout.GlyphSource = decorations.GlyphSource;
             TitleLayout.DefaultColor = color ?? Color.White;
             TitleLayout.LineBreakAtX = contentBox.Width;
+            TitleLayout.UserData = userData;
             // We don't want to invalidate the height for text changes, but we do want to invalidate it for wrapping or font changes
             if (!TitleLayout.IsValid && wasValid)
                 MostRecentTitleHeight = null;
@@ -208,7 +209,7 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             Color? color = null;
-            titleDecorations.GetTextSettings(ref context, default(ControlStates), out Material temp, ref color);
+            titleDecorations.GetTextSettings(ref context, default(ControlStates), out Material temp, ref color, out _);
             var height = titleDecorations.Margins.Bottom +
                 // FIXME: Scale this?
                 titleDecorations.Padding.Y +

@@ -478,7 +478,7 @@ namespace Squared.PRGUI {
             var outlinePadding = 1f;
             decorator = Decorations.AcceleratorLabel;
             Color? textColor = null;
-            decorator.GetTextSettings(ref context, default(ControlStates), out Material material, ref textColor);
+            decorator.GetTextSettings(ref context, default(ControlStates), out Material material, ref textColor, out _);
             var layout = decorator.GlyphSource.LayoutString(label, buffer: AcceleratorOverlayBuffer);
             var textScale = 1f;
             if (layout.Size.X > (box.Width - decorator.Padding.X))

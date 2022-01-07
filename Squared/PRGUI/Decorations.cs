@@ -85,7 +85,7 @@ namespace Squared.PRGUI.Decorations {
         Margins UnscaledPadding { get; }
         IGlyphSource GlyphSource { get; }
         void GetContentAdjustment (ref UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
-        bool GetTextSettings (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color);
+        bool GetTextSettings (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData);
     }
 
     public interface IWidgetDecorator<TData> : IMetricsProvider {
@@ -170,7 +170,7 @@ namespace Squared.PRGUI.Decorations {
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
-    public delegate bool TextSettingsGetter (UIOperationContext context, ControlStates state, out Material material, ref Color? color);
+    public delegate bool TextSettingsGetter (UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData);
     public delegate void DecoratorDelegate (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
     public delegate void ContentAdjustmentGetter (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
 
@@ -187,11 +187,12 @@ namespace Squared.PRGUI.Decorations {
         IGlyphSource IMetricsProvider.GlyphSource => 
             (GetFont != null) ? GetFont() : Font;
 
-        bool IMetricsProvider.GetTextSettings (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color) {
+        bool IMetricsProvider.GetTextSettings (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData) {
             if (GetTextSettings != null) {
-                return GetTextSettings(context, state, out material, ref color);
+                return GetTextSettings(context, state, out material, ref color, out userData);
             } else {
-                material = default(Material);
+                material = default;
+                userData = default;
                 return false;
             }
         }

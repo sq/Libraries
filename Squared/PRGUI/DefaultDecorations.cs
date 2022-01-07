@@ -1818,14 +1818,14 @@ namespace Squared.PRGUI {
 
         public bool GetTextSettings (
             UIOperationContext context, ControlStates state, 
-            out Material material, ref Color? color
+            out Material material, ref Color? color, out Vector4 userData
         ) {
-            return GetTextSettings(context, state, out material, ref color, TextStyle.Normal);
+            return GetTextSettings(context, state, out material, ref color, out userData, TextStyle.Normal);
         }
 
         public bool GetTextSettings (
             UIOperationContext context, ControlStates state, 
-            out Material material, ref Color? color, TextStyle style
+            out Material material, ref Color? color, out Vector4 userData, TextStyle style
         ) {
             if (!color.HasValue)
                 color = ColorScheme.Text;
@@ -1837,12 +1837,15 @@ namespace Squared.PRGUI {
                 case TextStyle.Normal:
                 default:
                     material = TextMaterial;
+                    userData = default;
                     break;
                 case TextStyle.Selected:
                     material = SelectedTextMaterial;
+                    userData = new Vector4(1, 1, 1, 3);
                     break;
                 case TextStyle.Shaded:
                     material = ShadedTextMaterial;
+                    userData = default;
                     break;
             }
             return true;
@@ -1850,10 +1853,10 @@ namespace Squared.PRGUI {
 
         public bool GetTextSettings_Description (
             UIOperationContext context, ControlStates state, 
-            out Material material, ref Color? color
+            out Material material, ref Color? color, out Vector4 userData
         ) {
             // HACK: Pass selected=true to get the unshadowed material
-            var result = GetTextSettings(context, state, out material, ref color, TextStyle.Shaded);
+            var result = GetTextSettings(context, state, out material, ref color, out userData, TextStyle.Shaded);
             if (color.HasValue)
                 color = color.Value * 0.5f;
             return result;
@@ -1861,19 +1864,19 @@ namespace Squared.PRGUI {
 
         private bool GetTextSettings_None (
             UIOperationContext context, ControlStates state, 
-            out Material material, ref Color? color
+            out Material material, ref Color? color, out Vector4 userData
         ) {
             state &= ~ControlStates.Focused;
             state &= ~ControlStates.Checked;
-            GetTextSettings(context, state, out material, ref color, TextStyle.Normal);
+            GetTextSettings(context, state, out material, ref color, out userData, TextStyle.Normal);
             return true;
         }
 
         private bool GetTextSettings_Button (
             UIOperationContext context, ControlStates state, 
-            out Material material, ref Color? color
+            out Material material, ref Color? color, out Vector4 userData
         ) {
-            GetTextSettings(context, state, out material, ref color);
+            GetTextSettings(context, state, out material, ref color, out userData);
             return true;
         }
 
@@ -1888,39 +1891,39 @@ namespace Squared.PRGUI {
 
         private bool GetTextSettings_Title (
             UIOperationContext context, ControlStates state, 
-            out Material material, ref Color? color
+            out Material material, ref Color? color, out Vector4 userData
         ) {
             if (color == null)
                 color = ColorScheme.TitleText;
-            GetTextSettings(context, state, out material, ref color);
+            GetTextSettings(context, state, out material, ref color, out userData);
             return true;
         }
 
         private bool GetTextSettings_AcceleratorLabel (
             UIOperationContext context, ControlStates state, 
-            out Material material, ref Color? color
+            out Material material, ref Color? color, out Vector4 userData
         ) {
             if (color == null)
                 color = ColorScheme.AcceleratorText;
-            GetTextSettings(context, state, out material, ref color);
+            GetTextSettings(context, state, out material, ref color, out userData);
             return true;
         }
 
         private bool GetTextSettings_Tooltip (
             UIOperationContext context, ControlStates state, 
-            out Material material, ref Color? color
+            out Material material, ref Color? color, out Vector4 userData
         ) {
             if (color == null)
                 color = ColorScheme.TooltipText;
-            GetTextSettings(context, state, out material, ref color);
+            GetTextSettings(context, state, out material, ref color, out userData);
             return true;
         }
 
         private bool GetTextSettings_Selection (
             UIOperationContext context, ControlStates state, 
-            out Material material, ref Color? color
+            out Material material, ref Color? color, out Vector4 userData
         ) {
-            GetTextSettings(context, state, out material, ref color, TextStyle.Selected);
+            GetTextSettings(context, state, out material, ref color, out userData, TextStyle.Selected);
             color = ColorScheme.SelectedText;
             return true;
         }

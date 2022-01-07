@@ -466,12 +466,13 @@ namespace Squared.PRGUI.Controls {
 
             Color? color = null;
             var font = decorations.GlyphSource;
-            decorations.GetTextSettings(ref context, settings.State, out material, ref color);
+            decorations.GetTextSettings(ref context, settings.State, out material, ref color, out Vector4 userData);
             ComputeEffectiveSpacing(ref context, decorations, out CachedPadding, out Margins computedMargins);
 
             if (font != null)
                 DynamicLayout.GlyphSource = font;
             DynamicLayout.DefaultColor = color ?? Color.White;
+            DynamicLayout.UserData = userData;
 
             return DynamicLayout.Get();
         }
@@ -1044,7 +1045,7 @@ namespace Squared.PRGUI.Controls {
             UIOperationContext context, ControlStates state, IMetricsProvider selectionDecorator
         ) {
             Color? selectedColor = DynamicLayout.Color;
-            selectionDecorator.GetTextSettings(ref context, state, out Material temp, ref selectedColor);
+            selectionDecorator.GetTextSettings(ref context, state, out Material temp, ref selectedColor, out _);
             var selectedColorC = context.UIContext.ConvertColor(selectedColor ?? Color.Black);
             var nonSelectedColorC = context.UIContext.ConvertColor(DynamicLayout.Color ?? Color.White);
             var noColorizing = (selection == null) || 
@@ -1172,7 +1173,7 @@ namespace Squared.PRGUI.Controls {
 
             var color = default(Color?);
             var font = decorator.GlyphSource;
-            decorator.GetTextSettings(ref context, settings.State, out Material material, ref color);
+            decorator.GetTextSettings(ref context, settings.State, out Material material, ref color, out _);
             if (material == null)
                 return;
             if (font == null)
