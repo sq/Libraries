@@ -152,7 +152,8 @@ namespace Squared.Render {
 
         internal volatile Threading.IFuture SuspendFuture = null;
 
-        protected static long _BatchCount = 0;
+        private static ThreadLocal<long[]> ThreadBatchCounts = new ThreadLocal<long[]>(() => new long[1], true);
+        private static long NextInstanceId = 0;
 
         protected PrepareState State;
 
@@ -167,7 +168,7 @@ namespace Squared.Render {
 
             State = new PrepareState();
 
-            InstanceId = Interlocked.Increment(ref _BatchCount);
+            InstanceId = Interlocked.Increment(ref NextInstanceId);
         }
 
         /// <summary>
@@ -214,6 +215,9 @@ namespace Squared.Render {
 
             if (addToContainer)
                 container.Add(this);
+
+            var arr = ThreadBatchCounts.Value;
+            arr[0]++;
         }
 
         /// <summary>
@@ -387,7 +391,11 @@ namespace Squared.Render {
 
         public static long LifetimeCount {
             get {
-                return _BatchCount;
+                var values = ThreadBatchCounts.Values;
+                long result = 0;
+                for (int i = 0, c = values.Count; i < c; i++)
+                    result += values[i][0];
+                return result;
             }
         }
 

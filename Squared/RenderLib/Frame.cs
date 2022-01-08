@@ -32,7 +32,6 @@ namespace Squared.Render {
         public string Label;
 
         public int Index;
-        public long InitialBatchCount;
 
         public class FramePrepareData {
             public BufferGenerator<CornerVertex>.SoftwareBuffer[] CornerBuffers =
@@ -77,7 +76,6 @@ namespace Squared.Render {
             Coordinator = coordinator;
             this.RenderManager = renderManager;
             Index = index;
-            InitialBatchCount = Batch.LifetimeCount;
             State = (int)States.Initialized;
             Label = "Frame";
             ChangeRenderTargets = true;
