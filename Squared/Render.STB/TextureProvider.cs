@@ -13,7 +13,10 @@ namespace Squared.Render {
     public class TextureLoadOptions {
         public bool Premultiply = true;
         public bool FloatingPoint;
+        // If the source image is more than 8 bpp, enable loading it as 16bpp
         public bool Enable16Bit;
+        // If the source image is grayscale, enable loading it as grayscale
+        public bool EnableGrayscale;
         public bool GenerateMips;
         /// <summary>
         /// Pads the bottom and right edges of the image so its width and height are a power of two.
@@ -82,7 +85,8 @@ namespace Squared.Render {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
             var image = new STB.Image(
                 stream, false, options.Premultiply, options.FloatingPoint, 
-                options.Enable16Bit, options.GenerateMips, options.sRGBFromLinear || options.sRGB
+                options.Enable16Bit, options.GenerateMips, options.sRGBFromLinear || options.sRGB,
+                options.EnableGrayscale
             );
             if (options.sRGBFromLinear || options.sRGBToLinear)
                 ApplyColorSpaceConversion(image, options);

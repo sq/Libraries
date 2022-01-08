@@ -38,7 +38,7 @@ namespace Squared.Render.STB {
         public Image (
             Stream stream, bool ownsStream, bool premultiply = true, 
             bool asFloatingPoint = false, bool enable16Bit = false, bool generateMips = false,
-            bool sRGB = false
+            bool sRGB = false, bool enableGrayscale = false
         ) {
             var length = stream.Length - stream.Position;
 
@@ -78,7 +78,8 @@ namespace Squared.Render.STB {
                 asFloatingPoint: asFloatingPoint, 
                 enable16Bit: enable16Bit,
                 generateMips: generateMips,
-                sRGB: sRGB
+                sRGB: sRGB,
+                enableGrayscale: enableGrayscale
             );
 
             if (ownsStream)
@@ -91,7 +92,7 @@ namespace Squared.Render.STB {
             }
         }
 
-        public unsafe Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, bool generateMips = false, bool sRGB = false) {
+        public unsafe Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, bool generateMips = false, bool sRGB = false, bool enableGrayscale = false) {
             fixed (byte* pBuffer = buffer.Array) {
                 InitializeFromPointer(
                     pBuffer, buffer.Offset, buffer.Count,
@@ -99,7 +100,8 @@ namespace Squared.Render.STB {
                     asFloatingPoint: asFloatingPoint,
                     enable16Bit: false,
                     generateMips: generateMips,
-                    sRGB: sRGB
+                    sRGB: sRGB,
+                    enableGrayscale: enableGrayscale
                 );
             }
         }
@@ -108,10 +110,11 @@ namespace Squared.Render.STB {
             byte* pBuffer, int offset, int length, 
             bool premultiply = true, bool asFloatingPoint = false, 
             bool enable16Bit = false, bool generateMips = false,
-            bool sRGB = false
+            bool sRGB = false, bool enableGrayscale = false
         ) {
             IsFloatingPoint = asFloatingPoint;
-            const int desiredChannelCount = 4;
+            Native.API.stbi_info_from_memory(pBuffer + offset, length, out int width, out int height, out int components);
+            int desiredChannelCount = !enableGrayscale || (components > 1) ? 4 : 1;
 
             // FIXME: Don't request RGBA?
             Is16Bit = enable16Bit && Native.API.stbi_is_16_bit_from_memory(pBuffer + offset, length) != 0;
@@ -133,8 +136,7 @@ namespace Squared.Render.STB {
                 throw new Exception(message);
             }
 
-            int components;
-            SizeofPixel = Evil.TextureUtils.GetBytesPerPixelAndComponents(GetFormat(sRGB), out components);
+            SizeofPixel = Evil.TextureUtils.GetBytesPerPixelAndComponents(GetFormat(sRGB, desiredChannelCount), out components);
 
             if (asFloatingPoint)
                 ConvertFPData(premultiply);
@@ -148,16 +150,22 @@ namespace Squared.Render.STB {
         }
 
         private unsafe void ConvertFPData (bool premultiply) {
+            if (ChannelCount < 3)
+                return;
             if (premultiply)
                 PremultiplyFPData();
         }
 
         private unsafe void ConvertData16 (bool premultiply) {
+            if (ChannelCount < 3)
+                return;
             if (premultiply)
-                throw new NotImplementedException();
+                PremultiplyData16();
         }
 
         private unsafe void ConvertData (bool premultiply) {
+            if (ChannelCount < 3)
+                return;
 #if FNA
             if (premultiply)
                 PremultiplyData();
@@ -183,6 +191,21 @@ namespace Squared.Render.STB {
             }
         }
 
+        private unsafe void PremultiplyData16 () {
+            if (IsDisposed)
+                throw new ObjectDisposedException("Image");
+            if (ChannelCount != 4)
+                throw new InvalidOperationException("Image is not rgba");
+            var pData = (ushort*)_Data;
+            var pEnd = pData + (Width * Height * 4);
+            for (; pData < pEnd; pData += 4) {
+                ushort r = pData[0], g = pData[1], b = pData[2], a = pData[3];
+                pData[0] = (ushort)(r * a / ushort.MaxValue);
+                pData[1] = (ushort)(g * a / ushort.MaxValue);
+                pData[2] = (ushort)(b * a / ushort.MaxValue);
+            }
+        }
+
         private unsafe void PremultiplyData () {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image");
@@ -191,7 +214,7 @@ namespace Squared.Render.STB {
             var pData = (uint*)_Data;
             var pBytes = (byte*)pData;
             var pEnd = pData + (Width * Height);
-            for (; pData < pEnd; pData++, pBytes+=4) {
+            for (; pData < pEnd; pData++, pBytes+=SizeofPixel) {
                 var value = *pData;
                 var a = (value & 0xFF000000) >> 24;
                 var r = (value & 0xFF);
@@ -203,49 +226,32 @@ namespace Squared.Render.STB {
             }
         }
 
-        private unsafe void PremultiplyAndChannelSwapData () {
-            if (IsDisposed)
-                throw new ObjectDisposedException("Image");
-            if (ChannelCount != 4)
-                throw new InvalidOperationException("Image is not rgba");
-            var pData = (uint*)_Data;
-            var pBytes = (byte*)pData;
-            var pEnd = pData + (Width * Height);
-            for (; pData < pEnd; pData++, pBytes+=4) {
-                var value = *pData;
-                var a = (value & 0xFF000000) >> 24;
-                var r = (value & 0xFF);
-                var g = (value & 0xFF00) >> 8;
-                var b = (value & 0xFF0000) >> 16;
-                pBytes[0] = (byte)(b * a / 255);
-                pBytes[1] = (byte)(g * a / 255);
-                pBytes[2] = (byte)(r * a / 255);
+        public SurfaceFormat GetFormat (bool sRGB, int channelCount) {
+            switch (channelCount) {
+                case 1:
+                    if (IsFloatingPoint)
+                        return SurfaceFormat.Single;
+                    else if (Is16Bit)
+                        throw new ArgumentOutOfRangeException(nameof(channelCount));
+                    else
+                        return SurfaceFormat.Alpha8;
+                case 2:
+                    if (IsFloatingPoint)
+                        return SurfaceFormat.Vector2;
+                    else if (Is16Bit)
+                        return SurfaceFormat.Rg32;
+                    else
+                        throw new ArgumentOutOfRangeException(nameof(channelCount));
+                case 4:
+                    if (IsFloatingPoint)
+                        return SurfaceFormat.Vector4;
+                    else if (Is16Bit)
+                        return SurfaceFormat.Rgba64;
+                    else
+                        return sRGB ? Evil.TextureUtils.ColorSrgbEXT : SurfaceFormat.Color;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(channelCount));
             }
-        }
-
-        private unsafe void ChannelSwapData () {
-            if (IsDisposed)
-                throw new ObjectDisposedException("Image");
-            var pBytes = (byte*)_Data;
-            var pEnd = pBytes + DataLength;
-            for (; pBytes < pEnd; pBytes += ChannelCount) {
-                var r = pBytes[0];
-                pBytes[0] = pBytes[2];
-                pBytes[2] = r;
-            }
-        }
-
-        public SurfaceFormat GetFormat (bool sRGB) {
-            if (IsFloatingPoint)
-                return SurfaceFormat.Vector4;
-            else if (Is16Bit)
-                return SurfaceFormat.Rgba64;
-            else if (ChannelCount == 4)
-                return sRGB ? Evil.TextureUtils.ColorSrgbEXT : SurfaceFormat.Color;
-            else if (ChannelCount == 1)
-                return SurfaceFormat.Alpha8;
-            else
-                throw new NotImplementedException($"{ChannelCount} channel(s)");
         }
 
         public Texture2D CreateTexture (RenderCoordinator coordinator, bool padToPowerOfTwo = false, bool sRGB = false) {
@@ -258,7 +264,7 @@ namespace Squared.Render.STB {
 
             Texture2D result;
             lock (coordinator.CreateResourceLock) {
-                result = new Texture2D(coordinator.Device, width, height, MipChain != null, GetFormat(sRGB)) {
+                result = new Texture2D(coordinator.Device, width, height, MipChain != null, GetFormat(sRGB, ChannelCount)) {
                     Tag = "STB.Image"
                 };
                 coordinator.AutoAllocatedTextureResources.Add(result);
@@ -283,7 +289,7 @@ namespace Squared.Render.STB {
 
             Texture2D tex;
             lock (coordinator.CreateResourceLock) {
-                tex = new Texture2D(coordinator.Device, width, height, MipChain != null, GetFormat(sRGB)) {
+                tex = new Texture2D(coordinator.Device, width, height, MipChain != null, GetFormat(sRGB, ChannelCount)) {
                     Tag = "STB.Image"
                 };
                 coordinator.AutoAllocatedTextureResources.Add(tex);

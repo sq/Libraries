@@ -542,6 +542,9 @@ namespace Squared.Render.Evil {
                 case SurfaceFormat.Rgba64:
                     numComponents = 4;
                     return 8;
+                case SurfaceFormat.Single:
+                    numComponents = 1;
+                    return 4;
                 case SurfaceFormat.Vector2:
                     numComponents = 2;
                     return 8;

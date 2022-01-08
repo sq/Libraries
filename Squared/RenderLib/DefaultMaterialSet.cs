@@ -364,6 +364,7 @@ namespace Squared.Render {
         public Material HighlightColorBitmap, CrossfadeBitmap;
         // Porter-duff compositing
         public Material UnderBitmap, OverBitmap;
+        public Material GradientMaskedBitmap;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
@@ -496,6 +497,7 @@ namespace Squared.Render {
             var palettedShader = BuiltInShaders.Load("PalettedBitmap");
             var hslShader = BuiltInShaders.Load("HueBitmap");
             var stippledShader = BuiltInShaders.Load("StippledBitmap");
+            var compositedShader = BuiltInShaders.Load("CompositedBitmap");
 
             Bitmap = NewMaterial(
                 bitmapShader,
@@ -503,23 +505,28 @@ namespace Squared.Render {
             );
 
             HighlightColorBitmap = NewMaterial(
-                bitmapShader,
+                compositedShader,
                 "HighlightColorBitmapTechnique"
             );
 
             CrossfadeBitmap = NewMaterial(
-                bitmapShader,
+                compositedShader,
                 "CrossfadeBitmapTechnique"
             );
 
             OverBitmap = NewMaterial(
-                bitmapShader,
+                compositedShader,
                 "OverBitmapTechnique"
             );
 
             UnderBitmap = NewMaterial(
-                bitmapShader,
+                compositedShader,
                 "UnderBitmapTechnique"
+            );
+
+            GradientMaskedBitmap = NewMaterial(
+                compositedShader,
+                "GradientMaskedBitmapTechnique"
             );
 
             ScreenSpaceBitmapWithLUT = NewMaterial(
@@ -676,6 +683,7 @@ namespace Squared.Render {
                 CrossfadeBitmap,
                 UnderBitmap,
                 OverBitmap,
+                GradientMaskedBitmap,
                 OutlinedBitmap,
                 OutlinedBitmapWithDiscard
             };
