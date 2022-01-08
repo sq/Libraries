@@ -370,10 +370,11 @@ namespace Squared.Render {
             var actualCurrentRenderTarget = new RenderTargetStackEntry(currentRenderTargets);
             if (!cachedCurrentRenderTarget.Equals(actualCurrentRenderTarget))
                 throw new Exception("Mismatch between cached and actual render target(s)");
-            if (currentRenderTargets.Any(rtb => rtb.RenderTarget == renderTarget))
-                return;
-            else
-                throw new Exception("Render target was not bound.");
+
+            foreach (var crt in currentRenderTargets)
+                if (crt.RenderTarget == renderTarget)
+                    return;
+            throw new Exception("Render target was not bound.");
 #endif
         }
 
