@@ -45,6 +45,10 @@ namespace Squared.Render {
             manager.BatchGroupStack.Push(this);
             base.Issue(manager);
 
+            // HACK: If the user set a material on us explicitly, apply our parameters to it
+            if (Material != null)
+                Material.Flush(manager, ref MaterialParameters);
+
             if (OcclusionQuery != null)
                 OcclusionQuery.Begin();
 
