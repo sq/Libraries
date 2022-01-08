@@ -232,7 +232,8 @@ namespace Squared.Threading {
         private volatile int HasAnyListeners = 0;
         private readonly List<WorkQueueDrainListener> DrainListeners = new List<WorkQueueDrainListener>();
         private volatile int NumWaitingForDrain = 0;
-        private readonly ManualResetEventSlim DrainedSignal = new ManualResetEventSlim(false);
+        private readonly ManualResetEventSlim DrainedSignal = new ManualResetEventSlim(false),
+            FinishedProcessingSignal = new ManualResetEventSlim(false);
 
         private readonly object ItemsLock = new object();
         private InternalWorkItem<T>[] _Items;
@@ -254,12 +255,6 @@ namespace Squared.Threading {
             Configuration = (WorkItemConfiguration)typeof(T).GetProperty("Configuration", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)?.GetValue(null)
                 ?? new WorkItemConfiguration();
             _Items = new InternalWorkItem<T>[DefaultBufferSize];
-        }
-
-        private void NotifyDrained () {
-            // FIXME: Should we do this first? Assumption is that in a very bad case, the future's
-            //  complete handler might begin waiting
-            DrainedSignal.Set();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -378,22 +373,23 @@ namespace Squared.Threading {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void NotifyChanged () {
-            Owner.NotifyQueuesChanged();
+        private void NotifyChanged (bool wakeAll = true) {
+            Owner.NotifyQueuesChanged(wakeAll);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void NotifyChanged (WorkQueueNotifyMode mode, int newCount) {
+        private void NotifyChanged (WorkQueueNotifyMode mode, int newCount, bool wakeAll = true) {
             switch (mode) {
                 case WorkQueueNotifyMode.Never:
                     return;
                 default:
                 case WorkQueueNotifyMode.Always:
-                    Owner.NotifyQueuesChanged();
+                    Owner.NotifyQueuesChanged(wakeAll);
                     return;
                 case WorkQueueNotifyMode.Stochastically:
                     if ((newCount % Configuration.StochasticNotifyInterval) == 0)
-                        Owner.NotifyQueuesChanged();
+                        // We're already only waking the queues intermittently so we always want wakeAll = true here
+                        Owner.NotifyQueuesChanged(true);
                     return;
             }
         }
@@ -427,7 +423,7 @@ namespace Squared.Threading {
 
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
             var newCount = AddInternal(ref wi);
-            NotifyChanged(notifyChanged, newCount);
+            NotifyChanged(notifyChanged, newCount, wakeAll: false);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -439,7 +435,7 @@ namespace Squared.Threading {
 
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
             var newCount = AddInternal(ref wi);
-            NotifyChanged(notifyChanged, newCount);
+            NotifyChanged(notifyChanged, newCount, wakeAll: false);
         }
 
         public void EnqueueMany (ArraySegment<T> data, bool notifyChanged = true) {
@@ -490,6 +486,8 @@ namespace Squared.Threading {
                 return;
             }
 
+            int processedCounter = -1;
+
             do {
                 try {
                     bool empty = false;
@@ -508,7 +506,7 @@ namespace Squared.Threading {
                             InternalWorkItem<T>.Execute(ref item);
                             result++;
                         } finally {
-                            Interlocked.Increment(ref ItemsProcessed);
+                            processedCounter = Interlocked.Increment(ref ItemsProcessed);
                         }
                     }
                 } catch (Exception exc) {
@@ -519,10 +517,22 @@ namespace Squared.Threading {
             } while (running);
 
             actualMaximumCount -= numProcessed;
-            Interlocked.Decrement(ref _NumProcessing);
+            var wasLast = Interlocked.Decrement(ref _NumProcessing) == 0;
+            // The following would be ideal but I think it could produce a hang in some cases
+            /*
+            // This is a race, but that's probably OK since anyone waiting for the queue to drain will verify and spin if
+            //  we lose the race
+            var signalDone = wasLast && (Volatile.Read(ref ItemsQueued) <= processedCounter);
+            */
 
-            if (signalDrained)
-                NotifyDrained();
+            if (signalDrained) {
+                // FIXME: Should we do this first? Assumption is that in a very bad case, the future's
+                //  complete handler might begin waiting
+                DrainedSignal.Set();
+            }
+
+            if (wasLast)
+                FinishedProcessingSignal.Set();
         }
 
         public int Step (out bool exhausted, int? maximumCount = null) {
@@ -577,8 +587,14 @@ namespace Squared.Threading {
             var waterMark = ItemsQueued;
             try {
                 do {
-                    lock (ItemsLock)
-                        doWait = (_Count > 0) || (ItemsProcessed < ItemsQueued);
+                    lock (ItemsLock) {
+                        // Read these first and read the queued count last so that if we lose a race
+                        //  we will lose it in the 'there's extra work' fashion instead of 'we're done
+                        //  but not really' fashion
+                        var processed = Volatile.Read(ref ItemsProcessed);
+                        var queued = Volatile.Read(ref ItemsQueued);
+                        doWait = (processed < queued) || (_Count > 0);
+                    }
                     if (doWait) {
                         var now = Time.Ticks;
                         if (now > endWhen)
@@ -587,10 +603,22 @@ namespace Squared.Threading {
                             ? timeoutMs
                             : (int)(Math.Max(0, endWhen - now) / Time.MillisecondInTicks);
                         NotifyChanged();
-                        if (!DrainedSignal.Wait(maxWait))
-                            ;
-                        else
-                            ;
+
+                        if (DrainedSignal.Wait(maxWait)) {
+                            // We successfully got the drain signal, now wait for the 'processing is probably done' signal
+                            now = Time.Ticks;
+                            maxWait = (timeoutMs <= 0)
+                                ? timeoutMs
+                                : (int)(Math.Max(0, endWhen - now) / Time.MillisecondInTicks);
+                            if (now > endWhen)
+                                break;
+                            // Note that we may still spin after getting this signal because it will fire when all the workers
+                            //  stop running, but that doesn't necessarily mean all the work is done
+                            if (FinishedProcessingSignal.Wait(maxWait)) {
+                                FinishedProcessingSignal.Reset();
+                                DrainedSignal.Reset();
+                            }
+                        }
                     } else {
 #if DEBUG
                         if (!IsEmpty)

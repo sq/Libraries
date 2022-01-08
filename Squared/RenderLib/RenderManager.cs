@@ -954,7 +954,12 @@ namespace Squared.Render {
 
         public void Wait () {
             Group.NotifyQueuesChanged();
-            Queue.WaitUntilDrained();
+            if (!Queue.WaitUntilDrained())
+#if DEBUG
+                throw new TimeoutException("Failed to drain the prepare queue");
+#else
+                ;
+#endif
         }
         
         public void PrepareMany (ref DenseList<Batch> batches, ref Batch.PrepareContext context) {

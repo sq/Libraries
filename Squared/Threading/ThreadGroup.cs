@@ -332,8 +332,24 @@ namespace Squared.Threading {
         /// This ensures that any sleeping worker threads wake up, and that
         ///  new threads are created if necessary
         /// </summary>
-        public void NotifyQueuesChanged () {
-            WakeAllThreads();
+        public void NotifyQueuesChanged (bool wakeAll = true) {
+            if (wakeAll)
+                WakeAllThreads();
+            else
+                WakeOneThread();
+        }
+
+        private volatile int NextThreadToWake;
+
+        private void WakeOneThread () {
+            // Just kidding, we wake two threads because I'm a bit paranoid about one not being enough
+            // Still better than waking all of them...
+            var index = Interlocked.Add(ref NextThreadToWake, 2);
+            var thread1 = Threads[index % Threads.Length];
+            thread1?.Wake();
+            var thread2 = Threads[(index + 1) % Threads.Length];
+            if (thread2 != thread1)
+                thread2?.Wake();
         }
 
         private void WakeAllThreads () {
