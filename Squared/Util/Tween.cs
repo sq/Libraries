@@ -54,7 +54,16 @@ namespace Squared.Util {
         public readonly TweenRepeatMode RepeatMode;
         public readonly T From, To;
         public readonly BoundInterpolator<T, Tween<T>> Interpolator;
-        public readonly long StartedWhen, EndWhen, RepeatDelay;
+        public readonly long StartedWhen, EndWhen;
+        /// <summary>
+        /// If repeating is enabled, the tween will pause for this long before starting to repeat.
+        /// This effectively increases the duration of each loop.
+        /// </summary>
+        public readonly long RepeatDelay;
+        /// <summary>
+        /// If repeating is enabled, all loops after the first time will have this added to their duration.
+        /// </summary>
+        public readonly long RepeatExtraDuration;
 
         static Tween () {
             GetValue = _GetValue;
@@ -75,6 +84,7 @@ namespace Squared.Util {
             Interpolator = null;
             RepeatCount = 0;
             RepeatDelay = 0;
+            RepeatExtraDuration = 0;
             RepeatMode = TweenRepeatMode.Loop;
         }
 
@@ -83,7 +93,7 @@ namespace Squared.Util {
             long startWhen, long endWhen,
             BoundInterpolator<T, Tween<T>> interpolator = null,
             int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop,
-            long repeatDelay = 0
+            long repeatDelay = 0, long repeatExtraDuration = 0
         ) {
             From = from;
             To = to;
@@ -93,13 +103,14 @@ namespace Squared.Util {
             RepeatCount = repeatCount;
             RepeatMode = repeatMode;
             RepeatDelay = repeatDelay;
+            RepeatExtraDuration = repeatExtraDuration;
         }
 
         public static Tween<T> StartNow (
             T from, T to, long ticks, long? delay = null,
             long? now = null, BoundInterpolator<T, Tween<T>> interpolator = null,
             int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop,
-            long repeatDelay = 0
+            long repeatDelay = 0, long repeatExtraDuration = 0
         ) {
             var _now = now.HasValue ? now.Value : Time.Ticks;
             return new Tween<T>(
@@ -107,7 +118,8 @@ namespace Squared.Util {
                 _now + delay.GetValueOrDefault(0),
                 _now + delay.GetValueOrDefault(0) + ticks,
                 interpolator: interpolator, repeatCount: repeatCount,
-                repeatMode: repeatMode, repeatDelay = repeatDelay
+                repeatMode: repeatMode, repeatDelay: repeatDelay,
+                repeatExtraDuration: repeatExtraDuration
             );
         }
 
@@ -115,14 +127,15 @@ namespace Squared.Util {
             T from, T to, float seconds, float? delay = null,
             long? now = null, BoundInterpolator<T, Tween<T>> interpolator = null,
             int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop,
-            float repeatDelay = 0
+            float repeatDelay = 0, float repeatExtraDuration = 0
         ) {
             return StartNow(
                 from, to,
                 ticks: TimeSpan.FromSeconds(seconds).Ticks,
                 delay: TimeSpan.FromSeconds(delay.GetValueOrDefault(0)).Ticks,
                 now: now, interpolator: interpolator, repeatCount: repeatCount,
-                repeatMode: repeatMode, repeatDelay: TimeSpan.FromSeconds(repeatDelay).Ticks
+                repeatMode: repeatMode, repeatDelay: TimeSpan.FromSeconds(repeatDelay).Ticks,
+                repeatExtraDuration: TimeSpan.FromSeconds(repeatExtraDuration).Ticks
             );
         }
 
@@ -136,14 +149,15 @@ namespace Squared.Util {
             var durationTicks = EndWhen - StartedWhen;
             var elapsedTicks = now - StartedWhen;
 
-            if ((elapsedTicks <= durationTicks) || (RepeatDelay == 0))
+            if ((elapsedTicks <= durationTicks) || ((RepeatDelay == 0) && (RepeatExtraDuration == 0)))
                 return (float)(elapsedTicks / ((double)durationTicks));
 
-            // slow path: We have a repeat delay and have begun to repeat
-            var extendedDuration = durationTicks + RepeatDelay;
-            var icnt = elapsedTicks / extendedDuration;
-            var subTicks = elapsedTicks - (icnt * extendedDuration);
-            var localResult = (float)(subTicks / ((double)durationTicks));
+            // slow path: We have a repeat delay and/or extended duration and have begun to repeat
+            var extendedDuration = durationTicks + RepeatDelay + RepeatExtraDuration;
+            var adjustedElapsedTicks = elapsedTicks + RepeatExtraDuration;
+            var icnt = adjustedElapsedTicks / extendedDuration;
+            var subTicks = adjustedElapsedTicks - (icnt * extendedDuration);
+            var localResult = (float)(subTicks / ((double)(durationTicks + RepeatExtraDuration)));
             if (localResult > 1)
                 localResult = 1;
             return localResult + icnt;
@@ -246,7 +260,9 @@ namespace Squared.Util {
                 startWhen: startWhen, endWhen: endWhen,
                 interpolator: interpolator ?? Interpolator,
                 repeatCount: 0,
-                repeatMode: RepeatMode
+                repeatMode: RepeatMode,
+                repeatDelay: RepeatDelay,
+                repeatExtraDuration: RepeatExtraDuration
             );
         }
 
@@ -263,7 +279,8 @@ namespace Squared.Util {
 
             return new Tween<U>(
                 from, to, StartedWhen, EndWhen, 
-                interpolator, RepeatCount, RepeatMode, RepeatDelay
+                interpolator, RepeatCount, RepeatMode, 
+                RepeatDelay, RepeatExtraDuration
             );
         }
 
@@ -290,6 +307,7 @@ namespace Squared.Util {
                 (RepeatCount == rhs.RepeatCount) &&
                 (RepeatMode == rhs.RepeatMode) &&
                 (RepeatDelay == rhs.RepeatDelay) &&
+                (RepeatExtraDuration == rhs.RepeatExtraDuration) &&
                 (Interpolator == rhs.Interpolator) &&
                 object.Equals(From, rhs.From) &&
                 object.Equals(To, rhs.To);
@@ -310,9 +328,10 @@ namespace Squared.Util {
             if (EndWhen <= StartedWhen)
                 return string.Format("constant <{0}>", From);
             else if (RepeatCount > 0)
-                return string.Format("from <{0}> to <{1}> duration {2:0000.00}ms [started at {3}] {4} repeat(s) [delay {5}ms]", 
+                return string.Format("from <{0}> to <{1}> duration {2:0000.00}ms [started at {3}] {4} repeat(s) [delay {5}ms extra-duration {6}ms]", 
                     From, To, (double)(EndWhen - StartedWhen) / Time.MillisecondInTicks, StartedWhen, 
-                    RepeatCount, (double)RepeatDelay / Time.MillisecondInTicks
+                    RepeatCount, (double)RepeatDelay / Time.MillisecondInTicks,
+                    (double)RepeatExtraDuration / Time.MillisecondInTicks
                 );
             else
                 return string.Format("from <{0}> to <{1}> duration {2:0000.00}ms [started at {3}]", From, To, (double)(EndWhen - StartedWhen) / Time.MillisecondInTicks, StartedWhen);
