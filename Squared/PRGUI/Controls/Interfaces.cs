@@ -58,16 +58,16 @@ namespace Squared.PRGUI {
         /// Invoked immediately before the compositor draw operation is issued to the GPU. This is the appropriate
         ///  time to update material uniforms for the composite operation.
         /// </summary>
-        void BeforeIssueComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall);
+        void BeforeIssueComposite (Control control, DeviceManager dm, in BitmapDrawCall drawCall);
         /// <summary>
         /// Composites the control into the scene using the provided renderer and draw call data.
         /// </summary>
-        void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall);
+        void Composite (Control control, ref ImperativeRenderer renderer, in BitmapDrawCall drawCall);
         /// <summary>
         /// Invoked immediately after the compositor draw operation is issued to the GPU.
         /// If you made any state changes in BeforeIssueComposite, you should undo them here.
         /// </summary>
-        void AfterIssueComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall);
+        void AfterIssueComposite (Control control, DeviceManager dm, in BitmapDrawCall drawCall);
     }
 
     public interface IControlContainer {

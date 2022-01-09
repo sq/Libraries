@@ -1215,12 +1215,12 @@ namespace Squared.PRGUI {
 
         private static void _BeforeIssueComposite (DeviceManager dm, object _control) {
             var control = (Control)_control;
-            control.Appearance.Compositor?.BeforeIssueComposite(control, dm, ref control.MostRecentCompositeDrawCall);
+            control.Appearance.Compositor?.BeforeIssueComposite(control, dm, in control.MostRecentCompositeDrawCall);
         }
 
         private static void _AfterIssueComposite (DeviceManager dm, object _control) {
             var control = (Control)_control;
-            control.Appearance.Compositor?.AfterIssueComposite(control, dm, ref control.MostRecentCompositeDrawCall);
+            control.Appearance.Compositor?.AfterIssueComposite(control, dm, in control.MostRecentCompositeDrawCall);
         }
 
         private static void _ApplyLocalTransformMatrix (ref ViewTransform vt, object _control) {
@@ -1270,13 +1270,13 @@ namespace Squared.PRGUI {
                 ((BatchGroup)subgroup.Container).SetViewTransform(Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null);
                 subgroup.BlendState = RenderStates.PorterDuffOver;
                 if (enableCompositor)
-                    Appearance.Compositor.Composite(this, ref subgroup, ref dc);
+                    Appearance.Compositor.Composite(this, ref subgroup, in dc);
                 else
-                    subgroup.Draw(ref dc);
+                    subgroup.Draw(in dc);
             } else if (Appearance.Overlay) {
                 passSet.OverlayQueue.Add(in dc);
             } else {
-                passSet.Above.Draw(ref dc, blendState: RenderStates.PorterDuffOver);
+                passSet.Above.Draw(in dc, blendState: RenderStates.PorterDuffOver);
                 passSet.Above.Layer += 1;
             }
         }

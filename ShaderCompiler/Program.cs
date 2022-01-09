@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Cache;
@@ -51,10 +52,12 @@ namespace ShaderCompiler {
             }
 
             var pending = new List<Task<int>>();
+            var outputs = new List<string>();
 
             Console.WriteLine("Compiling shaders from {0}...", sourceDir);
             foreach (var shader in Directory.GetFiles(sourceDir, "*.fx")) {
                 var destPath = Path.Combine(destDir, Path.GetFileName(shader) + ".bin");
+                outputs.Add(destPath);
                 var paramsPath = Path.Combine(destDir, Path.GetFileName(shader) + ".params");
                 var doesNotExist = !File.Exists(destPath);
                 var resultDate = File.GetLastWriteTimeUtc(destPath);
@@ -132,7 +135,18 @@ namespace ShaderCompiler {
             }
 
             Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine("Compiled {0}/{1} shader(s) with {3} error(s) to '{2}'", updatedFileCount, totalFileCount, destDir, errorCount);
+            Console.WriteLine("Compiled {0}/{1} shader(s) with {3} error(s) to '{2}'. Creating archive...", updatedFileCount, totalFileCount, destDir, errorCount);
+
+            var zipPath = Path.Combine(destDir, "shaders.zip");
+            var tempPath = zipPath + ".tmp";
+            using (var zip = new ZipArchive(File.Open(tempPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None), ZipArchiveMode.Create, false)) {
+                foreach (var output in outputs)
+                    zip.CreateEntryFromFile(output, Path.GetFileName(output), CompressionLevel.Optimal);
+            }
+            File.Copy(tempPath, zipPath, true);
+            File.Delete(tempPath);
+            Console.WriteLine($"Wrote {outputs.Count} shaders to '{zipPath}'.");
+
             Console.ResetColor();
 
             if (Debugger.IsAttached)

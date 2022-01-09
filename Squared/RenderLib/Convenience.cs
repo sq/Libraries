@@ -797,24 +797,8 @@ namespace Squared.Render.Convenience {
                 Layer += 1;
         }
 
-
         public void Draw (
-            BitmapDrawCall drawCall, 
-            int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
-            DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
-            Material material = null
-        ) {
-            Draw(
-                ref drawCall, layer, worldSpace, blendState, 
-                samplerState: samplerState, samplerState2: samplerState2, 
-                depthStencilState: depthStencilState, rasterizerState: rasterizerState, 
-                material: material
-            );
-        }
-
-        public void Draw (
-            ref BitmapDrawCall drawCall, 
+            in BitmapDrawCall drawCall, 
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
@@ -824,10 +808,6 @@ namespace Squared.Render.Convenience {
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
             else if (Container.IsReleased)
                 throw new ObjectDisposedException("The container this ImperativeRenderer is drawing into has been disposed.");
-
-            // FIXME: Mutates the argument :(
-            if (worldSpace.HasValue)
-                drawCall.WorldSpace = worldSpace;
 
             using (var batch = GetBitmapBatch(
                 layer, worldSpace,
@@ -842,9 +822,19 @@ namespace Squared.Render.Convenience {
                         material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState, UseDiscard);
 
                     var mmbb = (MultimaterialBitmapBatch)batch;
-                    mmbb.Add(in drawCall, material, samplerState, samplerState2);
+                    if (worldSpace.HasValue && (drawCall.WorldSpace != worldSpace)) {
+                        var temp = drawCall;
+                        temp.WorldSpace = worldSpace;
+                        mmbb.Add(in temp, material, samplerState, samplerState2);
+                    } else
+                        mmbb.Add(in drawCall, material, samplerState, samplerState2);
                 } else {
-                    batch.Add(in drawCall);
+                    if (worldSpace.HasValue && (drawCall.WorldSpace != worldSpace)) {
+                        var temp = drawCall;
+                        temp.WorldSpace = worldSpace;
+                        batch.Add(in temp);
+                    } else
+                        batch.Add(in drawCall);
                 }
             }
         }
@@ -882,7 +872,7 @@ namespace Squared.Render.Convenience {
                 NextSortKey.Order += 1;
 
             Draw(
-                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                in drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: SamplerState2, 
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
             );
@@ -915,7 +905,7 @@ namespace Squared.Render.Convenience {
                 NextSortKey.Order += 1;
 
             Draw(
-                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                in drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: samplerState2,
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
             );
@@ -948,7 +938,7 @@ namespace Squared.Render.Convenience {
                 NextSortKey.Order += 1;
 
             Draw(
-                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                in drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: samplerState2,
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState
             );
@@ -985,7 +975,7 @@ namespace Squared.Render.Convenience {
                 NextSortKey.Order += 1;
 
             Draw(
-                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                in drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: samplerState2,
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
             );

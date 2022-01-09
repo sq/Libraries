@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
@@ -499,10 +500,75 @@ namespace Squared.Render.Resources {
         }
     }
 
+    public class ZipResourceStreamProvider : IResourceProviderStreamSource, IDisposable {
+        public readonly ZipArchive Archive;
+        public string Prefix { get; set; }
+        public string Suffix { get; protected set; }
+
+        public ZipResourceStreamProvider (Stream stream, string prefix = null, string suffix = null)
+            : this (new ZipArchive(stream, ZipArchiveMode.Read, false), prefix, suffix) {
+        }
+
+        public ZipResourceStreamProvider (ZipArchive archive, string prefix = null, string suffix = null) {
+            Archive = archive;
+            Prefix = prefix ?? "";
+            Suffix = suffix ?? Suffix ?? "";
+        }
+
+        public void Dispose () {
+            Archive.Dispose();
+        }
+
+        public string[] GetNames () {
+            return (
+                from e in Archive.Entries
+                let n = e.FullName
+                where n.StartsWith(Prefix) && n.EndsWith(Suffix)
+                let filtered = n.Substring(0, n.Length - Suffix.Length)
+                select filtered
+            ).ToArray();
+        }
+
+        public string FixupName (string name, bool stripExtension) {
+            if (stripExtension && name.Contains("."))
+                name = name.Replace(Path.GetExtension(name), "");
+            name = name.Replace('/', '\\');
+            return name;
+        }
+
+        public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception) {
+            var streamName = FixupName((Prefix ?? "") + name + Suffix, false);
+            exception = null;
+            var entry = Archive.GetEntry(streamName);
+            result = entry?.Open();
+            if (result == null) {
+                if (optional) {
+                    return false;
+                } else {
+                    exception = new FileNotFoundException($"No file with this name found: {streamName}", name);
+                    return false;
+                }
+            } else {
+                return true;
+            }
+        }
+    }
+
     public class EffectProvider : ResourceProvider<Effect> {
+        private static IResourceProviderStreamSource MakeStreamProvider (Assembly assembly) {
+            var suffix = ".fx.bin";
+            var shaderStream = assembly.GetManifestResourceStream("shaders.zip");
+            if (shaderStream != null)
+                return new ZipResourceStreamProvider(shaderStream, suffix: suffix);
+            else {
+                System.Diagnostics.Debug.WriteLine($"WARNING: No shaders.zip found in assembly '{assembly.FullName}'. Falling back to per-effect manifest resources");
+                return new EmbeddedResourceStreamProvider(assembly, suffix: suffix);
+            }
+        }
+
         public EffectProvider (Assembly assembly, RenderCoordinator coordinator) 
             : this (
-                new EmbeddedResourceStreamProvider(assembly, suffix: ".fx.bin"), coordinator 
+                MakeStreamProvider(assembly), coordinator 
             ) {
         }
 

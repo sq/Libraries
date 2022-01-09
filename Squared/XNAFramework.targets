@@ -31,6 +31,7 @@
 
     <ShaderBinDirectory Condition="'$(ShaderBinDirectory)' == ''">$(ShaderDirectory)\bin</ShaderBinDirectory>
     <ShaderLocalBinDirectory>$(ShaderBinDirectory)\$(Platform)\$(Configuration)</ShaderLocalBinDirectory>
+    <ShadersZipPath>$(ShaderLocalBinDirectory)\shaders.zip</ShadersZipPath>
     <ShaderCompilerPath>$(SquaredPath)\ShaderCompiler\bin\ShaderCompiler.exe</ShaderCompilerPath>
     <!-- The 'disable preshaders' flag has to come last, /Od /O3 etc clear it -->
     <ShaderCompilerExtraOptions>/Op</ShaderCompilerExtraOptions>
@@ -176,14 +177,12 @@
 
   <Target Condition="'$(ShaderDirectory)' != ''" Name="ValidateShaderBinaries" BeforeTargets="PrepareResources;BeforeBuild">
     <ItemGroup>
-      <ShaderBinary Include="@(ShaderText->'$(ShaderLocalBinDirectory)\%(Filename).fx.bin')" />
-      <EmbeddedResource Include="@(ShaderBinary)" >
-        <LogicalName>%(Filename).bin</LogicalName>
+      <EmbeddedResource Include="$(ShadersZipPath)">
+        <LogicalName>shaders.zip</LogicalName>
       </EmbeddedResource>
     </ItemGroup>
 
-    <Error Condition="!Exists(%(ShaderBinary.FullPath))" Text="Missing shader binary [%(ShaderBinary.FullPath)]"/>
-    <Message Importance="High" Text="Including the following shader binaries: '@(ShaderBinary)'" />
+    <Error Condition="!Exists($(ShadersZipPath))" Text="Shaders archive '$(ShadersZipPath)' is missing"/>
   </Target>
 
   <ItemGroup Condition="'$(ShaderDirectory)' != ''">
