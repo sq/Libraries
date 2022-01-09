@@ -4,7 +4,8 @@
 #include "TargetInfo.fxh"
 #include "sRGBCommon.fxh"
 
-uniform const bool   PremultiplyTexture;
+uniform const float2 BitmapTextureChannels;
+uniform const float4 BitmapValueMask2;
 
 void HighlightColorPixelShaderWithDiscard(
     in float4 multiplyColor : COLOR0,
@@ -132,7 +133,9 @@ void GradientMaskedPixelShaderWithDiscard(
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     // FIXME: Use a different value?
     float4 maskColor = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS));
-    float alpha = gradientMask(maskColor.r, userData.x, userData.y, userData.z, userData.w);
+    float mask, alpha;
+    ExtractLuminanceAndAlpha(maskColor, BitmapValueMask2, BitmapTextureChannels.y, mask, alpha);
+    alpha *= gradientMask(mask.r, userData.x, userData.y, userData.z, userData.w);
 
     result = texColor * multiplyColor * alpha;
     result += (addColor * result.a);

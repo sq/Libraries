@@ -1464,8 +1464,7 @@ namespace PRGUI.Demo {
             Materials.SetGaussianBlurParameters(Material, sigma, 7, 0);
         }
 
-        public void Composite (Control control, ref ImperativeRenderer renderer, in BitmapDrawCall drawCall) {
-            var opacity = drawCall.MultiplyColor.A / 255.0f;
+        public void Composite (Control control, ref ImperativeRenderer renderer, in BitmapDrawCall drawCall, float opacity) {
             if ((opacity >= 1) && (control.Context.TopLevelFocused == control))
                 renderer.Draw(in drawCall, blendState: RenderStates.PorterDuffOver);
             else

@@ -281,6 +281,8 @@ namespace Squared.Render {
 
             public readonly Vector2 Texture1Size, Texture1HalfTexel;
             public readonly Vector2 Texture2Size, Texture2HalfTexel;
+            public readonly Vector2 TextureChannels;
+            public readonly Vector4 Texture1ValueMask, Texture2ValueMask;
 
             public readonly int LocalVertexOffset;
             public int VertexCount;
@@ -309,21 +311,32 @@ namespace Squared.Render {
                 var tex1 = textureSet.Texture1.GetInstance(textureCache);
                 var tex2 = textureSet.Texture2.GetInstance(textureCache);
                 if (tex1 == null) {
-                    Texture1Size = Texture2Size = default(Vector2);
-                    Texture1HalfTexel = Texture2HalfTexel = default(Vector2);
+                    Texture1Size = Texture2Size = default;
+                    Texture1HalfTexel = Texture2HalfTexel = default;
+                    TextureChannels = default;
+                    Texture1ValueMask = Texture2ValueMask = default;
                     Invalid = true;
                     return;
                 }
 
                 Texture1Size = new Vector2(tex1.Width, tex1.Height);
                 Texture1HalfTexel = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
+                int tex1Channels, tex2Channels;
+                Texture1ValueMask = Evil.TextureUtils.GetValueMask(tex1.Format);
+                Evil.TextureUtils.GetBytesPerPixelAndComponents(tex1.Format, out tex1Channels);
 
                 if (textureSet.Texture2.IsInitialized) {
                     Texture2Size = new Vector2(tex2.Width, tex2.Height);
                     Texture2HalfTexel = new Vector2(1.0f / Texture2Size.X, 1.0f / Texture2Size.Y);
+                    Texture2ValueMask = Evil.TextureUtils.GetValueMask(tex2.Format);
+                    Evil.TextureUtils.GetBytesPerPixelAndComponents(tex2.Format, out tex2Channels);
                 } else {
                     Texture2HalfTexel = Texture2Size = Vector2.Zero;
+                    Texture2ValueMask = Vector4.Zero;
+                    tex2Channels = 0;
                 }
+
+                TextureChannels = new Vector2(tex1Channels, tex2Channels);
 
                 Invalid = false;
             }
@@ -659,6 +672,9 @@ namespace Squared.Render {
                 cnbs.Parameters.BitmapTextureSize2?.SetValue(nb.Texture2Size);
                 cnbs.Parameters.HalfTexel?.SetValue(nb.Texture1HalfTexel);
                 cnbs.Parameters.HalfTexel2?.SetValue(nb.Texture2HalfTexel);
+                cnbs.Parameters.BitmapTextureChannels?.SetValue(nb.TextureChannels);
+                cnbs.Parameters.BitmapValueMask?.SetValue(nb.Texture1ValueMask);
+                cnbs.Parameters.BitmapValueMask2?.SetValue(nb.Texture2ValueMask);
             }
 
             manager.CurrentMaterial.Flush(manager);

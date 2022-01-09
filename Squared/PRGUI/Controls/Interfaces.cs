@@ -61,8 +61,9 @@ namespace Squared.PRGUI {
         void BeforeIssueComposite (Control control, DeviceManager dm, in BitmapDrawCall drawCall);
         /// <summary>
         /// Composites the control into the scene using the provided renderer and draw call data.
+        /// Note that the <paramref name="opacity"/> value has already been applied to <paramref name="drawCall"/>.MultiplyColor.
         /// </summary>
-        void Composite (Control control, ref ImperativeRenderer renderer, in BitmapDrawCall drawCall);
+        void Composite (Control control, ref ImperativeRenderer renderer, in BitmapDrawCall drawCall, float opacity);
         /// <summary>
         /// Invoked immediately after the compositor draw operation is issued to the GPU.
         /// If you made any state changes in BeforeIssueComposite, you should undo them here.

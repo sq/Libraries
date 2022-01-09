@@ -1270,7 +1270,7 @@ namespace Squared.PRGUI {
                 ((BatchGroup)subgroup.Container).SetViewTransform(Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null);
                 subgroup.BlendState = RenderStates.PorterDuffOver;
                 if (enableCompositor)
-                    Appearance.Compositor.Composite(this, ref subgroup, in dc);
+                    Appearance.Compositor.Composite(this, ref subgroup, in dc, effectiveOpacity);
                 else
                     subgroup.Draw(in dc);
             } else if (Appearance.Overlay) {

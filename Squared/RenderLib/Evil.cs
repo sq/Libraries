@@ -546,6 +546,9 @@ namespace Squared.Render.Evil {
                 case SurfaceFormat.Single:
                     numComponents = 1;
                     return 4;
+                case SurfaceFormat.HalfVector2:
+                    numComponents = 2;
+                    return 4;
                 case SurfaceFormat.Vector2:
                     numComponents = 2;
                     return 8;
@@ -558,7 +561,13 @@ namespace Squared.Render.Evil {
                 case SurfaceFormat.Rg32:
                     numComponents = 2;
                     return 4;
+                case SurfaceFormat.Bgr565:
+                    numComponents = 3;
+                    return 2;
                 case SurfaceFormat.Dxt1:
+                    // FIXME: These are technically less than 1 byte per pixel
+                    numComponents = 3;
+                    return 1;
                 case SurfaceFormat.Dxt3:
                     // FIXME: These are technically less than 1 byte per pixel
                     numComponents = 4;
@@ -570,6 +579,26 @@ namespace Squared.Render.Evil {
                     return 1;
                 default:
                     throw new ArgumentException("Surface format " + format + " not implemented");
+            }
+        }
+
+        public static Vector4 GetValueMask (SurfaceFormat format) {
+            switch (format) {
+                case SurfaceFormat.Alpha8:
+                    return new Vector4(0, 0, 0, 1);
+                case SurfaceFormat.Single:
+                case SurfaceFormat.HalfSingle:
+                    return new Vector4(1, 0, 0, 0);
+                case SurfaceFormat.Rg32:
+                case SurfaceFormat.Vector2:
+                case SurfaceFormat.HalfVector2:
+                case SurfaceFormat.NormalizedByte2:
+                    return new Vector4(1, 1, 0, 0);
+                case SurfaceFormat.Bgr565:
+                case SurfaceFormat.Dxt1:
+                    return new Vector4(1, 1, 1, 0);
+                default:
+                    return new Vector4(1, 1, 1, 1);
             }
         }
 
