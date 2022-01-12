@@ -872,8 +872,8 @@ namespace Squared.PRGUI {
                 UpdateVisibleRegion(ref passContext, ref settings.Box);
 
             // FIXME: The memset for these actually burns a measurable amount of time
-            ImperativeRenderer contentRenderer = default(ImperativeRenderer);
-            RasterizePassSet childrenPassSet = default(RasterizePassSet);
+            ImperativeRenderer contentRenderer;
+            RasterizePassSet childrenPassSet;
             UIOperationContext contentContext;
 
             int previousStackDepth = passSet.StackDepth, newStackDepth = previousStackDepth;
@@ -882,23 +882,15 @@ namespace Squared.PRGUI {
             //  for our children. At the start of it we'll generate the stencil mask that will be used for our
             //  rendering operation(s).
             if (hasNestedContext) {
-                renderer.Layer += 1;
-                passContext.Clone(out contentContext);
-                contentRenderer = renderer.MakeSubgroup();
-                if (ShouldClipContent) {
-                    newStackDepth = previousStackDepth + 1;
-                    contentRenderer.DepthStencilState = context.UIContext.GetStencilTest(newStackDepth);
-                    childrenPassSet = new RasterizePassSet(ref contentRenderer, newStackDepth, passSet.OverlayQueue);
-                } else {
-                    contentRenderer.DepthStencilState = 
-                        (previousStackDepth <= 0)
-                        ? DepthStencilState.None
-                        : context.UIContext.GetStencilTest(previousStackDepth);
-                    childrenPassSet = new RasterizePassSet(ref contentRenderer, newStackDepth, passSet.OverlayQueue);
-                }
-                renderer.Layer += 1;
+                NestedContextPassSetup(
+                    ref context, ref passSet, ref renderer, ref passContext, 
+                    out contentRenderer, out childrenPassSet, out contentContext, 
+                    previousStackDepth, ref newStackDepth
+                );
             } else {
                 contentContext = passContext;
+                childrenPassSet = default;
+                contentRenderer = default;
             }
 
             if (HasPreRasterizeHandler && (pass == RasterizePasses.Content))
@@ -920,41 +912,69 @@ namespace Squared.PRGUI {
             if (hasNestedContext) {
                 // GROSS OPTIMIZATION HACK: Detect that any rendering operation(s) occurred inside the
                 //  group and if so, set up the stencil mask so that they will be clipped.
-                if (ShouldClipContent) {
-                    if (!contentRenderer.Container.IsEmpty) {
-                        // If this is the first stencil pass instead of a nested one, clear the stencil buffer
-                        if (passSet.StackDepth < 1) {
-                            contentRenderer.Clear(stencil: 0, layer: -9999);
-                        } else {
-                            // Erase any siblings' clip regions
-                            contentRenderer.DepthStencilState = context.UIContext.GetStencilRestore(previousStackDepth);
-                            contentRenderer.FillRectangle(new Rectangle(-1, -1, 9999, 9999), Color.Transparent, blendState: RenderStates.DrawNone, layer: -1000);
-                        }
-
-                        contentRenderer.DepthStencilState = context.UIContext.GetStencilWrite(previousStackDepth);
-
-                        // FIXME: Separate context?
-                        contentContext.Pass = RasterizePasses.ContentClip;
-
-                        // FIXME
-                        var temp = settings;
-                        ApplyClipMargins(ref contentContext, ref temp.Box);
-
-                        var crLayer = contentRenderer.Layer;
-                        contentRenderer.Layer = -999;
-                        settings.State = default(ControlStates);
-                        decorations?.Rasterize(ref contentContext, ref contentRenderer, temp);
-
-                        contentRenderer.Layer = crLayer;
-
-                        // passSet.NextReferenceStencil = childrenPassSet.NextReferenceStencil;
-                    } else {
-                        ;
-                    }
-                } 
+                if (ShouldClipContent && !contentRenderer.Container.IsEmpty)
+                    NestedContextPassTeardown(
+                        ref context, ref settings, decorations, ref passSet, 
+                        ref contentRenderer, ref contentContext, previousStackDepth
+                    );
 
                 renderer.Layer += 1;
             }
+        }
+
+        private void NestedContextPassSetup (
+            ref UIOperationContext context, ref RasterizePassSet passSet, ref ImperativeRenderer renderer, ref UIOperationContext passContext, 
+            out ImperativeRenderer contentRenderer, out RasterizePassSet childrenPassSet, out UIOperationContext contentContext, 
+            int previousStackDepth, ref int newStackDepth
+        ) {
+            renderer.Layer += 1;
+            passContext.Clone(out contentContext);
+            contentRenderer = renderer.MakeSubgroup();
+            if (ShouldClipContent) {
+                newStackDepth = previousStackDepth + 1;
+                contentRenderer.DepthStencilState = context.UIContext.GetStencilTest(newStackDepth);
+                childrenPassSet = new RasterizePassSet(ref contentRenderer, newStackDepth, passSet.OverlayQueue);
+            } else {
+                contentRenderer.DepthStencilState =
+                    (previousStackDepth <= 0)
+                    ? DepthStencilState.None
+                    : context.UIContext.GetStencilTest(previousStackDepth);
+                childrenPassSet = new RasterizePassSet(ref contentRenderer, newStackDepth, passSet.OverlayQueue);
+            }
+            renderer.Layer += 1;
+        }
+
+        private void NestedContextPassTeardown (
+            ref UIOperationContext context, ref DecorationSettings settings, IDecorator decorations, 
+            ref RasterizePassSet passSet, ref ImperativeRenderer contentRenderer, ref UIOperationContext contentContext, 
+            int previousStackDepth
+        ) {
+            // If this is the first stencil pass instead of a nested one, clear the stencil buffer
+            if (passSet.StackDepth < 1) {
+                contentRenderer.Clear(stencil: 0, layer: -9999);
+            } else {
+                // Erase any siblings' clip regions
+                contentRenderer.DepthStencilState = context.UIContext.GetStencilRestore(previousStackDepth);
+                contentRenderer.FillRectangle(new Rectangle(-1, -1, 9999, 9999), Color.Transparent, blendState: RenderStates.DrawNone, layer: -1000);
+            }
+
+            contentRenderer.DepthStencilState = context.UIContext.GetStencilWrite(previousStackDepth);
+
+            // FIXME: Separate context?
+            contentContext.Pass = RasterizePasses.ContentClip;
+
+            // FIXME
+            var temp = settings;
+            ApplyClipMargins(ref contentContext, ref temp.Box);
+
+            var crLayer = contentRenderer.Layer;
+            contentRenderer.Layer = -999;
+            settings.State = default(ControlStates);
+            decorations?.Rasterize(ref contentContext, ref contentRenderer, temp);
+
+            contentRenderer.Layer = crLayer;
+
+            // passSet.NextReferenceStencil = childrenPassSet.NextReferenceStencil;
         }
 
         private void RasterizeAllPasses (ref UIOperationContext context, ref RectF box, ref RasterizePassSet passSet, bool compositing) {
@@ -1150,12 +1170,7 @@ namespace Squared.PRGUI {
             if (hidden) {
                 // HACK: Ensure pre-rasterize handlers run for hidden controls, because the handler
                 //  may be doing something important like updating animations or repainting a buffer
-                if (HasPreRasterizeHandler) {
-                    var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
-                    var state = GetCurrentState(ref context) | ControlStates.Invisible;
-                    var settings = MakeDecorationSettings(ref box, ref box, state, false);
-                    OnPreRasterize(ref context, settings, decorations);
-                }
+                RunPreRasterizeHandlerForHiddenControl(ref context, ref box);
                 return false;
             }
 
@@ -1179,29 +1194,44 @@ namespace Squared.PRGUI {
                 context.Opacity *= opacity;
                 RasterizeAllPasses(ref context, ref box, ref passSet, false);
             } else {
-                // HACK: Create padding around the element for drop shadows
-                box.SnapAndInset(out Vector2 tl, out Vector2 br, -Context.CompositorPaddingPx);
-                // Don't overflow the edges of the canvas with padding, it'd produce garbage pixels
-                context.UIContext.CanvasRect.Clamp(ref tl);
-                context.UIContext.CanvasRect.Clamp(ref br);
-
-                var compositeBox = new RectF(tl, br - tl);
-                var srt = context.UIContext.GetScratchRenderTarget(context.Prepass, in compositeBox);
-                if (context.RenderTargetStack.Count > 0)
-                    context.RenderTargetStack[context.RenderTargetStack.Count - 1].Dependencies.Add(srt);
-                context.RenderTargetStack.Add(srt);
-                try {
-                    // passSet.Above.RasterizeRectangle(box.Position, box.Extent, 1f, Color.Red * 0.1f);
-                    RasterizeIntoPrepass(ref context, passSet, opacity, ref box, ref compositeBox, srt, enableCompositor);
-                    // passSet.Above.RasterizeEllipse(box.Center, Vector2.One * 3f, Color.White);
-                } finally {
-                    context.RenderTargetStack.RemoveTail(1);
-                    context.UIContext.ReleaseScratchRenderTarget(srt.Instance);
-                }
+                RasterizeComposited(ref context, ref box, ref passSet, opacity, enableCompositor);
             }
             context.Opacity = oldOpacity;
 
             return true;
+        }
+
+        private void RunPreRasterizeHandlerForHiddenControl (ref UIOperationContext context, ref RectF box) {
+            if (!HasPreRasterizeHandler)
+                return;
+
+            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
+            var state = GetCurrentState(ref context) | ControlStates.Invisible;
+            var settings = MakeDecorationSettings(ref box, ref box, state, false);
+            OnPreRasterize(ref context, settings, decorations);
+        }
+
+        private void RasterizeComposited (ref UIOperationContext context, ref RectF box, ref RasterizePassSet passSet, float opacity, bool enableCompositor) {
+            // HACK: Create padding around the element for drop shadows
+            box.SnapAndInset(out Vector2 tl, out Vector2 br, -Context.CompositorPaddingPx);
+            // Don't overflow the edges of the canvas with padding, it'd produce garbage pixels
+            var canvasRect = context.UIContext.CanvasRect;
+            canvasRect.Clamp(ref tl);
+            canvasRect.Clamp(ref br);
+
+            var compositeBox = new RectF(tl, br - tl);
+            var srt = context.UIContext.GetScratchRenderTarget(context.Prepass, in compositeBox);
+            if (context.RenderTargetStack.Count > 0)
+                context.RenderTargetStack[context.RenderTargetStack.Count - 1].Dependencies.Add(srt);
+            context.RenderTargetStack.Add(srt);
+            try {
+                // passSet.Above.RasterizeRectangle(box.Position, box.Extent, 1f, Color.Red * 0.1f);
+                RasterizeIntoPrepass(ref context, passSet, opacity, ref box, ref compositeBox, srt, enableCompositor);
+                // passSet.Above.RasterizeEllipse(box.Center, Vector2.One * 3f, Color.White);
+            } finally {
+                context.RenderTargetStack.RemoveTail(1);
+                context.UIContext.ReleaseScratchRenderTarget(srt.Instance);
+            }
         }
 
         private static readonly ViewTransformModifier ApplyLocalTransformMatrix = _ApplyLocalTransformMatrix;
@@ -1260,25 +1290,32 @@ namespace Squared.PRGUI {
             );
 
             if (Appearance.HasTransformMatrix || enableCompositor) {
-                MostRecentCompositeDrawCall = dc;
-                MostRecentCompositeBox = compositeBox;
-                var subgroup = passSet.Above.MakeSubgroup(
-                    before: BeforeComposite, 
-                    after: AfterComposite,
-                    userData: this
-                );
-                ((BatchGroup)subgroup.Container).SetViewTransform(Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null);
-                subgroup.BlendState = RenderStates.PorterDuffOver;
-                if (enableCompositor)
-                    Appearance.Compositor.Composite(this, ref subgroup, in dc, effectiveOpacity);
-                else
-                    subgroup.Draw(in dc);
+                RasterizeIntoPrepassComposited(ref passSet, ref compositeBox, dc, enableCompositor, effectiveOpacity);
             } else if (Appearance.Overlay) {
                 passSet.OverlayQueue.Add(in dc);
             } else {
                 passSet.Above.Draw(in dc, blendState: RenderStates.PorterDuffOver);
                 passSet.Above.Layer += 1;
             }
+        }
+
+        private void RasterizeIntoPrepassComposited (
+            ref RasterizePassSet passSet, ref RectF compositeBox, in BitmapDrawCall dc,
+            bool enableCompositor, float effectiveOpacity
+        ) {
+            MostRecentCompositeDrawCall = dc;
+            MostRecentCompositeBox = compositeBox;
+            var subgroup = passSet.Above.MakeSubgroup(
+                before: BeforeComposite,
+                after: AfterComposite,
+                userData: this
+            );
+            ((BatchGroup)subgroup.Container).SetViewTransform(Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null);
+            subgroup.BlendState = RenderStates.PorterDuffOver;
+            if (enableCompositor)
+                Appearance.Compositor.Composite(this, ref subgroup, in dc, effectiveOpacity);
+            else
+                subgroup.Draw(in dc);
         }
 
         public bool TryGetParent (out Control parent) {

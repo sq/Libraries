@@ -104,7 +104,7 @@ void UnderPixelShaderWithDiscard(
     clip(result.a - discardThreshold);
 }
 
-float gradientMask (float maskValue, float progress, float rangeBottom, float rangeTop, float windowSize) {
+float gradientMask (float maskValue, float progress, float direction, float windowSize) {
     if (windowSize <= 0)
         // HACK
         windowSize = 0.1f;
@@ -112,14 +112,17 @@ float gradientMask (float maskValue, float progress, float rangeBottom, float ra
     progress *= (1.0 + windowSize);
     float scale = (1.0 / windowSize);
     maskValue = (1.0 - maskValue) * scale;
-    progress = max((progress - rangeBottom) / (rangeTop - rangeBottom), 0) * scale;
-    return saturate(progress - maskValue);
+    progress *= scale;
+    if (direction < 0)
+        return 1 - saturate(progress - maskValue);
+    else
+        return saturate(progress - maskValue);
 }
 
 void GradientMaskedPixelShaderWithDiscard(
     in float4 multiplyColor : COLOR0,
     in float4 addColor : COLOR1,
-    // progress, min, max, windowSize
+    // progress, direction, unused, windowSize
     in float4 userData : COLOR2,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
@@ -135,7 +138,7 @@ void GradientMaskedPixelShaderWithDiscard(
     float4 maskColor = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS));
     float mask, alpha;
     ExtractLuminanceAndAlpha(maskColor, BitmapValueMask2, BitmapTextureChannels.y, mask, alpha);
-    alpha *= gradientMask(mask.r, userData.x, userData.y, userData.z, userData.w);
+    alpha *= gradientMask(mask.r, userData.x, userData.y, userData.w);
 
     result = texColor * multiplyColor * alpha;
     result += (addColor * result.a);

@@ -144,7 +144,7 @@ namespace Squared.PRGUI {
         public Material TextMaterial, ShadedTextMaterial, SelectedTextMaterial;
 
         // This method is huge and basically runs once so the JIT shouldn't waste time optimizing it
-        [MethodImpl(MethodImplOptions.NoOptimization)]
+        [MethodImpl(MethodImplOptions.NoOptimization | MethodImplOptions.NoInlining)]
         public DefaultDecorations (DefaultMaterialSet materials, float defaultMargin = 6, float defaultMarginCollapsed = 4) {
             Materials = materials;
 
@@ -493,14 +493,15 @@ namespace Squared.PRGUI {
             var radius = Math.Min(boxSize / 2f, LoadingSpinnerRadius * sizeScale);
             var angle1 = (float)(Time.Seconds * 360 * LoadingSpinnerSpeed) + center.X + (center.Y * 1.7f);
             var outlineRadius = GetOutlineSize(1f);
+            var alpha = (settings.TextColor?.ToColor() ?? Color.White).A / 255f;
             renderer.RasterizeArc(
                 center, angle1, LoadingSpinnerLength, radius, fillRadius + outlineRadius,
-                0f, Color.Transparent, Color.Black * 0.6f, Color.Transparent,
+                0f, Color.Transparent, Color.Black * 0.6f * alpha, Color.Transparent,
                 fill: RasterFillMode.Along, annularRadius: outlineRadius
             );
             renderer.RasterizeArc(
                 center, angle1, LoadingSpinnerLength, radius, fillRadius,
-                0f, Color.Transparent, Color.White, Color.Transparent,
+                0f, Color.Transparent, Color.White * alpha, Color.Transparent,
                 fill: RasterFillMode.Along,
                 layer: renderer.Layer + 1
             );

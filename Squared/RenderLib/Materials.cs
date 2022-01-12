@@ -91,7 +91,7 @@ namespace Squared.Render {
                     Effect = effect;
 
                 if (Effect.GraphicsDevice == null)
-                    throw new Exception();
+                    throw new NullReferenceException("Effect has no device");
                 var technique = Effect.Techniques[techniqueName];
                 
                 if (technique != null)
@@ -145,7 +145,7 @@ namespace Squared.Render {
         public Material Clone () {
             var newEffect = Effect.Clone();
             if (newEffect.GraphicsDevice == null)
-                throw new Exception();
+                throw new NullReferenceException("Effect has no device");
             newEffect.CurrentTechnique = newEffect.Techniques[Effect.CurrentTechnique.Name];
 
             var result = new Material(
@@ -449,7 +449,7 @@ namespace Squared.Render {
                     case EntryValueType.M:
                         return lhs.PrimitiveValue.M == rhs.PrimitiveValue.M;
                     default:
-                        throw new Exception();
+                        throw new ArgumentOutOfRangeException("lhs.ValueType");
                 }
             }
         }
@@ -695,7 +695,7 @@ namespace Squared.Render {
                     p.SetValue(entry.PrimitiveValue.Q);
                     break;
                 default:
-                    throw new Exception("Invalid entry");
+                    throw new ArgumentOutOfRangeException("entry.ValueType");
             }
         }
 

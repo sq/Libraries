@@ -930,7 +930,7 @@ namespace Squared.Render.Text {
         }
 
         public ArraySegment<BitmapDrawCall> AppendText<TGlyphSource> (
-            TGlyphSource font, AbstractString text,
+            TGlyphSource font, in AbstractString text,
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
             int? start = null, int? end = null, bool? overrideSuppress = null
         ) where TGlyphSource : IGlyphSource {
@@ -966,7 +966,7 @@ namespace Squared.Render.Text {
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
                     suppress = true;
 
-                DecodeCodepoint(ref text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
+                DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
 
                 AnalyzeWhitespace(
                     ch1, codepoint, out bool isWhiteSpace, out bool forcedWrap, out bool lineBreak, 
@@ -1160,7 +1160,7 @@ namespace Squared.Render.Text {
             }
         }
 
-        private void DecodeCodepoint (ref AbstractString text, ref int i, int l, out char ch1, out int currentCodepointSize, out uint codepoint) {
+        private void DecodeCodepoint (in AbstractString text, ref int i, int l, out char ch1, out int currentCodepointSize, out uint codepoint) {
             char ch2 = i < (l - 1)
                     ? text[i + 1]
                     : '\0';
@@ -1560,8 +1560,8 @@ namespace Squared.Render.Text {
 namespace Squared.Render {
     public static class SpriteFontExtensions {
         public static StringLayout LayoutString (
-            this SpriteFont font, AbstractString text, ArraySegment<BitmapDrawCall>? buffer = null,
-            Vector2? position = null, Color? color = null, float scale = 1, 
+            this SpriteFont font, in AbstractString text, ArraySegment<BitmapDrawCall>? buffer = null,
+            in Vector2? position = null, Color? color = null, float scale = 1, 
             DrawCallSortKey sortKey = default(DrawCallSortKey),
             int characterSkipCount = 0, int? characterLimit = null,
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
@@ -1605,9 +1605,9 @@ namespace Squared.Render {
         }
 
         // Yuck :(
-        public static StringLayout LayoutString (
-            this IGlyphSource glyphSource, AbstractString text, ArraySegment<BitmapDrawCall>? buffer = null,
-            Vector2? position = null, Color? color = null, float scale = 1, 
+        public static StringLayout LayoutString<TGlyphSource> (
+            this TGlyphSource glyphSource, in AbstractString text, ArraySegment<BitmapDrawCall>? buffer = null,
+            in Vector2? position = null, Color? color = null, float scale = 1, 
             DrawCallSortKey sortKey = default(DrawCallSortKey),
             int characterSkipCount = 0, int? characterLimit = null,
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
@@ -1616,7 +1616,7 @@ namespace Squared.Render {
             bool wordWrap = false,
             bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null,
             Color? addColor = null
-        ) {
+        ) where TGlyphSource : IGlyphSource {
             var state = new StringLayoutEngine {
                 allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
                 position = position,
