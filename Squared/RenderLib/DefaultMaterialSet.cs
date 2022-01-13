@@ -378,6 +378,7 @@ namespace Squared.Render {
         public Material ScreenSpaceLightmappedsRGBBitmap, WorldSpaceLightmappedsRGBBitmap;
         public Material ScreenSpaceHorizontalGaussianBlur, ScreenSpaceVerticalGaussianBlur, ScreenSpaceRadialGaussianBlur;
         public Material WorldSpaceHorizontalGaussianBlur, WorldSpaceVerticalGaussianBlur, WorldSpaceRadialGaussianBlur;
+        public Material GaussianOutlined, GaussianOutlinedWithDiscard;
         public Material Clear, SetScissor, SetViewport;
 
         private readonly Action<Material, FrameParams> _ApplyParamsDelegate;
@@ -714,6 +715,8 @@ namespace Squared.Render {
                 WorldSpaceHorizontalGaussianBlur,
                 WorldSpaceVerticalGaussianBlur,
                 WorldSpaceRadialGaussianBlur,
+                GaussianOutlined,
+                GaussianOutlinedWithDiscard
             };
 
             foreach (var m in bitmapMaterials)
@@ -799,6 +802,16 @@ namespace Squared.Render {
             WorldSpaceRadialGaussianBlur = NewMaterial(
                 blurShader,
                 "WorldSpaceRadialGaussianBlur"
+            );
+
+            GaussianOutlined = NewMaterial(
+                blurShader,
+                "GaussianOutlined"
+            );
+
+            GaussianOutlinedWithDiscard = NewMaterial(
+                blurShader,
+                "GaussianOutlinedWithDiscard"
             );
         }
 

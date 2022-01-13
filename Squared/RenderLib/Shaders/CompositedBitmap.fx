@@ -109,7 +109,8 @@ float gradientMask (float maskValue, float progress, float direction, float wind
         // HACK
         windowSize = 0.1f;
 
-    progress *= (1.0 + windowSize);
+    progress *= (1.0 + (windowSize * 2));
+    progress -= windowSize;
     float scale = (1.0 / windowSize);
     maskValue = (1.0 - maskValue) * scale;
     progress *= scale;

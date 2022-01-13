@@ -8,6 +8,7 @@
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
+#include "sRGBCommon.fxh"
 
 // http://dev.theomader.com/gaussian-kernel-calculator/
 // Sigma 2, Kernel size 9
@@ -20,6 +21,14 @@ uniform float2 InverseTapDivisors = float2(1, 1);
 //  sigma value at least?
 const float TapSpacingFactor = 0.5;
 
+// HACK: The default mip bias for things like text atlases is unnecessarily blurry, especially if
+//  the atlas is high-DPI
+#define DefaultShadowedTopMipBias MIP_BIAS
+uniform const float  ShadowedTopMipBias, ShadowMipBias, OutlineExponent = 1.33;
+uniform const bool   PremultiplyTexture;
+
+uniform const float4 GlobalShadowColor;
+
 sampler TapSampler : register(s0) {
     Texture = (BitmapTexture);
     MipFilter = POINT;
@@ -29,11 +38,21 @@ sampler TapSampler : register(s0) {
     AddressV = CLAMP;
 };
 
+float4 tapA(
+    in float2 texCoord,
+    in float4 texRgn,
+    in float mipBias
+) {
+    // FIXME: Use extract value so this works with single channel textures
+    return tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, mipBias)).a;
+}
+
 float4 tap(
     in float2 texCoord,
     in float4 texRgn
 ) {
-    return tex2Dlod(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, 0));
+    float4 pSRGB = tex2Dlod(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, 0));
+    return pSRGBToPLinear(pSRGB);
 }
 
 float4 gaussianBlur1D(
@@ -54,11 +73,35 @@ float4 gaussianBlur1D(
     return sum;
 }
 
+float4 gaussianBlurA(
+    in float centerTap,
+    in float2 stepSize,
+    in float2 texCoord,
+    in float4 texRgn,
+    in float mipBias
+) {
+    float sum = centerTap * TapWeights[0];
+
+    for (int i = 1; i < TapCount; i += 1) {
+        float2 offset2 = stepSize * i;
+
+        sum += tapA(texCoord - offset2, texRgn, mipBias) * TapWeights[i];
+        sum += tapA(texCoord + offset2, texRgn, mipBias) * TapWeights[i];
+    }
+
+    return sum;
+}
+
 float4 psEpilogue (
     in float4 texColor,
     in float4 multiplyColor,
     in float4 addColor
 ) {
+    texColor = pLinearToPSRGB(texColor);
+
+    if (PremultiplyTexture)
+        texColor.rgb *= texColor.a;
+
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
@@ -115,6 +158,75 @@ void RadialGaussianBlurPixelShader(
     result = psEpilogue(sum * InverseTapDivisors.y, multiplyColor, addColor);
 }
 
+void GaussianOutlinedPixelShader(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float4 shadowColorIn : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    out float4 result : COLOR0
+) {
+    addColor.rgb *= addColor.a;
+    addColor.a = 0;
+
+    float4 texColor = tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
+    if ((shadowColorIn.a < 0) || PremultiplyTexture)
+        texColor.rgb *= texColor.a;
+    shadowColorIn.a = abs(shadowColorIn.a);
+
+    // Artificially expand spacing since we're going for outlines
+    float spacingFactor = TapSpacingFactor * 1.25;
+    float2 innerStepSize = HalfTexel * float2(spacingFactor, 0), outerStepSize = HalfTexel * float2(0, spacingFactor);
+
+    float centerTap = texColor.a;
+    float centerValue = gaussianBlurA(centerTap, innerStepSize, texCoord, texRgn, ShadowMipBias);
+
+    float shadowAlpha = 0.0;
+
+    for (int i = 1; i < TapCount; i += 1) {
+        float2 outerOffset = outerStepSize * i;
+
+        float sum = gaussianBlurA(centerTap, innerStepSize, texCoord - outerOffset, texRgn, ShadowMipBias) * TapWeights[i] * InverseTapDivisors.x;
+        shadowAlpha = max(shadowAlpha, sum);
+        sum = gaussianBlurA(centerTap, innerStepSize, texCoord + outerOffset, texRgn, ShadowMipBias) * TapWeights[i] * InverseTapDivisors.x;
+        shadowAlpha = max(shadowAlpha, sum);
+    }
+
+    shadowAlpha = saturate((shadowAlpha + centerTap) * shadowColorIn.a);
+    shadowAlpha = pow(shadowAlpha, OutlineExponent);
+
+    float4 shadowColor = float4(shadowColorIn.rgb, 1);
+    shadowColor = lerp(GlobalShadowColor, shadowColor, shadowColorIn.a > 0 ? 1 : 0);
+    shadowColor *= shadowAlpha;
+
+    float4 overColor = (texColor * multiplyColor);
+    overColor += (addColor * overColor.a);
+
+    // Significantly improves the appearance of colored outlines and/or colored text
+    float4 overSRGB = pSRGBToPLinear(overColor),
+        shadowSRGB = pSRGBToPLinear(shadowColor);
+    result = lerp(shadowSRGB, overSRGB, overColor.a);
+    result = pLinearToPSRGB(result);
+}
+
+void GaussianOutlinedPixelShaderWithDiscard(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float4 outlineColorIn : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    out float4 result : COLOR0
+) {
+    GaussianOutlinedPixelShader(
+        multiplyColor, addColor,
+        outlineColorIn, texCoord, texRgn,
+        result
+    );
+
+    const float discardThreshold = (1.0 / 255.0);
+    clip(result.a - discardThreshold);
+}
+
 technique WorldSpaceHorizontalGaussianBlur
 {
     pass P0
@@ -166,5 +278,23 @@ technique ScreenSpaceRadialGaussianBlur
     {
         vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
         pixelShader = compile ps_3_0 RadialGaussianBlurPixelShader();
+    }
+}
+
+technique GaussianOutlined
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 GaussianOutlinedPixelShader();
+    }
+}
+
+technique GaussianOutlinedWithDiscard
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 GaussianOutlinedPixelShaderWithDiscard();
     }
 }

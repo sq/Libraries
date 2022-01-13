@@ -142,6 +142,24 @@ void OutlinedPixelShader(
     result = pLinearToPSRGB(result);
 }
 
+void OutlinedPixelShaderWithDiscard(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float4 outlineColorIn : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    out float4 result : COLOR0
+) {
+    OutlinedPixelShader(
+        multiplyColor, addColor,
+        outlineColorIn, texCoord, texRgn,
+        result
+    );
+
+    const float discardThreshold = (1.0 / 255.0);
+    clip(result.a - discardThreshold);
+}
+
 void BasicPixelShaderWithDiscard (
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
@@ -170,24 +188,6 @@ void ShadowedPixelShaderWithDiscard (
     ShadowedPixelShader(
         multiplyColor, addColor,
         shadowColorIn, texCoord, texRgn,
-        result
-    );
-
-    const float discardThreshold = (1.0 / 255.0);
-    clip(result.a - discardThreshold);
-}
-
-void OutlinedPixelShaderWithDiscard(
-    in float4 multiplyColor : COLOR0,
-    in float4 addColor : COLOR1,
-    in float4 outlineColorIn : COLOR2,
-    in float2 texCoord : TEXCOORD0,
-    in float4 texRgn : TEXCOORD1,
-    out float4 result : COLOR0
-) {
-    OutlinedPixelShader(
-        multiplyColor, addColor,
-        outlineColorIn, texCoord, texRgn,
         result
     );
 
