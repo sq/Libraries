@@ -131,9 +131,10 @@ namespace Squared.PRGUI.Controls {
 
         protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
             base.ComputeUnscaledPadding(ref context, decorations, out result);
-            ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
-            var width = (context.DecorationProvider.DropdownArrow.Padding.X * paddingScale.X) +
-                (context.DecorationProvider.DropdownArrow.UnscaledPadding.X);
+            var decorationProvider = context.DecorationProvider;
+            ComputeEffectiveScaleRatios(decorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
+            var width = (decorationProvider.DropdownArrow.Padding.X * paddingScale.X) +
+                (decorationProvider.DropdownArrow.UnscaledPadding.X);
             result.Right += width;
             // FIXME: Use the Y value?
         }

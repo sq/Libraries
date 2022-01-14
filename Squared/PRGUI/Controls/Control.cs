@@ -226,6 +226,11 @@ namespace Squared.PRGUI {
         /// </summary>
         protected virtual bool CanApplyOpacityWithoutCompositing => false;
         /// <summary>
+        /// If true, a control will always be composited even if it has no transform and
+        ///  its opacity is 1 and it has no compositor
+        /// </summary>
+        protected virtual bool ForceComposition => false;
+        /// <summary>
         /// Can receive focus via user input
         /// </summary>
         public virtual bool AcceptsFocus { get; protected set; }
@@ -1178,6 +1183,7 @@ namespace Squared.PRGUI {
 
             var enableCompositor = Appearance.Compositor?.WillComposite(this, opacity) == true;
             var needsComposition = ((opacity < 1) && !this.CanApplyOpacityWithoutCompositing) || 
+                ForceComposition ||
                 enableCompositor ||
                 Appearance.Overlay ||
                 (

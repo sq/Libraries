@@ -993,19 +993,26 @@ namespace Squared.PRGUI {
         internal int HiddenCount;
         internal int Depth;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private T GetStackTop<T> (in DenseList<T> stack) {
-            stack.TryGetItem(stack.Count - 1, out T result);
-            return result;
+            var index = stack.Count - 1;
+            if (index < 0)
+                return default;
+            else
+                return stack[index];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void StackPush<T> (ref DenseList<T> stack, T value) {
             stack.Add(value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void StackPop<T> (ref DenseList<T> stack) {
-            if (stack.Count <= 0)
+            var index = stack.Count - 1;
+            if (index < 0)
                 throw new InvalidOperationException("Stack empty");
-            stack.RemoveAt(stack.Count - 1);
+            stack.RemoveAt(index);
         }
 
         public IDecorationProvider DecorationProvider => GetStackTop(in DecorationProviderStack) ?? UIContext?.Decorations;

@@ -8,6 +8,7 @@ using Squared.Render.RasterShape;
 using Squared.Render.Text;
 using Squared.Util;
 using Squared.Util.DeclarativeSort;
+using Squared.Util.Text;
 
 namespace Squared.Render.Convenience {
     public static class RenderStates {
@@ -1020,7 +1021,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void DrawString (
-            SpriteFont font, string text,
+            SpriteFont font, AbstractString text,
             Vector2 position, Color? color = null, float scale = 1, DrawCallSortKey? sortKey = null,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             int? layer = null, bool? worldSpace = null,
@@ -1046,7 +1047,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void DrawString (
-            IGlyphSource glyphSource, string text,
+            IGlyphSource glyphSource, AbstractString text,
             Vector2 position, Color? color = null, float scale = 1, DrawCallSortKey? sortKey = null,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             int? layer = null, bool? worldSpace = null,

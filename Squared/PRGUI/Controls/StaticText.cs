@@ -58,6 +58,8 @@ namespace Squared.PRGUI.Controls {
         private float MostRecentXScaleFactor = 1, MostRecentYScaleFactor = 1;
         private ControlDimension MostRecentWidthConstraint;
 
+        protected virtual Material CustomTextMaterial => null;
+
         protected Vector4? RasterizerUserData;
 
         public StaticTextBase ()
@@ -317,8 +319,9 @@ namespace Squared.PRGUI.Controls {
                 return;
             }
 
-            var textDecorations = GetTextDecorator(context.DecorationProvider, context.DefaultTextDecorator);
-            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
+            var decorationProvider = context.DecorationProvider;
+            var textDecorations = GetTextDecorator(decorationProvider, context.DefaultTextDecorator);
+            var decorations = GetDecorator(decorationProvider, context.DefaultDecorator);
             var fontChanged = UpdateFont(ref context, textDecorations, decorations);
 
             var contentChanged = (ContentMeasurement?.IsValid == false) || !Content.IsValid;
@@ -575,6 +578,7 @@ namespace Squared.PRGUI.Controls {
             Material material;
             var textDecorations = GetTextDecorator(context.DecorationProvider, context.DefaultTextDecorator);
             GetTextSettings(ref context, textDecorations, decorations, settings.State, out material, ref defaultColor, out Vector4 userData);
+            material = CustomTextMaterial ?? material;
 
             Content.DefaultColor = defaultColor ?? Color.White;
 
@@ -854,6 +858,6 @@ namespace Squared.PRGUI.Controls {
             Content.CharacterWrap = false;
         }
 
-        protected override bool CanApplyOpacityWithoutCompositing => Appearance.BackgroundColor.IsTransparent;
+        protected override bool CanApplyOpacityWithoutCompositing => Appearance.BackgroundColor.IsTransparent && (CustomTextMaterial == null);
     }
 }
