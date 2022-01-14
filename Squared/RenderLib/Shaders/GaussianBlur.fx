@@ -5,6 +5,7 @@
 
 #include "CompilerWorkarounds.fxh"
 #include "ViewTransformCommon.fxh"
+#include "FormatCommon.fxh"
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
@@ -38,13 +39,14 @@ sampler TapSampler : register(s0) {
     AddressV = CLAMP;
 };
 
-float4 tapA(
+float tapA(
     in float2 texCoord,
     in float4 texRgn,
     in float mipBias
 ) {
     // FIXME: Use extract value so this works with single channel textures
-    return tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, mipBias)).a;
+    float4 texColor = tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, mipBias));
+    return ExtractMask(texColor, BitmapTraits);
 }
 
 float4 tap(
@@ -73,7 +75,7 @@ float4 gaussianBlur1D(
     return sum;
 }
 
-float4 gaussianBlurA(
+float gaussianBlurA(
     in float centerTap,
     in float2 stepSize,
     in float2 texCoord,
@@ -97,6 +99,7 @@ float4 psEpilogue (
     in float4 multiplyColor,
     in float4 addColor
 ) {
+    texColor = ExtractRgba(texColor, BitmapTraits);
     texColor = pLinearToPSRGB(texColor);
 
     if (PremultiplyTexture)
@@ -169,16 +172,18 @@ void GaussianOutlinedPixelShader(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
+    float4 traits = BitmapTraits;
     float4 texColor = tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
     if ((shadowColorIn.a < 0) || PremultiplyTexture)
-        texColor.rgb *= texColor.a;
+        traits.z = 1;
     shadowColorIn.a = abs(shadowColorIn.a);
 
     // Artificially expand spacing since we're going for outlines
     float spacingFactor = TapSpacingFactor * 1.25;
     float2 innerStepSize = HalfTexel * float2(spacingFactor, 0), outerStepSize = HalfTexel * float2(0, spacingFactor);
 
-    float centerTap = texColor.a;
+    float centerTap = ExtractMask(texColor, traits);
+    texColor = ExtractRgba(texColor, traits);
     float centerValue = gaussianBlurA(centerTap, innerStepSize, texCoord, texRgn, ShadowMipBias);
 
     float shadowAlpha = 0.0;

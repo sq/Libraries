@@ -1,5 +1,6 @@
 #include "CompilerWorkarounds.fxh"
 #include "ViewTransformCommon.fxh"
+#include "FormatCommon.fxh"
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
@@ -19,7 +20,6 @@ float4 LightmappedPixelShaderCore(
     in float4 texRgn2
 ) {
     float2 lightmapTexCoord = clamp2(texCoord2 + LightmapUVOffset, texRgn2.xy, texRgn2.zw);
-
     float4 lightmapColor = tex2D(TextureSampler2, lightmapTexCoord) * 2;
     lightmapColor.a = 1;
 
@@ -30,7 +30,9 @@ float4 LightmappedPixelShaderCore(
 
     texCoord1 = clamp2(texCoord1, texRgn1.xy, texRgn1.zw);
 
-    float4 result = multiplyColor * tex2D(TextureSampler, texCoord1);
+    float4 texColor = tex2D(TextureSampler, texCoord1);
+    texColor = ExtractRgba(texColor, BitmapTraits);
+    float4 result = multiplyColor * texColor;
     result += (addColor * result.a);
     return result;
 }

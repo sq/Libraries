@@ -1,5 +1,6 @@
 #include "CompilerWorkarounds.fxh"
 #include "ViewTransformCommon.fxh"
+#include "FormatCommon.fxh"
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
@@ -31,7 +32,9 @@ void BasicPixelShader(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    result = multiplyColor * tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    texColor = ExtractRgba(texColor, BitmapTraits);
+    result = multiplyColor * texColor;
     result += (addColor * result.a);
 }
 
@@ -47,6 +50,7 @@ void BasicPixelShaderWithLUT(
     addColor.a = 0;
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    texColor = ExtractRgba(texColor, BitmapTraits);
     texColor.rgb = ApplyLUT(texColor.rgb, LUT2Weight);
     texColor.rgb = ApplyDither(texColor.rgb, GET_VPOS);
 
@@ -68,7 +72,9 @@ void ToSRGBPixelShader(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    result = multiplyColor * tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    texColor = ExtractRgba(texColor, BitmapTraits);
+    result = multiplyColor * texColor;
     result += (addColor * result.a);
     result = pLinearToPSRGB(result);
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
@@ -87,8 +93,10 @@ void ShadowedPixelShader (
 
     float2 shadowTexCoord = clamp2(texCoord - (ShadowOffset * HalfTexel * 2), texRgn.xy, texRgn.zw);
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
+    float4 traits = BitmapTraits;
     if ((shadowColorIn.a < 0) || PremultiplyTexture)
-        texColor.rgb *= texColor.a;
+        traits.z = 1;
+    texColor = ExtractRgba(texColor, BitmapTraits);
     shadowColorIn.a = abs(shadowColorIn.a);
 
     float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias));
@@ -112,8 +120,10 @@ void OutlinedPixelShader(
     addColor.a = 0;
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
+    float4 traits = BitmapTraits;
     if ((shadowColorIn.a < 0) || PremultiplyTexture)
-        texColor.rgb *= texColor.a;
+        traits.z = 1;
+    texColor = ExtractRgba(texColor, BitmapTraits);
     shadowColorIn.a = abs(shadowColorIn.a);
 
     float shadowAlpha = texColor.a;
@@ -170,7 +180,9 @@ void BasicPixelShaderWithDiscard (
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    result = multiplyColor * tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    texColor = ExtractRgba(texColor, BitmapTraits);
+    result = multiplyColor * texColor;
     result += (addColor * result.a);
 
     const float discardThreshold = (1.0 / 255.0);

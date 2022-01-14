@@ -1,11 +1,9 @@
 #include "CompilerWorkarounds.fxh"
 #include "ViewTransformCommon.fxh"
+#include "FormatCommon.fxh"
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
 #include "sRGBCommon.fxh"
-
-uniform const float2 BitmapTextureChannels;
-uniform const float4 BitmapValueMask2;
 
 void HighlightColorPixelShaderWithDiscard(
     in float4 multiplyColor : COLOR0,
@@ -19,6 +17,7 @@ void HighlightColorPixelShaderWithDiscard(
     addColor.a = 0;
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    texColor = ExtractRgba(texColor, BitmapTraits);
     float3 distance = targetColor.rgb - texColor.rgb;
     float distanceF = length(distance);
     float epsilon = 1 / 256, threshold = epsilon + targetColor.a;
@@ -47,6 +46,8 @@ void CrossfadePixelShaderWithDiscard(
 
     float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS));
+    sample1 = ExtractRgba(sample1, BitmapTraits);
+    sample2 = ExtractRgba(sample2, BitmapTraits2);
     float4 lerped = lerp(sample1, sample2, blendWeight);
 
     result = multiplyColor * lerped;
@@ -71,6 +72,8 @@ void OverPixelShaderWithDiscard(
 
     float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS)) * blendWeight;
+    sample1 = ExtractRgba(sample1, BitmapTraits);
+    sample2 = ExtractRgba(sample2, BitmapTraits2);
     float4 composited = sample1 + (sample2 * (1 - sample1.a));
 
     result = multiplyColor * composited;
@@ -95,6 +98,8 @@ void UnderPixelShaderWithDiscard(
 
     float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS)) * blendWeight;
+    sample1 = ExtractRgba(sample1, BitmapTraits);
+    sample2 = ExtractRgba(sample2, BitmapTraits2);
     float4 composited = sample2 + (sample1 * (1 - sample2.a));
 
     result = multiplyColor * composited;
@@ -137,8 +142,9 @@ void GradientMaskedPixelShaderWithDiscard(
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     // FIXME: Use a different value?
     float4 maskColor = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS));
+    texColor = ExtractRgba(texColor, BitmapTraits);
     float mask, alpha;
-    ExtractLuminanceAndAlpha(maskColor, BitmapValueMask2, BitmapTextureChannels.y, mask, alpha);
+    ExtractLuminanceAlpha(maskColor, BitmapTraits2, mask, alpha);
     alpha *= gradientMask(mask.r, userData.x, userData.y, userData.w);
 
     result = texColor * multiplyColor * alpha;

@@ -17,6 +17,7 @@ float4 TransformPosition (float4 position, bool halfPixelOffset) {
 }
 
 uniform const float2 BitmapTextureSize, BitmapTextureSize2;
+uniform const float4 BitmapTraits, BitmapTraits2;
 uniform const float2 HalfTexel, HalfTexel2;
 
 Texture2D BitmapTexture : register(t0);
@@ -178,28 +179,4 @@ void GenericVertexShader (
     
     float z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
     result = TransformPosition(float4(adjustedPosition, z, 1), true);
-}
-
-void ExtractLuminanceAndAlpha (float4 input, float4 valueMask, float channelCount, out float luminance, out float alpha) {
-    const float3 toGray = float3(0.299, 0.587, 0.144);
-
-    switch (abs((int)channelCount)) {
-        case 1:
-            luminance = dot(input * valueMask, 1);
-            alpha = 1;
-            break;
-        case 2:
-            // Assuming RG for use as LuminanceAlpha
-            luminance = input.r;
-            alpha = input.g;
-            break;
-        case 3:
-            luminance = dot(input.rgb * toGray, 1);
-            alpha = 1;
-            break;
-        default:
-            luminance = dot(input.rgb * toGray, 1);
-            alpha = input.a;
-            break;
-    }
 }

@@ -582,23 +582,58 @@ namespace Squared.Render.Evil {
             }
         }
 
-        public static Vector4 GetValueMask (SurfaceFormat format) {
+        const int VALUE_CHANNEL_RGB = 0;
+        const int VALUE_CHANNEL_R = 1;
+        const int VALUE_CHANNEL_A = 2;
+        const int VALUE_CHANNEL_RG = 3;
+
+        const int ALPHA_CHANNEL_A = 0;
+        const int ALPHA_CONSTANT_ONE = 1;
+        const int ALPHA_CHANNEL_G = 2;
+
+        const int ALPHA_MODE_NORMAL = 0;
+        const int ALPHA_MODE_BC7 = 1;
+
+        /// <returns>(x: valueSource, y: alphaSource, z: needsPremultiply, w: alphaMode)</returns>
+        public static Vector4 GetTraits (SurfaceFormat format) {
+            if (
+                (format == Bc7EXT) ||
+                (format == Bc7SrgbEXT)
+            )
+                return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CHANNEL_A, 0, ALPHA_MODE_BC7);
+
             switch (format) {
+                // FIXME: Is the value channel R in fna? I think it is
                 case SurfaceFormat.Alpha8:
-                    return new Vector4(0, 0, 0, 1);
+                    return new Vector4(VALUE_CHANNEL_A, ALPHA_CHANNEL_A, 0, ALPHA_MODE_NORMAL);
                 case SurfaceFormat.Single:
                 case SurfaceFormat.HalfSingle:
-                    return new Vector4(1, 0, 0, 0);
+                    return new Vector4(VALUE_CHANNEL_R, ALPHA_CONSTANT_ONE, 0, ALPHA_MODE_NORMAL);
                 case SurfaceFormat.Rg32:
                 case SurfaceFormat.Vector2:
                 case SurfaceFormat.HalfVector2:
                 case SurfaceFormat.NormalizedByte2:
-                    return new Vector4(1, 1, 0, 0);
+                    return new Vector4(VALUE_CHANNEL_RG, ALPHA_CONSTANT_ONE, 0, ALPHA_MODE_NORMAL);
                 case SurfaceFormat.Bgr565:
                 case SurfaceFormat.Dxt1:
-                    return new Vector4(1, 1, 1, 0);
+                    return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CONSTANT_ONE, 0, ALPHA_MODE_NORMAL);
+
+                // case SurfaceFormat.HalfVector4:
+                // case SurfaceFormat.HdrBlendable:
+                // case SurfaceFormat.NormalizedByte4:
+                // case SurfaceFormat.Rgba1010102:
+                // case SurfaceFormat.Rgba64:
+                // case SurfaceFormat.Vector4:
+                // case SurfaceFormat.Bgra4444:
+                // case SurfaceFormat.Bgra5551:
+                // case SurfaceFormat.Color:
+                // case SurfaceFormat.ColorBgraExt:
+                // case SurfaceFormat.ColorSrgb:
+                // case SurfaceFormat.Dxt3:
+                // case SurfaceFormat.Dxt5:
+                // case SurfaceFormat.Dxt5Srgb:
                 default:
-                    return new Vector4(1, 1, 1, 1);
+                    return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CHANNEL_A, 0, ALPHA_MODE_NORMAL);
             }
         }
 
