@@ -342,6 +342,8 @@ namespace Squared.Threading {
         private volatile int NextThreadToWake;
 
         private void WakeOneThread () {
+            if (Threads.Length <= 0)
+                return;
             // Just kidding, we wake two threads because I'm a bit paranoid about one not being enough
             // Still better than waking all of them...
             var index = Interlocked.Add(ref NextThreadToWake, 2);
