@@ -11,6 +11,11 @@
 #include "DitherCommon.fxh"
 #include "sRGBCommon.fxh"
 
+const float OutlineBias = 0.025;
+// HACK: Since we're not fully averaging out the taps, most pixels will have a shadow opacity
+//  well above 1.0. We divide it by an arbitrary value to create softer edges
+const float OutlineDivisor = 2.2;
+
 // http://dev.theomader.com/gaussian-kernel-calculator/
 // Sigma 2, Kernel size 9
 uniform int TapCount = 5;
@@ -25,8 +30,10 @@ const float TapSpacingFactor = 0.5;
 // HACK: The default mip bias for things like text atlases is unnecessarily blurry, especially if
 //  the atlas is high-DPI
 #define DefaultShadowedTopMipBias MIP_BIAS
-uniform const float  ShadowedTopMipBias, ShadowMipBias, OutlineExponent = 1.33;
+uniform const float  ShadowedTopMipBias, ShadowMipBias, OutlineExponent = 1.2;
 uniform const bool   PremultiplyTexture;
+
+uniform const float2 ShadowOffset;
 
 uniform const float4 GlobalShadowColor;
 
@@ -161,6 +168,14 @@ void RadialGaussianBlurPixelShader(
     result = psEpilogue(sum * InverseTapDivisors.y, multiplyColor, addColor);
 }
 
+// porter-duff A over B
+float4 over(float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
+    top *= topOpacity;
+    bottom *= bottomOpacity;
+
+    return top + (bottom * (1 - top.a));
+}
+
 void GaussianOutlinedPixelShader(
     in float4 multiplyColor : COLOR0,
     in float4 addColor : COLOR1,
@@ -179,30 +194,30 @@ void GaussianOutlinedPixelShader(
     shadowColorIn.a = abs(shadowColorIn.a);
 
     // Artificially expand spacing since we're going for outlines
-    float spacingFactor = TapSpacingFactor * 1.25;
+    float spacingFactor = TapSpacingFactor * 1.75;
     float2 innerStepSize = HalfTexel * float2(spacingFactor, 0), outerStepSize = HalfTexel * float2(0, spacingFactor);
+
+    texCoord -= ShadowOffset * HalfTexel * 2;
 
     float centerTap = ExtractMask(texColor, traits);
     texColor = ExtractRgba(texColor, traits);
     float centerValue = gaussianBlurA(centerTap, innerStepSize, texCoord, texRgn, ShadowMipBias);
 
-    float shadowAlpha = 0.0;
+    float sum = centerTap;
 
     for (int i = 1; i < TapCount; i += 1) {
         float2 outerOffset = outerStepSize * i;
 
-        float sum = gaussianBlurA(centerTap, innerStepSize, texCoord - outerOffset, texRgn, ShadowMipBias) * TapWeights[i] * InverseTapDivisors.x;
-        shadowAlpha = max(shadowAlpha, sum);
-        sum = gaussianBlurA(centerTap, innerStepSize, texCoord + outerOffset, texRgn, ShadowMipBias) * TapWeights[i] * InverseTapDivisors.x;
-        shadowAlpha = max(shadowAlpha, sum);
+        sum += gaussianBlurA(centerTap, innerStepSize, texCoord - outerOffset, texRgn, ShadowMipBias) * TapWeights[i];
+        sum += gaussianBlurA(centerTap, innerStepSize, texCoord + outerOffset, texRgn, ShadowMipBias) * TapWeights[i];
     }
 
-    shadowAlpha = saturate((shadowAlpha + centerTap) * shadowColorIn.a);
+    float shadowAlpha = saturate(((sum * InverseTapDivisors.x) - OutlineBias) / OutlineDivisor);
+    shadowAlpha = saturate(shadowAlpha * max(1, shadowColorIn.a));
     shadowAlpha = pow(shadowAlpha, OutlineExponent);
 
-    float4 shadowColor = float4(shadowColorIn.rgb, 1);
+    float4 shadowColor = float4(shadowColorIn.rgb, 1) * saturate(shadowColorIn.a);
     shadowColor = lerp(GlobalShadowColor, shadowColor, shadowColorIn.a > 0 ? 1 : 0);
-    shadowColor *= shadowAlpha;
 
     float4 overColor = (texColor * multiplyColor);
     overColor += (addColor * overColor.a);
@@ -210,7 +225,8 @@ void GaussianOutlinedPixelShader(
     // Significantly improves the appearance of colored outlines and/or colored text
     float4 overSRGB = pSRGBToPLinear(overColor),
         shadowSRGB = pSRGBToPLinear(shadowColor);
-    result = lerp(shadowSRGB, overSRGB, overColor.a);
+
+    result = over(overSRGB, 1, shadowSRGB, shadowAlpha);
     result = pLinearToPSRGB(result);
 }
 
@@ -228,7 +244,7 @@ void GaussianOutlinedPixelShaderWithDiscard(
         result
     );
 
-    const float discardThreshold = (1.0 / 255.0);
+    const float discardThreshold = (0.5 / 255.0);
     clip(result.a - discardThreshold);
 }
 

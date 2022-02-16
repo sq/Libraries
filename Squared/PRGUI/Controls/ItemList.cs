@@ -758,17 +758,26 @@ namespace Squared.PRGUI.Controls {
                     continue;
 
                 // If we have any spare controls and this is a gap, fill it with one
-                if ((ResultBuffer[j] == null) && (SpareBuffer.Count > 0)) {
+                // Why is this count check here?
+                if ((j < ResultBuffer.Count) && (ResultBuffer[j] == null) && (SpareBuffer.Count > 0)) {
                     ResultBuffer[j] = SpareBuffer.Last();
                     SpareBuffer.RemoveTail(1);
                 }
 
+                Control newItem;
                 if (ccfvdud != null)
-                    ResultBuffer[j] = CreateControlForValue(ref value, ResultBuffer[j], ref userData, ccfvdud);
+                    newItem = CreateControlForValue(ref value, ResultBuffer[j], ref userData, ccfvdud);
                 else
-                    ResultBuffer[j] = CreateControlForValue(ref value, ResultBuffer[j], ccfvd);
+                    newItem = CreateControlForValue(ref value, ResultBuffer[j], ccfvd);
+
+                // Why is this here
+                if (j < ResultBuffer.Count)
+                    ResultBuffer[j] = newItem;
+                else
+                    ResultBuffer.Add(newItem);
+
                 // Now record the control for this value since we've filled gaps
-                ControlForValue[value] = ResultBuffer[j];
+                ControlForValue[value] = newItem;
             }
 
             // Now add the tail to our result buffer

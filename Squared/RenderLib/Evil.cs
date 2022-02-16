@@ -637,7 +637,21 @@ namespace Squared.Render.Evil {
             }
         }
 
-    #if WINDOWS
+        public static bool IsBlockTextureFormat (SurfaceFormat format) {
+            if ((format == Bc7EXT) || (format == Bc7SrgbEXT) || (format == Dxt5SrgbEXT))
+                return true;
+
+            switch (format) {
+                case SurfaceFormat.Dxt1:
+                case SurfaceFormat.Dxt3:
+                case SurfaceFormat.Dxt5:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+#if WINDOWS
         public static class VTables {
             public static class IDirect3DTexture9 {
                 public const uint SetAutoGenFilterType = 56;
