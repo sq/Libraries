@@ -162,7 +162,10 @@ namespace Squared.PRGUI.Controls {
         protected override bool ShouldClipContent {
             get {
                 // HACK: If our content is smaller than our content box, disable clipping
-                if (OptimizedClipping && (DynamicLayout.GlyphSource != null)) {
+                if (
+                    OptimizedClipping && 
+                    ((DynamicLayout.GlyphSource != null) || (DynamicLayout.GlyphSourceProvider != null))
+                ) {
                     var contentBox = GetRect(contentRect: true);
                     UpdateLayoutSettings();
                     var layout = DynamicLayout.Get();
@@ -182,6 +185,30 @@ namespace Squared.PRGUI.Controls {
         }
 
         private bool _IntegerOnly, _DoubleOnly;
+
+        public IGlyphSource GlyphSource {
+            set {
+                if ((DynamicLayout.GlyphSource == value) &&
+                    (DescriptionLayout.GlyphSource == value))
+                    return;
+                DynamicLayout.GlyphSource = value;
+                DescriptionLayout.GlyphSource = value;
+                Invalidate();
+            }
+        }
+
+        private Func<IGlyphSource> _GlyphSourceProvider;
+
+        public Func<IGlyphSource> GlyphSourceProvider {
+            set {
+                if (_GlyphSourceProvider == value)
+                    return;
+                _GlyphSourceProvider = value;
+                DynamicLayout.GlyphSourceProvider = value;
+                DescriptionLayout.GlyphSourceProvider = value;
+                Invalidate();
+            }
+        }
 
         public bool IntegerOnly {
             get => _IntegerOnly;
@@ -465,12 +492,17 @@ namespace Squared.PRGUI.Controls {
             UpdateLayoutSettings();
 
             Color? color = null;
-            var font = decorations.GlyphSource;
+            var font = _GlyphSourceProvider != null
+                ? _GlyphSourceProvider()
+                : decorations.GlyphSource;
             decorations.GetTextSettings(ref context, settings.State, out material, ref color, out Vector4 userData);
             ComputeEffectiveSpacing(ref context, decorations, out CachedPadding, out Margins computedMargins);
 
-            if (font != null)
+            if (_GlyphSourceProvider != null)
+                DynamicLayout.GlyphSourceProvider = _GlyphSourceProvider;
+            else if (font != null)
                 DynamicLayout.GlyphSource = font;
+
             DynamicLayout.DefaultColor = color ?? Color.White;
             DynamicLayout.UserData = userData;
 
@@ -1172,7 +1204,9 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             var color = default(Color?);
-            var font = decorator.GlyphSource;
+            var font = _GlyphSourceProvider != null
+                ? _GlyphSourceProvider()
+                : decorator.GlyphSource;
             decorator.GetTextSettings(ref context, settings.State, out Material material, ref color, out _);
             if (material == null)
                 return;
@@ -1181,7 +1215,10 @@ namespace Squared.PRGUI.Controls {
             if (color == null)
                 return;
 
-            DescriptionLayout.GlyphSource = font;
+            if (_GlyphSourceProvider != null)
+                DescriptionLayout.GlyphSourceProvider = _GlyphSourceProvider;
+            else
+                DescriptionLayout.GlyphSource = font;
             DescriptionLayout.SetText(Description, true, true);
 
             var descriptionLayout = DescriptionLayout.Get();

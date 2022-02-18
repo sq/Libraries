@@ -15,8 +15,17 @@ namespace Squared.PRGUI.Controls {
         object Minimum { get; set; }
         object Maximum { get; set; }
         object Value { get; set; }
+        bool TrySetValue (object value, bool forUserInput);
+        Type ValueType { get; }
         bool IntegerOnly { get; set; }
         bool DoubleOnly { get; set; }
+    }
+
+    public static class ParameterEditor {
+        public static IParameterEditor Create (Type valueType) {
+            var type = typeof(ParameterEditor<>).MakeGenericType(valueType);
+            return (IParameterEditor)Activator.CreateInstance(type);
+        }
     }
 
     public class ParameterEditor<T> : EditableText, IScrollableControl, IParameterEditor, IValueControl<T>
@@ -57,6 +66,17 @@ namespace Squared.PRGUI.Controls {
             set {
                 SetValue(value, false);
             }
+        }
+
+        public Type ValueType => typeof(T);
+
+        bool IParameterEditor.TrySetValue (object value, bool forUserInput) {
+            if (value is T tv) {
+                SetValue(tv, forUserInput);
+                return true;
+            }
+
+            return false;
         }
 
         public void SetValue (T value, bool forUserInput) {

@@ -25,6 +25,8 @@ namespace Squared.PRGUI.Controls {
         protected Control _FocusDonor;
         public Control FocusDonor => _FocusDonor;
 
+        public bool CloseOnEnter = true, CloseOnEscape = true;
+
         private bool IsAcceptHandlerRegistered, IsCancelHandlerRegistered;
         private Control _AcceptControl, _CancelControl;
 
@@ -196,12 +198,18 @@ namespace Squared.PRGUI.Controls {
             // HACK
             var ei = new EventInfo<object>(null, this, default(EventCategoryToken), null, null, args);
             if (args.Key == Keys.Enter) {
+                if (!CloseOnEnter)
+                    return false;
+
                 if ((AcceptControl != null) && Context.FireSyntheticClick(AcceptControl))
                     return true;
 
                 OnAcceptClick(ei);
                 return ei.IsConsumed;
             } else if (args.Key == Keys.Escape) {
+                if (!CloseOnEscape)
+                    return false;
+
                 if ((CancelControl != null) && Context.FireSyntheticClick(CancelControl))
                     return true;
 

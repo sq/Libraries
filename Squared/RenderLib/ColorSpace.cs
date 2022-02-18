@@ -32,7 +32,7 @@ namespace Squared.Render {
         }
     }
 
-    public struct pSRGBColor {
+    public struct pSRGBColor : IEquatable<pSRGBColor>, IComparable<pSRGBColor> {
         public bool IsVector4;
         public Vector4 Vector4;
         public Color Color;
@@ -333,6 +333,24 @@ namespace Squared.Render {
                     ? Vector4.GetHashCode()
                     : Color.GetHashCode()
             );
+        }
+
+        public override string ToString () {
+            var v4 = ToVector4();
+            return $"{{r={v4.X}, g={v4.Y}, b={v4.Z}, a={v4.W}}}";
+        }
+
+        public int CompareTo (pSRGBColor other) {
+            var v4l = ToVector4();
+            var v4r = other.ToVector4();
+            var result = v4l.X.CompareTo(v4r.X);
+            if (result == 0)
+                result = v4l.Y.CompareTo(v4r.Y);
+            if (result == 0)
+                result = v4l.Z.CompareTo(v4r.Z);
+            if (result == 0)
+                result = v4l.W.CompareTo(v4r.W);
+            return result;
         }
     }
 }

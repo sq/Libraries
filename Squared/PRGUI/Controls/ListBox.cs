@@ -440,7 +440,8 @@ namespace Squared.PRGUI.Controls {
             newViewportItemCount = Math.Max(newViewportItemCount, 8);
             if (newViewportItemCount != VirtualViewportItemCount) {
                 VirtualViewportItemCount = newViewportItemCount;
-                NeedsUpdate = true;
+                if (Virtual)
+                    NeedsUpdate = true;
                 // Doing this can cause nonstop jittering
                 // relayoutRequested = true;
             }
