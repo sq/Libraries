@@ -58,6 +58,7 @@ namespace Squared.PRGUI.Controls {
         public IFormatProvider FormatProvider;
         public Func<T, T?> ValueFilter;
         public Func<T, string> ValueEncoder;
+        private TryParseDelegate TryParseValue;
         public Func<string, T> ValueDecoder;
 
         bool IsSettingValue;
@@ -155,6 +156,8 @@ namespace Squared.PRGUI.Controls {
             set => Value = (T)value;
         }
 
+        delegate bool TryParseDelegate (string value, out object result);
+
         public ParameterEditor ()
             : base () {
             AllowScroll = false;
@@ -174,6 +177,13 @@ namespace Squared.PRGUI.Controls {
             nfi.NumberDecimalDigits = IntegerOnly ? 0 : 3;
 
             FormatProvider = nfi;
+            var type = typeof(T);
+            var tryParse = type.GetMethod(
+                "TryParse", new [] { typeof(string), typeof(object).MakeByRefType() }
+            );
+            if (tryParse != null)
+                TryParseValue = (TryParseDelegate)Delegate.CreateDelegate(typeof(TryParseDelegate), tryParse);
+
             ValueDecoder = (s) => (T)Convert.ChangeType(s, typeof(T), FormatProvider);
             ValueEncoder = (v) => string.Format(FormatProvider, "{0:N}", v);
             SelectAllOnFocus = true;
@@ -195,7 +205,13 @@ namespace Squared.PRGUI.Controls {
         protected override void OnValueChanged (bool fromUserInput) {
             try {
                 if (!IsSettingValue) {
-                    var newValue = ValueDecoder(Text);
+                    T newValue;
+                    if (TryParseValue != null) {
+                        if (!TryParseValue(Text, out object parsed))
+                            return;
+                        newValue = (T)parsed;
+                    } else
+                        newValue = ValueDecoder(Text);
                     var converted = ClampValue((T)newValue);
                     if (converted == null)
                         return;

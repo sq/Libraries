@@ -43,16 +43,23 @@ namespace Squared.Render {
             Color = default(Color);
         }
 
-        public pSRGBColor (int r, int g, int b, int _a) {
+        public pSRGBColor (int r, int g, int b, int _a, bool isPremultiplied = false) {
             IsVector4 = true;
-            float a = _a / 255.0f;
-            Vector4 = new Vector4(r * a, g * a, b * a, a);
+            if (isPremultiplied)
+                Vector4 = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
+            else {
+                float a = _a / 255.0f;
+                Vector4 = new Vector4(r * a / 255.0f, g * a / 255.0f, b * a / 255.0f, a);
+            }
             Color = default(Color);
         }
 
-        public pSRGBColor (float r, float g, float b, float a = 1f) {
+        public pSRGBColor (float r, float g, float b, float a = 1f, bool isPremultiplied = false) {
             IsVector4 = true;
-            Vector4 = new Vector4(r * a, g * a, b * a, a);
+            if (isPremultiplied)
+                Vector4 = new Vector4(r, g, b, a);
+            else
+                Vector4 = new Vector4(r * a, g * a, b * a, a);
             Color = default(Color);
         }
 
@@ -337,7 +344,56 @@ namespace Squared.Render {
 
         public override string ToString () {
             var v4 = ToVector4();
-            return $"{{r={v4.X}, g={v4.Y}, b={v4.Z}, a={v4.W}}}";
+            return $"{{{v4.X}, {v4.Y}, {v4.Z}, {v4.W}}}";
+        }
+
+        public static bool TryParse (string text, out object result) {
+            if (TryParse(text, out pSRGBColor _result)) {
+                result = _result;
+                return true;
+            }
+
+            result = null;
+            return false;
+        }
+
+        public static bool TryParse (string text, out pSRGBColor result) {
+            result = default;
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+            int o1 = 0, o2 = 0;
+            text = text.Trim();
+            if (text.StartsWith("{"))
+                o1 += 1;
+            if (text.EndsWith("}"))
+                o2 += 1;
+            text = text.Substring(o1, text.Length - o1 - o2).Trim();
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+            var values = text.Split(',');
+            if ((values.Length < 3) || (values.Length > 4))
+                return false;
+            if (!float.TryParse(values[0], out float r))
+                return false;
+            if (!float.TryParse(values[1], out float g))
+                return false;
+            if (!float.TryParse(values[2], out float b))
+                return false;
+
+            float a = 1;
+            bool isPremultiplied = true;
+            if (values.Length > 3) {
+                var v3 = values[3].Trim();
+                if (v3.StartsWith("*")) {
+                    isPremultiplied = false;
+                    v3 = v3.Substring(1);
+                }
+                if (!float.TryParse(v3, out a))
+                    return false;
+            }
+
+            result = new pSRGBColor(r, g, b, a, isPremultiplied);
+            return true;
         }
 
         public int CompareTo (pSRGBColor other) {
