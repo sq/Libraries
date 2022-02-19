@@ -14,6 +14,7 @@ namespace Squared.PRGUI.Controls {
     public interface IParameterEditor {
         object Minimum { get; set; }
         object Maximum { get; set; }
+        object Increment { get; set; }
         object Value { get; set; }
         bool TrySetValue (object value, bool forUserInput);
         Type ValueType { get; }
@@ -145,11 +146,15 @@ namespace Squared.PRGUI.Controls {
 
         object IParameterEditor.Minimum {
             get => Minimum;
-            set => Minimum = (T)value;
+            set => Minimum = (T?)value;
         }
         object IParameterEditor.Maximum {
             get => Maximum;
-            set => Maximum = (T)value;
+            set => Maximum = (T?)value;
+        }
+        object IParameterEditor.Increment {
+            get => Increment;
+            set => Increment = (T?)value;
         }
         object IParameterEditor.Value {
             get => Value;
@@ -352,7 +357,7 @@ namespace Squared.PRGUI.Controls {
 
             var gauge = context.DecorationProvider.ParameterGauge;
             if (
-                (Minimum.HasValue && Maximum.HasValue) && 
+                (Minimum.HasValue && Maximum.HasValue) &&
                 (gauge != null) &&
                 (Minimum.Value.CompareTo(Maximum.Value) != 0)
             ) {
@@ -370,6 +375,9 @@ namespace Squared.PRGUI.Controls {
                 gaugeBox.Height -= 1;
                 tempSettings.Box = settings.ContentBox;
                 tempSettings.ContentBox = gaugeBox;
+                // HACK to prevent the background from covering the gauge fill
+                if (Appearance.HasBackgroundColor)
+                    renderer.Layer += 1;
                 gauge.Rasterize(ref context, ref renderer, tempSettings);
             }
 

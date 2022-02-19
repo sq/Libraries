@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -260,21 +261,24 @@ namespace Squared.PRGUI.Controls {
 
         private int _CachedTextVersion, _CachedTextLength;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void AutoResetMeasurement () {
             // If wrapping and autosize are both enabled, text changes can cause
             //  very bad unnecessary wrapping to happen, so we want to forcibly reset
             //  all our measurement data to prevent it
+            var textVersion = Content.TextVersion;
+            var textLength = Content.Text.Length;
             if (
-                (_CachedTextVersion != Content.TextVersion) ||
-                (_CachedTextLength != Content.Text.Length)
+                (_CachedTextVersion != textVersion) ||
+                (_CachedTextLength != textLength)
             ) {
-                _CachedTextVersion = Content.TextVersion;
-                _CachedTextLength = Content.Text.Length;
+                _CachedTextVersion = textVersion;
+                _CachedTextLength = textLength;
                 ResetMeasurement();
             }
         }
 
-        protected StringLayout GetCurrentLayout (bool measurement, bool autoReset = true) {
+        protected void GetCurrentLayout (out StringLayout result, bool measurement, bool autoReset = true) {
             if (_RichText.HasValue)
                 Content.RichText = _RichText.Value;
             if (Content.RichText)
@@ -292,14 +296,15 @@ namespace Squared.PRGUI.Controls {
                     ResetAutoSize();
                     _NeedRelayout = true;
                 }
-                return ContentMeasurement.Get();
+                ContentMeasurement.Get(out result);
             } else {
                 if (!Content.IsValid) {
                     if (ContentMeasurement != null)
                         ConfigureMeasurement();
                     _NeedRelayout = true;
                 }
-                return Content.Get();
+                Content.Get(out result);
+                _DidUseTextures = result.UsedTextures.Count > 0;
             }
         }
 
@@ -308,6 +313,7 @@ namespace Squared.PRGUI.Controls {
         private Margins _CachedPadding;
         private float _CachedLineBreakPoint;
         private bool? _CachedContentIsSingleLine;
+        private bool _DidUseTextures;
 
         protected void ComputeAutoSize (ref UIOperationContext context, ref Margins computedPadding, ref Margins computedMargins) {
             // FIXME: If we start out constrained (by our parent size, etc) we will compute
@@ -369,7 +375,7 @@ namespace Squared.PRGUI.Controls {
                 return;
             }
 
-            var layout = GetCurrentLayout(true);
+            GetCurrentLayout(out var layout, true);
             if (AutoSizeWidth) {
                 // HACK
                 float w = Wrap
@@ -409,8 +415,9 @@ namespace Squared.PRGUI.Controls {
             context.Layout.SetTag(result, LayoutTags.Text);
 
             // HACK: Ensure that we report all the textures we use even if we're not currently being rasterized
-            if (Content.IsValid) {
-                var layout = GetCurrentLayout(false);
+            if (Content.IsValid && _DidUseTextures) {
+                // FIXME: This is slow
+                GetCurrentLayout(out var layout, false);
                 foreach (var tex in layout.UsedTextures)
                     context.UIContext.NotifyTextureUsed(this, tex);
             }
@@ -590,7 +597,7 @@ namespace Squared.PRGUI.Controls {
 
             UpdateLineBreak(ref context, decorations, settings.ContentBox.Width, ref computedPadding, ref computedMargins);
 
-            var layout = GetCurrentLayout(false, false);
+            GetCurrentLayout(out var layout, false, false);
             textScale *= ComputeScaleToFit(layout.Size, layout.UnconstrainedSize, ref settings.Box, ref computedPadding);
             textScale = ApplyScaleConstraints(textScale);
 

@@ -418,6 +418,7 @@ namespace Squared.Util.Text {
         }
 
         public char this[int index] {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (String != null)
                     return String[index + SubstringOffset];
@@ -434,15 +435,18 @@ namespace Squared.Util.Text {
         }
 
         public int Length {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                if (String != null)
-                    return (SubstringLength > 0) ? SubstringLength : (String.Length - SubstringOffset);
+                if (SubstringLength > 0)
+                    return SubstringLength;
+                else if (String != null)
+                    return (String.Length - SubstringOffset);
                 else if (StringBuilder != null)
-                    return (SubstringLength > 0) ? SubstringLength : (StringBuilder.Length - SubstringOffset);
+                    return (StringBuilder.Length - SubstringOffset);
                 else if (ArraySegment.Array == null)
                     return 0;
                 else
-                    return (SubstringLength > 0) ? SubstringLength : ArraySegment.Count - SubstringOffset;
+                    return ArraySegment.Count - SubstringOffset;
             }
         }
 
@@ -462,6 +466,7 @@ namespace Squared.Util.Text {
         }
 
         public bool IsNull {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return
                     (String == null) &&

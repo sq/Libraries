@@ -31,7 +31,8 @@ namespace Squared.Render.Text {
         public static int TextHashMinimum = 64;
 
         private ArraySegment<BitmapDrawCall> _Buffer; 
-        private StringLayout? _CachedStringLayout;
+        private StringLayout _CachedStringLayout;
+        private bool _HasCachedStringLayout = false;
         private int _CachedGlyphVersion = -1, _TextVersion = -1;
 
         private RichTextConfiguration _RichTextConfiguration;
@@ -802,7 +803,7 @@ namespace Squared.Render.Text {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return (
-                    _CachedStringLayout.HasValue && 
+                    _HasCachedStringLayout && 
                     (_CachedGlyphVersion >= _GlyphSource.Version) && 
                     !_GlyphSource.IsDisposed
                 );
@@ -811,7 +812,8 @@ namespace Squared.Render.Text {
 
         public void Invalidate () {
             // Hey, you're the boss
-            _CachedStringLayout = null;
+            _HasCachedStringLayout = false;
+            _CachedStringLayout = default;
             if (_RichMarkers != null)
                 _RichMarkers.Clear();
         }
@@ -917,11 +919,8 @@ namespace Squared.Render.Text {
             _AwaitingDependencies = false;
         }
 
-        /// <summary>
-        /// If the current state is invalid, computes a current layout. Otherwise, returns the cached layout.
-        /// </summary>
-        public StringLayout Get () {
-            if (_CachedStringLayout.HasValue && (_GlyphSource != null) &&
+        public bool Get (out StringLayout result) {
+            if (_HasCachedStringLayout && (_GlyphSource != null) &&
                 ((_CachedGlyphVersion < _GlyphSource.Version) || _GlyphSource.IsDisposed)
             )
                 Invalidate();
@@ -940,17 +939,17 @@ namespace Squared.Render.Text {
                 }
             }
 
-            if (!_CachedStringLayout.HasValue) {
+            if (!_HasCachedStringLayout) {
                 var glyphSource = GlyphSource;
                 if (glyphSource == null) {
-                    _CachedStringLayout = new StringLayout();
-                    return _CachedStringLayout.Value;
+                    _CachedStringLayout = result = default;
+                    return false;
                 }
 
                 if (_Text.IsNull) {
-                    _CachedStringLayout = new StringLayout();
+                    _CachedStringLayout = result = default;
                     _CachedGlyphVersion = glyphSource.Version;
-                    return _CachedStringLayout.Value;
+                    return false;
                 }
 
                 int length = _Text.Length;
@@ -1027,13 +1026,21 @@ namespace Squared.Render.Text {
                 }
             }
 
-            var result = _CachedStringLayout.Value;
+            result = _CachedStringLayout;
             if (result.Boxes.Count > 0) {
                 if (_Boxes == null)
                     _Boxes = new List<Bounds>(result.Boxes.Count);
                 for (int i = 0, c = result.Boxes.Count; i < c; i++)
                     _Boxes.Add(result.Boxes[i]);
             }
+            return true;
+        }
+
+        /// <summary>
+        /// If the current state is invalid, computes a current layout. Otherwise, returns the cached layout.
+        /// </summary>
+        public StringLayout Get () {
+            Get(out StringLayout result);
             return result;
         }
     }

@@ -125,14 +125,15 @@ namespace Squared.Render {
                 );
             }
 
-#if FNA || SDL2
+#if FNA
+            // FNA3D is thread-safe (it will acquire a lock in the right places)
+            RenderCoordinator.DoThreadedIssue = true;
+#elif SDL2
             RenderCoordinator.DoThreadedIssue = false;
-            // FIXME: Is this safe?
-            RenderCoordinator.DoThreadedPrepare = true;
 #else
             RenderCoordinator.DoThreadedIssue = true;
-            RenderCoordinator.DoThreadedPrepare = true;
 #endif
+            RenderCoordinator.DoThreadedPrepare = true;
 
             RenderCoordinator.DeviceReset += (s, e) => OnDeviceReset();
 
