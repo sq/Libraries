@@ -71,8 +71,20 @@ namespace Squared.Util.Text {
         public static bool IsWhiteSpace (uint codepoint) {
             if (codepoint > 0xFFFF)
                 return false;
-            else
+            else if (codepoint > 0xFF)
                 return char.IsWhiteSpace((char)codepoint);
+
+            switch (codepoint) {
+                case 0x09:
+                case 0x0A:
+                case 0x0B:
+                case 0x0C:
+                case 0x0D:
+                case 0x85:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         public static Pair<int> FindWordBoundary (AbstractString str, int? searchFromCodepointIndex = null, int? searchFromCharacterIndex = null) {
@@ -458,7 +470,7 @@ namespace Squared.Util.Text {
                     return true;
 
                 for (int i = 0, l = Length; i < l; i++)
-                    if (!char.IsWhiteSpace(this[i]))
+                    if (!Unicode.IsWhiteSpace(this[i]))
                         return false;
 
                 return true;

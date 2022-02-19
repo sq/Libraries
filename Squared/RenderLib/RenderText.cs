@@ -397,35 +397,39 @@ namespace Squared.Render.Text {
             }
         }
 
-        private void ProcessLineSpacingChange (ArraySegment<BitmapDrawCall> buffer, float newLineSpacing, float newBaseline) {
-            if (newBaseline > currentBaseline) {
-                if (bufferWritePosition > baselineAdjustmentStart) {
-                    var yOffset = newBaseline - currentBaseline;
-                    for (int i = baselineAdjustmentStart; i < bufferWritePosition; i++) {
-                        buffer.Array[buffer.Offset + i].Position.Y += yOffset * (1 - buffer.Array[buffer.Offset + i].UserData.W);
-                    }
+        private void ProcessLineSpacingChange_Slow (in ArraySegment<BitmapDrawCall> buffer, float newLineSpacing, float newBaseline) {
+            if (bufferWritePosition > baselineAdjustmentStart) {
+                var yOffset = newBaseline - currentBaseline;
+                for (int i = baselineAdjustmentStart; i < bufferWritePosition; i++) {
+                    buffer.Array[buffer.Offset + i].Position.Y += yOffset * (1 - buffer.Array[buffer.Offset + i].UserData.W);
+                }
 
-                    if (!measureOnly) {
-                        for (int i = 0; i < Markers.Count; i++) {
-                            var m = Markers[i];
-                            if (m.Bounds.Count <= 0)
-                                continue;
-                            if (m.FirstCharacterIndex > bufferWritePosition)
-                                continue;
-                            if (m.LastCharacterIndex < baselineAdjustmentStart)
-                                continue;
-                            // FIXME
-                            var b = m.Bounds.LastOrDefault();
-                            b.TopLeft.Y += yOffset;
-                            b.BottomRight.Y += yOffset;
-                            m.Bounds[m.Bounds.Count - 1] = b;
-                            Markers[i] = m;
-                        }
+                if (!measureOnly) {
+                    for (int i = 0; i < Markers.Count; i++) {
+                        var m = Markers[i];
+                        if (m.Bounds.Count <= 0)
+                            continue;
+                        if (m.FirstCharacterIndex > bufferWritePosition)
+                            continue;
+                        if (m.LastCharacterIndex < baselineAdjustmentStart)
+                            continue;
+                        // FIXME
+                        var b = m.Bounds.LastOrDefault();
+                        b.TopLeft.Y += yOffset;
+                        b.BottomRight.Y += yOffset;
+                        m.Bounds[m.Bounds.Count - 1] = b;
+                        Markers[i] = m;
                     }
                 }
-                currentBaseline = newBaseline;
-                baselineAdjustmentStart = bufferWritePosition;
             }
+            currentBaseline = newBaseline;
+            baselineAdjustmentStart = bufferWritePosition;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ProcessLineSpacingChange (in ArraySegment<BitmapDrawCall> buffer, float newLineSpacing, float newBaseline) {
+            if (newBaseline > currentBaseline)
+                ProcessLineSpacingChange_Slow(buffer, newLineSpacing, newBaseline);
 
             if (newLineSpacing > currentLineSpacing)
                 currentLineSpacing = newLineSpacing;
@@ -539,6 +543,9 @@ namespace Squared.Render.Text {
         }
 
         private float AdjustCharacterOffsetForBoxes (ref float x, float y1, float h, float? leftPad = null) {
+            if (boxes.Count < 1)
+                return 0;
+
             Bounds b;
             float result = 0;
             var tempBounds = Bounds.FromPositionAndSize(x, y1, 1f, Math.Max(h, 1));
@@ -961,6 +968,7 @@ namespace Squared.Render.Text {
             };
 
             float x = 0;
+            bool hasBoxes = boxes.Count > 0;
 
             for (int i = start ?? 0, l = Math.Min(end ?? text.Length, text.Length); i < l; i++) {
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
@@ -1035,8 +1043,10 @@ namespace Squared.Render.Text {
                     characterOffset.X += (glyph.CharacterSpacing * effectiveScale);
                 characterOffsetUnconstrained.X += (glyph.CharacterSpacing * effectiveScale);
                 // FIXME: Is this y/h right
-                AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, glyph.LineSpacing * effectiveScale);
-                AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, glyph.LineSpacing * effectiveScale);
+                if (hasBoxes) {
+                    AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, glyph.LineSpacing * effectiveScale);
+                    AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, glyph.LineSpacing * effectiveScale);
+                }
 
                 // FIXME: Shift this stuff below into the append function
                 var scaledGlyphSize = new Vector2(
@@ -1088,8 +1098,10 @@ namespace Squared.Render.Text {
                 if (!ComputeSuppress(overrideSuppress))
                     characterOffset.X += (glyph.Width + glyph.RightSideBearing) * effectiveScale;
                 characterOffsetUnconstrained.X += (glyph.Width + glyph.RightSideBearing) * effectiveScale;
-                AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing);
-                AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, currentLineSpacing);
+                if (hasBoxes) {
+                    AdjustCharacterOffsetForBoxes(ref characterOffset.X, characterOffset.Y, currentLineSpacing);
+                    AdjustCharacterOffsetForBoxes(ref characterOffsetUnconstrained.X, characterOffsetUnconstrained.Y, currentLineSpacing);
+                }
                 ProcessLineSpacingChange(buffer, glyphLineSpacing, glyphBaseline);
                 maxLineSpacing = Math.Max(maxLineSpacing, currentLineSpacing);
 
@@ -1120,7 +1132,7 @@ namespace Squared.Render.Text {
         }
 
         private void AnalyzeWhitespace (char ch1, uint codepoint, out bool isWhiteSpace, out bool forcedWrap, out bool lineBreak, out bool deadGlyph, out bool isWordWrapPoint, out bool didWrapWord) {
-            isWhiteSpace = (char.IsWhiteSpace(ch1) && !replacementCodepoint.HasValue);
+            isWhiteSpace = (Unicode.IsWhiteSpace(ch1) && !replacementCodepoint.HasValue);
             forcedWrap = false;
             lineBreak = false;
             deadGlyph = false;
@@ -1183,7 +1195,7 @@ namespace Squared.Render.Text {
         }
 
         private void BuildGlyphInformation<TGlyphSource> (
-            TGlyphSource font, Dictionary<char, KerningAdjustment> kerningAdjustments, float effectiveScale, float effectiveSpacing, 
+            in TGlyphSource font, Dictionary<char, KerningAdjustment> kerningAdjustments, float effectiveScale, float effectiveSpacing, 
             char ch1, uint codepoint, out bool deadGlyph, out Glyph glyph, out KerningAdjustment kerningAdjustment, out float glyphLineSpacing, out float glyphBaseline
         ) where TGlyphSource : IGlyphSource {
             deadGlyph = !font.GetGlyph(codepoint, out glyph);
@@ -1352,13 +1364,19 @@ namespace Squared.Render.Text {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ComputeLineBreakAtX () {
-            if (!lineBreakAtX.HasValue) {
+            if (!lineBreakAtX.HasValue)
                 currentLineBreakAtX = null;
-                return;
-            }
-            var row = Bounds.FromPositionAndSize(0f, characterOffset.Y, lineBreakAtX.Value, currentLineSpacing);
+            else if (boxes.Count > 0)
+                ComputeLineBreakAtX_Slow();
+            else
+                currentLineBreakAtX = lineBreakAtX.Value;
+        }
+
+        private void ComputeLineBreakAtX_Slow () {
             float rightEdge = lineBreakAtX.Value;
+            var row = Bounds.FromPositionAndSize(0f, characterOffset.Y, lineBreakAtX.Value, currentLineSpacing);
             for (int i = 0, c = boxes.Count; i < c; i++) {
                 ref var b = ref boxes.Item(i);
                 // HACK

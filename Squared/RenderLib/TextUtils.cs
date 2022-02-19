@@ -1021,6 +1021,7 @@ namespace Squared.Render.Text {
                     }
 
                     _Buffer = le.buffer;
+                    _HasCachedStringLayout = true;
                 } finally {
                     le.Dispose();
                 }
