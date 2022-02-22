@@ -517,6 +517,11 @@ namespace Squared.Render {
                         }
 
                         ref var call = ref callArray[callIndex + drawCalls.Offset];
+                        // HACK: If we don't do this, it's possible for an entire prepare to fail and then none
+                        //  of the bitmaps in this batch get issued
+                        if (!call.Textures.Texture1.IsInitialized)
+                            continue;
+
                         bool texturesEqual = call.Textures.Equals(in state.currentTextures);
 
                         if (!texturesEqual) {

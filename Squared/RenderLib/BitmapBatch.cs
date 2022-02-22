@@ -19,6 +19,8 @@ using System.Runtime.CompilerServices;
 
 namespace Squared.Render {
     public sealed class BitmapBatch : BitmapBatchBase<BitmapDrawCall>, IBitmapBatch {
+        private static bool WarnedAboutNullMaterial, WarnedAboutFillError;
+
         public static readonly SamplerState DefaultSamplerState = SamplerState.LinearClamp;
 
         static BitmapBatch () {
@@ -360,8 +362,13 @@ namespace Squared.Render {
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
             _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container);
 
-            if (Material == null)
+            if (Material == null) {
+                if (!WarnedAboutNullMaterial) {
+                    WarnedAboutNullMaterial = true;
+                    Console.Error.WriteLine("WARNING: BitmapBatch prepared with null material");
+                }
                 return false;
+            }
 
             using (var callBuffer = _DrawCalls.GetBuffer(false)) {
                 var callSegment = new ArraySegment<BitmapDrawCall>(callBuffer.Data, callBuffer.Offset, callBuffer.Count);
@@ -377,8 +384,13 @@ namespace Squared.Render {
                         indexArray, callSegment, ref drawCallsPrepared, count,
                         ref parameters, out bool failed
                     );
-                    if (failed)
+                    if (failed) {
+                        if (!WarnedAboutFillError) {
+                            WarnedAboutFillError = true;
+                            Console.Error.WriteLine("WARNING: BitmapBatch prepare failed");
+                        }
                         return false;
+                    }
                 }
             }
 

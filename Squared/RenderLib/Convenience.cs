@@ -1908,5 +1908,11 @@ namespace Squared.Render.Convenience {
 
             return string.Format("IR @ [c:{0} l:{1}] b: {2} c: {3}", Container, Layer, Cache.Count, callCount);
         }
+
+        public void UnsafeCopySomeState (in ImperativeRenderer renderer) {
+            Layer = renderer.Layer;
+            NextSortKey = renderer.NextSortKey;
+            Cache = renderer.Cache;
+        }
     }
 }
