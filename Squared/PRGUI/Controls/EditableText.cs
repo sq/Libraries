@@ -197,19 +197,6 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private Func<IGlyphSource> _GlyphSourceProvider;
-
-        public Func<IGlyphSource> GlyphSourceProvider {
-            set {
-                if (_GlyphSourceProvider == value)
-                    return;
-                _GlyphSourceProvider = value;
-                DynamicLayout.GlyphSourceProvider = value;
-                DescriptionLayout.GlyphSourceProvider = value;
-                Invalidate();
-            }
-        }
-
         public bool IntegerOnly {
             get => _IntegerOnly;
             set {
@@ -492,14 +479,14 @@ namespace Squared.PRGUI.Controls {
             UpdateLayoutSettings();
 
             Color? color = null;
-            var font = _GlyphSourceProvider != null
-                ? _GlyphSourceProvider()
+            var font = Appearance.GlyphSourceProvider != null
+                ? Appearance.GlyphSourceProvider()
                 : decorations.GlyphSource;
             decorations.GetTextSettings(ref context, settings.State, out material, ref color, out Vector4 userData);
             ComputeEffectiveSpacing(ref context, decorations, out CachedPadding, out Margins computedMargins);
 
-            if (_GlyphSourceProvider != null)
-                DynamicLayout.GlyphSourceProvider = _GlyphSourceProvider;
+            if (Appearance.GlyphSourceProvider != null)
+                DynamicLayout.GlyphSourceProvider = Appearance.GlyphSourceProvider;
             else if (font != null)
                 DynamicLayout.GlyphSource = font;
 
@@ -1204,8 +1191,8 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             var color = default(Color?);
-            var font = _GlyphSourceProvider != null
-                ? _GlyphSourceProvider()
+            var font = Appearance.GlyphSourceProvider != null
+                ? Appearance.GlyphSourceProvider()
                 : decorator.GlyphSource;
             decorator.GetTextSettings(ref context, settings.State, out Material material, ref color, out _);
             if (material == null)
@@ -1215,8 +1202,8 @@ namespace Squared.PRGUI.Controls {
             if (color == null)
                 return;
 
-            if (_GlyphSourceProvider != null)
-                DescriptionLayout.GlyphSourceProvider = _GlyphSourceProvider;
+            if (Appearance.GlyphSourceProvider != null)
+                DescriptionLayout.GlyphSourceProvider = Appearance.GlyphSourceProvider;
             else
                 DescriptionLayout.GlyphSource = font;
             DescriptionLayout.SetText(Description, true, true);

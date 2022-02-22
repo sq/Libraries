@@ -20,6 +20,7 @@ namespace Squared.PRGUI.Controls {
         Type ValueType { get; }
         bool IntegerOnly { get; set; }
         bool DoubleOnly { get; set; }
+        string Description { get; set; }
     }
 
     public static class ParameterEditor {
