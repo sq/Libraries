@@ -344,7 +344,8 @@ namespace Squared.Render {
 
         public override string ToString () {
             var v4 = ToVector4();
-            return $"{{{v4.X}, {v4.Y}, {v4.Z}, {v4.W}}}";
+            const int digits = 3;
+            return $"{{{Math.Round(v4.X, digits, MidpointRounding.AwayFromZero)}, {Math.Round(v4.Y, digits, MidpointRounding.AwayFromZero)}, {Math.Round(v4.Z, digits, MidpointRounding.AwayFromZero)}, {Math.Round(v4.W, digits, MidpointRounding.AwayFromZero)}}}";
         }
 
         public static bool TryParse (string text, out object result) {

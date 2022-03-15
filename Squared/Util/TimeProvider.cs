@@ -158,6 +158,7 @@ namespace Squared.Util {
     public sealed class PausableTimeProvider : ITimeProvider {
         public readonly ITimeProvider Source;
 
+        private long? _DesiredTime = null;
         private long? _PausedSince = null;
         private long _Offset = 0;
 
@@ -167,8 +168,12 @@ namespace Squared.Util {
 
         public long Ticks {
             get {
-                if (_PausedSince.HasValue)
+                if (_PausedSince.HasValue) {
+                    if (_DesiredTime.HasValue)
+                        return _DesiredTime.Value;
+
                     return _PausedSince.Value + _Offset;
+                }
 
                 return Source.Ticks + _Offset;
             }
@@ -176,13 +181,8 @@ namespace Squared.Util {
 
         public double Seconds {
             get {
-                decimal ticks;
-                if (_PausedSince.HasValue)
-                    ticks = _PausedSince.Value + _Offset;
-                else
-                    ticks = Source.Ticks + _Offset;
-
-                return (double)(ticks / Squared.Util.Time.SecondInTicks);
+                decimal ticks = Ticks;
+                return (double)(ticks / Time.SecondInTicks);
             }
         }
 
@@ -198,12 +198,27 @@ namespace Squared.Util {
 
                 if (value == true) {
                     _PausedSince = now;
+                } else if (_DesiredTime.HasValue) {
+                    _PausedSince = null;
+                    _Offset = _DesiredTime.Value - now;
+                    _DesiredTime = null;
                 } else {
                     long since = _PausedSince.Value;
                     _PausedSince = null;
                     _Offset -= (now - since);
                 }
             }
+        }
+
+        public void SetTime (double seconds) {
+            SetTime((long)(seconds * Time.SecondInTicks));
+        }
+
+        public void SetTime (long ticks) {
+            if (_PausedSince.HasValue)
+                _DesiredTime = ticks;
+            else
+                _Offset = -Source.Ticks + ticks;
         }
 
         public void Reset () {

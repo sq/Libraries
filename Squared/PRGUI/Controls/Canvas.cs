@@ -18,7 +18,8 @@ using Squared.Util;
 using Squared.Util.Event;
 
 namespace Squared.PRGUI.Controls {
-    public delegate void CanvasPaintHandler (ref ImperativeRenderer renderer, in RectF contentRect);
+    // Copied so the callee can pass it by-ref elsewhere
+    public delegate void CanvasPaintHandler (ref ImperativeRenderer renderer, DecorationSettings settings);
 
     public class Canvas : Control {
         public event CanvasPaintHandler OnPaint;
@@ -100,13 +101,13 @@ namespace Squared.PRGUI.Controls {
             return provider.Canvas ?? base.GetDefaultDecorator(provider) ?? provider.None;
         }
 
-        protected virtual void Paint (ref ImperativeRenderer renderer, in RectF contentRect) {
+        protected virtual void Paint (ref ImperativeRenderer renderer, in DecorationSettings settings) {
             if (DisabledDueToException)
                 return;
 
             try {
                 if (OnPaint != null)
-                    OnPaint(ref renderer, in contentRect);
+                    OnPaint(ref renderer, settings);
             } catch (Exception exc) {
                 Context.Log($"Unhandled exception in canvas {this}: {exc}");
                 DisabledDueToException = true;
@@ -130,8 +131,8 @@ namespace Squared.PRGUI.Controls {
             AutoDisposeBuffer(context.Prepass.Container.Coordinator);
             int w = (int)Math.Ceiling(settings.ContentBox.Width),
                 h = (int)Math.Ceiling(settings.ContentBox.Height);
-            var box = settings.ContentBox;
-            box.Position = Vector2.Zero;
+            settings.ContentBox.Position = settings.Box.Position = Vector2.Zero;
+            settings.IsCompositing = true;
             if (Buffer == null) {
                 _ContentIsValid = false;
                 Buffer = new AutoRenderTarget(context.Prepass.Container.Coordinator, w, h, false, SurfaceFormat, DepthFormat);
@@ -147,7 +148,7 @@ namespace Squared.PRGUI.Controls {
             )) {
                 var contentRenderer = new ImperativeRenderer(container, context.Materials);
                 contentRenderer.BlendState = BlendState.NonPremultiplied;
-                Paint(ref contentRenderer, in box);
+                Paint(ref contentRenderer, in settings);
             }
         }
 
@@ -165,7 +166,7 @@ namespace Squared.PRGUI.Controls {
                 AutoDisposeBuffer(renderer.Container.Coordinator);
                 contentRenderer = renderer.MakeSubgroup();
                 contentRenderer.BlendState = BlendState;
-                Paint(ref contentRenderer, in settings.ContentBox);
+                Paint(ref contentRenderer, in settings);
             } else {
                 renderer.Draw(
                     Buffer.Get(),
