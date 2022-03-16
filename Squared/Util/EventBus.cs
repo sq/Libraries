@@ -132,18 +132,13 @@ namespace Squared.Util.Event {
     }
 
     public struct EventSubscription : IDisposable {
-        public readonly EventBus EventBus;
-        public readonly EventSubscriber EventSubscriber;
+        public EventBus EventBus { get; private set; }
+        public EventSubscriber EventSubscriber { get; private set; }
 
         private EventFilter _EventFilter;
+        public EventFilter EventFilter => _EventFilter;
 
-        public EventFilter EventFilter {
-            get {
-                return _EventFilter;
-            }
-        }
-
-        public EventSubscription (EventBus eventBus, ref EventFilter eventFilter, EventSubscriber subscriber) {
+        public EventSubscription (EventBus eventBus, in EventFilter eventFilter, EventSubscriber subscriber) {
             EventBus = eventBus;
             _EventFilter = eventFilter;
             EventSubscriber = subscriber;
@@ -168,8 +163,12 @@ namespace Squared.Util.Event {
         }
 
         public void Dispose () {
-            if ((EventBus != null) && (EventSubscriber != null))
+            if ((EventBus != null) && (EventSubscriber != null)) {
                 EventBus.Unsubscribe(ref _EventFilter, EventSubscriber);
+                _EventFilter = default;
+                EventSubscriber = null;
+                EventBus = null;
+            }
         }
     }
 
@@ -271,7 +270,7 @@ namespace Squared.Util.Event {
             lock (subscribers)
                 subscribers.Add(subscriber);
 
-            return new EventSubscription(this, ref filter, subscriber);
+            return new EventSubscription(this, in filter, subscriber);
         }
 
         private EventCategoryToken GetCategory (string name) {
@@ -292,8 +291,7 @@ namespace Squared.Util.Event {
             }
         }
 
-        public EventSubscription Subscribe<T> (object source, string type, TypedEventSubscriber<T> subscriber) 
-            where T : class {
+        public EventSubscription Subscribe<T> (object source, string type, TypedEventSubscriber<T> subscriber) {
             return Subscribe(source, type, (e) => {
                 var info = e as IEventInfo<T>;
                 if (info != null)

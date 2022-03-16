@@ -356,8 +356,6 @@ namespace Squared.Render.Text {
     public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
 
     public sealed class RichTextConfiguration : IEquatable<RichTextConfiguration> {
-        private static readonly Dictionary<string, Color?> SystemNamedColorCache = new Dictionary<string, Color?>();
-
         public event Action<RichTextConfiguration, RichParseError> OnParseError;
 
         private int Version;
@@ -402,19 +400,11 @@ namespace Squared.Render.Text {
             } else if ((NamedColors != null) && NamedColors.TryGetValue(text, out Color namedColor)) {
                 return AutoConvert(namedColor);
             } else {
-                lock (SystemNamedColorCache) {
-                    if (SystemNamedColorCache.TryGetValue(text, out Color? systemNamedColor))
-                        return systemNamedColor;
-                }
-
-                var tColor = typeof(Color);
-                var prop = tColor.GetProperty(text, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
-                Color? result = null;
-                if (prop != null)
-                    result = (Color)prop.GetValue(null);
-                lock (SystemNamedColorCache)
-                    SystemNamedColorCache[text] = result;
-
+                Color? result;
+                if (NamedColor.TryParse(text, out Color named))
+                    result = named;
+                else
+                    result = null;
                 return AutoConvert(result);
             }
         }

@@ -1024,7 +1024,7 @@ namespace Squared.Render.Convenience {
             SpriteFont font, AbstractString text,
             Vector2 position, Color? color = null, float scale = 1, DrawCallSortKey? sortKey = null,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
-            int? layer = null, bool? worldSpace = null,
+            int? layer = null, bool? worldSpace = null, bool alignToPixels = true,
             BlendState blendState = null, SamplerState samplerState = null, Material material = null,
             Color? addColor = null
         ) {
@@ -1032,7 +1032,7 @@ namespace Squared.Render.Convenience {
                 var layout = font.LayoutString(
                     text, new ArraySegment<BitmapDrawCall>(buffer.Data),
                     position, color, scale, sortKey.GetValueOrDefault(NextSortKey),
-                    characterSkipCount, characterLimit, alignToPixels: true,
+                    characterSkipCount, characterLimit, alignToPixels: alignToPixels,
                     addColor: addColor
                 );
 
@@ -1050,7 +1050,7 @@ namespace Squared.Render.Convenience {
             IGlyphSource glyphSource, AbstractString text,
             Vector2 position, Color? color = null, float scale = 1, DrawCallSortKey? sortKey = null,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
-            int? layer = null, bool? worldSpace = null,
+            int? layer = null, bool? worldSpace = null, bool alignToPixels = true,
             BlendState blendState = null, SamplerState samplerState = null,
             Material material = null, Color? addColor = null
         ) {
@@ -1058,7 +1058,7 @@ namespace Squared.Render.Convenience {
                 var layout = glyphSource.LayoutString(
                     text, new ArraySegment<BitmapDrawCall>(buffer.Data),
                     position, color, scale, sortKey.GetValueOrDefault(NextSortKey),
-                    characterSkipCount, characterLimit, alignToPixels: true,
+                    characterSkipCount, characterLimit, alignToPixels: alignToPixels,
                     addColor: addColor
                 );
 

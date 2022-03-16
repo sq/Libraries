@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -28,6 +29,39 @@ namespace Squared.Render {
                     GammaTable[i] = inv;
                     InvGammaTable[inv] = (byte)i;
                 }
+            }
+        }
+    }
+
+    public static class NamedColor {
+        private static readonly Dictionary<string, Color?> SystemNamedColorCache = 
+            new Dictionary<string, Color?>(StringComparer.OrdinalIgnoreCase);
+
+        public static bool TryParse (string text, out Color result) {
+            if (string.IsNullOrWhiteSpace(text)) {
+                result = default;
+                return false;
+            }
+
+            lock (SystemNamedColorCache) {
+                if (SystemNamedColorCache.TryGetValue(text, out Color? systemNamedColor)) {
+                    result = systemNamedColor ?? default;
+                    return systemNamedColor != null;
+                }
+            }
+
+            var tColor = typeof(Color);
+            var prop = tColor.GetProperty(text, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
+            if (prop != null) {
+                result = (Color)prop.GetValue(null);
+                lock (SystemNamedColorCache)
+                    SystemNamedColorCache[text] = result;
+                return true;
+            } else {
+                result = default;
+                lock (SystemNamedColorCache)
+                    SystemNamedColorCache[text] = null;
+                return false;
             }
         }
     }
@@ -359,6 +393,17 @@ namespace Squared.Render {
         }
 
         public static bool TryParse (string text, out pSRGBColor result) {
+            if (TryParseNumeric(text, out result))
+                return true;
+            if (NamedColor.TryParse(text, out Color namedColor)) {
+                result = new pSRGBColor(namedColor, true);
+                return true;
+            }
+            result = default;
+            return false;
+        }
+
+        private static bool TryParseNumeric (string text, out pSRGBColor result) {
             result = default;
             if (string.IsNullOrWhiteSpace(text))
                 return false;

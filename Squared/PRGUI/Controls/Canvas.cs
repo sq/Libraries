@@ -36,6 +36,11 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        /// <summary>
+        /// If buffering is enabled, the size of the internal buffer will be increased by this amount
+        /// </summary>
+        public float InternalResolution = 1.0f;
+
         private bool _ContentIsValid;
         private bool _CacheContent;
         public bool CacheContent {
@@ -129,8 +134,8 @@ namespace Squared.PRGUI.Controls {
         protected override void OnPreRasterize (ref UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
             base.OnPreRasterize(ref context, settings, decorations);
             AutoDisposeBuffer(context.Prepass.Container.Coordinator);
-            int w = (int)Math.Ceiling(settings.ContentBox.Width),
-                h = (int)Math.Ceiling(settings.ContentBox.Height);
+            var bufferSize = (settings.ContentBox.Size * InternalResolution).Ceiling();
+            int w = (int)bufferSize.X, h = (int)bufferSize.Y;
             settings.ContentBox.Position = settings.Box.Position = Vector2.Zero;
             settings.IsCompositing = true;
             if (Buffer == null) {
@@ -144,7 +149,11 @@ namespace Squared.PRGUI.Controls {
             var layer = 0;
             using (var container = BatchGroup.ForRenderTarget(
                 context.Prepass, layer, Buffer, materialSet: context.Materials,
-                viewTransform: ViewTransform.CreateOrthographic(w, h)
+                viewTransform: ViewTransform.CreateOrthographic(
+                    // Maintain a fixed width/height even if internal resolution is not 1.0
+                    (int)Math.Ceiling(settings.ContentBox.Width), 
+                    (int)Math.Ceiling(settings.ContentBox.Height)
+                )
             )) {
                 var contentRenderer = new ImperativeRenderer(container, context.Materials);
                 contentRenderer.BlendState = BlendState.NonPremultiplied;
@@ -169,9 +178,8 @@ namespace Squared.PRGUI.Controls {
                 Paint(ref contentRenderer, in settings);
             } else {
                 renderer.Draw(
-                    Buffer.Get(),
-                    new Rectangle((int)a.X, (int)a.Y, (int)(b.X - a.X), (int)(b.Y - a.Y)),
-                    blendState: BlendState
+                    Buffer.Get(), (int)a.X, (int)a.Y, blendState: BlendState, 
+                    scaleX: 1.0f / InternalResolution, scaleY: 1.0f / InternalResolution
                 );
             }
         }

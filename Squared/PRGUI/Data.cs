@@ -609,6 +609,22 @@ namespace Squared.PRGUI {
             return !lhs.Equals(rhs);
         }
 
+        public static RectF operator * (RectF lhs, float rhs) {
+            lhs.Left *= rhs;
+            lhs.Width *= rhs;
+            lhs.Top *= rhs;
+            lhs.Height *= rhs;
+            return lhs;
+        }
+
+        public static RectF operator * (RectF lhs, Vector2 rhs) {
+            lhs.Left *= rhs.X;
+            lhs.Width *= rhs.X;
+            lhs.Top *= rhs.Y;
+            lhs.Height *= rhs.Y;
+            return lhs;
+        }
+
         public override int GetHashCode () {
             return Left.GetHashCode() ^ Top.GetHashCode() ^ Width.GetHashCode() ^ Height.GetHashCode();
         }
