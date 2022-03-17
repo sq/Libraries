@@ -233,10 +233,11 @@ namespace Squared.PRGUI.Layout {
         private LayoutItem ItemTemplate = new LayoutItem(ControlKey.Invalid);
         private RectF RectTemplate = default(RectF);
 
-        public ControlKey CreateItem () {
+        public ControlKey CreateItem (LayoutTags tag = LayoutTags.Default) {
             var newData = ItemTemplate;
             var newIndex = Layout.Count;
             newData._Key.ID = newIndex;
+            newData.Tag = tag;
 
             Layout.Add(in newData);
             Boxes.Add(in RectTemplate);
@@ -488,8 +489,10 @@ namespace Squared.PRGUI.Layout {
             var arrangement = flags & (ControlFlags.Container_Row | ControlFlags.Container_Column);
             if (arrangement == default)
                 throw new ArgumentException("Container must be in either row or column mode");
+            /*
             else if (arrangement == (ControlFlags.Container_Column | ControlFlags.Container_Row))
                 throw new ArgumentException("Container must be in either row or column mode");
+            */
             pItem->Flags = (pItem->Flags & ~ControlFlagMask.Container) | flags;
         }
 
@@ -1332,15 +1335,11 @@ namespace Squared.PRGUI.Layout {
                         ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.Y, ShouldExpandLastRow(pItem, idim));
                     break;
                 case ControlFlags.Container_Column:
+                    contentRect = ArrangeUnwrappedColumnOrRow(pItem, dim, flags, contentRect, idim);
+                    break;
                 case ControlFlags.Container_Row:
-                    if (((uint)flags & 1) == (uint)dim) {
-                        ArrangeStacked(pItem, dim, false);
-                    } else {
-                        ArrangeOverlaySqueezedRange(
-                            pItem, ref contentRect, dim, pItem->FirstChild, ControlKey.Invalid,
-                            contentRect[idim], contentRect[idim + 2]
-                        );
-                    }
+                    // For debugging
+                    contentRect = ArrangeUnwrappedColumnOrRow(pItem, dim, flags, contentRect, idim);
                     break;
                 default:
                     ArrangeOverlay(pItem, dim);
@@ -1354,6 +1353,19 @@ namespace Squared.PRGUI.Layout {
                 ApplyFloatingPosition(pChild, in contentRect, idim, idim + 2);
                 Arrange(pChild, dim, constrainChildSize);
             }
+        }
+
+        private RectF ArrangeUnwrappedColumnOrRow (LayoutItem* pItem, LayoutDimensions dim, ControlFlags flags, RectF contentRect, int idim) {
+            if (((uint)flags & 1) == (uint)dim) {
+                ArrangeStacked(pItem, dim, false);
+            } else {
+                ArrangeOverlaySqueezedRange(
+                    pItem, ref contentRect, dim, pItem->FirstChild, ControlKey.Invalid,
+                    contentRect[idim], contentRect[idim + 2]
+                );
+            }
+
+            return contentRect;
         }
     }
 }

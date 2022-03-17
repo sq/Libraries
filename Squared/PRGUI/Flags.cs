@@ -98,18 +98,18 @@ namespace Squared.PRGUI.Flags {
     }
 
     public enum ChildArrangement : uint {
-        Row = 0x02,
-        Column = 0x03
+        Row = ControlFlags.Container_Row,
+        Column = ControlFlags.Container_Column,
     }
 
     public enum ChildAlignment : uint {
-        Start = 0x08,
-        Middle = 0x00,
-        End = 0x10,
+        Start = ControlFlags.Container_Align_Start,
+        Middle = ControlFlags.Container_Align_Middle,
+        End = ControlFlags.Container_Align_End,
         /// <summary>
         /// Not compatible with Wrap
         /// </summary>
-        Justify = 0x18
+        Justify = ControlFlags.Container_Align_Justify
     }
 
     public struct ContainerFlags {

@@ -19,6 +19,9 @@ namespace Squared.PRGUI.Layout {
         TabChildBox,
         ListBox,
         Column,
+        Root,
+        Container,
+        Group
     }
 
     public enum LayoutDimensions : uint {
@@ -26,33 +29,29 @@ namespace Squared.PRGUI.Layout {
         Y = 1
     }
 
+    // Note: X values ALWAYS need to come before Y, because we bitshift to adjust masks!
+    // Except for row/column, for some reason...
     [Flags]
     public enum ControlFlags : uint {
         /// <summary>
         /// Arrange child elements left-to-right
         /// </summary>
-        Container_Row = 0x02,
+        Container_Row    = 0b10,
         /// <summary>
         /// Arrange child elements top-to-bottom
         /// </summary>
-        Container_Column = 0x03,
+        Container_Column = 0b11,
 
-        /*
-        /// <summary>
-        /// Arrange all child elements within a single row/column
-        /// </summary>
-        Container_NoWrap = 0x00,
-        */
         /// <summary>
         /// Wrap child elements to additional rows/columns when running out of space.
         /// This also enables Layout_ForceBreak on child elements to work.
         /// </summary>
-        Container_Wrap = 0x04,
+        Container_Wrap   = 0b100,
 
         /// <summary>
         /// Place child elements against the start of the row/column
         /// </summary>
-        Container_Align_Start = 0x08,
+        Container_Align_Start  = 0b1000,
         /// <summary>
         /// Center child elements within the row/column
         /// </summary>
@@ -60,40 +59,29 @@ namespace Squared.PRGUI.Layout {
         /// <summary>
         /// Place child elements against the end of the row/column
         /// </summary>
-        Container_Align_End = 0x10,
+        Container_Align_End    = 0b10000,
         /// <summary>
         /// Spread child elements across the entire row/column by inserting empty space.
         /// Incompatible with Container_Wrap.
         /// </summary>
-        Container_Align_Justify = 0x18,
-
-        /*
-        /// <summary>
-        /// Free layout
-        /// </summary>
-        Container_Free = 0x00,
-        /// <summary>
-        /// Flex-box model
-        /// </summary>
-        Container_Flex = Container_Row,
-        */
+        Container_Align_Justify = Container_Align_Start | Container_Align_End,
 
         /// <summary>
         /// Anchor to left side
         /// </summary>
-        Layout_Anchor_Left = (0x020 << 0),
+        Layout_Anchor_Left   = 0b100000,
         /// <summary>
         /// Anchor to top side
         /// </summary>
-        Layout_Anchor_Top = (0x020 << 1),
+        Layout_Anchor_Top    = 0b1000000,
         /// <summary>
         /// Anchor to right side
         /// </summary>
-        Layout_Anchor_Right = (0x020 << 2),
+        Layout_Anchor_Right  = 0b10000000,
         /// <summary>
         /// Anchor to bottom side
         /// </summary>
-        Layout_Anchor_Bottom = (0x020 << 3),
+        Layout_Anchor_Bottom = 0b100000000,
         /// <summary>
         /// Anchor to both left and right
         /// </summary>
@@ -114,42 +102,43 @@ namespace Squared.PRGUI.Layout {
         /// When wrapping, place this item on a new line.
         /// This only works if The container has Container_Wrap set.
         /// </summary>
-        Layout_ForceBreak = (0x20 << 4),
+        Layout_ForceBreak = 0b1000000000,
         /// <summary>
         /// This control does not contribute to its parent's size calculations or its siblings' layout.
         /// </summary>
-        Layout_Floating = (0x20 << 5),
+        Layout_Floating   = 0b10000000000,
         /// <summary>
         /// This control does not contribute to its siblings' layout.
         /// </summary>
-        Layout_Stacked = (0x20 << 6),
+        Layout_Stacked    = 0b100000000000,
 
-        Internal_Break = (0x20 << 7),
-        Internal_FixedWidth = (0x20 << 8),
-        Internal_FixedHeight = (0x20 << 9),
+        Internal_Break       = 0b1000000000000,
+        Internal_FixedWidth  = 0b10000000000000,
+        Internal_FixedHeight = 0b100000000000000,
         /// <summary>
         /// Prevents child elements from growing past the boundaries of this container.
         /// </summary>
-        Container_Constrain_Size = (0x20 << 10),
+        Container_Constrain_Size  = 0b1000000000000000,
         /// <summary>
         /// Prevents the container from shrinking below the size required to contain its child elements.
         /// </summary>
-        Container_Prevent_Crush_X = (0x20 << 11),
+        Container_Prevent_Crush_X = 0b10000000000000000,
         /// <summary>
         /// Prevents the container from shrinking below the size required to contain its child elements.
         /// </summary>
-        Container_Prevent_Crush_Y = (0x20 << 12),
+        Container_Prevent_Crush_Y = 0b100000000000000000,
         Container_Prevent_Crush = (Container_Prevent_Crush_X | Container_Prevent_Crush_Y),
         /// <summary>
         /// Does not expand the container to hold its children.
         /// </summary>
-        Container_No_Expansion_X = (0x20 << 13),
-        Container_No_Expansion_Y = (0x20 << 14),
+        Container_No_Expansion_X  = 0b1000000000000000000,
+        Container_No_Expansion_Y  = 0b10000000000000000000,
         Container_No_Expansion = (Container_No_Expansion_X | Container_No_Expansion_Y),
     }
 
     public static class ControlFlagMask {
-        public const ControlFlags BoxModel = (ControlFlags)0x7,
+        public const ControlFlags 
+            BoxModel = ControlFlags.Container_Column | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
             Container = ControlFlags.Container_Row |
                 ControlFlags.Container_Column |
                 ControlFlags.Container_Wrap |

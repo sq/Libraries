@@ -270,13 +270,17 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected ControlFlags ComputeContainerFlags () {
-            return (ContainerFlags & Container.Mask) |
-                (ControlFlags)Container;
+            var declarative = (ControlFlags)Container;
+            var expl = (ContainerFlags & Container.Mask);
+            // HACK: If the declarative properties were used to set column or row, clear the arrangement flag from ContainerFlags
+            // If this isn't done, doing Container.Column will break if Container.Row is also set
+            if (((declarative & ControlFlags.Container_Column) | (declarative & ControlFlags.Container_Row)) != default)
+                expl &= ~(ControlFlags.Container_Row | ControlFlags.Container_Column);
+            return declarative | expl;
         }
 
         protected virtual ControlKey CreateColumn (ref UIOperationContext context, ControlKey parent, int columnIndex) {
-            var result = context.Layout.CreateItem();
-            context.Layout.SetTag(result, LayoutTags.Column);
+            var result = context.Layout.CreateItem(LayoutTags.Column);
             var cf = ComputeContainerFlags();
             var resultFlags = cf | ControlFlags.Container_Prevent_Crush_Y;
             // FIXME
@@ -295,6 +299,7 @@ namespace Squared.PRGUI.Controls {
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var wasInvalid = IsLayoutInvalid;
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            context.Layout.SetTag(result, LayoutTags.Container);
             var children = Children;
             if (result.IsInvalid || SuppressChildLayout) {
                 NeedToInvalidateChildLayout = true;
@@ -577,6 +582,12 @@ namespace Squared.PRGUI.Controls {
         // For simple initializers
         public void Add (Control control) {
             Children.Add(control);
+        }
+
+        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            context.Layout.SetTag(result, LayoutTags.Group);
+            return result;
         }
 
         public IEnumerator<Control> GetEnumerator () {

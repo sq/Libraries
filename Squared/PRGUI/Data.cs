@@ -398,7 +398,7 @@ namespace Squared.PRGUI.Layout {
             Version++;
 
             IsDisposed = false;
-            Root = CreateItem();
+            Root = CreateItem(LayoutTags.Root);
             SetFixedSize(Root, _CanvasSize);
         }
     }

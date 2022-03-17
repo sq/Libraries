@@ -233,6 +233,7 @@ namespace Squared.PRGUI {
         private void DoUpdateLayoutInternal (ref UIOperationContext context, bool secondTime) {
             Layout.CanvasSize = CanvasSize;
             Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row);
+            Layout.SetTag(Layout.Root, LayoutTags.Root);
 
             _TopLevelControls.Clear();
             Controls.CopyTo(_TopLevelControls);
