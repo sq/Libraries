@@ -12,6 +12,12 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public sealed partial class UIContext : IDisposable {
+        private readonly Dictionary<Control, Control> InvalidFocusTargets = 
+            new Dictionary<Control, Control>(new ReferenceComparer<Control>());
+
+        private HashSet<Control> FocusSearchHistory = new HashSet<Control>();
+        private (Control value, bool force, bool isUserInitiated, bool? suppressAnimations) QueuedFocus;
+
         private void AutomaticallyTransferFocusOnTopLevelChange (Control target) {
             if (target.AcceptsFocus)
                 return;
@@ -84,9 +90,6 @@ namespace Squared.PRGUI {
 
             return false;
         }
-
-        private readonly Dictionary<Control, Control> InvalidFocusTargets = 
-            new Dictionary<Control, Control>(new ReferenceComparer<Control>());
 
         private void DefocusInvalidFocusTargets () {
             while ((Focused != null) && !Focused.IsValidFocusTarget && InvalidFocusTargets.TryGetValue(Focused, out Control idealNewTarget)) {
@@ -226,7 +229,28 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        private HashSet<Control> FocusSearchHistory = new HashSet<Control>();
+        /// <summary>
+        /// Requests that a control be focused as soon as possible (for example, after it becomes visible)
+        /// </summary>
+        /// <param name="force">If true, focus will be transferred even if the control is not a valid focus target</param>
+        public void QueueFocus (
+            Control value, 
+            bool force = false, 
+            bool isUserInitiated = true,
+            bool? suppressAnimations = null
+        ) {
+            QueuedFocus = (value, force, isUserInitiated, suppressAnimations);
+        }
+
+        public void SetOrQueueFocus (
+            Control value, 
+            bool force = false, 
+            bool isUserInitiated = true,
+            bool? suppressAnimations = null
+        ) {
+            if (!TrySetFocus(value, force, isUserInitiated, suppressAnimations))
+                QueueFocus(value, force, isUserInitiated, suppressAnimations);
+        }
 
         /// <summary>
         /// Transfers focus to a target control (or no control), if possible

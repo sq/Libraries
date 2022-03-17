@@ -429,6 +429,20 @@ namespace Squared.PRGUI {
                 PreviousUnhandledEvents.Add(evt);
             UnhandledEvents.Clear();
 
+            var queuedFocus = QueuedFocus;
+            var activeModal = ActiveModal;
+
+            if (queuedFocus.value != null) {
+                if (
+                    (activeModal == null) || 
+                    // Attempting to set focus to something outside of a modal can cause it to close
+                    Control.IsEqualOrAncestor(queuedFocus.value, (Control)activeModal)
+                ) {
+                    if (TrySetFocus(queuedFocus.value, queuedFocus.force, queuedFocus.isUserInitiated, queuedFocus.suppressAnimations))
+                        QueuedFocus = default;
+                }
+            }
+
             if (
                 (Focused != null) && 
                 (!Focused.IsValidFocusTarget || (FindTopLevelAncestor(Focused) == null))
@@ -449,6 +463,15 @@ namespace Squared.PRGUI {
             }
 
             EnsureValidFocus();
+
+            // Detect that while we successfully applied queued focus, it was reset somehow, and queue it again
+            if (
+                (queuedFocus.value != null) && (QueuedFocus.value == null) &&
+                (Focused != queuedFocus.value)
+            ) {
+                // FIXME: This shouldn't really happen
+                QueuedFocus = queuedFocus;
+            }
 
             // We want to do this check once per frame since during a given frame, the focus
             //  may move multiple times and we don't want to pointlessly start the animation
@@ -471,7 +494,6 @@ namespace Squared.PRGUI {
                 ? FindTopLevelAncestor(mouseEventTarget)
                 : null;
 
-            var activeModal = ActiveModal;
             var wasInputBlocked = false;
             if (
                 (activeModal?.BlockInput == true) && 

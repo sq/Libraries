@@ -715,7 +715,7 @@ namespace Squared.PRGUI.Controls {
             Context.NotifyControlBecomingInvalidFocusTarget(this, false);
             if (Context.Focused == this) {
                 if (fd != null)
-                    Context.TrySetFocus(fd, false, false); // FIXME
+                    Context.SetOrQueueFocus(fd, false, false); // FIXME
             }
             Listener?.Closed(this);
             if (Closed != null)
