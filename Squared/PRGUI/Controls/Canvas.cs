@@ -136,6 +136,8 @@ namespace Squared.PRGUI.Controls {
             AutoDisposeBuffer(context.Prepass.Container.Coordinator);
             var bufferSize = (settings.ContentBox.Size * InternalResolution).Ceiling();
             int w = (int)bufferSize.X, h = (int)bufferSize.Y;
+            if ((w <= 0) || (h <= 0))
+                return;
             settings.ContentBox.Position = settings.Box.Position = Vector2.Zero;
             settings.IsCompositing = true;
             if (Buffer == null) {
@@ -177,6 +179,9 @@ namespace Squared.PRGUI.Controls {
                 contentRenderer.BlendState = BlendState;
                 Paint(ref contentRenderer, in settings);
             } else {
+                var buffer = Buffer.Get();
+                if (buffer == null)
+                    return;
                 renderer.Draw(
                     Buffer.Get(), (int)a.X, (int)a.Y, blendState: BlendState, 
                     scaleX: 1.0f / InternalResolution, scaleY: 1.0f / InternalResolution

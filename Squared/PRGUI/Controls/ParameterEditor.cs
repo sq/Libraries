@@ -21,6 +21,7 @@ namespace Squared.PRGUI.Controls {
         bool IntegerOnly { get; set; }
         bool DoubleOnly { get; set; }
         string Description { get; set; }
+        int DecimalDigits { get; set; }
     }
 
     public static class ParameterEditor {
@@ -42,6 +43,11 @@ namespace Squared.PRGUI.Controls {
         public const float ArrowWidth = 10,
             ArrowHeight = 18,
             ArrowPadding = ArrowWidth + 4;
+
+        /// <summary>
+        /// Number of trailing digits after the decimal point for floating-point types
+        /// </summary>
+        public int DecimalDigits { get; set; } = 3;
 
         public bool HasValue { get; private set; }
         private T _Value;
@@ -177,12 +183,8 @@ namespace Squared.PRGUI.Controls {
             else if (t == typeof(int) || t == typeof(long))
                 IntegerOnly = true;
 
-            var nfi = (NumberFormatInfo)(CultureInfo.CurrentUICulture.NumberFormat.Clone());
-            // HACK
-            nfi.NumberGroupSeparator = "";
-            nfi.NumberDecimalDigits = IntegerOnly ? 0 : 3;
+            FormatProvider = (IFormatProvider)CultureInfo.CurrentUICulture.NumberFormat.Clone();
 
-            FormatProvider = nfi;
             var type = typeof(T);
             var tryParse = type.GetMethod(
                 "TryParse", new [] { typeof(string), typeof(object).MakeByRefType() }
@@ -191,7 +193,15 @@ namespace Squared.PRGUI.Controls {
                 TryParseValue = (TryParseDelegate)Delegate.CreateDelegate(typeof(TryParseDelegate), tryParse);
 
             ValueDecoder = (s) => (T)Convert.ChangeType(s, typeof(T), FormatProvider);
-            ValueEncoder = (v) => string.Format(FormatProvider, "{0:N}", v);
+            ValueEncoder = (v) => {
+                var nfi = FormatProvider as NumberFormatInfo;
+                if (nfi != null) {
+                    // HACK
+                    nfi.NumberGroupSeparator = "";
+                    nfi.NumberDecimalDigits = IntegerOnly ? 0 : DecimalDigits;
+                }
+                return string.Format(FormatProvider, "{0:N}", v);
+            };
             SelectAllOnFocus = true;
             SelectNoneOnFocusLoss = true;
         }

@@ -485,7 +485,10 @@ namespace Squared.PRGUI.Layout {
         public unsafe void SetContainerFlags (ControlKey key, ControlFlags flags) {
             AssertMasked(flags, ControlFlagMask.Container);
             var pItem = LayoutPtr(key);
-            if (!flags.IsFlagged(ControlFlags.Container_Row) && !flags.IsFlagged(ControlFlags.Container_Column))
+            var arrangement = flags & (ControlFlags.Container_Row | ControlFlags.Container_Column);
+            if (arrangement == default)
+                throw new ArgumentException("Container must be in either row or column mode");
+            else if (arrangement == (ControlFlags.Container_Column | ControlFlags.Container_Row))
                 throw new ArgumentException("Container must be in either row or column mode");
             pItem->Flags = (pItem->Flags & ~ControlFlagMask.Container) | flags;
         }
@@ -854,17 +857,17 @@ namespace Squared.PRGUI.Layout {
                         filler = extraSpace / fillerCount;
                     else if (total > 0) {
                         switch (itemFlags & ControlFlags.Container_Align_Justify) {
+                            case ControlFlags.Container_Align_Start:
+                                break;
+                            case ControlFlags.Container_Align_End:
+                                extraMargin = extraSpace;
+                                break;
                             case ControlFlags.Container_Align_Justify:
                                 // justify when not wrapping or not in last line, or not manually breaking
                                 if (!wrap || (!endChild.IsInvalid && !hardBreak))
                                     spacer = extraSpace / (total - 1);
                                 else
                                     ;
-                                break;
-                            case ControlFlags.Container_Align_Start:
-                                break;
-                            case ControlFlags.Container_Align_End:
-                                extraMargin = extraSpace;
                                 break;
                             default:
                                 extraMargin = extraSpace / 2;
