@@ -237,24 +237,7 @@ namespace Squared.PRGUI {
         public bool HasBackgroundColor => BackgroundColor.HasValue;
         public bool HasTextColor => BackgroundColor.HasValue;
 
-        internal bool HasOpacity { get; private set; }
-
-        /// <summary>
-        /// If set, the control has a non-identity transform matrix (which may be animated).
-        /// </summary>
-        public bool HasTransformMatrix { get; private set; }
-
         private bool _DoNotAutoScaleMetrics;
-        private Vector2 _TransformOriginMinusOneHalf;
-
-        /// <summary>
-        /// Sets the alignment of the transform matrix to allow rotating or scaling the control
-        ///  relative to one of its corners instead of the default, its center (0.5)
-        /// </summary>
-        public Vector2 TransformOrigin {
-            get => _TransformOriginMinusOneHalf + new Vector2(0.5f);
-            set => _TransformOriginMinusOneHalf = value - new Vector2(0.5f);
-        }
 
         /// <summary>
         /// If set, the control's fixed size and size constraints will be affected by the
@@ -264,6 +247,8 @@ namespace Squared.PRGUI {
             get => !_DoNotAutoScaleMetrics;
             set => _DoNotAutoScaleMetrics = !value;
         }
+
+        internal bool HasOpacity { get; private set; }
 
         internal Tween<float> _Opacity;
         /// <summary>
@@ -282,6 +267,24 @@ namespace Squared.PRGUI {
             set => Opacity = value ? 0 : 1;
         }
 
+        /// <summary>
+        /// If set, the control has a non-identity transform matrix (which may be animated).
+        /// </summary>
+        public bool HasTransformMatrix => _TransformMatrix?.HasValue == true;
+
+        /// <summary>
+        /// Sets the alignment of the transform matrix to allow rotating or scaling the control
+        ///  relative to one of its corners instead of the default, its center (0.5)
+        /// </summary>
+        public Vector2 TransformOrigin {
+            get => (_TransformMatrix?.TransformOriginMinusOneHalf + new Vector2(0.5f)) ?? Vector2.Zero;
+            set {
+                if (_TransformMatrix == null)
+                    return;
+                _TransformMatrix.TransformOriginMinusOneHalf = value - new Vector2(0.5f);
+            }
+        }
+
         public void GetFinalTransformMatrix (RectF sourceRect, long now, out Matrix result) {
             var origin = sourceRect.Size * -TransformOrigin;
             var finalPosition = sourceRect.Position + (sourceRect.Size * TransformOrigin);
@@ -293,9 +296,7 @@ namespace Squared.PRGUI {
                 result = Matrix.Identity;
         }
 
-        // TODO: Pull this out into an on-demand heap allocation since most controls won't have a transform
-        //  and the size of this thing is like 160 bytes per control
-        internal Tween<Matrix> _TransformMatrix;
+        private ControlMatrixInfo _TransformMatrix;
 
         /// <summary>
         /// Applies a custom transformation matrix to the control. Any control with a transform matrix
@@ -304,19 +305,27 @@ namespace Squared.PRGUI {
         ///  moved into its normal position afterwards.
         /// </summary>
         public Tween<Matrix>? Transform {
-            get => _TransformMatrix;
+            get => _TransformMatrix?.Matrix;
             set {
                 if (
                     (value == null) ||
                     ((value.Value.From == Matrix.Identity) && (value.Value.To == Matrix.Identity))
                 ) {
-                    _TransformMatrix = Matrix.Identity;
-                    HasTransformMatrix = false;
+                    _TransformMatrix = null;
                     return;
                 }
 
-                HasTransformMatrix = true;
-                _TransformMatrix = value.Value;
+                // Avoid an unnecessary allocation if this won't change anything
+                if (_TransformMatrix?.Matrix == value)
+                    return;
+
+                // Unfortunately we have to allocate a new one every time,
+                //  because 'this' could have been cloned and we would potentially be trampling a shared
+                //  instance.
+                _TransformMatrix = new ControlMatrixInfo {
+                    HasValue = true,
+                    Matrix = value.Value,
+                };
             }
         }
 
@@ -324,9 +333,9 @@ namespace Squared.PRGUI {
             if (!HasTransformMatrix)
                 return;
             
-            if (_TransformMatrix.Get(now, out Matrix m)) {
+            if (_TransformMatrix.Matrix.Get(now, out Matrix m)) {
                 if (m == Matrix.Identity)
-                    HasTransformMatrix = false;
+                    _TransformMatrix.HasValue = false;
             }
         }
 
@@ -336,7 +345,7 @@ namespace Squared.PRGUI {
                 return false;
             }
 
-            _TransformMatrix.Get(now, out matrix);
+            _TransformMatrix.Matrix.Get(now, out matrix);
             return true;
         }
 
@@ -346,10 +355,16 @@ namespace Squared.PRGUI {
                 return false;
             }
 
-            _TransformMatrix.Get(now, out Matrix temp);
+            _TransformMatrix.Matrix.Get(now, out Matrix temp);
             Matrix.Invert(ref temp, out matrix);
             var det = matrix.Determinant();
             return !float.IsNaN(det) && !float.IsInfinity(det);
         }
+    }
+
+    internal class ControlMatrixInfo {
+        public bool HasValue = true;
+        public Tween<Matrix> Matrix;
+        public Vector2 TransformOriginMinusOneHalf;
     }
 }

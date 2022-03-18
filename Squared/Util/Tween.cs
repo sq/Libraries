@@ -164,7 +164,11 @@ namespace Squared.Util {
         }
 
         public float GetProgress (long now) {
-            var unclamped = GetProgressUnclamped(now);
+            return GetProgress(now, out _);
+        }
+
+        public float GetProgress (long now, out float unclamped) {
+            unclamped = GetProgressUnclamped(now);
 
             var clampedToRepeatCount = 
                 (RepeatCount == int.MaxValue) 
@@ -210,20 +214,20 @@ namespace Squared.Util {
         /// <param name="result">The value at time <paramref name="now"/></param>
         /// <returns>True if the tween has ended at time <paramref name="now"/></returns>
         public bool Get (long now, out T result) {
-            var progress = GetProgress(now);
+            var progress = GetProgress(now, out float unclamped);
 
             // Default-init / completed
-            if (progress >= 1f) {
+            if (progress >= 1f)
                 result = To;
-                return true;
-            } else if (progress <= 0f)
+            else if (progress <= 0f)
                 result = From;
             else if (Interpolator != null)
                 result = Interpolator(GetValue, in this, 0, progress);
             else
                 result = From;
 
-            return false;
+            var isOver = unclamped >= (1f + RepeatCount);
+            return isOver;
         }
 
         public bool IsConstant => StartedWhen >= EndWhen;
