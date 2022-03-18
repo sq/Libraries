@@ -235,7 +235,7 @@ namespace Squared.Util {
             return true;
         }
 
-        protected void SetValueAtPositionInternal (float position, TValue value, TData data, bool dispatchEvent) {
+        protected void SetValueAtPositionInternal (float position, in TValue value, in TData data, bool dispatchEvent) {
             var oldIndex = GetLowerIndexForPosition(position);
 
             var newItem = new Point {
@@ -324,11 +324,11 @@ namespace Squared.Util {
                 Add(kvp.Position, kvp.Value);
         }
 
-        public void SetValueAtPosition (float position, T value, Interpolator<T> interpolator = null) {
+        public void SetValueAtPosition (float position, in T value, Interpolator<T> interpolator = null) {
             SetValueAtPositionInternal(position, value, new PointData { Interpolator = interpolator }, true);
         }
 
-        public void Add (float position, T value, Interpolator<T> interpolator = null) {
+        public void Add (float position, in T value, Interpolator<T> interpolator = null) {
             SetValueAtPositionInternal(position, value, new PointData { Interpolator = interpolator }, true);
         }
 
@@ -439,11 +439,11 @@ namespace Squared.Util {
             return GetPositionAtIndex(index) == position;
         }
 
-        public void SetValuesAtPosition (float position, T value, T velocity) {
+        public void SetValuesAtPosition (float position, in T value, T velocity) {
             SetValueAtPositionInternal(position, value, new PointData { Velocity = velocity }, true);
         }
 
-        public void Add (float position, T value, T velocity) {
+        public void Add (float position, in T value, T velocity) {
             SetValueAtPositionInternal(position, value, new PointData { Velocity = velocity }, true);
         }
 
@@ -490,8 +490,8 @@ namespace Squared.Util {
         }
 
         public static void CubicToHermite<T> (
-            ref T a, ref T b,
-            ref T c, ref T d,
+            in T a, in T b,
+            in T c, in T d,
             out T u, out T v
         ) {
             u = Operators<T>.Mul(Operators<T>.Sub(b, a), 3f);
@@ -499,8 +499,8 @@ namespace Squared.Util {
         }
 
         public static void HermiteToCubic<T> (
-            ref T a, ref T u,
-            ref T d, ref T v,
+            in T a, in T u,
+            in T d, in T v,
             out T b, out T c
         ) {
             var multiplier = 1f / 3f;
@@ -681,7 +681,7 @@ namespace Squared.Util {
             T u = spline.GetDataAtIndex(splitFirstPoint).Velocity, v = spline.GetDataAtIndex(splitSecondPoint).Velocity;
             T b, c;
 
-            CurveUtil.HermiteToCubic(ref a, ref u, ref d, ref v, out b, out c);
+            CurveUtil.HermiteToCubic(in a, in u, in d, in v, out b, out c);
 
             var ab = Arithmetic.Lerp(a, b, splitLocalPosition);
             var bc = Arithmetic.Lerp(b, c, splitLocalPosition);
@@ -699,7 +699,7 @@ namespace Squared.Util {
             newC = ab_bc;
             newD = midpoint;
 
-            CurveUtil.CubicToHermite(ref newA, ref newB, ref newC, ref newD, out newU, out newV);
+            CurveUtil.CubicToHermite(in newA, in newB, in newC, in newD, out newU, out newV);
 
             output.Add(temp = new HermiteSpline<T>());
             temp.Add(
@@ -714,7 +714,7 @@ namespace Squared.Util {
             newC = cd;
             newD = d;
 
-            CurveUtil.CubicToHermite(ref newA, ref newB, ref newC, ref newD, out newU, out newV);
+            CurveUtil.CubicToHermite(in newA, in newB, in newC, in newD, out newU, out newV);
 
             output.Add(temp = new HermiteSpline<T>());
             temp.Add(

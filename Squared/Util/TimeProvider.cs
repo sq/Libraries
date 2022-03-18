@@ -166,6 +166,16 @@ namespace Squared.Util {
             Source = source;
         }
 
+        public PausableTimeProvider (ITimeProvider source, long desiredTime) {
+            Source = source;
+            SetTime(desiredTime);
+        }
+
+        public PausableTimeProvider (ITimeProvider source, double desiredTime) {
+            Source = source;
+            SetTime(desiredTime);
+        }
+
         public long Ticks {
             get {
                 if (_PausedSince.HasValue) {

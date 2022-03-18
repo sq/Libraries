@@ -33,8 +33,10 @@ namespace Squared.PRGUI.Controls {
 
         /// <summary>
         /// If set, accessibility reading will use this control's tooltip instead of its text.
+        /// The default is to do this automatically if the control's text is short (1-2 characters)
+        ///  and the control has a tooltip.
         /// </summary>
-        public bool UseTooltipForReading = false;
+        public bool? UseTooltipForReading = null;
 
         public const float LineBreakRightPadding = 1.1f;
         public const float AutoSizePadding = 0.5f;
@@ -774,7 +776,8 @@ namespace Squared.PRGUI.Controls {
 
         protected virtual AbstractString GetReadingText () {
             var plainText = GetPlainText();
-            if (UseTooltipForReading || string.IsNullOrWhiteSpace(plainText))
+            var useTooltipByDefault = string.IsNullOrWhiteSpace(plainText) || (plainText.Length <= 2);
+            if (UseTooltipForReading ?? useTooltipByDefault)
                 return TooltipContent.GetPlainText(this);
 
             return plainText;

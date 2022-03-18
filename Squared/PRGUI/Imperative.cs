@@ -142,14 +142,14 @@ namespace Squared.PRGUI.Imperative {
             return new ControlBuilder<TControl>(instance);
         }
 
-        public ControlBuilder<StaticText> Label (AbstractString text, ControlFlags? layoutFlags = null) {
-            var result = this.Text<StaticText>(text, layoutFlags);
+        public ControlBuilder<StaticText> Label (AbstractString text, AbstractTooltipContent tooltip = default, ControlFlags? layoutFlags = null) {
+            var result = this.Text<StaticText>(text, tooltip, layoutFlags);
             WaitingForFocusBeneficiary = result.Control;
             return result;
         }
 
-        public ControlBuilder<StaticText> Text (AbstractString text, ControlFlags? layoutFlags = null) {
-            return this.Text<StaticText>(text, layoutFlags);
+        public ControlBuilder<StaticText> Text (AbstractString text, AbstractTooltipContent tooltip = default, ControlFlags? layoutFlags = null) {
+            return this.Text<StaticText>(text, tooltip, layoutFlags);
         }
 
         public ControlBuilder<Spacer> Spacer (bool forceBreak = false) {
@@ -157,21 +157,25 @@ namespace Squared.PRGUI.Imperative {
                 .SetForceBreak(forceBreak);
         }
 
-        public ControlBuilder<StaticImage> Image (AbstractTextureReference texture, ControlFlags? layoutFlags = null) {
-            return this.Image<StaticImage>(texture, layoutFlags);
+        public ControlBuilder<StaticImage> Image (AbstractTextureReference texture, AbstractTooltipContent tooltip = default, ControlFlags? layoutFlags = null) {
+            return this.Image<StaticImage>(texture, tooltip, layoutFlags);
         }
 
-        public ControlBuilder<TControl> Image<TControl> (AbstractTextureReference texture, ControlFlags? layoutFlags = null)
+        public ControlBuilder<TControl> Image<TControl> (AbstractTextureReference texture, AbstractTooltipContent tooltip = default, ControlFlags? layoutFlags = null)
             where TControl : Control, new() {
             var result = New<TControl>(layoutFlags);
             result.SetImage(texture);
+            if (tooltip != default)
+                result.SetTooltip(tooltip);
             return result;
         }
 
-        public ControlBuilder<TControl> Text<TControl> (AbstractString text, ControlFlags? layoutFlags = null)
+        public ControlBuilder<TControl> Text<TControl> (AbstractString text, AbstractTooltipContent tooltip = default, ControlFlags? layoutFlags = null)
             where TControl : Control, new() {
             var result = New<TControl>(layoutFlags);
             result.SetText(text);
+            if (tooltip != default)
+                result.SetTooltip(tooltip);
             return result;
         }
 
@@ -442,6 +446,43 @@ namespace Squared.PRGUI.Imperative {
         }
         public ControlBuilder<TControl> SetForceBreak (bool value) {
             Control.Layout.ForceBreak = value;
+            return this;
+        }
+
+        public ControlBuilder<TControl> SetLayout (
+            Flags.AnchorFlags? anchor = null,
+            Flags.FillFlags? fill = null,
+            Vector2? floatingPosition = null,
+            bool? floating = null, bool? stacked = null, 
+            bool? forceBreak = null
+        ) {
+            Control.Layout.Anchor = anchor ?? Control.Layout.Anchor;
+            Control.Layout.Fill = fill ?? Control.Layout.Fill;
+            if (floatingPosition.HasValue)
+                Control.Layout.Floating = true;
+            else
+                Control.Layout.Floating = floating ?? Control.Layout.Floating;
+            Control.Layout.FloatingPosition = floatingPosition ?? default;
+            Control.Layout.Stacked = stacked ?? Control.Layout.Stacked;
+            Control.Layout.ForceBreak = forceBreak ?? Control.Layout.ForceBreak;
+            return this;
+        }
+
+        public ControlBuilder<TControl> SetContainer (
+            Flags.ChildAlignment? alignment = null,
+            Flags.ChildArrangement? arrangement = null,
+            bool? constrainSize = null, bool? noExpansion = null,
+            bool? preventCrush = null, bool? wrap = null
+        ) {
+            if (!(Control is ContainerBase cast))
+                return this;
+
+            cast.Container.Alignment = alignment ?? cast.Container.Alignment;
+            cast.Container.Arrangement = arrangement ?? cast.Container.Arrangement;
+            cast.Container.ConstrainSize = constrainSize ?? cast.Container.ConstrainSize;
+            cast.Container.NoExpansion = noExpansion ?? cast.Container.NoExpansion;
+            cast.Container.PreventCrush = preventCrush ?? cast.Container.PreventCrush;
+            cast.Container.Wrap = wrap ?? cast.Container.Wrap;
             return this;
         }
 

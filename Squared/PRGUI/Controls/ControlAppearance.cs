@@ -65,6 +65,24 @@ namespace Squared.PRGUI {
             return new ColorVariable { pLinear = c.ToPLinear() };
         }
     }
+
+    [Flags]
+    public enum ControlAppearanceFlags : byte {
+        Default,
+        TextColorIsDefault = 0b1,
+        Overlay = 0b10,
+        Undecorated = 0b100,
+        UndecoratedText = 0b1000
+    }
+
+    [Flags]
+    public enum DecorationSpacingMode : byte {
+        Default,
+        SuppressPadding = 0b1,
+        SuppressMargins = 0b10,
+        SuppressSpacing = SuppressPadding | SuppressMargins,
+        UnscaledSpacing = 0b100
+    }
     
     public struct ControlAppearance {
         /// <summary>
@@ -90,72 +108,130 @@ namespace Squared.PRGUI {
         /// </summary>
         public DenseList<string> DecorationTraits;
 
-        private IGlyphSource _GlyphSource;
-        private Func<IGlyphSource> _GlyphSourceProvider;
+        private object _GlyphSourceOrProvider;
 
         /// <summary>
         /// Specifies a custom glyph source to use when rendering text.
         /// </summary>
         public IGlyphSource GlyphSource {
             get {
-                if (_GlyphSourceProvider != null)
-                    return _GlyphSourceProvider();
+                if (_GlyphSourceOrProvider is Func<IGlyphSource> provider)
+                    return provider();
                 else
-                    return _GlyphSource;
+                    return _GlyphSourceOrProvider as IGlyphSource;
             }
             set {
-                _GlyphSourceProvider = null;
-                _GlyphSource = value;
+                if ((value == null) && !(_GlyphSourceOrProvider is IGlyphSource))
+                    return;
+                _GlyphSourceOrProvider = value;
             }
         }
 
         public Func<IGlyphSource> GlyphSourceProvider {
-            get => _GlyphSourceProvider;
+            get => _GlyphSourceOrProvider as Func<IGlyphSource>;
             set {
-                if (value != null)
-                    GlyphSource = null;
-                _GlyphSourceProvider = value;
+                if ((value == null) && !(_GlyphSourceOrProvider is Func<IGlyphSource>))
+                    return;
+                _GlyphSourceOrProvider = value;
             }
         }
 
         public ColorVariable BackgroundColor;
         public ColorVariable TextColor;
+        public BackgroundImageSettings BackgroundImage;
+
+        private ControlAppearanceFlags MiscFlags;
+        public DecorationSpacingMode SpacingMode;
+
         /// <summary>
         /// If set, the TextColor will only change the default text color instead of overriding
         ///  the color set by the text decorator.
         /// </summary>
-        public bool TextColorIsDefault;
-        public BackgroundImageSettings BackgroundImage;
+        public bool TextColorIsDefault {
+            get => (MiscFlags & ControlAppearanceFlags.TextColorIsDefault) != default;
+            set {
+                MiscFlags = value
+                    ? MiscFlags | ControlAppearanceFlags.TextColorIsDefault
+                    : MiscFlags & ~ControlAppearanceFlags.TextColorIsDefault;
+            }
+        }
         /// <summary>
         /// Suppresses clipping of the control and causes it to be rendered above everything
         ///  up until the next modal. You can use this to highlight the control responsible for
         ///  summoning a modal.
         /// </summary>
-        public bool Overlay;
+        public bool Overlay {
+            get => (MiscFlags & ControlAppearanceFlags.Overlay) != default;
+            set {
+                MiscFlags = value
+                    ? MiscFlags | ControlAppearanceFlags.Overlay
+                    : MiscFlags & ~ControlAppearanceFlags.Overlay;
+            }
+        }
         /// <summary>
         /// Forces the Decorator to be None
         /// </summary>
-        public bool Undecorated;
+        public bool Undecorated {
+            get => (MiscFlags & ControlAppearanceFlags.Undecorated) != default;
+            set {
+                MiscFlags = value
+                    ? MiscFlags | ControlAppearanceFlags.Undecorated
+                    : MiscFlags & ~ControlAppearanceFlags.Undecorated;
+            }
+        }
         /// <summary>
         /// Forces the TextDecorator to be None
         /// </summary>
-        public bool UndecoratedText;
+        public bool UndecoratedText {
+            get => (MiscFlags & ControlAppearanceFlags.UndecoratedText) != default;
+            set {
+                MiscFlags = value
+                    ? MiscFlags | ControlAppearanceFlags.UndecoratedText
+                    : MiscFlags & ~ControlAppearanceFlags.UndecoratedText;
+            }
+        }
         /// <summary>
         /// Disables margins from the control's decorator
         /// </summary>
-        public bool SuppressDecorationMargins;
+        public bool SuppressDecorationMargins {
+            get => (SpacingMode & DecorationSpacingMode.SuppressMargins) != default;
+            set {
+                SpacingMode = value
+                    ? SpacingMode | DecorationSpacingMode.SuppressMargins
+                    : SpacingMode & ~DecorationSpacingMode.SuppressMargins;
+            }
+        }
         /// <summary>
         /// Disables padding from the control's decorator
         /// </summary>
-        public bool SuppressDecorationPadding;
+        public bool SuppressDecorationPadding {
+            get => (SpacingMode & DecorationSpacingMode.SuppressPadding) != default;
+            set {
+                SpacingMode = value
+                    ? SpacingMode | DecorationSpacingMode.SuppressPadding
+                    : SpacingMode & ~DecorationSpacingMode.SuppressPadding;
+            }
+        }
+
         /// <summary>
         /// Disables the decoration provider's padding/margin scale ratios
         /// </summary>
-        public bool SuppressDecorationScaling;
+        public bool SuppressDecorationScaling {
+            get => (SpacingMode & DecorationSpacingMode.UnscaledSpacing) != default;
+            set {
+                SpacingMode = value
+                    ? SpacingMode | DecorationSpacingMode.UnscaledSpacing
+                    : SpacingMode & ~DecorationSpacingMode.UnscaledSpacing;
+            }
+        }
 
         public bool SuppressDecorationSpacing {
-            get => SuppressDecorationMargins && SuppressDecorationPadding;
-            set => SuppressDecorationMargins = SuppressDecorationPadding = value;
+            get => (SpacingMode & DecorationSpacingMode.SuppressSpacing) == DecorationSpacingMode.SuppressSpacing;
+            set {
+                SpacingMode = value
+                    ? SpacingMode | DecorationSpacingMode.SuppressSpacing
+                    : SpacingMode & ~DecorationSpacingMode.SuppressSpacing;
+            }
         }
 
         public bool HasBackgroundColor => BackgroundColor.HasValue;
@@ -217,6 +293,8 @@ namespace Squared.PRGUI {
                 result = Matrix.Identity;
         }
 
+        // TODO: Pull this out into an on-demand heap allocation since most controls won't have a transform
+        //  and the size of this thing is like 160 bytes per control
         internal Tween<Matrix> _TransformMatrix;
 
         /// <summary>

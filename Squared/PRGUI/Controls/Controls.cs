@@ -198,9 +198,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override AbstractString GetReadingText () {
-            return (UseTooltipForReading 
-                ? (TooltipContent.Get(this).ToString() ?? Text.ToString())
-                : Text.ToString()
+            var useTooltipByDefault = Text.IsNullOrWhiteSpace || (Text.Length <= 2);
+            return (
+                (UseTooltipForReading ?? useTooltipByDefault)
+                    ? (TooltipContent.Get(this).ToString() ?? Text.ToString())
+                    : Text.ToString()
             ) + (Checked ? ": Yes" : ": No");
         }
 
