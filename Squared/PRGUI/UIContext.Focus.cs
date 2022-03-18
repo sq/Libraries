@@ -229,27 +229,40 @@ namespace Squared.PRGUI {
             return false;
         }
 
+        public Control ControlQueuedForFocus => QueuedFocus.value;
+
         /// <summary>
         /// Requests that a control be focused as soon as possible (for example, after it becomes visible)
         /// </summary>
         /// <param name="force">If true, focus will be transferred even if the control is not a valid focus target</param>
-        public void QueueFocus (
+        /// <returns>The control previously queued for focus, if any</returns>
+        public Control QueueFocus (
             Control value, 
             bool force = false, 
             bool isUserInitiated = true,
             bool? suppressAnimations = null
         ) {
+            var result = QueuedFocus.value;
             QueuedFocus = (value, force, isUserInitiated, suppressAnimations);
+            return result;
         }
 
-        public void SetOrQueueFocus (
+        /// <summary>
+        /// Attempts to focus a control immediately, and if that fails, queues it instead.
+        /// </summary>
+        /// <param name="force">If true, focus will be transferred even if the control is not a valid focus target</param>
+        /// <returns>true if focus was set immediately, false if focus was queued instead.</returns>
+        public bool SetOrQueueFocus (
             Control value, 
             bool force = false, 
             bool isUserInitiated = true,
             bool? suppressAnimations = null
         ) {
-            if (!TrySetFocus(value, force, isUserInitiated, suppressAnimations))
+            if (!TrySetFocus(value, force, isUserInitiated, suppressAnimations)) {
                 QueueFocus(value, force, isUserInitiated, suppressAnimations);
+                return false;
+            }
+            return true;
         }
 
         /// <summary>

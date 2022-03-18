@@ -34,12 +34,14 @@ namespace Squared.Render.Text {
         public ArraySegment<BitmapDrawCall> DrawCalls;
         public DenseList<AbstractTextureReference> UsedTextures;
         public DenseList<Bounds> Boxes;
+        public readonly int WordCount, LineCount;
         public readonly bool WasLineLimited;
 
         public StringLayout (
             Vector2 position, Vector2 size, Vector2 unconstrainedSize, 
             float lineHeight, Bounds firstCharacter, Bounds lastCharacter, 
-            ArraySegment<BitmapDrawCall> drawCalls, bool wasLineLimited
+            ArraySegment<BitmapDrawCall> drawCalls, bool wasLineLimited,
+            int wordCount, int lineCount
         ) {
             Position = position;
             Size = size;
@@ -51,6 +53,8 @@ namespace Squared.Render.Text {
             WasLineLimited = wasLineLimited;
             Boxes = default(DenseList<Bounds>);
             UsedTextures = default(DenseList<AbstractTextureReference>);
+            WordCount = wordCount;
+            LineCount = lineCount;
         }
 
         public int Count {
@@ -1563,7 +1567,8 @@ namespace Squared.Render.Text {
                 maxLineSpacing,
                 firstCharacterBounds, lastCharacterBounds,
                 result, (lineLimit.HasValue && (lineLimit.Value <= 0)) || 
-                    (lineBreakLimit.HasValue && (lineBreakLimit.Value <= 0))
+                    (lineBreakLimit.HasValue && (lineBreakLimit.Value <= 0)),
+                wordIndex + 1, rowIndex + 1
             ) {
                 Boxes = boxes,
                 UsedTextures = usedTextures

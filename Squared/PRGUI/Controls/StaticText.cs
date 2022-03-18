@@ -629,7 +629,11 @@ namespace Squared.PRGUI.Controls {
             }
 
             var cpx = computedPadding.X;
-            var centeringWidth = scaledSize.X;
+            var centeringWidth = (layout.LineCount > 1) 
+                ? scaledSize.X
+                // HACK: Some fonts generate lots of whitespace at the end of a line, so for single-line
+                //  text we can produce better optical centering by using the rightmost pixel instead
+                : Math.Min(scaledSize.X, layout.LastCharacterBounds.BottomRight.X);
             var xSpace = (b.X - a.X) - centeringWidth - cpx;
             switch (Content.Alignment) {
                 case HorizontalAlignment.Left:
