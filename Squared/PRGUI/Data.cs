@@ -731,6 +731,16 @@ namespace Squared.PRGUI {
             margins.Bottom *= scale.Y;
         }
 
+        public static Margins operator * (Margins lhs, float rhs) {
+            Scale(ref lhs, rhs);
+            return lhs;
+        }
+
+        public static Margins operator * (Margins lhs, Vector2 rhs) {
+            Scale(ref lhs, rhs);
+            return lhs;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Add (in Margins lhs, in Margins rhs, out Margins result) {
             result = lhs;

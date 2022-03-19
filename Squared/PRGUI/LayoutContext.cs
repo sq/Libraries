@@ -636,7 +636,7 @@ namespace Squared.PRGUI.Layout {
             int idim = (int)dim, wdim = idim + 2;
             var noExpand = pItem->Flags.IsFlagged(ControlFlags.Container_No_Expansion) ||
                 pItem->Flags.IsFlagged((ControlFlags)((uint)ControlFlags.Container_No_Expansion_X << idim));
-            float needSize = 0, needSize2 = 0;
+            float needSizeThisBlock = 0, needSizeTotal = 0;
             RectF childRect;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
@@ -654,26 +654,26 @@ namespace Squared.PRGUI.Layout {
                     pChild->Flags.IsFlagged(ControlFlags.Layout_ForceBreak)
                 ) {
                     if (overlaid)
-                        needSize2 += needSize;
+                        needSizeTotal += needSizeThisBlock;
                     else
-                        needSize2 = Math.Max(needSize2, needSize);
+                        needSizeTotal = Math.Max(needSizeTotal, needSizeThisBlock);
 
-                    needSize = 0;
+                    needSizeThisBlock = 0;
                 }
 
                 if (overlaid)
-                    needSize = Math.Max(needSize, childSize);
+                    needSizeThisBlock = Math.Max(needSizeThisBlock, childSize);
                 else
-                    needSize += childSize;
+                    needSizeThisBlock += childSize;
             }
 
             float result;
             if (noExpand)
                 result = 0;
             else if (overlaid)
-                result = needSize + needSize2;
+                result = needSizeThisBlock + needSizeTotal;
             else
-                result = Math.Max(needSize, needSize2);
+                result = Math.Max(needSizeThisBlock, needSizeTotal);
 
             // FIXME: Is this actually necessary?
             GetComputedMinimumSize(pItem, out Vector2 minimumSize);
@@ -1238,7 +1238,7 @@ namespace Squared.PRGUI.Layout {
             }
         }
 
-        private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, LayoutDimensions dim, bool expandLastRow) {
+        private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, LayoutDimensions dim) {
             // FIXME: Find some way to early-out here if there are no children?
 
             int idim = (int)dim, wdim = idim + 2;
@@ -1246,11 +1246,18 @@ namespace Squared.PRGUI.Layout {
             float offset = contentRect[idim], needSize = 0;
 
             var startChild = pItem->FirstChild;
+            LayoutItem* childToExpand = null, lastChild = null;
             RectF childRect;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating) || pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked))
                     continue;
+
+                lastChild = pChild;
+                if ((dim == LayoutDimensions.X) && pChild->Flags.IsFlagged(ControlFlags.Layout_Fill_Row))
+                    childToExpand = pChild;
+                else if ((dim == LayoutDimensions.Y) && pChild->Flags.IsFlagged(ControlFlags.Layout_Fill_Column))
+                    childToExpand = pChild;
 
                 if (
                     pChild->Flags.IsBreak()
@@ -1266,12 +1273,14 @@ namespace Squared.PRGUI.Layout {
                 needSize = Math.Max(needSize, childSize);
             }
 
-            // HACK: If we're not in collapse mode, we want to expand the last row
-            //  to fill all available space
-            var space = expandLastRow
-                // Offset has been adjusted by previous rows, so we want to subtract
-                //  our initial offset from the current one to compute how much space
-                //  is actually left to expand into
+            // HACK: Strange but seemingly necessary - even though the last child was not set to fill mode,
+            //  what this will do is fill it (to consume the available space) and then shrink it to fit
+            //  its size constraint again afterward with the correct alignment. I guess.
+            if (childToExpand == null)
+                childToExpand = lastChild;
+
+            // HACK: We want to expand the last expandable item to fill all available space
+            var space = (childToExpand == lastChild)
                 ? Math.Max(needSize, contentRect[wdim] - offset + contentRect[idim])
                 : needSize;
 
@@ -1279,23 +1288,8 @@ namespace Squared.PRGUI.Layout {
                 pItem, ref contentRect, dim, startChild, ControlKey.Invalid, offset, space
             );
             offset += needSize;
+
             return offset;
-        }
-
-        private unsafe bool ShouldExpandLastRow (LayoutItem * pItem, int idim) {
-            // FIXME: This behavior feels wrong
-            return true;
-
-            if (pItem->LastChild.IsInvalid)
-                return true;
-
-            // HACK: Expanding the last row is broken if the last row doesn't want to expand to fill
-            var lastFlags = LayoutPtr(pItem->LastChild)->Flags;
-            var shiftedLastFlags = (ControlFlags)((uint)(lastFlags & ControlFlagMask.Layout) >> idim);
-            if (!shiftedLastFlags.IsFlagged(ControlFlags.Layout_Fill_Row))
-                return false;
-
-            return true;
         }
 
         private unsafe void Arrange (LayoutItem * pItem, LayoutDimensions dim, bool constrainSize) {
@@ -1317,7 +1311,7 @@ namespace Squared.PRGUI.Layout {
                 case ControlFlags.Container_Column | ControlFlags.Container_Wrap:
                     if (dim == LayoutDimensions.Y) {
                         ArrangeStacked(pItem, LayoutDimensions.Y, true);
-                        var offset = ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.X, ShouldExpandLastRow(pItem, idim));
+                        var offset = ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.X);
                         // FIXME: What on earth is this here for?
                         // (*pRect)[0] = offset - (*pRect)[0];
                         ;
@@ -1332,7 +1326,7 @@ namespace Squared.PRGUI.Layout {
                     if (dim == LayoutDimensions.X)
                         ArrangeStacked(pItem, LayoutDimensions.X, true);
                     else
-                        ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.Y, ShouldExpandLastRow(pItem, idim));
+                        ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.Y);
                     break;
                 case ControlFlags.Container_Column:
                     contentRect = ArrangeUnwrappedColumnOrRow(pItem, dim, flags, contentRect, idim);
