@@ -6,8 +6,6 @@
   <Import Project="$(XNAPropertiesOverridePath)" Condition="Exists('$(XNAPropertiesOverridePath)')" />
 
   <PropertyGroup>
-    <!-- workaround for wildcard includes breaking in VS -->
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
     <!-- Squared libraries use Unsafe so just enable it -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
@@ -114,11 +112,10 @@
           <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
           <Name>FNA</Name>
         </ProjectReference>
-        <None Include="$(FNALibsPath)\$(PlatformTarget)\*.dll">
-          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Include="$(FNALibsPath)\$(PlatformTarget)\*.pdb">
-          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </ItemGroup>
+      <ItemGroup>
+        <None Include="$(FNALibsPath)\$(PlatformTarget)\*.dll;$(FNALibsPath)\$(PlatformTarget)\*.pdb" Condition="'$(OutputType)' != 'Library'">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
       </ItemGroup>
     </When>
@@ -177,6 +174,7 @@
 
   <Target Condition="'$(ShaderDirectory)' != ''" Name="ValidateShaderBinaries" BeforeTargets="PrepareResources;BeforeBuild">
     <ItemGroup>
+      <!-- Because wildcard includes in visual studio are completely broken, we use a single zip file to ensure no files are missing -->
       <EmbeddedResource Include="$(ShadersZipPath)">
         <LogicalName>shaders.zip</LogicalName>
       </EmbeddedResource>

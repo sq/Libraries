@@ -10,8 +10,6 @@
     <AssemblyName>Squared.Render</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <LangVersion>latest</LangVersion>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-    <RunPostBuildEvent>Always</RunPostBuildEvent>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <OutputPath>bin\$(Platform)\$(Configuration)</OutputPath>
