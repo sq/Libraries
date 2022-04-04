@@ -241,20 +241,23 @@ namespace Squared.PRGUI {
                 if (UpdatingTabOrder)
                     throw new Exception("Already updating tab order list");
                 UpdatingTabOrder = true;
-                for (int i = 0; i < Items.Count; i++) {
-                    var item = Items[i];
-                    if (!suitableTargetsOnly || item.IsValidFocusTarget)
-                        TabOrderedItems.Add(new IndexedControl { 
-                            Control = item,
-                            Index = i,
-                            SortOrder = item.TabOrder
-                        });
+                try {
+                    for (int i = 0; i < Items.Count; i++) {
+                        var item = Items[i];
+                        if (!suitableTargetsOnly || item.IsValidFocusTarget)
+                            TabOrderedItems.Add(new IndexedControl { 
+                                Control = item,
+                                Index = i,
+                                SortOrder = item.TabOrder
+                            });
+                    }
+                    TabOrderedItems.Sort(TabOrderComparer.Instance);
+                    TabOrderedItemsResult.Clear();
+                    foreach (var item in TabOrderedItems)
+                        TabOrderedItemsResult.Add(item.Control);
+                } finally {
+                    UpdatingTabOrder = false;
                 }
-                TabOrderedItems.Sort(TabOrderComparer.Instance);
-                TabOrderedItemsResult.Clear();
-                foreach (var item in TabOrderedItems)
-                    TabOrderedItemsResult.Add(item.Control);
-                UpdatingTabOrder = false;
             }
             return TabOrderedItemsResult;
         }
@@ -273,12 +276,15 @@ namespace Squared.PRGUI {
                 if (UpdatingDisplayOrder)
                     throw new Exception("Already updating display order list");
                 UpdatingDisplayOrder = true;
-                foreach (var item in Items) {
-                    PaintOrderRange.Update(item.DisplayOrder);
-                    PaintOrderedItems.Add(item);
+                try {
+                    foreach (var item in Items) {
+                        PaintOrderRange.Update(item.DisplayOrder);
+                        PaintOrderedItems.Add(item);
+                    }
+                    PaintOrderedItems.Sort(PaintOrderComparer.Instance);
+                } finally {
+                    UpdatingDisplayOrder = false;
                 }
-                PaintOrderedItems.Sort(PaintOrderComparer.Instance);
-                UpdatingDisplayOrder = false;
             }
             range = PaintOrderRange;
             return PaintOrderedItems;
@@ -358,21 +364,13 @@ namespace Squared.PRGUI {
                 // We may have moved this extra control, in which case we don't want to go through
                 //  the remove path that fires events.
                 if ((extraControl != null) && (IndexTable[extraControl] == i))
-                    RemoveAt(i);
-                else
-                    // We moved it, so we just need to remove whatever's at this location
-                    Items.RemoveAt(i);
-            }
+                    DeadControlScratchBuffer.Add(extraControl);
 
-            foreach (var deadControl in DeadControlScratchBuffer)
-                IndexTable.Remove(deadControl);
+                // We moved it, so we just need to remove whatever's at this location
+                Items.RemoveAt(i);
+            }
 
 #if DEBUG
-            foreach (var kvp in IndexTable) {
-                if (kvp.Value <= -1)
-                    throw new Exception("Bad state");
-            }
-
             foreach (var item in Items) {
                 if (item == null)
                     throw new Exception("Bad state");
@@ -380,8 +378,19 @@ namespace Squared.PRGUI {
 #endif
 
             // Fire the relevant notifications for the dead controls and purge them from the table
-            foreach (var deadControl in DeadControlScratchBuffer)
+            foreach (var deadControl in DeadControlScratchBuffer) {
+                IndexTable.Remove(deadControl);
                 FireControlRemoveEvents(deadControl);
+            }
+
+#if DEBUG
+            foreach (var kvp in IndexTable) {
+                if (kvp.Value <= -1)
+                    throw new Exception("Bad state");
+            }
+#endif
+
+            Invalidate();
             DeadControlScratchBuffer.Clear();
         }
     }
