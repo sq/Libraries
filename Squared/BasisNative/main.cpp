@@ -6,7 +6,6 @@
 
 using namespace basist;
 
-etc1_global_selector_codebook sel_codebook;
 std::mutex initializer_mutex;
 
 bool is_initialized = false;
@@ -32,11 +31,6 @@ extern "C" {
             std::lock_guard<std::mutex> guard(initializer_mutex);
             if (!is_initialized) {
                 basisu_transcoder_init();
-
-                sel_codebook = etc1_global_selector_codebook(
-                    g_global_selector_cb_size, g_global_selector_cb
-                );
-
                 is_initialized = true;
             }
         }
@@ -45,11 +39,11 @@ extern "C" {
         pResult->pData = 0;
         pResult->isKtx2 = ktx2;
         if (ktx2) {
-            pResult->pKtx2 = new ktx2_transcoder(&sel_codebook);
+            pResult->pKtx2 = new ktx2_transcoder();
             pResult->pBasis = 0;
         } else {
             pResult->pKtx2 = 0;
-            pResult->pBasis = new basisu_transcoder(&sel_codebook);
+            pResult->pBasis = new basisu_transcoder();
         }
 
         return pResult;
