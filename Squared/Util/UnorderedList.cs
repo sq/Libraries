@@ -295,7 +295,7 @@ namespace Squared.Util {
 
         public void InsertOrdered (int index, in T item) {
             EnsureCapacity(_Count + 1);
-            if ((index < 0) || (index > _Count + 1))
+            if ((index < 0) || (index > _Count))
                 throw new ArgumentOutOfRangeException(nameof(index));
             if (index < Count)
                 Array.Copy(_Items, index + _BufferOffset, _Items, index + _BufferOffset + 1, Count - index);

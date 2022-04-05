@@ -214,11 +214,19 @@ namespace Squared.Render.Resources {
             StreamSource = source;
         }
 
+        /// <summary>
+        /// This method will be called to filter load data that was passed in from the outside before it is passed to PreloadInstance
+        /// </summary>
+        protected virtual object FilterData (string name, object data) {
+            return data;
+        }
+
         public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) {
             Stream stream;
             if (StreamSource.TryGetStream(name, optional, out stream, out exception)) {
+                var filteredData = FilterData(name, data);
                 var started = Now;
-                var preloadedData = PreloadInstance(name, stream, data);
+                var preloadedData = PreloadInstance(name, stream, filteredData);
                 var createStarted = Now;
                 var future = CreateInstance(name, stream, data, preloadedData, false);
                 var finished = Now;
@@ -262,6 +270,7 @@ namespace Squared.Render.Resources {
         }
 
         public Future<T> LoadAsync (string name, object data, bool cached = true, bool optional = false) {
+            data = FilterData(name, data);
             var future = GetFutureForResource(name, data, cached, out bool performLoad);
 
             if (performLoad) {

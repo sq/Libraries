@@ -254,6 +254,8 @@ namespace Squared.Threading {
             IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
             Configuration = (WorkItemConfiguration)typeof(T).GetProperty("Configuration", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)?.GetValue(null)
                 ?? new WorkItemConfiguration();
+            if (typeof(T).GetField("Configuration", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public) != null)
+                throw new Exception($"{typeof(T).FullName}.Configuration must be a property not a field");
             _Items = new InternalWorkItem<T>[DefaultBufferSize];
         }
 

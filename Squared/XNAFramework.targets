@@ -15,17 +15,7 @@
 
     <!-- auto-sense FNA in nearby folders if no explicit path provided -->
     <FNAPathWasAutoselected Condition="'$(FNAPath)' == ''">true</FNAPathWasAutoselected>
-    <FNAPath Condition="('$(FNAPathWasAutoselected)' == 'true') and Exists('$(ProjectDir)\FNA')">$(ProjectDir)\FNA</FNAPath>
-    <FNAPath Condition="('$(FNAPathWasAutoselected)' == 'true') and Exists('$(ProjectDir)\..\FNA')">$(ProjectDir)\..\FNA</FNAPath>
-    <FNAPath Condition="('$(FNAPathWasAutoselected)' == 'true') and Exists('$(SolutionDir)\FNA')">$(SolutionDir)\FNA</FNAPath>
-    <FNAPath Condition="('$(FNAPathWasAutoselected)' == 'true') and Exists('$(SquaredPath)\..\FNA')">$(SquaredPath)\..\FNA</FNAPath>
-
     <FNALibsPathWasAutoselected Condition="'$(FNALibsPath)' == ''">true</FNALibsPathWasAutoselected>
-    <FNALibsPath Condition="('$(FNALibsPathWasAutoselected)' == 'true') and Exists('$(FNAPath)\fnalibs')">$(FNAPath)\fnalibs</FNALibsPath>
-    <FNALibsPath Condition="('$(FNALibsPathWasAutoselected)' == 'true') and Exists('$(ProjectDir)\fnalibs')">$(ProjectDir)\fnalibs</FNALibsPath>
-    <FNALibsPath Condition="('$(FNALibsPathWasAutoselected)' == 'true') and Exists('$(ProjectDir)\..\fnalibs')">$(ProjectDir)\..\fnalibs</FNALibsPath>
-    <FNALibsPath Condition="('$(FNALibsPathWasAutoselected)' == 'true') and Exists('$(SolutionDir)\fnalibs')">$(SolutionDir)\fnalibs</FNALibsPath>
-    <FNALibsPath Condition="('$(FNALibsPathWasAutoselected)' == 'true') and Exists('$(FNAPath)\..\FNALibs')">$(FNAPath)\..\FNALibs</FNALibsPath>
 
     <ShaderBinDirectory Condition="'$(ShaderBinDirectory)' == ''">$(ShaderDirectory)\bin</ShaderBinDirectory>
     <ShaderLocalBinDirectory>$(ShaderBinDirectory)\$(Platform)\$(Configuration)</ShaderLocalBinDirectory>
@@ -40,6 +30,21 @@
     <AutoPlatforms Condition="'$(AutoPlatforms)' == ''">false</AutoPlatforms>
     <TestParsePath Condition="'$(GenerateShaderDisassembly)' != 'false'">$(FNALibsPath)\x86\testparse.exe</TestParsePath>
     <TestParsePath Condition="!Exists('$(TestParsePath)')"></TestParsePath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(FNAPathWasAutoselected)' == 'true'">
+    <FNAPath Condition="Exists('$(ProjectDir)\FNA')">$(ProjectDir)\FNA</FNAPath>
+    <FNAPath Condition="Exists('$(ProjectDir)\..\FNA')">$(ProjectDir)\..\FNA</FNAPath>
+    <FNAPath Condition="Exists('$(SolutionDir)\FNA')">$(SolutionDir)\FNA</FNAPath>
+    <FNAPath Condition="Exists('$(SquaredPath)\..\FNA')">$(SquaredPath)\..\FNA</FNAPath>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(FNALibsPathWasAutoselected)' == 'true'">
+    <FNALibsPath Condition="Exists('$(FNAPath)\fnalibs')">$(FNAPath)\fnalibs</FNALibsPath>
+    <FNALibsPath Condition="Exists('$(ProjectDir)\fnalibs')">$(ProjectDir)\fnalibs</FNALibsPath>
+    <FNALibsPath Condition="Exists('$(ProjectDir)\..\fnalibs')">$(ProjectDir)\..\fnalibs</FNALibsPath>
+    <FNALibsPath Condition="Exists('$(SolutionDir)\fnalibs')">$(SolutionDir)\fnalibs</FNALibsPath>
+    <FNALibsPath Condition="Exists('$(FNAPath)\..\FNALibs')">$(FNAPath)\..\FNALibs</FNALibsPath>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -68,7 +73,6 @@
 
   <PropertyGroup Condition="'$(EnableFNA)' == 'true'">
     <DefineConstants>$(DefineConstants);FNA;SDL2</DefineConstants>
-    <DefineConstants Condition="'$(ISwearIAmThreadSafe)' == 'true' ">$(DefineConstants);DISABLE_THREADING</DefineConstants>
     <PlatformTarget Condition=" '$(AutoPlatforms)' == 'true' ">$(AutoPlatformTarget)</PlatformTarget>
     <ShaderCompilerDefines>$(ShaderCompilerDefines)/D FNA=1 /D XNA=0</ShaderCompilerDefines>
   </PropertyGroup>
