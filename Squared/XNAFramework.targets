@@ -57,14 +57,17 @@
   <PropertyGroup Condition=" '$(Platform)' == 'x86' ">
     <AutoEnableFNA>false</AutoEnableFNA>
     <AutoPlatformTarget>x86</AutoPlatformTarget>
+    <FNAPlatformTarget>x86</FNAPlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Platform)' == 'FNA' ">
     <AutoEnableFNA>true</AutoEnableFNA>
     <AutoPlatformTarget>x86</AutoPlatformTarget>
+    <FNAPlatformTarget>x86</FNAPlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Platform)' == 'FNA-x64' ">
     <AutoEnableFNA>true</AutoEnableFNA>
     <AutoPlatformTarget>x64</AutoPlatformTarget>
+    <FNAPlatformTarget>x64</FNAPlatformTarget>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(AutoPlatforms)' == 'true'">
@@ -118,7 +121,7 @@
         </ProjectReference>
       </ItemGroup>
       <ItemGroup>
-        <None Include="$(FNALibsPath)\$(PlatformTarget)\*.dll;$(FNALibsPath)\$(PlatformTarget)\*.pdb" Condition="'$(OutputType)' != 'Library'">
+        <None Include="$(FNALibsPath)\$(FNAPlatformTarget)\*.dll;$(FNALibsPath)\$(FNAPlatformTarget)\*.pdb" Condition="'$(OutputType)' != 'Library'">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
       </ItemGroup>
