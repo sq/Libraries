@@ -230,12 +230,9 @@ namespace Squared.PRGUI.Controls {
 
             if (Title.Length == 0 && !existingKey.HasValue && Collapsible) {
                 var spacer = context.Layout.CreateItem();
-                ref var rec = ref context.Engine.GetOrCreate(spacer);
-                context.Layout.SetLayoutFlags(spacer, rec.LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak);
+                context.Layout.SetLayoutFlags(spacer, ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak);
                 context.Layout.SetFixedSize(spacer, DisclosureArrowPadding, MostRecentTitleBox.Height);
-                rec.FixedSize = new Vector2(DisclosureArrowPadding, MostRecentTitleBox.Height);
                 context.Layout.InsertAtStart(result, spacer);
-                context.Engine.InsertAtStart(result, spacer);
             }
             return result;
         }

@@ -308,7 +308,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe LayoutItem * LayoutPtr (ControlKey key, bool optional = false) {
+        internal unsafe LayoutItem * LayoutPtr (ControlKey key, bool optional = false) {
             var id = key.ID;
             if (id < 0) {
                 if (optional)

@@ -106,13 +106,70 @@ namespace Squared.PRGUI.NewEngine {
         #endregion
 
         #region Layout second pass
-        private void Pass2_ApplyExpansion (ref ControlRecord control, ref ControlLayoutResult result) {
+        private void Pass2_ComputeForcedWrap (ref ControlRecord control, ref ControlLayoutResult result) {
+            if (control.FirstChild.IsInvalid)
+                return;
+
+            Pass2_ComputeForcedWrap_ForDimension(ref control, ref result, LayoutDimensions.X);
+            Pass2_ComputeForcedWrap_ForDimension(ref control, ref result, LayoutDimensions.Y);
+
+            foreach (var ckey in Children(control.Key)) {
+                ref var child = ref UnsafeItem(ckey);
+                ref var childResult = ref UnsafeResult(ckey);
+                Pass2_ComputeForcedWrap(ref child, ref childResult);
+            }
+        }
+
+        private void Pass2_ComputeForcedWrap_ForDimension (ref ControlRecord control, ref ControlLayoutResult result, LayoutDimensions dim) {
+            // A single item cannot wrap
+            if (control.FirstChild == control.LastChild)
+                return;
+
+            var isBreakDim = IsBreakDimension(dim, control.Flags);
+            var wrapEnabled = control.Flags.IsFlagged(ControlFlags.Container_Wrap);
+            var pc = dim == LayoutDimensions.X
+                ? control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X)
+                : control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y);
+            var fastPath = !isBreakDim || !wrapEnabled || pc;
+
+            if (fastPath)
+                return;
+
+            var idim = (int)dim;
+            float childSize, newExtent, 
+                runTotalSize = 0, maxExtent = result.ContentRect.Size.GetElement(idim);
+
+            foreach (var ckey in Children(control.Key)) {
+                ref var child = ref UnsafeItem(ckey);
+                ref var childResult = ref UnsafeResult(ckey);
+                childSize = childResult.ContentRect.Size.GetElement(idim);
+
+                if (!childResult.Break) {
+                    newExtent = runTotalSize + childSize;
+                    if (newExtent > maxExtent)
+                        childResult.Break = true;
+                }
+
+                if (!childResult.Break) {
+                    runTotalSize += childSize;
+                    continue;
+                }
+
+                runTotalSize = 0;
+            }
+        }
+        #endregion
+
+        #region Layout third pass
+        private void Pass3_ApplyExpansion (ref ControlRecord control, ref ControlLayoutResult result) {
             if (control.FirstChild.IsInvalid)
                 return;
 
             bool pcx = control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X),
                 pcy = control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y),
-                cs = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
+                // FIXME: It feels like this should actually be the default, and there should be a flag
+                //  to disable it!
+                cs = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Size) || true;
 
             // FIXME: I'm really not sure how this should work
             var space = cs
@@ -125,14 +182,14 @@ namespace Squared.PRGUI.NewEngine {
                     ? result.ExpandedSize.Y
                     : space.Y;
 
-            Pass2_ApplyExpansion_ForDimension(ref control, ref result, LayoutDimensions.X, w);
-            Pass2_ApplyExpansion_ForDimension(ref control, ref result, LayoutDimensions.Y, h);
+            Pass3_ApplyExpansion_ForDimension(ref control, ref result, LayoutDimensions.X, w);
+            Pass3_ApplyExpansion_ForDimension(ref control, ref result, LayoutDimensions.Y, h);
 
             // We could maybe recurse in ForDimension but it feels sketchy
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref UnsafeItem(ckey);
                 ref var childResult = ref UnsafeResult(ckey);
-                Pass2_ApplyExpansion(ref child, ref childResult);
+                Pass3_ApplyExpansion(ref child, ref childResult);
             }
         }
 
@@ -148,7 +205,7 @@ namespace Squared.PRGUI.NewEngine {
             return !ne;
         }
 
-        private void Pass2_ApplyExpansion_ForDimension (ref ControlRecord control, ref ControlLayoutResult result, LayoutDimensions dim, float space) {
+        private void Pass3_ApplyExpansion_ForDimension (ref ControlRecord control, ref ControlLayoutResult result, LayoutDimensions dim, float space) {
             var idim = (int)dim;
             var isBreakDim = IsBreakDimension(dim, control.Flags);
             // TODO: Also disable wrap if prevent crush is on (but that's silly anyway)
@@ -186,7 +243,7 @@ namespace Squared.PRGUI.NewEngine {
                         distributed = (space - currentSize) / expandCount,
                         addSize = isBreakDim ? distributed : 0,
                         newMinSize = isBreakDim ? 0 : runMaxSize + distributed;
-                    Pass2_ApplyExpansion_ToRun(
+                    Pass3_ApplyExpansion_ToRun(
                         ref control, ref result, dim,
                         addSize, newMinSize, runStart, runEnd, false
                     );
@@ -201,14 +258,14 @@ namespace Squared.PRGUI.NewEngine {
                 float distributed = space / expandCount,
                     addSize = isBreakDim ? distributed : 0,
                     newMinSize = isBreakDim ? 0 : runMaxSize + distributed;
-                Pass2_ApplyExpansion_ToRun(
+                Pass3_ApplyExpansion_ToRun(
                     ref control, ref result, dim,
                     addSize, newMinSize, runStart, runEnd, false
                 );
             }
         }
 
-        private void Pass2_ApplyExpansion_ToRun (
+        private void Pass3_ApplyExpansion_ToRun (
             ref ControlRecord control, ref ControlLayoutResult result, LayoutDimensions dim, 
             float addSize, float newMinSize, ControlKey runStart, ControlKey runEnd, bool nested
         ) {
@@ -243,7 +300,7 @@ namespace Squared.PRGUI.NewEngine {
             //  didn't get stopped by constraints
             // Worst case THOSE might hit constraints but eh, screw it.
             if (!nested && (leftover > 1) && (uncompressedCount > 0)) {
-                Pass2_ApplyExpansion_ToRun(
+                Pass3_ApplyExpansion_ToRun(
                     ref control, ref result, dim, 
                     leftover / uncompressedCount, newMinSize, 
                     runStart, runEnd, true
@@ -253,8 +310,8 @@ namespace Squared.PRGUI.NewEngine {
 
         #endregion
 
-        #region Layout third pass
-        private void Pass3_Arrange (ref ControlRecord control, ref ControlLayoutResult result) {
+        #region Layout fourth pass
+        private void Pass4_Arrange (ref ControlRecord control, ref ControlLayoutResult result) {
             // FIXME
         }
         #endregion
@@ -262,8 +319,9 @@ namespace Squared.PRGUI.NewEngine {
         private void PerformLayout (ref ControlRecord control) {
             ref var result = ref UnsafeResult(control.Key);
             var rs = Pass1_ComputeRequiredSizes(ref control, ref result, 0);
-            Pass2_ApplyExpansion(ref control, ref result);
-            Pass3_Arrange(ref control, ref result);
+            Pass2_ComputeForcedWrap(ref control, ref result);
+            Pass3_ApplyExpansion(ref control, ref result);
+            Pass4_Arrange(ref control, ref result);
         }
    
     }

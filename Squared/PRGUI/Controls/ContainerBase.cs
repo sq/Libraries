@@ -282,7 +282,6 @@ namespace Squared.PRGUI.Controls {
         protected virtual ControlKey CreateColumn (ref UIOperationContext context, ControlKey parent, int columnIndex) {
             var result = context.Layout.CreateItem(LayoutTags.Column);
             // FIXME
-            ref var record = ref context.Engine.GetOrCreate(result, LayoutTags.Column);
             var cf = ComputeContainerFlags();
             var resultFlags = cf | ControlFlags.Container_Prevent_Crush_Y;
             // FIXME
@@ -292,10 +291,6 @@ namespace Squared.PRGUI.Controls {
             context.Layout.InsertAtEnd(parent, result);
             context.Layout.SetLayoutFlags(result, layoutFlags);
             context.Layout.SetContainerFlags(result, resultFlags);
-
-            context.Engine.InsertAtEnd(parent, record.Key);
-            record.LayoutFlags = layoutFlags;
-            record.ContainerFlags = resultFlags;
             // context.Layout.SetContainerFlags(parent, );
             return result;
         }

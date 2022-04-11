@@ -272,6 +272,39 @@ namespace Squared.PRGUI {
             return relayoutRequested;
         }
 
+        private float? NegativeToNull (float value) => (value <= -1) ? (float?)null : value;
+
+        private unsafe void SyncEngines () {
+            for (int i = 0; i < Layout.Count; i++) {
+                var key = new ControlKey(i);
+                var pItem = Layout.LayoutPtr(key, false);
+                // FIXME
+                if (pItem == null)
+                    continue;
+                ref var rec = ref Engine.GetOrCreate(key, pItem->Tag, pItem->Flags);
+                rec.Margins = pItem->Margins;
+                rec.Padding = pItem->Padding;
+                rec.FloatingPosition = pItem->FloatingPosition;
+                rec.Width = new ControlDimension {
+                    Minimum = NegativeToNull(pItem->MinimumSize.X),
+                    Maximum = NegativeToNull(pItem->MaximumSize.X),
+                    Fixed = NegativeToNull(pItem->FixedSize.X)
+                };
+                rec.Height = new ControlDimension {
+                    Minimum = NegativeToNull(pItem->MinimumSize.Y),
+                    Maximum = NegativeToNull(pItem->MaximumSize.Y),
+                    Fixed = NegativeToNull(pItem->FixedSize.Y)
+                };
+
+                // FIXME: Is this always right? Probably
+                rec._FirstChild = pItem->FirstChild;
+                rec._LastChild = pItem->LastChild;
+                rec._PreviousSibling = pItem->PreviousSibling;
+                rec._NextSibling = pItem->NextSibling;
+                rec._Parent = pItem->Parent;
+            }
+        }
+
         public void Update () {
             FrameIndex++;
 
@@ -289,11 +322,13 @@ namespace Squared.PRGUI {
 
                 DoUpdateLayoutInternal(ref context, false);
                 Layout.Update();
+                SyncEngines();
                 Engine.Update();
 
                 if (NotifyLayoutListeners(ref context)) {
                     DoUpdateLayoutInternal(ref context, true);
                     Layout.Update();
+                    SyncEngines();
                     Engine.Update();
                     NotifyLayoutListeners(ref context);
                 }
