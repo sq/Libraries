@@ -151,6 +151,10 @@ namespace Squared.CoreCLR
 
         public int Next(int minValue, int maxValue)
         {
+            // HACK: By default this will just return a huge garbage number. Good job, BCL
+            if (maxValue <= minValue)
+                return minValue;
+
             ulong exclusiveRange = (ulong)(maxValue - minValue);
 
             if (exclusiveRange > 1)
