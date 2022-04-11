@@ -615,10 +615,15 @@ namespace Squared.PRGUI {
 
             context = context ?? Context;
             RectF result;
-            if (contentRect)
-                context.Layout.TryGetContentRect(LayoutKey, out result);
-            else
-                context.Layout.TryGetRect(LayoutKey, out result);
+            if (true) {
+                ref var res = ref context.Engine.Result(LayoutKey);
+                result = contentRect ? res.ContentRect : res.Rect;
+            } else {
+                if (contentRect)
+                    context.Layout.TryGetContentRect(LayoutKey, out result);
+                else
+                    context.Layout.TryGetRect(LayoutKey, out result);
+            }
 
             if (exteriorRect) {
                 if (contentRect)

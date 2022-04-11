@@ -9,8 +9,7 @@ using System.Runtime.CompilerServices;
 using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.NewEngine {
-    public partial class LayoutEngine {
-       
+    public partial class LayoutEngine {       
         private bool IsBreakDimension (LayoutDimensions dim, ControlFlags containerFlags) {
             if (dim == LayoutDimensions.X)
                 return containerFlags.HasFlag(ControlFlags.Container_Row);
@@ -70,10 +69,12 @@ namespace Squared.PRGUI.NewEngine {
 
             var idim = (int)dim;
             ref var sizeConstraints = ref control.Size(dim);
+            var padding = control.Padding[idim];
 
             if (control.FirstChild.IsInvalid) {
                 var sz = sizeConstraints.EffectiveMinimum;
-                PRGUIExtensions.SetElement(ref result.ContentRect.Size, idim, sz);
+                PRGUIExtensions.SetElement(ref result.ContentRect.Size, idim, sz - padding);
+                PRGUIExtensions.SetElement(ref result.Rect.Size, idim, sz);
                 return (sz, sz);
             }
 
@@ -99,8 +100,8 @@ namespace Squared.PRGUI.NewEngine {
             UpdateRun(isBreakDim, true, default, 0f, ref compressedTotal, ref compressedRun);
             UpdateRun(isBreakDim, true, default, 0f, ref expandedTotal, ref expandedRun);
 
-            compressedTotal += control.Padding[idim];
-            expandedTotal += control.Padding[idim];
+            compressedTotal += padding;
+            expandedTotal += padding;
 
             // We separately track the size of our content and the actual size of this control
             //  so that cases where overflow and clipping happen can be factored correctly
@@ -112,7 +113,9 @@ namespace Squared.PRGUI.NewEngine {
             sizeConstraints.Constrain(ref expandedTotal, true);
 
             // Set placeholder content size to our absolute minimum on both axes
-            PRGUIExtensions.SetElement(ref result.ContentRect.Size, idim, isBreakDim ? compressedTotal : expandedTotal);
+            var csize = isBreakDim ? compressedTotal : expandedTotal;
+            PRGUIExtensions.SetElement(ref result.ContentRect.Size, idim, csize - padding);
+            PRGUIExtensions.SetElement(ref result.Rect.Size, idim, csize);
 
             return (compressedTotal, expandedTotal);
         }
@@ -178,6 +181,9 @@ namespace Squared.PRGUI.NewEngine {
         private void Pass3_ApplyExpansion (ref ControlRecord control, ref ControlLayoutResult result) {
             if (control.FirstChild.IsInvalid)
                 return;
+
+            // FIXME
+            return;
 
             bool pcx = control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X),
                 pcy = control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y),
@@ -304,6 +310,7 @@ namespace Squared.PRGUI.NewEngine {
                     else
                         uncompressedCount++;
                     PRGUIExtensions.SetElement(ref childResult.ContentRect.Size, idim, size);
+                    PRGUIExtensions.SetElement(ref childResult.Rect.Size, idim, size + child.Padding[idim]);
                 }
 
                 ckey = child.NextSibling;
@@ -326,9 +333,51 @@ namespace Squared.PRGUI.NewEngine {
 
         #region Layout fourth pass
         private void Pass4_Arrange (ref ControlRecord control, ref ControlLayoutResult result) {
-            // FIXME
-        }
-        #endregion
+            float x = 0, y = 0, runMaxWidth = 0, runMaxHeight = 0;
+            var vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
+
+            foreach (var ckey in Children(control.Key)) {
+                ref var child = ref UnsafeItem(ckey);
+                ref var childResult = ref UnsafeResult(ckey);
+                var padding = new Vector2(child.Padding.Left, child.Padding.Top);
+
+                if (child.Flags.IsFlagged(ControlFlags.Layout_Floating)) {
+                    childResult.Rect.Position = child.FloatingPosition;
+                    childResult.ContentRect.Position = childResult.Rect.Position + padding;
+                    continue;
+                } else if (child.Flags.IsFlagged(ControlFlags.Layout_Stacked)) {
+                    childResult.Rect.Position = result.ContentRect.Position;
+                    childResult.ContentRect.Position = childResult.Rect.Position + padding;
+                    continue;
+                }
+
+                if (childResult.Break) {
+                    if (vertical) {
+                        y = 0;
+                        x += runMaxWidth;
+                    } else {
+                        x = 0;
+                        y += runMaxHeight;
+                    }
+
+                    runMaxWidth = runMaxHeight = 0;
+                }
+
+                childResult.Rect.Position = result.ContentRect.Position + new Vector2(x, y);
+                childResult.ContentRect.Position = childResult.Rect.Position + padding;
+
+                runMaxWidth = Math.Max(runMaxWidth, x + childResult.Rect.Width);
+                runMaxHeight = Math.Max(runMaxHeight, y + childResult.Rect.Height);
+
+                if (vertical)
+                    y += childResult.Rect.Height;
+                else
+                    x += childResult.Rect.Width;
+
+                Pass4_Arrange(ref child, ref childResult);
+            }
+       }
+       #endregion
 
         private void PerformLayout (ref ControlRecord control) {
             ref var result = ref UnsafeResult(control.Key);

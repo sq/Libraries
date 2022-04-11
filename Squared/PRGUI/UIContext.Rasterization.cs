@@ -138,7 +138,7 @@ namespace Squared.PRGUI {
             };
 
             renderer.Clear(color: clearColor, stencil: 0, layer: -999);
-            DebugNewRasterize(ref renderer, ref Engine.Root(), layer);
+            DebugNewRasterize(ref renderer, ref Engine.Root(), layer, 0);
         }
 
         private readonly static Color[] DebugColors = new[] {
@@ -152,13 +152,21 @@ namespace Squared.PRGUI {
             Color.Silver,
         };
 
-        private void DebugNewRasterize (ref ImperativeRenderer renderer, ref NewEngine.ControlRecord record, int layer) {
+        private void DebugNewRasterize (ref ImperativeRenderer renderer, ref NewEngine.ControlRecord record, int layer, int index) {
             ref var result = ref Engine.Result(record.Key);
-            var color = DebugColors[layer % DebugColors.Length];
-            renderer.RasterizeRectangle(result.ContentRect.Position, result.ContentRect.Extent, 1f, color, layer: layer);
+            Color fillColor = DebugColors[(layer + index) % DebugColors.Length],
+                lineColor = DebugColors[layer % DebugColors.Length];
+            var outlineSize = 1.5f;
+            var offset = new Vector2(outlineSize);
+            renderer.RasterizeRectangle(
+                result.Rect.Position + offset, result.Rect.Extent - offset, 
+                1.5f, outlineSize, fillColor, fillColor, lineColor,
+                layer: layer
+            );
+            int li = 0;
             foreach (var ckey in Engine.Children(record.Key)) {
                 ref var child = ref Engine[ckey];
-                DebugNewRasterize(ref renderer, ref child, layer + 1);
+                DebugNewRasterize(ref renderer, ref child, layer + 1, li++);
             }
         }
 
@@ -332,9 +340,10 @@ namespace Squared.PRGUI {
             using (var outerGroup = BatchGroup.New(frame, layer, name: "Rasterize UI"))
             using (var prepassGroup = BatchGroup.New(outerGroup, -999, name: "Prepass"))
             using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass")) {
-                // Rasterize(rtBatch, 0, prepassGroup, 0, clearColor: Color.Transparent);
-
-                DebugNewRasterize(rtBatch, 1);
+                if (true)
+                    Rasterize(rtBatch, 0, prepassGroup, 0, clearColor: Color.Transparent);
+                else
+                    DebugNewRasterize(rtBatch, 1);
             }
         }
 

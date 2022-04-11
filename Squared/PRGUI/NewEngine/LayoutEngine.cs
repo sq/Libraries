@@ -208,8 +208,11 @@ namespace Squared.PRGUI.NewEngine {
             if ((key.ID < 0) || (key.ID >= Results.Length))
                 throw new ArgumentOutOfRangeException(nameof(key));
             ref var result = ref Results[key.ID];
+            // FIXME
+            /*
             if (result.Version != Version)
                 throw new Exception("Layout has not been performed");
+            */
             return ref result;
         }
 
