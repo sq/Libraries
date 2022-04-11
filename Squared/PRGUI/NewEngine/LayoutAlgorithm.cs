@@ -67,6 +67,7 @@ namespace Squared.PRGUI.NewEngine {
             // If true: We are laying out one row at a time, starting over when we break
             // If false: We are calculating the height of all the rows put together
             var isBreakDim = IsBreakDimension(dim, control.Flags);
+            // TODO: Also disable wrap if prevent crush is on (but that's silly anyway)
             var wrapEnabled = control.Flags.IsFlagged(ControlFlags.Container_Wrap);
 
             float compressedTotal = 0f, expandedTotal = 0f, 
@@ -106,11 +107,150 @@ namespace Squared.PRGUI.NewEngine {
 
         #region Layout second pass
         private void Pass2_ApplyExpansion (ref ControlRecord control, ref ControlLayoutResult result) {
-            // FIXME
-            bool pcx = control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X),
-                pcy = control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y);
+            if (control.FirstChild.IsInvalid)
+                return;
 
+            bool pcx = control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X),
+                pcy = control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y),
+                cs = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
+
+            // FIXME: I'm really not sure how this should work
+            var space = cs
+                ? result.ContentRect.Size
+                : result.ExpandedSize;
+            float w = pcx
+                ? result.ExpandedSize.X
+                : space.X,
+                h = pcy
+                    ? result.ExpandedSize.Y
+                    : space.Y;
+
+            Pass2_ApplyExpansion_ForDimension(ref control, ref result, LayoutDimensions.X, w);
+            Pass2_ApplyExpansion_ForDimension(ref control, ref result, LayoutDimensions.Y, h);
+
+            // We could maybe recurse in ForDimension but it feels sketchy
+            foreach (var ckey in Children(control.Key)) {
+                ref var child = ref UnsafeItem(ckey);
+                ref var childResult = ref UnsafeResult(ckey);
+                Pass2_ApplyExpansion(ref child, ref childResult);
+            }
         }
+
+        private bool IsExpand (ref ControlRecord parent, ref ControlRecord child, LayoutDimensions dim) {
+            var fill = (dim == LayoutDimensions.X)
+                ? child.Flags.IsFlagged(ControlFlags.Layout_Fill_Row)
+                : child.Flags.IsFlagged(ControlFlags.Layout_Fill_Column);
+            if (!fill)
+                return false;
+            var ne = (dim == LayoutDimensions.X)
+                ? parent.Flags.IsFlagged(ControlFlags.Container_No_Expansion_X)
+                : parent.Flags.IsFlagged(ControlFlags.Container_No_Expansion_Y);
+            return !ne;
+        }
+
+        private void Pass2_ApplyExpansion_ForDimension (ref ControlRecord control, ref ControlLayoutResult result, LayoutDimensions dim, float space) {
+            var idim = (int)dim;
+            var isBreakDim = IsBreakDimension(dim, control.Flags);
+            // TODO: Also disable wrap if prevent crush is on (but that's silly anyway)
+            var wrapEnabled = control.Flags.IsFlagged(ControlFlags.Container_Wrap);
+            // Scan forward to locate the start and end of each run, then expand all the controls in it
+            ControlKey runStart = control.FirstChild, runEnd = runStart;
+            // When laying out a row we compute the total size then compute remaining space
+            // When laying out all rows we compute the max size of each row to pick a new max
+            float runMaxSize = 0, runTotalSize = 0;
+            int expandCount = 0;
+            var parentSize = result.ContentRect.Size.GetElement(idim);
+            foreach (var ckey in Children(control.Key)) {
+                ref var child = ref UnsafeItem(ckey);
+                ref var childResult = ref UnsafeResult(ckey);
+                float childSize = childResult.ContentRect.Size.GetElement(idim),
+                    newW = runTotalSize + childSize;
+
+                if (!childResult.Break && isBreakDim && wrapEnabled) {
+                    if (newW > parentSize)
+                        childResult.Break = true;
+                }
+
+                if (!childResult.Break) {
+                    var isExpand = IsExpand(ref control, ref child, dim);
+                    if (isExpand)
+                        expandCount++;
+                    runMaxSize = Math.Max(runMaxSize, childSize);
+                    runTotalSize += childSize;
+                    runEnd = ckey;
+                    continue;
+                }
+
+                if (expandCount > 0) {
+                    float currentSize = isBreakDim ? runTotalSize : runMaxSize,
+                        distributed = (space - currentSize) / expandCount,
+                        addSize = isBreakDim ? distributed : 0,
+                        newMinSize = isBreakDim ? 0 : runMaxSize + distributed;
+                    Pass2_ApplyExpansion_ToRun(
+                        ref control, ref result, dim,
+                        addSize, newMinSize, runStart, runEnd, false
+                    );
+                }
+
+                expandCount = 0;
+                runMaxSize = runTotalSize = 0;
+                runStart = runEnd = ckey;
+            }
+
+            if (expandCount > 0) {
+                float distributed = space / expandCount,
+                    addSize = isBreakDim ? distributed : 0,
+                    newMinSize = isBreakDim ? 0 : runMaxSize + distributed;
+                Pass2_ApplyExpansion_ToRun(
+                    ref control, ref result, dim,
+                    addSize, newMinSize, runStart, runEnd, false
+                );
+            }
+        }
+
+        private void Pass2_ApplyExpansion_ToRun (
+            ref ControlRecord control, ref ControlLayoutResult result, LayoutDimensions dim, 
+            float addSize, float newMinSize, ControlKey runStart, ControlKey runEnd, bool nested
+        ) {
+            var idim = (int)dim;
+            var isBreakDim = IsBreakDimension(dim, control.Flags);
+            var wrapEnabled = control.Flags.IsFlagged(ControlFlags.Container_Wrap);
+            int uncompressedCount = 0;
+            float leftover = 0;
+
+            var ckey = runStart;
+            do {
+                ref var child = ref UnsafeItem(ckey);
+                ref var childResult = ref UnsafeResult(ckey);
+                ref var sizeConstraints = ref child.Size(dim);
+
+                if (IsExpand(ref control, ref child, dim)) {
+                    var size = childResult.ContentRect.Size.GetElement(idim);
+                    size = Math.Max(newMinSize, size + addSize);
+                    var newSize = sizeConstraints.Constrain(size, true);
+                    if ((addSize > 0) && (newSize < size))
+                        leftover += size - newSize;
+                    else
+                        uncompressedCount++;
+                    PRGUIExtensions.SetElement(ref childResult.ContentRect.Size, idim, size);
+                }
+
+                ckey = child.NextSibling;
+            } while (!ckey.IsInvalid && (ckey != runEnd));
+
+            // If constraints stopped us from fully distributing our available space, 
+            //  do another pass to spread the leftover space across any controls that
+            //  didn't get stopped by constraints
+            // Worst case THOSE might hit constraints but eh, screw it.
+            if (!nested && (leftover > 1) && (uncompressedCount > 0)) {
+                Pass2_ApplyExpansion_ToRun(
+                    ref control, ref result, dim, 
+                    leftover / uncompressedCount, newMinSize, 
+                    runStart, runEnd, true
+                );
+            }
+        }
+
         #endregion
 
         #region Layout third pass
