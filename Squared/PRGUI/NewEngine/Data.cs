@@ -104,11 +104,11 @@ namespace Squared.PRGUI.NewEngine {
             var padding = new string(' ', Depth * 2);
             if (CompressedSize == ExpandedSize) {
                 if (CompressedSize == default)
-                    return $"{padding}size {ContentRect.Size} {(Break ? "break" : "")}";
+                    return $"{padding}{Tag} size {ContentRect.Size} {(Break ? "break" : "")}";
                 else
-                    return $"{padding}size {ContentRect.Size} content {CompressedSize} {(Break ? "break" : "")}";
+                    return $"{padding}{Tag} size {ContentRect.Size} content {CompressedSize} {(Break ? "break" : "")}";
             } else {
-                return $"{padding}size {ContentRect.Size} compressed {CompressedSize} expanded {ExpandedSize} {(Break ? "break" : "")}";
+                return $"{padding}{Tag} size {ContentRect.Size} compressed {CompressedSize} expanded {ExpandedSize} {(Break ? "break" : "")}";
             }
         }
     }

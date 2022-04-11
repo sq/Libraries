@@ -22,6 +22,7 @@ namespace Squared.PRGUI.NewEngine {
 
         #region Layout first pass
         private void Pass1_Initialize (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
+            result.Tag = control.Tag;
             result.Rect = result.ContentRect = default;
             result.CompressedSize = result.ExpandedSize = default;
             result.Break = control.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
@@ -35,7 +36,18 @@ namespace Squared.PRGUI.NewEngine {
             return (new Vector2(x.compressed, y.compressed), new Vector2(x.expanded, y.expanded));
         }
 
-        private void UpdateRun (bool isBreakDim, bool itemBreak, float itemSize, ref float total, ref float run) {
+        private void UpdateRun (
+            bool isBreakDim, bool itemBreak, ControlFlags itemFlags,
+            float itemSize, ref float total, ref float run
+        ) {
+            if (itemFlags.IsFlagged(ControlFlags.Layout_Floating)) {
+                return;
+            } else if (itemFlags.IsFlagged(ControlFlags.Layout_Stacked)) {
+                // FIXME
+                total = Math.Max(total, itemSize);
+                return;
+            }
+
             if (itemBreak) {
                 if (isBreakDim) {
                     total = Math.Max(total, run);
@@ -79,12 +91,12 @@ namespace Squared.PRGUI.NewEngine {
                 var tup = Pass1_ComputeRequiredSizes_ForDimension(ref child, ref childResult, dim, depth + 1);
                 var margin = child.Margins[idim];
 
-                UpdateRun(isBreakDim, childResult.Break || wrapEnabled, tup.compressed + margin, ref compressedTotal, ref compressedRun);
-                UpdateRun(isBreakDim, childResult.Break, tup.expanded + margin, ref expandedTotal, ref expandedRun);
+                UpdateRun(isBreakDim, childResult.Break || wrapEnabled, child.Flags, tup.compressed + margin, ref compressedTotal, ref compressedRun);
+                UpdateRun(isBreakDim, childResult.Break, child.Flags, tup.expanded + margin, ref expandedTotal, ref expandedRun);
             }
 
-            UpdateRun(isBreakDim, true, 0f, ref compressedTotal, ref compressedRun);
-            UpdateRun(isBreakDim, true, 0f, ref expandedTotal, ref expandedRun);
+            UpdateRun(isBreakDim, true, default, 0f, ref compressedTotal, ref compressedRun);
+            UpdateRun(isBreakDim, true, default, 0f, ref expandedTotal, ref expandedRun);
 
             compressedTotal += control.Padding[idim];
             expandedTotal += control.Padding[idim];
@@ -142,7 +154,8 @@ namespace Squared.PRGUI.NewEngine {
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref UnsafeItem(ckey);
                 ref var childResult = ref UnsafeResult(ckey);
-                childSize = childResult.ContentRect.Size.GetElement(idim);
+                var margin = child.Margins[idim];
+                childSize = childResult.ContentRect.Size.GetElement(idim) + margin;
 
                 if (!childResult.Break) {
                     newExtent = runTotalSize + childSize;
