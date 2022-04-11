@@ -31,6 +31,8 @@ namespace Squared.PRGUI {
             return lhs.Scale(rhs);
         }
 
+        internal float EffectiveMinimum => Fixed ?? Minimum ?? 0;
+
         public ControlDimension AutoComputeFixed () {
             if ((Maximum == Minimum) && Maximum.HasValue)
                 return new ControlDimension {
@@ -102,9 +104,21 @@ namespace Squared.PRGUI {
                 size = Fixed;
         }
 
+        public void Constrain (ref float size, bool applyFixed) {
+            float? temp = size;
+            Constrain(ref temp, applyFixed);
+            size = temp.Value;
+        }
+
         public float? Constrain (float? size, bool applyFixed) {
             Constrain(ref size, applyFixed);
             return size;
+        }
+
+        public float Constrain (float size, bool applyFixed) {
+            float? temp = size;
+            Constrain(ref temp, applyFixed);
+            return temp.Value;
         }
 
         public static implicit operator ControlDimension (float fixedSize) {
@@ -559,6 +573,8 @@ namespace Squared.PRGUI {
                     if ((this is IPostLayoutListener listener) && (existingKey == null))
                         context.PostLayoutListeners?.Add(listener);
                 }
+                if (context.Layout.TryGetFlags(LayoutKey, out ControlFlags cf))
+                    context.Engine[LayoutKey].Flags = cf;
             } finally {
                 if (Appearance.DecorationProvider != null)
                     UIOperationContext.PopDecorationProvider(ref context);

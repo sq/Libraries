@@ -5,8 +5,19 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using ControlKey = Squared.PRGUI.Layout.ControlKey;
+using ControlFlags = Squared.PRGUI.Layout.ControlFlags;
+using LayoutDimensions = Squared.PRGUI.Layout.LayoutDimensions;
 
 namespace Squared.PRGUI.NewEngine {
+    public static class DataExtensions {
+        public static ref ControlDimension Size (this ref ControlRecord record, LayoutDimensions dimension) {
+            if (dimension == LayoutDimensions.X)
+                return ref record.Width;
+            else
+                return ref record.Height;
+        }
+    }
+
     /// <summary>
     /// Represents a box being laid out by the layout engine
     /// </summary>
@@ -84,7 +95,21 @@ namespace Squared.PRGUI.NewEngine {
         internal int Version;
 
         public RectF Rect, ContentRect;
-        public Vector2 ContentSize;
+        public Vector2 CompressedSize, ExpandedSize;
         public Layout.LayoutTags Tag;
+        internal bool Break;
+        internal int RowIndex, Depth;
+
+        public override string ToString () {
+            var padding = new string(' ', Depth * 2);
+            if (CompressedSize == ExpandedSize) {
+                if (CompressedSize == default)
+                    return $"{padding}size {ContentRect.Size} {(Break ? "break" : "")}";
+                else
+                    return $"{padding}size {ContentRect.Size} content {CompressedSize} {(Break ? "break" : "")}";
+            } else {
+                return $"{padding}size {ContentRect.Size} compressed {CompressedSize} expanded {ExpandedSize} {(Break ? "break" : "")}";
+            }
+        }
     }
 }

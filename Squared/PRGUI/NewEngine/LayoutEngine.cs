@@ -1,19 +1,100 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
-using ControlKey = Squared.PRGUI.Layout.ControlKey;
-using ControlFlags = Squared.PRGUI.Layout.ControlFlags;
 using System.Runtime.CompilerServices;
+using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.NewEngine {
-    public class LayoutEngine {
+    public partial class LayoutEngine {
+        public unsafe struct ChildrenEnumerator : IEnumerator<ControlKey> {
+            public readonly LayoutEngine Engine;
+            public readonly ControlKey Parent;
+            private readonly ControlKey FirstChild;
+            private int Version;
+
+            public ChildrenEnumerator (LayoutEngine engine, ControlKey parent) {
+                Engine = engine;
+                Version = engine.Version;
+                Parent = parent;
+                FirstChild = ControlKey.Invalid;
+                Current = ControlKey.Invalid;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private void CheckVersion () {
+                if (Version == Engine.Version)
+                    return;
+
+                Engine.AssertionFailed("Context was modified");
+            }
+
+            public ControlKey Current { get; private set; }
+            object IEnumerator.Current => Current;
+
+            public void Dispose () {
+                Current = ControlKey.Invalid;
+                Version = -1;
+            }
+
+            public bool MoveNext () {
+                CheckVersion();
+
+                if (Current.IsInvalid) {
+                    if (FirstChild.IsInvalid) {
+                        ref var pParent = ref Engine[Parent];
+                        var firstChild = pParent.FirstChild;
+                        if (!firstChild.IsInvalid)
+                            Current = firstChild;
+                    } else {
+                        Current = FirstChild;
+                    }
+                } else {
+                    ref var pCurrent = ref Engine[Current];
+                    if (pCurrent.NextSibling.IsInvalid)
+                        Current = ControlKey.Invalid;
+                    else
+                        Current = pCurrent.NextSibling;
+                }
+
+                return !Current.IsInvalid;
+            }
+
+            void IEnumerator.Reset () {
+                CheckVersion();
+                Current = ControlKey.Invalid;
+            }
+        }
+
+        public struct ChildrenEnumerable : IEnumerable<ControlKey> {
+            public readonly LayoutEngine Engine;
+            public readonly ControlKey Parent;
+
+            internal ChildrenEnumerable (LayoutEngine engine, ControlKey parent) {
+                Engine = engine;
+                Parent = parent;
+            }
+
+            public ChildrenEnumerator GetEnumerator () {
+                return new ChildrenEnumerator(Engine, Parent);
+            }
+
+            IEnumerator<ControlKey> IEnumerable<ControlKey>.GetEnumerator () {
+                return GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator () {
+                return GetEnumerator();
+            }
+        }
+
         private ControlRecord Invalid = new ControlRecord {
         };
 
-        private int _Version, _Count;
+        private int Version, _Count;
 
         // TODO: Much better sizing implementation
         // We need to make sure that once we hand out a reference to Records[n], we never transition that item
@@ -35,8 +116,9 @@ namespace Squared.PRGUI.NewEngine {
         public int Count => _Count;
         public void Clear () {
             Array.Clear(Records, 0, Records.Length);
+            Array.Clear(Results, 0, Results.Length);
             _Count = 0;
-            _Version++;
+            Version++;
             // Initialize root
             ref var root = ref Create(tag: Layout.LayoutTags.Root);
             root.FixedSize = _CanvasSize;
@@ -85,10 +167,16 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
+        public ref ControlRecord Create (out ControlKey result, Layout.LayoutTags tag = default, ControlFlags flags = default) {
+            ref ControlRecord record = ref Create(tag, flags);
+            result = record.Key;
+            return ref record;
+        }
+
         public ref ControlRecord Create (Layout.LayoutTags tag = default, ControlFlags flags = default) {
             var index = _Count++;
             ref var result = ref Records[index];
-            result._Key = index;
+            result._Key = new ControlKey(index);
             result.Flags = flags;
             result.Tag = tag;
             return ref result;
@@ -107,9 +195,20 @@ namespace Squared.PRGUI.NewEngine {
             return ref result;
         }
 
+        public ChildrenEnumerable Children (ControlKey parent) {
+            Assert(!parent.IsInvalid);
+            return new ChildrenEnumerable(this, parent);
+        }
+
+        internal ref ControlLayoutResult UnsafeResult (ControlKey key) {
+            return ref Results[key.ID];
+        }
+
         public ref ControlLayoutResult Result (ControlKey key) {
+            if ((key.ID < 0) || (key.ID >= Results.Length))
+                throw new ArgumentOutOfRangeException(nameof(key));
             ref var result = ref Results[key.ID];
-            if (result.Version != _Version)
+            if (result.Version != Version)
                 throw new Exception("Layout has not been performed");
             return ref result;
         }
@@ -253,11 +352,8 @@ namespace Squared.PRGUI.NewEngine {
         }
         #endregion
 
-        #region Layout first pass
-        #endregion
-
         public void Update () {
-            ;
+            PerformLayout(ref Root());
         }
     }
 }
