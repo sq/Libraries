@@ -83,6 +83,8 @@
     <Compile Include="LayoutContext.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Data.cs" />
+    <Compile Include="NewEngine\Data.cs" />
+    <Compile Include="NewEngine\LayoutEngine.cs" />
     <Compile Include="UIContext.Traversal.cs" />
     <Compile Include="UIContext.State.cs" />
     <Compile Include="UIContext.Data.cs" />

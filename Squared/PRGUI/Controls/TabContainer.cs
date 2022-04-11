@@ -236,7 +236,9 @@ namespace Squared.PRGUI.Controls {
                     childBox = context.Layout.GetLastChild(result);
                 else {
                     childBox = context.Layout.CreateItem();
+                    ref var rec = ref context.Engine.GetOrCreate(childBox);
                     context.Layout.Append(result, childBox);
+                    context.Engine.Append(result, childBox);
                 }
                 var childBoxFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Column;
                 // HACK

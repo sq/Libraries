@@ -37,6 +37,8 @@ namespace Squared.PRGUI {
         /// </summary>
         public readonly LayoutContext Layout = new LayoutContext();
 
+        public readonly NewEngine.LayoutEngine Engine;
+
         /// <summary>
         /// The top-level controls managed by the layout engine. Each one gets a separate rendering layer
         /// </summary>
@@ -120,6 +122,7 @@ namespace Squared.PRGUI {
             DefaultMaterialSet materials, IDecorationProvider decorations, 
             IAnimationProvider animations = null, ITimeProvider timeProvider = null
         ) {
+            Engine = new NewEngine.LayoutEngine();
             EventBus = new EventBus();
             EventBus.AfterBroadcast += EventBus_AfterBroadcast;
             Controls = new ControlCollection(this);
@@ -235,6 +238,11 @@ namespace Squared.PRGUI {
             Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row);
             Layout.SetTag(Layout.Root, LayoutTags.Root);
 
+            ref var root = ref Engine.Root();
+            Engine.CanvasSize = CanvasSize;
+            root.ContainerFlags = ControlFlags.Container_Row;
+            root.Tag = LayoutTags.Root;
+
             _TopLevelControls.Clear();
             Controls.CopyTo(_TopLevelControls);
 
@@ -277,13 +285,16 @@ namespace Squared.PRGUI {
 
             try {
                 Layout.Clear();
+                Engine.Clear();
 
                 DoUpdateLayoutInternal(ref context, false);
                 Layout.Update();
+                Engine.Update();
 
                 if (NotifyLayoutListeners(ref context)) {
                     DoUpdateLayoutInternal(ref context, true);
                     Layout.Update();
+                    Engine.Update();
                     NotifyLayoutListeners(ref context);
                 }
             } finally {
@@ -998,6 +1009,7 @@ namespace Squared.PRGUI {
         public UIContext UIContext;
         public DefaultMaterialSet Materials => UIContext?.Materials;
         public LayoutContext Layout => UIContext?.Layout;
+        public NewEngine.LayoutEngine Engine => UIContext?.Engine;
         public RasterizePasses Pass;
         public float Opacity { get; internal set; }
         public float Now { get; internal set; }

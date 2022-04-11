@@ -726,6 +726,8 @@ namespace Squared.PRGUI {
 #endif
 
             var result = existingKey ?? context.Layout.CreateItem();
+            // FIXME: Should be existingKey not result
+            ref var record = ref context.Engine.GetOrCreate(result);
 
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             ComputeEffectiveSpacing(ref context, decorations, out Margins computedPadding, out Margins computedMargins);
@@ -743,8 +745,17 @@ namespace Squared.PRGUI {
             context.Layout.SetLayoutData(result, ref Layout.FloatingPosition, ref computedMargins, ref computedPadding);
             context.Layout.SetSizeConstraints(result, in width, in height);
 
-            if (!parent.IsInvalid && !existingKey.HasValue)
+            record.LayoutFlags = actualLayoutFlags;
+            record.FloatingPosition = Layout.FloatingPosition;
+            record.Margins = computedMargins;
+            record.Padding = computedPadding;
+            record.Width = width;
+            record.Height = height;
+
+            if (!parent.IsInvalid && !existingKey.HasValue) {
                 context.Layout.InsertAtEnd(parent, result);
+                context.Engine.InsertAtEnd(parent, result);
+            }
 
             return result;
         }
