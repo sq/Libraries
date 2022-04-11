@@ -28,6 +28,7 @@ namespace Squared.PRGUI.NewEngine {
             result.Break = control.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
             result.RowIndex = 0;
             result.Depth = depth;
+            result.Version = Version;
         }
 
         private (Vector2 compressed, Vector2 expanded) Pass1_ComputeRequiredSizes (ref ControlRecord control, ref ControlLayoutResult result, int depth) {

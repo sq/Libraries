@@ -131,6 +131,37 @@ namespace Squared.PRGUI {
             // FIXME: Do we need to do anything here?
         }
 
+        public void DebugNewRasterize (BatchGroup container, int layer, Color? clearColor = null) {
+            var renderer = new ImperativeRenderer(container, Materials) {
+                BlendState = BlendState.AlphaBlend,
+                DepthStencilState = DepthStencilState.None
+            };
+
+            renderer.Clear(color: clearColor, stencil: 0, layer: -999);
+            DebugNewRasterize(ref renderer, ref Engine.Root(), layer);
+        }
+
+        private readonly static Color[] DebugColors = new[] {
+            Color.Red,
+            Color.Orange,
+            Color.Yellow,
+            Color.Green,
+            Color.Teal,
+            Color.Blue,
+            Color.Purple,
+            Color.Silver,
+        };
+
+        private void DebugNewRasterize (ref ImperativeRenderer renderer, ref NewEngine.ControlRecord record, int layer) {
+            ref var result = ref Engine.Result(record.Key);
+            var color = DebugColors[layer % DebugColors.Length];
+            renderer.RasterizeRectangle(result.ContentRect.Position, result.ContentRect.Extent, 1f, color, layer: layer);
+            foreach (var ckey in Engine.Children(record.Key)) {
+                ref var child = ref Engine[ckey];
+                DebugNewRasterize(ref renderer, ref child, layer + 1);
+            }
+        }
+
         public void Rasterize (BatchGroup container, int layer, BatchGroup prepassContainer, int prepassLayer, Color? clearColor = null) {
             FrameIndex++;
 
@@ -300,8 +331,11 @@ namespace Squared.PRGUI {
         public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer) {
             using (var outerGroup = BatchGroup.New(frame, layer, name: "Rasterize UI"))
             using (var prepassGroup = BatchGroup.New(outerGroup, -999, name: "Prepass"))
-            using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass"))
-                Rasterize(rtBatch, 0, prepassGroup, 0, clearColor: Color.Transparent);
+            using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass")) {
+                // Rasterize(rtBatch, 0, prepassGroup, 0, clearColor: Color.Transparent);
+
+                DebugNewRasterize(rtBatch, 1);
+            }
         }
 
         private void PushRecursive (ScratchRenderTarget srt) {
