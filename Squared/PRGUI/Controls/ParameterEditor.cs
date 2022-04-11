@@ -29,6 +29,18 @@ namespace Squared.PRGUI.Controls {
             var type = typeof(ParameterEditor<>).MakeGenericType(valueType);
             return (IParameterEditor)Activator.CreateInstance(type);
         }
+
+        public delegate bool TryParseDelegate (string value, out object result);
+
+        public static TryParseDelegate GetParseDelegate (Type type) {
+            var tryParse = type.GetMethod(
+                "TryParse", new [] { typeof(string), typeof(object).MakeByRefType() }
+            );
+            if (tryParse != null)
+                return (TryParseDelegate)Delegate.CreateDelegate(typeof(TryParseDelegate), tryParse);
+
+            return null;
+        }
     }
 
     public class ParameterEditor<T> : EditableText, IScrollableControl, IParameterEditor, IValueControl<T>
@@ -66,7 +78,7 @@ namespace Squared.PRGUI.Controls {
         public IFormatProvider FormatProvider;
         public Func<T, T?> ValueFilter;
         public Func<T, string> ValueEncoder;
-        private TryParseDelegate TryParseValue;
+        private ParameterEditor.TryParseDelegate TryParseValue;
         public Func<string, T> ValueDecoder;
 
         bool IsSettingValue;
@@ -168,8 +180,6 @@ namespace Squared.PRGUI.Controls {
             set => Value = (T)value;
         }
 
-        delegate bool TryParseDelegate (string value, out object result);
-
         public ParameterEditor ()
             : base () {
             AllowScroll = false;
@@ -185,12 +195,8 @@ namespace Squared.PRGUI.Controls {
 
             FormatProvider = (IFormatProvider)CultureInfo.CurrentUICulture.NumberFormat.Clone();
 
+            TryParseValue = ParameterEditor.GetParseDelegate(typeof(T));
             var type = typeof(T);
-            var tryParse = type.GetMethod(
-                "TryParse", new [] { typeof(string), typeof(object).MakeByRefType() }
-            );
-            if (tryParse != null)
-                TryParseValue = (TryParseDelegate)Delegate.CreateDelegate(typeof(TryParseDelegate), tryParse);
 
             ValueDecoder = (s) => (T)Convert.ChangeType(s, typeof(T), FormatProvider);
             ValueEncoder = (v) => {
