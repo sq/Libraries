@@ -341,38 +341,41 @@ namespace Squared.PRGUI.NewEngine {
                 ref var childResult = ref UnsafeResult(ckey);
                 var padding = new Vector2(child.Padding.Left, child.Padding.Top);
 
-                if (child.Flags.IsFlagged(ControlFlags.Layout_Floating)) {
-                    childResult.Rect.Position = child.FloatingPosition;
-                    childResult.ContentRect.Position = childResult.Rect.Position + padding;
-                    continue;
-                } else if (child.Flags.IsFlagged(ControlFlags.Layout_Stacked)) {
-                    childResult.Rect.Position = result.ContentRect.Position;
-                    childResult.ContentRect.Position = childResult.Rect.Position + padding;
-                    continue;
-                }
+                var floatingOrStacked = child.Flags.IsFlagged(ControlFlags.Layout_Floating) ||
+                    child.Flags.IsFlagged(ControlFlags.Layout_Stacked);
 
-                if (childResult.Break) {
-                    if (vertical) {
-                        y = 0;
-                        x += runMaxWidth;
-                    } else {
-                        x = 0;
-                        y += runMaxHeight;
+                if (floatingOrStacked) {
+                    childResult.Rect.Position = child.Flags.IsFlagged(ControlFlags.Layout_Floating)
+                        ? child.FloatingPosition
+                        : result.ContentRect.Position;
+                    childResult.ContentRect.Position = childResult.Rect.Position + padding;
+                } else {
+                    if (childResult.Break) {
+                        if (vertical) {
+                            y = 0;
+                            x += runMaxWidth;
+                        } else {
+                            x = 0;
+                            y += runMaxHeight;
+                        }
+
+                        runMaxWidth = runMaxHeight = 0;
                     }
 
-                    runMaxWidth = runMaxHeight = 0;
+                    childResult.Rect.Position = result.ContentRect.Position + new Vector2(x + child.Margins.Left, y + child.Margins.Top);
+                    childResult.ContentRect.Position = childResult.Rect.Position + padding;
+
+                    float xStep = childResult.Rect.Width + child.Margins.X,
+                        yStep = childResult.Rect.Height + child.Margins.Y;
+
+                    runMaxWidth = Math.Max(runMaxWidth, vertical ? xStep : x + xStep);
+                    runMaxHeight = Math.Max(runMaxHeight, vertical ? y + yStep : yStep);
+
+                    if (vertical)
+                        y += yStep;
+                    else
+                        x += xStep;
                 }
-
-                childResult.Rect.Position = result.ContentRect.Position + new Vector2(x, y);
-                childResult.ContentRect.Position = childResult.Rect.Position + padding;
-
-                runMaxWidth = Math.Max(runMaxWidth, x + childResult.Rect.Width);
-                runMaxHeight = Math.Max(runMaxHeight, y + childResult.Rect.Height);
-
-                if (vertical)
-                    y += childResult.Rect.Height;
-                else
-                    x += childResult.Rect.Width;
 
                 Pass4_Arrange(ref child, ref childResult);
             }

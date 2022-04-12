@@ -982,6 +982,9 @@ namespace PRGUI.Demo {
                 }
             };
 
+            Context.Controls.Add(topLevelContainer);
+            Context.Controls.Add(window.Control);
+
             Context.EventBus.Subscribe(columnCount, UIEvents.ValueChanged, (ei) => {
                 listBox.ColumnCount = columnCount.SelectedItem;
             });
@@ -1105,9 +1108,6 @@ namespace PRGUI.Demo {
                     Context.Controls.Add(FloatingWindow);
                 });
             });
-
-            Context.Controls.Add(topLevelContainer);
-            Context.Controls.Add(window.Control);
 
             var floatingWindowWithText = new Window {
                 Alignment = new Vector2(0.5f, 0.5f),
