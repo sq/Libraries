@@ -55,15 +55,18 @@ namespace Squared.PRGUI.NewEngine {
         private void Pass1_ComputeSizesAndBuildRuns (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
             InitializeResult(ref control, ref result, depth);
 
-            if (control.FirstChild.IsInvalid) {
-                result.Rect.Width = control.Size(LayoutDimensions.X).EffectiveMinimum;
-                result.Rect.Height = control.Size(LayoutDimensions.Y).EffectiveMinimum;
+            // During this pass, result.Rect contains our minimum size:
+            // Size constraints, largest of all our children, etc
+            // result.ContentRect will contain the total size of *all* of our children, ignoring forced wrapping
+            result.Rect.Width = control.Size(LayoutDimensions.X).EffectiveMinimum;
+            result.Rect.Height = control.Size(LayoutDimensions.Y).EffectiveMinimum;
+            if (control.FirstChild.IsInvalid)
                 return;
-            }
 
             bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
                 wrap = control.Flags.IsFlagged(ControlFlags.Container_Wrap);
-            var currentRunIndex = result.FirstRunIndex;
+            float padX = control.Padding.X, padY = control.Padding.Y;
+            var currentRunIndex = -1;
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
@@ -77,18 +80,24 @@ namespace Squared.PRGUI.NewEngine {
                 );
 
                 // At a minimum we should be able to hold all our children if they were stacked on each other
-                result.Rect.Width = Math.Max(result.Rect.Width, w);
-                result.Rect.Height = Math.Max(result.Rect.Height, h);
+                result.Rect.Width = Math.Max(result.Rect.Width, w + padX);
+                result.Rect.Height = Math.Max(result.Rect.Height, h + padY);
                 // If we're not in wrapped mode, we will try to expand to hold our largest run
                 if (!wrap) {
                     if (vertical)
-                        result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight);
+                        result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
                     else
-                        result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth);
+                        result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
                 }
             }
 
             Pass1_ExpandForCompletedRun(ref control, ref result, currentRunIndex);
+
+            // We have our minimum size in result.Rect and the size of all our content in result.ContentRect
+            // Now we add padding to the contentrect and pick the biggest of the two
+            // This gives us proper autosize for non-forced-wrap
+            result.Rect.Width = Math.Max(result.Rect.Width, result.ContentRect.Width + padX);
+            result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
 
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
@@ -112,9 +121,9 @@ namespace Squared.PRGUI.NewEngine {
             ref var completedRun = ref Run(runIndex);
 
             if (control.Flags.IsFlagged(ControlFlags.Container_Column))
-                result.Rect.Width += completedRun.MaxWidth;
+                result.ContentRect.Width += completedRun.MaxWidth;
             else
-                result.Rect.Height += completedRun.MaxHeight;
+                result.ContentRect.Height += completedRun.MaxHeight;
         }
 
         private ref ControlLayoutRun Pass1_UpdateRun (

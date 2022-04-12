@@ -1221,6 +1221,7 @@ namespace PRGUI.Demo {
                 .SetBackgroundColor(Color.Blue)
                 .SetWrap(false);
             var c = builder.NewContainer<ControlGroup>();
+            c.Control.DebugLabel = "Menu item with two child items";
             c.Text("Item 4A");
             c.Spacer();
             c.Text("Item 4B");
