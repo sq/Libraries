@@ -252,7 +252,10 @@ namespace PRGUI.Demo {
                 AutoSize = false,
                 Wrap = false,
                 Text = "Hovering: None",
-                TooltipContent = "The control the mouse is currently hovering over"
+                TooltipContent = "The control the mouse is currently hovering over",
+                Appearance = {
+                    BackgroundColor = Color.Red * 0.1f,
+                }
             };
 
             var lastClickedCtl = new StaticText {
@@ -260,7 +263,10 @@ namespace PRGUI.Demo {
                 AutoSize = false,
                 Wrap = false,
                 Text = "",
-                TooltipContent = "The control most recently clicked with the mouse"
+                TooltipContent = "The control most recently clicked with the mouse",
+                Appearance = {
+                    BackgroundColor = Color.Green * 0.1f,
+                }
             };
 
             var focusedCtl = new StaticText {
@@ -268,7 +274,10 @@ namespace PRGUI.Demo {
                 AutoSize = false,
                 Wrap = false,
                 Text = "",
-                TooltipContent = "The control with keyboard focus"
+                TooltipContent = "The control with keyboard focus",
+                Appearance = {
+                    BackgroundColor = Color.Blue * 0.1f,
+                }
             };
 
             var capturedCtl = new StaticText {
@@ -276,7 +285,10 @@ namespace PRGUI.Demo {
                 AutoSize = false,
                 Wrap = false,
                 Text = "",
-                TooltipContent = "The control with mouse capture"
+                TooltipContent = "The control with mouse capture",
+                Appearance = {
+                    BackgroundColor = Color.Purple * 0.1f,
+                }
             };
 
             var testString = "Καλημέρα こんにちは \U0002F8B6\U0002F8CD\U0002F8D3 Hello";
@@ -978,7 +990,7 @@ namespace PRGUI.Demo {
                             TextColor = Tween.StartNow(Color.White, Color.White * 0.5f, 2f, repeatCount: int.MaxValue, repeatMode: TweenRepeatMode.PulseExp)
                         }
                     },
-                    bigScrollableContainer
+                    // bigScrollableContainer
                 }
             };
 

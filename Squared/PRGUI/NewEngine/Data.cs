@@ -115,5 +115,13 @@ namespace Squared.PRGUI.NewEngine {
         public int FlowCount, ExpandCountX, ExpandCountY;
         public float TotalWidth, TotalHeight, MaxWidth, MaxHeight;
         public int NextRunIndex;
+
+        public override string ToString () {
+            if (First.IsInvalid || Last.IsInvalid)
+                return "<invalid>";
+
+            var tail = (NextRunIndex < 0) ? " end" : " ...";
+            return $"{First}..{Last} flow={FlowCount} expandX={ExpandCountX} expandY={ExpandCountY}{tail}";
+        }
     }
 }

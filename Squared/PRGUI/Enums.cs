@@ -159,6 +159,16 @@ namespace Squared.PRGUI.Layout {
     }
 
     public static class PRGUIExtensions {
+        public static float GetContainerAlignmentF (this ControlFlags flags) {
+            if (flags.IsFlagged(ControlFlags.Container_Align_End))
+                return 1f;
+            else if (flags.IsFlagged(ControlFlags.Container_Align_Start))
+                return 0f;
+            // FIXME: justify
+            else // Middle
+                return 0.5f;
+        }
+
         public static bool IsBreak (this ControlFlags flags) {
             return IsFlagged(flags, ControlFlags.Internal_Break) ||
                 IsFlagged(flags, ControlFlags.Layout_ForceBreak);
