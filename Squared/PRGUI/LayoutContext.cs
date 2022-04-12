@@ -221,7 +221,7 @@ namespace Squared.PRGUI.Layout {
                 return false;
 
             var pItem = LayoutPtr(key);
-            var constrainSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
+            var constrainSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Growth);
             CalcSize(pItem, LayoutDimensions.X, constrainSize);
             Arrange (pItem, LayoutDimensions.X, constrainSize);
             CalcSize(pItem, LayoutDimensions.Y, constrainSize);
@@ -749,7 +749,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe void CalcSize (LayoutItem * pItem, LayoutDimensions dim, bool constrainSize) {
-            var constrainChildSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
+            var constrainChildSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Growth);
             foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);
@@ -968,7 +968,7 @@ namespace Squared.PRGUI.Layout {
                     ix1 = x + constrainedSize;
 
                     if (
-                        pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size) && 
+                        pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Growth) && 
                         (pChild->FixedSize.GetElement(idim) < 0)
                     ) {
                         float parentExtent = Math.Max((parentRect[idim] + parentRect[wdim]), 0);
@@ -1151,7 +1151,7 @@ namespace Squared.PRGUI.Layout {
                         break;
                 }
 
-                if (pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Size)) {
+                if (pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Growth)) {
                     // FIXME: Implement this
                     ;
                 }
@@ -1207,7 +1207,7 @@ namespace Squared.PRGUI.Layout {
                 // FIXME: Redistribute remaining space?
 
                 Vector2? parentConstraint = null;
-                if (pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size)) {
+                if (pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Growth)) {
                     // rect[idim] = Constrain(rect[idim], parentRect[idim], parentRect[wdim]);
                     var temp = parentRect.Extent - rect.Position;
                     var spacing = pParent->Padding;
@@ -1331,7 +1331,7 @@ namespace Squared.PRGUI.Layout {
                     break;
             }
 
-            var constrainChildSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
+            var constrainChildSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Growth);
             foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);

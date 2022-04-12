@@ -116,15 +116,18 @@ namespace Squared.PRGUI.Layout {
         Internal_FixedWidth  = 0b10000000000000,
         Internal_FixedHeight = 0b100000000000000,
         /// <summary>
-        /// Prevents child elements from growing past the boundaries of this container.
+        /// Prevents child elements from growing past the boundaries of this container even if the container's
+        ///  content is bigger than the container itself.
         /// </summary>
-        Container_Constrain_Size  = 0b1000000000000000,
+        Container_Constrain_Growth  = 0b1000000000000000,
         /// <summary>
         /// Prevents the container from shrinking below the size required to contain its child elements.
+        /// This also will prevent child rectangles from being clipped on this axis even if Clip_Children is set.
         /// </summary>
         Container_Prevent_Crush_X = 0b10000000000000000,
         /// <summary>
         /// Prevents the container from shrinking below the size required to contain its child elements.
+        /// This also will prevent child rectangles from being clipped on this axis even if Clip_Children is set.
         /// </summary>
         Container_Prevent_Crush_Y = 0b100000000000000000,
         Container_Prevent_Crush = (Container_Prevent_Crush_X | Container_Prevent_Crush_Y),
@@ -134,6 +137,19 @@ namespace Squared.PRGUI.Layout {
         Container_No_Expansion_X  = 0b1000000000000000000,
         Container_No_Expansion_Y  = 0b10000000000000000000,
         Container_No_Expansion = (Container_No_Expansion_X | Container_No_Expansion_Y),
+        /// <summary>
+        /// Any child controls' rectangles will have their width and height reduced to prevent them
+        ///  from extending beyond the bottom or right edges of the container.
+        /// Their position will not be affected and the container's computed content size will
+        ///  also not be affected.
+        /// This is the default behavior for the old layout engine.
+        /// </summary>
+        Container_Clip_Children   = 0b100000000000000000000,
+        /// <summary>
+        /// Combines the effects of Container_Clip_Children and Container_Constrain_Growth.
+        /// Deprecated, you probably only want one of the two.
+        /// </summary>
+        Container_Constrain_Size = Container_Constrain_Growth | ControlFlags.Container_Clip_Children,
     }
 
     public static class ControlFlagMask {
@@ -146,7 +162,8 @@ namespace Squared.PRGUI.Layout {
                 ControlFlags.Container_Align_Middle |
                 ControlFlags.Container_Align_End |
                 ControlFlags.Container_Align_Justify |
-                ControlFlags.Container_Constrain_Size |
+                ControlFlags.Container_Constrain_Growth |
+                ControlFlags.Container_Clip_Children |
                 ControlFlags.Container_Prevent_Crush |
                 ControlFlags.Container_No_Expansion,
             Layout = ControlFlags.Layout_Fill |

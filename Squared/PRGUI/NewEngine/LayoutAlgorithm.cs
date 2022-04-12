@@ -207,7 +207,7 @@ namespace Squared.PRGUI.NewEngine {
 
             bool wrap = control.Flags.IsFlagged(ControlFlags.Container_Wrap),
                 vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
-                constrain = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
+                constrain = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Growth);
             float w = result.Rect.Width - control.Padding.X, 
                 h = result.Rect.Height - control.Padding.Y;
 
@@ -222,11 +222,16 @@ namespace Squared.PRGUI.NewEngine {
                 //  can reduce the count to evenly distribute the leftovers to non-constrained controls
                 int countX = run.ExpandCountX, countY = run.ExpandCountY,
                     newCountX = countX, newCountY = countY;
-                // FIXME: Figure out how to expand secondary axis here instead of doing it in arrange
-                // HACK: For the last run in a box we want to expand the run to fill the entire available space
-                //  otherwise listbox items will have a width of 0 :(
-                float effectiveRunMaxWidth = isLastRun && vertical ? Math.Max(w, run.MaxOuterWidth) : run.MaxOuterWidth,
-                    effectiveRunMaxHeight = isLastRun && !vertical ? Math.Max(h, run.MaxOuterHeight) : run.MaxOuterHeight,
+                // HACK: If a menu contains one item that is like 2000px wide, normally we would expand any other items
+                //  to ALSO be 2000px wide. This ensures that if Constrain_Size is set we will only expand other items
+                //  to the size of the menu itself
+                // In the demo this is necessary to ensure that the 'item a ... item b' menu item is laid out correctly
+                float runMaxOuterWidth = constrain && vertical ? Math.Min(w, run.MaxOuterWidth) : run.MaxOuterWidth,
+                    runMaxOuterHeight = constrain && !vertical ? Math.Min(h, run.MaxOuterHeight) : run.MaxOuterHeight,
+                    // HACK: For the last run in a box we want to expand the run to fill the entire available space
+                    //  otherwise listbox items will have a width of 0 :(
+                    effectiveRunMaxWidth = isLastRun && vertical ? Math.Max(w, runMaxOuterWidth) : runMaxOuterWidth,
+                    effectiveRunMaxHeight = isLastRun && !vertical ? Math.Max(h, runMaxOuterHeight) : runMaxOuterHeight,
                     effectiveRunTotalWidth = run.TotalWidth,
                     effectiveRunTotalHeight = run.TotalHeight,
                     xSpace = vertical ? 0f : w - effectiveRunTotalWidth,
@@ -345,7 +350,7 @@ namespace Squared.PRGUI.NewEngine {
             ControlKey firstProcessed = ControlKey.Invalid,
                 lastProcessed = ControlKey.Invalid;
             bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
-                clipAny = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Size),
+                clipAny = control.Flags.IsFlagged(ControlFlags.Container_Clip_Children),
                 clipX = clipAny && !control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X),
                 clipY = clipAny && !control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y);
             float w = result.ContentRect.Width, h = result.ContentRect.Height,
