@@ -105,10 +105,23 @@ namespace Squared.PRGUI.NewEngine {
             ref ControlRecord child, ref ControlLayoutResult childResult, 
             float childWidth, float childHeight, ref int currentRunIndex
         ) {
+            bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
+                isBreak = child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
+
+            if (isBreak && currentRunIndex >= 0) {
+                // If we are ending the current run we want to expand our control on the secondary axis
+                //  to account for the size of the current run
+                ref var previousRun = ref Run(currentRunIndex);
+                if (vertical)
+                    result.Rect.Width += previousRun.MaxWidth;
+                else
+                    result.Rect.Height += previousRun.MaxHeight;
+            }
+
             // We still generate runs even if a control is stacked/floating
             // This ensures that you can enumerate all of a control's children by enumerating its runs
             // We will then skip stacked/floating controls when enumerating runs (as appropriate)
-            ref var run = ref Pass1_SelectRun(ref currentRunIndex, child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak));
+            ref var run = ref Pass1_SelectRun(ref currentRunIndex, isBreak);
 
             if (result.FirstRunIndex < 0)
                 result.FirstRunIndex = currentRunIndex;
