@@ -213,17 +213,29 @@ namespace Squared.PRGUI.NewEngine {
 
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
+                var isLastRun = run.NextRunIndex < 0;
 
                 // We track our own count here so that when expansion hits a constraint, we
                 //  can reduce the count to evenly distribute the leftovers to non-constrained controls
                 int countX = run.ExpandCountX, countY = run.ExpandCountY,
                     newCountX = countX, newCountY = countY;
-                // FIXME: Figure out how to expand secondary axis
-                float xSpace = vertical ? 0f : w - run.TotalWidth,
+                // FIXME: Figure out how to expand secondary axis here instead of doing it in arrange
+                // HACK: For the last run in a box we want to expand the run to fill the entire available space
+                //  otherwise listbox items will have a width of 0 :(
+                float effectiveRunMaxWidth = isLastRun && vertical ? Math.Max(w, run.MaxWidth) : run.MaxWidth,
+                    effectiveRunMaxHeight = isLastRun && !vertical ? Math.Max(h, run.MaxHeight) : run.MaxHeight,
+                    xSpace = vertical ? 0f : w - run.TotalWidth,
                     ySpace = vertical ? h - run.TotalHeight : 0,
                     newXSpace = xSpace, newYSpace = ySpace,
-                    minWidth = vertical ? run.MaxWidth : 0,
-                    minHeight = vertical ? 0 : run.MaxHeight;
+                    minWidth = vertical ? effectiveRunMaxWidth : 0,
+                    minHeight = vertical ? 0 : effectiveRunMaxHeight;
+
+                /*
+                if (vertical)
+                    w -= effectiveRunWidth;
+                else
+                    h -= effectiveRunHeight;
+                */
 
                 for (int pass = 0; pass < 3; pass++) {
                     if (countX < 1)
@@ -357,8 +369,6 @@ namespace Squared.PRGUI.NewEngine {
                     var margins = child.Margins;
 
                     child.Flags.GetAlignmentF(out float xChildAlign, out float yChildAlign);
-                    if (child.Control is Controls.HyperTextHotspot hths)
-                        ;
 
                     if (child.Flags.IsStackedOrFloating()) {
                         if (child.Flags.IsFlagged(ControlFlags.Layout_Floating)) {
@@ -399,6 +409,9 @@ namespace Squared.PRGUI.NewEngine {
                         var bottomEdge = result.ContentRect.Bottom - margins.Bottom;
                         childResult.Rect.Height = Math.Max(0, Math.Min(childResult.Rect.Height, bottomEdge - childResult.Rect.Top));
                     }
+
+                    if (control.Control is Controls.ListBox<string> lb)
+                        ;
 
                     Pass3_Arrange(ref child, ref childResult);
                 }

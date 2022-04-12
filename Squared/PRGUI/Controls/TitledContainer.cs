@@ -185,13 +185,13 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected virtual bool OnMouseEvent (string name, MouseEventArgs args) {
+            if (name != UIEvents.Click)
+                return false;
+
             if (
-                (name == UIEvents.Click) &&
-                (
-                    (Collapsed && CollapsingEnabled) ||
-                    DisclosureArrowHitTest(args.RelativeGlobalPosition - args.Box.Position) ||
-                    (CollapsingEnabled && (args.SequentialClickCount == 2) && !Collapsed)
-                )
+                (Collapsed && CollapsingEnabled) ||
+                DisclosureArrowHitTest(args.RelativeGlobalPosition - args.Box.Position) ||
+                (CollapsingEnabled && (args.SequentialClickCount == 2) && !Collapsed)
             ) {
                 ToggleCollapsed();
                 return true;
@@ -233,6 +233,7 @@ namespace Squared.PRGUI.Controls {
                 context.Layout.SetLayoutFlags(spacer, ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak);
                 context.Layout.SetFixedSize(spacer, DisclosureArrowPadding, MostRecentTitleBox.Height);
                 context.Layout.InsertAtStart(result, spacer);
+                ;
             }
             return result;
         }

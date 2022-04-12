@@ -572,16 +572,16 @@ namespace Squared.PRGUI {
                     // TODO: Only register if the control is explicitly interested, to reduce overhead?
                     if ((this is IPostLayoutListener listener) && (existingKey == null))
                         context.PostLayoutListeners?.Add(listener);
-                }
 
-                if (UIContext.UseNewEngine) {
-                    ref var rec = ref context.Engine[LayoutKey];
-                    if (context.Layout.TryGetFlags(LayoutKey, out ControlFlags cf))
-                        rec.Flags = cf;
+                    if (UIContext.UseNewEngine) {
+                        ref var rec = ref context.Engine[LayoutKey];
+                        if (context.Layout.TryGetFlags(LayoutKey, out ControlFlags cf))
+                            rec.Flags = cf;
 
-    #if DEBUG
-                    rec.Control = this;
-    #endif
+        #if DEBUG
+                        rec.Control = this;
+        #endif
+                    }
                 }
             } finally {
                 if (Appearance.DecorationProvider != null)
@@ -598,8 +598,14 @@ namespace Squared.PRGUI {
                 return false;
             }
 
-            if (!context.Layout.GetRects(LayoutKey, out rect, out contentRect))
-                return false;
+            if (UIContext.UseNewEngine) {
+                ref var res = ref context.Engine.Result(LayoutKey);
+                rect = res.Rect;
+                contentRect = res.ContentRect;
+            } else {
+                if (!context.Layout.GetRects(LayoutKey, out rect, out contentRect))
+                    return false;
+            }
 
             if (applyOffset) {
                 rect.Left += _AbsoluteDisplayOffset.X;
