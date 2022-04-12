@@ -55,11 +55,11 @@ namespace Squared.PRGUI.NewEngine {
         private void Pass1_ComputeSizesAndBuildRuns (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
             InitializeResult(ref control, ref result, depth);
 
-            result.Rect.Width = control.Size(LayoutDimensions.X).EffectiveMinimum;
-            result.Rect.Height = control.Size(LayoutDimensions.Y).EffectiveMinimum;
-
-            if (control.FirstChild.IsInvalid)
+            if (control.FirstChild.IsInvalid) {
+                result.Rect.Width = control.Size(LayoutDimensions.X).EffectiveMinimum;
+                result.Rect.Height = control.Size(LayoutDimensions.Y).EffectiveMinimum;
                 return;
+            }
 
             bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
                 wrap = control.Flags.IsFlagged(ControlFlags.Container_Wrap);
@@ -88,6 +88,8 @@ namespace Squared.PRGUI.NewEngine {
                 }
             }
 
+            Pass1_ExpandForCompletedRun(ref control, ref result, currentRunIndex);
+
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
         }
@@ -99,29 +101,37 @@ namespace Squared.PRGUI.NewEngine {
                 return ref GetOrPushRun(ref currentRunIndex);
         }
 
+        private void Pass1_ExpandForCompletedRun (
+            ref ControlRecord control, ref ControlLayoutResult result, int runIndex
+        ) {
+            if (runIndex < 0)
+                return;
+
+            // If we are ending the current run we want to expand our control on the secondary axis
+            //  to account for the size of the current run
+            ref var completedRun = ref Run(runIndex);
+
+            if (control.Flags.IsFlagged(ControlFlags.Container_Column))
+                result.Rect.Width += completedRun.MaxWidth;
+            else
+                result.Rect.Height += completedRun.MaxHeight;
+        }
+
         private ref ControlLayoutRun Pass1_UpdateRun (
             // TODO: These aren't necessary, remove them?
             ref ControlRecord control, ref ControlLayoutResult result, 
             ref ControlRecord child, ref ControlLayoutResult childResult, 
             float childWidth, float childHeight, ref int currentRunIndex
         ) {
-            bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
-                isBreak = child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
-
-            if (isBreak && currentRunIndex >= 0) {
-                // If we are ending the current run we want to expand our control on the secondary axis
-                //  to account for the size of the current run
-                ref var previousRun = ref Run(currentRunIndex);
-                if (vertical)
-                    result.Rect.Width += previousRun.MaxWidth;
-                else
-                    result.Rect.Height += previousRun.MaxHeight;
-            }
+            bool isBreak = child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
+            var previousRunIndex = currentRunIndex;
 
             // We still generate runs even if a control is stacked/floating
             // This ensures that you can enumerate all of a control's children by enumerating its runs
             // We will then skip stacked/floating controls when enumerating runs (as appropriate)
             ref var run = ref Pass1_SelectRun(ref currentRunIndex, isBreak);
+            if (currentRunIndex != previousRunIndex)
+                Pass1_ExpandForCompletedRun(ref control, ref result, previousRunIndex);
 
             if (result.FirstRunIndex < 0)
                 result.FirstRunIndex = currentRunIndex;

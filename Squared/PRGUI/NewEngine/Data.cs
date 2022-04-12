@@ -63,6 +63,11 @@ namespace Squared.PRGUI.NewEngine {
         public Vector2 FloatingPosition;
         public Layout.LayoutTags Tag;
 
+#if DEBUG
+        // FIXME: Remove this
+        public Control Control;
+#endif
+
         public Layout.ControlFlags LayoutFlags {
             get => Flags & Layout.ControlFlagMask.Layout;
             set {
