@@ -164,6 +164,19 @@ namespace Squared.PRGUI.Layout {
                 IsFlagged(flags, ControlFlags.Layout_ForceBreak);
         }
 
+        public static bool IsStackedOrFloating (this ControlFlags flags) {
+            return IsFlagged(flags, ControlFlags.Layout_Stacked) || IsFlagged(flags, ControlFlags.Layout_Floating);
+        }
+
+        public static bool IsBreakDimension (this ControlFlags containerFlags, LayoutDimensions dim) {
+            if (dim == LayoutDimensions.X)
+                return containerFlags.IsFlagged(ControlFlags.Container_Row);
+            else if (dim == LayoutDimensions.Y)
+                return containerFlags.IsFlagged(ControlFlags.Container_Column);
+            else
+                throw new ArgumentOutOfRangeException(nameof(dim));
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsFlagged (this ControlFlags flags, ControlFlags flag) {
             var masked = (uint)(flags & flag);

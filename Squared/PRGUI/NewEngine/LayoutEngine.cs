@@ -128,6 +128,11 @@ namespace Squared.PRGUI.NewEngine {
             return new ChildrenEnumerable(this, parent);
         }
 
+        public SiblingsEnumerable Enumerate (ControlKey first) {
+            Assert(!first.IsInvalid);
+            return new SiblingsEnumerable(this, first);
+        }
+
         internal ref ControlLayoutResult UnsafeResult (ControlKey key) {
             return ref Results[key.ID];
         }
