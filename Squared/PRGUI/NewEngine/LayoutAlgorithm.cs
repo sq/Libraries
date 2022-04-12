@@ -299,7 +299,10 @@ namespace Squared.PRGUI.NewEngine {
 
             ControlKey firstProcessed = ControlKey.Invalid,
                 lastProcessed = ControlKey.Invalid;
-            bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
+            bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
+                clipAny = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Size),
+                clipX = clipAny && !control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X),
+                clipY = clipAny && !control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y);
             float w = result.ContentRect.Width, h = result.ContentRect.Height,
                 x = 0, y = 0;
 
@@ -321,23 +324,32 @@ namespace Squared.PRGUI.NewEngine {
                     lastProcessed = ckey;
                     ref var child = ref this[ckey];
                     ref var childResult = ref Result(ckey);
+                    var margins = child.Margins;
 
                     if (child.Flags.IsStackedOrFloating()) {
                         if (child.Flags.IsFlagged(ControlFlags.Layout_Floating))
                             childResult.Rect.Position = child.FloatingPosition;
                         else
                             // FIXME: shrink to margins?
-                            childResult.Rect.Position = result.ContentRect.Position + new Vector2(child.Margins.Left, child.Margins.Top);
+                            childResult.Rect.Position = result.ContentRect.Position + new Vector2(margins.Left, margins.Top);
                     } else {
-                        childResult.Rect.Left = result.ContentRect.Left + child.Margins.Left + x;
-                        childResult.Rect.Top = result.ContentRect.Top + child.Margins.Top + y;
+                        childResult.Rect.Left = result.ContentRect.Left + margins.Left + x;
+                        childResult.Rect.Top = result.ContentRect.Top + margins.Top + y;
                         if (vertical)
-                            y += childResult.Rect.Height + child.Margins.Y;
+                            y += childResult.Rect.Height + margins.Y;
                         else
-                            x += childResult.Rect.Width + child.Margins.X;
+                            x += childResult.Rect.Width + margins.X;
                     }
 
-                    // FIXME: Constrain rects to parent rect
+                    // TODO: Clip left/top edges as well?
+                    if (clipX) {
+                        var rightEdge = result.ContentRect.Right - margins.Right;
+                        childResult.Rect.Width = Math.Max(0, Math.Min(childResult.Rect.Width, rightEdge - childResult.Rect.Left));
+                    }
+                    if (clipY) {
+                        var bottomEdge = result.ContentRect.Bottom - margins.Bottom;
+                        childResult.Rect.Height = Math.Max(0, Math.Min(childResult.Rect.Height, bottomEdge - childResult.Rect.Top));
+                    }
 
                     Pass3_Arrange(ref child, ref childResult);
                 }

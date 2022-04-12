@@ -491,6 +491,9 @@ namespace Squared.PRGUI {
             }
         }
 
+        public float Right => Left + Width;
+        public float Bottom => Top + Height;
+
         public bool Intersection (in RectF rhs, out RectF result) {
             var e1 = Extent;
             var e2 = rhs.Extent;
