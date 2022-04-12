@@ -135,23 +135,15 @@ namespace Squared.PRGUI.NewEngine {
         public void GetAlignmentF (ControlFlags containerFlags, out float x, out float y) {
             x = y = 0;
 
-            if ((XAnchor ?? ControlFlags.Layout_Fill_Row) != ControlFlags.Layout_Fill_Row) {
-                if (XAnchor.Value.IsFlagged(ControlFlags.Layout_Anchor_Left))
-                    x = 0f;
-                else if (XAnchor.Value.IsFlagged(ControlFlags.Layout_Anchor_Right))
-                    x = 1f;
-                else
-                    x = 0.5f;
+            // FIXME: Not sure this is working
+
+            if ((XAnchor ?? default) != default) {
+                XAnchor.Value.GetAlignmentF(out x, out _);
             } else if (containerFlags.IsFlagged(ControlFlags.Container_Row))
                 x = containerFlags.GetContainerAlignmentF();
 
-            if ((YAnchor ?? ControlFlags.Layout_Fill_Column) != ControlFlags.Layout_Fill_Column) {
-                if (YAnchor.Value.IsFlagged(ControlFlags.Layout_Anchor_Top))
-                    y = 0f;
-                else if (YAnchor.Value.IsFlagged(ControlFlags.Layout_Anchor_Bottom))
-                    y = 1f;
-                else
-                    y = 0.5f;
+            if ((YAnchor ?? default) != default) {
+                YAnchor.Value.GetAlignmentF(out x, out y);
             } else if (containerFlags.IsFlagged(ControlFlags.Container_Column))
                 y = containerFlags.GetContainerAlignmentF();
         }

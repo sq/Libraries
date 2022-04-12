@@ -159,6 +159,30 @@ namespace Squared.PRGUI.Layout {
     }
 
     public static class PRGUIExtensions {
+        // HACK: The most 'natural' outcome when no alignment is requested or fill was requested
+        //  is to flush things to the left and vertically center them :(
+        const float DefaultXAlignment = 0f, DefaultYAlignment = 0.5f;
+
+        public static void GetAlignmentF (this ControlFlags flags, out float x, out float y) {
+            if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
+                x = DefaultXAlignment;
+            else if (flags.IsFlagged(ControlFlags.Layout_Anchor_Right))
+                x = 1.0f;
+            else if (flags.IsFlagged(ControlFlags.Layout_Anchor_Left))
+                x = 0f;
+            else
+                x = DefaultXAlignment;
+
+            if (flags.IsFlagged(ControlFlags.Layout_Fill_Column))
+                y = DefaultYAlignment;
+            else if (flags.IsFlagged(ControlFlags.Layout_Anchor_Bottom))
+                y = 1.0f;
+            else if (flags.IsFlagged(ControlFlags.Layout_Anchor_Top))
+                y = 0f;
+            else
+                y = DefaultYAlignment;
+        }
+
         public static float GetContainerAlignmentF (this ControlFlags flags) {
             if (flags.IsFlagged(ControlFlags.Container_Align_End))
                 return 1f;

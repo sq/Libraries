@@ -160,6 +160,21 @@ namespace Squared.PRGUI.NewEngine {
             if (child.Flags.IsStackedOrFloating())
                 return ref run;
 
+            var xAnchor = child.Flags & ControlFlags.Layout_Fill_Row;
+            var yAnchor = child.Flags & ControlFlags.Layout_Fill_Column;
+            if ((xAnchor != ControlFlags.Layout_Fill_Row) && (xAnchor != default)) {
+                if (run.XAnchor == null)
+                    run.XAnchor = xAnchor;
+                else if (run.XAnchor != xAnchor)
+                    run.XAnchor = default;
+            }
+            if ((yAnchor != ControlFlags.Layout_Fill_Column) && (yAnchor != default)) {
+                if (run.YAnchor == null)
+                    run.YAnchor = yAnchor;
+                else if (run.YAnchor != yAnchor)
+                    run.YAnchor = default;
+            }
+
             run.FlowCount++;
             if (ShouldExpand(ref control, ref child, LayoutDimensions.X))
                 run.ExpandCountX++;
@@ -320,7 +335,8 @@ namespace Squared.PRGUI.NewEngine {
                 ref var run = ref Run(runIndex);
                 float rw = vertical ? run.MaxWidth : run.TotalWidth,
                     rh = vertical ? run.TotalHeight : run.MaxHeight,
-                    space = vertical ? h - rh : w - rw;
+                    space = vertical ? h - rh : w - rw,
+                    baseline = vertical ? run.MaxWidth : run.MaxHeight;
 
                 run.GetAlignmentF(control.Flags, out float xAlign, out float yAlign);
 
@@ -343,14 +359,24 @@ namespace Squared.PRGUI.NewEngine {
                             // FIXME: shrink to margins?
                             : new Vector2(margins.Left, margins.Top);
 
+                        // FIXME: If stacked with size constraints, perform alignment
                         childResult.Rect.Position = result.ContentRect.Position + offset;
                     } else {
+                        child.Flags.GetAlignmentF(out float xChildAlign, out float yChildAlign);
                         childResult.Rect.Left = result.ContentRect.Left + margins.Left + x;
                         childResult.Rect.Top = result.ContentRect.Top + margins.Top + y;
-                        if (vertical)
+
+                        if (vertical) {
+                            var alignment = (xChildAlign * Math.Max(0, baseline - childResult.Rect.Width));
+                            if (alignment != 0)
+                                childResult.Rect.Left += alignment;
                             y += childResult.Rect.Height + margins.Y;
-                        else
+                        } else {
+                            var alignment = (yChildAlign * Math.Max(0, baseline - childResult.Rect.Height));
+                            if (alignment != 0)
+                                childResult.Rect.Top += alignment;
                             x += childResult.Rect.Width + margins.X;
+                        }
                     }
 
                     // TODO: Apply control anchoring
