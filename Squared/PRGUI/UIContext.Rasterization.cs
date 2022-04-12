@@ -14,6 +14,8 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public sealed partial class UIContext : IDisposable {
+        internal static bool UseNewEngine = false;
+
         /// <summary>
         /// Performance stats
         /// </summary>
@@ -340,7 +342,7 @@ namespace Squared.PRGUI {
             using (var outerGroup = BatchGroup.New(frame, layer, name: "Rasterize UI"))
             using (var prepassGroup = BatchGroup.New(outerGroup, -999, name: "Prepass"))
             using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass")) {
-                if (true)
+                if (true || !UseNewEngine)
                     Rasterize(rtBatch, 0, prepassGroup, 0, clearColor: Color.Transparent);
                 else
                     DebugNewRasterize(rtBatch, 1);

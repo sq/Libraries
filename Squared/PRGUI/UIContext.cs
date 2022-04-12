@@ -318,18 +318,23 @@ namespace Squared.PRGUI {
 
             try {
                 Layout.Clear();
-                Engine.Clear();
+                if (UseNewEngine)
+                    Engine.Clear();
 
                 DoUpdateLayoutInternal(ref context, false);
                 Layout.Update();
-                SyncEngines();
-                Engine.Update();
+                if (UseNewEngine) {
+                    SyncEngines();
+                    Engine.Update();
+                }
 
                 if (NotifyLayoutListeners(ref context)) {
                     DoUpdateLayoutInternal(ref context, true);
                     Layout.Update();
-                    SyncEngines();
-                    Engine.Update();
+                    if (UseNewEngine) {
+                        SyncEngines();
+                        Engine.Update();
+                    }
                     NotifyLayoutListeners(ref context);
                 }
             } finally {

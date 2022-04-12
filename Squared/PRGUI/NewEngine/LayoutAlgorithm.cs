@@ -341,6 +341,8 @@ namespace Squared.PRGUI.NewEngine {
                             x += childResult.Rect.Width + margins.X;
                     }
 
+                    // TODO: Apply control anchoring
+
                     // TODO: Clip left/top edges as well?
                     if (clipX) {
                         var rightEdge = result.ContentRect.Right - margins.Right;

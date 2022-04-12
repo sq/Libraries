@@ -621,7 +621,7 @@ namespace Squared.PRGUI {
 
             context = context ?? Context;
             RectF result;
-            if (true) {
+            if (UIContext.UseNewEngine) {
                 ref var res = ref context.Engine.Result(LayoutKey);
                 result = contentRect ? res.ContentRect : res.Rect;
             } else {
