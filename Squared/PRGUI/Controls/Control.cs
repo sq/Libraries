@@ -574,13 +574,15 @@ namespace Squared.PRGUI {
                         context.PostLayoutListeners?.Add(listener);
                 }
 
-                ref var rec = ref context.Engine[LayoutKey];
-                if (context.Layout.TryGetFlags(LayoutKey, out ControlFlags cf))
-                    rec.Flags = cf;
+                if (UIContext.UseNewEngine) {
+                    ref var rec = ref context.Engine[LayoutKey];
+                    if (context.Layout.TryGetFlags(LayoutKey, out ControlFlags cf))
+                        rec.Flags = cf;
 
-#if DEBUG
-                rec.Control = this;
-#endif
+    #if DEBUG
+                    rec.Control = this;
+    #endif
+                }
             } finally {
                 if (Appearance.DecorationProvider != null)
                     UIOperationContext.PopDecorationProvider(ref context);

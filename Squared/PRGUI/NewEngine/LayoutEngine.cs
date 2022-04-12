@@ -51,6 +51,7 @@ namespace Squared.PRGUI.NewEngine {
             Clear();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref ControlRecord Root () {
             return ref Records[0];
         }
@@ -59,6 +60,7 @@ namespace Squared.PRGUI.NewEngine {
         /// Returns a reference to the control's configuration. Throws if key is invalid.
         /// </summary>
         public ref ControlRecord this [ControlKey key] {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 // FIXME: Because we are sharing IDs
                 // if (key.ID < 0 || key.ID >= _Count)
@@ -72,11 +74,13 @@ namespace Squared.PRGUI.NewEngine {
         /// <summary>
         /// Returns a reference to the item (or an invalid dummy item)
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref ControlRecord UnsafeItem (ControlKey key) => ref UnsafeItem(key.ID);
 
         /// <summary>
         /// Returns a reference to the item (or an invalid dummy item)
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref ControlRecord UnsafeItem (int index) {
             // FIXME: Because we are sharing IDs
             // if ((index < 0) || (index >= _Count))
@@ -133,10 +137,12 @@ namespace Squared.PRGUI.NewEngine {
             return new SiblingsEnumerable(this, first, last);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal ref ControlLayoutResult UnsafeResult (ControlKey key) {
             return ref Results[key.ID];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref ControlLayoutResult Result (ControlKey key) {
             if ((key.ID < 0) || (key.ID >= Results.Length))
                 throw new ArgumentOutOfRangeException(nameof(key));

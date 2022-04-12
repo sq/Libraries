@@ -21,6 +21,9 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI {
     public sealed partial class UIContext : IDisposable {
+        // Enables the (experimental, super broken) new layout engine
+        internal const bool UseNewEngine = true;
+
         public static readonly HashSet<Keys> ModifierKeys = new HashSet<Keys> {
             Keys.LeftAlt,
             Keys.LeftControl,

@@ -10,12 +10,14 @@ using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref ControlLayoutRun Run (int index) {
             if ((index < 0) || (index >= _RunCount))
                 throw new ArgumentOutOfRangeException(nameof(index));
             return ref RunBuffer[index];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref ControlLayoutRun PushRun (out int index) {
             return ref InsertRun(out index, -1);
         }
@@ -35,6 +37,7 @@ namespace Squared.PRGUI.NewEngine {
             return ref result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref ControlLayoutRun GetOrPushRun (ref int index) {
             if (index < 0)
                 return ref PushRun(out index);
@@ -64,7 +67,9 @@ namespace Squared.PRGUI.NewEngine {
                 return;
 
             bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
-                wrap = control.Flags.IsFlagged(ControlFlags.Container_Wrap);
+                wrap = control.Flags.IsFlagged(ControlFlags.Container_Wrap),
+                noExpandX = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_X),
+                noExpandY = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_Y);
             float padX = control.Padding.X, padY = control.Padding.Y;
             var currentRunIndex = -1;
             foreach (var ckey in Children(control.Key)) {
@@ -80,24 +85,28 @@ namespace Squared.PRGUI.NewEngine {
                 );
 
                 // At a minimum we should be able to hold all our children if they were stacked on each other
-                result.Rect.Width = Math.Max(result.Rect.Width, w + padX);
-                result.Rect.Height = Math.Max(result.Rect.Height, h + padY);
+                if (!noExpandX)
+                    result.Rect.Width = Math.Max(result.Rect.Width, w + padX);
+                if (!noExpandY)
+                    result.Rect.Height = Math.Max(result.Rect.Height, h + padY);
                 // If we're not in wrapped mode, we will try to expand to hold our largest run
                 if (!wrap) {
-                    if (vertical)
+                    if (vertical && !noExpandY)
                         result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
-                    else
+                    else if (!noExpandX)
                         result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
                 }
             }
 
-            Pass1_ExpandForCompletedRun(ref control, ref result, currentRunIndex);
+            Pass1_IncreaseContentSizeForCompletedRun(ref control, ref result, currentRunIndex);
 
             // We have our minimum size in result.Rect and the size of all our content in result.ContentRect
             // Now we add padding to the contentrect and pick the biggest of the two
             // This gives us proper autosize for non-forced-wrap
-            result.Rect.Width = Math.Max(result.Rect.Width, result.ContentRect.Width + padX);
-            result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
+            if (!noExpandX)
+                result.Rect.Width = Math.Max(result.Rect.Width, result.ContentRect.Width + padX);
+            if (!noExpandY)
+                result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
 
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
@@ -110,7 +119,7 @@ namespace Squared.PRGUI.NewEngine {
                 return ref GetOrPushRun(ref currentRunIndex);
         }
 
-        private void Pass1_ExpandForCompletedRun (
+        private void Pass1_IncreaseContentSizeForCompletedRun (
             ref ControlRecord control, ref ControlLayoutResult result, int runIndex
         ) {
             if (runIndex < 0)
@@ -140,7 +149,7 @@ namespace Squared.PRGUI.NewEngine {
             // We will then skip stacked/floating controls when enumerating runs (as appropriate)
             ref var run = ref Pass1_SelectRun(ref currentRunIndex, isBreak);
             if (currentRunIndex != previousRunIndex)
-                Pass1_ExpandForCompletedRun(ref control, ref result, previousRunIndex);
+                Pass1_IncreaseContentSizeForCompletedRun(ref control, ref result, previousRunIndex);
 
             if (result.FirstRunIndex < 0)
                 result.FirstRunIndex = currentRunIndex;
@@ -198,25 +207,30 @@ namespace Squared.PRGUI.NewEngine {
                     minWidth = vertical ? run.MaxWidth : 0,
                     minHeight = vertical ? 0 : run.MaxHeight;
 
-                int allowedPasses = 3;
-                while (allowedPasses-- >= 0) {
+                for (int pass = 0; pass < 3; pass++) {
                     if (countX < 1)
                         xSpace = 0;
                     if (countY < 1)
                         ySpace = 0;
 
-                    if ((xSpace <= 1) && (ySpace <= 1))
+                    // Always run a single pass so we can expand controls along the secondary axis to fit their run
+                    if ((xSpace <= 1) && (ySpace <= 1) && (pass > 0))
                         break;
 
                     foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                         ref var child = ref this[ckey];
                         ref var childResult = ref Result(ckey);
+                        var margins = child.Margins;
                         bool expandX = child.Flags.IsFlagged(ControlFlags.Layout_Fill_Row),
                             expandY = child.Flags.IsFlagged(ControlFlags.Layout_Fill_Column);
-                        float amountX = xSpace / countX, amountY = ySpace / countY;
+                        float amountX = countX > 0 ? xSpace / countX : 0, amountY = countY > 0 ? ySpace / countY : 0;
 
-                        if (child.Flags.IsStackedOrFloating()) {
-                            // TODO: Expand stacked controls?
+                        if (child.Flags.IsFlagged(ControlFlags.Layout_Floating)) {
+                        } else if (child.Flags.IsFlagged(ControlFlags.Layout_Stacked)) {
+                            if (expandX)
+                                childResult.Rect.Width = child.Width.Constrain(w - child.Margins.X, true);
+                            if (expandY)
+                                childResult.Rect.Height = child.Height.Constrain(h - child.Margins.Y, true);
                         } else {
                             float childW = childResult.Rect.Width, 
                                 childH = childResult.Rect.Height;
@@ -232,7 +246,7 @@ namespace Squared.PRGUI.NewEngine {
                             //  run includes the margins of the controls)
 
                             if (expandX) {
-                                childW = Math.Max(childW + amountX, minWidth - child.Margins.X);
+                                childW = Math.Max(childW + amountX, minWidth - margins.X);
                                 child.Width.Constrain(ref childW, true);
                                 float expanded = childW - childResult.Rect.Width;
                                 if (expanded < amountX)
@@ -244,7 +258,7 @@ namespace Squared.PRGUI.NewEngine {
                             }
 
                             if (expandY) {
-                                childH = Math.Max(childH + amountY, minHeight - child.Margins.Y);
+                                childH = Math.Max(childH + amountY, minHeight - margins.Y);
                                 child.Height.Constrain(ref childH, true);
                                 float expanded = childH - childResult.Rect.Height;
                                 if (expanded < amountY)
@@ -263,9 +277,6 @@ namespace Squared.PRGUI.NewEngine {
                     ySpace = newYSpace;
                 }
 
-                if (allowedPasses < 0)
-                    ;
-
                 // HACK: It would be ideal if we could do this in the previous loop
                 foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                     ref var child = ref this[ckey];
@@ -276,15 +287,14 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         private bool ShouldExpand (ref ControlRecord parent, ref ControlRecord child, LayoutDimensions dim) {
-            var fill = (dim == LayoutDimensions.X)
+            // If a control is fixed size there's no point in trying to expand it
+            // TODO: Also detect min==max
+            if (child.Size(dim).Fixed.HasValue)
+                return false;
+
+            return (dim == LayoutDimensions.X)
                 ? child.Flags.IsFlagged(ControlFlags.Layout_Fill_Row)
                 : child.Flags.IsFlagged(ControlFlags.Layout_Fill_Column);
-            if (!fill)
-                return false;
-            var ne = (dim == LayoutDimensions.X)
-                ? parent.Flags.IsFlagged(ControlFlags.Container_No_Expansion_X)
-                : parent.Flags.IsFlagged(ControlFlags.Container_No_Expansion_Y);
-            return !ne;
         }
 
         #endregion

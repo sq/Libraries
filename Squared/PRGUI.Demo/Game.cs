@@ -836,7 +836,7 @@ namespace PRGUI.Demo {
                 { textTab, "Text Size" },
                 { listLayoutTab, "List Layout" },
             };
-            tabs.SelectedIndex = 1;
+            tabs.SelectedIndex = 2;
             tabs.TabsOnLeft = false;
             tabs.ExpandToHoldAllTabs = true;
             tabs.LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top;
@@ -1157,7 +1157,7 @@ namespace PRGUI.Demo {
             renderer.AutoIncrementLayer = true;
             renderer.RasterizeRectangle(contentRect.Position, contentRect.Extent, 0f, Color.Red);
             renderer.RasterizeEllipse(position, new Vector2(16f), 1f, Color.White, Color.Black, Color.Blue);
-            throw new Exception("test");
+            // throw new Exception("test");
         }
 
         private void BuildLoginWindow (ref ContainerBuilder builder) {

@@ -14,8 +14,6 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public sealed partial class UIContext : IDisposable {
-        internal static bool UseNewEngine = false;
-
         /// <summary>
         /// Performance stats
         /// </summary>
