@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using ControlKey = Squared.PRGUI.Layout.ControlKey;
 using ControlFlags = Squared.PRGUI.Layout.ControlFlags;
 using LayoutDimensions = Squared.PRGUI.Layout.LayoutDimensions;
+using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.NewEngine {
     public static class DataExtensions {
@@ -121,6 +122,7 @@ namespace Squared.PRGUI.NewEngine {
         public int FlowCount, ExpandCountX, ExpandCountY;
         public float TotalWidth, TotalHeight, MaxWidth, MaxHeight;
         public int NextRunIndex;
+        public ControlFlags? XAnchor, YAnchor;
 
         public override string ToString () {
             if (First.IsInvalid || Last.IsInvalid)
@@ -128,6 +130,30 @@ namespace Squared.PRGUI.NewEngine {
 
             var tail = (NextRunIndex < 0) ? " end" : " ...";
             return $"{First}..{Last} flow={FlowCount} expandX={ExpandCountX} expandY={ExpandCountY}{tail}";
+        }
+
+        public void GetAlignmentF (ControlFlags containerFlags, out float x, out float y) {
+            x = y = 0;
+
+            if ((XAnchor ?? ControlFlags.Layout_Fill_Row) != ControlFlags.Layout_Fill_Row) {
+                if (XAnchor.Value.IsFlagged(ControlFlags.Layout_Anchor_Left))
+                    x = 0f;
+                else if (XAnchor.Value.IsFlagged(ControlFlags.Layout_Anchor_Right))
+                    x = 1f;
+                else
+                    x = 0.5f;
+            } else if (containerFlags.IsFlagged(ControlFlags.Container_Row))
+                x = containerFlags.GetContainerAlignmentF();
+
+            if ((YAnchor ?? ControlFlags.Layout_Fill_Column) != ControlFlags.Layout_Fill_Column) {
+                if (YAnchor.Value.IsFlagged(ControlFlags.Layout_Anchor_Top))
+                    y = 0f;
+                else if (YAnchor.Value.IsFlagged(ControlFlags.Layout_Anchor_Bottom))
+                    y = 1f;
+                else
+                    y = 0.5f;
+            } else if (containerFlags.IsFlagged(ControlFlags.Container_Column))
+                y = containerFlags.GetContainerAlignmentF();
         }
     }
 }

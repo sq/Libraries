@@ -221,8 +221,8 @@ namespace Squared.PRGUI.NewEngine {
                         ref var child = ref this[ckey];
                         ref var childResult = ref Result(ckey);
                         var margins = child.Margins;
-                        bool expandX = child.Flags.IsFlagged(ControlFlags.Layout_Fill_Row),
-                            expandY = child.Flags.IsFlagged(ControlFlags.Layout_Fill_Column);
+                        bool expandX = child.Flags.IsFlagged(ControlFlags.Layout_Fill_Row) && !child.Width.Fixed.HasValue,
+                            expandY = child.Flags.IsFlagged(ControlFlags.Layout_Fill_Column) && !child.Height.Fixed.HasValue;
                         float amountX = countX > 0 ? xSpace / countX : 0, amountY = countY > 0 ? ySpace / countY : 0;
 
                         if (child.Flags.IsFlagged(ControlFlags.Layout_Floating)) {
@@ -320,13 +320,14 @@ namespace Squared.PRGUI.NewEngine {
                 ref var run = ref Run(runIndex);
                 float rw = vertical ? run.MaxWidth : run.TotalWidth,
                     rh = vertical ? run.TotalHeight : run.MaxHeight,
-                    space = vertical ? h - rh : w - rw,
-                    alignWeight = control.Flags.GetContainerAlignmentF();
+                    space = vertical ? h - rh : w - rw;
+
+                run.GetAlignmentF(control.Flags, out float xAlign, out float yAlign);
 
                 if (vertical)
-                    y = space * alignWeight;
+                    y = space * yAlign;
                 else
-                    x = space * alignWeight;
+                    x = space * xAlign;
 
                 foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                     if (firstProcessed.IsInvalid)
