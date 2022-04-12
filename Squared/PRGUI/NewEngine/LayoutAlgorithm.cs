@@ -65,11 +65,16 @@ namespace Squared.PRGUI.NewEngine {
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
+
                 Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1);
                 Pass1_UpdateRun(
                     ref control, ref result, ref child, ref childResult, 
                     ref currentRunIndex
                 );
+
+                // At a minimum we should be able to hold all our children if they were stacked on each other
+                result.Rect.Width = Math.Max(result.Rect.Width, childResult.Rect.Width);
+                result.Rect.Height = Math.Max(result.Rect.Height, childResult.Rect.Height);
             }
 
             control.Width.Constrain(ref result.Rect.Width, true);
@@ -89,15 +94,25 @@ namespace Squared.PRGUI.NewEngine {
             ref ControlRecord child, ref ControlLayoutResult childResult, 
             ref int currentRunIndex
         ) {
+            // We still generate runs even if a control is stacked/floating
+            // This ensures that you can enumerate all of a control's children by enumerating its runs
+            // We will then skip stacked/floating controls when enumerating runs (as appropriate)
+            ref var run = ref Pass1_SelectRun(ref currentRunIndex, child.Flags.IsFlagged(ControlFlags.Internal_Break));
+
+            if (result.FirstRunIndex < 0)
+                result.FirstRunIndex = currentRunIndex;
+            if (run.First.IsInvalid)
+                run.First = child.Key;
+            run.Last = child.Key;
+
             if (child.Flags.IsStackedOrFloating())
                 return;
 
-            ref var run = ref Pass1_SelectRun(ref currentRunIndex, child.Flags.IsFlagged(ControlFlags.Internal_Break));
+            run.FlowCount++;
             if (ShouldExpand(ref control, ref child, LayoutDimensions.X))
                 run.ExpandCountX++;
             if (ShouldExpand(ref control, ref child, LayoutDimensions.Y))
                 run.ExpandCountY++;
-            run.Count++;
             run.MaxWidth = Math.Max(run.MaxWidth, childResult.Rect.Width);
             run.MaxHeight = Math.Max(run.MaxHeight, childResult.Rect.Height);
             run.TotalWidth += childResult.Rect.Width;
@@ -148,11 +163,24 @@ namespace Squared.PRGUI.NewEngine {
             result.ContentRect.Width -= control.Padding.X;
             result.ContentRect.Height -= control.Padding.Y;
 
-            foreach (var ckey in Children(control.Key)) {
-                ref var child = ref this[ckey];
-                ref var childResult = ref Result(ckey);
-                Pass3_Arrange(ref child, ref childResult);
+            ControlKey firstProcessed = ControlKey.Invalid,
+                lastProcessed = ControlKey.Invalid;
+
+            foreach (var runIndex in Runs(control.Key)) {
+                ref var run = ref Run(runIndex);
+
+                foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
+                    if (firstProcessed.IsInvalid)
+                        firstProcessed = ckey;
+                    lastProcessed = ckey;
+                    ref var child = ref this[ckey];
+                    ref var childResult = ref Result(ckey);                    
+                    Pass3_Arrange(ref child, ref childResult);
+                }
             }
+
+            Assert(firstProcessed == control.FirstChild);
+            Assert(lastProcessed == control.LastChild);
         }
         #endregion
 

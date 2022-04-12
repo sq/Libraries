@@ -12,13 +12,15 @@ namespace Squared.PRGUI.NewEngine {
         public unsafe struct SiblingEnumerator : IEnumerator<ControlKey> {
             public readonly LayoutEngine Engine;
             public readonly ControlKey FirstItem;
+            public readonly ControlKey? LastItem;
             private bool Started;
             private int Version;
 
-            public SiblingEnumerator (LayoutEngine engine, ControlKey firstItem) {
+            public SiblingEnumerator (LayoutEngine engine, ControlKey firstItem, ControlKey? lastItem) {
                 Engine = engine;
                 Version = engine.Version;
                 FirstItem = firstItem;
+                LastItem = lastItem;
                 Started = false;
                 Current = ControlKey.Invalid;
             }
@@ -50,7 +52,9 @@ namespace Squared.PRGUI.NewEngine {
                     Current = FirstItem;
                 } else {
                     ref var pCurrent = ref Engine[Current];
-                    if (pCurrent.NextSibling.IsInvalid)
+                    if (Current == LastItem)
+                        Current = ControlKey.Invalid;
+                    else if (pCurrent.NextSibling.IsInvalid)
                         Current = ControlKey.Invalid;
                     else
                         Current = pCurrent.NextSibling;
@@ -68,14 +72,16 @@ namespace Squared.PRGUI.NewEngine {
         public struct SiblingsEnumerable : IEnumerable<ControlKey> {
             public readonly LayoutEngine Engine;
             public readonly ControlKey FirstItem;
+            public readonly ControlKey? LastItem;
 
-            internal SiblingsEnumerable (LayoutEngine engine, ControlKey firstItem) {
+            internal SiblingsEnumerable (LayoutEngine engine, ControlKey firstItem, ControlKey? lastItem) {
                 Engine = engine;
                 FirstItem = firstItem;
+                LastItem = lastItem;
             }
 
             public SiblingEnumerator GetEnumerator () {
-                return new SiblingEnumerator(Engine, FirstItem);
+                return new SiblingEnumerator(Engine, FirstItem, LastItem);
             }
 
             IEnumerator<ControlKey> IEnumerable<ControlKey>.GetEnumerator () {
@@ -97,8 +103,8 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             public SiblingEnumerator GetEnumerator () {
-                var firstItem = Engine[Parent].FirstChild;
-                return new SiblingEnumerator(Engine, firstItem);
+                ref var rec = ref Engine[Parent];
+                return new SiblingEnumerator(Engine, rec.FirstChild, rec.LastChild);
             }
 
             IEnumerator<ControlKey> IEnumerable<ControlKey>.GetEnumerator () {

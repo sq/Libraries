@@ -128,9 +128,9 @@ namespace Squared.PRGUI.NewEngine {
             return new ChildrenEnumerable(this, parent);
         }
 
-        public SiblingsEnumerable Enumerate (ControlKey first) {
+        public SiblingsEnumerable Enumerate (ControlKey first, ControlKey? last = null) {
             Assert(!first.IsInvalid);
-            return new SiblingsEnumerable(this, first);
+            return new SiblingsEnumerable(this, first, last);
         }
 
         internal ref ControlLayoutResult UnsafeResult (ControlKey key) {

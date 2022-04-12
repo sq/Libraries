@@ -112,7 +112,7 @@ namespace Squared.PRGUI.NewEngine {
 
     internal struct ControlLayoutRun {
         public ControlKeyDefaultInvalid First, Last;
-        public int Count, ExpandCountX, ExpandCountY;
+        public int FlowCount, ExpandCountX, ExpandCountY;
         public float TotalWidth, TotalHeight, MaxWidth, MaxHeight;
         public int NextRunIndex;
     }
