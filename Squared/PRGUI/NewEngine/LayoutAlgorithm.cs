@@ -194,7 +194,9 @@ namespace Squared.PRGUI.NewEngine {
                 // FIXME: Figure out how to expand secondary axis
                 float xSpace = vertical ? 0f : w - run.TotalWidth,
                     ySpace = vertical ? h - run.TotalHeight : 0,
-                    newXSpace = xSpace, newYSpace = ySpace;
+                    newXSpace = xSpace, newYSpace = ySpace,
+                    minWidth = vertical ? run.MaxWidth : 0,
+                    minHeight = vertical ? 0 : run.MaxHeight;
 
                 int allowedPasses = 3;
                 while (allowedPasses-- >= 0) {
@@ -219,8 +221,18 @@ namespace Squared.PRGUI.NewEngine {
                             float childW = childResult.Rect.Width, 
                                 childH = childResult.Rect.Height;
 
+                            // When expanding an axis, we will either have an expansion amount or a minimum
+                            //  size. In the former case we want to make sure that any remaining expansion
+                            //  (due to hitting a size constraint) is redistributed to the remaining controls
+                            // In the latter case we want to just expand to hit the minimum (if possible).
+                            // This would normally reduce the remaining space but we won't have any space
+                            //  in minimum mode since expansion amount and minimum are mutually exclusive
+                            // When expanding to hit a minimum we need to subtract our control's margins
+                            //  from the minimum, since each control has different margins (the size of a
+                            //  run includes the margins of the controls)
+
                             if (expandX) {
-                                childW += amountX;
+                                childW = Math.Max(childW + amountX, minWidth - child.Margins.X);
                                 child.Width.Constrain(ref childW, true);
                                 float expanded = childW - childResult.Rect.Width;
                                 if (expanded < amountX)
@@ -232,7 +244,7 @@ namespace Squared.PRGUI.NewEngine {
                             }
 
                             if (expandY) {
-                                childH += amountY;
+                                childH = Math.Max(childH + amountY, minHeight - child.Margins.Y);
                                 child.Height.Constrain(ref childH, true);
                                 float expanded = childH - childResult.Rect.Height;
                                 if (expanded < amountY)
@@ -279,16 +291,15 @@ namespace Squared.PRGUI.NewEngine {
 
         #region Pass 3: arrange
         private void Pass3_Arrange (ref ControlRecord control, ref ControlLayoutResult result) {
-            // FIXME
             result.ContentRect = result.Rect;
             result.ContentRect.Left += control.Padding.Left;
             result.ContentRect.Top += control.Padding.Top;
-            result.ContentRect.Width -= control.Padding.X;
-            result.ContentRect.Height -= control.Padding.Y;
+            result.ContentRect.Width = Math.Max(0, result.ContentRect.Width - control.Padding.X);
+            result.ContentRect.Height = Math.Max(0, result.ContentRect.Height - control.Padding.Y);
 
             ControlKey firstProcessed = ControlKey.Invalid,
                 lastProcessed = ControlKey.Invalid;
-            var vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
+            bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
             float w = result.ContentRect.Width, h = result.ContentRect.Height,
                 x = 0, y = 0;
 

@@ -990,7 +990,7 @@ namespace PRGUI.Demo {
                             TextColor = Tween.StartNow(Color.White, Color.White * 0.5f, 2f, repeatCount: int.MaxValue, repeatMode: TweenRepeatMode.PulseExp)
                         }
                     },
-                    // bigScrollableContainer
+                    bigScrollableContainer
                 }
             };
 
