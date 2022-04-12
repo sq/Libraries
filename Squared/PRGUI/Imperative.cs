@@ -472,7 +472,8 @@ namespace Squared.PRGUI.Imperative {
             Flags.ChildAlignment? alignment = null,
             Flags.ChildArrangement? arrangement = null,
             bool? constrainSize = null, bool? noExpansion = null,
-            bool? preventCrush = null, bool? wrap = null
+            bool? preventCrush = null, bool? wrap = null,
+            bool? autoBreak = null
         ) {
             if (!(Control is ContainerBase cast))
                 return this;
@@ -483,6 +484,7 @@ namespace Squared.PRGUI.Imperative {
             cast.Container.NoExpansion = noExpansion ?? cast.Container.NoExpansion;
             cast.Container.PreventCrush = preventCrush ?? cast.Container.PreventCrush;
             cast.Container.Wrap = wrap ?? cast.Container.Wrap;
+            cast.Container.AutoBreak = autoBreak ?? cast.Container.AutoBreak;
             return this;
         }
 

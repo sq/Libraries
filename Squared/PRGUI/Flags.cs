@@ -116,10 +116,15 @@ namespace Squared.PRGUI.Flags {
         public ChildArrangement Arrangement;
         public ChildAlignment Alignment;
         /// <summary>
-        /// Attempts to automatically wrap children to the next row/column if they don't fit
-        /// This also enables ForceBreak
+        /// In the old engine: Enables ForceBreak and attempts to wrap children if they don't fit
+        /// In the new engine: Nothing(tm)
         /// </summary>
         public bool Wrap;
+        /// <summary>
+        /// In the new engine: Attempts to wrap children if they don't fit
+        /// In the old engine: same as Wrap
+        /// </summary>
+        public bool AutoBreak;
         /// <summary>
         /// Prevents children from being larger than this container
         /// </summary>
@@ -182,6 +187,7 @@ namespace Squared.PRGUI.Flags {
                 (ControlFlags)(uint)cf.Arrangement |
                 (ControlFlags)(uint)cf.Alignment |
                 (cf.Wrap ? ControlFlags.Container_Wrap : none) |
+                (cf.AutoBreak ? ControlFlags.Container_Break_Auto : none) |
                 (cf.ConstrainSize ? ControlFlags.Container_Constrain_Size : none) |
                 (cf.NoExpansionX ? ControlFlags.Container_No_Expansion_X : none) |
                 (cf.NoExpansionY ? ControlFlags.Container_No_Expansion_Y : none) |

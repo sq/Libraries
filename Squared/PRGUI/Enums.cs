@@ -44,7 +44,8 @@ namespace Squared.PRGUI.Layout {
 
         /// <summary>
         /// Wrap child elements to additional rows/columns when running out of space.
-        /// This also enables Layout_ForceBreak on child elements to work.
+        /// This also enables Layout_ForceBreak on child elements to work in the old engine.
+        /// Meaningless in the new engine.
         /// </summary>
         Container_Wrap   = 0b100,
 
@@ -149,7 +150,12 @@ namespace Squared.PRGUI.Layout {
         /// Combines the effects of Container_Clip_Children and Container_Constrain_Growth.
         /// Deprecated, you probably only want one of the two.
         /// </summary>
-        Container_Constrain_Size = Container_Constrain_Growth | ControlFlags.Container_Clip_Children,
+        Container_Constrain_Size  = Container_Constrain_Growth | ControlFlags.Container_Clip_Children,
+        /// <summary>
+        /// Additional breaks will automatically be inserted if content cannot fit in the container.
+        /// Only meaningful in the new engine (but implies Container_Wrap for the old engine)
+        /// </summary>
+        Container_Break_Auto      = 0b1000000000000000000000 | Container_Wrap,
     }
 
     public static class ControlFlagMask {
@@ -165,7 +171,8 @@ namespace Squared.PRGUI.Layout {
                 ControlFlags.Container_Constrain_Growth |
                 ControlFlags.Container_Clip_Children |
                 ControlFlags.Container_Prevent_Crush |
-                ControlFlags.Container_No_Expansion,
+                ControlFlags.Container_No_Expansion |
+                ControlFlags.Container_Break_Auto,
             Layout = ControlFlags.Layout_Fill |
                 ControlFlags.Layout_ForceBreak |
                 ControlFlags.Layout_Floating |

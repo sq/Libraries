@@ -510,7 +510,7 @@ namespace PRGUI.Demo {
                 Container = {
                     Row = true,
                     Wrap = true,
-                    Start = true
+                    Start = true,
                 },
                 Children = {
                     new Container {
@@ -518,6 +518,9 @@ namespace PRGUI.Demo {
                         Layout = {
                             Fill = { Row = true },
                             Anchor = { Top = true },
+                        },
+                        Container = {
+                            AutoBreak = true,
                         },
                         Height = { Maximum = 500 },
                         Width = { Fixed = 450 },
@@ -927,7 +930,8 @@ namespace PRGUI.Demo {
                     Fill = true
                 },
                 // FIXME: We shouldn't need to set Wrap here since we're setting explicit breaks
-                ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
+                ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap 
+                    | ControlFlags.Container_Constrain_Size,
                 Children = {
                     hoveringCtl,
                     lastClickedCtl,
@@ -1135,6 +1139,11 @@ namespace PRGUI.Demo {
                 DisplayOrder = 10,
             };
             // Context.Controls.Add(floatingWindowWithText);
+
+            if (false) {
+                Control.ShowDebugBoxes = true;
+                Control.ShowDebugPadding = true;
+            }
         }
 
         private void FloatingWindowWithText_Content (ref ContainerBuilder builder) {
@@ -1217,6 +1226,10 @@ namespace PRGUI.Demo {
         private void BuildTestMenu (ref ContainerBuilder builder) {
             builder.Text("Item 1").SetBackgroundColor(Color.Red);
             builder.Text("Item 2");
+            // TODO: Right now the autosize algorithm causes this label to be super wide,
+            //  and then the label isn't truncated and all the characters get drawn and overhang the right.
+            // Clipping will fix this, but maybe this is bad default behavior?
+            // It causes other items to grow to meet this absurd size.
             builder.Text("Extremely long menu item with a bunch of text in it. This thing should be truncated pretty aggressively")
                 .SetTooltip("This menu item has a custom tooltip")
                 .SetBackgroundColor(Color.Blue)
@@ -1241,6 +1254,7 @@ namespace PRGUI.Demo {
             tc.Properties
                 .SetLayoutFlags(ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak)
                 .SetCollapsible(true)
+                .SetContainer(autoBreak: true)
                 .SetTitle("Test");
             tc.Text<Button>("Button A");
             tc.Text<Button>("Button B");
@@ -1249,6 +1263,7 @@ namespace PRGUI.Demo {
             tc2.Properties
                 .SetLayoutFlags(ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak)
                 // .SetFixedSize(null, 432)
+                .SetContainer(autoBreak: true)
                 .SetCollapsible(true);
             tc2.Text<Button>("Button C");
             tc2.Text<Button>("Button D");
