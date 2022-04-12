@@ -52,7 +52,7 @@ namespace Squared.PRGUI.Controls {
         private DynamicStringLayout ContentMeasurement = null;
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
         private bool _NeedRelayout;
-        private float? MostRecentContentBoxWidth = null, MostRecentWidth = null;
+        private float? MostRecentWidthForLineBreaking = null, MostRecentWidth = null;
 
         protected int? CharacterLimit { get; set; }
 
@@ -258,7 +258,7 @@ namespace Squared.PRGUI.Controls {
             AutoSizeComputedHeight = AutoSizeComputedWidth = null;
             // HACK: Ensure we do not erroneously wrap content that is intended to be used as an input for auto-size
             if (AutoSizeWidth)
-                MostRecentContentBoxWidth = null;
+                MostRecentWidthForLineBreaking = null;
         }
 
         private int _CachedTextVersion, _CachedTextLength;
@@ -451,7 +451,10 @@ namespace Squared.PRGUI.Controls {
             else
                 Content.DesiredWidth = 0;
 
-            currentWidth = currentWidth ?? MostRecentContentBoxWidth;
+            if (currentWidth.HasValue)
+                MostRecentWidthForLineBreaking = currentWidth;
+            else
+                currentWidth = MostRecentWidthForLineBreaking;
 
             if (!currentWidth.HasValue && !maxPx.HasValue)
                 return null;
@@ -710,10 +713,10 @@ namespace Squared.PRGUI.Controls {
 
         protected void UpdateLineBreak (ref UIOperationContext context, IDecorator decorations, float? currentWidth, ref Margins computedPadding, ref Margins computedMargins) {
             var textWidthLimit = ComputeTextWidthLimit(ref context, decorations, currentWidth, ref computedPadding, ref computedMargins);
-            if (textWidthLimit.HasValue)
-                Content.LineBreakAtX = (float)Math.Ceiling(textWidthLimit.Value + LineBreakRightPadding);
-            else
-                Content.LineBreakAtX = null;
+            float? newValue = textWidthLimit.HasValue
+                ? (float)Math.Ceiling(textWidthLimit.Value + LineBreakRightPadding)
+                : (float?)null;
+            Content.LineBreakAtX = newValue;
         }
 
         private IGlyphSource _MostRecentFont;
@@ -801,12 +804,7 @@ namespace Squared.PRGUI.Controls {
             }
 
             context.Layout.GetRects(LayoutKey, out RectF box, out RectF contentBox);
-            MostRecentContentBoxWidth = contentBox.Width;
             MostRecentWidth = box.Width;
-
-            // FIXME: This is probably wrong?
-            if (!AutoSizeWidth && !Wrap && MostRecentContentBoxWidth.HasValue)
-                return;
         }
 
         void IPostLayoutListener.OnLayoutComplete (

@@ -811,6 +811,8 @@ namespace Squared.Render.Text {
         }
 
         public void Invalidate () {
+            if (_HasCachedStringLayout)
+                ;
             // Hey, you're the boss
             _HasCachedStringLayout = false;
             _CachedStringLayout = default;

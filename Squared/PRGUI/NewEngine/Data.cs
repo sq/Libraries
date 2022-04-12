@@ -108,12 +108,20 @@ namespace Squared.PRGUI.NewEngine {
         internal int Depth;
         internal int FirstRunIndex;
 
+#if DEBUG
+        internal Control Control;
+#endif
+
         public override string ToString () {
             var padding = new string(' ', Depth * 2);
+            var tag = Tag.ToString();
+#if DEBUG
+            tag = Control?.ToString() ?? tag;
+#endif
             if (ContentSize != default)
-                return $"{padding}{Tag} size {Rect.Size} csize {ContentSize} {(Break ? "break" : "")}";
+                return $"{padding}{tag} size {Rect.Size} csize {ContentSize} {(Break ? "break" : "")}";
             else
-                return $"{padding}{Tag} size {Rect.Size} {(Break ? "break" : "")}";
+                return $"{padding}{tag} size {Rect.Size} {(Break ? "break" : "")}";
         }
     }
 

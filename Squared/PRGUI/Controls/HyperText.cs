@@ -77,7 +77,12 @@ namespace Squared.PRGUI.Controls {
 
             // FIXME: On the first frame our hotspots will be in the wrong place
             if (!existingKey.HasValue) {
-                if (Content.IsValid) {
+                if (rm.Count > 0) {
+                    // HACK: This will be bad if for some reason the content is constantly being invalidated,
+                    //  but that usually shouldn't happen.
+                    if (!Content.IsValid)
+                        Content.Get();
+
                     int numHotspots = rm.Count;
                     while (children.Count > numHotspots)
                         children.RemoveAt(children.Count - 1);
@@ -222,7 +227,7 @@ namespace Squared.PRGUI.Controls {
                     if (ttt != default(AbstractString))
                         result.Append(ttt.ToString());
                 }
-                return Squared.Render.Text.RichText.ToPlainText(result);
+                return RichText.ToPlainText(result);
             }
         }
 
@@ -235,10 +240,6 @@ namespace Squared.PRGUI.Controls {
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider.HyperTextHotspot;
-        }
-
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            return base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
         protected override bool OnEvent<T> (string name, T args) {

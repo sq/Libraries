@@ -47,6 +47,9 @@ namespace Squared.PRGUI.NewEngine {
 
         #region Layout first pass
         private void InitializeResult (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
+#if DEBUG
+            result.Control = control.Control;
+#endif
             result.Tag = control.Tag;
             result.Rect = result.ContentRect = default;
             result.FirstRunIndex = -1;
@@ -353,16 +356,24 @@ namespace Squared.PRGUI.NewEngine {
                     ref var childResult = ref Result(ckey);
                     var margins = child.Margins;
 
-                    if (child.Flags.IsStackedOrFloating()) {
-                        var offset = child.Flags.IsFlagged(ControlFlags.Layout_Floating)
-                            ? child.FloatingPosition
-                            // FIXME: shrink to margins?
-                            : new Vector2(margins.Left, margins.Top);
+                    child.Flags.GetAlignmentF(out float xChildAlign, out float yChildAlign);
+                    if (child.Control is Controls.HyperTextHotspot hths)
+                        ;
 
-                        // FIXME: If stacked with size constraints, perform alignment
-                        childResult.Rect.Position = result.ContentRect.Position + offset;
+                    if (child.Flags.IsStackedOrFloating()) {
+                        if (child.Flags.IsFlagged(ControlFlags.Layout_Floating)) {
+                            // TODO: Margins?
+                            childResult.Rect.Position = result.ContentRect.Position + child.FloatingPosition;
+                        } else {
+                            var stackSpace = (result.ContentRect.Size - margins.Size) - childResult.Rect.Size;
+                            // If the control is stacked and aligned but did not fill the container (size constraints, etc)
+                            //  then try to align it
+                            stackSpace.X = Math.Max(stackSpace.X, 0f) * xChildAlign;
+                            stackSpace.Y = Math.Max(stackSpace.Y, 0f) * yChildAlign;
+                            childResult.Rect.Position = result.ContentRect.Position +
+                                new Vector2(stackSpace.X + margins.Left, stackSpace.Y + margins.Top);
+                        }
                     } else {
-                        child.Flags.GetAlignmentF(out float xChildAlign, out float yChildAlign);
                         childResult.Rect.Left = result.ContentRect.Left + margins.Left + x;
                         childResult.Rect.Top = result.ContentRect.Top + margins.Top + y;
 
@@ -378,8 +389,6 @@ namespace Squared.PRGUI.NewEngine {
                             x += childResult.Rect.Width + margins.X;
                         }
                     }
-
-                    // TODO: Apply control anchoring
 
                     // TODO: Clip left/top edges as well?
                     if (clipX) {
