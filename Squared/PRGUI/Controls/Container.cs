@@ -280,7 +280,11 @@ namespace Squared.PRGUI.Controls {
             if (ColumnCount > 1) {
                 for (int i = 0; i < ColumnCount; i++) {
                     var ckey = ColumnKeys[i];
-                    context.Layout.TryMeasureContent(ckey, out RectF columnBounds);
+                    RectF columnBounds;
+                    if (UIContext.UseNewEngine)
+                        context.Engine.TryMeasureContent(ckey, out columnBounds);
+                    else
+                        context.Layout.TryMeasureContent(ckey, out columnBounds);
                     if (i == 0) {
                         contentRect = columnBounds;
                     } else {
@@ -290,7 +294,10 @@ namespace Squared.PRGUI.Controls {
                     ok = true;
                 }
             } else {
-                ok = context.Layout.TryMeasureContent(LayoutKey, out contentRect);
+                if (UIContext.UseNewEngine)
+                    ok = context.Engine.TryMeasureContent(LayoutKey, out contentRect);
+                else
+                    ok = context.Layout.TryMeasureContent(LayoutKey, out contentRect);
             }
             if (ok)
                 contentBounds = contentRect.Size;

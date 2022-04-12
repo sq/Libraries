@@ -686,15 +686,6 @@ namespace Squared.PRGUI.Layout {
             return result;
         }
 
-        public unsafe void GetComputedContentSize (ControlKey key, out Vector2 result) {
-            if (key.IsInvalid || key.ID >= Layout.Count) {
-                result = default(Vector2);
-                return;
-            }
-            var pItem = LayoutPtr(key);
-            result = pItem->ComputedContentSize;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe void GetComputedMinimumSize (LayoutItem * pItem, out Vector2 result) {
             result = pItem->FixedSize;

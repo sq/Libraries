@@ -836,7 +836,7 @@ namespace PRGUI.Demo {
                 { textTab, "Text Size" },
                 { listLayoutTab, "List Layout" },
             };
-            tabs.SelectedIndex = 2;
+            tabs.SelectedIndex = 0;
             tabs.TabsOnLeft = false;
             tabs.ExpandToHoldAllTabs = true;
             tabs.LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top;
@@ -991,7 +991,8 @@ namespace PRGUI.Demo {
                         }
                     },
                     bigScrollableContainer
-                }
+                },
+                DebugLabel = "topLevelContainer"
             };
 
             Context.Controls.Add(topLevelContainer);

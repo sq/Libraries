@@ -159,8 +159,8 @@ namespace Squared.PRGUI.Layout {
     }
 
     public static class PRGUIExtensions {
-        // HACK: The most 'natural' outcome when no alignment is requested or fill was requested
-        //  is to flush things to the left and vertically center them :(
+        // HACK: The most natural default is to flush controls left and center them vertically,
+        //  though the oui default seems to have been to center both horizontally and vertically
         const float DefaultXAlignment = 0f, DefaultYAlignment = 0.5f;
 
         public static void GetAlignmentF (this ControlFlags flags, out float x, out float y) {

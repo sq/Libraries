@@ -191,5 +191,36 @@ namespace Squared.PRGUI.NewEngine {
                 return GetEnumerator();
             }
         }
+
+        // TODO: Reimplement this, we should be able to compute accurate content size during layout
+        public bool TryMeasureContent (ControlKey container, out RectF result) {
+            ref var pItem = ref this[container];
+            float minX = 999999, minY = 999999,
+                maxX = -999999, maxY = -999999;
+
+            if (pItem.FirstChild.IsInvalid) {
+                result = default(RectF);
+                return true;
+            }
+
+            foreach (var ckey in Children(container)) {
+                ref var child = ref this[ckey];
+                ref var childResult = ref Result(ckey);
+                var childRect = childResult.Rect;
+
+                // HACK: The arrange algorithms will clip an element to its containing box, which
+                //  hinders attempts to measure all of the content inside a container for scrolling
+                child.Width.Constrain(ref childRect.Width, true);
+                child.Height.Constrain(ref childRect.Height, true);
+
+                minX = Math.Min(minX, childRect.Left - child.Margins.Left);
+                maxX = Math.Max(maxX, childRect.Left + childRect.Width + child.Margins.Right);
+                minY = Math.Min(minY, childRect.Top - child.Margins.Top);
+                maxY = Math.Max(maxY, childRect.Top + childRect.Height + child.Margins.Bottom);
+            }
+
+            result = new RectF(minX, minY, maxX - minX, maxY - minY);
+            return true;
+        }
     }
 }

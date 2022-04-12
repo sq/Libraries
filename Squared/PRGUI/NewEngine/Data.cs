@@ -102,7 +102,7 @@ namespace Squared.PRGUI.NewEngine {
         internal int Version;
 
         public RectF Rect, ContentRect;
-        public Vector2 ContentSize;
+        // public Vector2 ContentSize;
         public Layout.LayoutTags Tag;
         internal bool Break;
         internal int Depth;
@@ -118,10 +118,7 @@ namespace Squared.PRGUI.NewEngine {
 #if DEBUG
             tag = Control?.ToString() ?? tag;
 #endif
-            if (ContentSize != default)
-                return $"{padding}{tag} size {Rect.Size} csize {ContentSize} {(Break ? "break" : "")}";
-            else
-                return $"{padding}{tag} size {Rect.Size} {(Break ? "break" : "")}";
+            return $"{padding}{tag} size {Rect.Size} {(Break ? "break" : "")}";
         }
     }
 

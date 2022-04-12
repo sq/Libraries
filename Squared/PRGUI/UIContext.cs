@@ -122,7 +122,8 @@ namespace Squared.PRGUI {
             DefaultMaterialSet materials, IDecorationProvider decorations, 
             IAnimationProvider animations = null, ITimeProvider timeProvider = null
         ) {
-            Engine = new NewEngine.LayoutEngine();
+            if (UseNewEngine)
+                Engine = new NewEngine.LayoutEngine();
             EventBus = new EventBus();
             EventBus.AfterBroadcast += EventBus_AfterBroadcast;
             Controls = new ControlCollection(this);
@@ -238,10 +239,12 @@ namespace Squared.PRGUI {
             Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row);
             Layout.SetTag(Layout.Root, LayoutTags.Root);
 
-            ref var root = ref Engine.Root();
-            Engine.CanvasSize = CanvasSize;
-            root.ContainerFlags = ControlFlags.Container_Row;
-            root.Tag = LayoutTags.Root;
+            if (UseNewEngine) {
+                ref var root = ref Engine.Root();
+                Engine.CanvasSize = CanvasSize;
+                root.ContainerFlags = ControlFlags.Container_Row;
+                root.Tag = LayoutTags.Root;
+            }
 
             _TopLevelControls.Clear();
             Controls.CopyTo(_TopLevelControls);

@@ -367,6 +367,7 @@ namespace Squared.PRGUI.NewEngine {
                     ref var child = ref this[ckey];
                     ref var childResult = ref Result(ckey);
                     var margins = child.Margins;
+                    var childOuterSize = childResult.Rect.Size + margins.Size;
 
                     child.Flags.GetAlignmentF(out float xChildAlign, out float yChildAlign);
 
@@ -375,7 +376,7 @@ namespace Squared.PRGUI.NewEngine {
                             // TODO: Margins?
                             childResult.Rect.Position = result.ContentRect.Position + child.FloatingPosition;
                         } else {
-                            var stackSpace = (result.ContentRect.Size - margins.Size) - childResult.Rect.Size;
+                            var stackSpace = result.ContentRect.Size - childOuterSize;
                             // If the control is stacked and aligned but did not fill the container (size constraints, etc)
                             //  then try to align it
                             stackSpace.X = Math.Max(stackSpace.X, 0f) * xChildAlign;
@@ -388,15 +389,15 @@ namespace Squared.PRGUI.NewEngine {
                         childResult.Rect.Top = result.ContentRect.Top + margins.Top + y;
 
                         if (vertical) {
-                            var alignment = (xChildAlign * Math.Max(0, baseline - childResult.Rect.Width));
+                            var alignment = (xChildAlign * Math.Max(0, baseline - childOuterSize.X));
                             if (alignment != 0)
                                 childResult.Rect.Left += alignment;
-                            y += childResult.Rect.Height + margins.Y;
+                            y += childOuterSize.Y;
                         } else {
-                            var alignment = (yChildAlign * Math.Max(0, baseline - childResult.Rect.Height));
+                            var alignment = (yChildAlign * Math.Max(0, baseline - childOuterSize.Y));
                             if (alignment != 0)
                                 childResult.Rect.Top += alignment;
-                            x += childResult.Rect.Width + margins.X;
+                            x += childOuterSize.X;
                         }
                     }
 
