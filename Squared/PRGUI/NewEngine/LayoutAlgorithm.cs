@@ -338,11 +338,12 @@ namespace Squared.PRGUI.NewEngine {
                     var margins = child.Margins;
 
                     if (child.Flags.IsStackedOrFloating()) {
-                        if (child.Flags.IsFlagged(ControlFlags.Layout_Floating))
-                            childResult.Rect.Position = child.FloatingPosition;
-                        else
+                        var offset = child.Flags.IsFlagged(ControlFlags.Layout_Floating)
+                            ? child.FloatingPosition
                             // FIXME: shrink to margins?
-                            childResult.Rect.Position = result.ContentRect.Position + new Vector2(margins.Left, margins.Top);
+                            : new Vector2(margins.Left, margins.Top);
+
+                        childResult.Rect.Position = result.ContentRect.Position + offset;
                     } else {
                         childResult.Rect.Left = result.ContentRect.Left + margins.Left + x;
                         childResult.Rect.Top = result.ContentRect.Top + margins.Top + y;
