@@ -1049,7 +1049,7 @@ namespace Squared.PRGUI {
             return Color.Lerp(Color.Red, Color.Yellow, depth / 24f);
         }
 
-        private void RasterizeDebugMargins (ref UIOperationContext context, ref RasterizePassSet passSet, ref RectF rect, Margins margins, float direction, Color color) {
+        private void RasterizeDebugMargins (ref UIOperationContext context, ref RasterizePassSet passSet, ref RectF rect, Margins margins, float direction, Color color, int? layer) {
             float lineWidth = 1.33f, extentLength = 16f, extentThickness = 0.75f;
             var exteriorRect = rect;
             exteriorRect.Left -= margins.Left * direction;
@@ -1062,12 +1062,12 @@ namespace Squared.PRGUI {
                 passSet.Above.RasterizeRectangle(
                     new Vector2(exteriorRect.Left, center.Y - lineWidth),
                     new Vector2(rect.Left, center.Y + lineWidth),
-                    0, color
+                    0, color, layer: layer
                 );
                 passSet.Above.RasterizeRectangle(
                     new Vector2(exteriorRect.Left, center.Y - extentLength),
                     new Vector2(exteriorRect.Left + extentThickness, center.Y + extentLength),
-                    0, color
+                    0, color, layer: layer
                 );
             }
 
@@ -1075,12 +1075,12 @@ namespace Squared.PRGUI {
                 passSet.Above.RasterizeRectangle(
                     new Vector2(center.X - lineWidth, exteriorRect.Top),
                     new Vector2(center.X + lineWidth, rect.Top),
-                    0, color
+                    0, color, layer: layer
                 );
                 passSet.Above.RasterizeRectangle(
                     new Vector2(center.X - extentLength, exteriorRect.Top),
                     new Vector2(center.X + extentLength, exteriorRect.Top + extentThickness),
-                    0, color
+                    0, color, layer: layer
                 );
             }
 
@@ -1088,12 +1088,12 @@ namespace Squared.PRGUI {
                 passSet.Above.RasterizeRectangle(
                     new Vector2(exteriorRect.Extent.X, center.Y - lineWidth),
                     new Vector2(rect.Extent.X, center.Y + lineWidth),
-                    0, color
+                    0, color, layer: layer
                 );
                 passSet.Above.RasterizeRectangle(
                     new Vector2(exteriorRect.Extent.X, center.Y - extentLength),
                     new Vector2(exteriorRect.Extent.X - extentThickness, center.Y + extentLength),
-                    0, color
+                    0, color, layer: layer
                 );
             }
 
@@ -1101,12 +1101,12 @@ namespace Squared.PRGUI {
                 passSet.Above.RasterizeRectangle(
                     new Vector2(center.X - lineWidth, exteriorRect.Extent.Y),
                     new Vector2(center.X + lineWidth, rect.Extent.Y),
-                    0, color
+                    0, color, layer: layer
                 );
                 passSet.Above.RasterizeRectangle(
                     new Vector2(center.X - extentLength, exteriorRect.Extent.Y),
                     new Vector2(center.X + extentLength, exteriorRect.Extent.Y + extentThickness),
-                    0, color
+                    0, color, layer: layer
                 );
             }
         }
@@ -1120,20 +1120,22 @@ namespace Squared.PRGUI {
             // HACK: Show outlines for controls that don't have any children or contain the mouse position
             var isLeaf = (((this as IControlContainer)?.Children?.Count ?? 0) == 0) || mouseIsOver;
 
+            int? layer = null;
+
             if (ShowDebugBoxes || (ShowDebugBoxesForLeavesOnly && isLeaf))
                 passSet.Above.RasterizeRectangle(
                     rect.Position, rect.Extent, 0f, 1f, Color.Transparent, Color.Transparent, 
-                    GetDebugBoxColor(context.Depth) * alpha
+                    GetDebugBoxColor(context.Depth) * alpha, layer: layer
                 );
 
             if (!context.Layout.TryGetFlags(LayoutKey, out ControlFlags flags))
                 return;
 
             if (ShowDebugMargins)
-                RasterizeDebugMargins(ref context, ref passSet, ref rect, context.Layout.GetMargins(LayoutKey), 1f, Color.Green);
+                RasterizeDebugMargins(ref context, ref passSet, ref rect, context.Layout.GetMargins(LayoutKey), 1f, Color.Green, layer);
 
             if (ShowDebugPadding)
-                RasterizeDebugMargins(ref context, ref passSet, ref rect, context.Layout.GetPadding(LayoutKey), -1f, Color.Yellow);
+                RasterizeDebugMargins(ref context, ref passSet, ref rect, context.Layout.GetPadding(LayoutKey), -1f, Color.Yellow, layer);
 
             if (ShowDebugBreakMarkers && mouseIsOver && flags.IsBreak()) {
                 rect = new RectF(

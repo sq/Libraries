@@ -133,9 +133,9 @@ namespace Squared.PRGUI.NewEngine {
             ref var completedRun = ref Run(runIndex);
 
             if (control.Flags.IsFlagged(ControlFlags.Container_Column))
-                result.ContentRect.Width += completedRun.MaxWidth;
+                result.ContentRect.Width += completedRun.MaxOuterWidth;
             else
-                result.ContentRect.Height += completedRun.MaxHeight;
+                result.ContentRect.Height += completedRun.MaxOuterHeight;
         }
 
         private ref ControlLayoutRun Pass1_UpdateRun (
@@ -183,8 +183,8 @@ namespace Squared.PRGUI.NewEngine {
                 run.ExpandCountX++;
             if (ShouldExpand(ref control, ref child, LayoutDimensions.Y))
                 run.ExpandCountY++;
-            run.MaxWidth = Math.Max(run.MaxWidth, childWidth);
-            run.MaxHeight = Math.Max(run.MaxHeight, childHeight);
+            run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childWidth);
+            run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childHeight);
             run.TotalWidth += childWidth;
             run.TotalHeight += childHeight;
 
@@ -205,11 +205,14 @@ namespace Squared.PRGUI.NewEngine {
             if (control.FirstChild.IsInvalid)
                 return;
 
-            if (control.Flags.IsFlagged(ControlFlags.Container_Wrap))
-                Pass2_ComputeForcedWrap(ref control, ref result);
+            bool wrap = control.Flags.IsFlagged(ControlFlags.Container_Wrap),
+                vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
+                constrain = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
+            float w = result.Rect.Width - control.Padding.X, 
+                h = result.Rect.Height - control.Padding.Y;
 
-            var vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
-            float w = result.Rect.Width, h = result.Rect.Height;
+            if (wrap)
+                Pass2_ComputeForcedWrap(ref control, ref result);
 
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
@@ -222,13 +225,15 @@ namespace Squared.PRGUI.NewEngine {
                 // FIXME: Figure out how to expand secondary axis here instead of doing it in arrange
                 // HACK: For the last run in a box we want to expand the run to fill the entire available space
                 //  otherwise listbox items will have a width of 0 :(
-                float effectiveRunMaxWidth = isLastRun && vertical ? Math.Max(w, run.MaxWidth) : run.MaxWidth,
-                    effectiveRunMaxHeight = isLastRun && !vertical ? Math.Max(h, run.MaxHeight) : run.MaxHeight,
-                    xSpace = vertical ? 0f : w - run.TotalWidth,
-                    ySpace = vertical ? h - run.TotalHeight : 0,
+                float effectiveRunMaxWidth = isLastRun && vertical ? Math.Max(w, run.MaxOuterWidth) : run.MaxOuterWidth,
+                    effectiveRunMaxHeight = isLastRun && !vertical ? Math.Max(h, run.MaxOuterHeight) : run.MaxOuterHeight,
+                    effectiveRunTotalWidth = run.TotalWidth,
+                    effectiveRunTotalHeight = run.TotalHeight,
+                    xSpace = vertical ? 0f : w - effectiveRunTotalWidth,
+                    ySpace = vertical ? h - effectiveRunTotalHeight : 0,
                     newXSpace = xSpace, newYSpace = ySpace,
-                    minWidth = vertical ? effectiveRunMaxWidth : 0,
-                    minHeight = vertical ? 0 : effectiveRunMaxHeight;
+                    minOuterWidth = vertical ? effectiveRunMaxWidth : 0,
+                    minOuterHeight = vertical ? 0 : effectiveRunMaxHeight;
 
                 /*
                 if (vertical)
@@ -262,8 +267,8 @@ namespace Squared.PRGUI.NewEngine {
                             if (expandY)
                                 childResult.Rect.Height = child.Height.Constrain(h - child.Margins.Y, true);
                         } else {
-                            float childW = childResult.Rect.Width, 
-                                childH = childResult.Rect.Height;
+                            float childOuterW = childResult.Rect.Width + margins.X,
+                                childOuterH = childResult.Rect.Height + margins.Y;
 
                             // When expanding an axis, we will either have an expansion amount or a minimum
                             //  size. In the former case we want to make sure that any remaining expansion
@@ -276,27 +281,27 @@ namespace Squared.PRGUI.NewEngine {
                             //  run includes the margins of the controls)
 
                             if (expandX) {
-                                childW = Math.Max(childW + amountX, minWidth - margins.X);
-                                child.Width.Constrain(ref childW, true);
-                                float expanded = childW - childResult.Rect.Width;
+                                var newChildW = Math.Max(childOuterW + amountX, minOuterWidth);
+                                newChildW = child.Width.Constrain(newChildW - margins.X, true) + margins.X;
+                                float expanded = newChildW - childOuterW;
                                 if (expanded < amountX)
                                     newCountX--;
                                 newXSpace -= expanded;
-                                childResult.Rect.Width = childW;
+                                childResult.Rect.Width = newChildW - margins.X;
                                 run.TotalWidth += expanded;
-                                run.MaxWidth = Math.Max(run.MaxWidth, childW);
+                                run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, newChildW);
                             }
 
                             if (expandY) {
-                                childH = Math.Max(childH + amountY, minHeight - margins.Y);
-                                child.Height.Constrain(ref childH, true);
-                                float expanded = childH - childResult.Rect.Height;
+                                var newChildH = Math.Max(childOuterH + amountY, minOuterHeight);
+                                newChildH = child.Height.Constrain(newChildH - margins.Y, true) + margins.Y;
+                                float expanded = childOuterH - childResult.Rect.Height;
                                 if (expanded < amountY)
                                     newCountY--;
-                                newXSpace -= expanded;
-                                childResult.Rect.Height = childH;
+                                newYSpace -= expanded;
+                                childResult.Rect.Height = newChildH - margins.Y;
                                 run.TotalHeight += expanded;
-                                run.MaxHeight = Math.Max(run.MaxHeight, childH);
+                                run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, newChildH);
                             }
                         }
                     }
@@ -348,10 +353,10 @@ namespace Squared.PRGUI.NewEngine {
 
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
-                float rw = vertical ? run.MaxWidth : run.TotalWidth,
-                    rh = vertical ? run.TotalHeight : run.MaxHeight,
+                float rw = vertical ? run.MaxOuterWidth : run.TotalWidth,
+                    rh = vertical ? run.TotalHeight : run.MaxOuterHeight,
                     space = vertical ? h - rh : w - rw,
-                    baseline = vertical ? run.MaxWidth : run.MaxHeight;
+                    baseline = vertical ? run.MaxOuterWidth : run.MaxOuterHeight;
 
                 run.GetAlignmentF(control.Flags, out float xAlign, out float yAlign);
 
@@ -418,11 +423,11 @@ namespace Squared.PRGUI.NewEngine {
                 }
 
                 if (vertical) {
-                    x += run.MaxWidth;
+                    x += run.MaxOuterWidth;
                     y = 0;
                 } else {
                     x = 0;
-                    y += run.MaxHeight;
+                    y += run.MaxOuterHeight;
                 }
             }
 
