@@ -19,18 +19,42 @@ namespace Squared.PRGUI.NewEngine {
                 throw new ArgumentOutOfRangeException(nameof(dim));
         }
 
+        private ref ControlLayoutRun Run (int index) {
+            if ((index < 0) || (index >= _RunCount))
+                throw new ArgumentOutOfRangeException(nameof(index));
+            return ref RunBuffer[index];
+        }
+
+        private ref ControlLayoutRun PushRun (out int index) {
+            return ref InsertRun(out index, -1);
+        }
+
+        private ref ControlLayoutRun InsertRun (out int index, int afterIndex) {
+            index = _RunCount++;
+            if (index >= RunBuffer.Length)
+                throw new Exception("Run buffer full");
+            ref var result = ref RunBuffer[index];
+            if (afterIndex >= 0) {
+                ref var after = ref Run(afterIndex);
+                var beforeIndex = after.NextRunIndex;
+                after.NextRunIndex = index;
+                result.NextRunIndex = beforeIndex;
+            } else
+                result.NextRunIndex = -1;
+            return ref result;
+        }
+
         #region Layout first pass
-        private void Pass1_Initialize (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
+        private void InitializeResult (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
             result.Tag = control.Tag;
             result.Rect = result.ContentRect = default;
-            result.CompressedSize = result.ExpandedSize = default;
+            result.FirstRunIndex = -1;
             result.Break = control.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
-            result.RowIndex = 0;
             result.Depth = depth;
             result.Version = Version;
         }
 
-        private (Vector2 compressed, Vector2 expanded) Pass1_ComputeRequiredSizes (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
+        private (Vector2 compressed, Vector2 expanded) Pass1_ComputeSizes (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
             var x = Pass1_ComputeRequiredSizes_ForDimension(ref control, ref result, LayoutDimensions.X, depth);
             var y = Pass1_ComputeRequiredSizes_ForDimension(ref control, ref result, LayoutDimensions.Y, depth);
             return (new Vector2(x.compressed, y.compressed), new Vector2(x.expanded, y.expanded));
@@ -65,7 +89,7 @@ namespace Squared.PRGUI.NewEngine {
 
         private (float compressed, float expanded) Pass1_ComputeRequiredSizes_ForDimension (ref ControlRecord control, ref ControlLayoutResult result, LayoutDimensions dim, int depth) {
             if (dim == LayoutDimensions.X)
-                Pass1_Initialize(ref control, ref result, depth);
+                InitializeResult(ref control, ref result, depth);
 
             var idim = (int)dim;
             ref var sizeConstraints = ref control.Size(dim);

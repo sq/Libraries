@@ -7,94 +7,14 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using System.Runtime.CompilerServices;
 using Squared.PRGUI.Layout;
+using Squared.Util;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        public unsafe struct ChildrenEnumerator : IEnumerator<ControlKey> {
-            public readonly LayoutEngine Engine;
-            public readonly ControlKey Parent;
-            private readonly ControlKey FirstChild;
-            private int Version;
-
-            public ChildrenEnumerator (LayoutEngine engine, ControlKey parent) {
-                Engine = engine;
-                Version = engine.Version;
-                Parent = parent;
-                FirstChild = ControlKey.Invalid;
-                Current = ControlKey.Invalid;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private void CheckVersion () {
-                if (Version == Engine.Version)
-                    return;
-
-                Engine.AssertionFailed("Context was modified");
-            }
-
-            public ControlKey Current { get; private set; }
-            object IEnumerator.Current => Current;
-
-            public void Dispose () {
-                Current = ControlKey.Invalid;
-                Version = -1;
-            }
-
-            public bool MoveNext () {
-                CheckVersion();
-
-                if (Current.IsInvalid) {
-                    if (FirstChild.IsInvalid) {
-                        ref var pParent = ref Engine[Parent];
-                        var firstChild = pParent.FirstChild;
-                        if (!firstChild.IsInvalid)
-                            Current = firstChild;
-                    } else {
-                        Current = FirstChild;
-                    }
-                } else {
-                    ref var pCurrent = ref Engine[Current];
-                    if (pCurrent.NextSibling.IsInvalid)
-                        Current = ControlKey.Invalid;
-                    else
-                        Current = pCurrent.NextSibling;
-                }
-
-                return !Current.IsInvalid;
-            }
-
-            void IEnumerator.Reset () {
-                CheckVersion();
-                Current = ControlKey.Invalid;
-            }
-        }
-
-        public struct ChildrenEnumerable : IEnumerable<ControlKey> {
-            public readonly LayoutEngine Engine;
-            public readonly ControlKey Parent;
-
-            internal ChildrenEnumerable (LayoutEngine engine, ControlKey parent) {
-                Engine = engine;
-                Parent = parent;
-            }
-
-            public ChildrenEnumerator GetEnumerator () {
-                return new ChildrenEnumerator(Engine, Parent);
-            }
-
-            IEnumerator<ControlKey> IEnumerable<ControlKey>.GetEnumerator () {
-                return GetEnumerator();
-            }
-
-            IEnumerator IEnumerable.GetEnumerator () {
-                return GetEnumerator();
-            }
-        }
-
         private ControlRecord Invalid = new ControlRecord {
         };
 
-        private int Version, _Count;
+        private int Version, _Count, _RunCount;
 
         // TODO: Much better sizing implementation
         // We need to make sure that once we hand out a reference to Records[n], we never transition that item
@@ -103,6 +23,7 @@ namespace Squared.PRGUI.NewEngine {
         //  allocating a new buffer, which won't invalidate old references.
         private ControlRecord[] Records = new ControlRecord[32767];
         private ControlLayoutResult[] Results = new ControlLayoutResult[32767];
+        private ControlLayoutRun[] RunBuffer = new ControlLayoutRun[32767];
 
         private Vector2 _CanvasSize;
         public Vector2 CanvasSize {
@@ -117,7 +38,9 @@ namespace Squared.PRGUI.NewEngine {
         public void Clear () {
             Array.Clear(Records, 0, Records.Length);
             Array.Clear(Results, 0, Results.Length);
+            Array.Clear(RunBuffer, 0, RunBuffer.Length);
             _Count = 0;
+            _RunCount = 0;
             Version++;
             // Initialize root
             ref var root = ref Create(tag: Layout.LayoutTags.Root);
@@ -193,6 +116,11 @@ namespace Squared.PRGUI.NewEngine {
             result.Flags = flags;
             result.Tag = tag;
             return ref result;
+        }
+
+        private RunEnumerable Runs (ControlKey parent) {
+            Assert(!parent.IsInvalid);
+            return new RunEnumerable(this, parent);
         }
 
         public ChildrenEnumerable Children (ControlKey parent) {

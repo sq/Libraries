@@ -18,37 +18,37 @@ namespace Squared.PRGUI.NewEngine {
         }
     }
 
+    internal struct ControlKeyDefaultInvalid {
+        public int IndexPlusOne;
+
+        public ControlKey Key => new ControlKey(IndexPlusOne - 1);
+
+        public static implicit operator ControlKeyDefaultInvalid (int index) {
+            return new ControlKeyDefaultInvalid {
+                IndexPlusOne = index + 1
+            };
+        }
+
+        public static implicit operator ControlKeyDefaultInvalid (ControlKey value) {
+            return new ControlKeyDefaultInvalid {
+                IndexPlusOne = value.ID + 1
+            };
+        }
+
+        public bool IsInvalid => (IndexPlusOne <= 0);
+
+        public override string ToString () {
+            return (IndexPlusOne - 1).ToString();
+        }
+    }
+
     /// <summary>
     /// Represents a box being laid out by the layout engine
     /// </summary>
     public struct ControlRecord {
-        internal struct KeyDefaultInvalid {
-            public int IndexPlusOne;
-
-            public ControlKey Key => new ControlKey(IndexPlusOne - 1);
-
-            public static implicit operator KeyDefaultInvalid (int index) {
-                return new KeyDefaultInvalid {
-                    IndexPlusOne = index + 1
-                };
-            }
-
-            public static implicit operator KeyDefaultInvalid (ControlKey value) {
-                return new KeyDefaultInvalid {
-                    IndexPlusOne = value.ID + 1
-                };
-            }
-
-            public bool IsInvalid => (IndexPlusOne <= 0);
-
-            public override string ToString () {
-                return (IndexPlusOne - 1).ToString();
-            }
-        }
-
         // Managed by the layout engine
         // TODO: Use a custom dense backing store and no setters
-        internal KeyDefaultInvalid _Key, _Parent, _FirstChild, 
+        internal ControlKeyDefaultInvalid _Key, _Parent, _FirstChild, 
             _LastChild, _PreviousSibling, _NextSibling;
         public ControlKey Key => _Key.Key;
         public ControlKey Parent => _Parent.Key;
@@ -95,21 +95,25 @@ namespace Squared.PRGUI.NewEngine {
         internal int Version;
 
         public RectF Rect, ContentRect;
-        public Vector2 CompressedSize, ExpandedSize;
+        public Vector2 ContentSize;
         public Layout.LayoutTags Tag;
         internal bool Break;
-        internal int RowIndex, Depth;
+        internal int Depth;
+        internal int FirstRunIndex;
 
         public override string ToString () {
             var padding = new string(' ', Depth * 2);
-            if (CompressedSize == ExpandedSize) {
-                if (CompressedSize == default)
-                    return $"{padding}{Tag} size {ContentRect.Size} {(Break ? "break" : "")}";
-                else
-                    return $"{padding}{Tag} size {ContentRect.Size} content {CompressedSize} {(Break ? "break" : "")}";
-            } else {
-                return $"{padding}{Tag} size {ContentRect.Size} compressed {CompressedSize} expanded {ExpandedSize} {(Break ? "break" : "")}";
-            }
+            if (ContentSize != default)
+                return $"{padding}{Tag} size {Rect.Size} csize {ContentSize} {(Break ? "break" : "")}";
+            else
+                return $"{padding}{Tag} size {Rect.Size} {(Break ? "break" : "")}";
         }
+    }
+
+    internal struct ControlLayoutRun {
+        public ControlKeyDefaultInvalid First, Last;
+        public int Count, ExpandCountX, ExpandCountY;
+        public float TotalWidth, TotalHeight, MaxWidth, MaxHeight;
+        public int NextRunIndex;
     }
 }
