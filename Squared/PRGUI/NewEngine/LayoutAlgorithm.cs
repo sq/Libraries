@@ -237,8 +237,7 @@ namespace Squared.PRGUI.NewEngine {
                     endMargin = vertical ? child.Margins.Bottom : child.Margins.Right,
                     size = vertical ? childResult.Rect.Height : childResult.Rect.Width,
                     totalSize = startMargin + size + endMargin;
-                // It would be ideal if we could ignore the end margin here but the old engine didn't
-                var forceBreak = (offset + totalSize) >= capacity;
+                var forceBreak = (offset + startMargin + size) > capacity;
                 if (forceBreak)
                     numForcedBreaks++;
 
@@ -287,13 +286,15 @@ namespace Squared.PRGUI.NewEngine {
             return result.Rect.Size - oldSize;
         }
 
-        private void Pass2b_WrapAndExpand (ref ControlRecord control, ref ControlLayoutResult result) {
+        private Vector2 Pass2b_WrapAndExpand (ref ControlRecord control, ref ControlLayoutResult result) {
             if (control.FirstChild.IsInvalid)
-                return;
+                return default;
 
+            var oldSize = result.Rect.Size;
             bool wrap = control.Flags.IsFlagged(ControlFlags.Container_Break_Auto),
                 vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
-                constrain = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Growth);
+                constrain = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Growth),
+                needRecalcX = false, needRecalcY = false;
             float w = result.Rect.Width - control.Padding.X, 
                 h = result.Rect.Height - control.Padding.Y;
 
@@ -409,15 +410,20 @@ namespace Squared.PRGUI.NewEngine {
 
                     // Process wrapping (if necessary) and then if wrapping changed the size of the child,
                     //  update the run that contains it
-                    var growth = Pass2a_ForceWrapAndRebuildRuns(ref child, ref childResult);
-                    if (growth != default) {
+                    var growth = Pass2a_ForceWrapAndRebuildRuns(ref child, ref childResult) + 
+                        Pass2b_WrapAndExpand(ref child, ref childResult);
+
+                    if (growth.X != 0) {
                         run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childResult.Rect.Width + child.Margins.X);
-                        run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childResult.Rect.Height + child.Margins.Y);
                         run.TotalWidth += growth.X;
-                        run.TotalHeight += growth.Y;
+                        needRecalcX = true;
                     }
 
-                    Pass2b_WrapAndExpand(ref child, ref childResult);
+                    if (growth.Y != 0) {
+                        run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childResult.Rect.Height + child.Margins.Y);
+                        run.TotalHeight += growth.Y;
+                        needRecalcY = true;
+                    }
                 }
 
                 if (vertical)
@@ -425,6 +431,28 @@ namespace Squared.PRGUI.NewEngine {
                 else
                     h -= run.MaxOuterHeight;
             }
+
+            if (needRecalcX || needRecalcY) {
+                // HACK: We do another pass to recalculate our size if any of our children's sizes 
+                //  changed during this wrap/expand pass, since that probably also changed our size
+                // FIXME: I hate this duplication
+                result.Rect.Size = default;
+                foreach (var runIndex in Runs(control.Key)) {
+                    ref var run = ref Run(runIndex);
+                    if (vertical) {
+                        result.Rect.Width += run.MaxOuterWidth;
+                        result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight);
+                    } else {
+                        result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth);
+                        result.Rect.Height += run.MaxOuterHeight;
+                    }
+                }
+
+                control.Width.Constrain(ref result.Rect.Width, true);
+                control.Height.Constrain(ref result.Rect.Height, true);
+            }
+
+            return result.Rect.Size - oldSize;
         }
 
         private bool ShouldExpand (in ControlRecord parent, in ControlRecord child, LayoutDimensions dim) {

@@ -478,6 +478,7 @@ namespace PRGUI.Demo {
 
             var supernestedGroup = new ControlGroup {
                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Break_Auto,
                 DynamicContents = BuildSupernestedGroup,
                 DebugLabel = "supernestedGroup"
             };
@@ -854,8 +855,7 @@ namespace PRGUI.Demo {
             };
             tabs.SelectedIndex = 0;
             tabs.TabsOnLeft = false;
-            // HACK: For layout debugging
-            tabs.ExpandToHoldAllTabs = false;
+            tabs.ExpandToHoldAllTabs = true;
             tabs.LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top;
 
             var bigScrollableContainer = new Container {
@@ -1326,9 +1326,14 @@ namespace PRGUI.Demo {
                 IsFirstUpdate = false;
                 if (UseSavedTree) {
                     Context.Engine.Update();
-                    var ms = Microsoft.Xna.Framework.Input.Mouse.GetState();
+                    // HACK
+                    Keyboard.PreviousState = Keyboard.CurrentState;
+                    Keyboard.CurrentState = Microsoft.Xna.Framework.Input.Keyboard.GetState();
+                    Mouse.PreviousState = Mouse.CurrentState;
+                    Mouse.CurrentState = Microsoft.Xna.Framework.Input.Mouse.GetState();
+
                     if (Context.Engine.HitTest(
-                        new Vector2(ms.X, ms.Y), out var record, out _
+                        new Vector2(Mouse.CurrentState.X, Mouse.CurrentState.Y), out var record, out _
                     ))
                         HighlightRecord = record.Key;
                     else

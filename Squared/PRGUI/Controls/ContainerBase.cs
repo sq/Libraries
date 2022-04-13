@@ -55,8 +55,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         public ControlFlags ContainerFlags { get; set; } =
-            ControlFlags.Container_Align_Start | ControlFlags.Container_Row | 
+            ControlFlags.Container_Align_Start | ControlFlags.Container_Row |
             ControlFlags.Container_Wrap;
+        // If we set Break_Auto here more things in the new engine act like the old engine,
+        //  but it's a very bad default
+        // ControlFlags.Container_Break_Auto;
 
         /// <summary>
         /// Overrides ContainerFlags

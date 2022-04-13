@@ -219,7 +219,7 @@ namespace Squared.PRGUI.NewEngine {
                 maxY = Math.Max(maxY, childRect.Top + childRect.Height + child.Margins.Bottom);
             }
 
-            result = new RectF(minX, minY, maxX - minX, maxY - minY + 1024);
+            result = new RectF(minX, minY, maxX - minX, maxY - minY);
             return true;
         }
     }
