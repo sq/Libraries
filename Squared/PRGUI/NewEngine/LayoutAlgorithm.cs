@@ -45,6 +45,22 @@ namespace Squared.PRGUI.NewEngine {
                 return ref Run(index);
         }
 
+        private struct ControlTraits {
+            public bool vertical, wrap, noExpandX, noExpandY,
+                constrain, clip, clipX, clipY;
+
+            public ControlTraits (in ControlRecord control) {
+                vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
+                wrap = control.Flags.IsFlagged(ControlFlags.Container_Break_Auto);
+                constrain = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Growth);
+                clip = control.Flags.IsFlagged(ControlFlags.Container_Clip_Children);
+                clipX = clip && !control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X);
+                clipY = clip && !control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y);
+                noExpandX = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_X);
+                noExpandY = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_Y);
+            }
+        }
+
         #region Layout first pass
         private void InitializeResult (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
             result.Tag = control.Tag;
@@ -67,10 +83,7 @@ namespace Squared.PRGUI.NewEngine {
             if (control.FirstChild.IsInvalid)
                 return;
 
-            bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
-                wrap = control.Flags.IsFlagged(ControlFlags.Container_Break_Auto),
-                noExpandX = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_X),
-                noExpandY = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_Y);
+            var t = new ControlTraits(control);
             float padX = control.Padding.X, padY = control.Padding.Y;
             var currentRunIndex = -1;
             foreach (var ckey in Children(control.Key)) {
@@ -81,20 +94,19 @@ namespace Squared.PRGUI.NewEngine {
                 float w = childResult.Rect.Width + child.Margins.X,
                     h = childResult.Rect.Height + child.Margins.Y;
                 ref var run = ref Pass1_UpdateRun(
-                    in control, ref result, in child, in childResult, 
-                    w, h, ref currentRunIndex
+                    in t, in control, ref result, in child, in childResult, ref currentRunIndex
                 );
 
                 // At a minimum we should be able to hold all our children if they were stacked on each other
-                if (!noExpandX)
+                if (!t.noExpandX)
                     result.Rect.Width = Math.Max(result.Rect.Width, w + padX);
-                if (!noExpandY)
+                if (!t.noExpandY)
                     result.Rect.Height = Math.Max(result.Rect.Height, h + padY);
                 // If we're not in wrapped mode, we will try to expand to hold our largest run
-                if (!wrap) {
-                    if (vertical && !noExpandY)
+                if (!t.wrap) {
+                    if (t.vertical && !t.noExpandY)
                         result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
-                    else if (!noExpandX)
+                    else if (!t.noExpandX)
                         result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
                 }
             }
@@ -104,9 +116,9 @@ namespace Squared.PRGUI.NewEngine {
             // We have our minimum size in result.Rect and the size of all our content in result.ContentRect
             // Now we add padding to the contentrect and pick the biggest of the two
             // This gives us proper autosize for non-forced-wrap
-            if (!noExpandX)
+            if (!t.noExpandX)
                 result.Rect.Width = Math.Max(result.Rect.Width, result.ContentRect.Width + padX);
-            if (!noExpandY)
+            if (!t.noExpandY)
                 result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
 
             control.Width.Constrain(ref result.Rect.Width, true);
@@ -137,11 +149,10 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         private void UpdateRunCommon (
-            ref ControlLayoutRun run, 
+            ref ControlLayoutRun run, in ControlTraits t,
             in ControlRecord control, in ControlLayoutResult result,
             in ControlRecord child, in ControlLayoutResult childResult,
-            ref int firstRunIndex, int currentRunIndex,
-            float childWidth, float childHeight
+            ref int firstRunIndex, int currentRunIndex
         ) {
             if (firstRunIndex < 0)
                 firstRunIndex = currentRunIndex;
@@ -167,22 +178,25 @@ namespace Squared.PRGUI.NewEngine {
                     run.YAnchor = default;
             }
 
+            float childOuterWidth = childResult.Rect.Width + child.Margins.X,
+                childOuterHeight = childResult.Rect.Height + child.Margins.Y;
+
             run.FlowCount++;
             if (ShouldExpand(in control, in child, LayoutDimensions.X))
                 run.ExpandCountX++;
             if (ShouldExpand(in control, in child, LayoutDimensions.Y))
                 run.ExpandCountY++;
-            run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childWidth);
-            run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childHeight);
-            run.TotalWidth += childWidth;
-            run.TotalHeight += childHeight;
+            run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childOuterWidth);
+            run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childOuterHeight);
+            run.TotalWidth += childOuterWidth;
+            run.TotalHeight += childOuterHeight;
         }
 
         private ref ControlLayoutRun Pass1_UpdateRun (
-            // TODO: These aren't necessary, remove them?
+            in ControlTraits t,
             in ControlRecord control, ref ControlLayoutResult result, 
             in ControlRecord child, in ControlLayoutResult childResult, 
-            float childWidth, float childHeight, ref int currentRunIndex
+            ref int currentRunIndex
         ) {
             bool isBreak = child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
             var previousRunIndex = currentRunIndex;
@@ -195,10 +209,9 @@ namespace Squared.PRGUI.NewEngine {
                 Pass1_IncreaseContentSizeForCompletedRun(in control, ref result, previousRunIndex);
 
             UpdateRunCommon(
-                ref run, in control, in result,
+                ref run, in t, in control, in result,
                 in child, in childResult, 
-                ref result.FirstRunIndex, currentRunIndex,
-                childWidth, childHeight
+                ref result.FirstRunIndex, currentRunIndex
             );
 
             return ref run;
@@ -215,10 +228,10 @@ namespace Squared.PRGUI.NewEngine {
             if (!control.Flags.IsFlagged(ControlFlags.Container_Break_Auto))
                 return default;
 
-            bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
+            var t = new ControlTraits(control);
             float contentWidth = result.Rect.Width - control.Padding.X,
                 contentHeight = result.Rect.Height - control.Padding.Y,
-                capacity = vertical ? contentHeight : contentWidth, 
+                capacity = t.vertical ? contentHeight : contentWidth, 
                 offset = 0, extent = 0;
 
             // HACK: Unfortunately, we have to build new runs entirely from scratch because modifying the existing ones
@@ -231,11 +244,9 @@ namespace Squared.PRGUI.NewEngine {
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref Result(ckey);
-                float w = childResult.Rect.Width + child.Margins.X,
-                    h = childResult.Rect.Height + child.Margins.Y,
-                    startMargin = vertical ? child.Margins.Top : child.Margins.Left,
-                    endMargin = vertical ? child.Margins.Bottom : child.Margins.Right,
-                    size = vertical ? childResult.Rect.Height : childResult.Rect.Width,
+                float startMargin = t.vertical ? child.Margins.Top : child.Margins.Left,
+                    endMargin = t.vertical ? child.Margins.Bottom : child.Margins.Right,
+                    size = t.vertical ? childResult.Rect.Height : childResult.Rect.Width,
                     totalSize = startMargin + size + endMargin;
                 var forceBreak = (offset + startMargin + size) > capacity;
                 if (forceBreak)
@@ -249,16 +260,15 @@ namespace Squared.PRGUI.NewEngine {
                 // We will then skip stacked/floating controls when enumerating runs (as appropriate)
                 ref var run = ref SelectRunForBuildingPass(ref currentRunIndex, isBreak);
                 UpdateRunCommon(
-                    ref run, in control, in result,
+                    ref run, in t, in control, in result,
                     in child, in childResult, 
-                    ref firstRunIndex, currentRunIndex,
-                    w, h
+                    ref firstRunIndex, currentRunIndex
                 );
 
                 if (previousRunIndex != currentRunIndex) {
                     if (previousRunIndex >= 0) {
                         ref var previousRun = ref Run(previousRunIndex);
-                        extent += vertical ? previousRun.MaxOuterWidth : previousRun.MaxOuterHeight;
+                        extent += t.vertical ? previousRun.MaxOuterWidth : previousRun.MaxOuterHeight;
                     }
                     offset = totalSize;
                 } else {
@@ -268,17 +278,16 @@ namespace Squared.PRGUI.NewEngine {
 
             if (currentRunIndex >= 0) {
                 ref var currentRun = ref Run(currentRunIndex);
-                extent += vertical ? currentRun.MaxOuterWidth : currentRun.MaxOuterHeight;
+                extent += t.vertical ? currentRun.MaxOuterWidth : currentRun.MaxOuterHeight;
             }
 
-            if (numForcedBreaks <= 0) {
+            if (numForcedBreaks <= 0)
                 result.FirstRunIndex = oldFirstRun;
-                return default;
-            }
+            else
+                result.FirstRunIndex = firstRunIndex;
 
-            result.FirstRunIndex = firstRunIndex;
             var oldSize = result.Rect.Size;
-            if (vertical)
+            if (t.vertical)
                 result.Rect.Width = control.Width.Constrain(Math.Max(result.Rect.Width, extent + control.Padding.X), true);
             else
                 result.Rect.Height = control.Height.Constrain(Math.Max(result.Rect.Height, extent + control.Padding.Y), true);
@@ -286,15 +295,13 @@ namespace Squared.PRGUI.NewEngine {
             return result.Rect.Size - oldSize;
         }
 
-        private Vector2 Pass2b_WrapAndExpand (ref ControlRecord control, ref ControlLayoutResult result) {
+        private Vector2 Pass2b_WrapAndAdjustSizes (ref ControlRecord control, ref ControlLayoutResult result) {
             if (control.FirstChild.IsInvalid)
                 return default;
 
             var oldSize = result.Rect.Size;
-            bool wrap = control.Flags.IsFlagged(ControlFlags.Container_Break_Auto),
-                vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
-                constrain = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Growth),
-                needRecalcX = false, needRecalcY = false;
+            var t = new ControlTraits(control);
+            bool needRecalcX = false, needRecalcY = false;
             float w = result.Rect.Width - control.Padding.X, 
                 h = result.Rect.Height - control.Padding.Y;
 
@@ -310,26 +317,19 @@ namespace Squared.PRGUI.NewEngine {
                 //  to ALSO be 2000px wide. This ensures that if Constrain_Size is set we will only expand other items
                 //  to the size of the menu itself
                 // In the demo this is necessary to ensure that the 'item a ... item b' menu item is laid out correctly
-                float runMaxOuterWidth = constrain && vertical ? Math.Min(w, run.MaxOuterWidth) : run.MaxOuterWidth,
-                    runMaxOuterHeight = constrain && !vertical ? Math.Min(h, run.MaxOuterHeight) : run.MaxOuterHeight,
+                float runMaxOuterWidth = t.constrain && t.vertical ? Math.Min(w, run.MaxOuterWidth) : run.MaxOuterWidth,
+                    runMaxOuterHeight = t.constrain && !t.vertical ? Math.Min(h, run.MaxOuterHeight) : run.MaxOuterHeight,
                     // HACK: For the last run in a box we want to expand the run to fill the entire available space
                     //  otherwise listbox items will have a width of 0 :(
-                    effectiveRunMaxWidth = isLastRun && vertical ? Math.Max(w, runMaxOuterWidth) : runMaxOuterWidth,
-                    effectiveRunMaxHeight = isLastRun && !vertical ? Math.Max(h, runMaxOuterHeight) : runMaxOuterHeight,
+                    effectiveRunMaxWidth = isLastRun && t.vertical ? Math.Max(w, runMaxOuterWidth) : runMaxOuterWidth,
+                    effectiveRunMaxHeight = isLastRun && !t.vertical ? Math.Max(h, runMaxOuterHeight) : runMaxOuterHeight,
                     effectiveRunTotalWidth = run.TotalWidth,
                     effectiveRunTotalHeight = run.TotalHeight,
-                    xSpace = vertical ? 0f : w - effectiveRunTotalWidth,
-                    ySpace = vertical ? h - effectiveRunTotalHeight : 0,
+                    xSpace = t.vertical ? 0f : w - effectiveRunTotalWidth,
+                    ySpace = t.vertical ? h - effectiveRunTotalHeight : 0,
                     newXSpace = xSpace, newYSpace = ySpace,
-                    minOuterWidth = vertical ? effectiveRunMaxWidth : 0,
-                    minOuterHeight = vertical ? 0 : effectiveRunMaxHeight;
-
-                /*
-                if (vertical)
-                    w -= effectiveRunWidth;
-                else
-                    h -= effectiveRunHeight;
-                */
+                    minOuterWidth = t.vertical ? effectiveRunMaxWidth : 0,
+                    minOuterHeight = t.vertical ? 0 : effectiveRunMaxHeight;
 
                 for (int pass = 0; pass < 3; pass++) {
                     if (countX < 1)
@@ -368,6 +368,9 @@ namespace Squared.PRGUI.NewEngine {
                             // When expanding to hit a minimum we need to subtract our control's margins
                             //  from the minimum, since each control has different margins (the size of a
                             //  run includes the margins of the controls)
+
+                            if (child.Key.ID == 149)
+                                ;
 
                             if (expandX) {
                                 run.TotalWidth -= childOuterW;
@@ -411,7 +414,7 @@ namespace Squared.PRGUI.NewEngine {
                     // Process wrapping (if necessary) and then if wrapping changed the size of the child,
                     //  update the run that contains it
                     var growth = Pass2a_ForceWrapAndRebuildRuns(ref child, ref childResult) + 
-                        Pass2b_WrapAndExpand(ref child, ref childResult);
+                        Pass2b_WrapAndAdjustSizes(ref child, ref childResult);
 
                     if (growth.X != 0) {
                         run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childResult.Rect.Width + child.Margins.X);
@@ -426,7 +429,7 @@ namespace Squared.PRGUI.NewEngine {
                     }
                 }
 
-                if (vertical)
+                if (t.vertical)
                     w -= run.MaxOuterWidth;
                 else
                     h -= run.MaxOuterHeight;
@@ -439,7 +442,7 @@ namespace Squared.PRGUI.NewEngine {
                 result.Rect.Size = default;
                 foreach (var runIndex in Runs(control.Key)) {
                     ref var run = ref Run(runIndex);
-                    if (vertical) {
+                    if (t.vertical) {
                         result.Rect.Width += run.MaxOuterWidth;
                         result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight);
                     } else {
@@ -448,8 +451,16 @@ namespace Squared.PRGUI.NewEngine {
                     }
                 }
 
-                control.Width.Constrain(ref result.Rect.Width, true);
-                control.Height.Constrain(ref result.Rect.Height, true);
+                // TODO: Figure out whether these should actually be enabled, they seem right but they also don't seem to fix anything?
+                if (false && control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_X))
+                    result.Rect.Width = oldSize.X;
+                else
+                    control.Width.Constrain(ref result.Rect.Width, true);
+
+                if (false && control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_Y))
+                    result.Rect.Height = oldSize.Y;
+                else
+                    control.Height.Constrain(ref result.Rect.Height, true);
             }
 
             return result.Rect.Size - oldSize;
@@ -473,23 +484,20 @@ namespace Squared.PRGUI.NewEngine {
 
             ControlKey firstProcessed = ControlKey.Invalid,
                 lastProcessed = ControlKey.Invalid;
-            bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
-                clipAny = control.Flags.IsFlagged(ControlFlags.Container_Clip_Children),
-                clipX = clipAny && !control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X),
-                clipY = clipAny && !control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y);
+            var t = new ControlTraits(control);
             float w = result.ContentRect.Width, h = result.ContentRect.Height,
                 x = 0, y = 0;
 
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
-                float rw = vertical ? run.MaxOuterWidth : run.TotalWidth,
-                    rh = vertical ? run.TotalHeight : run.MaxOuterHeight,
-                    space = Math.Max(vertical ? h - rh : w - rw, 0),
-                    baseline = vertical ? run.MaxOuterWidth : run.MaxOuterHeight;
+                float rw = t.vertical ? run.MaxOuterWidth : run.TotalWidth,
+                    rh = t.vertical ? run.TotalHeight : run.MaxOuterHeight,
+                    space = Math.Max(t.vertical ? h - rh : w - rw, 0),
+                    baseline = t.vertical ? run.MaxOuterWidth : run.MaxOuterHeight;
 
                 run.GetAlignmentF(control.Flags, out float xAlign, out float yAlign);
 
-                if (vertical)
+                if (t.vertical)
                     y = space * yAlign;
                 else
                     x = space * xAlign;
@@ -522,7 +530,7 @@ namespace Squared.PRGUI.NewEngine {
                         childResult.Rect.Left = result.ContentRect.Left + childMargins.Left + x;
                         childResult.Rect.Top = result.ContentRect.Top + childMargins.Top + y;
 
-                        if (vertical) {
+                        if (t.vertical) {
                             var alignment = (xChildAlign * Math.Max(0, baseline - childOuterSize.X));
                             if (alignment != 0)
                                 childResult.Rect.Left += alignment;
@@ -536,11 +544,11 @@ namespace Squared.PRGUI.NewEngine {
                     }
 
                     // TODO: Clip left/top edges as well?
-                    if (clipX) {
+                    if (t.clipX) {
                         var rightEdge = result.ContentRect.Right - childMargins.Right;
                         childResult.Rect.Width = Math.Max(0, Math.Min(childResult.Rect.Width, rightEdge - childResult.Rect.Left));
                     }
-                    if (clipY) {
+                    if (t.clipY) {
                         var bottomEdge = result.ContentRect.Bottom - childMargins.Bottom;
                         childResult.Rect.Height = Math.Max(0, Math.Min(childResult.Rect.Height, bottomEdge - childResult.Rect.Top));
                     }
@@ -548,7 +556,7 @@ namespace Squared.PRGUI.NewEngine {
                     Pass3_Arrange(ref child, ref childResult);
                 }
 
-                if (vertical) {
+                if (t.vertical) {
                     x += run.MaxOuterWidth;
                     y = 0;
                 } else {
@@ -567,7 +575,7 @@ namespace Squared.PRGUI.NewEngine {
             _RunCount = 0;
             Pass1_ComputeSizesAndBuildRuns(ref control, ref result, 0);
             Pass2a_ForceWrapAndRebuildRuns(ref control, ref result);
-            Pass2b_WrapAndExpand(ref control, ref result);
+            Pass2b_WrapAndAdjustSizes(ref control, ref result);
             Pass3_Arrange(ref control, ref result);
             ;
         }

@@ -79,7 +79,7 @@ namespace PRGUI.Demo {
             Graphics.PreferredBackBufferFormat = RenderTargetFormat;
             Graphics.PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8;
             Graphics.PreferredBackBufferWidth = 1920;
-            Graphics.PreferredBackBufferHeight = 1080;
+            Graphics.PreferredBackBufferHeight = UseSavedTree ? 1440 : 1080;
 #if DEBUG
             Graphics.SynchronizeWithVerticalRetrace = true;
 #else
@@ -1334,7 +1334,7 @@ namespace PRGUI.Demo {
 
                     if (Context.Engine.HitTest(
                         new Vector2(Mouse.CurrentState.X, Mouse.CurrentState.Y), out var record, out _
-                    ))
+                    ) && !record.Parent.IsInvalid)
                         HighlightRecord = record.Key;
                     else
                         HighlightRecord = null;

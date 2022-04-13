@@ -156,34 +156,37 @@ namespace Squared.PRGUI {
 
             ref var result = ref Engine.Result(record.Key);
             var obscuredByFocus = (focusChain != null) && !focusChain.Contains(record.Key);
-            var alpha = obscuredByFocus ? 0.45f : 1f;
-            pSRGBColor fillColor = DebugColors[result.Depth % DebugColors.Length],
-                lineColor = fillColor.AdjustBrightness(0.33f, true) * (obscuredByFocus ? 0.2f : 1f),
-                textColor = fillColor.AdjustBrightness(2f, true);
-            var outlineSize = 1f;
-            var offset = new Vector2(outlineSize);
-            var layer = result.Depth * 2;
-            renderer.RasterizeRectangle(
-                result.Rect.Position + offset, result.Rect.Extent - offset, 
-                1.5f, outlineSize, fillColor * alpha, fillColor * alpha, lineColor,
-                layer: layer
-            );
-            var obscureText = obscuredByFocus && !focusChain.Contains(record.Parent);
-            if (!obscureText && (font != null)) {
-                LayoutTreeBuilder.Clear();
-                LayoutTreeBuilder.AppendFormat("{0} {1} {2},{3}", record.Key.ID, record.Tag, Math.Floor(result.Rect.Width), Math.Floor(result.Rect.Height));
-                var layout = font.LayoutString(LayoutTreeBuilder, color: textColor.ToColor());
-                var textScale = (obscuredByFocus ? 0.6f : 1f);
-                var scale = Arithmetic.Clamp(
-                    Math.Min(
-                        (result.Rect.Size.Y - 2) / layout.Size.Y,
-                        (result.Rect.Size.X - 4) / layout.Size.X
-                    ) * textScale,
-                    0.33f, textScale
+
+            if (record.Key.ID > 0) {
+                var alpha = obscuredByFocus ? 0.45f : 1f;
+                pSRGBColor fillColor = DebugColors[result.Depth % DebugColors.Length],
+                    lineColor = fillColor.AdjustBrightness(0.33f, true) * (obscuredByFocus ? 0.2f : 1f),
+                    textColor = fillColor.AdjustBrightness(2f, true) * (obscuredByFocus ? 0.6f : 1f);
+                var outlineSize = 1f;
+                var offset = new Vector2(outlineSize);
+                var layer = result.Depth * 2;
+                renderer.RasterizeRectangle(
+                    result.Rect.Position + offset, result.Rect.Extent - offset, 
+                    1.5f, outlineSize, fillColor * alpha, fillColor * alpha, lineColor,
+                    layer: layer
                 );
-                result.Rect.Intersection(CanvasRect, out RectF textRect);
-                var textOffset = textRect.Position + (textRect.Size - (layout.Size * scale)) * 0.5f;
-                renderer.DrawMultiple(layout.DrawCalls, textOffset, scale: new Vector2(scale), layer: layer + 1);
+                var obscureText = obscuredByFocus && !focusChain.Contains(record.Parent);
+                if (!obscureText && (font != null)) {
+                    LayoutTreeBuilder.Clear();
+                    LayoutTreeBuilder.AppendFormat("{0} {1} {2},{3}", record.Key.ID, record.Tag, Math.Floor(result.Rect.Width), Math.Floor(result.Rect.Height));
+                    var layout = font.LayoutString(LayoutTreeBuilder, color: textColor.ToColor());
+                    var textScale = (obscuredByFocus ? 0.6f : 1f);
+                    var scale = Arithmetic.Clamp(
+                        Math.Min(
+                            (result.Rect.Size.Y - 2) / layout.Size.Y,
+                            (result.Rect.Size.X - 4) / layout.Size.X
+                        ) * textScale,
+                        0.33f, textScale
+                    );
+                    result.Rect.Intersection(CanvasRect, out RectF textRect);
+                    var textOffset = textRect.Position + (textRect.Size - (layout.Size * scale)) * 0.5f;
+                    renderer.DrawMultiple(layout.DrawCalls, textOffset, scale: new Vector2(scale), layer: layer + 1);
+                }
             }
 
             if (obscuredByFocus)
