@@ -118,7 +118,7 @@ namespace Squared.PRGUI.Layout {
         Internal_FixedHeight = 0b100000000000000,
         /// <summary>
         /// Prevents child elements from growing past the boundaries of this container even if the container's
-        ///  content is bigger than the container itself.
+        ///  content is bigger than the container itself. Has no effect in the old layout engine (use Constrain_Size).
         /// </summary>
         Container_Constrain_Growth  = 0b1000000000000000,
         /// <summary>
@@ -148,9 +148,8 @@ namespace Squared.PRGUI.Layout {
         Container_Clip_Children   = 0b100000000000000000000,
         /// <summary>
         /// Combines the effects of Container_Clip_Children and Container_Constrain_Growth.
-        /// Deprecated, you probably only want one of the two.
         /// </summary>
-        Container_Constrain_Size  = Container_Constrain_Growth | ControlFlags.Container_Clip_Children,
+        Container_Constrain_Size  = Container_Constrain_Growth | Container_Clip_Children,
         /// <summary>
         /// Additional breaks will automatically be inserted if content cannot fit in the container.
         /// Only meaningful in the new engine (but implies Container_Wrap for the old engine)

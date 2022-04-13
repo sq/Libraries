@@ -167,8 +167,7 @@ namespace Squared.PRGUI.Controls {
             Intangible = true;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
-            // This may only need to be Constrain_Growth
-            ContainerFlags = ControlFlags.Container_Column | ControlFlags.Container_Align_Start | ControlFlags.Container_Constrain_Size | ControlFlags.Container_Prevent_Crush_Y;
+            ContainerFlags = ControlFlags.Container_Column | ControlFlags.Container_Align_Start | ControlFlags.Container_Constrain_Growth;
             LayoutFlags = ControlFlags.Layout_Floating;
             DisplayOrder = 9900;
             ClipChildren = true;

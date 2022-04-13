@@ -438,9 +438,6 @@ namespace Squared.PRGUI.NewEngine {
             float w = result.ContentRect.Width, h = result.ContentRect.Height,
                 x = 0, y = 0;
 
-            if (control.Key.ID == 11)
-                ;
-
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
                 float rw = vertical ? run.MaxOuterWidth : run.TotalWidth,
