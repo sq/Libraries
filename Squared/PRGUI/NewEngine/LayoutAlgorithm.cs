@@ -47,15 +47,13 @@ namespace Squared.PRGUI.NewEngine {
 
         #region Layout first pass
         private void InitializeResult (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
-#if DEBUG
-            result.Control = control.Control;
-#endif
             result.Tag = control.Tag;
             result.Rect = result.ContentRect = default;
             result.FirstRunIndex = -1;
             result.Break = control.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
             result.Depth = depth;
             result.Version = Version;
+            _Count = Math.Max(control.Key.ID + 1, _Count);
         }
 
         private void Pass1_ComputeSizesAndBuildRuns (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
@@ -503,9 +501,6 @@ namespace Squared.PRGUI.NewEngine {
                         childResult.Rect.Height = Math.Max(0, Math.Min(childResult.Rect.Height, bottomEdge - childResult.Rect.Top));
                     }
 
-                    if (control.Control is Controls.ListBox<string> lb)
-                        ;
-
                     Pass3_Arrange(ref child, ref childResult);
                 }
 
@@ -525,6 +520,7 @@ namespace Squared.PRGUI.NewEngine {
 
         private void PerformLayout (ref ControlRecord control) {
             ref var result = ref UnsafeResult(control.Key);
+            _RunCount = 0;
             Pass1_ComputeSizesAndBuildRuns(ref control, ref result, 0);
             Pass2_WrapAndExpand(ref control, ref result);
             Pass3_Arrange(ref control, ref result);

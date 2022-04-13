@@ -97,7 +97,9 @@ namespace Squared.Render {
 
                     for (int i = 0, l = b.Count; i < l; i++) {
                         if (!BitmapDrawCall.CheckValid(in drawCallsRhsBuffer[i + b.Offset]))
-                            throw new Exception("Invalid draw call in batch");
+                            // FIXME
+                            // throw new Exception("Invalid draw call in batch");
+                            continue;
 
                         bl._DrawCalls.Add(in drawCallsRhsBuffer[i + b.Offset]);
                     }

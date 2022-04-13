@@ -28,6 +28,8 @@ using Squared.Util.Text;
 
 namespace PRGUI.Demo {
     public class DemoGame : MultithreadedGame {
+        const bool LoadSavedTree = true;
+
         // ABXY
         public const string ButtonChars = "";
 
@@ -247,6 +249,9 @@ namespace PRGUI.Demo {
         }
 
         private void BuildUI () {
+            if (LoadSavedTree)
+                Context.Engine?.LoadRecords(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "prgui.xml"));
+
             var hoveringCtl = new StaticText {
                 Layout = { Fill = true },
                 AutoSize = false,
@@ -1140,10 +1145,8 @@ namespace PRGUI.Demo {
             };
             // Context.Controls.Add(floatingWindowWithText);
 
-            if (false) {
-                Control.ShowDebugBoxes = true;
-                Control.ShowDebugPadding = true;
-            }
+            Control.ShowDebugBoxes = true;
+            Control.ShowDebugPadding = false;
         }
 
         private void FloatingWindowWithText_Content (ref ContainerBuilder builder) {
@@ -1308,17 +1311,21 @@ namespace PRGUI.Demo {
             var started = Time.Ticks;
 
             DynamicStaticText.Text = DynamicStaticStrings[(DynamicStringIndex++ / 16) % DynamicStaticStrings.Length];
-            Context.UpdateInput(IsActive);
 
             if (IsFirstUpdate || (UpdatesToSkip <= 0)) {
                 IsFirstUpdate = false;
-                Context.Update();
+                if (LoadSavedTree) {
+                    Context.Engine.Update();
+                } else {
+                    Context.Update();
+                    Context.UpdateInput(IsActive);
+                }
             } else 
                 UpdatesToSkip--;
 
             IsMouseVisible = !IsActive || (Context.InputSources.IndexOf(Mouse) == 0);
 
-            if (Context.IsActive)
+            if (Context.IsActive || LoadSavedTree)
                 LastTimeOverUI = Time.Ticks;
 
             var ks = Keyboard.CurrentState;
@@ -1405,7 +1412,10 @@ namespace PRGUI.Demo {
 
             if (IsFirstDraw || (DrawsToSkip <= 0)) {
                 IsFirstDraw = false;
-                Context.Rasterize(frame, UIRenderTarget, -9990);
+                if (LoadSavedTree)
+                    Context.RasterizeLayoutTree(frame, UIRenderTarget, -9990, Font);
+                else
+                    Context.Rasterize(frame, UIRenderTarget, -9990);
             } else
                 DrawsToSkip--;
 

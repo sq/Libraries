@@ -22,7 +22,10 @@ namespace Squared.PRGUI.NewEngine {
     internal struct ControlKeyDefaultInvalid {
         public int IndexPlusOne;
 
-        public ControlKey Key => new ControlKey(IndexPlusOne - 1);
+        public ControlKey Key {
+            get => new ControlKey(IndexPlusOne - 1);
+            set => IndexPlusOne = value.ID + 1;
+        }
 
         public static implicit operator ControlKeyDefaultInvalid (int index) {
             return new ControlKeyDefaultInvalid {
@@ -51,12 +54,43 @@ namespace Squared.PRGUI.NewEngine {
         // TODO: Use a custom dense backing store and no setters
         internal ControlKeyDefaultInvalid _Key, _Parent, _FirstChild, 
             _LastChild, _PreviousSibling, _NextSibling;
-        public ControlKey Key => _Key.Key;
-        public ControlKey Parent => _Parent.Key;
-        public ControlKey FirstChild => _FirstChild.Key;
-        public ControlKey LastChild => _LastChild.Key;
-        public ControlKey PreviousSibling => _PreviousSibling.Key;
-        public ControlKey NextSibling => _NextSibling.Key;
+
+        public ControlKey Key {
+            get => _Key.Key;
+#if DEBUG
+            set => _Key.Key = value;
+#endif
+        }
+        public ControlKey Parent {
+            get => _Parent.Key;
+#if DEBUG
+            set => _Parent.Key = value;
+#endif
+        }
+        public ControlKey FirstChild {
+            get => _FirstChild.Key;
+#if DEBUG
+            set => _FirstChild.Key = value;
+#endif
+        }
+        public ControlKey LastChild {
+            get => _LastChild.Key;
+#if DEBUG
+            set => _LastChild.Key = value;
+#endif
+        }
+        public ControlKey PreviousSibling {
+            get => _PreviousSibling.Key;
+#if DEBUG
+            set => _PreviousSibling.Key = value;
+#endif
+        }
+        public ControlKey NextSibling {
+            get => _NextSibling.Key;
+#if DEBUG
+            set => _NextSibling.Key = value;
+#endif
+        }
 
         public Layout.ControlFlags Flags;
         public Margins Margins, Padding;
@@ -64,11 +98,6 @@ namespace Squared.PRGUI.NewEngine {
         // TODO: Add a scroll offset value so that Control doesn't need a display offset anymore
         public Vector2 FloatingPosition;
         public Layout.LayoutTags Tag;
-
-#if DEBUG
-        // FIXME: Remove this
-        public Control Control;
-#endif
 
         public Layout.ControlFlags LayoutFlags {
             get => Flags & Layout.ControlFlagMask.Layout;
@@ -94,7 +123,7 @@ namespace Squared.PRGUI.NewEngine {
         public bool IsValid => !Key.IsInvalid;
 
         public override string ToString () {
-            return $"#{Key.ID} {Tag}";
+            return $"#{Key.ID} {Tag} {Flags}";
         }
     }
 
@@ -108,17 +137,9 @@ namespace Squared.PRGUI.NewEngine {
         internal int Depth;
         internal int FirstRunIndex;
 
-#if DEBUG
-        internal Control Control;
-#endif
-
         public override string ToString () {
             var padding = new string(' ', Depth * 2);
-            var tag = Tag.ToString();
-#if DEBUG
-            tag = Control?.ToString() ?? tag;
-#endif
-            return $"{padding}{tag} size {Rect.Size} {(Break ? "break" : "")}";
+            return $"{padding}{Tag} size {Rect.Size} {(Break ? "break" : "")}";
         }
     }
 

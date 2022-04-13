@@ -578,9 +578,9 @@ namespace Squared.PRGUI {
                         if (context.Layout.TryGetFlags(LayoutKey, out ControlFlags cf))
                             rec.Flags = cf;
 
-        #if DEBUG
-                        rec.Control = this;
-        #endif
+#if DEBUG
+                        context.Engine.Controls[LayoutKey.ID] = this;
+#endif
                     }
                 }
             } finally {

@@ -8,6 +8,10 @@ using Microsoft.Xna.Framework;
 using System.Runtime.CompilerServices;
 using Squared.PRGUI.Layout;
 using Squared.Util;
+#if DEBUG
+using System.Xml.Serialization;
+using System.IO;
+#endif
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
@@ -15,15 +19,20 @@ namespace Squared.PRGUI.NewEngine {
         };
 
         private int Version, _Count, _RunCount;
+        private const int Capacity = 32767;
 
         // TODO: Much better sizing implementation
         // We need to make sure that once we hand out a reference to Records[n], we never transition that item
         //  into a new array, otherwise a reference to the old array could be persistent on the stack.
         // The obvious solution is a huge buffer, but another option is a chain of smaller buffers so we grow by
         //  allocating a new buffer, which won't invalidate old references.
-        private ControlRecord[] Records = new ControlRecord[32767];
-        private ControlLayoutResult[] Results = new ControlLayoutResult[32767];
-        private ControlLayoutRun[] RunBuffer = new ControlLayoutRun[32767];
+        private ControlRecord[] Records = new ControlRecord[Capacity];
+        private ControlLayoutResult[] Results = new ControlLayoutResult[Capacity];
+        private ControlLayoutRun[] RunBuffer = new ControlLayoutRun[Capacity];
+
+#if DEBUG
+        internal Control[] Controls = new Control[Capacity];
+#endif
 
         private Vector2 _CanvasSize;
         public Vector2 CanvasSize {
@@ -37,10 +46,7 @@ namespace Squared.PRGUI.NewEngine {
         public int Count => _Count;
         public void Clear () {
             Array.Clear(Records, 0, Records.Length);
-            Array.Clear(Results, 0, Results.Length);
-            Array.Clear(RunBuffer, 0, RunBuffer.Length);
             _Count = 0;
-            _RunCount = 0;
             Version++;
             // Initialize root
             ref var root = ref Create(tag: Layout.LayoutTags.Root);
@@ -295,7 +301,37 @@ namespace Squared.PRGUI.NewEngine {
         #endregion
 
         public void Update () {
+            // _Count = 0;
+            Array.Clear(Results, 0, Results.Length);
+            Array.Clear(RunBuffer, 0, RunBuffer.Length);
+            _RunCount = 0;
             PerformLayout(ref Root());
+        }
+
+        public void LoadRecords (string filename) {
+#if DEBUG
+            var serializer = new XmlSerializer(typeof(ControlRecord[]));
+            using (var stream = File.OpenRead(filename)) {
+                var temp = (ControlRecord[])serializer.Deserialize(stream);
+                Array.Clear(Records, 0, Records.Length);
+                Array.Copy(temp, Records, temp.Length);
+                _Count = temp.Length;
+            }
+#else
+            throw new NotImplementedException();
+#endif
+        }
+
+        public void SaveRecords (string filename) {
+#if DEBUG
+            var serializer = new XmlSerializer(typeof(ControlRecord[]));
+            var temp = new ControlRecord[_Count];
+            Array.Copy(Records, temp, _Count);
+            using (var stream = File.Open(filename, FileMode.Create))
+                serializer.Serialize(stream, temp);
+#else
+            throw new NotImplementedException();
+#endif
         }
     }
 }

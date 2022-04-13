@@ -67,51 +67,51 @@ namespace Squared.Render {
     }
 
     public struct pSRGBColor : IEquatable<pSRGBColor>, IComparable<pSRGBColor> {
-        public bool IsVector4;
-        public Vector4 Vector4;
-        public Color Color;
+        private bool IsVector4;
+        private Vector4 _Vector4;
+        private Color _Color;
 
         public pSRGBColor (int r, int g, int b, float a = 1f) {
             IsVector4 = true;
-            Vector4 = new Vector4(r * a, g * a, b * a, a);
-            Color = default(Color);
+            _Vector4 = new Vector4(r * a, g * a, b * a, a);
+            _Color = default(Color);
         }
 
         public pSRGBColor (int r, int g, int b, int _a, bool isPremultiplied = false) {
             IsVector4 = true;
             if (isPremultiplied)
-                Vector4 = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
+                _Vector4 = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
             else {
                 float a = _a / 255.0f;
-                Vector4 = new Vector4(r * a / 255.0f, g * a / 255.0f, b * a / 255.0f, a);
+                _Vector4 = new Vector4(r * a / 255.0f, g * a / 255.0f, b * a / 255.0f, a);
             }
-            Color = default(Color);
+            _Color = default(Color);
         }
 
         public pSRGBColor (float r, float g, float b, float a = 1f, bool isPremultiplied = false) {
             IsVector4 = true;
             if (isPremultiplied)
-                Vector4 = new Vector4(r, g, b, a);
+                _Vector4 = new Vector4(r, g, b, a);
             else
-                Vector4 = new Vector4(r * a, g * a, b * a, a);
-            Color = default(Color);
+                _Vector4 = new Vector4(r * a, g * a, b * a, a);
+            _Color = default(Color);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public pSRGBColor (Color c, bool issRGB = true) {
             if (issRGB) {
                 IsVector4 = false;
-                Vector4 = default(Vector4);
-                Color = c;
+                _Vector4 = default(Vector4);
+                _Color = c;
             } else {
                 IsVector4 = true;
-                Vector4 = new Vector4(
+                _Vector4 = new Vector4(
                     ColorSpace.sRGBByteToLinearFloatTable[c.R],
                     ColorSpace.sRGBByteToLinearFloatTable[c.G],
                     ColorSpace.sRGBByteToLinearFloatTable[c.B],
                     ColorSpace.sRGBByteToLinearFloatTable[c.A]
                 );
-                Color = default(Color);
+                _Color = default(Color);
             }
         }
 
@@ -120,12 +120,12 @@ namespace Squared.Render {
             IsVector4 = true;
             if (!isPremultiplied) {
                 float a = v4.W;
-                Vector4 = v4 * a;
-                Vector4.W = a;
+                _Vector4 = v4 * a;
+                _Vector4.W = a;
             } else {
-                Vector4 = v4;
+                _Vector4 = v4;
             }
-            Color = default(Color);
+            _Color = default(Color);
         }
 
         public static pSRGBColor LinearLerp (pSRGBColor a, pSRGBColor b, float t) {
@@ -145,13 +145,13 @@ namespace Squared.Render {
             IsVector4 = true;
             if (!isPremultiplied) {
                 float a = v4.W;
-                Vector4 = v4;
-                Vector4 *= a;
-                Vector4.W = a;
+                _Vector4 = v4;
+                _Vector4 *= a;
+                _Vector4.W = a;
             } else {
-                Vector4 = v4;
+                _Vector4 = v4;
             }
-            Color = default(Color);
+            _Color = default(Color);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -166,7 +166,7 @@ namespace Squared.Render {
                 var linear = ToPLinear();
                 return new Color(linear.X, linear.Y, linear.Z, linear.W);
             } else if (!IsVector4) {
-                return Color;
+                return _Color;
             } else {
                 var v = ToVector4();
                 return new Color(v.X, v.Y, v.Z, v.W);
@@ -176,7 +176,7 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Color ToColor () {
             if (!IsVector4)
-                return Color;
+                return _Color;
             else {
                 var v = ToVector4();
                 return new Color(v.X, v.Y, v.Z, v.W);
@@ -186,9 +186,9 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector4 ToVector4 () {
             if (IsVector4)
-                return Vector4;
+                return _Vector4;
             else
-                return new Vector4(Color.R / 255f, Color.G / 255f, Color.B / 255f, Color.A / 255f);
+                return new Vector4(_Color.R / 255f, _Color.G / 255f, _Color.B / 255f, _Color.A / 255f);
         }
 
         public Vector4 ToPLinear () {
@@ -332,9 +332,9 @@ namespace Squared.Render {
         public bool IsTransparent {
             get {
                 if (IsVector4)
-                    return Vector4.W <= 0;
+                    return _Vector4.W <= 0;
                 else
-                    return Color.PackedValue == 0;
+                    return _Color.PackedValue == 0;
             }
         }
 
@@ -343,9 +343,9 @@ namespace Squared.Render {
                 return false;
 
             if (IsVector4) {
-                return Vector4.FastEquals(in rhs.Vector4);
+                return _Vector4.FastEquals(in rhs._Vector4);
             } else {
-                return Color == rhs.Color;
+                return _Color == rhs._Color;
             }
         }
 
@@ -371,8 +371,8 @@ namespace Squared.Render {
         public override int GetHashCode () {
             return (
                 IsVector4 
-                    ? Vector4.GetHashCode()
-                    : Color.GetHashCode()
+                    ? _Vector4.GetHashCode()
+                    : _Color.GetHashCode()
             );
         }
 

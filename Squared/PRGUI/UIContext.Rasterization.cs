@@ -131,42 +131,42 @@ namespace Squared.PRGUI {
             // FIXME: Do we need to do anything here?
         }
 
-        public void DebugNewRasterize (BatchGroup container, int layer, Color? clearColor = null) {
-            var renderer = new ImperativeRenderer(container, Materials) {
-                BlendState = BlendState.AlphaBlend,
-                DepthStencilState = DepthStencilState.None
-            };
-
-            renderer.Clear(color: clearColor, stencil: 0, layer: -999);
-            DebugNewRasterize(ref renderer, ref Engine.Root(), layer, 0);
-        }
-
         private readonly static Color[] DebugColors = new[] {
             Color.Red,
             Color.Orange,
             Color.Yellow,
             Color.Green,
-            Color.Teal,
             Color.Blue,
             Color.Purple,
             Color.Silver,
         };
 
-        private void DebugNewRasterize (ref ImperativeRenderer renderer, ref NewEngine.ControlRecord record, int layer, int index) {
+        private StringBuilder LayoutTreeBuilder = new StringBuilder();
+        private void RasterizeLayoutTree (ref ImperativeRenderer renderer, Render.Text.IGlyphSource font, ref NewEngine.ControlRecord record, int depth, int index) {
             ref var result = ref Engine.Result(record.Key);
-            Color fillColor = DebugColors[(layer + index) % DebugColors.Length],
-                lineColor = DebugColors[layer % DebugColors.Length];
+            Color fillColor = DebugColors[depth % DebugColors.Length],
+                lineColor = DebugColors[(depth + 1) % DebugColors.Length];
             var outlineSize = 1.5f;
             var offset = new Vector2(outlineSize);
+            var layer = depth * 2;
             renderer.RasterizeRectangle(
                 result.Rect.Position + offset, result.Rect.Extent - offset, 
                 1.5f, outlineSize, fillColor, fillColor, lineColor,
                 layer: layer
             );
+            if (font != null) {
+                LayoutTreeBuilder.Clear();
+                LayoutTreeBuilder.AppendFormat("#{0} {1}x{2}", record.Key.ID, result.Rect.Width, result.Rect.Height);
+                var textColor = (new pSRGBColor(fillColor)).AdjustBrightness(0.4f).ToColor();
+                var layout = font.LayoutString(LayoutTreeBuilder, color: textColor);
+                var scale = Arithmetic.Clamp(result.ContentRect.Size.X / layout.Size.X, 0.2f, 1.0f);
+                var textOffset = result.ContentRect.Position + (result.ContentRect.Size - (layout.Size * scale)) * 0.5f;
+                renderer.DrawMultiple(layout.DrawCalls, textOffset, scale: new Vector2(scale), layer: layer + 1);
+            }
             int li = 0;
             foreach (var ckey in Engine.Children(record.Key)) {
                 ref var child = ref Engine[ckey];
-                DebugNewRasterize(ref renderer, ref child, layer + 1, li++);
+                RasterizeLayoutTree(ref renderer, font, ref child, depth + 1, li++);
             }
         }
 
@@ -336,13 +336,22 @@ namespace Squared.PRGUI {
             }
         }
 
+        public void RasterizeLayoutTree (Frame frame, AutoRenderTarget renderTarget, int layer, Render.Text.IGlyphSource font = null) {
+            using (var outerGroup = BatchGroup.New(frame, layer, name: "Rasterize UI"))
+            using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass")) {
+                var renderer = new ImperativeRenderer(rtBatch, Materials) {
+                    BlendState = BlendState.AlphaBlend,
+                    DepthStencilState = DepthStencilState.None
+                };
+                RasterizeLayoutTree(ref renderer, font, ref Engine.Root(), 0, 0);
+            }
+        }
+
         public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer) {
             using (var outerGroup = BatchGroup.New(frame, layer, name: "Rasterize UI"))
             using (var prepassGroup = BatchGroup.New(outerGroup, -999, name: "Prepass"))
             using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass")) {
                 Rasterize(rtBatch, 0, prepassGroup, 0, clearColor: Color.Transparent);
-                if (UseNewEngine && false)
-                    DebugNewRasterize(rtBatch, 1);
             }
         }
 

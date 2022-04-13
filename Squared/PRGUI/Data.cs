@@ -5,12 +5,19 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Schema;
+using System.Xml.Serialization;
 using Microsoft.Xna.Framework;
 using Squared.Game;
 using Squared.Util;
 
 namespace Squared.PRGUI.Layout {
-    public struct ControlKey {
+    public struct ControlKey
+#if DEBUG
+        : IXmlSerializable
+#endif
+        {
         public static readonly ControlKey Invalid = new ControlKey(-1);
 
         internal int ID;
@@ -56,6 +63,20 @@ namespace Squared.PRGUI.Layout {
         public static bool operator != (ControlKey lhs, ControlKey rhs) {
             return !lhs.Equals(rhs);
         }
+
+#if DEBUG
+        public XmlSchema GetSchema () {
+            return null;
+        }
+
+        public void ReadXml (XmlReader reader) {
+            ID = int.Parse(reader["ID"]);
+        }
+
+        public void WriteXml (XmlWriter writer) {
+            writer.WriteAttributeString("ID", ID.ToString());
+        }
+#endif
     }
 
     public sealed class ControlKeyComparer : 
@@ -640,6 +661,9 @@ namespace Squared.PRGUI {
     [StructLayout(LayoutKind.Explicit)]
     public unsafe struct Margins {
         [FieldOffset(0)]
+#if DEBUG
+        [XmlIgnore]
+#endif
         public fixed float Values[4];
         [FieldOffset(0)]
         public float Left;
