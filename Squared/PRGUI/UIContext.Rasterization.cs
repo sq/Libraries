@@ -132,16 +132,16 @@ namespace Squared.PRGUI {
         }
 
         private readonly static Color[] DebugColors = new[] {
-            Color.Red,
-            Color.Orange,
+            new Color(240, 0, 0),
+            new Color(210, 100, 0),
             new Color(192, 192, 0),
-            Color.Green,
-            Color.Blue,
-            Color.Purple,
+            new Color(0, 240, 0),
+            new Color(0, 0, 240),
+            new Color(192, 0, 192),
+            new Color(0, 192, 192),
             Color.Gray,
-            Color.Teal,
-            Color.Olive,
-            Color.PeachPuff,
+            new Color(96, 96, 0),
+            new Color(0, 96, 96),
         };
 
         private StringBuilder LayoutTreeBuilder = new StringBuilder();
@@ -159,7 +159,7 @@ namespace Squared.PRGUI {
             var alpha = obscuredByFocus ? 0.45f : 1f;
             pSRGBColor fillColor = DebugColors[result.Depth % DebugColors.Length],
                 lineColor = fillColor.AdjustBrightness(0.33f, true) * (obscuredByFocus ? 0.2f : 1f),
-                textColor = fillColor.AdjustBrightness(1.8f, true);
+                textColor = fillColor.AdjustBrightness(2f, true);
             var outlineSize = 1f;
             var offset = new Vector2(outlineSize);
             var layer = result.Depth * 2;
@@ -171,8 +171,8 @@ namespace Squared.PRGUI {
             var obscureText = obscuredByFocus && !focusChain.Contains(record.Parent);
             if (!obscureText && (font != null)) {
                 LayoutTreeBuilder.Clear();
-                LayoutTreeBuilder.AppendFormat("{0} {1},{2}", record.Key.ID, Math.Floor(result.Rect.Width), Math.Floor(result.Rect.Height));
-                var layout = font.LayoutString(LayoutTreeBuilder, color: textColor.ToColor() * alpha);
+                LayoutTreeBuilder.AppendFormat("{0} {1} {2},{3}", record.Key.ID, record.Tag, Math.Floor(result.Rect.Width), Math.Floor(result.Rect.Height));
+                var layout = font.LayoutString(LayoutTreeBuilder, color: textColor.ToColor());
                 var textScale = (obscuredByFocus ? 0.6f : 1f);
                 var scale = Arithmetic.Clamp(
                     Math.Min(

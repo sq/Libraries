@@ -115,9 +115,11 @@ namespace Squared.PRGUI {
             for (int i = 0, c = events.Count; i < c; i++) {
                 if (events[i].Name == eventName) {
                     // FIXME: Handle parents that are not top level controls
-                    var topLevel = FindTopLevelAncestor(events[i].Source);
-                    if (topLevel != parent)
-                        continue;
+                    if (parent != null) {
+                        var topLevel = FindTopLevelAncestor(events[i].Source);
+                        if (topLevel != parent)
+                            continue;
+                    }
                     source = events[i].Source;
                     return i;
                 }

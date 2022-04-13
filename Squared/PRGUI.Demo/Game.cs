@@ -28,7 +28,8 @@ using Squared.Util.Text;
 
 namespace PRGUI.Demo {
     public class DemoGame : MultithreadedGame {
-        bool LoadSavedTree = true;
+        static string SavedTreePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "prgui.xml");
+        bool UseSavedTree = true;
         ControlKey? HighlightRecord = null;
 
         // ABXY
@@ -241,6 +242,15 @@ namespace PRGUI.Demo {
             Window.ClientSizeChanged += Window_ClientSizeChanged;
             Window_ClientSizeChanged(null, EventArgs.Empty);
 
+            if (!isReloading) {
+                if (UseSavedTree) {
+                    if (File.Exists(SavedTreePath))
+                        Context.Engine?.LoadRecords(SavedTreePath);
+                    else
+                        UseSavedTree = false;
+                }
+            }
+
             BuildUI();
         }
 
@@ -250,14 +260,6 @@ namespace PRGUI.Demo {
         }
 
         private void BuildUI () {
-            if (LoadSavedTree) {
-                var testPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "prgui.xml");
-                if (File.Exists(testPath))
-                    Context.Engine?.LoadRecords(testPath);
-                else
-                    LoadSavedTree = false;
-            }
-
             var hoveringCtl = new StaticText {
                 Layout = { Fill = true },
                 AutoSize = false,
@@ -852,7 +854,8 @@ namespace PRGUI.Demo {
             };
             tabs.SelectedIndex = 0;
             tabs.TabsOnLeft = false;
-            tabs.ExpandToHoldAllTabs = true;
+            // HACK: For layout debugging
+            tabs.ExpandToHoldAllTabs = false;
             tabs.LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top;
 
             var bigScrollableContainer = new Container {
@@ -1286,7 +1289,8 @@ namespace PRGUI.Demo {
             RenderCoordinator.WaitForActiveDraws();
             Materials.SetViewTransform(ViewTransform.CreateOrthographic(pp.BackBufferWidth, pp.BackBufferHeight));
             Context.CanvasSize = new Vector2(pp.BackBufferWidth, pp.BackBufferHeight);
-            Context.Update();
+            if (!UseSavedTree)
+                Context.Update();
             UIRenderTarget.Resize(pp.BackBufferWidth, pp.BackBufferHeight);
         }
 
@@ -1320,7 +1324,7 @@ namespace PRGUI.Demo {
 
             if (IsFirstUpdate || (UpdatesToSkip <= 0)) {
                 IsFirstUpdate = false;
-                if (LoadSavedTree) {
+                if (UseSavedTree) {
                     Context.Engine.Update();
                     var ms = Microsoft.Xna.Framework.Input.Mouse.GetState();
                     if (Context.Engine.HitTest(
@@ -1332,13 +1336,21 @@ namespace PRGUI.Demo {
                 } else {
                     Context.Update();
                     Context.UpdateInput(IsActive);
+                    if (
+                        Context.IsActive && 
+                        (Mouse.PreviousState.MiddleButton == ButtonState.Pressed) &&
+                        (Mouse.CurrentState.MiddleButton == ButtonState.Released)
+                    ) {
+                        if ((Context.Hovering != null) && (Context.Hovering != Context.Controls[0]))
+                            Context.Hovering.Visible = false;
+                    }
                 }
             } else 
                 UpdatesToSkip--;
 
             IsMouseVisible = !IsActive || (Context.InputSources.IndexOf(Mouse) == 0);
 
-            if (Context.IsActive || LoadSavedTree)
+            if (Context.IsActive || UseSavedTree)
                 LastTimeOverUI = Time.Ticks;
 
             var ks = Keyboard.CurrentState;
@@ -1359,6 +1371,9 @@ namespace PRGUI.Demo {
                     Graphics.ApplyChangesAfterPresent(RenderCoordinator);
                 } else if (ks.IsKeyDown(Keys.OemPipe) && !pks.IsKeyDown(Keys.OemPipe)) {
                     UniformBinding.ForceCompatibilityMode = !UniformBinding.ForceCompatibilityMode;
+                } else if (ks.IsKeyDown(Keys.F10) && !pks.IsKeyDown(Keys.F10)) {
+                    Context.Engine?.SaveRecords(SavedTreePath);
+                    UseSavedTree = Context.Engine != null;
                 }
             }
 
@@ -1425,7 +1440,7 @@ namespace PRGUI.Demo {
 
             if (IsFirstDraw || (DrawsToSkip <= 0)) {
                 IsFirstDraw = false;
-                if (LoadSavedTree)
+                if (UseSavedTree)
                     Context.RasterizeLayoutTree(frame, UIRenderTarget, -9990, Font, HighlightRecord);
                 else
                     Context.Rasterize(frame, UIRenderTarget, -9990);

@@ -207,15 +207,19 @@ namespace Squared.PRGUI.NewEngine {
         #endregion
 
         #region Pass 2: wrap and expand
-        private void Pass2_ForceWrapAndRebuildRuns (
-            ref ControlRecord control, ref ControlLayoutResult result,
-            float contentWidth, float contentHeight
+        private Vector2 Pass2a_ForceWrapAndRebuildRuns (
+            ref ControlRecord control, ref ControlLayoutResult result
         ) {
             if (control.FirstChild.IsInvalid)
-                return;
+                return default;
+            if (!control.Flags.IsFlagged(ControlFlags.Container_Break_Auto))
+                return default;
 
             bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
-            float capacity = vertical ? contentHeight : contentWidth, offset = 0, extent = 0;
+            float contentWidth = result.Rect.Width - control.Padding.X,
+                contentHeight = result.Rect.Height - control.Padding.Y,
+                capacity = vertical ? contentHeight : contentWidth, 
+                offset = 0, extent = 0;
 
             // HACK: Unfortunately, we have to build new runs entirely from scratch because modifying the existing ones
             //  in-place would be far too difficult
@@ -233,7 +237,8 @@ namespace Squared.PRGUI.NewEngine {
                     endMargin = vertical ? child.Margins.Bottom : child.Margins.Right,
                     size = vertical ? childResult.Rect.Height : childResult.Rect.Width,
                     totalSize = startMargin + size + endMargin;
-                var forceBreak = (offset + size + startMargin) > capacity;
+                // It would be ideal if we could ignore the end margin here but the old engine didn't
+                var forceBreak = (offset + totalSize) >= capacity;
                 if (forceBreak)
                     numForcedBreaks++;
 
@@ -269,19 +274,20 @@ namespace Squared.PRGUI.NewEngine {
 
             if (numForcedBreaks <= 0) {
                 result.FirstRunIndex = oldFirstRun;
-                return;
+                return default;
             }
 
             result.FirstRunIndex = firstRunIndex;
+            var oldSize = result.Rect.Size;
             if (vertical)
                 result.Rect.Width = control.Width.Constrain(Math.Max(result.Rect.Width, extent + control.Padding.X), true);
             else
                 result.Rect.Height = control.Height.Constrain(Math.Max(result.Rect.Height, extent + control.Padding.Y), true);
-            // FIXME: We need to recompute the required size of our control now, because the wrapping may have caused us to become
-            //  narrower and taller
+            // Return the amount our size changed so that our caller can update the run we're in
+            return result.Rect.Size - oldSize;
         }
 
-        private void Pass2_WrapAndExpand (ref ControlRecord control, ref ControlLayoutResult result) {
+        private void Pass2b_WrapAndExpand (ref ControlRecord control, ref ControlLayoutResult result) {
             if (control.FirstChild.IsInvalid)
                 return;
 
@@ -290,9 +296,6 @@ namespace Squared.PRGUI.NewEngine {
                 constrain = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Growth);
             float w = result.Rect.Width - control.Padding.X, 
                 h = result.Rect.Height - control.Padding.Y;
-
-            if (wrap)
-                Pass2_ForceWrapAndRebuildRuns(ref control, ref result, w, h);
 
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
@@ -403,7 +406,18 @@ namespace Squared.PRGUI.NewEngine {
                 foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                     ref var child = ref this[ckey];
                     ref var childResult = ref Result(ckey);
-                    Pass2_WrapAndExpand(ref child, ref childResult);
+
+                    // Process wrapping (if necessary) and then if wrapping changed the size of the child,
+                    //  update the run that contains it
+                    var growth = Pass2a_ForceWrapAndRebuildRuns(ref child, ref childResult);
+                    if (growth != default) {
+                        run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childResult.Rect.Width + child.Margins.X);
+                        run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childResult.Rect.Height + child.Margins.Y);
+                        run.TotalWidth += growth.X;
+                        run.TotalHeight += growth.Y;
+                    }
+
+                    Pass2b_WrapAndExpand(ref child, ref childResult);
                 }
 
                 if (vertical)
@@ -524,7 +538,8 @@ namespace Squared.PRGUI.NewEngine {
             ref var result = ref UnsafeResult(control.Key);
             _RunCount = 0;
             Pass1_ComputeSizesAndBuildRuns(ref control, ref result, 0);
-            Pass2_WrapAndExpand(ref control, ref result);
+            Pass2a_ForceWrapAndRebuildRuns(ref control, ref result);
+            Pass2b_WrapAndExpand(ref control, ref result);
             Pass3_Arrange(ref control, ref result);
             ;
         }

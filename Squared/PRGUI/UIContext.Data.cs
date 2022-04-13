@@ -23,7 +23,7 @@ namespace Squared.PRGUI {
     public sealed partial class UIContext : IDisposable {
         // Enables the (experimental, super broken) new layout engine
 #if DEBUG
-        internal const bool UseNewEngine = false;
+        internal const bool UseNewEngine = true;
 #else
         internal const bool UseNewEngine = false;
 #endif
