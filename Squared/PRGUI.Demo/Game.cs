@@ -251,7 +251,7 @@ namespace PRGUI.Demo {
 
         private void BuildUI () {
             if (LoadSavedTree) {
-                var testPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "prgui-test.xml");
+                var testPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "prgui.xml");
                 if (File.Exists(testPath))
                     Context.Engine?.LoadRecords(testPath);
                 else

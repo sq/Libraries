@@ -445,7 +445,7 @@ namespace Squared.PRGUI.NewEngine {
                 ref var run = ref Run(runIndex);
                 float rw = vertical ? run.MaxOuterWidth : run.TotalWidth,
                     rh = vertical ? run.TotalHeight : run.MaxOuterHeight,
-                    space = vertical ? h - rh : w - rw,
+                    space = Math.Max(vertical ? h - rh : w - rw, 0),
                     baseline = vertical ? run.MaxOuterWidth : run.MaxOuterHeight;
 
                 run.GetAlignmentF(control.Flags, out float xAlign, out float yAlign);

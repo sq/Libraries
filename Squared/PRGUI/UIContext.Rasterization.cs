@@ -139,15 +139,20 @@ namespace Squared.PRGUI {
             Color.Blue,
             Color.Purple,
             Color.Gray,
+            Color.Teal,
+            Color.Olive,
+            Color.PeachPuff,
         };
 
         private StringBuilder LayoutTreeBuilder = new StringBuilder();
+
         private void RasterizeLayoutTree (
-            ref ImperativeRenderer renderer, Render.Text.IGlyphSource font, ref NewEngine.ControlRecord record, Layout.ControlKey focusedKey,
-            bool childOfFocused
+            ref ImperativeRenderer renderer, Render.Text.IGlyphSource font, ref NewEngine.ControlRecord record, 
+            HashSet<Layout.ControlKey> focusChain
         ) {
             ref var result = ref Engine.Result(record.Key);
-            var alpha = childOfFocused ? 0.4f : 1f;
+            var obscuredByFocus = (focusChain != null) && !focusChain.Contains(record.Key);
+            var alpha = obscuredByFocus ? 0.4f : 1f;
             pSRGBColor fillColor = DebugColors[result.Depth % DebugColors.Length],
                 lineColor = fillColor.AdjustBrightness(0.33f, true),
                 textColor = fillColor.AdjustBrightness(1.75f, true);
@@ -159,7 +164,7 @@ namespace Squared.PRGUI {
                 1.5f, outlineSize, fillColor * alpha, fillColor * alpha, lineColor * alpha,
                 layer: layer
             );
-            if (font != null) {
+            if (!obscuredByFocus && (font != null)) {
                 LayoutTreeBuilder.Clear();
                 LayoutTreeBuilder.AppendFormat("{0} {1},{2}", record.Key.ID, Math.Floor(result.Rect.Width), Math.Floor(result.Rect.Height));
                 var layout = font.LayoutString(LayoutTreeBuilder, color: textColor.ToColor() * alpha);
@@ -173,12 +178,12 @@ namespace Squared.PRGUI {
                 var textOffset = result.Rect.Position + (result.Rect.Size - (layout.Size * scale)) * 0.5f;
                 renderer.DrawMultiple(layout.DrawCalls, textOffset, scale: new Vector2(scale), layer: layer + 1);
             }
-            if (childOfFocused)
+
+            if (obscuredByFocus)
                 return;
-            var isFocused = record.Key == focusedKey;
             foreach (var ckey in Engine.Children(record.Key)) {
                 ref var child = ref Engine[ckey];
-                RasterizeLayoutTree(ref renderer, font, ref child, focusedKey, isFocused);
+                RasterizeLayoutTree(ref renderer, font, ref child, focusChain);
             }
         }
 
@@ -352,13 +357,23 @@ namespace Squared.PRGUI {
             Frame frame, AutoRenderTarget renderTarget, int layer, 
             Render.Text.IGlyphSource font = null, Layout.ControlKey? focusedKey = null
         ) {
+            var focusChain = focusedKey.HasValue
+                ? new HashSet<Layout.ControlKey>()
+                : null;
+            if (focusedKey.HasValue) {
+                var id = focusedKey.Value;
+                while (!id.IsInvalid) {
+                    focusChain.Add(id);
+                    id = Engine[id].Parent;
+                }
+            }
             using (var outerGroup = BatchGroup.New(frame, layer, name: "Rasterize UI"))
             using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass")) {
                 var renderer = new ImperativeRenderer(rtBatch, Materials) {
                     BlendState = BlendState.AlphaBlend,
                     DepthStencilState = DepthStencilState.None
                 };
-                RasterizeLayoutTree(ref renderer, font, ref Engine.Root(), focusedKey: focusedKey ?? PRGUI.Layout.ControlKey.Invalid, false);
+                RasterizeLayoutTree(ref renderer, font, ref Engine.Root(), focusChain);
             }
         }
 

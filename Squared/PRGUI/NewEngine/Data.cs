@@ -8,6 +8,9 @@ using ControlKey = Squared.PRGUI.Layout.ControlKey;
 using ControlFlags = Squared.PRGUI.Layout.ControlFlags;
 using LayoutDimensions = Squared.PRGUI.Layout.LayoutDimensions;
 using Squared.PRGUI.Layout;
+#if DEBUG
+using System.Xml.Serialization;
+#endif
 
 namespace Squared.PRGUI.NewEngine {
     public static class DataExtensions {
@@ -99,6 +102,9 @@ namespace Squared.PRGUI.NewEngine {
         public Vector2 FloatingPosition;
         public Layout.LayoutTags Tag;
 
+#if DEBUG
+        [XmlIgnore]
+#endif
         public Layout.ControlFlags LayoutFlags {
             get => Flags & Layout.ControlFlagMask.Layout;
             set {
@@ -106,6 +112,9 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
+#if DEBUG
+        [XmlIgnore]
+#endif
         public Layout.ControlFlags ContainerFlags {
             get => Flags & Layout.ControlFlagMask.Container;
             set {

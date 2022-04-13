@@ -9,6 +9,10 @@
 *.filters
 *.VC.opendb
 *.sdf
+*.psess
+*.vspx
+*.cap
+*.binlog
 .vs
 _ReSharper.*
 /Squared/360/TaskLib360/bin
@@ -76,8 +80,6 @@ _ReSharper.*
 /Squared/Threading/bin
 /Squared/ThreadingTests/obj
 /Squared/ThreadingTests/bin
-*.psess
-*.vspx
 /Squared/FontTest/FontTestContent/obj
 /Squared/FontTest/FontTestContent/bin
 /Squared/FontTest/FontTest/bin
@@ -106,6 +108,10 @@ params.txt
 /Squared/BasisNative/bin
 /Squared/Render.Basis/obj
 /Squared/Render.Basis/bin
-/Squared/PRGUI.Demo/Fonts/FiraSans-Medium.otf
 /Squared/MiscTests/bin
 /Squared/MiscTests/obj
+/Squared/FontTest/FontTestContent
+/Squared/PRGUI.Demo/Fonts
+/Squared/PRGUI.Demo/Images
+# TODO: Remove this?
+/Squared/PRGUI.Demo/Test Cases/*.xml
