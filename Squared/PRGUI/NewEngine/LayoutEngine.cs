@@ -333,5 +333,26 @@ namespace Squared.PRGUI.NewEngine {
             throw new NotImplementedException();
 #endif
         }
+    
+        public bool HitTest (Vector2 position, out ControlRecord record, out ControlLayoutResult result) {
+            record = default;
+            result = default;
+            return HitTest(in Root(), position, ref record, ref result);
+        }
+
+        private bool HitTest (in ControlRecord control, Vector2 position, ref ControlRecord record, ref ControlLayoutResult result) {
+            ref var testResult = ref UnsafeResult(control.Key);
+            if (!testResult.Rect.Contains(position))
+                return false;
+
+            foreach (var ckey in Children(control.Key)) {
+                if (HitTest(in this[ckey], position, ref record, ref result))
+                    return true;
+            }
+
+            record = control;
+            result = testResult;
+            return true;
+        }
     }
 }

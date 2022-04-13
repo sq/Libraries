@@ -138,35 +138,47 @@ namespace Squared.PRGUI {
             Color.Green,
             Color.Blue,
             Color.Purple,
-            Color.Silver,
+            Color.Gray,
         };
 
         private StringBuilder LayoutTreeBuilder = new StringBuilder();
-        private void RasterizeLayoutTree (ref ImperativeRenderer renderer, Render.Text.IGlyphSource font, ref NewEngine.ControlRecord record, int depth, int index) {
+        private void RasterizeLayoutTree (
+            ref ImperativeRenderer renderer, Render.Text.IGlyphSource font, ref NewEngine.ControlRecord record, Layout.ControlKey focusedKey,
+            bool childOfFocused
+        ) {
             ref var result = ref Engine.Result(record.Key);
-            Color fillColor = DebugColors[depth % DebugColors.Length],
-                lineColor = DebugColors[(depth + 1) % DebugColors.Length];
-            var outlineSize = 1.5f;
+            var alpha = childOfFocused ? 0.4f : 1f;
+            pSRGBColor fillColor = DebugColors[result.Depth % DebugColors.Length],
+                lineColor = fillColor.AdjustBrightness(0.33f, true),
+                textColor = fillColor.AdjustBrightness(1.75f, true);
+            var outlineSize = 1f;
             var offset = new Vector2(outlineSize);
-            var layer = depth * 2;
+            var layer = result.Depth * 2;
             renderer.RasterizeRectangle(
                 result.Rect.Position + offset, result.Rect.Extent - offset, 
-                1.5f, outlineSize, fillColor, fillColor, lineColor,
+                1.5f, outlineSize, fillColor * alpha, fillColor * alpha, lineColor * alpha,
                 layer: layer
             );
             if (font != null) {
                 LayoutTreeBuilder.Clear();
-                LayoutTreeBuilder.AppendFormat("#{0} {1}x{2}", record.Key.ID, result.Rect.Width, result.Rect.Height);
-                var textColor = (new pSRGBColor(fillColor)).AdjustBrightness(0.4f).ToColor();
-                var layout = font.LayoutString(LayoutTreeBuilder, color: textColor);
-                var scale = Arithmetic.Clamp(result.ContentRect.Size.X / layout.Size.X, 0.2f, 1.0f);
-                var textOffset = result.ContentRect.Position + (result.ContentRect.Size - (layout.Size * scale)) * 0.5f;
+                LayoutTreeBuilder.AppendFormat("{0} {1},{2}", record.Key.ID, Math.Floor(result.Rect.Width), Math.Floor(result.Rect.Height));
+                var layout = font.LayoutString(LayoutTreeBuilder, color: textColor.ToColor() * alpha);
+                var scale = Arithmetic.Clamp(
+                    Math.Min(
+                        (result.Rect.Size.Y - 2) / layout.Size.Y,
+                        (result.Rect.Size.X - 4) / layout.Size.X
+                    ),
+                    0.33f, 1.0f
+                );
+                var textOffset = result.Rect.Position + (result.Rect.Size - (layout.Size * scale)) * 0.5f;
                 renderer.DrawMultiple(layout.DrawCalls, textOffset, scale: new Vector2(scale), layer: layer + 1);
             }
-            int li = 0;
+            if (childOfFocused)
+                return;
+            var isFocused = record.Key == focusedKey;
             foreach (var ckey in Engine.Children(record.Key)) {
                 ref var child = ref Engine[ckey];
-                RasterizeLayoutTree(ref renderer, font, ref child, depth + 1, li++);
+                RasterizeLayoutTree(ref renderer, font, ref child, focusedKey, isFocused);
             }
         }
 
@@ -336,14 +348,17 @@ namespace Squared.PRGUI {
             }
         }
 
-        public void RasterizeLayoutTree (Frame frame, AutoRenderTarget renderTarget, int layer, Render.Text.IGlyphSource font = null) {
+        public void RasterizeLayoutTree (
+            Frame frame, AutoRenderTarget renderTarget, int layer, 
+            Render.Text.IGlyphSource font = null, Layout.ControlKey? focusedKey = null
+        ) {
             using (var outerGroup = BatchGroup.New(frame, layer, name: "Rasterize UI"))
             using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass")) {
                 var renderer = new ImperativeRenderer(rtBatch, Materials) {
                     BlendState = BlendState.AlphaBlend,
                     DepthStencilState = DepthStencilState.None
                 };
-                RasterizeLayoutTree(ref renderer, font, ref Engine.Root(), 0, 0);
+                RasterizeLayoutTree(ref renderer, font, ref Engine.Root(), focusedKey: focusedKey ?? PRGUI.Layout.ControlKey.Invalid, false);
             }
         }
 

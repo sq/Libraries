@@ -28,7 +28,8 @@ using Squared.Util.Text;
 
 namespace PRGUI.Demo {
     public class DemoGame : MultithreadedGame {
-        const bool LoadSavedTree = true;
+        bool LoadSavedTree = true;
+        ControlKey? HighlightRecord = null;
 
         // ABXY
         public const string ButtonChars = "";
@@ -249,8 +250,13 @@ namespace PRGUI.Demo {
         }
 
         private void BuildUI () {
-            if (LoadSavedTree)
-                Context.Engine?.LoadRecords(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "prgui.xml"));
+            if (LoadSavedTree) {
+                var testPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "prgui-test.xml");
+                if (File.Exists(testPath))
+                    Context.Engine?.LoadRecords(testPath);
+                else
+                    LoadSavedTree = false;
+            }
 
             var hoveringCtl = new StaticText {
                 Layout = { Fill = true },
@@ -1316,6 +1322,13 @@ namespace PRGUI.Demo {
                 IsFirstUpdate = false;
                 if (LoadSavedTree) {
                     Context.Engine.Update();
+                    var ms = Microsoft.Xna.Framework.Input.Mouse.GetState();
+                    if (Context.Engine.HitTest(
+                        new Vector2(ms.X, ms.Y), out var record, out _
+                    ))
+                        HighlightRecord = record.Key;
+                    else
+                        HighlightRecord = null;
                 } else {
                     Context.Update();
                     Context.UpdateInput(IsActive);
@@ -1413,7 +1426,7 @@ namespace PRGUI.Demo {
             if (IsFirstDraw || (DrawsToSkip <= 0)) {
                 IsFirstDraw = false;
                 if (LoadSavedTree)
-                    Context.RasterizeLayoutTree(frame, UIRenderTarget, -9990, Font);
+                    Context.RasterizeLayoutTree(frame, UIRenderTarget, -9990, Font, HighlightRecord);
                 else
                     Context.Rasterize(frame, UIRenderTarget, -9990);
             } else

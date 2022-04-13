@@ -366,6 +366,7 @@ namespace Squared.PRGUI.NewEngine {
                             //  run includes the margins of the controls)
 
                             if (expandX) {
+                                run.TotalWidth -= childOuterW;
                                 var newChildW = Math.Max(childOuterW + amountX, minOuterWidth);
                                 newChildW = child.Width.Constrain(newChildW - margins.X, true) + margins.X;
                                 float expanded = newChildW - childOuterW;
@@ -373,11 +374,12 @@ namespace Squared.PRGUI.NewEngine {
                                     newCountX--;
                                 newXSpace -= expanded;
                                 childResult.Rect.Width = newChildW - margins.X;
-                                run.TotalWidth += expanded;
+                                run.TotalWidth += newChildW;
                                 run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, newChildW);
                             }
 
                             if (expandY) {
+                                run.TotalHeight -= childOuterH;
                                 var newChildH = Math.Max(childOuterH + amountY, minOuterHeight);
                                 newChildH = child.Height.Constrain(newChildH - margins.Y, true) + margins.Y;
                                 float expanded = childOuterH - childResult.Rect.Height;
@@ -385,7 +387,7 @@ namespace Squared.PRGUI.NewEngine {
                                     newCountY--;
                                 newYSpace -= expanded;
                                 childResult.Rect.Height = newChildH - margins.Y;
-                                run.TotalHeight += expanded;
+                                run.TotalHeight += newChildH;
                                 run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, newChildH);
                             }
                         }
@@ -436,6 +438,9 @@ namespace Squared.PRGUI.NewEngine {
             float w = result.ContentRect.Width, h = result.ContentRect.Height,
                 x = 0, y = 0;
 
+            if (control.Key.ID == 11)
+                ;
+
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
                 float rw = vertical ? run.MaxOuterWidth : run.TotalWidth,
@@ -456,8 +461,8 @@ namespace Squared.PRGUI.NewEngine {
                     lastProcessed = ckey;
                     ref var child = ref this[ckey];
                     ref var childResult = ref Result(ckey);
-                    var margins = child.Margins;
-                    var childOuterSize = childResult.Rect.Size + margins.Size;
+                    var childMargins = child.Margins;
+                    var childOuterSize = childResult.Rect.Size + childMargins.Size;
 
                     child.Flags.GetAlignmentF(out float xChildAlign, out float yChildAlign);
 
@@ -472,11 +477,11 @@ namespace Squared.PRGUI.NewEngine {
                             stackSpace.X = Math.Max(stackSpace.X, 0f) * xChildAlign;
                             stackSpace.Y = Math.Max(stackSpace.Y, 0f) * yChildAlign;
                             childResult.Rect.Position = result.ContentRect.Position +
-                                new Vector2(stackSpace.X + margins.Left, stackSpace.Y + margins.Top);
+                                new Vector2(stackSpace.X + childMargins.Left, stackSpace.Y + childMargins.Top);
                         }
                     } else {
-                        childResult.Rect.Left = result.ContentRect.Left + margins.Left + x;
-                        childResult.Rect.Top = result.ContentRect.Top + margins.Top + y;
+                        childResult.Rect.Left = result.ContentRect.Left + childMargins.Left + x;
+                        childResult.Rect.Top = result.ContentRect.Top + childMargins.Top + y;
 
                         if (vertical) {
                             var alignment = (xChildAlign * Math.Max(0, baseline - childOuterSize.X));
@@ -493,11 +498,11 @@ namespace Squared.PRGUI.NewEngine {
 
                     // TODO: Clip left/top edges as well?
                     if (clipX) {
-                        var rightEdge = result.ContentRect.Right - margins.Right;
+                        var rightEdge = result.ContentRect.Right - childMargins.Right;
                         childResult.Rect.Width = Math.Max(0, Math.Min(childResult.Rect.Width, rightEdge - childResult.Rect.Left));
                     }
                     if (clipY) {
-                        var bottomEdge = result.ContentRect.Bottom - margins.Bottom;
+                        var bottomEdge = result.ContentRect.Bottom - childMargins.Bottom;
                         childResult.Rect.Height = Math.Max(0, Math.Min(childResult.Rect.Height, bottomEdge - childResult.Rect.Top));
                     }
 
@@ -526,6 +531,5 @@ namespace Squared.PRGUI.NewEngine {
             Pass3_Arrange(ref control, ref result);
             ;
         }
-   
     }
 }
