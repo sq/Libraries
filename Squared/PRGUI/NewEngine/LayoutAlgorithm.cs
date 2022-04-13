@@ -58,47 +58,72 @@ namespace Squared.PRGUI.NewEngine {
             result.Version = Version;
         }
 
-        private void Pass1_ComputeSizesAndBuildRuns (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
-            InitializeResult(ref control, ref result, depth);
-
-            // During this pass, result.Rect contains our minimum size:
-            // Size constraints, largest of all our children, etc
-            // result.ContentRect will contain the total size of *all* of our children, ignoring forced wrapping
-            result.Rect.Width = control.Size(LayoutDimensions.X).EffectiveMinimum;
-            result.Rect.Height = control.Size(LayoutDimensions.Y).EffectiveMinimum;
-            if (control.FirstChild.IsInvalid)
-                return;
+        private void Pass1_ComputeSizesAndBuildRuns (ref ControlRecord control, ref ControlLayoutResult result, int depth, bool isFirstPass) {
+            if (isFirstPass)
+                InitializeResult(ref control, ref result, depth);
+            else {
+                // FIXME: Reclaim the runs we used
+                result.FirstRunIndex = -1;
+                result.Break = false;
+            }
 
             bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column),
                 wrap = control.Flags.IsFlagged(ControlFlags.Container_Break_Auto),
                 noExpandX = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_X),
-                noExpandY = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_Y);
-            float padX = control.Padding.X, padY = control.Padding.Y;
+                noExpandY = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_Y),
+                updateWidth = isFirstPass || (wrap && vertical),
+                updateHeight = isFirstPass || (wrap && !vertical);
+            float padX = control.Padding.X, padY = control.Padding.Y,
+                capacity = vertical ? result.Rect.Height - padY : result.Rect.Width - padX,
+                extent = 0;
+
+            // During this pass, result.Rect contains our minimum size:
+            // Size constraints, largest of all our children, etc
+            // result.ContentRect will contain the total size of *all* of our children, ignoring forced wrapping
+            if (updateWidth)
+                result.Rect.Width = control.Size(LayoutDimensions.X).EffectiveMinimum;
+            if (updateHeight)
+                result.Rect.Height = control.Size(LayoutDimensions.Y).EffectiveMinimum;
+            result.ContentRect.Size = default;
+
+            if (control.FirstChild.IsInvalid)
+                return;
+
             var currentRunIndex = -1;
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
 
-                Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1);
+                Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1, isFirstPass);
                 float w = childResult.Rect.Width + child.Margins.X,
-                    h = childResult.Rect.Height + child.Margins.Y;
+                    h = childResult.Rect.Height + child.Margins.Y,
+                    size = vertical ? h : w;
+                var isBreak = child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
+                if (!isFirstPass && (extent + size >= capacity))
+                    isBreak = true;
                 ref var run = ref Pass1_UpdateRun(
                     in control, ref result, in child, in childResult, 
-                    w, h, ref currentRunIndex
+                    w, h, ref currentRunIndex, isBreak
                 );
 
                 // At a minimum we should be able to hold all our children if they were stacked on each other
-                if (!noExpandX)
+                if (!noExpandX && updateWidth)
                     result.Rect.Width = Math.Max(result.Rect.Width, w + padX);
-                if (!noExpandY)
+                if (!noExpandY && updateHeight)
                     result.Rect.Height = Math.Max(result.Rect.Height, h + padY);
+
                 // If we're not in wrapped mode, we will try to expand to hold our largest run
                 if (!wrap) {
-                    if (vertical && !noExpandY)
+                    if (vertical && !noExpandY && updateHeight)
                         result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
-                    else if (!noExpandX)
+                    else if (!noExpandX && updateWidth)
                         result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
                 }
+
+                if (isBreak)
+                    extent = size;
+                else
+                    extent += size;
             }
 
             Pass1_IncreaseContentSizeForCompletedRun(in control, ref result, currentRunIndex);
@@ -106,11 +131,10 @@ namespace Squared.PRGUI.NewEngine {
             // We have our minimum size in result.Rect and the size of all our content in result.ContentRect
             // Now we add padding to the contentrect and pick the biggest of the two
             // This gives us proper autosize for non-forced-wrap
-            if (!noExpandX)
+            if (!noExpandX && updateWidth)
                 result.Rect.Width = Math.Max(result.Rect.Width, result.ContentRect.Width + padX);
-            if (!noExpandY)
+            if (!noExpandY && updateHeight)
                 result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
-
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
         }
@@ -184,9 +208,9 @@ namespace Squared.PRGUI.NewEngine {
             // TODO: These aren't necessary, remove them?
             in ControlRecord control, ref ControlLayoutResult result, 
             in ControlRecord child, in ControlLayoutResult childResult, 
-            float childWidth, float childHeight, ref int currentRunIndex
+            float childWidth, float childHeight, ref int currentRunIndex,
+            bool isBreak
         ) {
-            bool isBreak = child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
             var previousRunIndex = currentRunIndex;
 
             // We still generate runs even if a control is stacked/floating
@@ -209,68 +233,10 @@ namespace Squared.PRGUI.NewEngine {
         #endregion
 
         #region Pass 2: wrap and expand
-        private void Pass2_ForceWrapAndRebuildRuns (
-            ref ControlRecord control, ref ControlLayoutResult result,
-            float contentWidth, float contentHeight
-        ) {
-            if (control.FirstChild.IsInvalid)
-                return;
-
-            bool vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
-            float capacity = vertical ? contentHeight : contentWidth, offset = 0;
-
-            // HACK: Unfortunately, we have to build new runs entirely from scratch because modifying the existing ones
-            //  in-place would be far too difficult
-            // FIXME: Reclaim the existing runs
-            int oldFirstRun = result.FirstRunIndex, firstRunIndex = -1, currentRunIndex = -1, numForcedBreaks = 0;
-            // HACK
-            result.FirstRunIndex = -1;
-
-            foreach (var ckey in Children(control.Key)) {
-                ref var child = ref this[ckey];
-                ref var childResult = ref Result(ckey);
-                float w = childResult.Rect.Width + child.Margins.X,
-                    h = childResult.Rect.Height + child.Margins.Y,
-                    startMargin = vertical ? child.Margins.Top : child.Margins.Left,
-                    endMargin = vertical ? child.Margins.Bottom : child.Margins.Right,
-                    size = vertical ? childResult.Rect.Height : childResult.Rect.Width,
-                    totalSize = startMargin + size + endMargin;
-                var forceBreak = (offset + size + startMargin) > capacity;
-                if (forceBreak)
-                    numForcedBreaks++;
-
-                var previousRunIndex = currentRunIndex;
-
-                bool isBreak = child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak) || forceBreak;
-                // We still generate runs even if a control is stacked/floating
-                // This ensures that you can enumerate all of a control's children by enumerating its runs
-                // We will then skip stacked/floating controls when enumerating runs (as appropriate)
-                ref var run = ref SelectRunForBuildingPass(ref currentRunIndex, isBreak);
-                UpdateRunCommon(
-                    ref run, in control, in result,
-                    in child, in childResult, 
-                    ref firstRunIndex, currentRunIndex,
-                    w, h
-                );
-
-                if (previousRunIndex != currentRunIndex) {
-                    offset = totalSize;
-                } else {
-                    offset += totalSize;
-                }
-            }
-
-            if (numForcedBreaks <= 0) {
-                result.FirstRunIndex = oldFirstRun;
-                return;
-            }
-
-            result.FirstRunIndex = firstRunIndex;
-            // FIXME: We need to recompute the required size of our control now, because the wrapping may have caused us to become
-            //  narrower and taller
-        }
-
         private void Pass2_WrapAndExpand (ref ControlRecord control, ref ControlLayoutResult result) {
+            // This sucks
+            Pass1_ComputeSizesAndBuildRuns(ref control, ref result, 0, false);
+
             if (control.FirstChild.IsInvalid)
                 return;
 
@@ -279,9 +245,6 @@ namespace Squared.PRGUI.NewEngine {
                 constrain = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Growth);
             float w = result.Rect.Width - control.Padding.X, 
                 h = result.Rect.Height - control.Padding.Y;
-
-            if (wrap)
-                Pass2_ForceWrapAndRebuildRuns(ref control, ref result, w, h);
 
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
@@ -507,8 +470,13 @@ namespace Squared.PRGUI.NewEngine {
 
         private void PerformLayout (ref ControlRecord control) {
             ref var result = ref UnsafeResult(control.Key);
-            Pass1_ComputeSizesAndBuildRuns(ref control, ref result, 0);
+            Pass1_ComputeSizesAndBuildRuns(ref control, ref result, 0, true);
+
+            // This sucks
+            Array.Clear(RunBuffer, 0, _RunCount);
+            _RunCount = 0;
             Pass2_WrapAndExpand(ref control, ref result);
+
             Pass3_Arrange(ref control, ref result);
             ;
         }
