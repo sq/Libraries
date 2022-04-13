@@ -134,7 +134,7 @@ namespace Squared.PRGUI {
         private readonly static Color[] DebugColors = new[] {
             Color.Red,
             Color.Orange,
-            Color.Yellow,
+            new Color(192, 192, 0),
             Color.Green,
             Color.Blue,
             Color.Purple,
@@ -150,32 +150,39 @@ namespace Squared.PRGUI {
             ref ImperativeRenderer renderer, Render.Text.IGlyphSource font, ref NewEngine.ControlRecord record, 
             HashSet<Layout.ControlKey> focusChain
         ) {
+            // HACK to allow easily hiding subtrees
+            if ((record.Width.Fixed == 0) && (record.Height.Fixed == 0))
+                return;
+
             ref var result = ref Engine.Result(record.Key);
             var obscuredByFocus = (focusChain != null) && !focusChain.Contains(record.Key);
-            var alpha = obscuredByFocus ? 0.4f : 1f;
+            var alpha = obscuredByFocus ? 0.45f : 1f;
             pSRGBColor fillColor = DebugColors[result.Depth % DebugColors.Length],
-                lineColor = fillColor.AdjustBrightness(0.33f, true),
-                textColor = fillColor.AdjustBrightness(1.75f, true);
+                lineColor = fillColor.AdjustBrightness(0.33f, true) * (obscuredByFocus ? 0.2f : 1f),
+                textColor = fillColor.AdjustBrightness(1.8f, true);
             var outlineSize = 1f;
             var offset = new Vector2(outlineSize);
             var layer = result.Depth * 2;
             renderer.RasterizeRectangle(
                 result.Rect.Position + offset, result.Rect.Extent - offset, 
-                1.5f, outlineSize, fillColor * alpha, fillColor * alpha, lineColor * alpha,
+                1.5f, outlineSize, fillColor * alpha, fillColor * alpha, lineColor,
                 layer: layer
             );
-            if (!obscuredByFocus && (font != null)) {
+            var obscureText = obscuredByFocus && !focusChain.Contains(record.Parent);
+            if (!obscureText && (font != null)) {
                 LayoutTreeBuilder.Clear();
                 LayoutTreeBuilder.AppendFormat("{0} {1},{2}", record.Key.ID, Math.Floor(result.Rect.Width), Math.Floor(result.Rect.Height));
                 var layout = font.LayoutString(LayoutTreeBuilder, color: textColor.ToColor() * alpha);
+                var textScale = (obscuredByFocus ? 0.6f : 1f);
                 var scale = Arithmetic.Clamp(
                     Math.Min(
                         (result.Rect.Size.Y - 2) / layout.Size.Y,
                         (result.Rect.Size.X - 4) / layout.Size.X
-                    ),
-                    0.33f, 1.0f
+                    ) * textScale,
+                    0.33f, textScale
                 );
-                var textOffset = result.Rect.Position + (result.Rect.Size - (layout.Size * scale)) * 0.5f;
+                result.Rect.Intersection(CanvasRect, out RectF textRect);
+                var textOffset = textRect.Position + (textRect.Size - (layout.Size * scale)) * 0.5f;
                 renderer.DrawMultiple(layout.DrawCalls, textOffset, scale: new Vector2(scale), layer: layer + 1);
             }
 
