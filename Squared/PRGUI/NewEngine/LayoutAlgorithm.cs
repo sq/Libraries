@@ -84,6 +84,10 @@ namespace Squared.PRGUI.NewEngine {
                 return;
 
             var t = new ControlTraits(control);
+            // HACK: Don't attempt to do clipping in this pass since we have incomplete size information
+            // It will happen in the next pass and in the arrange pass
+            t.clip = t.clipX = t.clipY = false;
+
             float padX = control.Padding.X, padY = control.Padding.Y;
             var currentRunIndex = -1;
             foreach (var ckey in Children(control.Key)) {
@@ -94,7 +98,7 @@ namespace Squared.PRGUI.NewEngine {
                 float w = childResult.Rect.Width + child.Margins.X,
                     h = childResult.Rect.Height + child.Margins.Y;
                 ref var run = ref Pass1_UpdateRun(
-                    in t, in control, ref result, in child, in childResult, ref currentRunIndex
+                    in t, in control, ref result, in child, ref childResult, ref currentRunIndex
                 );
 
                 // At a minimum we should be able to hold all our children if they were stacked on each other
@@ -150,8 +154,8 @@ namespace Squared.PRGUI.NewEngine {
 
         private void UpdateRunCommon (
             ref ControlLayoutRun run, in ControlTraits t,
-            in ControlRecord control, in ControlLayoutResult result,
-            in ControlRecord child, in ControlLayoutResult childResult,
+            in ControlRecord control, ref ControlLayoutResult result,
+            in ControlRecord child, ref ControlLayoutResult childResult,
             ref int firstRunIndex, int currentRunIndex
         ) {
             if (firstRunIndex < 0)
@@ -181,6 +185,8 @@ namespace Squared.PRGUI.NewEngine {
             float childOuterWidth = childResult.Rect.Width + child.Margins.X,
                 childOuterHeight = childResult.Rect.Height + child.Margins.Y;
 
+            ApplyClip(t, in control, ref result, in child, ref childResult, in run);
+
             run.FlowCount++;
             if (ShouldExpand(in control, in child, LayoutDimensions.X))
                 run.ExpandCountX++;
@@ -192,10 +198,49 @@ namespace Squared.PRGUI.NewEngine {
             run.TotalHeight += childOuterHeight;
         }
 
+        private void ApplyClip (
+            in ControlTraits t,
+            in ControlRecord control, ref ControlLayoutResult result,
+            in ControlRecord child, ref ControlLayoutResult childResult,
+            in ControlLayoutRun run
+        ) {
+            if (!t.clipX && !t.clipY)
+                return;
+
+            // FIXME: Unfortunately this is all completely broken
+            return;
+
+            // HACK: While clipping in the arrange pass is good enough to make the result of a layout
+            //  look right in most cases, we need to clip earlier on in the layout process to ensure
+            //  that the grow pass does not cause boxes to grow beyond their parent's bounds if
+            //  the parent has clipping turned on.
+            // For example if a box has two columns and one of the columns is huge and overflows at
+            //  the bottom, we want to prevent the other column from expanding to overflow. For that
+            //  to work right we have to clip it before expanding
+            // FIXME: This won't work if we're clipping a run after the first.
+            // In that case it will still get clipped correctly during arrange, but its children
+            //  may auto-size too big since it didn't get clipped here.
+            float xSpace = result.Rect.Width - control.Padding.X,
+                ySpace = result.Rect.Height - control.Padding.Y;
+
+            // FIXME: The space eaten by previous runs is not taken into account here
+            // We probably need to scan backwards to calculate it, or keep a running tally as we go
+            if (t.vertical) {
+                ySpace -= run.TotalHeight;
+            } else {
+                xSpace -= run.TotalWidth;
+            }
+
+            if (xSpace > 0)
+                childResult.Rect.Width = Math.Min(childResult.Rect.Width, xSpace);
+            if (ySpace > 0)
+                childResult.Rect.Height = Math.Min(childResult.Rect.Height, ySpace);
+        }
+
         private ref ControlLayoutRun Pass1_UpdateRun (
             in ControlTraits t,
             in ControlRecord control, ref ControlLayoutResult result, 
-            in ControlRecord child, in ControlLayoutResult childResult, 
+            in ControlRecord child, ref ControlLayoutResult childResult, 
             ref int currentRunIndex
         ) {
             bool isBreak = child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
@@ -209,8 +254,8 @@ namespace Squared.PRGUI.NewEngine {
                 Pass1_IncreaseContentSizeForCompletedRun(in control, ref result, previousRunIndex);
 
             UpdateRunCommon(
-                ref run, in t, in control, in result,
-                in child, in childResult, 
+                ref run, in t, in control, ref result,
+                in child, ref childResult, 
                 ref result.FirstRunIndex, currentRunIndex
             );
 
@@ -260,8 +305,8 @@ namespace Squared.PRGUI.NewEngine {
                 // We will then skip stacked/floating controls when enumerating runs (as appropriate)
                 ref var run = ref SelectRunForBuildingPass(ref currentRunIndex, isBreak);
                 UpdateRunCommon(
-                    ref run, in t, in control, in result,
-                    in child, in childResult, 
+                    ref run, in t, in control, ref result,
+                    in child, ref childResult, 
                     ref firstRunIndex, currentRunIndex
                 );
 
@@ -410,6 +455,8 @@ namespace Squared.PRGUI.NewEngine {
                 foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                     ref var child = ref this[ckey];
                     ref var childResult = ref Result(ckey);
+
+                    ApplyClip(in t, in control, ref result, in child, ref childResult, in run);
 
                     // Process wrapping (if necessary) and then if wrapping changed the size of the child,
                     //  update the run that contains it

@@ -190,7 +190,9 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe void ApplyFloatingPosition (LayoutItem *pItem, in RectF parentRect, int idim, int wdim) {
-            if (!pItem->Flags.IsFlagged(ControlFlags.Layout_Floating) && !pItem->Flags.IsFlagged(ControlFlags.Layout_Stacked))
+            bool stacked = pItem->Flags.IsFlagged(ControlFlags.Layout_Stacked),
+                floating = pItem->Flags.IsFlagged(ControlFlags.Layout_Floating);
+            if (!floating && !stacked)
                 return;
             var pRect = RectPtr(pItem->Key);
             var fs = pItem->FixedSize.GetElement(idim);
@@ -201,18 +203,23 @@ namespace Squared.PRGUI.Layout {
             var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
             var margins = pItem->Margins[idim] + pItem->Margins[wdim];
             var fill = bFlags.IsFlagged(ControlFlags.Layout_Fill_Row);
-            if (fill)
+            if (fill && (fs < 0))
                 size = Math.Max(size, parentRect[wdim] - margins);
 
             var max = pItem->MaximumSize.GetElement(idim);
             if ((max > 0) && (fs < 0))
                 size = Math.Min(max, size);
 
-            (*pRect)[idim] = 
-                (!fill && bFlags.IsFlagged(ControlFlags.Layout_Anchor_Right))
-                    ? (parentRect[idim] + parentRect[wdim]) - size - margins
-                    // FIXME: Should we be applying the margins to the offset here? It's kind of gross but seems expected
-                    : parentRect[idim] + + pItem->Margins[idim] + pItem->FloatingPosition.GetElement(idim);
+            if (fill && ((fs >= 0) || (size == max))) {
+                // Fill + fixed size = center, same for fill + max size (if max was hit)
+                (*pRect)[idim] = parentRect[idim] + (parentRect[wdim] - size) / 2f;
+            } else {
+                (*pRect)[idim] = 
+                    (!fill && bFlags.IsFlagged(ControlFlags.Layout_Anchor_Right))
+                        ? (parentRect[idim] + parentRect[wdim]) - size - margins
+                        // FIXME: Should we be applying the margins to the offset here? It's kind of gross but seems expected
+                        : parentRect[idim] + + pItem->Margins[idim] + pItem->FloatingPosition.GetElement(idim);
+            }
             (*pRect)[wdim] = size;
         }
 

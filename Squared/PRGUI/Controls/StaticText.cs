@@ -63,7 +63,7 @@ namespace Squared.PRGUI.Controls {
 
         protected virtual Material CustomTextMaterial => null;
 
-        protected Vector4? RasterizerUserData;
+        public Vector4? RasterizerUserData;
 
         public StaticTextBase ()
             : base () {
