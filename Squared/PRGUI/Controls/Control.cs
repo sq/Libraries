@@ -335,6 +335,16 @@ namespace Squared.PRGUI {
             TypeID = GetType().GetHashCode();
         }
 
+        /// <summary>
+        /// If a control is being composited from a temporary surface, this method will be
+        ///  called to select a material and blendstate to use when compositing the
+        ///  temporary surface. This allows you to ensure premultiplication is handled.
+        /// </summary>
+        protected virtual void GetMaterialAndBlendStateForCompositing (out Material material, out BlendState blendState) {
+            material = null;
+            blendState = null;
+        }
+
         private void UpdateAnimation (long now) {
             if (ActiveAnimation == null)
                 return;
@@ -1338,7 +1348,11 @@ namespace Squared.PRGUI {
             } else if (Appearance.Overlay) {
                 passSet.OverlayQueue.Add(in dc);
             } else {
-                passSet.Above.Draw(in dc, blendState: RenderStates.PorterDuffOver);
+                GetMaterialAndBlendStateForCompositing(out Material compositeMaterial, out BlendState compositeBlendState);
+                passSet.Above.Draw(
+                    in dc, material: compositeMaterial,
+                    blendState: compositeBlendState ?? RenderStates.PorterDuffOver
+                );
                 passSet.Above.Layer += 1;
             }
         }

@@ -111,6 +111,16 @@ namespace Squared.PRGUI.Controls {
             : base () {
         }
 
+        protected override void GetMaterialAndBlendStateForCompositing (out Material material, out BlendState blendState) {
+            if (!Image2.IsDisposedOrNull) {
+                material = null;
+                blendState = null;
+                return;
+            }
+            material = Material;            
+            blendState = BlendState ?? Context.PickDefaultBlendState(Image.Instance);
+        }
+
         protected override bool CanApplyOpacityWithoutCompositing => Appearance.BackgroundColor.IsTransparent;
 
         public void SetFixedAxes (ImageDimensions axes) {
@@ -250,7 +260,7 @@ namespace Squared.PRGUI.Controls {
             return decorations.IsPassDisabled(pass) && (pass != Pass) && !showSpinner && !ShouldClipContent;
         }
 
-        private Material GetMaterialForCompositing (DefaultMaterialSet materials) {
+        private Material SelectMaterialForTwoImages (DefaultMaterialSet materials) {
             switch (Image2Mode) {
                 default:
                 case StaticImageCompositeMode.Over:
@@ -313,13 +323,17 @@ namespace Squared.PRGUI.Controls {
                     drawCall.UserData = new Vector4(opacity2);
                     drawCall.Texture2 = instance2;
                     drawCall.AlignTexture2(scale2 / scale, preserveAspectRatio: true);
-                    material = GetMaterialForCompositing(renderer.Materials);
+                    material = SelectMaterialForTwoImages(renderer.Materials);
                 }
 
                 // HACK
                 var p = renderer.Parameters;
+                var blendState = BlendState ?? Context.PickDefaultBlendState(drawCall.Texture);
+                // We have the compositor apply our blend state instead
+                if (settings.IsCompositing && (material == null))
+                    blendState = BlendState.Opaque;
                 renderer.Parameters.AddRange(in MaterialParameters);
-                renderer.Draw(in drawCall, material: Material ?? material, blendState: BlendState ?? Context.PickDefaultBlendState(drawCall.Texture));
+                renderer.Draw(in drawCall, material: Material ?? material, blendState: blendState);
                 renderer.Parameters = p;
             }
 

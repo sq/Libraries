@@ -685,7 +685,9 @@ namespace Squared.PRGUI.Controls {
                 segment, offset: (textOffset + ca).Floor(),
                 material: material, samplerState: RenderStates.Text,
                 scale: textScale, multiplyColor: overrideColor?.ToColor(),
-                userData: RasterizerUserData ?? userData, multiplyOpacity: multiplyOpacity 
+                userData: RasterizerUserData ?? userData, 
+                multiplyOpacity: multiplyOpacity,
+                blendState: (material == null) ? RenderStates.PorterDuffOver : null
             );
 
             _LastDrawOffset = textOffset.Floor();
