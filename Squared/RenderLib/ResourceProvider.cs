@@ -92,7 +92,7 @@ namespace Squared.Render.Resources {
                 Stream stream = null;
                 try {
                     Exception exc = null;
-                    if (!Provider.StreamSource.TryGetStream(Name, Optional, out stream, out exc)) {
+                    if (!Provider.TryGetStream(Name, Data, Optional, out stream, out exc)) {
                         Future.SetResult2(
                             default(T), (exc != null) 
                                 ? ExceptionDispatchInfo.Capture(exc) 
@@ -222,9 +222,8 @@ namespace Squared.Render.Resources {
         }
 
         public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) {
-            Stream stream;
-            if (StreamSource.TryGetStream(name, optional, out stream, out exception)) {
-                var filteredData = FilterData(name, data);
+            var filteredData = FilterData(name, data);
+            if (TryGetStream(name, data, optional, out var stream, out exception)) {
                 var started = Now;
                 var preloadedData = PreloadInstance(name, stream, filteredData);
                 var createStarted = Now;
@@ -240,6 +239,14 @@ namespace Squared.Render.Resources {
             } else {
                 return default(T);
             }
+        }
+
+        /// <summary>
+        /// This method will be called to try and locate a stream for loading a resource.
+        /// You can use this to customize stream selection behavior or provide a custom fallback if no stream is found in the stream source.
+        /// </summary>
+        protected virtual bool TryGetStream (string name, object data, bool optional, out Stream stream, out Exception exception) {
+            return StreamSource.TryGetStream(name, optional, out stream, out exception);
         }
 
         private CacheEntry MakeCacheEntry (string name, object data) {
@@ -626,7 +633,8 @@ namespace Squared.Render.Resources {
                     return true;
                 }
 
-                errors.Add(temp);
+                if (temp != null)
+                    errors.Add(temp);
             }
 
             if (errors.Count > 1) {
@@ -635,7 +643,7 @@ namespace Squared.Render.Resources {
             } else if (errors.Count == 1) {
                 error = errors[0];
             } else {
-                error = new Exception("No results found");
+                error = new FileNotFoundException($"An unknown error occurred when opening '{name}'.", name);
             }
             return false;
         }
