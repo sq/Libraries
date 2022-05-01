@@ -568,6 +568,36 @@ namespace Squared.Util {
             return (int)Math.Pow(2, Math.Ceiling(Math.Log(value, 2)));
         }
 
+        public static void MinMax (int a, int b, int c, out int min, out int max) {
+            min = Math.Min(a, Math.Min(b, c));
+            max = Math.Max(a, Math.Max(b, c));
+        }
+
+        public static void MinMax (int a, int b, int c, int d, out int min, out int max) {
+            min = Math.Min(a, Math.Min(b, Math.Min(c, d)));
+            max = Math.Max(a, Math.Max(b, Math.Max(c, d)));
+        }
+
+        public static void MinMax (float a, float b, float c, out float min, out float max) {
+            min = Math.Min(a, Math.Min(b, c));
+            max = Math.Max(a, Math.Max(b, c));
+        }
+
+        public static void MinMax (float a, float b, float c, float d, out float min, out float max) {
+            min = Math.Min(a, Math.Min(b, Math.Min(c, d)));
+            max = Math.Max(a, Math.Max(b, Math.Max(c, d)));
+        }
+
+        public static void MinMax (double a, double b, double c, out double min, out double max) {
+            min = Math.Min(a, Math.Min(b, c));
+            max = Math.Max(a, Math.Max(b, c));
+        }
+
+        public static void MinMax (double a, double b, double c, double d, out double min, out double max) {
+            min = Math.Min(a, Math.Min(b, Math.Min(c, d)));
+            max = Math.Max(a, Math.Max(b, Math.Max(c, d)));
+        }
+
 #if WINDOWS
         #region CompileExpression<T> overloads
 

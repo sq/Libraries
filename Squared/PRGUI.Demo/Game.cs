@@ -1013,8 +1013,24 @@ namespace PRGUI.Demo {
                 DebugLabel = "topLevelContainer"
             };
 
+            var spinTest = new Window {
+                Title = "Wheeeeeeeeeee",
+                Width = 450,
+                Height = 350,
+                TooltipContent = "Tooltip for the spinny window",
+                Appearance = {
+                    Transform = Tween.StartNow(
+                        Matrix.Identity,
+                        Matrix.CreateRotationZ(360) * 
+                        Matrix.CreateTranslation(300, 300, 0),
+                        seconds: 5, repeatCount: 99999, repeatMode: TweenRepeatMode.Pulse
+                    ),
+                },
+            };
+
             Context.Controls.Add(topLevelContainer);
             Context.Controls.Add(window.Control);
+            Context.Controls.Add(spinTest);
 
             Context.EventBus.Subscribe(columnCount, UIEvents.ValueChanged, (ei) => {
                 listBox.ColumnCount = columnCount.SelectedItem;
@@ -1289,7 +1305,7 @@ namespace PRGUI.Demo {
             RenderCoordinator.WaitForActiveDraws();
             Materials.SetViewTransform(ViewTransform.CreateOrthographic(pp.BackBufferWidth, pp.BackBufferHeight));
             Context.CanvasSize = new Vector2(pp.BackBufferWidth, pp.BackBufferHeight);
-            if (!UseSavedTree)
+            if (!UseSavedTree || UIContext.UseNewEngine)
                 Context.Update();
             UIRenderTarget.Resize(pp.BackBufferWidth, pp.BackBufferHeight);
         }
@@ -1324,7 +1340,7 @@ namespace PRGUI.Demo {
 
             if (IsFirstUpdate || (UpdatesToSkip <= 0)) {
                 IsFirstUpdate = false;
-                if (UseSavedTree) {
+                if (UseSavedTree && (Context.Engine != null)) {
                     Context.Engine.Update();
                     // HACK
                     Keyboard.PreviousState = Keyboard.CurrentState;
@@ -1445,7 +1461,7 @@ namespace PRGUI.Demo {
 
             if (IsFirstDraw || (DrawsToSkip <= 0)) {
                 IsFirstDraw = false;
-                if (UseSavedTree)
+                if (UseSavedTree && UIContext.UseNewEngine)
                     Context.RasterizeLayoutTree(frame, UIRenderTarget, -9990, Font, HighlightRecord);
                 else
                     Context.Rasterize(frame, UIRenderTarget, -9990);

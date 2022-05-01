@@ -218,7 +218,7 @@ namespace Squared.PRGUI.Layout {
                     (!fill && bFlags.IsFlagged(ControlFlags.Layout_Anchor_Right))
                         ? (parentRect[idim] + parentRect[wdim]) - size - margins
                         // FIXME: Should we be applying the margins to the offset here? It's kind of gross but seems expected
-                        : parentRect[idim] + + pItem->Margins[idim] + pItem->FloatingPosition.GetElement(idim);
+                        : parentRect[idim] + pItem->Margins[idim] + pItem->FloatingPosition.GetElement(idim);
             }
             (*pRect)[wdim] = size;
         }
@@ -768,8 +768,13 @@ namespace Squared.PRGUI.Layout {
 
             SetComputedContentSize(pItem, idim, 0);
 
-            // Start by setting position to top/left margin
-            (*pRect)[idim] = pItem->Margins[idim];
+            if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating))
+                // For floating controls we need to ensure that we don't accidentally trample the floating position
+                // FIXME: This shouldn't be necessary
+                (*pRect)[idim] = pItem->Margins[idim] + pItem->FloatingPosition.GetElement(idim);
+            else
+                // Start by setting position to top/left margin
+                (*pRect)[idim] = pItem->Margins[idim];
 
             if (pItem->FixedSize.GetElement(idim) > 0) {
                 (*pRect)[idim + 2] = Constrain(pItem->FixedSize.GetElement(idim), pItem, idim);

@@ -44,8 +44,18 @@ namespace Squared.PRGUI {
         /// <summary>
         /// If set, alignment will be relative to this control. Otherwise, the screen will be used.
         /// </summary>
-        public Control Anchor { get; set; } = null;
+        public Control Anchor {
+            get => _Anchor;
+            set {
+                _Anchor = value;
+                AnchorIsTransformed = value?.Appearance.HasTransformMatrix ?? false;
+                _LastAnchorRect = default;
+                _LastParentRect = default;
+                _LastSize = default;
+            }
+        }
 
+        Control _Anchor;
         Vector2 _LastSize;
         RectF _LastAnchorRect, _LastParentRect;
 
@@ -61,6 +71,7 @@ namespace Squared.PRGUI {
         public bool ComputeNewAlignment = false;
 
         public Vector2? DesiredPosition;
+        private bool AnchorIsTransformed;
 
         public TControl Control { get; private set; }
 
@@ -112,7 +123,7 @@ namespace Squared.PRGUI {
                 var trialAlignmentPoint = ControlAlignmentPoint;
                 // FIXME: Adjust on appropriate sides
                 rect.Size += margins.Size;
-                var anchorRect = Anchor.GetRect();
+                var anchorRect = Anchor.GetRect(displayRect: AnchorIsTransformed);
                 if (anchorRect == default(RectF))
                     return false;
                 var a = AlignmentTrial(ref context, in parentRect, in rect, margins, trialAnchorPoint, trialAlignmentPoint, anchorRect, out Vector2 mrapA);
@@ -161,7 +172,11 @@ namespace Squared.PRGUI {
             Margins margins, Vector2 trialAnchorPoint, Vector2 trialAlignmentPoint, 
             RectF anchorRect, out Vector2 mostRecentAlignedPosition
         ) {
-            var evaluatedAnchorPosition = ((Anchor as IAlignedControl)?.AlignedPosition);
+            // We use the anchor's display rect for most calculations if it's transformed, but in this case we can't
+            //  do the special logic based on the anchor's aligned position because it isn't transformed
+            var evaluatedAnchorPosition = AnchorIsTransformed
+                ? anchorRect.Position
+                : ((Anchor as IAlignedControl)?.AlignedPosition);
             if (evaluatedAnchorPosition.HasValue) {
                 var clampedAp = evaluatedAnchorPosition.Value;
                 // HACK: The anchor may be hanging off the edges of the screen, so account for that when computing its real rectangle
@@ -189,7 +204,8 @@ namespace Squared.PRGUI {
         public void AddDecorationTraits (ref DecorationSettings settings) {
             if (Anchor == null)
                 return;
-            RectF anchorRect = Anchor.GetRect(), myRect = Control.GetRect();
+            RectF anchorRect = Anchor.GetRect(displayRect: AnchorIsTransformed), 
+                myRect = Control.GetRect();
             anchorRect.SnapAndInset(out Vector2 anchorTl, out Vector2 anchorBr);
             myRect.SnapAndInset(out Vector2 myTl, out Vector2 myBr);
             const float bias = 4f;
@@ -230,10 +246,12 @@ namespace Squared.PRGUI {
             }
 
             if (Anchor != null) {
+                AnchorIsTransformed = Anchor.Appearance.HasTransformMatrix;
+
                 if (Anchor is IAlignedControl iac)
                     iac.EnsureAligned(ref context, ref relayoutRequested);
 
-                var anchorRect = Anchor.GetRect();
+                var anchorRect = Anchor.GetRect(displayRect: AnchorIsTransformed);
                 if (anchorRect != _LastAnchorRect) {
                     _LastAnchorRect = anchorRect;
                     relayoutRequested = true;

@@ -54,9 +54,6 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
-        }
 
         RichTextConfiguration _RichTextConfiguration;
 

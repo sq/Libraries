@@ -367,6 +367,9 @@ namespace Squared.PRGUI {
             Frame frame, AutoRenderTarget renderTarget, int layer, 
             Render.Text.IGlyphSource font = null, Layout.ControlKey? focusedKey = null
         ) {
+            if (Engine == null)
+                return;
+
             var focusChain = focusedKey.HasValue
                 ? new HashSet<Layout.ControlKey>()
                 : null;

@@ -632,8 +632,8 @@ namespace Squared.PRGUI {
         /// </summary>
         /// <param name="applyOffset">Applies the scroll offset of the control's parent(s).</param>
         /// <param name="contentRect">Insets the rectangle by the control's padding.</param>
-        /// <param name="exteriorRect">Expands the rectangle to include the control's margin.</param>
-        public RectF GetRect (bool applyOffset = true, bool contentRect = false, bool exteriorRect = false, UIContext context = null) {
+        /// <param name="displayRect">Expands the rectangle to include the control's margin and applies its transform (if any).</param>
+        public RectF GetRect (bool applyOffset = true, bool contentRect = false, bool displayRect = false, UIContext context = null) {
             if (IsLayoutInvalid)
                 return default(RectF);
 
@@ -649,7 +649,7 @@ namespace Squared.PRGUI {
                     context.Layout.TryGetRect(LayoutKey, out result);
             }
 
-            if (exteriorRect) {
+            if (displayRect) {
                 if (contentRect)
                     throw new ArgumentException("Cannot set both contentRect and exteriorRect");
                 var margins = MostRecentComputedMargins;
@@ -657,6 +657,24 @@ namespace Squared.PRGUI {
                 result.Top -= margins.Top;
                 result.Width += margins.X;
                 result.Height += margins.Y;
+                if (Appearance.HasTransformMatrix) {
+                    Appearance.GetFinalTransformMatrix(result, Context.NowL, out Matrix matrix);
+                    Vector2 tl = Vector2.Zero, tr = new Vector2(result.Width, 0), 
+                        br = result.Size, bl = new Vector2(0, result.Height);
+                    Vector4 tlX, trX, brX, blX;
+                    Vector4.Transform(ref tl, ref matrix, out tlX);
+                    Vector4.Transform(ref tr, ref matrix, out trX);
+                    Vector4.Transform(ref br, ref matrix, out brX);
+                    Vector4.Transform(ref bl, ref matrix, out blX);
+                    tlX /= tlX.W;
+                    trX /= trX.W;
+                    brX /= brX.W;
+                    blX /= blX.W;
+                    Arithmetic.MinMax(tlX.X, trX.X, brX.X, blX.X, out float minX, out float maxX);
+                    Arithmetic.MinMax(tlX.Y, trX.Y, brX.Y, blX.Y, out float minY, out float maxY);
+                    result.Position = new Vector2(minX, minY);
+                    result.Size = new Vector2(maxX - minX, maxY - minY);
+                }
             }
 
             if (applyOffset) {
