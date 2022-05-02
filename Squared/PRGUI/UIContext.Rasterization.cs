@@ -150,6 +150,7 @@ namespace Squared.PRGUI {
             ref ImperativeRenderer renderer, Render.Text.IGlyphSource font, ref NewEngine.ControlRecord record, 
             HashSet<Layout.ControlKey> focusChain
         ) {
+#if DEBUG
             // HACK to allow easily hiding subtrees
             if ((record.Width.Fixed == 0) && (record.Height.Fixed == 0))
                 return;
@@ -195,6 +196,7 @@ namespace Squared.PRGUI {
                 ref var child = ref Engine[ckey];
                 RasterizeLayoutTree(ref renderer, font, ref child, focusChain);
             }
+#endif
         }
 
         public void Rasterize (BatchGroup container, int layer, BatchGroup prepassContainer, int prepassLayer, Color? clearColor = null) {

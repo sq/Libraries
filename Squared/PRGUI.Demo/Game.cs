@@ -29,7 +29,7 @@ using Squared.Util.Text;
 namespace PRGUI.Demo {
     public class DemoGame : MultithreadedGame {
         static string SavedTreePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "prgui.xml");
-        bool UseSavedTree = false;
+        bool UseSavedTree = true;
         ControlKey? HighlightRecord = null;
 
         // ABXY

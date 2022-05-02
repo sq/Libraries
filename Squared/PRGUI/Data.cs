@@ -5,9 +5,11 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+#if DEBUG
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
+#endif
 using Microsoft.Xna.Framework;
 using Squared.Game;
 using Squared.Util;
