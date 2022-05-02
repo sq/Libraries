@@ -643,9 +643,12 @@ namespace Squared.PRGUI.NewEngine {
         }
         #endregion
 
-        private void PerformLayout (ref ControlRecord control) {
+        public void UpdateSubtree (ControlKey control) {
+            PerformLayout(ref this[control]);
+        }
+
+        internal void PerformLayout (ref ControlRecord control) {
             ref var result = ref UnsafeResult(control.Key);
-            _RunCount = 0;
             Pass1_ComputeSizesAndBuildRuns(ref control, ref result, 0);
             Pass2a_ForceWrapAndRebuildRuns(ref control, ref result);
             Pass2b_WrapAndAdjustSizes(ref control, ref result);

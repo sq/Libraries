@@ -940,7 +940,10 @@ namespace Squared.PRGUI {
                     ? (ControlKey?)null 
                     : subtreeRoot.LayoutKey
             );
-            Layout.UpdateSubtree(subtreeRoot.LayoutKey);
+            if (UseNewEngine)
+                Engine.UpdateSubtree(subtreeRoot.LayoutKey);
+            else
+                Layout.UpdateSubtree(subtreeRoot.LayoutKey);
         }
 
         private void ShowTooltip (

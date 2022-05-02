@@ -22,7 +22,7 @@ namespace Squared.PRGUI.NewEngine {
                 FirstItem = firstItem;
                 LastItem = lastItem;
                 Started = false;
-                Current = ControlKey.Invalid;
+                _Current = ControlKey.Invalid;
                 Reverse = reverse;
             }
 
@@ -34,11 +34,15 @@ namespace Squared.PRGUI.NewEngine {
                 Engine.AssertionFailed("Context was modified");
             }
 
-            public ControlKey Current { get; private set; }
-            object IEnumerator.Current => Current;
+            private ControlKey _Current;
+            public ControlKey Current {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => _Current;
+            }
+            object IEnumerator.Current => _Current;
 
             public void Dispose () {
-                Current = ControlKey.Invalid;
+                _Current = ControlKey.Invalid;
                 Version = -1;
             }
 
@@ -50,16 +54,16 @@ namespace Squared.PRGUI.NewEngine {
                         return false;
 
                     Started = true;
-                    Current = FirstItem;
+                    _Current = FirstItem;
                 } else {
                     ref var pCurrent = ref Engine[Current];
                     var nextItem = Reverse ? pCurrent.PreviousSibling : pCurrent.NextSibling;
                     if (Current == LastItem)
-                        Current = ControlKey.Invalid;
+                        _Current = ControlKey.Invalid;
                     else if (nextItem.IsInvalid)
-                        Current = ControlKey.Invalid;
+                        _Current = ControlKey.Invalid;
                     else
-                        Current = nextItem;
+                        _Current = nextItem;
                 }
 
                 return !Current.IsInvalid;
@@ -67,7 +71,7 @@ namespace Squared.PRGUI.NewEngine {
 
             void IEnumerator.Reset () {
                 CheckVersion();
-                Current = ControlKey.Invalid;
+                _Current = ControlKey.Invalid;
             }
         }
 
@@ -132,7 +136,7 @@ namespace Squared.PRGUI.NewEngine {
                 Engine = engine;
                 Version = engine.Version;
                 Parent = parent;
-                Current = -2;
+                _Current = -2;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -143,11 +147,15 @@ namespace Squared.PRGUI.NewEngine {
                 Engine.AssertionFailed("Context was modified");
             }
 
-            public int Current { get; private set; }
+            private int _Current;
+            public int Current {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => _Current;
+            }
             object IEnumerator.Current => Current;
 
             public void Dispose () {
-                Current = -3;
+                _Current = -3;
                 Version = -1;
             }
 
@@ -156,7 +164,7 @@ namespace Squared.PRGUI.NewEngine {
 
                 if (Current >= 0) {
                     ref var run = ref Engine.Run(Current);
-                    Current = run.NextRunIndex;
+                    _Current = run.NextRunIndex;
                     // TODO: Loop detection
                     return (Current >= 0);
                 } else if (Current != -2) {
@@ -167,13 +175,13 @@ namespace Squared.PRGUI.NewEngine {
                     return false;
 
                 ref var rec = ref Engine.UnsafeResult(Parent);
-                Current = rec.FirstRunIndex;
+                _Current = rec.FirstRunIndex;
                 return Current >= 0;
             }
 
             void IEnumerator.Reset () {
                 CheckVersion();
-                Current = -2;
+                _Current = -2;
             }
         }
 
