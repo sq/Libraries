@@ -47,7 +47,8 @@ namespace Squared.PRGUI.NewEngine {
 
         public int Count => _Count;
         public void Clear () {
-            Array.Clear(Records, 0, Records.Length);
+            Array.Clear(Records, 0, _Count + 1);
+            Array.Clear(Results, 0, _Count);
             _Count = 0;
             Version++;
             // Initialize root
@@ -304,8 +305,8 @@ namespace Squared.PRGUI.NewEngine {
 
         public void Update () {
             // _Count = 0;
-            Array.Clear(Results, 0, Results.Length);
-            Array.Clear(RunBuffer, 0, RunBuffer.Length);
+            Array.Clear(Results, 0, _Count);
+            Array.Clear(RunBuffer, 0, _RunCount);
             _RunCount = 0;
             PerformLayout(ref Root());
         }
