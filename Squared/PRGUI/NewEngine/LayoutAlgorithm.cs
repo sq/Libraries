@@ -418,9 +418,6 @@ namespace Squared.PRGUI.NewEngine {
                             expandY = ct.fillY && !child.Height.Fixed.HasValue;
                         float amountX = countX > 0 ? xSpace / countX : 0, amountY = countY > 0 ? ySpace / countY : 0;
 
-                        if (child.Key.ID == 3)
-                            ;
-
                         if (child.Flags.IsFlagged(ControlFlags.Layout_Floating)) {
                         } else if (child.Flags.IsFlagged(ControlFlags.Layout_Stacked)) {
                             if (expandX)
@@ -558,10 +555,15 @@ namespace Squared.PRGUI.NewEngine {
 
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
+                bool isLastRun = run.NextRunIndex < 0;
                 float rw = t.vertical ? run.MaxOuterWidth : run.TotalWidth,
                     rh = t.vertical ? run.TotalHeight : run.MaxOuterHeight,
                     space = Math.Max(t.vertical ? h - rh : w - rw, 0),
-                    baseline = t.vertical ? run.MaxOuterWidth : run.MaxOuterHeight;
+                    baseline = t.vertical 
+                        // HACK: The last run needs to have its baseline expanded to our outer edge
+                        //  so that anchor bottom/right will hit the edges of our content rect
+                        ? (isLastRun ? result.ContentRect.Size.X - x : run.MaxOuterWidth)
+                        : (isLastRun ? result.ContentRect.Size.Y - y : run.MaxOuterHeight);
 
                 run.GetAlignmentF(control.Flags, out float xAlign, out float yAlign);
 
@@ -597,6 +599,9 @@ namespace Squared.PRGUI.NewEngine {
                     } else {
                         childResult.Rect.Left = result.ContentRect.Left + childMargins.Left + x;
                         childResult.Rect.Top = result.ContentRect.Top + childMargins.Top + y;
+
+                        if (child.Key.ID == 9)
+                            ;
 
                         if (t.vertical) {
                             var alignment = (xChildAlign * Math.Max(0, baseline - childOuterSize.X));
