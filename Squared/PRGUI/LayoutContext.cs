@@ -641,8 +641,7 @@ namespace Squared.PRGUI.Layout {
             LayoutItem * pItem, LayoutDimensions dim, bool overlaid, bool forcedBreakOnly
         ) {
             int idim = (int)dim, wdim = idim + 2;
-            var noExpand = pItem->Flags.IsFlagged(ControlFlags.Container_No_Expansion) ||
-                pItem->Flags.IsFlagged((ControlFlags)((uint)ControlFlags.Container_No_Expansion_X << idim));
+            var noExpand = pItem->Flags.IsFlagged((ControlFlags)((uint)ControlFlags.Container_No_Expansion_X << idim));
             float needSizeThisBlock = 0, needSizeTotal = 0;
             RectF childRect;
             foreach (var child in Children(pItem)) {

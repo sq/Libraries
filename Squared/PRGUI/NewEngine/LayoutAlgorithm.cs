@@ -122,7 +122,7 @@ namespace Squared.PRGUI.NewEngine {
                 if (!t.wrap) {
                     if (t.vertical && !t.noExpandY)
                         result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
-                    else if (!t.noExpandX)
+                    if (!t.vertical && !t.noExpandX)
                         result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
                 }
             }
