@@ -385,8 +385,14 @@ namespace Squared.PRGUI.NewEngine {
                     effectiveRunMaxHeight = isLastRun && !t.vertical ? Math.Max(h, runMaxOuterHeight) : runMaxOuterHeight,
                     effectiveRunTotalWidth = run.TotalWidth,
                     effectiveRunTotalHeight = run.TotalHeight,
-                    xSpace = t.vertical ? 0f : w - effectiveRunTotalWidth,
-                    ySpace = t.vertical ? h - effectiveRunTotalHeight : 0,
+                    // HACK: In the old engine the last run would be expanded to fill on both axes, and we rely on this
+                    //  right now for various things. This should be improved on
+                    xSpace = t.vertical 
+                        ? (isLastRun ? w - effectiveRunMaxWidth : 0)
+                        : w - effectiveRunTotalWidth,
+                    ySpace = t.vertical 
+                        ? h - effectiveRunTotalHeight 
+                        : (isLastRun ? h - effectiveRunMaxHeight : 0),
                     newXSpace = xSpace, newYSpace = ySpace,
                     minOuterWidth = t.vertical ? effectiveRunMaxWidth : 0,
                     minOuterHeight = t.vertical ? 0 : effectiveRunMaxHeight;
@@ -409,6 +415,9 @@ namespace Squared.PRGUI.NewEngine {
                         bool expandX = ct.fillX && !child.Width.Fixed.HasValue,
                             expandY = ct.fillY && !child.Height.Fixed.HasValue;
                         float amountX = countX > 0 ? xSpace / countX : 0, amountY = countY > 0 ? ySpace / countY : 0;
+
+                        if (child.Key.ID == 3)
+                            ;
 
                         if (child.Flags.IsFlagged(ControlFlags.Layout_Floating)) {
                         } else if (child.Flags.IsFlagged(ControlFlags.Layout_Stacked)) {

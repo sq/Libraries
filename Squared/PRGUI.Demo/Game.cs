@@ -862,7 +862,7 @@ namespace PRGUI.Demo {
                 ClipChildren = true,
                 Layout = {
                     Fill = true,
-                    ForceBreak = true
+                    ForceBreak = true,
                 },
                 Height = { Maximum = 1200 },
                 Scrollable = true,
@@ -944,8 +944,8 @@ namespace PRGUI.Demo {
                     Fill = true
                 },
                 // FIXME: We shouldn't need to set Wrap here since we're setting explicit breaks
-                ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap 
-                    | ControlFlags.Container_Constrain_Size,
+                ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End
+                    | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                 Children = {
                     hoveringCtl,
                     lastClickedCtl,
@@ -1010,7 +1010,14 @@ namespace PRGUI.Demo {
                     },
                     bigScrollableContainer
                 },
-                DebugLabel = "topLevelContainer"
+                DebugLabel = "topLevelContainer",
+                Width = {
+                    Maximum = 1920
+                },
+                // HACK: Without this the container gets too tall, but that might be correct?
+                Height = {
+                    Maximum = 1080
+                },
             };
 
             var spinTest = new Window {
