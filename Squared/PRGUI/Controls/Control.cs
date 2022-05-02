@@ -31,7 +31,7 @@ namespace Squared.PRGUI {
             return lhs.Scale(rhs);
         }
 
-        internal float EffectiveMinimum => Fixed ?? Minimum ?? 0;
+        internal float EffectiveMinimum => Math.Min(Maximum ?? float.MaxValue, Fixed ?? Minimum ?? 0);
 
         public ControlDimension AutoComputeFixed () {
             if ((Maximum == Minimum) && Maximum.HasValue)
