@@ -137,18 +137,28 @@ namespace Squared.PRGUI.NewEngine {
     }
 
     public struct ControlLayoutResult {
+        // TODO: Optimize this out
         internal int Version;
 
         public RectF Rect, ContentRect;
         // public Vector2 ContentSize;
         public Layout.LayoutTags Tag;
+        internal float PositionInRun;
+#if DEBUG
         internal bool Break;
         internal int Depth;
+#endif
         internal int FirstRunIndex;
 
         public override string ToString () {
+#if DEBUG
             var padding = new string(' ', Depth * 2);
-            return $"{padding}{Tag} size {Rect.Size} {(Break ? "break" : "")}";
+            var br = Break;
+#else
+            var padding = string.Empty;
+            var br = false;
+#endif
+            return $"{padding}{Tag} size {Rect.Size} {(br ? "break" : "")}";
         }
     }
 

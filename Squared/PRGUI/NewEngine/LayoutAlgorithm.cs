@@ -47,7 +47,8 @@ namespace Squared.PRGUI.NewEngine {
 
         private struct ControlTraits {
             public bool vertical, wrap, noExpandX, noExpandY,
-                constrain, clip, clipX, clipY;
+                constrain, clip, clipX, clipY,
+                inX, inY;
 
             public ControlTraits (in ControlRecord control) {
                 vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
@@ -58,10 +59,12 @@ namespace Squared.PRGUI.NewEngine {
                 clipY = clip && !control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y);
                 noExpandX = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_X);
                 noExpandY = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_Y);
+                // Size on this axis is determined by our parent
+                inX = wrap && !vertical;
+                inY = wrap && vertical;
             }
         }
 
-        #region Layout first pass
         private void InitializeResult (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
             result.Tag = control.Tag;
             result.Rect = result.ContentRect = default;
@@ -72,7 +75,8 @@ namespace Squared.PRGUI.NewEngine {
             _Count = Math.Max(control.Key.ID + 1, _Count);
         }
 
-        private void Pass1_ComputeSizesAndBuildRuns (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
+        #region Pass 1
+        private void Pass1_ComputeOutSizesAndBuildRuns (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
             InitializeResult(ref control, ref result, depth);
 
             // During this pass, result.Rect contains our minimum size:
@@ -88,18 +92,21 @@ namespace Squared.PRGUI.NewEngine {
             // It will happen in the next pass and in the arrange pass
             t.clip = t.clipX = t.clipY = false;
 
-            float padX = control.Padding.X, padY = control.Padding.Y;
+            float padX = control.Padding.X, padY = control.Padding.Y, p = 0;
             var currentRunIndex = -1;
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
 
-                Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1);
+                Pass1_ComputeOutSizesAndBuildRuns(ref child, ref childResult, depth + 1);
                 float w = childResult.Rect.Width + child.Margins.X,
                     h = childResult.Rect.Height + child.Margins.Y;
                 ref var run = ref Pass1_UpdateRun(
                     in t, in control, ref result, in child, ref childResult, ref currentRunIndex
                 );
+
+                childResult.PositionInRun = p;
+                p += t.vertical ? w : h;
 
                 // At a minimum we should be able to hold all our children if they were stacked on each other
                 if (!t.noExpandX)
@@ -120,10 +127,12 @@ namespace Squared.PRGUI.NewEngine {
             // We have our minimum size in result.Rect and the size of all our content in result.ContentRect
             // Now we add padding to the contentrect and pick the biggest of the two
             // This gives us proper autosize for non-forced-wrap
-            if (!t.noExpandX)
-                result.Rect.Width = Math.Max(result.Rect.Width, result.ContentRect.Width + padX);
-            if (!t.noExpandY)
-                result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
+            if (!t.wrap) {
+                if (!t.noExpandX)
+                    result.Rect.Width = Math.Max(result.Rect.Width, result.ContentRect.Width + padX);
+                if (!t.noExpandY)
+                    result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
+            }
 
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
@@ -264,8 +273,13 @@ namespace Squared.PRGUI.NewEngine {
 
         #endregion
 
-        #region Pass 2: wrap and expand
-        private Vector2 Pass2a_ForceWrapAndRebuildRuns (
+        #region Pass 2
+        private void Pass2_ForceWrapAndExpand (
+            ref ControlRecord control, ref ControlLayoutResult result
+        ) {
+        }
+
+        private Vector2 Pass2a_ForceWrap (
             ref ControlRecord control, ref ControlLayoutResult result
         ) {
             if (control.FirstChild.IsInvalid)
@@ -276,7 +290,7 @@ namespace Squared.PRGUI.NewEngine {
             var t = new ControlTraits(control);
             float contentWidth = result.Rect.Width - control.Padding.X,
                 contentHeight = result.Rect.Height - control.Padding.Y,
-                capacity = t.vertical ? contentHeight : contentWidth, 
+                capacity = t.vertical ? contentHeight : contentWidth,
                 offset = 0, extent = 0;
 
             // HACK: Unfortunately, we have to build new runs entirely from scratch because modifying the existing ones
@@ -620,9 +634,8 @@ namespace Squared.PRGUI.NewEngine {
         private void PerformLayout (ref ControlRecord control) {
             ref var result = ref UnsafeResult(control.Key);
             _RunCount = 0;
-            Pass1_ComputeSizesAndBuildRuns(ref control, ref result, 0);
-            Pass2a_ForceWrapAndRebuildRuns(ref control, ref result);
-            Pass2b_WrapAndAdjustSizes(ref control, ref result);
+            Pass1_ComputeOutSizesAndBuildRuns(ref control, ref result, 0);
+            Pass2_ForceWrapAndExpand(ref control, ref result);
             Pass3_Arrange(ref control, ref result);
             ;
         }

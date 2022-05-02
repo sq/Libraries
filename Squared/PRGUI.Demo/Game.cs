@@ -1170,7 +1170,7 @@ namespace PRGUI.Demo {
             };
             // Context.Controls.Add(floatingWindowWithText);
 
-            Control.ShowDebugBoxes = true;
+            // Control.ShowDebugBoxes = true;
             Control.ShowDebugPadding = false;
         }
 

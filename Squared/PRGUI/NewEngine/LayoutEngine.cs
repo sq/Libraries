@@ -28,6 +28,8 @@ namespace Squared.PRGUI.NewEngine {
         //  allocating a new buffer, which won't invalidate old references.
         private ControlRecord[] Records = new ControlRecord[Capacity];
         private ControlLayoutResult[] Results = new ControlLayoutResult[Capacity];
+        // The worst case size is one run per control, but in practice we will usually have a much smaller number
+        //  of runs, which means it might be beneficial to grow this buffer separately
         private ControlLayoutRun[] RunBuffer = new ControlLayoutRun[Capacity];
 
 #if DEBUG
@@ -133,9 +135,9 @@ namespace Squared.PRGUI.NewEngine {
             return new RunEnumerable(this, parent);
         }
 
-        public ChildrenEnumerable Children (ControlKey parent) {
+        public ChildrenEnumerable Children (ControlKey parent, bool reverse = false) {
             Assert(!parent.IsInvalid);
-            return new ChildrenEnumerable(this, parent);
+            return new ChildrenEnumerable(this, parent, reverse);
         }
 
         public SiblingsEnumerable Enumerate (ControlKey first, ControlKey? last = null) {

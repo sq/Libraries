@@ -152,7 +152,8 @@ namespace Squared.PRGUI.Layout {
         Container_Constrain_Size  = Container_Constrain_Growth | Container_Clip_Children,
         /// <summary>
         /// Additional breaks will automatically be inserted if content cannot fit in the container.
-        /// Only meaningful in the new engine (but implies Container_Wrap for the old engine)
+        /// Only meaningful in the new engine (but implies Container_Wrap for the old engine).
+        /// In the new engine this will force the container's size to be set by its parent.
         /// </summary>
         Container_Break_Auto      = 0b1000000000000000000000 | Container_Wrap,
     }

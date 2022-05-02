@@ -246,6 +246,9 @@ namespace Squared.PRGUI {
             }
 
             if (Anchor != null) {
+                // FIXME: If the anchor's parent(s) are transformed this will be incorrect,
+                //  we need to walk the whole parent tree and apply transforms
+                // This also will require changing Control.GetRect :(
                 AnchorIsTransformed = Anchor.Appearance.HasTransformMatrix;
 
                 if (Anchor is IAlignedControl iac)

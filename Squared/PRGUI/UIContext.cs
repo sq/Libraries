@@ -329,6 +329,13 @@ namespace Squared.PRGUI {
                 if (UseNewEngine) {
                     SyncEngines();
                     Engine.Update();
+                    // TODO: Perform a pass after this that copies the LayoutResult into all of our controls,
+                    //  so that they will always have valid data from the most recent update even if we are
+                    //  in the middle of a new update
+                    // The easiest solution would be to always have the Controls[] array in Engine and copy
+                    //  everything into it at the end of Update. This is probably worthwhile since it is cache
+                    //  efficient and most controls will have their rect used at least once for rasterization
+                    //  or hit testing
                 }
 
                 if (NotifyLayoutListeners(ref context)) {

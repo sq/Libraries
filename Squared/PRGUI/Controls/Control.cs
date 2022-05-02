@@ -95,19 +95,46 @@ namespace Squared.PRGUI {
             };
         }
 
-        public void Constrain (ref float? size, bool applyFixed) {
-            if (Minimum.HasValue && size.HasValue)
-                size = Math.Max(Minimum.Value, size.Value);
-            if (Maximum.HasValue && size.HasValue)
-                size = Math.Min(Maximum.Value, size.Value);
+        public void Constrain (ref float? size, bool applyFixed, out float delta) {
+            var previous = size;
+            if (size.HasValue) {
+                if (Minimum.HasValue)
+                    size = Math.Max(Minimum.Value, size.Value);
+                if (Maximum.HasValue)
+                    size = Math.Min(Maximum.Value, size.Value);
+            }
             if (applyFixed && Fixed.HasValue)
                 size = Fixed;
+
+            if (previous.HasValue)
+                delta = size.Value - previous.Value;
+            else
+                delta = size.Value;
+        }
+
+        public void Constrain (ref float size, bool applyFixed, out float delta) {
+            float? temp = size;
+            Constrain(ref temp, applyFixed, out delta);
+            size = temp.Value;
+        }
+
+        public void Constrain (ref float? size, bool applyFixed) {
+            Constrain(ref size, applyFixed, out _);
         }
 
         public void Constrain (ref float size, bool applyFixed) {
+            Constrain(ref size, applyFixed, out _);
+        }
+
+        public float? Constrain (float? size, bool applyFixed, out float delta) {
+            Constrain(ref size, applyFixed, out delta);
+            return size;
+        }
+
+        public float Constrain (float size, bool applyFixed, out float delta) {
             float? temp = size;
-            Constrain(ref temp, applyFixed);
-            size = temp.Value;
+            Constrain(ref temp, applyFixed, out delta);
+            return temp.Value;
         }
 
         public float? Constrain (float? size, bool applyFixed) {

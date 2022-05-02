@@ -167,7 +167,7 @@ namespace Squared.PRGUI {
                 var layer = result.Depth * 2;
                 renderer.RasterizeRectangle(
                     result.Rect.Position + offset, result.Rect.Extent - offset, 
-                    1.5f, outlineSize, fillColor * alpha, fillColor * alpha, lineColor,
+                    0.75f, outlineSize, fillColor * alpha, fillColor * alpha, lineColor,
                     layer: layer
                 );
                 var obscureText = obscuredByFocus && !focusChain.Contains(record.Parent);

@@ -13,16 +13,17 @@ namespace Squared.PRGUI.NewEngine {
             public readonly LayoutEngine Engine;
             public readonly ControlKey FirstItem;
             public readonly ControlKey? LastItem;
-            private bool Started;
+            private bool Started, Reverse;
             private int Version;
 
-            public SiblingEnumerator (LayoutEngine engine, ControlKey firstItem, ControlKey? lastItem) {
+            public SiblingEnumerator (LayoutEngine engine, ControlKey firstItem, ControlKey? lastItem, bool reverse = false) {
                 Engine = engine;
                 Version = engine.Version;
                 FirstItem = firstItem;
                 LastItem = lastItem;
                 Started = false;
                 Current = ControlKey.Invalid;
+                Reverse = reverse;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -52,12 +53,13 @@ namespace Squared.PRGUI.NewEngine {
                     Current = FirstItem;
                 } else {
                     ref var pCurrent = ref Engine[Current];
+                    var nextItem = Reverse ? pCurrent.PreviousSibling : pCurrent.NextSibling;
                     if (Current == LastItem)
                         Current = ControlKey.Invalid;
-                    else if (pCurrent.NextSibling.IsInvalid)
+                    else if (nextItem.IsInvalid)
                         Current = ControlKey.Invalid;
                     else
-                        Current = pCurrent.NextSibling;
+                        Current = nextItem;
                 }
 
                 return !Current.IsInvalid;
@@ -96,15 +98,20 @@ namespace Squared.PRGUI.NewEngine {
         public struct ChildrenEnumerable : IEnumerable<ControlKey> {
             public readonly LayoutEngine Engine;
             public readonly ControlKey Parent;
+            public readonly bool Reverse;
 
-            internal ChildrenEnumerable (LayoutEngine engine, ControlKey parent) {
+            internal ChildrenEnumerable (LayoutEngine engine, ControlKey parent, bool reverse) {
                 Engine = engine;
                 Parent = parent;
+                Reverse = reverse;
             }
 
             public SiblingEnumerator GetEnumerator () {
                 ref var rec = ref Engine[Parent];
-                return new SiblingEnumerator(Engine, rec.FirstChild, rec.LastChild);
+                return new SiblingEnumerator(
+                    Engine, Reverse ? rec.LastChild : rec.FirstChild, 
+                    Reverse ? rec.FirstChild : rec.LastChild, Reverse
+                );
             }
 
             IEnumerator<ControlKey> IEnumerable<ControlKey>.GetEnumerator () {
