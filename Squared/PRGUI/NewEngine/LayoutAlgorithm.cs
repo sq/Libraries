@@ -48,7 +48,7 @@ namespace Squared.PRGUI.NewEngine {
         private struct ControlTraits {
             public bool vertical, wrap, noExpandX, noExpandY,
                 constrain, clip, clipX, clipY,
-                inX, inY;
+                inX, inY, fillX, fillY;
 
             public ControlTraits (in ControlRecord control) {
                 vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
@@ -62,6 +62,8 @@ namespace Squared.PRGUI.NewEngine {
                 // Size on this axis is determined by our parent
                 inX = wrap && !vertical;
                 inY = wrap && vertical;
+                fillX = (control.Flags.IsFlagged(ControlFlags.Layout_Fill_Row) || inX) && !control.Width.Fixed.HasValue;
+                fillY = (control.Flags.IsFlagged(ControlFlags.Layout_Fill_Column) || inY) && !control.Height.Fixed.HasValue;
             }
         }
 
@@ -76,7 +78,7 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         #region Pass 1
-        private void Pass1_ComputeOutSizesAndBuildRuns (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
+        private void Pass1_ComputeSizesAndBuildRuns (ref ControlRecord control, ref ControlLayoutResult result, int depth) {
             InitializeResult(ref control, ref result, depth);
 
             // During this pass, result.Rect contains our minimum size:
@@ -97,12 +99,15 @@ namespace Squared.PRGUI.NewEngine {
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
+                var ct = new ControlTraits(child);
 
-                Pass1_ComputeOutSizesAndBuildRuns(ref child, ref childResult, depth + 1);
+                Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1);
                 float w = childResult.Rect.Width + child.Margins.X,
                     h = childResult.Rect.Height + child.Margins.Y;
                 ref var run = ref Pass1_UpdateRun(
-                    in t, in control, ref result, in child, ref childResult, ref currentRunIndex
+                    in t, in control, ref result, 
+                    in child, ref childResult, 
+                    in ct, ref currentRunIndex
                 );
 
                 childResult.PositionInRun = p;
@@ -127,12 +132,12 @@ namespace Squared.PRGUI.NewEngine {
             // We have our minimum size in result.Rect and the size of all our content in result.ContentRect
             // Now we add padding to the contentrect and pick the biggest of the two
             // This gives us proper autosize for non-forced-wrap
-            if (!t.wrap) {
+            // if (!t.wrap) {
                 if (!t.noExpandX)
                     result.Rect.Width = Math.Max(result.Rect.Width, result.ContentRect.Width + padX);
                 if (!t.noExpandY)
                     result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
-            }
+            // }
 
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
@@ -165,7 +170,7 @@ namespace Squared.PRGUI.NewEngine {
             ref ControlLayoutRun run, in ControlTraits t,
             in ControlRecord control, ref ControlLayoutResult result,
             in ControlRecord child, ref ControlLayoutResult childResult,
-            ref int firstRunIndex, int currentRunIndex
+            in ControlTraits ct, ref int firstRunIndex, int currentRunIndex
         ) {
             if (firstRunIndex < 0)
                 firstRunIndex = currentRunIndex;
@@ -197,9 +202,9 @@ namespace Squared.PRGUI.NewEngine {
             ApplyClip(t, in control, ref result, in child, ref childResult, in run);
 
             run.FlowCount++;
-            if (ShouldExpand(in control, in child, LayoutDimensions.X))
+            if (ct.fillX)
                 run.ExpandCountX++;
-            if (ShouldExpand(in control, in child, LayoutDimensions.Y))
+            if (ct.fillY)
                 run.ExpandCountY++;
             run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childOuterWidth);
             run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childOuterHeight);
@@ -250,7 +255,7 @@ namespace Squared.PRGUI.NewEngine {
             in ControlTraits t,
             in ControlRecord control, ref ControlLayoutResult result, 
             in ControlRecord child, ref ControlLayoutResult childResult, 
-            ref int currentRunIndex
+            in ControlTraits ct, ref int currentRunIndex
         ) {
             bool isBreak = child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
             var previousRunIndex = currentRunIndex;
@@ -264,7 +269,7 @@ namespace Squared.PRGUI.NewEngine {
 
             UpdateRunCommon(
                 ref run, in t, in control, ref result,
-                in child, ref childResult, 
+                in child, ref childResult, in ct,
                 ref result.FirstRunIndex, currentRunIndex
             );
 
@@ -273,13 +278,8 @@ namespace Squared.PRGUI.NewEngine {
 
         #endregion
 
-        #region Pass 2
-        private void Pass2_ForceWrapAndExpand (
-            ref ControlRecord control, ref ControlLayoutResult result
-        ) {
-        }
-
-        private Vector2 Pass2a_ForceWrap (
+        #region Pass 2: wrap and expand
+        private Vector2 Pass2a_ForceWrapAndRebuildRuns (
             ref ControlRecord control, ref ControlLayoutResult result
         ) {
             if (control.FirstChild.IsInvalid)
@@ -303,6 +303,7 @@ namespace Squared.PRGUI.NewEngine {
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref Result(ckey);
+                var ct = new ControlTraits(child);
                 float startMargin = t.vertical ? child.Margins.Top : child.Margins.Left,
                     endMargin = t.vertical ? child.Margins.Bottom : child.Margins.Right,
                     size = t.vertical ? childResult.Rect.Height : childResult.Rect.Width,
@@ -320,7 +321,7 @@ namespace Squared.PRGUI.NewEngine {
                 ref var run = ref SelectRunForBuildingPass(ref currentRunIndex, isBreak);
                 UpdateRunCommon(
                     ref run, in t, in control, ref result,
-                    in child, ref childResult, 
+                    in child, ref childResult, in ct,
                     ref firstRunIndex, currentRunIndex
                 );
 
@@ -403,9 +404,10 @@ namespace Squared.PRGUI.NewEngine {
                     foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                         ref var child = ref this[ckey];
                         ref var childResult = ref Result(ckey);
+                        var ct = new ControlTraits(child);
                         var margins = child.Margins;
-                        bool expandX = child.Flags.IsFlagged(ControlFlags.Layout_Fill_Row) && !child.Width.Fixed.HasValue,
-                            expandY = child.Flags.IsFlagged(ControlFlags.Layout_Fill_Column) && !child.Height.Fixed.HasValue;
+                        bool expandX = ct.fillX && !child.Width.Fixed.HasValue,
+                            expandY = ct.fillY && !child.Height.Fixed.HasValue;
                         float amountX = countX > 0 ? xSpace / countX : 0, amountY = countY > 0 ? ySpace / countY : 0;
 
                         if (child.Flags.IsFlagged(ControlFlags.Layout_Floating)) {
@@ -527,12 +529,6 @@ namespace Squared.PRGUI.NewEngine {
             return result.Rect.Size - oldSize;
         }
 
-        private bool ShouldExpand (in ControlRecord parent, in ControlRecord child, LayoutDimensions dim) {
-            return (dim == LayoutDimensions.X)
-                ? !child.Width.Fixed.HasValue && child.Flags.IsFlagged(ControlFlags.Layout_Fill_Row)
-                : !child.Height.Fixed.HasValue && child.Flags.IsFlagged(ControlFlags.Layout_Fill_Column);
-        }
-
         #endregion
 
         #region Pass 3: arrange
@@ -634,8 +630,9 @@ namespace Squared.PRGUI.NewEngine {
         private void PerformLayout (ref ControlRecord control) {
             ref var result = ref UnsafeResult(control.Key);
             _RunCount = 0;
-            Pass1_ComputeOutSizesAndBuildRuns(ref control, ref result, 0);
-            Pass2_ForceWrapAndExpand(ref control, ref result);
+            Pass1_ComputeSizesAndBuildRuns(ref control, ref result, 0);
+            Pass2a_ForceWrapAndRebuildRuns(ref control, ref result);
+            Pass2b_WrapAndAdjustSizes(ref control, ref result);
             Pass3_Arrange(ref control, ref result);
             ;
         }
