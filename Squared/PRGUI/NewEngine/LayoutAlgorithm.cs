@@ -71,8 +71,10 @@ namespace Squared.PRGUI.NewEngine {
             result.Tag = control.Tag;
             result.Rect = result.ContentRect = default;
             result.FirstRunIndex = -1;
+#if DEBUG
             result.Break = control.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
             result.Depth = depth;
+#endif
             result.Version = Version;
             _Count = Math.Max(control.Key.ID + 1, _Count);
         }
@@ -257,7 +259,7 @@ namespace Squared.PRGUI.NewEngine {
             in ControlRecord child, ref ControlLayoutResult childResult, 
             in ControlTraits ct, ref int currentRunIndex
         ) {
-            bool isBreak = child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
+            bool isBreak = !child.Flags.IsStackedOrFloating() && child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
             var previousRunIndex = currentRunIndex;
 
             // We still generate runs even if a control is stacked/floating
