@@ -12,6 +12,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Evil;
 using Squared.Threading;
 using Squared.Util;
+using Squared.Util.Testing;
 
 namespace Squared.Render.Resources {
     public delegate void ResourceLoadCompleteHandler (string name, object resource, long waitDuration, long preloadDuration, long createDuration);
@@ -19,6 +20,8 @@ namespace Squared.Render.Resources {
     public abstract class ResourceProvider<T> : IDisposable
         where T : class 
     {
+        public FaultInjector FaultInjector;
+
         private object PendingLoadLock = new object();
         private int _PendingLoads;
         public int PendingLoads {
@@ -222,6 +225,8 @@ namespace Squared.Render.Resources {
         }
 
         public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) {
+            FaultInjector?.Step();
+
             var filteredData = FilterData(name, data);
             if (TryGetStream(name, data, optional, out var stream, out exception)) {
                 var started = Now;
@@ -277,6 +282,13 @@ namespace Squared.Render.Resources {
         }
 
         public Future<T> LoadAsync (string name, object data, bool cached = true, bool optional = false) {
+            var exc = FaultInjector?.StepNonThrowing();
+            if (exc != null) {
+                var result = new Future<T>();
+                result.SetResult(default, exc);
+                return result;
+            }
+
             data = FilterData(name, data);
             var future = GetFutureForResource(name, data, cached, out bool performLoad);
 
