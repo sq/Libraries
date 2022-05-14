@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -8,7 +9,7 @@ using Squared.CoreCLR;
 
 namespace Squared.Util.Testing {
     public class FaultInjector {
-        public List<Func<Exception>> ExceptionTypes = new List<Func<Exception>>();
+        public List<Func<string, Exception>> ExceptionTypes = new List<Func<string, Exception>>();
 
         /// <summary>
         /// If false, Step will early-out without adjusting the countdown or injecting faults
@@ -30,7 +31,7 @@ namespace Squared.Util.Testing {
         private Xoshiro RNG;
         
         public FaultInjector () {
-            ExceptionTypes.Add(() => new FaultInjectorException(this));
+            ExceptionTypes.Add((msg) => new FaultInjectorException(this, msg));
             RNG = new Xoshiro(null);
             Countdown = RNG.Next(MinCountdown, MaxCountdown);
         }
@@ -63,10 +64,16 @@ namespace Squared.Util.Testing {
 
             Countdown = RNG.Next(MinCountdown, MaxCountdown);
             var ctor = SelectCtor();
-            return ctor();
+            return ctor(GetFaultMessage(2));
         }
 
-        private Func<Exception> SelectCtor () {
+        private string GetFaultMessage (int offset) {
+            var sf = new StackFrame(offset, false);
+            var method = sf.GetMethod();
+            return $"Fault injected in {method.DeclaringType.Name}::{method.Name}";
+        }
+
+        private Func<string, Exception> SelectCtor () {
             return (ExceptionTypes.Count == 1)
                 ? ExceptionTypes[0]
                 : ExceptionTypes[RNG.Next(0, ExceptionTypes.Count - 1)];
@@ -74,7 +81,7 @@ namespace Squared.Util.Testing {
 
         public void InjectFault () {
             var ctor = SelectCtor();
-            var exc = ctor();
+            var exc = ctor(GetFaultMessage(3));
             throw exc;
         }
     }
@@ -82,8 +89,8 @@ namespace Squared.Util.Testing {
     public class FaultInjectorException : Exception {
         public readonly FaultInjector Parent;
 
-        public FaultInjectorException (FaultInjector parent)
-            : base("Fault injected") {
+        public FaultInjectorException (FaultInjector parent, string message)
+            : base(message ?? "Fault injected") {
             Parent = parent;
         }
     }
