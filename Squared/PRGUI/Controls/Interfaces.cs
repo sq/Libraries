@@ -51,6 +51,10 @@ namespace Squared.PRGUI {
 
     public interface IControlCompositor {
         /// <summary>
+        /// The number of pixels around the control bounds to rasterize before compositing.
+        /// </summary>
+        float? Padding { get; }
+        /// <summary>
         /// Decides whether the control needs to be composited given its current state at the specified opacity.
         /// </summary>
         bool WillComposite (Control control, float opacity);

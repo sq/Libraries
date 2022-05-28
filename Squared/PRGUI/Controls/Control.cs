@@ -1312,7 +1312,8 @@ namespace Squared.PRGUI {
 
         private void RasterizeComposited (ref UIOperationContext context, ref RectF box, ref RasterizePassSet passSet, float opacity, bool enableCompositor) {
             // HACK: Create padding around the element for drop shadows
-            box.SnapAndInset(out Vector2 tl, out Vector2 br, -Context.CompositorPaddingPx);
+            var padding = Appearance.Compositor?.Padding ?? Context.CompositorPaddingPx;
+            box.SnapAndInset(out Vector2 tl, out Vector2 br, -padding);
             // Don't overflow the edges of the canvas with padding, it'd produce garbage pixels
             var canvasRect = context.UIContext.CanvasRect;
             canvasRect.Clamp(ref tl);

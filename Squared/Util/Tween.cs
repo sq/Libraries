@@ -78,7 +78,7 @@ namespace Squared.Util {
                 throw new ArgumentOutOfRangeException(nameof(index));
         }
 
-        public Tween (T value) {
+        public Tween (in T value) {
             From = To = value;
             StartedWhen = EndWhen = 0;
             Interpolator = null;
@@ -89,7 +89,7 @@ namespace Squared.Util {
         }
 
         public Tween (
-            T from, T to,
+            in T from, in T to,
             long startWhen, long endWhen,
             BoundInterpolator<T, Tween<T>> interpolator = null,
             int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop,
@@ -107,7 +107,7 @@ namespace Squared.Util {
         }
 
         public static Tween<T> StartNow (
-            T from, T to, long ticks, long? delay = null,
+            in T from, in T to, long ticks, long? delay = null,
             long? now = null, BoundInterpolator<T, Tween<T>> interpolator = null,
             int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop,
             long repeatDelay = 0, long repeatExtraDuration = 0

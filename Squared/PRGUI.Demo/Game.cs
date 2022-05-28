@@ -1545,6 +1545,7 @@ namespace PRGUI.Demo {
     public class WindowCompositor : IControlCompositor {
         public DefaultMaterialSet Materials;
         public Material Material;
+        public float? Padding => null;
 
         public WindowCompositor (DefaultMaterialSet materials) {
             Materials = materials;
