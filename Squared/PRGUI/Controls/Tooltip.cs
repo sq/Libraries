@@ -120,7 +120,13 @@ namespace Squared.PRGUI {
     public sealed class TooltipTargetSettings {
         public static TooltipTargetSettings Default = new TooltipTargetSettings();
 
+        /// <summary>
+        /// Configures what point on the anchor [0 - 1] is used as the center for alignment
+        /// </summary>
         public Vector2? AnchorPoint;
+        /// <summary>
+        /// Configures what point on the control [0 - 1] is aligned onto the anchor point
+        /// </summary>
         public Vector2? ControlAlignmentPoint;
         /// <summary>
         /// The maximum size factor of the tooltip (1.0 is the full size of the canvas)

@@ -89,7 +89,17 @@ namespace Squared.PRGUI {
         /// Responsible for deciding whether a control needs to be composited and performing the final
         ///  step of compositing the rendered control from its scratch texture into the scene.
         /// </summary>
-        public IControlCompositor Compositor;
+        public IControlCompositor Compositor {
+            get => _CompositorOrMaterial as IControlCompositor;
+            set => _CompositorOrMaterial = value;
+        }
+        /// <summary>
+        /// If no compositor is set, this material will be used to composite the control
+        /// </summary>
+        public Material CompositeMaterial {
+            get => _CompositorOrMaterial as Material;
+            set => _CompositorOrMaterial = value;
+        }
         /// <summary>
         /// Specifies a custom decoration provider to use instead of the current default.
         /// Inheritable.
@@ -108,6 +118,7 @@ namespace Squared.PRGUI {
         /// </summary>
         public DenseList<string> DecorationTraits;
 
+        private object _CompositorOrMaterial;
         private object _GlyphSourceOrProvider;
 
         /// <summary>

@@ -1278,6 +1278,7 @@ namespace Squared.PRGUI {
             var needsComposition = ((opacity < 1) && !this.CanApplyOpacityWithoutCompositing) || 
                 ForceComposition ||
                 enableCompositor ||
+                (Appearance.CompositeMaterial != null) ||
                 Appearance.Overlay ||
                 (
                     Appearance.HasTransformMatrix && 
@@ -1419,7 +1420,7 @@ namespace Squared.PRGUI {
             if (enableCompositor)
                 Appearance.Compositor.Composite(this, ref subgroup, in dc, effectiveOpacity);
             else
-                subgroup.Draw(in dc);
+                subgroup.Draw(in dc, material: Appearance.CompositeMaterial);
         }
 
         public bool TryGetParent (out Control parent) {

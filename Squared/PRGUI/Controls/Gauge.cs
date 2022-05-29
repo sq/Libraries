@@ -384,6 +384,13 @@ namespace Squared.PRGUI.Controls {
             (mr.Decorator ?? fill).Rasterize(ref context, ref renderer, settings);
             return true;
         }
+
+        /// <summary>
+        /// Overrides the tween used for display animations without changing the gauge's value.
+        /// </summary>
+        public void OverrideValueTween (in Tween<float> tween) {
+            ValueTween = tween;
+        }
     }
 
     public enum GaugeDirection : int {

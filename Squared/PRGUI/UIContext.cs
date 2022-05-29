@@ -835,7 +835,7 @@ namespace Squared.PRGUI {
                     GetTooltipInstance().GetRect(context: this).Contains(LastMousePosition);
 
                 // TODO: Instead of instantly hiding, maybe just fade the tooltip out partially?
-                HideTooltip(shouldDismissInstantly);
+                HideTooltip(shouldDismissInstantly, disappearDelay);
 
                 var elapsed = now - LastTooltipHoverTime;
                 if (elapsed >= disappearDelay)
@@ -877,7 +877,7 @@ namespace Squared.PRGUI {
             LastTooltipHoverTime = 0;
         }
 
-        private void HideTooltip (bool instant) {
+        private void HideTooltip (bool instant, float disappearDelay = 0f) {
             if (CachedTooltip == null)
                 return;
 
@@ -885,7 +885,7 @@ namespace Squared.PRGUI {
                 CachedTooltip.Appearance.Opacity = 0;
             else if (IsTooltipVisible)
                 CachedTooltip.Appearance.Opacity = Tween.StartNow(
-                    CachedTooltip.Appearance.Opacity.Get(Now), 0, now: NowL, 
+                    CachedTooltip.Appearance.Opacity.Get(Now), 0, now: NowL, delay: disappearDelay,
                     seconds: TooltipFadeDuration * (Animations?.AnimationDurationMultiplier ?? 1)
                 );
             IsTooltipVisible = false;
