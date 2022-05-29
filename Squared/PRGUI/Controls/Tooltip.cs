@@ -26,7 +26,8 @@ namespace Squared.PRGUI.Controls {
                 AnchorPoint = DefaultAnchorPoint,
                 ControlAlignmentPoint = DefaultControlAlignmentPoint,
                 ConstrainToParentInsteadOfScreen = true,
-                HideIfNotInsideParent = true
+                HideIfNotInsideParent = true,
+                UseTransformedAnchor = true
             };
             ConfigureDefaultLayout(Content);
             AcceptsMouseInput = false;

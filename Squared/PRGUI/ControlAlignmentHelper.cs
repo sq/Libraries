@@ -24,7 +24,7 @@ namespace Squared.PRGUI {
     {
         public delegate bool UpdatePositionHandler (in Vector2 newPosition, in RectF parentRect, in RectF rect, bool updateDesiredPosition);
 
-        public bool Enabled = true;
+        public bool Enabled = true, UseTransformedAnchor = false;
 
         public UpdatePositionHandler UpdatePosition;
         public Func<bool> IsAnimating, IsLocked;
@@ -123,7 +123,7 @@ namespace Squared.PRGUI {
                 var trialAlignmentPoint = ControlAlignmentPoint;
                 // FIXME: Adjust on appropriate sides
                 rect.Size += margins.Size;
-                var anchorRect = Anchor.GetRect(displayRect: AnchorIsTransformed);
+                var anchorRect = Anchor.GetRect(displayRect: AnchorIsTransformed && UseTransformedAnchor);
                 if (anchorRect == default(RectF))
                     return false;
                 var a = AlignmentTrial(ref context, in parentRect, in rect, margins, trialAnchorPoint, trialAlignmentPoint, anchorRect, out Vector2 mrapA);
@@ -174,7 +174,7 @@ namespace Squared.PRGUI {
         ) {
             // We use the anchor's display rect for most calculations if it's transformed, but in this case we can't
             //  do the special logic based on the anchor's aligned position because it isn't transformed
-            var evaluatedAnchorPosition = AnchorIsTransformed
+            var evaluatedAnchorPosition = AnchorIsTransformed && UseTransformedAnchor
                 ? anchorRect.Position
                 : ((Anchor as IAlignedControl)?.AlignedPosition);
             if (evaluatedAnchorPosition.HasValue) {
@@ -204,7 +204,7 @@ namespace Squared.PRGUI {
         public void AddDecorationTraits (ref DecorationSettings settings) {
             if (Anchor == null)
                 return;
-            RectF anchorRect = Anchor.GetRect(displayRect: AnchorIsTransformed), 
+            RectF anchorRect = Anchor.GetRect(displayRect: AnchorIsTransformed && UseTransformedAnchor), 
                 myRect = Control.GetRect();
             anchorRect.SnapAndInset(out Vector2 anchorTl, out Vector2 anchorBr);
             myRect.SnapAndInset(out Vector2 myTl, out Vector2 myBr);
@@ -254,7 +254,7 @@ namespace Squared.PRGUI {
                 if (Anchor is IAlignedControl iac)
                     iac.EnsureAligned(ref context, ref relayoutRequested);
 
-                var anchorRect = Anchor.GetRect(displayRect: AnchorIsTransformed);
+                var anchorRect = Anchor.GetRect(displayRect: AnchorIsTransformed && UseTransformedAnchor);
                 if (anchorRect != _LastAnchorRect) {
                     _LastAnchorRect = anchorRect;
                     relayoutRequested = true;

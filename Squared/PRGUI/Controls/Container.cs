@@ -40,10 +40,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected bool ShouldShowHorizontalScrollbar =>
-            ShowHorizontalScrollbar ?? (HScrollbar.ContentSize > HScrollbar.ViewportSize);
+            ShowHorizontalScrollbar ?? AutoShowHScroll;
         protected bool ShouldShowVerticalScrollbar =>
-            ShowVerticalScrollbar ?? (VScrollbar.ContentSize > VScrollbar.ViewportSize);
+            ShowVerticalScrollbar ?? AutoShowVScroll;
 
+        private bool AutoShowHScroll, AutoShowVScroll;
         private Vector2 _ScrollOffset;
 
         protected float MostRecentHeaderHeight = 0;
@@ -362,6 +363,10 @@ namespace Squared.PRGUI.Controls {
                 VScrollbar.ContentSize = CanScrollVertically ? contentSizeY : contentBox.Height;
                 VScrollbar.ViewportSize = viewportHeight;
                 VScrollbar.Position = ScrollOffset.Y;
+
+                // We do this to avoid a situation where we alternate between scrollable and not scrollable every frame (it looks awful)
+                AutoShowHScroll = (HScrollbar.ContentSize > (HScrollbar.ViewportSize - 1));
+                AutoShowVScroll = (VScrollbar.ContentSize > (VScrollbar.ViewportSize - 1));
 
                 HScrollbar.HasCounterpart = VScrollbar.HasCounterpart = (ShouldShowHorizontalScrollbar && ShouldShowVerticalScrollbar);
             } else {
