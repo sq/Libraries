@@ -554,7 +554,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
-            return decorations.IsPassDisabled(pass) && (pass != RasterizePasses.Content) && !ShouldClipContent;
+            return decorations.IsPassDisabled(pass) && (pass != Pass) && !ShouldClipContent;
         }
 
         protected Vector2 _LastDrawOffset, _LastDrawScale;
@@ -575,7 +575,7 @@ namespace Squared.PRGUI.Controls {
 
             base.OnRasterize(ref context, ref renderer, settings, decorations);
 
-            if (context.Pass != RasterizePasses.Content)
+            if (context.Pass != Pass)
                 return;
 
             ComputeEffectiveSpacing(ref context, decorations, out Margins computedPadding, out Margins computedMargins);
@@ -723,6 +723,8 @@ namespace Squared.PRGUI.Controls {
 
         private IGlyphSource _MostRecentFont;
         private int _MostRecentFontVersion;
+        protected RasterizePasses Pass = RasterizePasses.Content;
+
         private bool SyncWithCurrentFont (IGlyphSource font) {
             var result = false;
             if ((font != _MostRecentFont) || (font.Version != _MostRecentFontVersion)) {
@@ -855,6 +857,10 @@ namespace Squared.PRGUI.Controls {
         new public int? CharacterLimit {
             get => base.CharacterLimit;
             set => base.CharacterLimit = value;
+        }
+        new public RasterizePasses Pass {
+            get => base.Pass;
+            set => base.Pass = value;
         }
 
         public RichTextConfiguration RichTextConfiguration { get; set; }
