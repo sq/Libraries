@@ -20,7 +20,8 @@ namespace Squared.Util {
         /// </summary>
         public static DenseList<T> ToDenseList<T> (this IEnumerable<T> enumerable) {
             DenseList<T> result = default;
-            result.AddRange(enumerable);
+            if (enumerable != null)
+                result.AddRange(enumerable);
             return result;
         }
 

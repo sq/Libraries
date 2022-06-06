@@ -365,8 +365,8 @@ namespace Squared.PRGUI.Controls {
                 VScrollbar.Position = ScrollOffset.Y;
 
                 // We do this to avoid a situation where we alternate between scrollable and not scrollable every frame (it looks awful)
-                AutoShowHScroll = (HScrollbar.ContentSize > (HScrollbar.ViewportSize - 1));
-                AutoShowVScroll = (VScrollbar.ContentSize > (VScrollbar.ViewportSize - 1));
+                AutoShowHScroll = (HScrollbar.ContentSize > (HScrollbar.ViewportSize + 1));
+                AutoShowVScroll = (VScrollbar.ContentSize > (VScrollbar.ViewportSize + 1));
 
                 HScrollbar.HasCounterpart = VScrollbar.HasCounterpart = (ShouldShowHorizontalScrollbar && ShouldShowVerticalScrollbar);
             } else {
