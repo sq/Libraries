@@ -20,7 +20,8 @@ sampler NozzleSampler : register(s0) {
 uniform bool BlendInLinearSpace, OutputInLinearSpace;
 uniform float HalfPixelOffset;
 
-uniform float2 NozzleCountXy;
+// Count x, count y, lod bias, unused
+uniform float4 NozzleParams;
 // Brush size, brush spacing factor (n * size), rotation per splat (radians), flow
 uniform float4 Params1;
 
@@ -267,7 +268,7 @@ void rasterStrokeLineCommon(
     out float4 result
 ) {
     float2 a = ab.xy, b = ab.zw, ba = b - a,
-        atlasScale = float2(1.0 / NozzleCountXy.x, 1.0 / NozzleCountXy.y),
+        atlasScale = float2(1.0 / NozzleParams.x, 1.0 / NozzleParams.y),
         texCoordScale = atlasScale / Params1.x;
     result = 0;
 
@@ -295,7 +296,6 @@ void rasterStrokeLineCommon(
             posSplatDerotated = rotate2D(posSplatRotated, -r),
             posSplatDecentered = posSplatDerotated + radius;
 
-        float alpha;
         float4 color;
 
         if (
@@ -305,24 +305,23 @@ void rasterStrokeLineCommon(
             continue;
         } else {
             // FIXME: random?
-            float splatIndexY = floor(i / NozzleCountXy.x), splatIndexX = i - (splatIndexY * NozzleCountXy.x);
+            float splatIndexY = floor(i / NozzleParams.x), splatIndexX = i - (splatIndexY * NozzleParams.x);
             float2 texCoord = (posSplatDecentered * texCoordScale) + (atlasScale * float2(splatIndexX, splatIndexY));
 
             if (false) {
                 // HACK: Diagnostic view of splat rects
-                alpha = 1.0;
                 color = float4(texCoord.x, texCoord.y, 0, 1);
             } else {
-                float4 texel = tex2Dlod(NozzleSampler, float4(texCoord.xy, 0, 0));
-                // FIXME
-                alpha = texel.r * Params1.w;
+                float4 texel = tex2Dlod(NozzleSampler, float4(texCoord.xy, 0, NozzleParams.z));
+                if (BlendInLinearSpace)
+                    texel = pSRGBToPLinear(texel);
                 color = lerp(
                     colorA, colorB, COLOR_PER_SPLAT ? t : centerT
-                );
+                ) * texel;
             }
         }
 
-        result = over(color, alpha, result, 1);
+        result = over(color, Params1.w, result, 1);
     }
 }
 

@@ -276,7 +276,12 @@ namespace Squared.Render.RasterStroke {
                     (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
 
                 var ep = Material.Effect.Parameters;
-                ep["NozzleCountXy"].SetValue(new Vector2(Brush.NozzleCountX, Brush.NozzleCountY));
+                var atlas = Brush.NozzleAtlas.Instance;
+                int nozzleBaseSize = Math.Max(atlas.Width / Brush.NozzleCountX, atlas.Height / Brush.NozzleCountY);
+                // If the brush is being scaled down, sample from mipmaps for better performance and to prevent aliasing.
+                // HACK: Bias the mip a bit to keep the brush sharp. It might be best to do something closer to 0.5
+                float nozzleMipBias = (float)Math.Max(Math.Log(nozzleBaseSize / Brush.Size, 2.0) - 0.35, 0);
+                ep["NozzleParams"].SetValue(new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleMipBias, 0));
                 ep["Params1"].SetValue(new Vector4(Brush.Size, Brush.Spacing, Brush.RotationRateRadians, Brush.Flow));
                 ep["BlendInLinearSpace"].SetValue(BlendInLinearSpace);
                 ep["OutputInLinearSpace"].SetValue(isSrgbRenderTarget);
@@ -291,7 +296,7 @@ namespace Squared.Render.RasterStroke {
                     device.RasterizerState = RasterizerState;
 
                 // FIXME: why the hell
-                device.Textures[0] = Brush.NozzleAtlas.Instance;
+                device.Textures[0] = atlas;
                 device.SamplerStates[0] = Brush.NozzleSamplerState ?? SamplerState.LinearWrap;
 
                 scratchBindings[1] = new VertexBufferBinding(
