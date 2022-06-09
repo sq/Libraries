@@ -508,7 +508,7 @@ namespace Squared.Render.RasterShape {
         }
     }
 
-    public struct RasterShader {
+    internal struct RasterShader {
         public Material Material;
         public EffectParameter BlendInLinearSpace,
             OutputInLinearSpace,
@@ -577,7 +577,6 @@ namespace Squared.Render.RasterShape {
 
         public DefaultMaterialSet Materials;
         public Texture2D Texture;
-        public SamplerState SamplerState;
         public Texture2D RampTexture;
         public Vector2 RampUVOffset;
 
@@ -600,6 +599,7 @@ namespace Squared.Render.RasterShape {
         public DepthStencilState DepthStencilState;
         public BlendState BlendState;
         public RasterizerState RasterizerState;
+        public SamplerState SamplerState;
         public RasterShadowSettings ShadowSettings;
 
         // FIXME FIXME HACK HACK GROSS FIXME
@@ -621,8 +621,12 @@ namespace Squared.Render.RasterShape {
             DepthStencilState = null;
             BlendState = null;
             RasterizerState = null;
-
+            SamplerState = null;
             Texture = null;
+            RampTexture = null;
+            ShadowSettings = default;
+            RampUVOffset = default;
+            _SubBatches.Clear();
 
             if (VertexAllocator == null)
                 VertexAllocator = container.RenderManager.GetArrayAllocator<RasterShapeVertex>();
@@ -704,9 +708,9 @@ namespace Squared.Render.RasterShape {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         // FIXME: Fill this last space with a separate value?
                         PointsCD = new Vector4(dc.C.X, dc.C.Y, dc.Radius.X, dc.Radius.Y),
-                        InnerColor = dc.InnerColor.ToVector4(),
-                        OutlineColor = dc.OutlineColor.ToVector4(),
-                        OuterColor = dc.OuterColor.ToVector4(),
+                        InnerColor = dc.InnerColor4,
+                        OutlineColor = dc.OutlineColor4,
+                        OuterColor = dc.OuterColor4,
                         Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, fill.ModeF, dc.OutlineGammaMinusOne),
                         Parameters2 = new Vector4(gpower, fill.FillRange.X, fill.FillRange.Y, fill.Offset),
                         TextureRegion = dc.TextureBounds.ToVector4(),

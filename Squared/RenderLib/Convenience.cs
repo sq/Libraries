@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.Render.RasterShape;
+using Squared.Render.RasterStroke;
 using Squared.Render.Text;
 using Squared.Util;
 using Squared.Util.DeclarativeSort;
@@ -378,7 +379,8 @@ namespace Squared.Render.Convenience {
             Bitmap,
             MultimaterialBitmap,
             Geometry,
-            RasterShape
+            RasterShape,
+            RasterStroke
         }
 
         private struct CachedBatches {
@@ -1893,6 +1895,84 @@ namespace Squared.Render.Convenience {
                 Layer += 1;
 
             return (RasterShapeBatch)cacheEntry.Batch;
+        }
+
+        public RasterStrokeBatch GetRasterStrokeBatch (
+            int? layer, bool? worldSpace, BlendState blendState, in RasterBrush brush
+        ) {
+            if (Materials == null)
+                throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
+
+            var actualLayer = layer.GetValueOrDefault(Layer);
+            var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
+            var desiredBlendState = blendState ?? BlendState;
+
+            // HACK: Look, alright, it's complicated
+            if (
+                (desiredBlendState == BlendState.AlphaBlend) || 
+                (desiredBlendState == BlendState.NonPremultiplied) ||
+                (desiredBlendState == null)
+            )
+                desiredBlendState = RenderStates.RasterShapeAlphaBlend;
+            else if (desiredBlendState == BlendState.Additive)
+                desiredBlendState = RenderStates.RasterShapeAdditiveBlend;
+            else if (desiredBlendState == RenderStates.SubtractiveBlend)
+                desiredBlendState = RenderStates.RasterShapeSubtractiveBlend;
+            else if (desiredBlendState == RenderStates.MaxBlendValue)
+                desiredBlendState = RenderStates.RasterShapeMaxBlend;
+
+            CachedBatch cacheEntry;
+            if (!Cache.TryGet<RasterStrokeBatch>(
+                out cacheEntry,
+                ref Parameters,
+                CachedBatchType.RasterStroke,
+                container: Container,
+                layer: actualLayer,
+                worldSpace: actualWorldSpace,
+                rasterizerState: RasterizerState,
+                depthStencilState: DepthStencilState,
+                blendState: desiredBlendState,
+                samplerState1: brush.NozzleSamplerState,
+                samplerState2: null,
+                customMaterial: null,
+                useZBuffer: UseZBuffer,
+                zBufferOnlySorting: ZBufferOnlySorting,
+                depthPrePass: DepthPrePass
+            ) || !(((RasterStrokeBatch)cacheEntry.Batch).Brush.Equals(brush))
+            ) {
+                var batch = RasterStrokeBatch.New(
+                    Container, actualLayer, Materials, brush,
+                    RasterizerState, DepthStencilState, desiredBlendState
+                );
+                batch.BlendInLinearSpace = RasterBlendInLinearSpace;
+                batch.MaterialParameters = Parameters;
+                cacheEntry.Batch = batch;
+                Cache.InsertAtFront(in cacheEntry, -1);
+            }
+
+            if (AutoIncrementLayer && !layer.HasValue)
+                Layer += 1;
+
+            return (RasterStrokeBatch)cacheEntry.Batch;
+        }
+
+        public void StrokeLineSegment (
+            Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, in RasterBrush brush,
+            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            BlendState blendState = null, int sortKey = 0
+        ) {
+            using (var rsb = GetRasterStrokeBatch(
+                layer, worldSpace, blendState, brush
+            ))
+                rsb.Add(new RasterStrokeDrawCall {
+                    A = a,
+                    B = b,
+                    ColorA = colorA,
+                    ColorB = colorB,
+                    BlendInLinearSpace = blendInLinearSpace ?? true,
+                    SortKey = sortKey,
+                    WorldSpace = worldSpace ?? false
+                });
         }
 
         public override string ToString () {

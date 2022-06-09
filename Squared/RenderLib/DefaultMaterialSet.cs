@@ -369,7 +369,8 @@ namespace Squared.Render {
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
         public Material RasterShapeUbershader;
-        public readonly Dictionary<RasterShaderKey, RasterShape.RasterShader> RasterShapeMaterials =
+        public Material RasterStrokeLineSegment;
+        internal readonly Dictionary<RasterShaderKey, RasterShape.RasterShader> RasterShapeMaterials =
             new Dictionary<RasterShaderKey, RasterShape.RasterShader>(new RasterShaderKey.Comparer());
         /// <summary>
         /// Make sure to resolve your lightmap to sRGB before using it with this, otherwise your lighting
@@ -648,6 +649,11 @@ namespace Squared.Render {
             );
 
             LoadRasterShapeMaterials();
+
+            RasterStrokeLineSegment = NewMaterial(
+                BuiltInShaders.Load("RasterStroke"),
+                "RasterStrokeLineSegment"
+            );
 
             var lightmapShader = BuiltInShaders.Load("Lightmap");
 
