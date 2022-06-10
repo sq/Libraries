@@ -57,6 +57,7 @@
     <Compile Include="Convenience.cs" />
     <Compile Include="DefaultMaterialSet.cs" />
     <Compile Include="DynamicAtlas.cs" />
+    <Compile Include="PolygonBuffer.cs" />
     <Compile Include="RasterStroke.cs" />
     <Compile Include="ResourceProvider.cs" />
     <Compile Include="Frame.cs" />

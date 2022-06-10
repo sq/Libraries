@@ -401,6 +401,8 @@ void rasterStrokeLineCommon(
             if (outOfRange || (g > radius))
                 continue;
             color = 1;
+
+            // TODO: Subpixel coordinates so smaller sizes look better
         }
 
         if (hardness < 1) {

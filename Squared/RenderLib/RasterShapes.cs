@@ -568,6 +568,7 @@ namespace Squared.Render.RasterShape {
 
         private BufferGenerator<RasterShapeVertex> _BufferGenerator = null;
         private BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
+        private PolygonBuffer _PolygonBuffer = null;
 
         protected static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
             new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
@@ -601,13 +602,6 @@ namespace Squared.Render.RasterShape {
         public RasterizerState RasterizerState;
         public SamplerState SamplerState;
         public RasterShadowSettings ShadowSettings;
-
-        // FIXME FIXME HACK HACK GROSS FIXME
-        private static object PolygonVertexLock = new object();
-        private static bool PolygonVertexFlushRequired = true;
-        private static int PolygonVertexWriteOffset = 0, PolygonVertexCount = 0;
-        private static Vector4[] PolygonVertexBuffer;
-        private static Texture2D PolygonVertexTexture;
 
         static RasterShapeBatch () {
             AdjustPoolCapacities(1024, null, 512, 16);
@@ -808,10 +802,10 @@ namespace Squared.Render.RasterShape {
 
                     // HACK
                     if (sb.Type == RasterShapeType.Polygon) {
-                        FlushPolygonVertices(manager);
-                        lock (PolygonVertexLock)
+                        _PolygonBuffer.Flush(manager);
+                        lock (_PolygonBuffer.Lock)
                             rasterShader.Material.Effect.Parameters["PolygonVertexBufferInvSize"]?.SetValue(
-                                new Vector2(1.0f / PolygonVertexTexture.Width, 1.0f / PolygonVertexTexture.Height)
+                                new Vector2(1.0f / _PolygonBuffer.TextureWidth, 1.0f / _PolygonBuffer.TextureHeight)
                             );
                     }
 
@@ -866,9 +860,9 @@ namespace Squared.Render.RasterShape {
                     device.Textures[3] = RampTexture;
 
                     if (sb.Type == RasterShapeType.Polygon) {
-                        lock (PolygonVertexLock) {
-                            device.Textures[2] = PolygonVertexTexture;
-                            device.VertexTextures[2] = PolygonVertexTexture;
+                        lock (_PolygonBuffer.Lock) {
+                            device.Textures[2] = _PolygonBuffer.Texture;
+                            device.VertexTextures[2] = _PolygonBuffer.Texture;
                         }
                     } else {
                         device.VertexTextures[2] = null;
@@ -943,80 +937,11 @@ namespace Squared.Render.RasterShape {
             base.OnReleaseResources();
         }
 
-        internal static void ClearPolygonVertices () {
-            lock (PolygonVertexLock) {
-                PolygonVertexFlushRequired = true;
-                if (PolygonVertexBuffer != null)
-                    Array.Clear(PolygonVertexBuffer, 0, PolygonVertexBuffer.Length);
-                PolygonVertexCount = 0;
-                PolygonVertexWriteOffset = 0;
-            }
-        }
-
-        const int PolygonVertexTextureSize = 1024;
-
-        internal void FlushPolygonVertices (DeviceManager dm) {
-            // HACK
-            lock (PolygonVertexLock) {
-                int w = PolygonVertexTextureSize,
-                    h = Math.Max(1, PolygonVertexBuffer.Length / PolygonVertexTextureSize);
-
-                if ((PolygonVertexTexture == null) || (PolygonVertexTexture.Width < w) || (PolygonVertexTexture.Height < h)) {
-                    dm.DisposeResource(PolygonVertexTexture);
-                    PolygonVertexTexture = new Texture2D(dm.Device, w, h, false, SurfaceFormat.Vector4);
-                    PolygonVertexFlushRequired = true;
-                }
-
-                if (!PolygonVertexFlushRequired)
-                    return;
-
-                PolygonVertexTexture.SetData(PolygonVertexBuffer);
-                PolygonVertexFlushRequired = false;
-            }
-        }
-
-        internal void AddPolygonVertices (ArraySegment<RasterPolygonVertex> vertices, out int offset, out int count) {
-            lock (PolygonVertexLock) {
-                PolygonVertexFlushRequired = true;
-
-                int allocSize = 0;
-                for (int i = 0; i < vertices.Count; i++)
-                    allocSize += vertices.Array[vertices.Offset + i].Type == RasterVertexType.Bezier ? 2 : 1;
-
-                offset = PolygonVertexWriteOffset;
-                count = vertices.Count; // allocSize;
-
-                // HACK: Padding somehow necessary for this to work consistently
-                allocSize += 4;
-
-                int newCount = PolygonVertexCount + allocSize,
-                    newTexWidth = PolygonVertexTextureSize, newTexHeight = (int)Math.Ceiling(newCount / (double)PolygonVertexTextureSize),
-                    newBufferSize = newTexWidth * newTexHeight;
-
-                PolygonVertexWriteOffset += allocSize;
-                PolygonVertexCount = newCount;
-
-                if ((PolygonVertexBuffer == null) || (newBufferSize != PolygonVertexBuffer.Length)) {
-                    if (PolygonVertexBuffer == null)
-                        PolygonVertexBuffer = new Vector4[newBufferSize];
-                    else
-                        Array.Resize(ref PolygonVertexBuffer, newBufferSize);
-                }
-
-                for (int i = 0, j = offset; i < vertices.Count; i++) {
-                    var vert = vertices.Array[vertices.Offset + i];
-                    PolygonVertexBuffer[j] = new Vector4(vert.Position.X, vert.Position.Y, (int)vert.Type, vert.LocalRadius);
-                    j++;
-
-                    if (vert.Type == RasterVertexType.Bezier) {
-                        PolygonVertexBuffer[j] = new Vector4(
-                            vert.ControlPoint.X, vert.ControlPoint.Y,
-                            0, 0
-                        );
-                        j++;
-                    }
-                }
-            }
+        public void AddPolygonVertices (
+            ArraySegment<RasterPolygonVertex> vertices, out int offset, out int count
+        ) {
+            _PolygonBuffer = Container.Coordinator.PolygonBuffer;
+            _PolygonBuffer.AddVertices(vertices, out offset, out count);
         }
     }
 }

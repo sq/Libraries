@@ -1,15 +1,3 @@
-#define NODE_LINE 0
-#define NODE_BEZIER 1
-#define NODE_SKIP 2
-
-float4 get (int offset) {
-    int y = (int)floor(offset / MAX_VERTEX_BUFFER_WIDTH);
-    float2 uvi = float2(
-        offset - (y * MAX_VERTEX_BUFFER_WIDTH), y
-    );
-    return tex2Dlod(VertexDataSampler, float4(uvi * PolygonVertexBufferInvSize, 0, 0));
-}
-
 void computeTLBR_Bezier (
     float2 a, float2 b, float2 c,
     out float2 tl, out float2 br

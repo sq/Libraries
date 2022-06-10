@@ -163,7 +163,7 @@ namespace Squared.Render {
                 Tracing.RenderTrace.ImmediateMarker(device, "Frame {0:0000} : End Draw", Index);
 
             // HACK
-            RasterShape.RasterShapeBatch.ClearPolygonVertices();
+            Coordinator.PolygonBuffer?.Clear();
 
             if (Interlocked.Exchange(ref State, (int)States.Drawn) != (int)States.Drawing)
                 throw new InvalidOperationException();

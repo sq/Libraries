@@ -2,20 +2,7 @@
 #pragma fxcparams(/O3 /Zi)
 
 #include "RasterShapeConstants.fxh"
-
-Texture2D VertexDataTexture : register(t2);
-
-#define MAX_VERTEX_BUFFER_WIDTH 1024
-
-uniform float2 PolygonVertexBufferInvSize;
-sampler VertexDataSampler : register(s2) {
-    Texture = (VertexDataTexture);
-    AddressU = CLAMP;
-    AddressV = CLAMP;
-    MipFilter = POINT;
-    MinFilter = POINT;
-    MagFilter = POINT;
-};
+#include "PolygonCommon.fxh"
 
 #define SHAPE_TYPE_NAME RasterPolygonUntextured
 #define SHAPE_TYPE_NAME_TEX RasterPolygonTextured
