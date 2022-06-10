@@ -315,7 +315,7 @@ void rasterStrokeLineCommon(
     // We search outwards from the center in both directions to find splats that may overlap us
     float maxSize = Constants2.w,
         // FIXME: A spacing of 1.0 still produces overlap
-        stepPx = maxSize * Constants2.z, maxRadius = maxSize * 0.5,
+        stepPx = max(maxSize * Constants2.z, 0.05), maxRadius = maxSize * 0.5,
         l = max(length(ba), 0.01), centerT, splatCount = (l / stepPx);
     taperRanges.zw *= l;
 
@@ -404,10 +404,11 @@ void rasterStrokeLineCommon(
         }
 
         if (hardness < 1) {
-            float falloff = (1 - hardness) * radius;
+            float falloff = max((1 - hardness) * radius, 1.05);
+            // HACK
             g -= (hardness * radius);
             g /= falloff;
-            g = saturate(g);
+            g = saturate(g + 0.05);
             g = sin(g * PI * 0.5);
             color *= 1 - g;
         }
