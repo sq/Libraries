@@ -18,6 +18,7 @@ namespace Squared.Render.RasterStroke {
         public Vector4 PointsAB;
         public Vector4 ColorA, ColorB;
         public Vector4 Seed;
+        public Vector2 Taper;
         public short   Unused, WorldSpace;
 
         public static readonly VertexElement[] Elements;
@@ -35,6 +36,8 @@ namespace Squared.Render.RasterStroke {
                     VertexElementFormat.Vector4, VertexElementUsage.Color, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Seed").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.Normal, 1 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "Taper").ToInt32(),
+                    VertexElementFormat.Vector2, VertexElementUsage.Normal, 2 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Unused").ToInt32(),
                     VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 1 )
             };
@@ -211,6 +214,14 @@ namespace Squared.Render.RasterStroke {
         /// The end of the stroke.
         /// </summary>
         public Vector2 B;
+        /// <summary>
+        /// Random seed for the stroke
+        /// </summary>
+        public float Seed;
+        /// <summary>
+        /// Stroke tapers in/out over this many pixels
+        /// </summary>
+        public Vector2 TaperRanges;
 
         /// <summary>
         /// The premultiplied sRGB color of the start of the stroke.
@@ -343,9 +354,11 @@ namespace Squared.Render.RasterStroke {
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     ref var dc = ref _DrawCalls.Item(i);
 
+                    seed.X = dc.Seed;
                     var vert = new RasterStrokeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         Seed = seed,
+                        Taper = dc.TaperRanges,
                         ColorA = dc.ColorA4,
                         ColorB = dc.ColorB4,
                         WorldSpace = (short)(dc.WorldSpace ? 1 : 0)
@@ -407,7 +420,9 @@ namespace Squared.Render.RasterStroke {
                     (Brush.BrushIndex.NoiseFactor != 0) ||
                     (Brush.Hardness.NoiseFactor != 0) ||
                     (Brush.SizePx.NoiseFactor != 0) ||
-                    (Brush.WidthFactor.NoiseFactor != 0);
+                    (Brush.WidthFactor.NoiseFactor != 0) ||
+                    // Workaround for D3D11 debug layer shouting about no texture bound :(
+                    true;
 
                 if (hasNoise)
                     NoiseTexture = GetNoiseTexture(Container.RenderManager);
@@ -447,7 +462,6 @@ namespace Squared.Render.RasterStroke {
                 ep["NozzleParams"].SetValue(new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleBaseSize, 0));
                 ep["SizeDynamics"].SetValue(Brush.SizePx.ToVector4());
                 var angle = Brush.AngleDegrees.ToVector4();
-                angle.X /= 360f;
                 angle.Y /= 360f;
                 ep["AngleDynamics"].SetValue(angle);
                 ep["FlowDynamics"].SetValue(Brush.Flow.ToVector4());
@@ -455,7 +469,7 @@ namespace Squared.Render.RasterStroke {
                 ep["HardnessDynamics"].SetValue(Brush.Hardness.ToVector4());
                 ep["WidthDynamics"].SetValue(Brush.WidthFactor.ToVector4());
                 ep["Constants1"].SetValue(new Vector4(
-                    Brush.SizePx.Constant, Brush.AngleDegrees.Constant, Brush.Flow.Constant, Brush.BrushIndex.Constant
+                    Brush.SizePx.Constant, Brush.AngleDegrees.Constant / 360f, Brush.Flow.Constant, Brush.BrushIndex.Constant
                 ));
                 ep["Constants2"].SetValue(new Vector4(
                     Brush.Hardness.Constant, Brush.WidthFactor.Constant, Brush.Spacing, 0f
@@ -474,7 +488,9 @@ namespace Squared.Render.RasterStroke {
 
                 // FIXME: why the hell
                 device.Textures[0] = atlas;
+                device.Textures[1] = NoiseTexture;
                 device.SamplerStates[0] = Brush.NozzleSamplerState ?? SamplerState.LinearWrap;
+                device.SamplerStates[1] = SamplerState.PointWrap;
 
                 scratchBindings[1] = new VertexBufferBinding(
                     vb, _SoftwareBuffer.HardwareVertexOffset, 1
@@ -490,6 +506,7 @@ namespace Squared.Render.RasterStroke {
                 );
 
                 device.Textures[0] = null;
+                device.Textures[1] = null;
 
                 NativeBatch.RecordCommands(Count);
                 hwb.SetInactive();

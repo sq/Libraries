@@ -42,6 +42,7 @@ uniform float4 SizeDynamics, AngleDynamics, FlowDynamics,
     in float2 worldPosition: NORMAL0, \
     in float4 ab : TEXCOORD3, \
     in float4 seed : NORMAL1, \
+    in float2 taper : NORMAL2, \
     in float4 colorA : COLOR0, \
     in float4 colorB : COLOR1, \
     ACCEPTS_VPOS, \
@@ -89,6 +90,7 @@ void RasterStrokeVertexShader_Core(
     in float4 cornerWeights,
     in float4 ab_in,
     in float4 seed,
+    in float2 taper,
     inout float4 colorA,
     inout float4 colorB,
     in  int2 unusedAndWorldSpace,
@@ -131,6 +133,7 @@ void RasterStrokeLineSegmentVertexShader(
     in float4 cornerWeights : NORMAL2,
     in float4 ab_in : POSITION0,
     inout float4 seed : NORMAL1,
+    inout float2 taper : NORMAL2,
     inout float4 colorA : COLOR0,
     inout float4 colorB : COLOR1,
     in  int2 unusedAndWorldSpace : BLENDINDICES1,
@@ -142,6 +145,7 @@ void RasterStrokeLineSegmentVertexShader(
         cornerWeights,
         ab_in,
         seed,
+        taper,
         colorA,
         colorB,
         unusedAndWorldSpace,
@@ -290,7 +294,7 @@ inline float2 rotate2D(
 
 void rasterStrokeLineCommon(
     in float2 worldPosition, in float4 ab, 
-    in float4 seed, in float2 vpos,
+    in float4 seed, in float2 taperRanges, in float2 vpos,
     in float4 colorA, in float4 colorB,
     out float4 result
 ) {
@@ -303,6 +307,7 @@ void rasterStrokeLineCommon(
     // Locate the closest point on the line segment. This will be the center of our search area
     // We search outwards from the center in both directions to find splats that may overlap us
     float maxSize = Constants1.x,
+        // FIXME: A spacing of 1.0 still produces overlap
         stepPx = maxSize * Constants2.z, maxRadius = maxSize * 0.5,
         l = length(ba), centerT, splatCount = (l / stepPx),
         stepT = 1.0 / splatCount,
@@ -315,7 +320,8 @@ void rasterStrokeLineCommon(
         startD = max(0, centerD - maxSize),
         endD = min(centerD + maxSize, l),
         firstIteration = floor(startD / stepPx), 
-        lastIteration = ceil(endD / stepPx);
+        lastIteration = ceil(endD / stepPx),
+        brushCount = NozzleParams.x * NozzleParams.y;
 
     for (float i = firstIteration; i <= lastIteration; i += 1.0) {
         float4 noise1, noise2;
@@ -329,8 +335,9 @@ void rasterStrokeLineCommon(
             noise2 = 0;
         }
 
-        // FIXME
-        float taper = 0;
+        float d = i * stepT * l, taper1 = taperRanges.x != 0 ? saturate(d / abs(taperRanges.x)) : 1,
+            taper2 = taperRanges.y != 0 ? 1 - saturate((d + l - taperRanges.y) / taperRanges.y) : 1,
+            taper = max(taper1, taper2);
         float sizePx = maxSize * saturate(evaluateDynamics(1, SizeDynamics, float4(taper, i, noise1.x, angleFactor))),
             splatAngleFactor = evaluateDynamics(Constants1.y, AngleDynamics, float4(taper, i, noise1.y, angleFactor)),
             splatAngle = splatAngleFactor * PI * 2,
@@ -357,6 +364,7 @@ void rasterStrokeLineCommon(
             continue;
         } else {
             // FIXME: random?
+            brushIndex = floor(brushIndex) % brushCount;
             float splatIndexY = floor(brushIndex / NozzleParams.x), splatIndexX = brushIndex - (splatIndexY * NozzleParams.x);
             float2 texCoord = (posSplatDecentered * texCoordScale) + (atlasScale * float2(splatIndexX, splatIndexY));
 
@@ -379,12 +387,12 @@ void rasterStrokeLineCommon(
 
 float4 rasterStrokeCommon(
     in float2 worldPosition, in float4 ab, 
-    in float4 seed, in float2 vpos,
+    in float4 seed, in float2 taper, in float2 vpos,
     in float4 colorA, in float4 colorB
 ) {
     float4 result;
     rasterStrokeLineCommon(
-        worldPosition, ab, seed, vpos, colorA, colorB, result
+        worldPosition, ab, seed, taper, vpos, colorA, colorB, result
     );
 
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
@@ -406,7 +414,7 @@ void RasterStrokeLineSegmentFragmentShader(
     RASTERSTROKE_FS_ARGS
 ) {
     result = rasterStrokeCommon(
-        worldPosition, ab, seed, 
+        worldPosition, ab, seed, taper,
         GET_VPOS, colorA, colorB
     );
 }
