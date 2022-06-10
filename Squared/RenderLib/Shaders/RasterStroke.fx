@@ -4,6 +4,9 @@
 #pragma warning ( disable: 3571 )
 
 #define PI 3.14159265358979323846
+#define PIXEL_COVERAGE_RADIUS 0.71
+// 1.0 / (System.Math.PI * (0.71 * 0.71))
+#define PIXEL_COVERAGE_FACTOR 0.631441948390777
 #define ENABLE_DITHERING 1
 #define COLOR_PER_SPLAT false
 
@@ -47,6 +50,26 @@ uniform float4 SizeDynamics, AngleDynamics, FlowDynamics,
     in float4 colorB : COLOR1, \
     ACCEPTS_VPOS, \
     out float4 result : COLOR0
+
+// approximate coverage of pixel-circle intersection (for a round pixel)
+// we ideally would model this as a square-circle intersection, but the math for that
+//  is MUCH more complex for a minimal quality increase. so instead, we use a circle that
+//  fully encloses a 1x1 square. (a circle with radius 1 is too big, and a circle of radius
+//  0.5 is too small and will leave gaps between pixels.)
+float approxPixelCoverage (float2 pixel, float2 center, float radius) {
+    // HACK: A radius of 0.7071 would exactly contain a 1x1 box,
+    //  but we bias it up slightly to avoid occasional artifacts near edges
+    float x0 = pixel.x, y0 = pixel.y, r0 = PIXEL_COVERAGE_RADIUS,
+        x1 = center.x, y1 = center.y, r1 = radius;
+    float rr0 = r0 * r0,
+        rr1 = r1 * r1,
+        c = sqrt((x1 - x0)*(x1 - x0) + (y1 - y0)*(y1 - y0)),
+        phi = (acos((rr0 + (c*c) - rr1) / (2 * r0*c))) * 2,
+        theta = (acos((rr1 + (c*c) - rr0) / (2 * r1*c))) * 2,
+        area1 = 0.5*theta*rr1 - 0.5*rr1*sin(theta),
+        area2 = 0.5*phi*rr0 - 0.5*rr0*sin(phi);
+    return saturate((area1 + area2) * PIXEL_COVERAGE_FACTOR);
+}
 
 float evaluateDynamics(
     float constant, float4 dynamics, float4 data
@@ -262,32 +285,6 @@ float4 over(float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return top + (bottom * (1 - top.a));
 }
 
-/*
-void evaluateRasterShape(
-    int type, float2 radius, float outlineSize, float4 params,
-    in float2 worldPosition, in float2 a, in float2 b, in float2 c, in bool simple,
-    out float distance, inout float2 tl, inout float2 br,
-    inout int gradientType, out float2 gradientWeight, inout float gradientAngle
-) {
-    type = EVALUATE_TYPE;
-    bool needTLBR = false;
-
-    distance = 0;
-    gradientWeight = 0;
-
-    evaluateLineSegment(
-        worldPosition, a, b, c,
-        radius, distance,
-        gradientType, gradientWeight
-    );
-    needTLBR = true;
-
-    if (needTLBR)
-        computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
-}
-
-*/
-
 inline float2 rotate2D(
     in float2 corner, in float radians
 ) {
@@ -398,11 +395,19 @@ void rasterStrokeLineCommon(
                 }
             }
         } else {
-            if (outOfRange || (g > radius))
+            // HACK: We do the early-out more conservatively because of the need to compute
+            //  partial coverage at circle edges, so an exact rejection is not right
+            if (outOfRange || (g > (radius + 1)))
                 continue;
-            color = 1;
 
-            // TODO: Subpixel coordinates so smaller sizes look better
+            PREFER_BRANCH
+            // FIXME: radius - 1 might be too conservative
+            if ((distance >= (radius - 1)) || (radius <= 2)) {
+                // HACK: Approximate pixel coverage calculation near edges / for tiny circles
+                color = approxPixelCoverage(worldPosition, center, radius);
+            } else {
+                color = 1;
+            }
         }
 
         if (hardness < 1) {
@@ -415,11 +420,16 @@ void rasterStrokeLineCommon(
             color *= 1 - g;
         }
 
-        color = lerp(
-            colorA, colorB, COLOR_PER_SPLAT ? t : centerT
-        ) * color;
+        // HACK: Avoid accumulating error
+        if (color.a > 0) {
+            // TODO: Interpolate based on outer edges instead of center points,
+            //  so that we don't get a nasty hard edge at the end
+            color = lerp(
+                colorA, colorB, COLOR_PER_SPLAT ? t : centerT
+            ) * color;
 
-        result = over(color, flow, result, 1);
+            result = over(color, flow, result, 1);
+        }
     }
 }
 
