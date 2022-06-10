@@ -1958,8 +1958,8 @@ namespace Squared.Render.Convenience {
 
         public void StrokeLineSegment (
             Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, in RasterBrush brush,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
-            BlendState blendState = null, int sortKey = 0
+            float? seed = null, Vector4? taper = null, int? layer = null, bool? worldSpace = null, 
+            bool? blendInLinearSpace = null, BlendState blendState = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterStrokeBatch(
                 layer, worldSpace, blendState, brush
@@ -1969,6 +1969,8 @@ namespace Squared.Render.Convenience {
                     B = b,
                     ColorA = colorA,
                     ColorB = colorB,
+                    Seed = seed ?? rsb.Count,
+                    TaperRanges = taper ?? default,
                     BlendInLinearSpace = blendInLinearSpace ?? true,
                     SortKey = sortKey,
                     WorldSpace = worldSpace ?? false

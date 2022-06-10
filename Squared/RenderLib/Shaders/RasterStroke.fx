@@ -23,7 +23,7 @@ sampler NoiseSampler : register(s1) {
     Texture = (NoiseTexture);
 };
 
-uniform bool BlendInLinearSpace, OutputInLinearSpace, UsesNoise;
+uniform bool BlendInLinearSpace, OutputInLinearSpace, UsesNoise, Textured;
 uniform float HalfPixelOffset;
 
 // Count x, count y, base size for lod calculation, unused
@@ -31,7 +31,7 @@ uniform float4 NozzleParams;
 
 // size, angle, flow, brushIndex
 uniform float4 Constants1;
-// hardness, width, spacing, unused
+// hardness, width, spacing, baseSize
 uniform float4 Constants2;
 // TaperFactor, Increment, NoiseFactor, AngleFactor
 uniform float4 SizeDynamics, AngleDynamics, FlowDynamics, 
@@ -41,8 +41,8 @@ uniform float4 SizeDynamics, AngleDynamics, FlowDynamics,
 #define RASTERSTROKE_FS_ARGS \
     in float2 worldPosition: NORMAL0, \
     in float4 ab : TEXCOORD3, \
-    in float4 seed : NORMAL1, \
-    in float2 taper : NORMAL2, \
+    in float4 seed : TEXCOORD0, \
+    in float4 taper : TEXCOORD1, \
     in float4 colorA : COLOR0, \
     in float4 colorB : COLOR1, \
     ACCEPTS_VPOS, \
@@ -51,11 +51,19 @@ uniform float4 SizeDynamics, AngleDynamics, FlowDynamics,
 float evaluateDynamics(
     float constant, float4 dynamics, float4 data
 ) {
-    float taper = (dynamics.x < 0) ? 1 - data.x : data.x;
-    constant = lerp(constant, constant * taper, abs(dynamics.x));
     float result = constant + (data.y * dynamics.y) +
         (data.z * dynamics.z) + (data.w * dynamics.w);
-    return result;
+    float taper = (dynamics.x < 0) ? 1 - data.x : data.x;
+    return lerp(result, result * taper, abs(dynamics.x));
+}
+
+float evaluateDynamics2(
+    float offset, float maxValue, float4 dynamics, float4 data
+) {
+    float result = offset + (data.y * dynamics.y) +
+        (maxValue * data.z * dynamics.z) + (maxValue * data.w * dynamics.w);
+    float taper = (dynamics.x < 0) ? 1 - data.x : data.x;
+    return lerp(result, result * taper, abs(dynamics.x));
 }
 
 float4 TransformPosition(float4 position, bool halfPixelOffset) {
@@ -74,7 +82,7 @@ void computePosition(
     xy = 0;
 
     // HACK: Tighter bounding box
-    float totalRadius = (Constants1.x / 1.44) + 1;
+    float totalRadius = (Constants2.w / 1.44) + 1;
 
     // Oriented bounding box around the line segment
     float2 along = b - a,
@@ -90,7 +98,7 @@ void RasterStrokeVertexShader_Core(
     in float4 cornerWeights,
     in float4 ab_in,
     in float4 seed,
-    in float2 taper,
+    in float4 taper,
     inout float4 colorA,
     inout float4 colorB,
     in  int2 unusedAndWorldSpace,
@@ -132,8 +140,8 @@ void RasterStrokeVertexShader_Core(
 void RasterStrokeLineSegmentVertexShader(
     in float4 cornerWeights : NORMAL2,
     in float4 ab_in : POSITION0,
-    inout float4 seed : NORMAL1,
-    inout float2 taper : NORMAL2,
+    inout float4 seed : TEXCOORD0,
+    inout float4 taper : TEXCOORD1,
     inout float4 colorA : COLOR0,
     inout float4 colorB : COLOR1,
     in  int2 unusedAndWorldSpace : BLENDINDICES1,
@@ -294,7 +302,7 @@ inline float2 rotate2D(
 
 void rasterStrokeLineCommon(
     in float2 worldPosition, in float4 ab, 
-    in float4 seed, in float2 taperRanges, in float2 vpos,
+    in float4 seed, in float4 taperRanges, in float2 vpos,
     in float4 colorA, in float4 colorB,
     out float4 result
 ) {
@@ -306,10 +314,13 @@ void rasterStrokeLineCommon(
 
     // Locate the closest point on the line segment. This will be the center of our search area
     // We search outwards from the center in both directions to find splats that may overlap us
-    float maxSize = Constants1.x,
+    float maxSize = Constants2.w,
         // FIXME: A spacing of 1.0 still produces overlap
         stepPx = maxSize * Constants2.z, maxRadius = maxSize * 0.5,
-        l = length(ba), centerT, splatCount = (l / stepPx),
+        l = max(length(ba), 0.01), centerT, splatCount = (l / stepPx);
+    taperRanges.zw *= l;
+
+    float taperedL = max(l - taperRanges.z - taperRanges.w, 0.01),
         stepT = 1.0 / splatCount,
         angleRadians = atan2(ba.y, ba.x),
         // FIXME: 360deg -> 1.0
@@ -335,51 +346,76 @@ void rasterStrokeLineCommon(
             noise2 = 0;
         }
 
-        float d = i * stepT * l, taper1 = taperRanges.x != 0 ? saturate(d / abs(taperRanges.x)) : 1,
-            taper2 = taperRanges.y != 0 ? 1 - saturate((d + l - taperRanges.y) / taperRanges.y) : 1,
-            taper = max(taper1, taper2);
-        float sizePx = maxSize * saturate(evaluateDynamics(1, SizeDynamics, float4(taper, i, noise1.x, angleFactor))),
+        float t = i * stepT,
+            d = t * l,
+            // FIXME: Right now if tapering is enabled the taper1 value for the first splat is always 0
+            // The ideal would be for it to start at a very low value based on spacing or length
+            taper1 = abs(taperRanges.x) >= 1 ? saturate((d - taperRanges.z) / abs(taperRanges.x)) : 1,
+            taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - (d - taperRanges.z)) / taperRanges.y) : 1,
+            taper = min(taper1, taper2);
+        float sizePx = clamp(evaluateDynamics2(Constants1.x * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor)), 0, maxSize),
             splatAngleFactor = evaluateDynamics(Constants1.y, AngleDynamics, float4(taper, i, noise1.y, angleFactor)),
             splatAngle = splatAngleFactor * PI * 2,
             flow = clamp(evaluateDynamics(Constants1.z, FlowDynamics, float4(taper, i, noise1.z, angleFactor)), 0, 2),
-            brushIndex = evaluateDynamics(Constants1.w, BrushIndexDynamics, float4(taper, i, noise1.w, angleFactor)),
+            brushIndex = evaluateDynamics2(Constants1.w, brushCount, BrushIndexDynamics, float4(taper, i, noise1.w, angleFactor)),
             hardness = saturate(evaluateDynamics(Constants2.x, HardnessDynamics, float4(taper, i, noise2.x, angleFactor))),
             widthFactor = saturate(evaluateDynamics(Constants2.y, WidthDynamics, float4(taper, i, noise2.y, angleFactor)));
 
-        // TODO: scaling
-        float t = i * stepT, r = i * sizePx, widthScale = 1.0 / widthFactor, radius = sizePx * 0.5;
+        bool outOfRange = (d < taperRanges.z) || (d > (l - taperRanges.w));
+
+        float r = i * sizePx, widthScale = 1.0 / widthFactor, radius = sizePx * 0.5;
         float2 center = a + (ba * t), texCoordScale = atlasScale / sizePx;
         float distance = length(center - worldPosition);
 
         float2 posSplatRotated = (worldPosition - center),
             posSplatDerotated = rotate2D(posSplatRotated, -splatAngle),
+            // FIXME: Width doesn't work
             posSplatDecentered = (posSplatDerotated + radius) * float2(widthScale, 1);
 
+        float g = length(posSplatDerotated);
         float4 color;
 
-        if (
-            (abs(posSplatDerotated.x) > radius) ||
-            (abs(posSplatDerotated.y) > radius)
-        ) {
-            continue;
-        } else {
-            // FIXME: random?
-            brushIndex = floor(brushIndex) % brushCount;
-            float splatIndexY = floor(brushIndex / NozzleParams.x), splatIndexX = brushIndex - (splatIndexY * NozzleParams.x);
-            float2 texCoord = (posSplatDecentered * texCoordScale) + (atlasScale * float2(splatIndexX, splatIndexY));
-
-            if (true) {
-                // HACK: Diagnostic view of splat rects
-                color = float4(texCoord.x, texCoord.y, 0, 1);
+        if (Textured) {
+            if (
+                outOfRange ||
+                (abs(posSplatDerotated.x) > radius) ||
+                (abs(posSplatDerotated.y) > radius)
+            ) {
+                continue;
             } else {
-                float4 texel = tex2Dlod(NozzleSampler, float4(texCoord.xy, 0, NozzleParams.z));
-                if (BlendInLinearSpace)
-                    texel = pSRGBToPLinear(texel);
-                color = lerp(
-                    colorA, colorB, COLOR_PER_SPLAT ? t : centerT
-                ) * texel;
+                brushIndex = floor(brushIndex) % brushCount;
+                float splatIndexY = floor(brushIndex / NozzleParams.x), splatIndexX = brushIndex - (splatIndexY * NozzleParams.x);
+                float2 texCoord = (posSplatDecentered * texCoordScale) + (atlasScale * float2(splatIndexX, splatIndexY));
+                float lod = max(log2(NozzleParams.z / sizePx) - 0.35, 0);
+
+                if (false) {
+                    // HACK: Diagnostic view of splat rects
+                    color = float4(texCoord.x, texCoord.y, lod / 6, 1);
+                } else {
+                    float4 texel = tex2Dlod(NozzleSampler, float4(texCoord.xy, 0, lod));
+                    if (BlendInLinearSpace)
+                        texel = pSRGBToPLinear(texel);
+                    color = texel;
+                }
             }
+        } else {
+            if (outOfRange || (g > radius))
+                continue;
+            color = 1;
         }
+
+        if (hardness < 1) {
+            float falloff = (1 - hardness) * radius;
+            g -= (hardness * radius);
+            g /= falloff;
+            g = saturate(g);
+            g = sin(g * PI * 0.5);
+            color *= 1 - g;
+        }
+
+        color = lerp(
+            colorA, colorB, COLOR_PER_SPLAT ? t : centerT
+        ) * color;
 
         result = over(color, flow, result, 1);
     }
@@ -387,7 +423,7 @@ void rasterStrokeLineCommon(
 
 float4 rasterStrokeCommon(
     in float2 worldPosition, in float4 ab, 
-    in float4 seed, in float2 taper, in float2 vpos,
+    in float4 seed, in float4 taper, in float2 vpos,
     in float4 colorA, in float4 colorB
 ) {
     float4 result;

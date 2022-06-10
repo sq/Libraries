@@ -18,7 +18,7 @@ namespace Squared.Render.RasterStroke {
         public Vector4 PointsAB;
         public Vector4 ColorA, ColorB;
         public Vector4 Seed;
-        public Vector2 Taper;
+        public Vector4 Taper;
         public short   Unused, WorldSpace;
 
         public static readonly VertexElement[] Elements;
@@ -35,9 +35,9 @@ namespace Squared.Render.RasterStroke {
                 new VertexElement( Marshal.OffsetOf(tThis, "ColorB").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.Color, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Seed").ToInt32(),
-                    VertexElementFormat.Vector4, VertexElementUsage.Normal, 1 ),
+                    VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Taper").ToInt32(),
-                    VertexElementFormat.Vector2, VertexElementUsage.Normal, 2 ),
+                    VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Unused").ToInt32(),
                     VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 1 )
             };
@@ -118,6 +118,9 @@ namespace Squared.Render.RasterStroke {
             set => _NozzleCountYMinusOne = value - 1;
         }
 
+        public static readonly BrushDynamics DefaultScale = new BrushDynamics {
+            Constant = 1,
+        };
         public static readonly BrushDynamics DefaultBrushIndex = new BrushDynamics {
             Increment = 1,
         };
@@ -131,10 +134,21 @@ namespace Squared.Render.RasterStroke {
             Constant = 1,
         };
         public static readonly float DefaultSpacing = 0.33f;
-        private bool _HasBrushIndex, _HasHardness, _HasWidthFactor, _HasFlow, _HasSpacing;
-        private BrushDynamics _BrushIndex, _Hardness, _WidthFactor, _Flow;
+
+        private bool _HasScale, _HasBrushIndex, _HasHardness, _HasWidthFactor, _HasFlow, _HasSpacing;
+        private BrushDynamics _Scale, _BrushIndex, _Hardness, _WidthFactor, _Flow;
         private float _Spacing;
-        public BrushDynamics SizePx, AngleDegrees;
+
+        public BrushDynamics AngleDegrees;
+        public float SizePx;
+
+        public BrushDynamics Scale {
+            get => _HasScale ? _Scale : DefaultScale;
+            set {
+                _Scale = value;
+                _HasScale = true;
+            }
+        }
 
         public BrushDynamics BrushIndex {
             get => _HasBrushIndex ? _BrushIndex : DefaultBrushIndex;
@@ -194,6 +208,7 @@ namespace Squared.Render.RasterStroke {
                 (_NozzleCountYMinusOne == rhs._NozzleCountYMinusOne) &&
                 (SizePx == rhs.SizePx) &&
                 (Spacing == rhs.Spacing) &&
+                (Scale == rhs.Scale) &&
                 (AngleDegrees == rhs.AngleDegrees) &&
                 (Flow == rhs.Flow) &&
                 (BrushIndex == rhs.BrushIndex) &&
@@ -219,9 +234,9 @@ namespace Squared.Render.RasterStroke {
         /// </summary>
         public float Seed;
         /// <summary>
-        /// Stroke tapers in/out over this many pixels
+        /// (in pixels, out pixels, start offset, end offset)
         /// </summary>
-        public Vector2 TaperRanges;
+        public Vector4 TaperRanges;
 
         /// <summary>
         /// The premultiplied sRGB color of the start of the stroke.
@@ -419,12 +434,11 @@ namespace Squared.Render.RasterStroke {
                     (Brush.AngleDegrees.NoiseFactor != 0) ||
                     (Brush.BrushIndex.NoiseFactor != 0) ||
                     (Brush.Hardness.NoiseFactor != 0) ||
-                    (Brush.SizePx.NoiseFactor != 0) ||
-                    (Brush.WidthFactor.NoiseFactor != 0) ||
-                    // Workaround for D3D11 debug layer shouting about no texture bound :(
-                    true;
+                    (Brush.Scale.NoiseFactor != 0) ||
+                    (Brush.WidthFactor.NoiseFactor != 0);
 
-                if (hasNoise)
+                // HACK: Workaround for D3D11 debug layer shouting about no texture bound :(
+                if (hasNoise || true)
                     NoiseTexture = GetNoiseTexture(Container.RenderManager);
                 else
                     NoiseTexture = null;
@@ -457,10 +471,12 @@ namespace Squared.Render.RasterStroke {
 
                 var ep = Material.Effect.Parameters;
                 var atlas = Brush.NozzleAtlas.Instance;
-                int nozzleBaseSize = Math.Max(atlas.Width / Brush.NozzleCountX, atlas.Height / Brush.NozzleCountY);
+                int nozzleBaseSize = atlas == null
+                    ? 1 
+                    : Math.Max(atlas.Width / Brush.NozzleCountX, atlas.Height / Brush.NozzleCountY);
                 ep["UsesNoise"].SetValue(hasNoise);
                 ep["NozzleParams"].SetValue(new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleBaseSize, 0));
-                ep["SizeDynamics"].SetValue(Brush.SizePx.ToVector4());
+                ep["SizeDynamics"].SetValue(Brush.Scale.ToVector4());
                 var angle = Brush.AngleDegrees.ToVector4();
                 angle.Y /= 360f;
                 ep["AngleDynamics"].SetValue(angle);
@@ -469,13 +485,14 @@ namespace Squared.Render.RasterStroke {
                 ep["HardnessDynamics"].SetValue(Brush.Hardness.ToVector4());
                 ep["WidthDynamics"].SetValue(Brush.WidthFactor.ToVector4());
                 ep["Constants1"].SetValue(new Vector4(
-                    Brush.SizePx.Constant, Brush.AngleDegrees.Constant / 360f, Brush.Flow.Constant, Brush.BrushIndex.Constant
+                    Brush.Scale.Constant, Brush.AngleDegrees.Constant / 360f, Brush.Flow.Constant, Brush.BrushIndex.Constant
                 ));
                 ep["Constants2"].SetValue(new Vector4(
-                    Brush.Hardness.Constant, Brush.WidthFactor.Constant, Brush.Spacing, 0f
+                    Brush.Hardness.Constant, Brush.WidthFactor.Constant, Brush.Spacing, Brush.SizePx
                 ));
                 ep["BlendInLinearSpace"].SetValue(BlendInLinearSpace);
                 ep["OutputInLinearSpace"].SetValue(isSrgbRenderTarget);
+                ep["Textured"].SetValue(atlas != null);
 
                 manager.ApplyMaterial(Material, ref MaterialParameters);
 
@@ -487,7 +504,8 @@ namespace Squared.Render.RasterStroke {
                     device.RasterizerState = RasterizerState;
 
                 // FIXME: why the hell
-                device.Textures[0] = atlas;
+                // HACK: Ensure something is bound
+                device.Textures[0] = atlas ?? NoiseTexture;
                 device.Textures[1] = NoiseTexture;
                 device.SamplerStates[0] = Brush.NozzleSamplerState ?? SamplerState.LinearWrap;
                 device.SamplerStates[1] = SamplerState.PointWrap;
