@@ -4,9 +4,14 @@
 #pragma warning ( disable: 3571 )
 
 #define PI 3.14159265358979323846
-#define PIXEL_COVERAGE_RADIUS 0.71
-// 1.0 / (System.Math.PI * (0.71 * 0.71))
-#define PIXEL_COVERAGE_FACTOR 0.631441948390777
+// If we use 0.0 - 1.0 range values, denormals cause artifacts at small sizes :(
+#define PIXEL_COVERAGE_BIAS 500.0
+// HACK: A radius of 0.7071 would exactly contain a 1x1 box,
+//  but we bias it up slightly to avoid occasional artifacts near edges
+// 0.71 * 500.0
+#define PIXEL_COVERAGE_RADIUS 355.0
+// 1.0 / (System.Math.PI * (PIXEL_COVERAGE_RADIUS * PIXEL_COVERAGE_RADIUS))
+#define PIXEL_COVERAGE_FACTOR 2.5257677935631083E-06
 #define ENABLE_DITHERING 1
 #define COLOR_PER_SPLAT false
 
@@ -57,15 +62,14 @@ uniform float4 SizeDynamics, AngleDynamics, FlowDynamics,
 //  fully encloses a 1x1 square. (a circle with radius 1 is too big, and a circle of radius
 //  0.5 is too small and will leave gaps between pixels.)
 float approxPixelCoverage (float2 pixel, float2 center, float radius) {
-    // HACK: A radius of 0.7071 would exactly contain a 1x1 box,
-    //  but we bias it up slightly to avoid occasional artifacts near edges
-    float x0 = pixel.x, y0 = pixel.y, r0 = PIXEL_COVERAGE_RADIUS,
-        x1 = center.x, y1 = center.y, r1 = radius;
-    float rr0 = r0 * r0,
-        rr1 = r1 * r1,
-        c = sqrt((x1 - x0)*(x1 - x0) + (y1 - y0)*(y1 - y0)),
-        phi = (acos((rr0 + (c*c) - rr1) / (2 * r0*c))) * 2,
-        theta = (acos((rr1 + (c*c) - rr0) / (2 * r1*c))) * 2,
+    radius *= PIXEL_COVERAGE_BIAS;
+    float2 distance = center - pixel;
+    distance *= distance;
+    float rr0 = PIXEL_COVERAGE_RADIUS * PIXEL_COVERAGE_RADIUS,
+        rr1 = radius * radius,
+        c = sqrt(distance.x + distance.y),
+        phi = (acos((rr0 + (c*c) - rr1) / (2 * PIXEL_COVERAGE_RADIUS*c))) * 2,
+        theta = (acos((rr1 + (c*c) - rr0) / (2 * radius*c))) * 2,
         area1 = 0.5*theta*rr1 - 0.5*rr1*sin(theta),
         area2 = 0.5*phi*rr0 - 0.5*rr0*sin(phi);
     return saturate((area1 + area2) * PIXEL_COVERAGE_FACTOR);
@@ -349,8 +353,11 @@ void rasterStrokeLineCommon(
             taper1 = abs(taperRanges.x) >= 1 ? saturate((d - taperRanges.z) / abs(taperRanges.x)) : 1,
             taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - (d - taperRanges.z)) / taperRanges.y) : 1,
             taper = min(taper1, taper2);
-        float sizePx = clamp(evaluateDynamics2(Constants1.x * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor)), 0, maxSize),
-            splatAngleFactor = evaluateDynamics(Constants1.y, AngleDynamics, float4(taper, i, noise1.y, angleFactor)),
+        float sizePx = clamp(evaluateDynamics2(Constants1.x * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor)), 0, maxSize);
+        if (sizePx <= 0)
+            continue;
+
+        float splatAngleFactor = evaluateDynamics(Constants1.y, AngleDynamics, float4(taper, i, noise1.y, angleFactor)),
             splatAngle = splatAngleFactor * PI * 2,
             flow = clamp(evaluateDynamics(Constants1.z, FlowDynamics, float4(taper, i, noise1.z, angleFactor)), 0, 2),
             brushIndex = evaluateDynamics2(Constants1.w, brushCount, BrushIndexDynamics, float4(taper, i, noise1.w, angleFactor)),
