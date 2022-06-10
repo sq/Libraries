@@ -3,6 +3,7 @@
 
 #pragma warning ( disable: 3571 )
 
+#define PI 3.14159265358979323846
 #define ENABLE_DITHERING 1
 #define COLOR_PER_SPLAT false
 
@@ -17,21 +18,44 @@ sampler NozzleSampler : register(s0) {
     Texture = (NozzleTexture);
 };
 
-uniform bool BlendInLinearSpace, OutputInLinearSpace;
+Texture2D NoiseTexture : register(t1);
+sampler NoiseSampler : register(s1) {
+    Texture = (NoiseTexture);
+};
+
+uniform bool BlendInLinearSpace, OutputInLinearSpace, UsesNoise;
 uniform float HalfPixelOffset;
 
-// Count x, count y, lod bias, unused
+// Count x, count y, base size for lod calculation, unused
 uniform float4 NozzleParams;
-// Brush size, brush spacing factor (n * size), rotation per splat (radians), flow
-uniform float4 Params1;
+
+// size, angle, flow, brushIndex
+uniform float4 Constants1;
+// hardness, width, spacing, unused
+uniform float4 Constants2;
+// TaperFactor, Increment, NoiseFactor, AngleFactor
+uniform float4 SizeDynamics, AngleDynamics, FlowDynamics, 
+    BrushIndexDynamics, HardnessDynamics, WidthDynamics;
+// TODO: Spacing dynamics?
 
 #define RASTERSTROKE_FS_ARGS \
     in float2 worldPosition: NORMAL0, \
     in float4 ab : TEXCOORD3, \
+    in float4 seed : NORMAL1, \
     in float4 colorA : COLOR0, \
     in float4 colorB : COLOR1, \
     ACCEPTS_VPOS, \
     out float4 result : COLOR0
+
+float evaluateDynamics(
+    float constant, float4 dynamics, float4 data
+) {
+    float taper = (dynamics.x < 0) ? 1 - data.x : data.x;
+    constant = lerp(constant, constant * taper, abs(dynamics.x));
+    float result = constant + (data.y * dynamics.y) +
+        (data.z * dynamics.z) + (data.w * dynamics.w);
+    return result;
+}
 
 float4 TransformPosition(float4 position, bool halfPixelOffset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
@@ -49,7 +73,7 @@ void computePosition(
     xy = 0;
 
     // HACK: Tighter bounding box
-    float totalRadius = (Params1.x / 1.44) + 1;
+    float totalRadius = (Constants1.x / 1.44) + 1;
 
     // Oriented bounding box around the line segment
     float2 along = b - a,
@@ -64,6 +88,7 @@ void computePosition(
 void RasterStrokeVertexShader_Core(
     in float4 cornerWeights,
     in float4 ab_in,
+    in float4 seed,
     inout float4 colorA,
     inout float4 colorB,
     in  int2 unusedAndWorldSpace,
@@ -105,6 +130,7 @@ void RasterStrokeVertexShader_Core(
 void RasterStrokeLineSegmentVertexShader(
     in float4 cornerWeights : NORMAL2,
     in float4 ab_in : POSITION0,
+    inout float4 seed : NORMAL1,
     inout float4 colorA : COLOR0,
     inout float4 colorB : COLOR1,
     in  int2 unusedAndWorldSpace : BLENDINDICES1,
@@ -115,6 +141,7 @@ void RasterStrokeLineSegmentVertexShader(
     RasterStrokeVertexShader_Core(
         cornerWeights,
         ab_in,
+        seed,
         colorA,
         colorB,
         unusedAndWorldSpace,
@@ -262,39 +289,64 @@ inline float2 rotate2D(
 }
 
 void rasterStrokeLineCommon(
-    in float2 worldPosition,
-    in float4 ab, in float2 vpos,
+    in float2 worldPosition, in float4 ab, 
+    in float4 seed, in float2 vpos,
     in float4 colorA, in float4 colorB,
     out float4 result
 ) {
     float2 a = ab.xy, b = ab.zw, ba = b - a,
-        atlasScale = float2(1.0 / NozzleParams.x, 1.0 / NozzleParams.y),
-        texCoordScale = atlasScale / Params1.x;
+        atlasScale = float2(1.0 / NozzleParams.x, 1.0 / NozzleParams.y);
     result = 0;
 
     const float threshold = (1 / 512.0);
 
     // Locate the closest point on the line segment. This will be the center of our search area
     // We search outwards from the center in both directions to find splats that may overlap us
-    float stepPx = Params1.y * Params1.x, radius = Params1.x * 0.5,
+    float maxSize = Constants1.x,
+        stepPx = maxSize * Constants2.z, maxRadius = maxSize * 0.5,
         l = length(ba), centerT, splatCount = (l / stepPx),
-        stepT = 1.0 / splatCount;
+        stepT = 1.0 / splatCount,
+        angleRadians = atan2(ba.y, ba.x),
+        // FIXME: 360deg -> 1.0
+        angleFactor = angleRadians;
+
     closestPointOnLineSegment2(a, b, worldPosition, centerT);
     float centerD = centerT * l,
-        startD = max(0, centerD - Params1.x),
-        endD = min(centerD + Params1.x, l),
+        startD = max(0, centerD - maxSize),
+        endD = min(centerD + maxSize, l),
         firstIteration = floor(startD / stepPx), 
         lastIteration = ceil(endD / stepPx);
 
     for (float i = firstIteration; i <= lastIteration; i += 1.0) {
+        float4 noise1, noise2;
+        if (UsesNoise) {
+            float4 seedUv = float4(seed.x + (i * 2 * seed.z), seed.y + (i * seed.w), 0, 0);
+            noise1 = tex2Dlod(NoiseSampler, seedUv);
+            seedUv.x += seed.z;
+            noise2 = tex2Dlod(NoiseSampler, seedUv);
+        } else {
+            noise1 = 0;
+            noise2 = 0;
+        }
+
+        // FIXME
+        float taper = 0;
+        float sizePx = maxSize * saturate(evaluateDynamics(1, SizeDynamics, float4(taper, i, noise1.x, angleFactor))),
+            splatAngleFactor = evaluateDynamics(Constants1.y, AngleDynamics, float4(taper, i, noise1.y, angleFactor)),
+            splatAngle = splatAngleFactor * PI * 2,
+            flow = clamp(evaluateDynamics(Constants1.z, FlowDynamics, float4(taper, i, noise1.z, angleFactor)), 0, 2),
+            brushIndex = evaluateDynamics(Constants1.w, BrushIndexDynamics, float4(taper, i, noise1.w, angleFactor)),
+            hardness = saturate(evaluateDynamics(Constants2.x, HardnessDynamics, float4(taper, i, noise2.x, angleFactor))),
+            widthFactor = saturate(evaluateDynamics(Constants2.y, WidthDynamics, float4(taper, i, noise2.y, angleFactor)));
+
         // TODO: scaling
-        float t = i * stepT, r = i * Params1.z;
-        float2 center = a + (ba * t);
+        float t = i * stepT, r = i * sizePx, widthScale = 1.0 / widthFactor, radius = sizePx * 0.5;
+        float2 center = a + (ba * t), texCoordScale = atlasScale / sizePx;
         float distance = length(center - worldPosition);
 
-        float2 posSplatRotated = worldPosition - center,
-            posSplatDerotated = rotate2D(posSplatRotated, -r),
-            posSplatDecentered = posSplatDerotated + radius;
+        float2 posSplatRotated = (worldPosition - center),
+            posSplatDerotated = rotate2D(posSplatRotated, -splatAngle),
+            posSplatDecentered = (posSplatDerotated + radius) * float2(widthScale, 1);
 
         float4 color;
 
@@ -305,10 +357,10 @@ void rasterStrokeLineCommon(
             continue;
         } else {
             // FIXME: random?
-            float splatIndexY = floor(i / NozzleParams.x), splatIndexX = i - (splatIndexY * NozzleParams.x);
+            float splatIndexY = floor(brushIndex / NozzleParams.x), splatIndexX = brushIndex - (splatIndexY * NozzleParams.x);
             float2 texCoord = (posSplatDecentered * texCoordScale) + (atlasScale * float2(splatIndexX, splatIndexY));
 
-            if (false) {
+            if (true) {
                 // HACK: Diagnostic view of splat rects
                 color = float4(texCoord.x, texCoord.y, 0, 1);
             } else {
@@ -321,18 +373,18 @@ void rasterStrokeLineCommon(
             }
         }
 
-        result = over(color, Params1.w, result, 1);
+        result = over(color, flow, result, 1);
     }
 }
 
 float4 rasterStrokeCommon(
-    in float2 worldPosition,
-    in float4 ab, in float2 vpos,
+    in float2 worldPosition, in float4 ab, 
+    in float4 seed, in float2 vpos,
     in float4 colorA, in float4 colorB
 ) {
     float4 result;
     rasterStrokeLineCommon(
-        worldPosition, ab, vpos, colorA, colorB, result
+        worldPosition, ab, seed, vpos, colorA, colorB, result
     );
 
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
@@ -354,8 +406,8 @@ void RasterStrokeLineSegmentFragmentShader(
     RASTERSTROKE_FS_ARGS
 ) {
     result = rasterStrokeCommon(
-        worldPosition, ab, GET_VPOS,
-        colorA, colorB
+        worldPosition, ab, seed, 
+        GET_VPOS, colorA, colorB
     );
 }
 

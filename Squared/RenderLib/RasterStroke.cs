@@ -11,13 +11,13 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.Render.Internal;
 using Squared.Util;
-using GeometryVertex = Microsoft.Xna.Framework.Graphics.VertexPositionColor;
 
 namespace Squared.Render.RasterStroke {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct RasterStrokeVertex : IVertexType {
         public Vector4 PointsAB;
         public Vector4 ColorA, ColorB;
+        public Vector4 Seed;
         public short   Unused, WorldSpace;
 
         public static readonly VertexElement[] Elements;
@@ -33,6 +33,8 @@ namespace Squared.Render.RasterStroke {
                     VertexElementFormat.Vector4, VertexElementUsage.Color, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "ColorB").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.Color, 1 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "Seed").ToInt32(),
+                    VertexElementFormat.Vector4, VertexElementUsage.Normal, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Unused").ToInt32(),
                     VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 1 )
             };
@@ -49,25 +51,127 @@ namespace Squared.Render.RasterStroke {
         }
     }
 
+    public struct BrushDynamics {
+        public float Constant;
+        public float TaperFactor;
+        public float Increment;
+        public float NoiseFactor;
+        public float AngleFactor;
+
+        public override string ToString () {
+            return $"<dynamics(({Constant} * taper({TaperFactor})) + step({Increment}) + noise({NoiseFactor}) + angle({AngleFactor}))>";
+        }
+
+        public override int GetHashCode () {
+            // FIXME
+            return Constant.GetHashCode();
+        }
+
+        public bool Equals (in BrushDynamics rhs) {
+            return (Constant == rhs.Constant) &&
+                (TaperFactor == rhs.TaperFactor) &&
+                (Increment == rhs.Increment) &&
+                (NoiseFactor == rhs.NoiseFactor) &&
+                (AngleFactor == rhs.AngleFactor);
+        }        
+
+        public override bool Equals (object obj) {
+            if (obj is BrushDynamics bd)
+                return Equals(bd);
+            else
+                return false;
+        }
+
+        public static bool operator != (BrushDynamics lhs, BrushDynamics rhs) {
+            return !lhs.Equals(rhs);
+        }
+
+        public static bool operator == (BrushDynamics lhs, BrushDynamics rhs) {
+            return lhs.Equals(rhs);
+        }
+
+        public Vector4 ToVector4 () {
+            return new Vector4(TaperFactor, Increment, NoiseFactor, AngleFactor);
+        }
+
+        public static implicit operator BrushDynamics (float constant) {
+            return new BrushDynamics {
+                Constant = constant
+            };
+        }
+    }
+
     public struct RasterBrush {
         public AbstractTextureReference NozzleAtlas;
         public SamplerState NozzleSamplerState;
 
-        private int NozzleCountXMinusOne, NozzleCountYMinusOne;
+        private int _NozzleCountXMinusOne, _NozzleCountYMinusOne;
         public int NozzleCountX {
-            get => NozzleCountXMinusOne + 1;
-            set => NozzleCountXMinusOne = value - 1;
+            get => _NozzleCountXMinusOne + 1;
+            set => _NozzleCountXMinusOne = value - 1;
         }
         public int NozzleCountY {
-            get => NozzleCountYMinusOne + 1;
-            set => NozzleCountYMinusOne = value - 1;
+            get => _NozzleCountYMinusOne + 1;
+            set => _NozzleCountYMinusOne = value - 1;
         }
-        public float Size, Spacing, RotationRateRadians, Flow;
-        public float RotationRateDegrees {
-            get => MathHelper.ToDegrees(RotationRateRadians);
-            set => RotationRateRadians = MathHelper.ToRadians(value);
+
+        public static readonly BrushDynamics DefaultBrushIndex = new BrushDynamics {
+            Increment = 1,
+        };
+        public static readonly BrushDynamics DefaultHardness = new BrushDynamics {
+            Constant = 1,
+        };
+        public static readonly BrushDynamics DefaultWidthFactor = new BrushDynamics {
+            Constant = 1,
+        };
+        public static readonly BrushDynamics DefaultFlow = new BrushDynamics {
+            Constant = 1,
+        };
+        public static readonly float DefaultSpacing = 0.33f;
+        private bool _HasBrushIndex, _HasHardness, _HasWidthFactor, _HasFlow, _HasSpacing;
+        private BrushDynamics _BrushIndex, _Hardness, _WidthFactor, _Flow;
+        private float _Spacing;
+        public BrushDynamics SizePx, AngleDegrees;
+
+        public BrushDynamics BrushIndex {
+            get => _HasBrushIndex ? _BrushIndex : DefaultBrushIndex;
+            set {
+                _BrushIndex = value;
+                _HasBrushIndex = true;
+            }
         }
-        // public AbstractTextureReference FillTexture;
+
+        public BrushDynamics Hardness {
+            get => _HasHardness ? _Hardness : DefaultHardness;
+            set {
+                _Hardness = value;
+                _HasHardness = true;
+            }
+        }
+
+        public BrushDynamics WidthFactor {
+            get => _HasWidthFactor ? _WidthFactor : DefaultWidthFactor;
+            set {
+                _WidthFactor = value;
+                _HasWidthFactor = true;
+            }
+        }
+
+        public BrushDynamics Flow {
+            get => _HasFlow ? _Flow : DefaultFlow;
+            set {
+                _Flow = value;
+                _HasFlow = true;
+            }
+        }
+
+        public float Spacing {
+            get => _HasSpacing ? _Spacing : DefaultSpacing;
+            set {
+                _Spacing = value;
+                _HasSpacing = true;
+            }
+        }
 
         public override bool Equals (object obj) {
             if (obj is RasterBrush rb)
@@ -82,10 +186,16 @@ namespace Squared.Render.RasterStroke {
 
         public bool Equals (in RasterBrush rhs) {
             return (NozzleAtlas == rhs.NozzleAtlas) &&
-                (NozzleCountXMinusOne == rhs.NozzleCountXMinusOne) &&
-                (NozzleCountYMinusOne == rhs.NozzleCountYMinusOne) &&
-                (Size == rhs.Size) &&
-                (Spacing == rhs.Spacing);
+                (NozzleSamplerState == rhs.NozzleSamplerState) &&
+                (_NozzleCountXMinusOne == rhs._NozzleCountXMinusOne) &&
+                (_NozzleCountYMinusOne == rhs._NozzleCountYMinusOne) &&
+                (SizePx == rhs.SizePx) &&
+                (Spacing == rhs.Spacing) &&
+                (AngleDegrees == rhs.AngleDegrees) &&
+                (Flow == rhs.Flow) &&
+                (BrushIndex == rhs.BrushIndex) &&
+                (Hardness == rhs.Hardness) &&
+                (WidthFactor == rhs.WidthFactor);
         }
     }
     
@@ -170,6 +280,8 @@ namespace Squared.Render.RasterStroke {
         public DefaultMaterialSet Materials;
 
         private static readonly RasterStrokeDrawCallSorter StrokeDrawCallSorter = new RasterStrokeDrawCallSorter();
+        private static Texture2D CachedNoiseTexture;
+        private Texture2D NoiseTexture;
 
         const int MaxVertexCount = 65535;
 
@@ -211,6 +323,8 @@ namespace Squared.Render.RasterStroke {
             ListBatch<RasterStrokeDrawCall>.AdjustPoolCapacities(smallItemSizeLimit, largeItemSizeLimit, smallPoolCapacity, largePoolCapacity);
         }
 
+        const int NoiseTextureSize = 256;
+
         protected override void Prepare (PrepareManager manager) {
             var count = _DrawCalls.Count;
             var vertexCount = count;
@@ -224,12 +338,14 @@ namespace Squared.Render.RasterStroke {
 
                 var vb = new Internal.VertexBuffer<RasterStrokeVertex>(swb.Vertices);
                 var vw = vb.GetWriter(count, clear: false);
+                var seed = new Vector4(0, 0, 1f / NoiseTextureSize, 0.33f / NoiseTextureSize);
 
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     ref var dc = ref _DrawCalls.Item(i);
 
                     var vert = new RasterStrokeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
+                        Seed = seed,
                         ColorA = dc.ColorA4,
                         ColorB = dc.ColorB4,
                         WorldSpace = (short)(dc.WorldSpace ? 1 : 0)
@@ -241,6 +357,42 @@ namespace Squared.Render.RasterStroke {
             }
         }
 
+        private unsafe Texture2D GetNoiseTexture (RenderManager renderManager) {
+            // FIXME
+            var result = Volatile.Read(ref CachedNoiseTexture);
+            if (result?.IsDisposed == false)
+                return result;
+
+            CachedNoiseTexture = null;
+            lock (renderManager.CreateResourceLock)
+                result = new Texture2D(renderManager.DeviceManager.Device, NoiseTextureSize, NoiseTextureSize, false, SurfaceFormat.Vector4);
+
+            // FIXME: Do this on a worker thread?
+            var rng = new CoreCLR.Xoshiro(null);
+            int c = NoiseTextureSize * NoiseTextureSize * 4;
+            var buffer = new float[c];
+            for (int i = 0; i < c; i += 4) {
+                buffer[i] = rng.NextSingle();
+                buffer[i + 1] = rng.NextSingle();
+                buffer[i + 2] = rng.NextSingle();
+                buffer[i + 3] = rng.NextSingle();
+            }
+
+            lock (renderManager.UseResourceLock) {
+                fixed (float * pData = buffer) {
+                    result.SetDataPointerEXT(0, null, (IntPtr)pData, c * sizeof(float));
+                }
+            }
+
+            Interlocked.CompareExchange(ref CachedNoiseTexture, result, null);
+            var actualResult = Volatile.Read(ref CachedNoiseTexture);
+            // FIXME
+            if (actualResult != result)
+                renderManager.DisposeResource(result);
+
+            return actualResult;
+        }
+
         public override void Issue (DeviceManager manager) {
             base.Issue(manager);
 
@@ -248,6 +400,19 @@ namespace Squared.Render.RasterStroke {
             if (count > 0) {
                 // manager.Device.SetStringMarkerEXT(this.ToString());
                 var device = manager.Device;
+
+                // FIXME: Select technique based on this
+                bool hasNoise = (Brush.Flow.NoiseFactor != 0) ||
+                    (Brush.AngleDegrees.NoiseFactor != 0) ||
+                    (Brush.BrushIndex.NoiseFactor != 0) ||
+                    (Brush.Hardness.NoiseFactor != 0) ||
+                    (Brush.SizePx.NoiseFactor != 0) ||
+                    (Brush.WidthFactor.NoiseFactor != 0);
+
+                if (hasNoise)
+                    NoiseTexture = GetNoiseTexture(Container.RenderManager);
+                else
+                    NoiseTexture = null;
 
                 VertexBuffer vb, cornerVb;
                 DynamicIndexBuffer ib, cornerIb;
@@ -278,11 +443,23 @@ namespace Squared.Render.RasterStroke {
                 var ep = Material.Effect.Parameters;
                 var atlas = Brush.NozzleAtlas.Instance;
                 int nozzleBaseSize = Math.Max(atlas.Width / Brush.NozzleCountX, atlas.Height / Brush.NozzleCountY);
-                // If the brush is being scaled down, sample from mipmaps for better performance and to prevent aliasing.
-                // HACK: Bias the mip a bit to keep the brush sharp. It might be best to do something closer to 0.5
-                float nozzleMipBias = (float)Math.Max(Math.Log(nozzleBaseSize / Brush.Size, 2.0) - 0.35, 0);
-                ep["NozzleParams"].SetValue(new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleMipBias, 0));
-                ep["Params1"].SetValue(new Vector4(Brush.Size, Brush.Spacing, Brush.RotationRateRadians, Brush.Flow));
+                ep["UsesNoise"].SetValue(hasNoise);
+                ep["NozzleParams"].SetValue(new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleBaseSize, 0));
+                ep["SizeDynamics"].SetValue(Brush.SizePx.ToVector4());
+                var angle = Brush.AngleDegrees.ToVector4();
+                angle.X /= 360f;
+                angle.Y /= 360f;
+                ep["AngleDynamics"].SetValue(angle);
+                ep["FlowDynamics"].SetValue(Brush.Flow.ToVector4());
+                ep["BrushIndexDynamics"].SetValue(Brush.BrushIndex.ToVector4());
+                ep["HardnessDynamics"].SetValue(Brush.Hardness.ToVector4());
+                ep["WidthDynamics"].SetValue(Brush.WidthFactor.ToVector4());
+                ep["Constants1"].SetValue(new Vector4(
+                    Brush.SizePx.Constant, Brush.AngleDegrees.Constant, Brush.Flow.Constant, Brush.BrushIndex.Constant
+                ));
+                ep["Constants2"].SetValue(new Vector4(
+                    Brush.Hardness.Constant, Brush.WidthFactor.Constant, Brush.Spacing, 0f
+                ));
                 ep["BlendInLinearSpace"].SetValue(BlendInLinearSpace);
                 ep["OutputInLinearSpace"].SetValue(isSrgbRenderTarget);
 
