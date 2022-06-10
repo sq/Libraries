@@ -54,15 +54,15 @@ namespace Squared.Render {
 
             bool pop = false;
 
-            if (MaterialSet != null) {
-                if (ViewTransform.HasValue || ViewTransformModifier != null) {
-                    var vt = ViewTransform ?? MaterialSet.ViewTransform;
-                    if (ViewTransformModifier != null)
-                        ViewTransformModifier(ref vt, _UserData);
-                    // FIXME: We shouldn't need force: true
-                    MaterialSet.PushViewTransform(in vt, force: true);
-                    pop = true;
-                }
+            if (ViewTransform.HasValue || ViewTransformModifier != null) {
+                if (MaterialSet == null)
+                    throw new NullReferenceException("MaterialSet must be set if ViewTransform or ViewTransformModifier are set");
+                var vt = ViewTransform ?? MaterialSet.ViewTransform;
+                if (ViewTransformModifier != null)
+                    ViewTransformModifier(ref vt, _UserData);
+                // FIXME: We shouldn't need force: true
+                MaterialSet.PushViewTransform(in vt, force: true);
+                pop = true;
             }
 
             if (_Before != null)

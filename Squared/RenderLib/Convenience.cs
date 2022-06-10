@@ -1973,7 +1973,7 @@ namespace Squared.Render.Convenience {
                     TaperRanges = taper ?? default,
                     BlendInLinearSpace = blendInLinearSpace ?? true,
                     SortKey = sortKey,
-                    WorldSpace = worldSpace ?? false
+                    WorldSpace = worldSpace ?? WorldSpace
                 });
         }
 

@@ -113,13 +113,12 @@ void RasterStrokeVertexShader_Core(
     computePosition(a, b, cornerWeights, position.xy);
 
     float2 adjustedPosition = position.xy;
+    worldPosition = adjustedPosition.xy;
+
     if (unusedAndWorldSpace.y > 0.5) {
         adjustedPosition -= GetViewportPosition().xy;
         adjustedPosition *= GetViewportScale().xy;
     }
-
-    // FIXME
-    worldPosition = adjustedPosition.xy;
 
     result = TransformPosition(
         float4(adjustedPosition, position.z, 1), true
