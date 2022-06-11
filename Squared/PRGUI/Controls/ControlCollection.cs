@@ -281,7 +281,9 @@ namespace Squared.PRGUI {
                         PaintOrderRange.Update(item.DisplayOrder);
                         PaintOrderedItems.Add(item);
                     }
-                    PaintOrderedItems.Sort(PaintOrderComparer.Instance);
+                    PaintOrderedItems.Sort(
+                        (Host == null) ? (IComparer<Control>)IndexPreservingPaintOrderComparer.Instance : PaintOrderComparer.Instance
+                    );
                 } finally {
                     UpdatingDisplayOrder = false;
                 }
@@ -408,6 +410,14 @@ namespace Squared.PRGUI {
             if (result == 0)
                 result = x.Index.CompareTo(y.Index);
             return result;
+        }
+    }
+
+    internal sealed class IndexPreservingPaintOrderComparer : IComparer<Control> {
+        public static readonly IndexPreservingPaintOrderComparer Instance = new IndexPreservingPaintOrderComparer();
+
+        public int Compare (Control x, Control y) {
+            return x.DisplayOrder.CompareTo(y.DisplayOrder);
         }
     }
 

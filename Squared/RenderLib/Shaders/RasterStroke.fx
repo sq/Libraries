@@ -108,8 +108,9 @@ void computePosition(
 ) {
     xy = 0;
 
-    // HACK: Tighter bounding box
-    float totalRadius = (Constants2.w / 1.44) + 1;
+    // HACK: Slightly increase the radius and pad it to account for
+    //  pixel overhang and antialiasing
+    float totalRadius = (Constants2.w * 0.55) + 1;
 
     // Oriented bounding box around the line segment
     float2 along = b - a,

@@ -369,7 +369,7 @@ namespace Squared.Render.RasterStroke {
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     ref var dc = ref _DrawCalls.Item(i);
 
-                    seed.X = dc.Seed;
+                    seed.X = dc.Seed / NoiseTextureSize;
                     var vert = new RasterStrokeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         Seed = seed,
