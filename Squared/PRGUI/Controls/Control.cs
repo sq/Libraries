@@ -1071,6 +1071,12 @@ namespace Squared.PRGUI {
             // passSet.NextReferenceStencil = childrenPassSet.NextReferenceStencil;
         }
 
+        private void RasterizeAllPassesTransformed (ref UIOperationContext context, ref RectF box, ref RasterizePassSet passSet) {
+            MostRecentCompositeBox = box;
+            var subPassSet = new RasterizePassSet(ref passSet, this, ApplyGlobalTransformMatrix);
+            RasterizeAllPasses(ref context, ref box, ref subPassSet, false);
+        }
+
         private void RasterizeAllPasses (ref UIOperationContext context, ref RectF box, ref RasterizePassSet passSet, bool compositing) {
             try {
                 if (Appearance.DecorationProvider != null)
@@ -1277,13 +1283,16 @@ namespace Squared.PRGUI {
                     // HACK: If the current transform matrix is the identity matrix, suppress composition
                     //  this allows simple transform animations that end at the identity matrix to work
                     //  without explicitly clearing the transform after the animation is over.
-                    Appearance.GetTransform(out Matrix temp, context.NowL) &&
-                    (temp != Matrix.Identity);
+                    Appearance.GetTransform(out Matrix transform, context.NowL) &&
+                    (transform != Matrix.Identity);
             var needsComposition = NeedsComposition(opacity < 1, hasTransformMatrix) || enableCompositor;
             var oldOpacity = context.Opacity;
             if (!needsComposition) {
                 context.Opacity *= opacity;
-                RasterizeAllPasses(ref context, ref box, ref passSet, false);
+                if (hasTransformMatrix)
+                    RasterizeAllPassesTransformed(ref context, ref box, ref passSet);
+                else
+                    RasterizeAllPasses(ref context, ref box, ref passSet, false);
             } else {
                 RasterizeComposited(ref context, ref box, ref passSet, opacity, enableCompositor);
             }
@@ -1326,7 +1335,8 @@ namespace Squared.PRGUI {
             }
         }
 
-        private static readonly ViewTransformModifier ApplyLocalTransformMatrix = _ApplyLocalTransformMatrix;
+        private static readonly ViewTransformModifier ApplyLocalTransformMatrix = _ApplyLocalTransformMatrix,
+            ApplyGlobalTransformMatrix = _ApplyGlobalTransformMatrix;
         private static readonly Action<DeviceManager, object> BeforeComposite = _BeforeIssueComposite,
             AfterComposite = _AfterIssueComposite;
 
@@ -1351,6 +1361,19 @@ namespace Squared.PRGUI {
                 control.MostRecentCompositeBox, control.Context.NowL, out Matrix transform
             );
             vt.ModelView *= transform;
+        }
+
+        private static void _ApplyGlobalTransformMatrix (ref ViewTransform vt, object _control) {
+            var control = (Control)_control;
+            if (!control.Appearance.GetTransform(out Matrix matrix, control.Context.NowL))
+                return;
+
+            var rect = control.MostRecentCompositeBox;
+            var offset = (rect.Size * control.Appearance.TransformOrigin) + rect.Position;
+            Matrix.CreateTranslation(-offset.X, -offset.Y, 0f, out Matrix before);
+            Matrix.CreateTranslation(offset.X, offset.Y, 0f, out Matrix after);
+            var result = before * matrix * after;
+            vt.ModelView *= result;
         }
 
         private void RasterizeIntoPrepass (

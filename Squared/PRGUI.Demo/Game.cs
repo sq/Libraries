@@ -51,7 +51,8 @@ namespace PRGUI.Demo {
         public Material TextMaterial { get; private set; }
         public Material SelectedTextMaterial { get; private set; }
 
-        StaticText DynamicStaticText;
+        StaticText DynamicStaticText, SpinningText;
+        StaticImage SpinningImage;
 
         public IGlyphSource Font;
         public AutoRenderTarget UIRenderTarget;
@@ -741,57 +742,6 @@ namespace PRGUI.Demo {
                 },
             };
 
-            // Test for bug where listboxes won't expand vertically to fill available space if they have neighbors
-            var listLayoutTab = new ControlGroup {
-                Children = {
-                    new ControlGroup {
-                        Children = {
-                            new ListBox<string> {
-                                Items = {
-                                    "a", "b", "c"
-                                },
-                                Layout = {
-                                    Fill = true,
-                                },
-                            },
-                            new ControlGroup {
-                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Bottom | ControlFlags.Layout_ForceBreak,
-                                Appearance = {
-                                    BackgroundColor = Color.Green * 0.5f,
-                                },
-                                Height = 16
-                            },
-                        },
-                        LayoutFlags = ControlFlags.Layout_Fill,
-                        // NOTE: The fix for this at present is to make it Container_Column and not set ForceBreak on any items. Blech
-                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap,
-                        Appearance = {
-                            BackgroundColor = Color.Red * 0.5f,
-                        },
-                        Height = {
-                            Minimum = 500
-                        },
-                    },
-                    /*
-                    new ControlGroup {
-                        Children = {
-                            new StaticText {
-                                Text = "Right side"
-                            },
-                        },
-                        Width = 300,
-                        Height = {
-                            Minimum = 500
-                        },
-                        LayoutFlags = ControlFlags.Layout_Fill,
-                        Appearance = {
-                            BackgroundColor = Color.Blue * 0.5f,
-                        }
-                    }
-                    */
-                }
-            };
-
             var displayOrdering = new Container {
                 Children = {
                     new StaticText {
@@ -844,6 +794,27 @@ namespace PRGUI.Demo {
                 AutoSize = false
             };
 
+            SpinningText = new StaticText {
+                Layout = {
+                    Floating = true,
+                    FloatingPosition = new Vector2(64, 64),
+                },
+                Text = "Yaaaaay! I'm spinning!",
+            };
+            SpinningImage = new StaticImage {
+                Layout = {
+                    Floating = true,
+                    FloatingPosition = new Vector2(64, 256),
+                },
+                Image = TextureLoader.Load("stonks"),
+                Width = 64,
+                Height = 64
+            };
+
+            var transformTab = new ControlGroup {
+                SpinningText, SpinningImage
+            };
+
             var tabs = new TabContainer {
                 { scrollableClipTest, "Scroll" },
                 { listboxContainer, "List" },
@@ -851,9 +822,9 @@ namespace PRGUI.Demo {
                 { displayOrdering, "Z-Order" },
                 { rich, "Rich Text" },
                 { textTab, "Text Size" },
-                { listLayoutTab, "List Layout" },
+                { transformTab, "Xform" },
             };
-            tabs.SelectedIndex = 0;
+            tabs.SelectedIndex = 6;
             tabs.TabsOnLeft = false;
             tabs.ExpandToHoldAllTabs = true;
             tabs.LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top;
@@ -1385,6 +1356,13 @@ namespace PRGUI.Demo {
             var pks = Keyboard.PreviousState;
 
             if (IsActive) {
+                // Tweens don't work for this sort of transform animation
+                var t = Time.Seconds;
+                var angle = MathHelper.ToRadians((float)t * 90f);
+                var matrix = Matrix.CreateRotationZ(angle);
+                SpinningText.Appearance.Transform = matrix;
+                SpinningImage.Appearance.Transform = matrix;
+
                 var alt = ks.IsKeyDown(Keys.LeftAlt) || ks.IsKeyDown(Keys.RightAlt);
                 var wasAlt = pks.IsKeyDown(Keys.LeftAlt) || pks.IsKeyDown(Keys.RightAlt);
 

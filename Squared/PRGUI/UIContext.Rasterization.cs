@@ -482,6 +482,17 @@ namespace Squared.PRGUI {
         public UnorderedList<BitmapDrawCall> OverlayQueue;
         public int StackDepth;
 
+        public RasterizePassSet (ref RasterizePassSet parent, Control control, ViewTransformModifier viewTransformModifier) {
+            Below = parent.Below.MakeSubgroup(name: "Below (Nested)", userData: control);
+            Content = parent.Content.MakeSubgroup(name: "Content (Nested)", userData: control);
+            Above = parent.Above.MakeSubgroup(name: "Above (Nested)", userData: control);
+            StackDepth = parent.StackDepth + 1;
+            OverlayQueue = parent.OverlayQueue;
+            ((BatchGroup)Below.Container).SetViewTransform(viewTransformModifier);
+            ((BatchGroup)Content.Container).SetViewTransform(viewTransformModifier);
+            ((BatchGroup)Above.Container).SetViewTransform(viewTransformModifier);
+        }
+
         public RasterizePassSet (ref ImperativeRenderer container, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue) {
             // FIXME: Order them?
             Below = container.MakeSubgroup(name: "Below");
