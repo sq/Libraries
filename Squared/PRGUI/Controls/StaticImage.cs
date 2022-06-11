@@ -121,7 +121,12 @@ namespace Squared.PRGUI.Controls {
             blendState = BlendState ?? Context.PickDefaultBlendState(Image.Instance);
         }
 
-        protected override bool CanApplyOpacityWithoutCompositing => Appearance.BackgroundColor.IsTransparent;
+        protected override bool NeedsComposition (bool hasOpacity, bool hasTransform) {
+            // TODO: Implement transform matrix too
+            if (Appearance.BackgroundColor.IsTransparent && !hasTransform)
+                return false;
+            return base.NeedsComposition(hasOpacity, hasTransform);
+        }
 
         public void SetFixedAxes (ImageDimensions axes) {
             ExpandAxes |= axes;

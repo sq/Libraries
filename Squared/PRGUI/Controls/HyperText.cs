@@ -44,9 +44,6 @@ namespace Squared.PRGUI.Controls {
             RichText = true;
         }
 
-        // HACK: Due to decorators
-        protected override bool CanApplyOpacityWithoutCompositing => false;
-
         protected override bool HasChildren => true;
         int IControlContainer.ChildrenToSkipWhenBuilding => 0;
         bool IControlContainer.ClipChildren {

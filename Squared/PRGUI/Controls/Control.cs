@@ -261,16 +261,14 @@ namespace Squared.PRGUI {
         }
 
         /// <summary>
-        /// If true, a temporary compositing surface will not be used when rasterizing
-        ///  this control when its opacity is below 1.0, and the control must apply the
-        ///  opacity value itself
+        /// If true, a temporary compositing surface will be used to rasterize this control.
         /// </summary>
-        protected virtual bool CanApplyOpacityWithoutCompositing => false;
-        /// <summary>
-        /// If true, a control will always be composited even if it has no transform and
-        ///  its opacity is 1 and it has no compositor
-        /// </summary>
-        protected virtual bool ForceComposition => false;
+        /// <param name="hasOpacity">The control's opacity is not 1.0</param>
+        /// <param name="hasTransform">The control has a transform matrix</param>
+        protected virtual bool NeedsComposition (bool hasOpacity, bool hasTransform) {            
+            return hasOpacity || hasTransform || (Appearance.CompositeMaterial != null) || Appearance.Overlay;
+        }
+
         /// <summary>
         /// Can receive focus via user input
         /// </summary>
@@ -1275,20 +1273,13 @@ namespace Squared.PRGUI {
             Appearance.AutoClearTransform(context.NowL);
 
             var enableCompositor = Appearance.Compositor?.WillComposite(this, opacity) == true;
-            var needsComposition = ((opacity < 1) && !this.CanApplyOpacityWithoutCompositing) || 
-                ForceComposition ||
-                enableCompositor ||
-                (Appearance.CompositeMaterial != null) ||
-                Appearance.Overlay ||
-                (
-                    Appearance.HasTransformMatrix && 
+            var hasTransformMatrix = Appearance.HasTransformMatrix &&
                     // HACK: If the current transform matrix is the identity matrix, suppress composition
                     //  this allows simple transform animations that end at the identity matrix to work
                     //  without explicitly clearing the transform after the animation is over.
                     Appearance.GetTransform(out Matrix temp, context.NowL) &&
-                    (temp != Matrix.Identity)
-                );
-
+                    (temp != Matrix.Identity);
+            var needsComposition = NeedsComposition(opacity < 1, hasTransformMatrix) || enableCompositor;
             var oldOpacity = context.Opacity;
             if (!needsComposition) {
                 context.Opacity *= opacity;

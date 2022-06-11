@@ -878,6 +878,11 @@ namespace Squared.PRGUI.Controls {
             Content.CharacterWrap = false;
         }
 
-        protected override bool CanApplyOpacityWithoutCompositing => Appearance.BackgroundColor.IsTransparent && (CustomTextMaterial == null);
+        protected override bool NeedsComposition (bool hasOpacity, bool hasTransform) {
+            // TODO: Transform matrix
+            if (Appearance.BackgroundColor.IsTransparent && !hasTransform && (CustomTextMaterial == null) && !(this is HyperText))
+                return false;
+            return base.NeedsComposition(hasOpacity, hasTransform);
+        }
     }
 }
