@@ -210,7 +210,7 @@ namespace Squared.PRGUI.Layout {
             if ((max > 0) && (fs < 0))
                 size = Math.Min(max, size);
 
-            if (fill && ((fs >= 0) || (size == max))) {
+            if (fill && ((fs >= 0) || (size == max)) && !floating) {
                 // Fill + fixed size = center, same for fill + max size (if max was hit)
                 (*pRect)[idim] = parentRect[idim] + (parentRect[wdim] - size) / 2f;
             } else {

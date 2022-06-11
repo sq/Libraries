@@ -1238,7 +1238,7 @@ namespace Squared.PRGUI {
                 hidden = true;
 
             var box = default(RectF);
-            bool isZeroSized = false, isInvisible = false;
+            bool isZeroSized = false, isOutOfView = false;
             if (IsLayoutInvalid) {
                 hidden = true;
             } else {
@@ -1247,14 +1247,10 @@ namespace Squared.PRGUI {
                     vext = context.VisibleRegion.Extent;
                 // HACK: There might be corner cases where you want to rasterize a zero-sized control...
                 isZeroSized = (box.Width <= 0) || (box.Height <= 0);
-                isInvisible = (ext.X < context.VisibleRegion.Left) ||
+                isOutOfView = (ext.X < context.VisibleRegion.Left) ||
                     (ext.Y < context.VisibleRegion.Top) ||
                     (box.Left > vext.X) ||
-                    (box.Top > vext.Y) ||
-                    isZeroSized;
-
-                if (isInvisible)
-                    hidden = true;
+                    (box.Top > vext.Y);
 
                 RasterizeDebugOverlays(ref context, ref passSet, box);
             }
@@ -1265,8 +1261,11 @@ namespace Squared.PRGUI {
             RasterizeIsPending = false;
 #endif
 
+            if (isZeroSized)
+                hidden = true;
+
             // Only visibility cull controls that have a parent and aren't overlaid.
-            if (isInvisible && TryGetParent(out Control parent) && !Appearance.Overlay)
+            if (isOutOfView && (WeakParent != null) && !Appearance.Overlay && !Appearance.HasTransformMatrix)
                 hidden = true;
 
             if (hidden) {

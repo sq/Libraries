@@ -1004,6 +1004,11 @@ namespace PRGUI.Demo {
                         seconds: 5, repeatCount: 99999, repeatMode: TweenRepeatMode.Pulse
                     ),
                 },
+                Children = {
+                    new StaticText {
+                        Text = "Some text",
+                    },
+                },
             };
 
             Context.Controls.Add(topLevelContainer);
