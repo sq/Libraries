@@ -55,23 +55,13 @@ namespace Squared.PRGUI.Layout {
                 FirstChild = pParent->FirstChild;
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private void CheckVersion () {
-                if (Version == Context.Version)
-                    return;
-
-                Context.AssertionFailed("Context was modified");
-            }
-
-            private void CheckValid (void * ptr) {
-                if (ptr == null)
-                    Context.AssertionFailed("No current item");
-                CheckVersion();
-            }
-
             public ControlKey Current {
                 get {
-                    CheckValid(pCurrent);
+                    if (pCurrent == null) {
+                        Context.AssertionFailed("No current item");
+                        return default;
+                    }
+
                     return pCurrent->Key;
                 }
             }
@@ -84,7 +74,10 @@ namespace Squared.PRGUI.Layout {
             }
 
             public bool MoveNext () {
-                CheckVersion();
+                if (Version != Context.Version) {
+                    Context.AssertionFailed("Context was modified");
+                    return false;
+                }
 
                 if (pLayoutItems == null)
                     pLayoutItems = Context.LayoutPtr();
@@ -110,7 +103,11 @@ namespace Squared.PRGUI.Layout {
             }
 
             void IEnumerator.Reset () {
-                CheckVersion();
+                if (Version != Context.Version) {
+                    Context.AssertionFailed("Context was modified");
+                    throw new Exception("Context was modified");
+                }
+
                 pCurrent = null;
             }
         }

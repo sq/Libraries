@@ -28,10 +28,6 @@ namespace Squared.PRGUI.NewEngine {
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private void CheckVersion () {
-                if (Version == Engine.Version)
-                    return;
-
-                Engine.AssertionFailed("Context was modified");
             }
 
             private ControlKey _Current;
@@ -47,7 +43,10 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             public bool MoveNext () {
-                CheckVersion();
+                if (Version != Engine.Version) {
+                    Engine.AssertionFailed("Context was modified");
+                    return false;
+                }
 
                 if (Current.IsInvalid) {
                     if (Started)
@@ -70,7 +69,10 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             void IEnumerator.Reset () {
-                CheckVersion();
+                if (Version != Engine.Version) {
+                    Engine.AssertionFailed("Context was modified");
+                    throw new Exception("Context was modified");
+                }
                 _Current = ControlKey.Invalid;
             }
         }

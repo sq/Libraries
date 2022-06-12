@@ -90,7 +90,7 @@ namespace Squared.Render {
         public readonly Func<Material>[] AllMaterialFields;
         public readonly Func<IMaterialCollection>[] AllMaterialCollections;
 
-        // Making a dictionary larger increases performance
+        // Making a dictionary larger increases performance. This costs around 250kb of memory right now
         private const int BindingDictionaryCapacity = 4096;
 
         private readonly List<ITypedUniform> RegisteredUniforms = new List<ITypedUniform>();

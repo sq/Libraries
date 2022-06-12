@@ -26,7 +26,6 @@ namespace Squared.PRGUI.Controls {
             ScaleToFitX                    = 0b10000,
             ScaleToFitY                    = 0b100000,
             DidUseTextures                 = 0b1000000,
-                                           
             RichTextIsSet                  = 0b10000000,
             RichTextValue                  = 0b100000000,
             UseTooltipForReadingIsSet      = 0b1000000000,
@@ -154,7 +153,7 @@ namespace Squared.PRGUI.Controls {
         public bool RichText {
             get => GetInternalFlag(StaticTextStateFlags.RichTextIsSet, StaticTextStateFlags.RichTextValue) ?? Content.RichText;
             set {
-                SetInternalFlag(StaticTextStateFlags.RichTextValue, value);
+                SetInternalFlag(StaticTextStateFlags.RichTextIsSet, StaticTextStateFlags.RichTextValue, value);
                 Content.RichText = value;
             }
         }

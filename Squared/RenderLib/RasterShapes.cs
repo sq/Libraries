@@ -211,11 +211,13 @@ namespace Squared.Render.RasterShape {
     }
     
     [Flags]
-    public enum RasterTextureCompositeMode : byte {
+    public enum RasterTextureCompositeMode : int {
         Multiply = 0,
         Over = 1,
         Under = 2,
-        ScreenSpace = 128
+
+        ScreenSpace = 128,
+        ScreenSpaceLocal = ScreenSpace | 64,
     }
 
     public struct RasterTextureSettings {
@@ -519,7 +521,8 @@ namespace Squared.Render.RasterShape {
             ShadowOptions2,
             ShadowColorLinear,
             TextureModeAndSize,
-            TexturePlacement;
+            TexturePlacement,
+            TextureTraits;
 
         public RasterShader (Material material) {
             Material = material;
@@ -534,6 +537,7 @@ namespace Squared.Render.RasterShape {
             ShadowColorLinear = p["ShadowColorLinear"];
             TextureModeAndSize = p["TextureModeAndSize"];
             TexturePlacement = p["TexturePlacement"];
+            TextureTraits = p["TextureTraits"];
         }
     }
 
@@ -838,9 +842,13 @@ namespace Squared.Render.RasterShape {
                     ));
                     rasterShader.ShadowColorLinear.SetValue(shadowColor);
                     var mas = sb.TextureSettings.ModeAndSize;
-                    if ((sb.TextureSettings.Mode & RasterTextureCompositeMode.ScreenSpace) == RasterTextureCompositeMode.ScreenSpace) {
-                        mas.Z = (mas.Z + 1) * Texture.Width;
-                        mas.W = (mas.W + 1) * Texture.Height;
+                    if (Texture != null) {
+                        if ((sb.TextureSettings.Mode & RasterTextureCompositeMode.ScreenSpace) == RasterTextureCompositeMode.ScreenSpace) {
+                            mas.Z = (mas.Z + 1) * Texture.Width;
+                            mas.W = (mas.W + 1) * Texture.Height;
+                        }
+                        var traits = Evil.TextureUtils.GetTraits(Texture.Format);
+                        rasterShader.TextureTraits?.SetValue(traits);
                     }
                     rasterShader.TextureModeAndSize?.SetValue(mas);
                     rasterShader.TexturePlacement?.SetValue(sb.TextureSettings.Placement);

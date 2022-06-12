@@ -114,6 +114,8 @@ namespace Squared.PRGUI {
                 contentRenderer = default;
             }
 
+            // TODO: all the copying of settings here burns CPU time
+
             if (HasPreRasterizeHandler && (pass == RasterizePasses.Content))
                 OnPreRasterize(ref contentContext, settings, decorations);
 

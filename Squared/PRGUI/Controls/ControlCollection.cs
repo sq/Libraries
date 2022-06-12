@@ -230,6 +230,7 @@ namespace Squared.PRGUI {
 
         private int TabOrderLastValidFrame = -1, PaintOrderLastValidFrame = -1;
 
+        // TODO: Switch these lists to some sort of intrusive linked list system
         private bool PrepareToUpdateSortedList<T> (ref int lastValidFrame, int currentFrame, List<T> targetList, ref OrderRange range) {
             if ((targetList.Count == Count) && (lastValidFrame == currentFrame))
                 return false;

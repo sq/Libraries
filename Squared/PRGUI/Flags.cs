@@ -7,6 +7,8 @@ using Microsoft.Xna.Framework;
 using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.Flags {
+    // TODO: Make all these much smaller, could save like 16-20 bytes
+
     public struct AnchorFlags {
         public bool Left, Top, Right, Bottom;
         /// <summary>

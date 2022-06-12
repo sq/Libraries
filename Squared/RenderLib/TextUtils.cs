@@ -832,8 +832,8 @@ namespace Squared.Render.Text {
             // Hey, you're the boss
             SetFlag(InternalFlags.HasCachedStringLayout, false);
             _CachedStringLayout = default;
-            if (_RichMarkers != null)
-                _RichMarkers.Clear();
+            _UsedTextures?.Clear();
+            _RichMarkers?.Clear();
         }
 
         /// <summary>
@@ -845,6 +845,8 @@ namespace Squared.Render.Text {
 
             if (RecordUsedTextures && (_UsedTextures == null))
                 _UsedTextures = new List<AbstractTextureReference>(4);
+            else
+                _UsedTextures?.Clear();
 
             result = new StringLayoutEngine {
                 allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
