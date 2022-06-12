@@ -26,11 +26,12 @@ namespace Squared.PRGUI {
     
     public abstract partial class Control {
         [Flags]
-        protected enum AppearanceEventFlags {
+        protected enum AppearanceEventFlags : byte {
             BackgroundColor = 0b1,
-            Opacity = 0b10,
-            TextColor = 0b100,
-            Matrix = 0b1000
+            Opacity         = 0b10,
+            TextColor       = 0b100,
+            // TODO
+            // Matrix          = 0b1000
         }
 
         private struct PendingAnimationRecord {
