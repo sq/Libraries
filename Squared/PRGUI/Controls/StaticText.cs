@@ -18,7 +18,7 @@ using Squared.Util.Text;
 namespace Squared.PRGUI.Controls {
     public class StaticTextBase : Control, IPostLayoutListener, Accessibility.IReadingTarget {
         [Flags]
-        private enum StaticTextStateFlags : int {
+        private enum StaticTextStateFlags : ushort {
             AutoSizeWidth                  = 0b1,
             AutoSizeHeight                 = 0b10,
             AutoSizeIsMaximum              = 0b100,

@@ -814,6 +814,7 @@ namespace Squared.PRGUI {
     }
 
     public struct ControlDimension {
+        // TODO: Pack flags into a byte? Would save at least 6 bytes per control, probably
         public float? Minimum, Maximum, Fixed;
 
         public static ControlDimension operator * (float lhs, ControlDimension rhs) {

@@ -65,26 +65,24 @@ namespace Squared.PRGUI {
             return new ColorVariable { pLinear = c.ToPLinear() };
         }
     }
-
-    [Flags]
-    public enum ControlAppearanceFlags : byte {
-        Default,
-        TextColorIsDefault = 0b1,
-        Overlay = 0b10,
-        Undecorated = 0b100,
-        UndecoratedText = 0b1000
-    }
-
-    [Flags]
-    public enum DecorationSpacingMode : byte {
-        Default,
-        SuppressPadding = 0b1,
-        SuppressMargins = 0b10,
-        SuppressSpacing = SuppressPadding | SuppressMargins,
-        UnscaledSpacing = 0b100
-    }
     
     public struct ControlAppearance {
+        [Flags]
+        internal enum AppearanceFlags : ushort {
+            Default,
+            TextColorIsDefault    = 0b1,
+            Overlay               = 0b10,
+            Undecorated           = 0b100,
+            UndecoratedText       = 0b1000,
+            DoNotAutoScaleMetrics = 0b10000,
+            SuppressPadding       = 0b100000,
+            SuppressMargins       = 0b1000000,
+            UnscaledSpacing       = 0b10000000,
+            SuppressSpacing       = SuppressPadding | SuppressMargins,
+            HasTransformMatrix    = 0b100000000,
+            OpacityIsSet          = 0b1000000000,
+        }
+
         /// <summary>
         /// Responsible for deciding whether a control needs to be composited and performing the final
         ///  step of compositing the rendered control from its scratch texture into the scene.
@@ -151,115 +149,96 @@ namespace Squared.PRGUI {
         public ColorVariable TextColor;
         public BackgroundImageSettings BackgroundImage;
 
-        private ControlAppearanceFlags MiscFlags;
-        public DecorationSpacingMode SpacingMode;
+        internal AppearanceFlags Flags;
+
+        private bool GetAppearanceFlag (AppearanceFlags flag) {
+            return (Flags & flag) == flag;
+        }
+
+        private void SetAppearanceFlag (AppearanceFlags flag, bool value) {
+            if (value)
+                Flags |= flag;
+            else
+                Flags &= ~flag;
+        }
 
         /// <summary>
         /// If set, the TextColor will only change the default text color instead of overriding
         ///  the color set by the text decorator.
         /// </summary>
         public bool TextColorIsDefault {
-            get => (MiscFlags & ControlAppearanceFlags.TextColorIsDefault) != default;
-            set {
-                MiscFlags = value
-                    ? MiscFlags | ControlAppearanceFlags.TextColorIsDefault
-                    : MiscFlags & ~ControlAppearanceFlags.TextColorIsDefault;
-            }
+            get => GetAppearanceFlag(AppearanceFlags.TextColorIsDefault);
+            set => SetAppearanceFlag(AppearanceFlags.TextColorIsDefault, value);
         }
+
         /// <summary>
         /// Suppresses clipping of the control and causes it to be rendered above everything
         ///  up until the next modal. You can use this to highlight the control responsible for
         ///  summoning a modal.
         /// </summary>
         public bool Overlay {
-            get => (MiscFlags & ControlAppearanceFlags.Overlay) != default;
-            set {
-                MiscFlags = value
-                    ? MiscFlags | ControlAppearanceFlags.Overlay
-                    : MiscFlags & ~ControlAppearanceFlags.Overlay;
-            }
+            get => GetAppearanceFlag(AppearanceFlags.Overlay);
+            set => SetAppearanceFlag(AppearanceFlags.Overlay, value);
         }
+
         /// <summary>
         /// Forces the Decorator to be None
         /// </summary>
         public bool Undecorated {
-            get => (MiscFlags & ControlAppearanceFlags.Undecorated) != default;
-            set {
-                MiscFlags = value
-                    ? MiscFlags | ControlAppearanceFlags.Undecorated
-                    : MiscFlags & ~ControlAppearanceFlags.Undecorated;
-            }
+            get => GetAppearanceFlag(AppearanceFlags.Undecorated);
+            set => SetAppearanceFlag(AppearanceFlags.Undecorated, value);
         }
+
         /// <summary>
         /// Forces the TextDecorator to be None
         /// </summary>
         public bool UndecoratedText {
-            get => (MiscFlags & ControlAppearanceFlags.UndecoratedText) != default;
-            set {
-                MiscFlags = value
-                    ? MiscFlags | ControlAppearanceFlags.UndecoratedText
-                    : MiscFlags & ~ControlAppearanceFlags.UndecoratedText;
-            }
+            get => GetAppearanceFlag(AppearanceFlags.UndecoratedText);
+            set => SetAppearanceFlag(AppearanceFlags.UndecoratedText, value);
         }
+
         /// <summary>
         /// Disables margins from the control's decorator
         /// </summary>
         public bool SuppressDecorationMargins {
-            get => (SpacingMode & DecorationSpacingMode.SuppressMargins) != default;
-            set {
-                SpacingMode = value
-                    ? SpacingMode | DecorationSpacingMode.SuppressMargins
-                    : SpacingMode & ~DecorationSpacingMode.SuppressMargins;
-            }
+            get => GetAppearanceFlag(AppearanceFlags.SuppressMargins);
+            set => SetAppearanceFlag(AppearanceFlags.SuppressMargins, value);
         }
+
         /// <summary>
         /// Disables padding from the control's decorator
         /// </summary>
         public bool SuppressDecorationPadding {
-            get => (SpacingMode & DecorationSpacingMode.SuppressPadding) != default;
-            set {
-                SpacingMode = value
-                    ? SpacingMode | DecorationSpacingMode.SuppressPadding
-                    : SpacingMode & ~DecorationSpacingMode.SuppressPadding;
-            }
+            get => GetAppearanceFlag(AppearanceFlags.SuppressPadding);
+            set => SetAppearanceFlag(AppearanceFlags.SuppressPadding, value);
         }
 
         /// <summary>
         /// Disables the decoration provider's padding/margin scale ratios
         /// </summary>
         public bool SuppressDecorationScaling {
-            get => (SpacingMode & DecorationSpacingMode.UnscaledSpacing) != default;
-            set {
-                SpacingMode = value
-                    ? SpacingMode | DecorationSpacingMode.UnscaledSpacing
-                    : SpacingMode & ~DecorationSpacingMode.UnscaledSpacing;
-            }
+            get => GetAppearanceFlag(AppearanceFlags.UnscaledSpacing);
+            set => SetAppearanceFlag(AppearanceFlags.UnscaledSpacing, value);
         }
 
         public bool SuppressDecorationSpacing {
-            get => (SpacingMode & DecorationSpacingMode.SuppressSpacing) == DecorationSpacingMode.SuppressSpacing;
-            set {
-                SpacingMode = value
-                    ? SpacingMode | DecorationSpacingMode.SuppressSpacing
-                    : SpacingMode & ~DecorationSpacingMode.SuppressSpacing;
-            }
+            get => GetAppearanceFlag(AppearanceFlags.SuppressSpacing);
+            set => SetAppearanceFlag(AppearanceFlags.SuppressSpacing, value);
         }
 
         public bool HasBackgroundColor => BackgroundColor.HasValue;
         public bool HasTextColor => BackgroundColor.HasValue;
-
-        private bool _DoNotAutoScaleMetrics;
 
         /// <summary>
         /// If set, the control's fixed size and size constraints will be affected by the
         ///  context's global decoration size scale ratio.
         /// </summary>
         public bool AutoScaleMetrics {
-            get => !_DoNotAutoScaleMetrics;
-            set => _DoNotAutoScaleMetrics = !value;
+            get => GetAppearanceFlag(AppearanceFlags.DoNotAutoScaleMetrics);
+            set => SetAppearanceFlag(AppearanceFlags.DoNotAutoScaleMetrics, !value);
         }
 
-        internal bool HasOpacity { get; private set; }
+        internal bool OpacityIsSet => GetAppearanceFlag(AppearanceFlags.OpacityIsSet);
 
         internal Tween<float> _Opacity;
         /// <summary>
@@ -267,9 +246,9 @@ namespace Squared.PRGUI {
         ///  semiopaque will automatically become composited.
         /// </summary>
         public Tween<float> Opacity {
-            get => HasOpacity ? _Opacity : 1f;
+            get => GetAppearanceFlag(AppearanceFlags.OpacityIsSet) ? _Opacity : 1f;
             set {
-                HasOpacity = true;
+                SetAppearanceFlag(AppearanceFlags.OpacityIsSet, true);
                 _Opacity = value;
             }
         }

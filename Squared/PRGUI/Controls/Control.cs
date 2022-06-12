@@ -26,23 +26,23 @@ namespace Squared.PRGUI {
     
     public abstract partial class Control {
         [Flags]
-        protected enum InternalStateFlags : int {
-            Visible                   = 0b1,
-            VisibleHasChanged         = 0b10,
-            Enabled                   = 0b100,
-            Intangible                = 0b1000,
-            AcceptsFocus              = 0b10000,
-            AcceptsMouseInput         = 0b100000,
-            AcceptsTextInput          = 0b1000000,
-            LayoutInvalid             = 0b10000000,
-            EventFiredBackgroundColor = 0b100000000,
-            EventFiredOpacity         = 0b1000000000,
-            EventFiredTextColor       = 0b10000000000,
+        protected enum InternalStateFlags : ushort {
+            Visible                     = 0b1,
+            VisibleHasChanged           = 0b10,
+            Enabled                     = 0b100,
+            Intangible                  = 0b1000,
+            AcceptsFocus                = 0b10000,
+            AcceptsMouseInput           = 0b100000,
+            AcceptsTextInput            = 0b1000000,
+            LayoutInvalid               = 0b10000000,
+            EventFiredBackgroundColor   = 0b100000000,
+            EventFiredOpacity           = 0b1000000000,
+            EventFiredTextColor         = 0b10000000000,
             // TODO
             // EventFiredMatrix      = 0b100000000000,
         }
 
-        private struct PendingAnimationRecord {
+        private class PendingAnimationRecord {
             public IControlAnimation Animation;
             public float? Duration;
             public long? Now;
@@ -71,6 +71,8 @@ namespace Squared.PRGUI {
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
 
+        private Control _FocusBeneficiary;
+
         // FIXME
         private InternalStateFlags InternalState = InternalStateFlags.Visible | InternalStateFlags.Enabled;
 
@@ -80,6 +82,7 @@ namespace Squared.PRGUI {
                 SetInternalFlag(InternalStateFlags.LayoutInvalid, false);
             }
         }
+
         private ControlKey _LayoutKey = ControlKey.Invalid;
         public ControlKey LayoutKey {
             get => _LayoutKey;
@@ -172,8 +175,6 @@ namespace Squared.PRGUI {
             }
         }
 
-        private Control _FocusBeneficiary;
-
         /// <summary>
         /// Any input events that would deliver focus to this control will instead deliver focus
         ///  to its beneficiary, if set
@@ -220,7 +221,6 @@ namespace Squared.PRGUI {
         protected virtual bool HasChildren => false;
         protected virtual bool ShouldClipContent => false;
 
-        protected WeakReference<UIContext> WeakContext = null;
         protected WeakReference<Control> WeakParent = null;
 
         public Future<bool> ActiveAnimationFuture { get; private set; }
@@ -308,20 +308,20 @@ namespace Squared.PRGUI {
                 return new Future<bool>(false);
 
             ActiveAnimationFuture = new Future<bool>();
-            if (Context == null)
+            if (Context == null) {
                 PendingAnimation = new PendingAnimationRecord {
                     Animation = animation,
                     Duration = duration,
                     Now = now
                 };
-            else
+            } else
                 StartAnimationImpl(animation, duration, now);
 
             return ActiveAnimationFuture;
         }
 
         private void StartAnimationImpl (IControlAnimation animation, float? duration, long? now) {
-            PendingAnimation = default(PendingAnimationRecord);
+            PendingAnimation = null;
             var _now = now ?? Context.NowL;
             var multiplier = (Context?.Animations?.AnimationDurationMultiplier ?? 1f);
             var _duration = (duration ?? animation.DefaultDuration) * multiplier;
@@ -613,7 +613,7 @@ namespace Squared.PRGUI {
         }
 
         protected float GetOpacity (long now) {
-            if (!Appearance.HasOpacity)
+            if (!Appearance.OpacityIsSet)
                 return 1;
 
             return AutoFireTweenEvent(now, UIEvents.OpacityTweenEnded, ref Appearance._Opacity, InternalStateFlags.EventFiredOpacity);
@@ -826,8 +826,15 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void InitializeForContext () {
-            if (PendingAnimation.Animation != null)
-                StartAnimationImpl(PendingAnimation.Animation, PendingAnimation.Duration, PendingAnimation.Now);
+            var pa = PendingAnimation;
+            PendingAnimation = null;
+            if (pa == null)
+                return;
+            StartAnimationImpl(
+                PendingAnimation.Animation, 
+                pa.Duration,
+                pa.Now
+            );
         }
 
         public virtual void InvalidateLayout () {
