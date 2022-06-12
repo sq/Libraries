@@ -18,7 +18,7 @@ using Squared.Util.Text;
 namespace Squared.PRGUI.Controls {
     public class StaticTextBase : Control, IPostLayoutListener, Accessibility.IReadingTarget {
         [Flags]
-        protected enum InternalStateFlags : int {
+        private enum StaticTextStateFlags : int {
             AutoSizeWidth                  = 0b1,
             AutoSizeHeight                 = 0b10,
             AutoSizeIsMaximum              = 0b100,
@@ -56,8 +56,8 @@ namespace Squared.PRGUI.Controls {
         /// If false, the control will be expanded to fit its content but will not shrink.
         /// </summary>
         public bool AutoSizeIsMaximum {
-            get => GetInternalFlag(InternalStateFlags.AutoSizeIsMaximum);
-            set => SetInternalFlag(InternalStateFlags.AutoSizeIsMaximum, value);
+            get => GetInternalFlag(StaticTextStateFlags.AutoSizeIsMaximum);
+            set => SetInternalFlag(StaticTextStateFlags.AutoSizeIsMaximum, value);
         }
 
         /// <summary>
@@ -66,8 +66,8 @@ namespace Squared.PRGUI.Controls {
         ///  and the control has a tooltip.
         /// </summary>
         public bool? UseTooltipForReading {
-            get => GetInternalFlag(InternalStateFlags.UseTooltipForReadingIsSet, InternalStateFlags.UseTooltipForReadingValue);
-            set => SetInternalFlag(InternalStateFlags.UseTooltipForReadingIsSet, InternalStateFlags.UseTooltipForReadingValue, value);
+            get => GetInternalFlag(StaticTextStateFlags.UseTooltipForReadingIsSet, StaticTextStateFlags.UseTooltipForReadingValue);
+            set => SetInternalFlag(StaticTextStateFlags.UseTooltipForReadingIsSet, StaticTextStateFlags.UseTooltipForReadingValue, value);
         }
 
         public Material TextMaterial = null;
@@ -109,28 +109,28 @@ namespace Squared.PRGUI.Controls {
         private int _MostRecentFontVersion;
         protected RasterizePasses Pass = RasterizePasses.Content;
 
-        private InternalStateFlags InternalState = 
-            InternalStateFlags.AutoSizeWidth | InternalStateFlags.AutoSizeHeight | InternalStateFlags.AutoSizeIsMaximum;
+        private StaticTextStateFlags InternalState = 
+            StaticTextStateFlags.AutoSizeWidth | StaticTextStateFlags.AutoSizeHeight | StaticTextStateFlags.AutoSizeIsMaximum;
 
-        private bool GetInternalFlag (InternalStateFlags flag) {
+        private bool GetInternalFlag (StaticTextStateFlags flag) {
             return (InternalState & flag) == flag;
         }
 
-        private bool? GetInternalFlag (InternalStateFlags isSetFlag, InternalStateFlags valueFlag) {
+        private bool? GetInternalFlag (StaticTextStateFlags isSetFlag, StaticTextStateFlags valueFlag) {
             if ((InternalState & isSetFlag) != isSetFlag)
                 return null;
             else
                 return (InternalState & valueFlag) == valueFlag;
         }
 
-        private void SetInternalFlag (InternalStateFlags flag, bool state) {
+        private void SetInternalFlag (StaticTextStateFlags flag, bool state) {
             if (state)
                 InternalState |= flag;
             else
                 InternalState &= ~flag;
         }
 
-        private bool ChangeInternalFlag (InternalStateFlags flag, bool newState) {
+        private bool ChangeInternalFlag (StaticTextStateFlags flag, bool newState) {
             if (GetInternalFlag(flag) == newState)
                 return false;
 
@@ -138,12 +138,12 @@ namespace Squared.PRGUI.Controls {
             return true;
         }
 
-        private void SetInternalFlag (InternalStateFlags isSetFlag, InternalStateFlags valueFlag, bool? state) {
+        private void SetInternalFlag (StaticTextStateFlags isSetFlag, StaticTextStateFlags valueFlag, bool? state) {
             SetInternalFlag(isSetFlag, state.HasValue);
             SetInternalFlag(valueFlag, state.HasValue && state.Value);
         }
 
-        private bool ChangeInternalFlag (InternalStateFlags isSetFlag, InternalStateFlags valueFlag, bool? newState) {
+        private bool ChangeInternalFlag (StaticTextStateFlags isSetFlag, StaticTextStateFlags valueFlag, bool? newState) {
             if (GetInternalFlag(isSetFlag, valueFlag) == newState)
                 return false;
 
@@ -152,9 +152,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         public bool RichText {
-            get => GetInternalFlag(InternalStateFlags.RichTextIsSet, InternalStateFlags.RichTextValue) ?? Content.RichText;
+            get => GetInternalFlag(StaticTextStateFlags.RichTextIsSet, StaticTextStateFlags.RichTextValue) ?? Content.RichText;
             set {
-                SetInternalFlag(InternalStateFlags.RichTextValue, value);
+                SetInternalFlag(StaticTextStateFlags.RichTextValue, value);
                 Content.RichText = value;
             }
         }
@@ -162,26 +162,26 @@ namespace Squared.PRGUI.Controls {
         protected virtual RichTextConfiguration GetRichTextConfiguration() => Context.RichTextConfiguration;
 
         protected bool ScaleToFitX {
-            get => GetInternalFlag(InternalStateFlags.ScaleToFitX);
+            get => GetInternalFlag(StaticTextStateFlags.ScaleToFitX);
             set {
-                if (ChangeInternalFlag(InternalStateFlags.ScaleToFitX, value))
+                if (ChangeInternalFlag(StaticTextStateFlags.ScaleToFitX, value))
                     Invalidate();
             }
         }
 
         protected bool ScaleToFitY {
-            get => GetInternalFlag(InternalStateFlags.ScaleToFitY);
+            get => GetInternalFlag(StaticTextStateFlags.ScaleToFitY);
             set {
-                if (ChangeInternalFlag(InternalStateFlags.ScaleToFitY, value))
+                if (ChangeInternalFlag(StaticTextStateFlags.ScaleToFitY, value))
                     Invalidate();
             }
         }
 
         protected bool ScaleToFit {
-            get => GetInternalFlag(InternalStateFlags.ScaleToFitX) && GetInternalFlag(InternalStateFlags.ScaleToFitY);
+            get => GetInternalFlag(StaticTextStateFlags.ScaleToFitX) && GetInternalFlag(StaticTextStateFlags.ScaleToFitY);
             set {
-                bool a = ChangeInternalFlag(InternalStateFlags.ScaleToFitX, value),
-                    b = ChangeInternalFlag(InternalStateFlags.ScaleToFitY, value);
+                bool a = ChangeInternalFlag(StaticTextStateFlags.ScaleToFitX, value),
+                    b = ChangeInternalFlag(StaticTextStateFlags.ScaleToFitY, value);
 
                 if (a || b)
                     Invalidate();
@@ -200,17 +200,17 @@ namespace Squared.PRGUI.Controls {
         }
 
         public bool AutoSizeWidth {
-            get => GetInternalFlag(InternalStateFlags.AutoSizeWidth);
+            get => GetInternalFlag(StaticTextStateFlags.AutoSizeWidth);
             set {
-                if (ChangeInternalFlag(InternalStateFlags.AutoSizeWidth, value))
+                if (ChangeInternalFlag(StaticTextStateFlags.AutoSizeWidth, value))
                     Content.Invalidate();
             }
         }
 
         public bool AutoSizeHeight {
-            get => GetInternalFlag(InternalStateFlags.AutoSizeHeight);
+            get => GetInternalFlag(StaticTextStateFlags.AutoSizeHeight);
             set {
-                if (ChangeInternalFlag(InternalStateFlags.AutoSizeHeight, value))
+                if (ChangeInternalFlag(StaticTextStateFlags.AutoSizeHeight, value))
                     Content.Invalidate();
             }
         }
@@ -314,8 +314,8 @@ namespace Squared.PRGUI.Controls {
             }
             _CachedPadding = default;
             _CachedLineBreakPoint = -99999f;
-            SetInternalFlag(InternalStateFlags.CachedContentIsSingleLineIsSet, InternalStateFlags.CachedContentIsSingleLineValue, null);
-            SetInternalFlag(InternalStateFlags.NeedRelayout, true);
+            SetInternalFlag(StaticTextStateFlags.CachedContentIsSingleLineIsSet, StaticTextStateFlags.CachedContentIsSingleLineValue, null);
+            SetInternalFlag(StaticTextStateFlags.NeedRelayout, true);
             // TODO: Clear decoration cache too?
         }
 
@@ -345,8 +345,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected void GetCurrentLayout (out StringLayout result, bool measurement, bool autoReset = true) {
-            if (GetInternalFlag(InternalStateFlags.RichTextIsSet))
-                Content.RichText = GetInternalFlag(InternalStateFlags.RichTextValue);
+            if (GetInternalFlag(StaticTextStateFlags.RichTextIsSet))
+                Content.RichText = GetInternalFlag(StaticTextStateFlags.RichTextValue);
             if (Content.RichText)
                 Content.RichTextConfiguration = GetRichTextConfiguration();
 
@@ -360,17 +360,17 @@ namespace Squared.PRGUI.Controls {
                 }
                 if (!ContentMeasurement.IsValid) {
                     ResetAutoSize();
-                    SetInternalFlag(InternalStateFlags.NeedRelayout, true);
+                    SetInternalFlag(StaticTextStateFlags.NeedRelayout, true);
                 }
                 ContentMeasurement.Get(out result);
             } else {
                 if (!Content.IsValid) {
                     if (ContentMeasurement != null)
                         ConfigureMeasurement();
-                    SetInternalFlag(InternalStateFlags.NeedRelayout, true);
+                    SetInternalFlag(StaticTextStateFlags.NeedRelayout, true);
                 }
                 Content.Get(out result);
-                SetInternalFlag(InternalStateFlags.DidUseTextures, result.UsedTextures.Count > 0);
+                SetInternalFlag(StaticTextStateFlags.DidUseTextures, result.UsedTextures.Count > 0);
             }
         }
 
@@ -416,11 +416,11 @@ namespace Squared.PRGUI.Controls {
             _CachedDecorations = decorations;
             _CachedPadding = computedPadding;
 
-            if (contentChanged || fontChanged || !GetInternalFlag(InternalStateFlags.CachedContentIsSingleLineIsSet)) {
+            if (contentChanged || fontChanged || !GetInternalFlag(StaticTextStateFlags.CachedContentIsSingleLineIsSet)) {
                 // HACK: If we're pretty certain the text will be exactly one line long and we don't
                 //  care how wide it is, just return the line spacing without performing layout
                 SetInternalFlag(
-                    InternalStateFlags.CachedContentIsSingleLineIsSet, InternalStateFlags.CachedContentIsSingleLineValue,
+                    StaticTextStateFlags.CachedContentIsSingleLineIsSet, StaticTextStateFlags.CachedContentIsSingleLineValue,
                     (AutoSizeHeight && !AutoSizeWidth) &&
                     (!Content.CharacterWrap && !Content.WordWrap) &&
                     (
@@ -431,7 +431,7 @@ namespace Squared.PRGUI.Controls {
                 );
             }
 
-            if (GetInternalFlag(InternalStateFlags.CachedContentIsSingleLineIsSet, InternalStateFlags.CachedContentIsSingleLineValue) == true) {
+            if (GetInternalFlag(StaticTextStateFlags.CachedContentIsSingleLineIsSet, StaticTextStateFlags.CachedContentIsSingleLineValue) == true) {
                 AutoSizeComputedContentHeight = (Content.GlyphSource.LineSpacing * Content.Scale);
                 AutoSizeComputedHeight = (float)Math.Ceiling(AutoSizeComputedContentHeight + computedPadding.Y);
                 return;
@@ -461,7 +461,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected void Invalidate () {
-            SetInternalFlag(InternalStateFlags.NeedRelayout, true);
+            SetInternalFlag(StaticTextStateFlags.NeedRelayout, true);
             ResetAutoSize();
             Content.Invalidate();
             ContentMeasurement?.Invalidate();
@@ -477,7 +477,7 @@ namespace Squared.PRGUI.Controls {
             context.Layout.SetTag(result, LayoutTags.Text);
 
             // HACK: Ensure that we report all the textures we use even if we're not currently being rasterized
-            if (Content.IsValid && GetInternalFlag(InternalStateFlags.DidUseTextures)) {
+            if (Content.IsValid && GetInternalFlag(StaticTextStateFlags.DidUseTextures)) {
                 // FIXME: This is slow
                 GetCurrentLayout(out var layout, false);
                 foreach (var tex in layout.UsedTextures)
@@ -857,7 +857,7 @@ namespace Squared.PRGUI.Controls {
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) => FormatValueInto(sb);
 
         protected virtual void OnLayoutComplete( ref UIOperationContext context, ref bool relayoutRequested) {
-            if (ChangeInternalFlag(InternalStateFlags.NeedRelayout, false))
+            if (ChangeInternalFlag(StaticTextStateFlags.NeedRelayout, false))
                 relayoutRequested = true;
 
             context.Layout.GetRects(LayoutKey, out RectF box, out RectF contentBox);

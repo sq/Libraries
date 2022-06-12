@@ -26,12 +26,20 @@ namespace Squared.PRGUI {
     
     public abstract partial class Control {
         [Flags]
-        protected enum AppearanceEventFlags : byte {
-            BackgroundColor = 0b1,
-            Opacity         = 0b10,
-            TextColor       = 0b100,
+        protected enum InternalStateFlags : int {
+            Visible                   = 0b1,
+            VisibleHasChanged         = 0b10,
+            Enabled                   = 0b100,
+            Intangible                = 0b1000,
+            AcceptsFocus              = 0b10000,
+            AcceptsMouseInput         = 0b100000,
+            AcceptsTextInput          = 0b1000000,
+            LayoutInvalid             = 0b10000000,
+            EventFiredBackgroundColor = 0b100000000,
+            EventFiredOpacity         = 0b1000000000,
+            EventFiredTextColor       = 0b10000000000,
             // TODO
-            // Matrix          = 0b1000
+            // EventFiredMatrix      = 0b100000000000,
         }
 
         private struct PendingAnimationRecord {
@@ -57,18 +65,19 @@ namespace Squared.PRGUI {
         /// </summary>
         public LayoutFlags Layout;
         public ControlDimension Width, Height;
-        private AppearanceEventFlags _FiredAppearanceEvents;
 
         public Controls.ControlDataCollection Data;
 
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
 
-        private bool _IsLayoutInvalid;
+        // FIXME
+        private InternalStateFlags InternalState = InternalStateFlags.Visible | InternalStateFlags.Enabled;
+
         protected bool IsLayoutInvalid {
-            get => _IsLayoutInvalid || _LayoutKey.IsInvalid;
+            get => GetInternalFlag(InternalStateFlags.LayoutInvalid) || _LayoutKey.IsInvalid;
             set {
-                _IsLayoutInvalid = value;
+                SetInternalFlag(InternalStateFlags.LayoutInvalid, false);
             }
         }
         private ControlKey _LayoutKey = ControlKey.Invalid;
@@ -97,18 +106,15 @@ namespace Squared.PRGUI {
             }
         }
 
-        private bool _Visible = true, _VisibleHasChanged = false, _Enabled = true;
-
         /// <summary>
         /// If false, the control will not participate in layout or rasterization
         /// </summary>
         public bool Visible {
-            get => _Visible;
+            get => GetInternalFlag(InternalStateFlags.Visible);
             set {
-                if (_Visible == value)
+                if (!ChangeInternalFlag(InternalStateFlags.Visible, value))
                     return;
-                _Visible = value;
-                _VisibleHasChanged = true;
+                SetInternalFlag(InternalStateFlags.VisibleHasChanged, true);
                 OnVisibleChange(value);
             }
         }
@@ -116,12 +122,9 @@ namespace Squared.PRGUI {
         /// If false, the control cannot receive focus or input
         /// </summary>
         public bool Enabled {
-            get => _Enabled;
+            get => GetInternalFlag(InternalStateFlags.Enabled);
             set {
-                if (_Enabled == value)
-                    return;
-                _Enabled = value;
-                if (value == false)
+                if (ChangeInternalFlag(InternalStateFlags.Enabled, value) && (value == false))
                     Context?.NotifyControlBecomingInvalidFocusTarget(this, false);
             }
         }
@@ -138,31 +141,37 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Can receive focus via user input
         /// </summary>
-        public virtual bool AcceptsFocus { get; protected set; }
+        public virtual bool AcceptsFocus {
+            get => GetInternalFlag(InternalStateFlags.AcceptsFocus);
+            protected set => SetInternalFlag(InternalStateFlags.AcceptsFocus, value);
+        }
         /// <summary>
         /// Receives mouse events and can capture the mouse
         /// </summary>
-        public virtual bool AcceptsMouseInput { get; protected set; }
+        public virtual bool AcceptsMouseInput {
+            get => GetInternalFlag(InternalStateFlags.AcceptsMouseInput);
+            protected set => SetInternalFlag(InternalStateFlags.AcceptsMouseInput, value);
+        }
         /// <summary>
         /// Controls whether textual input (IME composition, on-screen keyboard, etc) should 
         ///  be enabled while this control is focused. You will still get key events even if 
         ///  this is false, so things like arrow key navigation will work.
         /// </summary>
-        public virtual bool AcceptsTextInput { get; protected set; }
+        public virtual bool AcceptsTextInput {
+            get => GetInternalFlag(InternalStateFlags.AcceptsTextInput);
+            protected set => SetInternalFlag(InternalStateFlags.AcceptsTextInput, value);
+        }
         /// <summary>
         /// Intangible controls are ignored by hit-tests
         /// </summary>
         public bool Intangible {
-            get => _Intangible;
+            get => GetInternalFlag(InternalStateFlags.Intangible);
             set {
-                if (_Intangible == value)
-                    return;
-                _Intangible = value;
-                OnIntangibleChange(value);
+                if (ChangeInternalFlag(InternalStateFlags.Intangible, value))
+                    OnIntangibleChange(value);
             }
         }
 
-        private bool _Intangible;
         private Control _FocusBeneficiary;
 
         /// <summary>
@@ -224,6 +233,32 @@ namespace Squared.PRGUI {
         public Control () {
             ControlIndex = System.Threading.Interlocked.Increment(ref NextControlIndex);
             TypeID = GetType().GetHashCode();
+        }
+
+        private bool GetInternalFlag (InternalStateFlags flag) {
+            return (InternalState & flag) == flag;
+        }
+
+        private bool? GetInternalFlag (InternalStateFlags isSetFlag, InternalStateFlags valueFlag) {
+            if ((InternalState & isSetFlag) != isSetFlag)
+                return null;
+            else
+                return (InternalState & valueFlag) == valueFlag;
+        }
+
+        private void SetInternalFlag (InternalStateFlags flag, bool state) {
+            if (state)
+                InternalState |= flag;
+            else
+                InternalState &= ~flag;
+        }
+
+        private bool ChangeInternalFlag (InternalStateFlags flag, bool newState) {
+            if (GetInternalFlag(flag) == newState)
+                return false;
+
+            SetInternalFlag(flag, newState);
+            return true;
         }
 
         /// <summary>
@@ -400,7 +435,7 @@ namespace Squared.PRGUI {
                 (Context?.FireEvent(name, this, suppressHandler: true) ?? false);
         }
 
-        protected T? AutoFireTweenEvent<T> (long now, string name, ref Tween<T>? tween, AppearanceEventFlags flag)
+        protected T? AutoFireTweenEvent<T> (long now, string name, ref Tween<T>? tween, InternalStateFlags flag)
             where T : struct 
         {
             if (!tween.HasValue)
@@ -410,17 +445,17 @@ namespace Squared.PRGUI {
             return AutoFireTweenEvent(now, name, ref v, flag);
         }
 
-        protected T AutoFireTweenEvent<T> (long now, string name, ref Tween<T> tween, AppearanceEventFlags flag)
+        protected T AutoFireTweenEvent<T> (long now, string name, ref Tween<T> tween, InternalStateFlags flag)
             where T : struct 
         {
-            var eventFired = (_FiredAppearanceEvents & flag) == flag;
+            var eventFired = (InternalState & flag) == flag;
 
             if (tween.Get(now, out T result)) {
                 if (!tween.IsConstant && !eventFired)
                     FireEvent(name);
-                _FiredAppearanceEvents |= flag;
+                InternalState |= flag;
             } else {
-                _FiredAppearanceEvents &= ~flag;
+                InternalState &= ~flag;
             }
             return result;
         }
@@ -468,10 +503,8 @@ namespace Squared.PRGUI {
                     UIOperationContext.PushDecorationProvider(ref context, Appearance.DecorationProvider);
                 LayoutKey = OnGenerateLayoutTree(ref context, parent, existingKey);
                 if (!LayoutKey.IsInvalid) {
-                    if (_VisibleHasChanged) {
+                    if (ChangeInternalFlag(InternalStateFlags.VisibleHasChanged, false))
                         context.RelayoutRequestedForVisibilityChange = true;
-                        _VisibleHasChanged = false;
-                    }
 
                     // TODO: Only register if the control is explicitly interested, to reduce overhead?
                     if ((this is IPostLayoutListener listener) && (existingKey == null))
@@ -583,18 +616,18 @@ namespace Squared.PRGUI {
             if (!Appearance.HasOpacity)
                 return 1;
 
-            return AutoFireTweenEvent(now, UIEvents.OpacityTweenEnded, ref Appearance._Opacity, AppearanceEventFlags.Opacity);
+            return AutoFireTweenEvent(now, UIEvents.OpacityTweenEnded, ref Appearance._Opacity, InternalStateFlags.EventFiredOpacity);
         }
 
         protected pSRGBColor? GetBackgroundColor (long now) {
-            var v4 = AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref Appearance.BackgroundColor.pLinear, AppearanceEventFlags.BackgroundColor);
+            var v4 = AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref Appearance.BackgroundColor.pLinear, InternalStateFlags.EventFiredBackgroundColor);
             if (!v4.HasValue)
                 return null;
             return pSRGBColor.FromPLinear(v4.Value);
         }
 
         protected pSRGBColor? GetTextColor (long now) {
-            var v4 = AutoFireTweenEvent(now, UIEvents.TextColorTweenEnded, ref Appearance.TextColor.pLinear, AppearanceEventFlags.TextColor);
+            var v4 = AutoFireTweenEvent(now, UIEvents.TextColorTweenEnded, ref Appearance.TextColor.pLinear, InternalStateFlags.EventFiredTextColor);
             if (!v4.HasValue)
                 return null;
             return pSRGBColor.FromPLinear(v4.Value);

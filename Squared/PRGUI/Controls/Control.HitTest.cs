@@ -55,7 +55,7 @@ namespace Squared.PRGUI {
                 rejectIntangible &&                
                 !(this is IControlContainer) && 
                 !(this is IPartiallyIntangibleControl) &&
-                _Intangible
+                GetInternalFlag(InternalStateFlags.Intangible)
             )
                 return null;
 
