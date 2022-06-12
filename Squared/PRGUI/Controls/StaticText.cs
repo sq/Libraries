@@ -19,13 +19,20 @@ namespace Squared.PRGUI.Controls {
     public class StaticTextBase : Control, IPostLayoutListener, Accessibility.IReadingTarget {
         [Flags]
         protected enum InternalStateFlags : int {
-            AutoSizeWidth     = 0b1,
-            AutoSizeHeight    = 0b10,
-            AutoSizeIsMaximum = 0b100,
-            NeedRelayout      = 0b1000,
-            ScaleToFitX       = 0b10000,
-            ScaleToFitY       = 0b100000,
-            DidUseTextures    = 0b1000000
+            AutoSizeWidth                  = 0b1,
+            AutoSizeHeight                 = 0b10,
+            AutoSizeIsMaximum              = 0b100,
+            NeedRelayout                   = 0b1000,
+            ScaleToFitX                    = 0b10000,
+            ScaleToFitY                    = 0b100000,
+            DidUseTextures                 = 0b1000000,
+                                           
+            RichTextIsSet                  = 0b10000000,
+            RichTextValue                  = 0b100000000,
+            UseTooltipForReadingIsSet      = 0b1000000000,
+            UseTooltipForReadingValue      = 0b10000000000,
+            CachedContentIsSingleLineIsSet = 0b100000000000,
+            CachedContentIsSingleLineValue = 0b1000000000000,
         }
 
         public StaticTextBase ()
@@ -58,7 +65,10 @@ namespace Squared.PRGUI.Controls {
         /// The default is to do this automatically if the control's text is short (1-2 characters)
         ///  and the control has a tooltip.
         /// </summary>
-        public bool? UseTooltipForReading = null;
+        public bool? UseTooltipForReading {
+            get => GetInternalFlag(InternalStateFlags.UseTooltipForReadingIsSet, InternalStateFlags.UseTooltipForReadingValue);
+            set => SetInternalFlag(InternalStateFlags.UseTooltipForReadingIsSet, InternalStateFlags.UseTooltipForReadingValue, value);
+        }
 
         public Material TextMaterial = null;
         protected DynamicStringLayout Content = new DynamicStringLayout {
@@ -81,8 +91,6 @@ namespace Squared.PRGUI.Controls {
 
         public Vector4? RasterizerUserData;
 
-        bool? _RichText;
-
         public float VerticalAlignment = 0.5f;
 
         public float? MinScale = null;
@@ -93,7 +101,6 @@ namespace Squared.PRGUI.Controls {
             _CachedDecorations;
         private Margins _CachedPadding;
         private float _CachedLineBreakPoint;
-        private bool? _CachedContentIsSingleLine;
 
         protected Vector2 _LastDrawOffset, _LastDrawScale;
         protected BitmapDrawCall[] _LayoutFilterScratchBuffer;
@@ -107,6 +114,13 @@ namespace Squared.PRGUI.Controls {
 
         private bool GetInternalFlag (InternalStateFlags flag) {
             return (InternalState & flag) == flag;
+        }
+
+        private bool? GetInternalFlag (InternalStateFlags isSetFlag, InternalStateFlags valueFlag) {
+            if ((InternalState & isSetFlag) != isSetFlag)
+                return null;
+            else
+                return (InternalState & valueFlag) == valueFlag;
         }
 
         private void SetInternalFlag (InternalStateFlags flag, bool state) {
@@ -124,10 +138,23 @@ namespace Squared.PRGUI.Controls {
             return true;
         }
 
+        private void SetInternalFlag (InternalStateFlags isSetFlag, InternalStateFlags valueFlag, bool? state) {
+            SetInternalFlag(isSetFlag, state.HasValue);
+            SetInternalFlag(valueFlag, state.HasValue && state.Value);
+        }
+
+        private bool ChangeInternalFlag (InternalStateFlags isSetFlag, InternalStateFlags valueFlag, bool? newState) {
+            if (GetInternalFlag(isSetFlag, valueFlag) == newState)
+                return false;
+
+            SetInternalFlag(isSetFlag, valueFlag, newState);
+            return true;
+        }
+
         public bool RichText {
-            get => _RichText ?? Content.RichText;
+            get => GetInternalFlag(InternalStateFlags.RichTextIsSet, InternalStateFlags.RichTextValue) ?? Content.RichText;
             set {
-                _RichText = value;
+                SetInternalFlag(InternalStateFlags.RichTextValue, value);
                 Content.RichText = value;
             }
         }
@@ -287,7 +314,7 @@ namespace Squared.PRGUI.Controls {
             }
             _CachedPadding = default;
             _CachedLineBreakPoint = -99999f;
-            _CachedContentIsSingleLine = null;
+            SetInternalFlag(InternalStateFlags.CachedContentIsSingleLineIsSet, InternalStateFlags.CachedContentIsSingleLineValue, null);
             SetInternalFlag(InternalStateFlags.NeedRelayout, true);
             // TODO: Clear decoration cache too?
         }
@@ -318,8 +345,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected void GetCurrentLayout (out StringLayout result, bool measurement, bool autoReset = true) {
-            if (_RichText.HasValue)
-                Content.RichText = _RichText.Value;
+            if (GetInternalFlag(InternalStateFlags.RichTextIsSet))
+                Content.RichText = GetInternalFlag(InternalStateFlags.RichTextValue);
             if (Content.RichText)
                 Content.RichTextConfiguration = GetRichTextConfiguration();
 
@@ -389,19 +416,22 @@ namespace Squared.PRGUI.Controls {
             _CachedDecorations = decorations;
             _CachedPadding = computedPadding;
 
-            if (contentChanged || fontChanged || (_CachedContentIsSingleLine == null)) {
+            if (contentChanged || fontChanged || !GetInternalFlag(InternalStateFlags.CachedContentIsSingleLineIsSet)) {
                 // HACK: If we're pretty certain the text will be exactly one line long and we don't
                 //  care how wide it is, just return the line spacing without performing layout
-                _CachedContentIsSingleLine = (AutoSizeHeight && !AutoSizeWidth) &&
+                SetInternalFlag(
+                    InternalStateFlags.CachedContentIsSingleLineIsSet, InternalStateFlags.CachedContentIsSingleLineValue,
+                    (AutoSizeHeight && !AutoSizeWidth) &&
                     (!Content.CharacterWrap && !Content.WordWrap) &&
                     (
                         (Content.LineLimit == 1) ||
                         Content.Text.Length < 1 ||
                         ((Content.Text.Length < 512) && !Content.Text.Contains('\n'))
-                    );
+                    )
+                );
             }
 
-            if (_CachedContentIsSingleLine == true) {
+            if (GetInternalFlag(InternalStateFlags.CachedContentIsSingleLineIsSet, InternalStateFlags.CachedContentIsSingleLineValue) == true) {
                 AutoSizeComputedContentHeight = (Content.GlyphSource.LineSpacing * Content.Scale);
                 AutoSizeComputedHeight = (float)Math.Ceiling(AutoSizeComputedContentHeight + computedPadding.Y);
                 return;
