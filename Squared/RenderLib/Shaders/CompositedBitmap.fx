@@ -109,6 +109,59 @@ void UnderPixelShaderWithDiscard(
     clip(result.a - discardThreshold);
 }
 
+void AtopPixelShaderWithDiscard(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float4 blendWeight : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    in float2 texCoord2 : TEXCOORD2,
+    in float4 texRgn2 : TEXCOORD3,
+    out float4 result : COLOR0
+) {
+    addColor.rgb *= addColor.a;
+    addColor.a = 0;
+
+    float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS)) * blendWeight;
+    sample1 = ExtractRgba(sample1, BitmapTraits);
+    sample2 = ExtractRgba(sample2, BitmapTraits2);
+
+    float4 composited = (sample2 * sample1.a) + (sample1 * (1 - sample2.a));
+
+    result = multiplyColor * composited;
+    result += (addColor * result.a);
+
+    const float discardThreshold = (1.0 / 255.0);
+    clip(result.a - discardThreshold);
+}
+
+void MaskedPixelShaderWithDiscard(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    // in float4 blendWeight : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    in float2 texCoord2 : TEXCOORD2,
+    in float4 texRgn2 : TEXCOORD3,
+    out float4 result : COLOR0
+) {
+    addColor.rgb *= addColor.a;
+    addColor.a = 0;
+
+    float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS));
+    sample1 = ExtractRgba(sample1, BitmapTraits);
+    sample2 = ExtractRgba(sample2, BitmapTraits2);
+    float4 composited = sample1 * sample2;
+
+    result = multiplyColor * composited;
+    result += (addColor * result.a);
+
+    const float discardThreshold = (1.0 / 255.0);
+    clip(result.a - discardThreshold);
+}
+
 float gradientMask (float maskValue, float progress, float direction, float windowSize) {
     if (windowSize <= 0)
         // HACK
@@ -172,6 +225,15 @@ technique CrossfadeBitmapTechnique
     }
 }
 
+technique AtopBitmapTechnique
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 AtopPixelShaderWithDiscard();
+    }
+}
+
 technique OverBitmapTechnique
 {
     pass P0
@@ -187,6 +249,15 @@ technique UnderBitmapTechnique
     {
         vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 UnderPixelShaderWithDiscard();
+    }
+}
+
+technique MaskedBitmapTechnique
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 MaskedPixelShaderWithDiscard();
     }
 }
 

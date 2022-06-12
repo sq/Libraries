@@ -812,4 +812,141 @@ namespace Squared.PRGUI {
             return new NameAndIndex(name);
         }
     }
+
+    public struct ControlDimension {
+        public float? Minimum, Maximum, Fixed;
+
+        public static ControlDimension operator * (float lhs, ControlDimension rhs) {
+            return rhs.Scale(lhs);
+        }
+
+        public static ControlDimension operator * (ControlDimension lhs, float rhs) {
+            return lhs.Scale(rhs);
+        }
+
+        internal float EffectiveMinimum => Math.Min(Maximum ?? float.MaxValue, Fixed ?? Minimum ?? 0);
+
+        public ControlDimension AutoComputeFixed () {
+            if ((Maximum == Minimum) && Maximum.HasValue)
+                return new ControlDimension {
+                    Minimum = Minimum,
+                    Maximum = Maximum,
+                    Fixed = Fixed ?? Maximum
+                };
+
+            return this;
+        }
+
+        public ControlDimension Scale (float scale) {
+            return new ControlDimension {
+                Minimum = Minimum * scale,
+                Maximum = Maximum * scale,
+                Fixed = Fixed * scale
+            };
+        }
+
+        public static float? Min (float? lhs, float? rhs) {
+            if (lhs.HasValue && rhs.HasValue)
+                return Math.Min(lhs.Value, rhs.Value);
+            else if (lhs.HasValue)
+                return lhs;
+            else
+                return rhs;
+        }
+
+        public static float? Max (float? lhs, float? rhs) {
+            if (lhs.HasValue && rhs.HasValue)
+                return Math.Max(lhs.Value, rhs.Value);
+            else if (lhs.HasValue)
+                return lhs;
+            else
+                return rhs;
+        }
+
+        /// <summary>
+        /// Produces a new dimension with minimum/maximum values that encompass both inputs
+        /// </summary>
+        public ControlDimension Union (ref ControlDimension rhs) {
+            return new ControlDimension {
+                Minimum = Min(Minimum, rhs.Minimum),
+                Maximum = Max(Maximum, rhs.Maximum),
+                // FIXME
+                Fixed = Fixed ?? rhs.Fixed
+            };
+        }
+
+        /// <summary>
+        /// Produces a new dimension with minimum/maximum values that only encompass the place where
+        ///  the two inputs overlap
+        /// </summary>
+        public ControlDimension Intersection (ref ControlDimension rhs) {
+            return new ControlDimension {
+                Minimum = Max(Minimum, rhs.Minimum),
+                Maximum = Min(Maximum, rhs.Maximum),
+                // FIXME
+                Fixed = Fixed ?? rhs.Fixed
+            };
+        }
+
+        public void Constrain (ref float? size, bool applyFixed, out float delta) {
+            var previous = size;
+            if (size.HasValue) {
+                if (Minimum.HasValue)
+                    size = Math.Max(Minimum.Value, size.Value);
+                if (Maximum.HasValue)
+                    size = Math.Min(Maximum.Value, size.Value);
+            }
+            if (applyFixed && Fixed.HasValue)
+                size = Fixed;
+
+            if (previous.HasValue)
+                delta = size.Value - previous.Value;
+            else
+                delta = size.Value;
+        }
+
+        public void Constrain (ref float size, bool applyFixed, out float delta) {
+            float? temp = size;
+            Constrain(ref temp, applyFixed, out delta);
+            size = temp.Value;
+        }
+
+        public void Constrain (ref float? size, bool applyFixed) {
+            Constrain(ref size, applyFixed, out _);
+        }
+
+        public void Constrain (ref float size, bool applyFixed) {
+            Constrain(ref size, applyFixed, out _);
+        }
+
+        public float? Constrain (float? size, bool applyFixed, out float delta) {
+            Constrain(ref size, applyFixed, out delta);
+            return size;
+        }
+
+        public float Constrain (float size, bool applyFixed, out float delta) {
+            float? temp = size;
+            Constrain(ref temp, applyFixed, out delta);
+            return temp.Value;
+        }
+
+        public float? Constrain (float? size, bool applyFixed) {
+            Constrain(ref size, applyFixed);
+            return size;
+        }
+
+        public float Constrain (float size, bool applyFixed) {
+            float? temp = size;
+            Constrain(ref temp, applyFixed);
+            return temp.Value;
+        }
+
+        public static implicit operator ControlDimension (float fixedSize) {
+            return new ControlDimension { Fixed = fixedSize };
+        }
+
+        public override string ToString () {
+            return $"Clamp({Fixed?.ToString() ?? "<null>"}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
+        }
+    }
 }

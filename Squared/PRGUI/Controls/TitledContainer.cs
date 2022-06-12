@@ -200,8 +200,12 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeUnscaledPadding(ref context, decorations, out result);
+        protected override void ComputeAppearanceSpacing (
+            ref UIOperationContext context, IDecorator decorations, 
+            out Margins scaledMargins, out Margins scaledPadding, out Margins unscaledPadding
+        ) {
+            base.ComputeAppearanceSpacing(ref context, decorations, out scaledMargins, out scaledPadding, out unscaledPadding);
+
             var titleDecorations = context.DecorationProvider?.WindowTitle;
             if (titleDecorations == null)
                 return;
@@ -214,7 +218,7 @@ namespace Squared.PRGUI.Controls {
                 // FIXME: Scale this?
                 titleDecorations.Padding.Y +
                 (MostRecentTitleHeight ?? titleDecorations.GlyphSource.LineSpacing);
-            result.Top += height;
+            unscaledPadding.Top += height;
         }
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {

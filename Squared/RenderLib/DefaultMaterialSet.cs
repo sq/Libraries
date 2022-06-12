@@ -363,8 +363,8 @@ namespace Squared.Render {
         public Material OutlinedBitmap, OutlinedBitmapWithDiscard;
         public Material HighlightColorBitmap, CrossfadeBitmap;
         // Porter-duff compositing
-        public Material UnderBitmap, OverBitmap;
-        public Material GradientMaskedBitmap;
+        public Material UnderBitmap, OverBitmap, AtopBitmap;
+        public Material MaskedBitmap, GradientMaskedBitmap;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
@@ -516,6 +516,11 @@ namespace Squared.Render {
                 "CrossfadeBitmapTechnique"
             );
 
+            AtopBitmap = NewMaterial(
+                compositedShader,
+                "AtopBitmapTechnique"
+            );
+
             OverBitmap = NewMaterial(
                 compositedShader,
                 "OverBitmapTechnique"
@@ -524,6 +529,11 @@ namespace Squared.Render {
             UnderBitmap = NewMaterial(
                 compositedShader,
                 "UnderBitmapTechnique"
+            );
+
+            MaskedBitmap = NewMaterial(
+                compositedShader,
+                "MaskedBitmapTechnique"
             );
 
             GradientMaskedBitmap = NewMaterial(
@@ -688,8 +698,10 @@ namespace Squared.Render {
                 WorldSpaceShadowedBitmapWithDiscard,
                 BitmapWithDiscard,
                 CrossfadeBitmap,
+                AtopBitmap,
                 UnderBitmap,
                 OverBitmap,
+                MaskedBitmap,
                 GradientMaskedBitmap,
                 OutlinedBitmap,
                 OutlinedBitmapWithDiscard

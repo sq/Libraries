@@ -253,36 +253,36 @@ namespace Squared.PRGUI.Controls {
             SetText(ValueEncoder(_Value), true);
         }
 
-        protected override void ComputeScaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeScaledPadding(ref context, decorations, out result);
-            var gauge = context.DecorationProvider.ParameterGauge;
-            if ((gauge != null) && Minimum.HasValue && Maximum.HasValue) {
-                if (gauge.Padding.Top > 0)
-                    result.Top = 0;
-                if (gauge.Padding.Bottom > 0)
-                    result.Bottom = 0;
-            }
-        }
-
-        protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeUnscaledPadding(ref context, decorations, out result);
+        protected override void ComputeAppearanceSpacing (
+            ref UIOperationContext context, IDecorator decorations, 
+            out Margins scaledMargins, out Margins scaledPadding, out Margins unscaledPadding
+        ) {
+            base.ComputeAppearanceSpacing(ref context, decorations, out scaledMargins, out scaledPadding, out unscaledPadding);
 
             if (Increment.HasValue) {
-                result.Left += ArrowPadding;
-                result.Right += ArrowPadding;
+                unscaledPadding.Left += ArrowPadding;
+                unscaledPadding.Right += ArrowPadding;
             }
 
-            // If there's a gauge, adjust our content box based on its padding so that it doesn't overlap
-            //  our text or selection box
             var gauge = context.DecorationProvider.ParameterGauge;
-            ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
-            var y1 = (gauge.Padding.Top * sizeScale.Y) + (gauge.Margins.Bottom * marginScale.Y);
-            var y2 = (gauge.Padding.Bottom * sizeScale.Y) + (gauge.Margins.Top * marginScale.Y);
-            if ((gauge != null) && Minimum.HasValue && Maximum.HasValue) {
+            if (gauge == null)
+                return;
+
+            if (Minimum.HasValue && Maximum.HasValue) {
+                ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
+                var y1 = (gauge.Padding.Top * sizeScale.Y) + (gauge.Margins.Bottom * marginScale.Y);
+                var y2 = (gauge.Padding.Bottom * sizeScale.Y) + (gauge.Margins.Top * marginScale.Y);
+
+                // If there's a gauge, adjust our content box based on its padding so that it doesn't overlap
+                //  our text or selection box
                 if (gauge.Padding.Top > 0)
-                    result.Top += y1;
+                    scaledPadding.Top = 0;
                 if (gauge.Padding.Bottom > 0)
-                    result.Bottom += y2;
+                    scaledPadding.Bottom = 0;
+                if (gauge.Padding.Top > 0)
+                    unscaledPadding.Top += y1;
+                if (gauge.Padding.Bottom > 0)
+                    unscaledPadding.Bottom += y2;
             }
         }
 

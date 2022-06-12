@@ -569,13 +569,14 @@ namespace Squared.PRGUI.Controls {
             set => base.DisableChildHitTests = value;
         }
 
+        protected override bool CreateNestedContextForChildren => false;
+
         public ControlGroup ()
             : this (false, false) {
         }
 
         public ControlGroup (bool forceBreak = false, bool preventCrush = false, bool fill = false)
             : base () {
-            CreateNestedContextForChildren = false;
             Appearance.Undecorated = true;
             Layout.ForceBreak = forceBreak;
             Container.PreventCrush = preventCrush;

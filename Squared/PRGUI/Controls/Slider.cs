@@ -300,11 +300,14 @@ namespace Squared.PRGUI.Controls {
             return thumbSize;
         }
 
-        protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeUnscaledPadding(ref context, decorations, out result);
+        protected override void ComputeAppearanceSpacing (
+            ref UIOperationContext context, IDecorator decorations, 
+            out Margins scaledMargins, out Margins scaledPadding, out Margins unscaledPadding
+        ) {
+            base.ComputeAppearanceSpacing(ref context, decorations, out scaledMargins, out scaledPadding, out unscaledPadding);
             var thumbSize = ComputeThumbSize();
-            result.Left += thumbSize.X * 0.5f;
-            result.Right += thumbSize.X * 0.5f;
+            unscaledPadding.Left += thumbSize.X * 0.5f;
+            unscaledPadding.Right += thumbSize.X * 0.5f;
         }
 
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

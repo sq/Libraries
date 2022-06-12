@@ -999,10 +999,11 @@ namespace PRGUI.Demo {
                 Appearance = {
                     Transform = Tween.StartNow(
                         Matrix.Identity,
-                        Matrix.CreateRotationZ(360) * 
+                        Matrix.CreateRotationZ(360) *
                         Matrix.CreateTranslation(300, 300, 0),
                         seconds: 5, repeatCount: 99999, repeatMode: TweenRepeatMode.Pulse
                     ),
+                    Compositor = new MaskedCompositor(Materials, TextureLoader.Load("gauge-mask")),
                 },
                 Children = {
                     new StaticText {
@@ -1522,6 +1523,37 @@ namespace PRGUI.Demo {
                 ir.Layer += 1;
                 ir.DrawMultiple(dc, position, material: Materials.ScreenSpaceBitmap, blendState: BlendState.AlphaBlend);
             }
+        }
+    }
+
+    public class MaskedCompositor : IControlCompositor {
+        public DefaultMaterialSet Materials;
+        public Material Material;
+        public Texture2D Mask;
+        public float? Padding => null;
+
+        public MaskedCompositor (DefaultMaterialSet materials, Texture2D mask) {
+            Materials = materials;
+            Mask = mask;
+            Material = Materials.Get(Materials.MaskedBitmap, blendState: RenderStates.PorterDuffOver);
+        }
+
+        public void AfterIssueComposite (Control control, DeviceManager dm, in BitmapDrawCall drawCall) {
+        }
+
+        public void BeforeIssueComposite (Control control, DeviceManager dm, in BitmapDrawCall drawCall) {
+        }
+
+        public void Composite (Control control, ref ImperativeRenderer renderer, in BitmapDrawCall drawCall, float opacity) {
+            var temp = drawCall;
+            temp.Texture2 = Mask;
+            temp.TextureRegion2 = Bounds.Unit.Translate(new Vector2(-0.1f, -0.25f));
+            temp.AlignTexture2(control.GetRect().Width / Mask.Width);
+            renderer.Draw(in temp, material: Material);
+        }
+
+        public bool WillComposite (Control control, float opacity) {
+            return true;
         }
     }
 

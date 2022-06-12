@@ -254,8 +254,11 @@ namespace Squared.PRGUI.Controls {
                 box.Width -= scrollbar.MinimumSize.X * sizeScale.X;
         }
 
-        protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeUnscaledPadding(ref context, decorations, out result);
+        protected override void ComputeAppearanceSpacing (
+            ref UIOperationContext context, IDecorator decorations, 
+            out Margins scaledMargins, out Margins scaledPadding, out Margins unscaledPadding
+        ) {
+            base.ComputeAppearanceSpacing(ref context, decorations, out scaledMargins, out scaledPadding, out unscaledPadding);
             if (!Scrollable)
                 return;
             var decorationProvider = context.DecorationProvider;
@@ -265,9 +268,9 @@ namespace Squared.PRGUI.Controls {
             var sizeScale = decorationProvider?.SizeScaleRatio ?? Vector2.One;
             // FIXME: Conditionally adjust padding when visibility is auto? Possibly introduces jitter
             if (ShouldShowVerticalScrollbar)
-                result.Right += scrollbar.MinimumSize.X * sizeScale.X;
+                unscaledPadding.Right += scrollbar.MinimumSize.X * sizeScale.X;
             if (ShouldShowHorizontalScrollbar)
-                result.Bottom += scrollbar.MinimumSize.Y * sizeScale.Y;
+                unscaledPadding.Bottom += scrollbar.MinimumSize.Y * sizeScale.Y;
         }
 
         protected bool GetContentBounds (UIContext context, out Vector2 contentBounds) {

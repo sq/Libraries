@@ -129,13 +129,16 @@ namespace Squared.PRGUI.Controls {
             Content.WordWrap = false;
         }
 
-        protected override void ComputeUnscaledPadding (ref UIOperationContext context, IDecorator decorations, out Margins result) {
-            base.ComputeUnscaledPadding(ref context, decorations, out result);
+        protected override void ComputeAppearanceSpacing (
+            ref UIOperationContext context, IDecorator decorations, 
+            out Margins scaledMargins, out Margins scaledPadding, out Margins unscaledPadding
+        ) {
+            base.ComputeAppearanceSpacing(ref context, decorations, out scaledMargins, out scaledPadding, out unscaledPadding);
             var decorationProvider = context.DecorationProvider;
             ComputeEffectiveScaleRatios(decorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
             var width = (decorationProvider.DropdownArrow.Padding.X * paddingScale.X) +
                 (decorationProvider.DropdownArrow.UnscaledPadding.X);
-            result.Right += width;
+            unscaledPadding.Right += width;
             // FIXME: Use the Y value?
         }
 

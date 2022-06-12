@@ -32,7 +32,15 @@ namespace Squared.PRGUI.Controls {
         /// <summary>
         /// Cross-fade between Image and Image2
         /// </summary>
-        Crossfade
+        Crossfade,
+        /// <summary>
+        /// Image2 painted into Image1 (porter-duff atop)
+        /// </summary>
+        Atop,
+        /// <summary>
+        /// Image1 using Image2 as an rgba mask
+        /// </summary>
+        Masked,
     }
 
     public class StaticImage : Control, IPostLayoutListener {
@@ -267,12 +275,16 @@ namespace Squared.PRGUI.Controls {
         private Material SelectMaterialForTwoImages (DefaultMaterialSet materials) {
             switch (Image2Mode) {
                 default:
+                case StaticImageCompositeMode.Atop:
+                    return materials.AtopBitmap;
                 case StaticImageCompositeMode.Over:
                     return materials.OverBitmap;
                 case StaticImageCompositeMode.Under:
                     return materials.UnderBitmap;
                 case StaticImageCompositeMode.Crossfade:
                     return materials.CrossfadeBitmap;
+                case StaticImageCompositeMode.Masked:
+                    return materials.MaskedBitmap;
             }
         }
 

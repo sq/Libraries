@@ -56,6 +56,7 @@
     <Compile Include="Controls\Canvas.cs" />
     <Compile Include="Controls\Control.cs" />
     <Compile Include="Controls\Control.HitTest.cs" />
+    <Compile Include="Controls\Control.Rasterization.cs" />
     <Compile Include="Controls\ControlAppearance.cs" />
     <Compile Include="Controls\ControlCollection.cs" />
     <Compile Include="Controls\ControlData.cs" />

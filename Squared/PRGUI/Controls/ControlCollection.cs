@@ -28,6 +28,16 @@ namespace Squared.PRGUI {
 
         public int Count => Items.Count;
         public Control Host { get; private set; }
+        private WeakReference<Control> _WeakHost;
+        private WeakReference<Control> WeakHost {
+            get {
+                if (Host == null)
+                    return null;
+                if (_WeakHost == null)
+                    _WeakHost = new WeakReference<Control>(Host);
+                return _WeakHost;
+            }
+        }
         public UIContext Context { get; private set; }
 
         internal ControlCollection (UIContext parent) {
@@ -97,7 +107,7 @@ namespace Squared.PRGUI {
                 throw new InvalidOperationException("Control already in collection");
 
             if (Host != null)
-                control.SetParent(Host);
+                control.SetParent(WeakHost);
             else
                 control.Context = Context;
 
@@ -121,7 +131,7 @@ namespace Squared.PRGUI {
                 throw new InvalidOperationException("Control already in collection");
 
             if (Host != null)
-                control.SetParent(Host);
+                control.SetParent(WeakHost);
             else
                 control.Context = Context;
 
@@ -212,7 +222,7 @@ namespace Squared.PRGUI {
                 var previous = Items[index];
                 IndexTable.Remove(previous);
                 Items[index].UnsetParent(Host);
-                value.SetParent(Host);
+                value.SetParent(WeakHost);
                 IndexTable[value] = index;
                 Items[index] = value;
             }
@@ -350,7 +360,7 @@ namespace Squared.PRGUI {
 
                 IndexTable[newControl] = i;
                 if (isNew)
-                    newControl.SetParent(Host);
+                    newControl.SetParent(WeakHost);
             }
 
             // Find dead controls that we removed and never re-added
