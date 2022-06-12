@@ -20,43 +20,44 @@ namespace Squared.Render.Text {
         public const int DefaultBufferPadding = 4;
 
         // Parameters
+        public bool                characterWrap;
+        public bool                wordWrap;
+        public bool                hideOverflow;
+        public bool                reverseOrder;
+        public bool                measureOnly;
+        public bool                recordUsedTextures;
+        public bool                expandHorizontallyWhenAligning;
+        public bool                splitAtWrapCharactersOnly;
+        public bool                includeTrailingWhitespace;
+        public bool                clearUserData;
         public UnorderedList<BitmapDrawCall>.Allocator allocator;
         public ArraySegment<BitmapDrawCall> buffer;
         public Vector2?            position;
         public Color?              overrideColor;
         public Color               defaultColor;
         public Color               addColor;
-        public float               scale;
-        private float              _spacingMinusOne;
         public DrawCallSortKey     sortKey;
         public int                 characterSkipCount;
         public int?                characterLimit;
+        public int?                lineLimit;
+        public int?                lineBreakLimit;
+        public float               scale;
+        private float              _spacingMinusOne;
         public float               xOffsetOfFirstLine;
         public float               xOffsetOfWrappedLine;
         public float               xOffsetOfNewLine;
         public float               desiredWidth;
+        public float               extraLineBreakSpacing;
         public float?              maxExpansion;
         public float?              lineBreakAtX;
         public float?              stopAtY;
-        public float               extraLineBreakSpacing;
-        public bool                characterWrap;
-        public bool                wordWrap;
-        public bool                hideOverflow;
-        public bool                reverseOrder;
-        public int?                lineLimit;
-        public int?                lineBreakLimit;
-        public bool                measureOnly;
-        public bool                recordUsedTextures;
-        public bool                expandHorizontallyWhenAligning;
-        public bool                splitAtWrapCharactersOnly;
-        public bool                includeTrailingWhitespace;
         public GlyphPixelAlignment alignToPixels;
         public HorizontalAlignment alignment;
         public uint?               replacementCodepoint;
         public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
         public Vector4             userData;
         public Vector4             imageUserData;
-        public bool                clearUserData;
+        public List<AbstractTextureReference> usedTextures;
 
         public float spacing {
             get {
@@ -68,34 +69,33 @@ namespace Squared.Render.Text {
         }
 
         // State
-        public float   maxLineHeight;
+        public  float  maxLineHeight;
+        public  float  currentLineMaxX, currentLineMaxXUnconstrained;
+        private float  initialLineXOffset;
+        private float  currentLineWrapPointLeft, currentLineWhitespaceMaxX;
+        private float  maxX, maxY, maxXUnconstrained, maxYUnconstrained;
+        private float  initialLineSpacing, currentLineSpacing;
+        private float  currentXOverhang;
+        private float  currentBaseline;
+        private float  maxLineSpacing;
+        public  float? currentLineBreakAtX;
         public Vector2 actualPosition, characterOffset, characterOffsetUnconstrained;
         public Bounds  firstCharacterBounds, lastCharacterBounds;
-        public int     drawCallsWritten, drawCallsSuppressed;
-        float          initialLineXOffset;
-        int            bufferWritePosition, wordStartWritePosition, baselineAdjustmentStart;
-        public int     rowIndex => _rowIndex;
-        public int     colIndex => _colIndex;
-        public int     wordIndex => _wordIndex;
-        public float   currentLineMaxX, currentLineMaxXUnconstrained;
-        public float?  currentLineBreakAtX;
-        float          currentLineWrapPointLeft, currentLineWhitespaceMaxX;
-        float          maxX, maxY, maxXUnconstrained, maxYUnconstrained;
-        float          initialLineSpacing, currentLineSpacing;
-        float          currentXOverhang;
-        float          currentBaseline;
-        float          maxLineSpacing;
+        public  int    drawCallsWritten, drawCallsSuppressed;
+        private int    bufferWritePosition, wordStartWritePosition, baselineAdjustmentStart;
+        private int _rowIndex, _colIndex, _wordIndex;
+        private int    wordStartColumn;
         Vector2        wordStartOffset;
-        int            wordStartColumn;
         private bool   ownsBuffer, suppress, suppressUntilNextLine, previousGlyphWasDead, 
             newLinePending, wordWrapSuppressed;
         private AbstractTextureReference lastUsedTexture;
-        private DenseList<AbstractTextureReference> usedTextures;
         private DenseList<Bounds> boxes;
 
-        private int _rowIndex, _colIndex, _wordIndex;
+        public int     rowIndex => _rowIndex;
+        public int     colIndex => _colIndex;
+        public int     wordIndex => _wordIndex;
 
-        public int currentCharacterIndex { get; private set; }
+        public int     currentCharacterIndex { get; private set; }
 
         private bool IsInitialized;
 
@@ -137,7 +137,6 @@ namespace Squared.Render.Text {
 
             currentCharacterIndex = 0;
             lastUsedTexture = null;
-            usedTextures = default(DenseList<AbstractTextureReference>);
             boxes = default(DenseList<Bounds>);
             ComputeLineBreakAtX();
 
@@ -1205,9 +1204,22 @@ namespace Squared.Render.Text {
             float xUnconstrained, ref Bounds testBounds, bool splitMarker, bool didWrapWord,
             bool? overrideSuppress = null
         ) {
-            if (recordUsedTextures && (drawCall.Textures.Texture1 != lastUsedTexture) && (drawCall.Textures.Texture1 != null)) {
+            if (recordUsedTextures && 
+                (drawCall.Textures.Texture1 != lastUsedTexture) && 
+                (drawCall.Textures.Texture1 != null)
+            ) {
+                if (usedTextures == null)
+                    throw new NullReferenceException("usedTextures must be set if recordUsedTextures is set");
+
                 lastUsedTexture = drawCall.Textures.Texture1;
-                var existingIndex = usedTextures.IndexOf(drawCall.Textures.Texture1, AbstractTextureReference.Comparer.Instance);
+                int existingIndex = -1;
+                for (int i = 0; i < usedTextures.Count; i++) {
+                    if (usedTextures[i].Id == drawCall.Textures.Texture1.Id) {
+                        existingIndex = i;
+                        break;
+                    }
+                }
+
                 if (existingIndex < 0)
                     usedTextures.Add(lastUsedTexture);
             }

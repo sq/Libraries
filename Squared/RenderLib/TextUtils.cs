@@ -16,6 +16,22 @@ using Squared.Util.Text;
 
 namespace Squared.Render.Text {
     public sealed class DynamicStringLayout {
+        [Flags]
+        private enum InternalFlags : ushort {
+            HasCachedStringLayout          = 0b1,
+            WordWrap                       = 0b10,
+            CharacterWrap                  = 0b100,
+            ReverseOrder                   = 0b1000,
+            MeasureOnly                    = 0b10000,
+            RichText                       = 0b100000,
+            HideOverflow                   = 0b1000000,
+            RecordUsedTextures             = 0b10000000,
+            ExpandHorizontallyWhenAligning = 0b100000000,
+            SplitAtWrapCharactersOnly      = 0b1000000000,
+            IncludeTrailingWhitespace      = 0b10000000000,
+            AwaitingDependencies           = 0b100000000000,
+        }
+
         /// <summary>
         /// Strings under this length will have a hash computed and stored in order to allow
         ///  layout.Text = value to avoid invalidating if the text has not changed even if
@@ -32,8 +48,8 @@ namespace Squared.Render.Text {
 
         private ArraySegment<BitmapDrawCall> _Buffer; 
         private StringLayout _CachedStringLayout;
-        private bool _HasCachedStringLayout = false;
         private int _CachedGlyphVersion = -1, _TextVersion = -1;
+        private InternalFlags _Flags;
 
         private RichTextConfiguration _RichTextConfiguration;
         private string _StyleName;
@@ -56,29 +72,22 @@ namespace Squared.Render.Text {
         private float _XOffsetOfNewLine;
         private float? _LineBreakAtX;
         private float? _StopAtY;
-        private bool _WordWrap;
-        private bool _CharacterWrap;
         private float _WrapIndentation;
         private float _ExtraLineBreakSpacing;
         private GlyphPixelAlignment _AlignToPixels = GlyphPixelAlignment.Default;
         private char _WrapCharacter;
-        private int _Alignment;
-        private bool _ReverseOrder;
+        private byte _Alignment;
         private int _LineLimit;
         private int _LineBreakLimit;
-        private bool _MeasureOnly;
-        private bool _RichText;
-        private bool _HideOverflow;
-        private bool _RecordUsedTextures;
-        private bool _ExpandHorizontallyWhenAligning;
-        private bool _SplitAtWrapCharactersOnly;
-        private bool _IncludeTrailingWhitespace;
         private char? _ReplacementCharacter;
         private uint[] _WordWrapCharacters;
-        private bool _AwaitingDependencies;
         private Vector4? _UserData;
         private Vector4? _ImageUserData;
 
+        // TODO: Move all of these to a single allocated-on-demand class, then make UsedTextures 
+        //  a DenseList again? Maybe Dependencies too?
+        // Would save ~36 bytes, which adds up to ~72 bytes per StaticTextBase instance
+        private List<AbstractTextureReference> _UsedTextures = null;
         private List<AsyncRichImage> _Dependencies = null;
         private Dictionary<Pair<int>, LayoutMarker> _Markers = null;
         private Dictionary<Vector2, LayoutHitTest> _HitTests = null;
@@ -97,6 +106,32 @@ namespace Squared.Render.Text {
             _GlyphSource = font;
             _Text = text;
             Reset();
+        }
+
+        private bool GetFlag (InternalFlags flag) {
+            return (_Flags & flag) == flag;
+        }
+
+        private bool? GetFlag (InternalFlags isSetFlag, InternalFlags valueFlag) {
+            if ((_Flags & isSetFlag) != isSetFlag)
+                return null;
+            else
+                return (_Flags & valueFlag) == valueFlag;
+        }
+
+        private void SetFlag (InternalFlags flag, bool state) {
+            if (state)
+                _Flags |= flag;
+            else
+                _Flags &= ~flag;
+        }
+
+        private bool ChangeFlag (InternalFlags flag, bool newState) {
+            if (GetFlag(flag) == newState)
+                return false;
+
+            SetFlag(flag, newState);
+            return true;
         }
 
         public void Reset () {
@@ -133,7 +168,7 @@ namespace Squared.Render.Text {
             ExpandHorizontallyWhenAligning = true;
             ReplacementCharacter = default;
             WordWrapCharacters = default;
-            _AwaitingDependencies = false;
+            SetFlag(InternalFlags.AwaitingDependencies, false);
             _Dependencies?.Clear();
             _RichMarkers?.Clear();
             _Boxes?.Clear();
@@ -250,6 +285,14 @@ namespace Squared.Render.Text {
                 destination = newValue;
                 Invalidate();
             }
+        }
+
+        private bool InvalidatingFlagAssignment (InternalFlags flag, bool newValue) {
+            if (ChangeFlag(flag, newValue)) {
+                Invalidate();
+                return true;
+            }
+            return false;
         }
 
         private bool InvalidatingValueAssignment<T> (ref T destination, T newValue) 
@@ -582,12 +625,8 @@ namespace Squared.Render.Text {
         }
 
         public bool RichText {
-            get {
-                return _RichText;
-            }
-            set {
-                InvalidatingValueAssignment(ref _RichText, value);
-            }
+            get => GetFlag(InternalFlags.RichText);
+            set => InvalidatingFlagAssignment(InternalFlags.RichText, value);
         }
 
         public string StyleName {
@@ -603,53 +642,38 @@ namespace Squared.Render.Text {
         /// Any characters outside of the layout region will be hidden but still participate in layout/measurement
         /// </summary>
         public bool HideOverflow {
-            get {
-                return _HideOverflow;
-            }
-            set {
-                InvalidatingValueAssignment(ref _HideOverflow, value);
-            }
+            get => GetFlag(InternalFlags.HideOverflow);
+            set => InvalidatingFlagAssignment(InternalFlags.HideOverflow, value);
         }
 
         /// <summary>
         /// Attempt to wrap words to the next line when they extend past the wrap boundary
         /// </summary>
         public bool WordWrap {
-            get {
-                return _WordWrap;
-            }
-            set {
-                InvalidatingValueAssignment(ref _WordWrap, value);
-            }
+            get => GetFlag(InternalFlags.WordWrap);
+            set => InvalidatingFlagAssignment(InternalFlags.WordWrap, value);
         }
 
         /// <summary>
         /// Attempt to wrap characters to the next line when they extend past the wrap boundary
         /// </summary>
         public bool CharacterWrap {
-            get {
-                // FIXME: Is this right?
-                return _CharacterWrap;
-            }
-            set {
-                InvalidatingValueAssignment(ref _CharacterWrap, value);
-            }
+            get => GetFlag(InternalFlags.CharacterWrap);
+            set => InvalidatingFlagAssignment(InternalFlags.CharacterWrap, value);
         }
 
         /// <summary>
         /// Does not generate a table of draw calls, only measures the text
         /// </summary>
         public bool MeasureOnly {
-            get {
-                return _MeasureOnly;
-            }
+            get => GetFlag(InternalFlags.MeasureOnly);
             set {
                 // If we weren't in measurement-only mode, transitioning into it doesn't
                 //  need to invalidate anything since all we'd do is throw away data
-                if (_MeasureOnly == false)
-                    InvalidatingValueAssignment(ref _MeasureOnly, value);
+                if (!GetFlag(InternalFlags.MeasureOnly))
+                    InvalidatingFlagAssignment(InternalFlags.MeasureOnly, value);
                 else
-                    _MeasureOnly = value;
+                    SetFlag(InternalFlags.MeasureOnly, value);
             }
         }
 
@@ -661,7 +685,7 @@ namespace Squared.Render.Text {
                 return (HorizontalAlignment)_Alignment;
             }
             set {
-                InvalidatingValueAssignment(ref _Alignment, (int)value);
+                InvalidatingValueAssignment(ref _Alignment, (byte)value);
             }
         }
 
@@ -721,12 +745,8 @@ namespace Squared.Render.Text {
         }
 
         public bool ReverseOrder {
-            get {
-                return _ReverseOrder;
-            }
-            set {
-                InvalidatingValueAssignment(ref _ReverseOrder, value);
-            }
+            get => GetFlag(InternalFlags.ReverseOrder);
+            set => InvalidatingFlagAssignment(InternalFlags.ReverseOrder, value);
         }
 
         /// <summary>
@@ -745,34 +765,32 @@ namespace Squared.Render.Text {
         /// If set, every texture used in the layout will be recorded so you can use it for tracking and lifetime management.
         /// </summary>
         public bool RecordUsedTextures {
-            get => _RecordUsedTextures;
-            set {
-                InvalidatingValueAssignment(ref _RecordUsedTextures, value);
-            }
+            get => GetFlag(InternalFlags.RecordUsedTextures);
+            set => InvalidatingFlagAssignment(InternalFlags.RecordUsedTextures, value);
         }
 
         /// <summary>
         /// When horizontally aligning text, the layout will automatically be expanded to reach its line break point
         /// </summary>
         public bool ExpandHorizontallyWhenAligning {
-            get => _ExpandHorizontallyWhenAligning;
-            set => InvalidatingValueAssignment(ref _ExpandHorizontallyWhenAligning, value);
+            get => GetFlag(InternalFlags.ExpandHorizontallyWhenAligning);
+            set => InvalidatingFlagAssignment(InternalFlags.ExpandHorizontallyWhenAligning, value);
         }
 
         /// <summary>
         /// When justifying or wrapping text, only characters in the WordWrapCharacters list will be treated as split/wrap points
         /// </summary>
         public bool SplitAtWrapCharactersOnly {
-            get => _SplitAtWrapCharactersOnly;
-            set => InvalidatingValueAssignment(ref _SplitAtWrapCharactersOnly, value);
+            get => GetFlag(InternalFlags.SplitAtWrapCharactersOnly);
+            set => InvalidatingFlagAssignment(InternalFlags.SplitAtWrapCharactersOnly, value);
         }
 
         /// <summary>
         /// Trailing whitespace will be included in the layout
         /// </summary>
         public bool IncludeTrailingWhitespace {
-            get => _IncludeTrailingWhitespace;
-            set => InvalidatingValueAssignment(ref _IncludeTrailingWhitespace, value);
+            get => GetFlag(InternalFlags.IncludeTrailingWhitespace);
+            set => InvalidatingFlagAssignment(InternalFlags.IncludeTrailingWhitespace, value);
         }
 
         /// <summary>
@@ -803,7 +821,7 @@ namespace Squared.Render.Text {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return (
-                    _HasCachedStringLayout && 
+                    GetFlag(InternalFlags.HasCachedStringLayout) && 
                     (_CachedGlyphVersion >= _GlyphSource.Version) && 
                     !_GlyphSource.IsDisposed
                 );
@@ -811,10 +829,8 @@ namespace Squared.Render.Text {
         }
 
         public void Invalidate () {
-            if (_HasCachedStringLayout)
-                ;
             // Hey, you're the boss
-            _HasCachedStringLayout = false;
+            SetFlag(InternalFlags.HasCachedStringLayout, false);
             _CachedStringLayout = default;
             if (_RichMarkers != null)
                 _RichMarkers.Clear();
@@ -826,6 +842,9 @@ namespace Squared.Render.Text {
         public void MakeLayoutEngine (out StringLayoutEngine result) {
             if (_GlyphSource == null)
                 throw new ArgumentNullException("GlyphSource");
+
+            if (RecordUsedTextures && (_UsedTextures == null))
+                _UsedTextures = new List<AbstractTextureReference>(4);
 
             result = new StringLayoutEngine {
                 allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
@@ -847,22 +866,23 @@ namespace Squared.Render.Text {
                 lineBreakAtX = _LineBreakAtX,
                 stopAtY = _StopAtY,
                 alignToPixels = _AlignToPixels.Or(_GlyphSource.DefaultAlignment),
-                characterWrap = _CharacterWrap,
-                wordWrap = _WordWrap,
-                hideOverflow = _HideOverflow,
+                characterWrap = CharacterWrap,
+                wordWrap = WordWrap,
+                hideOverflow = HideOverflow,
                 alignment = (HorizontalAlignment)_Alignment,
-                reverseOrder = _ReverseOrder,
+                reverseOrder = ReverseOrder,
                 lineLimit = _LineLimit,
                 lineBreakLimit = _LineBreakLimit,
-                measureOnly = _MeasureOnly,
+                measureOnly = MeasureOnly,
                 replacementCodepoint = _ReplacementCharacter,
-                recordUsedTextures = _RecordUsedTextures,
-                expandHorizontallyWhenAligning = _ExpandHorizontallyWhenAligning,
-                splitAtWrapCharactersOnly = _SplitAtWrapCharactersOnly,
-                includeTrailingWhitespace = _IncludeTrailingWhitespace,
+                recordUsedTextures = RecordUsedTextures,
+                usedTextures = _UsedTextures,
+                expandHorizontallyWhenAligning = ExpandHorizontallyWhenAligning,
+                splitAtWrapCharactersOnly = SplitAtWrapCharactersOnly,
+                includeTrailingWhitespace = IncludeTrailingWhitespace,
                 userData = _UserData ?? Vector4.Zero,
                 imageUserData = _ImageUserData ?? _UserData ?? Vector4.Zero,
-                clearUserData = _UserData.HasValue
+                clearUserData = _UserData.HasValue,
             };
 
             if (_WordWrapCharacters != null)
@@ -918,16 +938,16 @@ namespace Squared.Render.Text {
             this.SplitAtWrapCharactersOnly = source.SplitAtWrapCharactersOnly;
             this.IncludeTrailingWhitespace = source.IncludeTrailingWhitespace;
             this.DesiredWidth = source.DesiredWidth;
-            _AwaitingDependencies = false;
+            SetFlag(InternalFlags.AwaitingDependencies, false);
         }
 
         public bool Get (out StringLayout result) {
-            if (_HasCachedStringLayout && (_GlyphSource != null) &&
+            if (GetFlag(InternalFlags.HasCachedStringLayout) && (_GlyphSource != null) &&
                 ((_CachedGlyphVersion < _GlyphSource.Version) || _GlyphSource.IsDisposed)
             )
                 Invalidate();
 
-            if (_AwaitingDependencies) {
+            if (GetFlag(InternalFlags.AwaitingDependencies)) {
                 bool stillWaiting = false;
                 foreach (var d in _Dependencies) {
                     if (!d.HasValue) {
@@ -941,7 +961,7 @@ namespace Squared.Render.Text {
                 }
             }
 
-            if (!_HasCachedStringLayout) {
+            if (!GetFlag(InternalFlags.HasCachedStringLayout)) {
                 var glyphSource = GlyphSource;
                 if (glyphSource == null) {
                     _CachedStringLayout = result = default;
@@ -974,7 +994,7 @@ namespace Squared.Render.Text {
 
                 try {
                     le.Initialize();
-                    if (_RichText) {
+                    if (RichText) {
                         var ka = _RichTextConfiguration.KerningAdjustments;
                         _RichTextConfiguration.KerningAdjustments = _KerningAdjustments ?? ka;
                         rls = new RichTextLayoutState(ref le, glyphSource);
@@ -986,16 +1006,16 @@ namespace Squared.Render.Text {
                             for (int i = 0, c = dependencies.Count; i < c; i++) {
                                 var d = dependencies[i];
                                 if (!d.HasValue)
-                                    _AwaitingDependencies = true;
+                                    SetFlag(InternalFlags.AwaitingDependencies, true);
                                 _Dependencies.Add(d);
                             }
                         } else
-                            _AwaitingDependencies = false;
+                            SetFlag(InternalFlags.AwaitingDependencies, false);
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             _RichTextConfiguration.Append(ref le, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
                         _RichTextConfiguration.KerningAdjustments = ka;
                     } else {
-                        _AwaitingDependencies = false;
+                        SetFlag(InternalFlags.AwaitingDependencies, false);
                         le.AppendText(glyphSource, _Text, _KerningAdjustments);
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             le.AppendText(glyphSource, TruncatedIndicator, _KerningAdjustments, overrideSuppress: false);
@@ -1023,7 +1043,7 @@ namespace Squared.Render.Text {
                     }
 
                     _Buffer = le.buffer;
-                    _HasCachedStringLayout = true;
+                    SetFlag(InternalFlags.HasCachedStringLayout, true);
                 } finally {
                     le.Dispose();
                 }

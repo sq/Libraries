@@ -32,14 +32,15 @@ namespace Squared.Render.Text {
         public readonly Bounds FirstCharacterBounds;
         public readonly Bounds LastCharacterBounds;
         public ArraySegment<BitmapDrawCall> DrawCalls;
-        public DenseList<AbstractTextureReference> UsedTextures;
+        public List<AbstractTextureReference> UsedTextures;
+        // TODO: Find a smaller representation for these, because this makes DynamicStringLayout big
         public DenseList<Bounds> Boxes;
         public readonly int WordCount, LineCount;
         public readonly bool WasLineLimited;
 
         public StringLayout (
-            Vector2 position, Vector2 size, Vector2 unconstrainedSize, 
-            float lineHeight, Bounds firstCharacter, Bounds lastCharacter, 
+            in Vector2 position, in Vector2 size, in Vector2 unconstrainedSize, 
+            float lineHeight, in Bounds firstCharacter, in Bounds lastCharacter, 
             ArraySegment<BitmapDrawCall> drawCalls, bool wasLineLimited,
             int wordCount, int lineCount
         ) {
@@ -52,7 +53,7 @@ namespace Squared.Render.Text {
             DrawCalls = drawCalls;
             WasLineLimited = wasLineLimited;
             Boxes = default(DenseList<Bounds>);
-            UsedTextures = default(DenseList<AbstractTextureReference>);
+            UsedTextures = null;
             WordCount = wordCount;
             LineCount = lineCount;
         }
@@ -116,7 +117,7 @@ namespace Squared.Render.Text {
         }
     }
 
-    public enum HorizontalAlignment : int {
+    public enum HorizontalAlignment : byte {
         Left,
         Center,
         Right,

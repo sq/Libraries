@@ -370,7 +370,7 @@ namespace Squared.PRGUI.Controls {
                     SetInternalFlag(StaticTextStateFlags.NeedRelayout, true);
                 }
                 Content.Get(out result);
-                SetInternalFlag(StaticTextStateFlags.DidUseTextures, result.UsedTextures.Count > 0);
+                SetInternalFlag(StaticTextStateFlags.DidUseTextures, (result.UsedTextures?.Count ?? 0) > 0);
             }
         }
 
@@ -480,8 +480,9 @@ namespace Squared.PRGUI.Controls {
             if (Content.IsValid && GetInternalFlag(StaticTextStateFlags.DidUseTextures)) {
                 // FIXME: This is slow
                 GetCurrentLayout(out var layout, false);
-                foreach (var tex in layout.UsedTextures)
-                    context.UIContext.NotifyTextureUsed(this, tex);
+                if (layout.UsedTextures != null)
+                    foreach (var tex in layout.UsedTextures)
+                        context.UIContext.NotifyTextureUsed(this, tex);
             }
 
             return result;
