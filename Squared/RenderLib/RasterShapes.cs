@@ -223,7 +223,7 @@ namespace Squared.Render.RasterShape {
     public struct RasterTextureSettings {
         public SamplerState SamplerState;
         private int ShadowMode;
-        internal Vector4 ModeAndSize;
+        internal Vector4 ModeAndScaleMinusOne;
         internal Vector4 Placement;
 
         public RasterTextureCompositeMode Mode {
@@ -232,26 +232,26 @@ namespace Squared.Render.RasterShape {
             }
             set {
                 ShadowMode = (int)value;
-                ModeAndSize.X = (float)ShadowMode;
+                ModeAndScaleMinusOne.X = (float)ShadowMode;
             }
         }
 
         public bool PreserveAspectRatio {
             get {
-                return ModeAndSize.Y > 0.5f;
+                return ModeAndScaleMinusOne.Y > 0.5f;
             }
             set {
-                ModeAndSize.Y = value ? 1f : 0f;
+                ModeAndScaleMinusOne.Y = value ? 1f : 0f;
             }
         }
 
         public Vector2 Scale {
             get {
-                return new Vector2(ModeAndSize.Z + 1, ModeAndSize.W + 1);
+                return new Vector2(ModeAndScaleMinusOne.Z + 1, ModeAndScaleMinusOne.W + 1);
             }
             set {
-                ModeAndSize.Z = value.X - 1;
-                ModeAndSize.W = value.Y - 1;
+                ModeAndScaleMinusOne.Z = value.X - 1;
+                ModeAndScaleMinusOne.W = value.Y - 1;
             }
         }
 
@@ -285,7 +285,7 @@ namespace Squared.Render.RasterShape {
 
         public bool Equals (RasterTextureSettings rhs) {
             return (SamplerState == rhs.SamplerState) && 
-                (ModeAndSize == rhs.ModeAndSize) &&
+                (ModeAndScaleMinusOne == rhs.ModeAndScaleMinusOne) &&
                 (Placement == rhs.Placement);
         }
 
@@ -841,11 +841,13 @@ namespace Squared.Render.RasterShape {
                         shadowExpansion, sb.Shadow.Inside ? 1 : 0
                     ));
                     rasterShader.ShadowColorLinear.SetValue(shadowColor);
-                    var mas = sb.TextureSettings.ModeAndSize;
+                    var mas = sb.TextureSettings.ModeAndScaleMinusOne;
+                    mas.Z += 1;
+                    mas.W += 1;
                     if (Texture != null) {
                         if ((sb.TextureSettings.Mode & RasterTextureCompositeMode.ScreenSpace) == RasterTextureCompositeMode.ScreenSpace) {
-                            mas.Z = (mas.Z + 1) * Texture.Width;
-                            mas.W = (mas.W + 1) * Texture.Height;
+                            mas.Z *= Texture.Width;
+                            mas.W *= Texture.Height;
                         }
                         var traits = Evil.TextureUtils.GetTraits(Texture.Format);
                         rasterShader.TextureTraits?.SetValue(traits);

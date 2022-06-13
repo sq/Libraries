@@ -1144,7 +1144,7 @@ float4 texturedShapeCommon (
             sizePx = min(sizePx.x, sizePx.y);
         float2 posRelativeScaled = posRelative / sizePx;
 
-        float2 posTextureScaled = posRelativeScaled / (TextureModeAndSize.zw + 1);
+        float2 posTextureScaled = posRelativeScaled / (TextureModeAndSize.zw);
         posTextureScaled += TexturePlacement.xy;
 
         float2 texSize = (texRgn.zw - texRgn.xy);

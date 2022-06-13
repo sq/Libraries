@@ -491,8 +491,8 @@ namespace Squared.PRGUI {
             var offset = (rect.Size * control.Appearance.TransformOrigin) + rect.Position;
             Matrix.CreateTranslation(-offset.X, -offset.Y, 0f, out Matrix before);
             Matrix.CreateTranslation(offset.X, offset.Y, 0f, out Matrix after);
-            var result = before * matrix * after;
-            vt.ModelView *= result;
+            // For nested non-composited transforms to work, we need to apply our transform in an unusual order
+            vt.ModelView = before * matrix * after * vt.ModelView;
         }
 
         private void RasterizeIntoPrepass (
