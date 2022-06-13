@@ -932,8 +932,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool NeedsComposition (bool hasOpacity, bool hasTransform) {
-            if (Appearance.BackgroundColor.IsTransparent && (CustomTextMaterial == null) && !(this is HyperText))
-                return false;
+            if (Appearance.BackgroundColor.IsTransparent && (CustomTextMaterial == null) && !(this is HyperText)) {
+                hasOpacity = hasTransform = false;
+            }
             return base.NeedsComposition(hasOpacity, hasTransform);
         }
     }

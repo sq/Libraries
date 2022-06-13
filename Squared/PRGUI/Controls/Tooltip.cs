@@ -165,7 +165,15 @@ namespace Squared.PRGUI {
         public bool RichText;
         public RichTextConfiguration RichTextConfiguration;
         public Func<IGlyphSource> DefaultGlyphSource;
-        public Vector2? AnchorPoint, ControlAlignmentPoint, MaxSize;
+        /// <summary>
+        /// Configures what point on the control [0 - 1] is aligned onto the anchor point
+        /// </summary>
+        public Vector2? ControlAlignmentPoint;
+        /// <summary>
+        /// Configures what point on the anchor [0 - 1] is used as the center for alignment
+        /// </summary>
+        public Vector2? AnchorPoint;
+        public Vector2? MaxSize;
         public Action<DynamicStringLayout> ConfigureLayout;
         public StringLayoutFilter LayoutFilter;
         public HorizontalAlignment TextAlignment;

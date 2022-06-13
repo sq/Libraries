@@ -130,8 +130,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool NeedsComposition (bool hasOpacity, bool hasTransform) {
-            if (Appearance.BackgroundColor.IsTransparent)
-                return false;
+            if (Appearance.BackgroundColor.IsTransparent) {
+                hasOpacity = hasTransform = false;
+            }
             return base.NeedsComposition(hasOpacity, hasTransform);
         }
 
