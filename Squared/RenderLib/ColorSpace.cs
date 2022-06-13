@@ -73,17 +73,17 @@ namespace Squared.Render {
 
         public pSRGBColor (int r, int g, int b, float a = 1f) {
             IsVector4 = true;
-            _Vector4 = new Vector4(r * a, g * a, b * a, a);
+            _Vector4 = new Vector4(r * a / 255f, g * a / 255f, b * a / 255f, a);
             _Color = default(Color);
         }
 
         public pSRGBColor (int r, int g, int b, int _a, bool isPremultiplied = false) {
             IsVector4 = true;
             if (isPremultiplied)
-                _Vector4 = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
+                _Vector4 = new Vector4(r / 255f, g / 255f, b / 255f, 1);
             else {
-                float a = _a / 255.0f;
-                _Vector4 = new Vector4(r * a / 255.0f, g * a / 255.0f, b * a / 255.0f, a);
+                float a = _a / 255f;
+                _Vector4 = new Vector4(r * a / 255f, g * a / 255f, b * a / 255f, a);
             }
             _Color = default(Color);
         }
