@@ -1024,36 +1024,10 @@ namespace Squared.Util {
             return CompareF(in u);
         }
     }
-}
-
-namespace Squared.Util.Random {
-    public struct RandomNumberProvider {
-        private System.Random Random;
-        private CoreCLR.Xoshiro Xoshiro;
-
-        public int Next (int minValue, int maxValueExclusive) {
-            if (Random != null)
-                return Random.Next(minValue, maxValueExclusive);
-            else
-                return Xoshiro.Next(minValue, maxValueExclusive);
-        }
-
-        public static implicit operator RandomNumberProvider (CoreCLR.Xoshiro xoshiro) {
-            return new RandomNumberProvider {
-                Xoshiro = xoshiro
-            };
-        }
-
-        public static implicit operator RandomNumberProvider (System.Random random) {
-            return new RandomNumberProvider {
-                Random = random
-            };
-        }
-    }
 
     public static class FisherYates {
         public static void Shuffle<T> (
-            RandomNumberProvider rng,
+            Random rng,
             ArraySegment<T> values
         ) {
             var n = values.Count;
@@ -1066,7 +1040,7 @@ namespace Squared.Util.Random {
         }
 
         public static void Shuffle<T> (
-            RandomNumberProvider rng,
+            Random rng,
             ref DenseList<T> values
         ) {
             var n = values.Count;
@@ -1079,7 +1053,46 @@ namespace Squared.Util.Random {
         }
 
         public static void Shuffle<T> (
-            RandomNumberProvider rng,
+            Random rng,
+            IList<T> values
+        ) {
+            var n = values.Count;
+            for (var i = 0; i < n; i += 1) {
+                var j = rng.Next(i, n);
+                var temp = values[j];
+                values[j] = values[i];
+                values[i] = temp;
+            }
+        }
+
+        public static void Shuffle<T> (
+            ref CoreCLR.Xoshiro rng,
+            ArraySegment<T> values
+        ) {
+            var n = values.Count;
+            for (var i = 0; i < n; i += 1) {
+                var j = rng.Next(i, n);
+                var temp = values.Array[values.Offset + j];
+                values.Array[values.Offset + j] = values.Array[values.Offset + i];
+                values.Array[values.Offset + i] = temp;
+            }
+        }
+
+        public static void Shuffle<T> (
+            ref CoreCLR.Xoshiro rng,
+            ref DenseList<T> values
+        ) {
+            var n = values.Count;
+            for (var i = 0; i < n; i += 1) {
+                var j = rng.Next(i, n);
+                var temp = values[j];
+                values[j] = values[i];
+                values[i] = temp;
+            }
+        }
+
+        public static void Shuffle<T> (
+            ref CoreCLR.Xoshiro rng,
             IList<T> values
         ) {
             var n = values.Count;

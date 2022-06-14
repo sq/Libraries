@@ -5,29 +5,6 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Text.RegularExpressions;
-#if WINDOWS
-using ComTypes = System.Runtime.InteropServices.ComTypes;
-using System.Drawing;
-#endif
-
-#if !WINDOWS && !SDL2 && !FNA
-namespace System.IO {
-    // Who would ever want to throw exceptions on the XBox? Apparently more people than they thought
-    public sealed class InvalidDataException : SystemException {
-        public InvalidDataException ()
-            : base() {
-        }
-
-        public InvalidDataException (string message)
-            : base(message) {
-        }
-
-        public InvalidDataException (string message, Exception innerException)
-            : base(message, innerException) {
-        }
-    }
-}
-#endif
 
 namespace Squared.Util {
 #if WINDOWS
