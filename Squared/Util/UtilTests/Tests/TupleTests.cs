@@ -25,24 +25,6 @@ namespace Squared.Util {
     }
 
     [TestFixture]
-    public class TripletTests {
-        [Test]
-        public void CompareToTest () {
-            var A = new Triplet<float>(1.0f, 2.0f, 1.0f);
-            var B = new Triplet<float>(2.0f, 1.0f, 1.0f);
-            var C = new Triplet<float>(2.0f, 2.0f, 2.0f);
-
-            Assert.AreEqual(0, A.CompareTo(A));
-            Assert.AreEqual(-1, A.CompareTo(B));
-            Assert.AreEqual(-1, B.CompareTo(C));
-            Assert.AreEqual(-1, A.CompareTo(C));
-            Assert.AreEqual(1, C.CompareTo(B));
-            Assert.AreEqual(1, C.CompareTo(A));
-            Assert.AreEqual(1, B.CompareTo(A));
-        }
-    }
-
-    [TestFixture]
     public class IntervalTests {
         [Test]
         public void IntersectsTest () {

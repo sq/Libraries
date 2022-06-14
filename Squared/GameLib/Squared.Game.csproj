@@ -53,12 +53,9 @@
     <Compile Include="GameExtensionMethods.cs" />
     <Compile Include="Geometry3.cs" />
     <Compile Include="Geometry.cs" />
-    <Compile Include="Graph.cs" />
     <Compile Include="Input.cs" />
     <Compile Include="KeyboardInputProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Serialization.cs" />
-    <Compile Include="Serializers.cs" />
     <Compile Include="SpatialCollection.cs" />
   </ItemGroup>
   <PropertyGroup>

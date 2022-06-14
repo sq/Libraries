@@ -52,7 +52,6 @@
     <Compile Include="IndexedSort.cs" />
     <Compile Include="CLRSort.cs" />
     <Compile Include="DeclarativeSort.cs" />
-    <Compile Include="LambdaCompiler.cs" />
     <Compile Include="Bind.cs" />
     <Compile Include="Buffer.cs" />
     <Compile Include="Curve.cs" />

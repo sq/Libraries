@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using NUnit.Framework;
 using Squared.Util;
+using Squared.Util.Containers;
 
 namespace Squared.Util {
     [TestFixture]

@@ -8,6 +8,7 @@ using Squared.Threading;
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 using System.Diagnostics;
 using System.Reflection;
+using Squared.Util.Containers;
 
 namespace Squared.Task {
     public interface ISchedulable {

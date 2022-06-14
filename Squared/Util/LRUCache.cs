@@ -5,7 +5,7 @@ using System.Text;
 using System.Collections;
 using System.Threading;
 
-namespace Squared.Util {
+namespace Squared.Util.Containers {
     // Thanks to Josiah Carlson
     public class LRUCache<K, V> : IEnumerable<KeyValuePair<K, V>>, IDictionary<K, V> {
         internal class Node {

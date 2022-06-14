@@ -6,7 +6,7 @@ using System.Text;
 using System.Reflection;
 using System.Linq.Expressions;
 
-namespace Squared.Util {
+namespace Squared.Util.Containers {
     public interface ICurve<TValue> where TValue : struct {
         int Count { get; }
         float Start { get; }

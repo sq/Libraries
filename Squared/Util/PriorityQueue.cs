@@ -5,7 +5,7 @@ using System.Text;
 using System.Collections;
 using System.Threading;
 
-namespace Squared.Util {
+namespace Squared.Util.Containers {
     public static class HeapQueue<T> {
         public static void SiftDown (T[] buffer, int startPosition, int endPosition, Comparison<T> comparer) {
             T newItem = buffer[endPosition];
