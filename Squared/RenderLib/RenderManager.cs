@@ -152,10 +152,15 @@ namespace Squared.Render {
         public static class ActiveMaterial {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Set (DeviceManager deviceManager, Material material) {
-                if (deviceManager.CurrentMaterial != material) {
-                    Set_Slow(deviceManager, material);
-                } else {
-                    material.Flush(deviceManager);
+                try {
+                    if (deviceManager.CurrentMaterial != material) {
+                        Set_Slow(deviceManager, material);
+                    } else {
+                        material.Flush(deviceManager);
+                    }
+                } catch (Exception exc) {
+                    Debug.WriteLine($"Exception setting material '{material.Name}', technique: '{material.Effect?.CurrentTechnique?.Name ?? material.Effect?.Name}' {exc}");
+                    throw;
                 }
             }
 

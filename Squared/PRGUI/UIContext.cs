@@ -1070,6 +1070,7 @@ namespace Squared.PRGUI {
         public KeyboardModifiers Modifiers { get; internal set; }
         public bool ActivateKeyHeld { get; internal set; }
         public bool MouseButtonHeld { get; internal set; }
+        public bool TransformActive { get; internal set; }
         public Vector2 MousePosition { get; internal set; }
         public RectF VisibleRegion { get; internal set; }
         public BatchGroup Prepass;

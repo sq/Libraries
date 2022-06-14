@@ -368,7 +368,8 @@ namespace Squared.PRGUI {
                 hidden = true;
 
             var box = default(RectF);
-            bool isZeroSized = false, isOutOfView = false;
+            bool isZeroSized = false, isOutOfView = false,
+                transformActive = context.TransformActive || Appearance.HasTransformMatrix;
             if (IsLayoutInvalid) {
                 hidden = true;
             } else {
@@ -395,7 +396,7 @@ namespace Squared.PRGUI {
                 hidden = true;
 
             // Only visibility cull controls that have a parent and aren't overlaid.
-            if (isOutOfView && (WeakParent != null) && !Appearance.Overlay && !Appearance.HasTransformMatrix)
+            if (isOutOfView && (WeakParent != null) && !Appearance.Overlay && !transformActive)
                 hidden = true;
 
             if (hidden) {
@@ -414,18 +415,25 @@ namespace Squared.PRGUI {
                 //  without explicitly clearing the transform after the animation is over.
                 Appearance.GetTransform(out Matrix transform, context.NowL) &&
                 (transform != Matrix.Identity);
+
             var needsComposition = NeedsComposition(opacity < 1, hasTransformMatrix) || enableCompositor;
             var oldOpacity = context.Opacity;
-            if (!needsComposition) {
-                context.Opacity *= opacity;
-                if (hasTransformMatrix)
-                    RasterizeAllPassesTransformed(ref context, ref box, ref passSet);
-                else
-                    RasterizeAllPasses(ref context, ref box, ref passSet, false);
-            } else {
-                RasterizeComposited(ref context, ref box, ref passSet, opacity, enableCompositor);
+            var oldTransformActive = context.TransformActive;
+            context.TransformActive = context.TransformActive || hasTransformMatrix;
+            try {
+                if (!needsComposition) {
+                    context.Opacity *= opacity;
+                    if (hasTransformMatrix)
+                        RasterizeAllPassesTransformed(ref context, ref box, ref passSet);
+                    else
+                        RasterizeAllPasses(ref context, ref box, ref passSet, false);
+                } else {
+                    RasterizeComposited(ref context, ref box, ref passSet, opacity, enableCompositor);
+                }
+            } finally {
+                context.Opacity = oldOpacity;
+                context.TransformActive = oldTransformActive;
             }
-            context.Opacity = oldOpacity;
 
             return true;
         }

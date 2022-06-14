@@ -58,6 +58,8 @@ namespace Squared.Render {
 
         internal uint ActiveViewTransformId;
 
+        internal List<EffectParameter> TextureParameters = new List<EffectParameter>();
+
         public string Name;
 
 #if DEBUG
@@ -109,6 +111,10 @@ namespace Squared.Render {
             // FIXME: This should probably never be null.
             if (Effect != null) {
                 Parameters = new MaterialEffectParameters(Effect);
+                foreach (var p in Effect.Parameters) {
+                    if (p.ParameterType == EffectParameterType.Texture2D)
+                        TextureParameters.Add(p);
+                }
             }
 
             BeginHandlers = beginHandlers;
@@ -159,6 +165,21 @@ namespace Squared.Render {
             return result;
         }
 
+        private void ValidateParameters () {
+            bool foundErrors = false;
+
+            foreach (var ep in TextureParameters) {
+                if (ep.GetValueTexture2D()?.IsDisposed != true)
+                    continue;
+
+                ep.SetValue((Texture2D)null);
+                foundErrors = true;
+            }
+
+            if (foundErrors)
+                Debug.WriteLine($"WARNING: A disposed texture was set on effect '{Effect.CurrentTechnique?.Name ?? Effect.Name}'.");
+        }
+
         private void CheckDevice (DeviceManager deviceManager) {
             if (Effect == null)
                 return;
@@ -202,6 +223,8 @@ namespace Squared.Render {
 
             DefaultParameters.Apply(this);
 
+            ValidateParameters();
+
             Flush_Epilogue(deviceManager);
         }
 
@@ -211,6 +234,8 @@ namespace Squared.Render {
             // FIXME: Avoid double-set for cases where there is a default + override, since it's wasteful
             DefaultParameters.Apply(this);
             parameters.Apply(this);
+
+            ValidateParameters();
 
             Flush_Epilogue(deviceManager);
         }
