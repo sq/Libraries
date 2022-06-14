@@ -1030,8 +1030,7 @@ namespace Squared.Util {
             Random rng,
             ArraySegment<T> values
         ) {
-            var n = values.Count;
-            for (var i = 0; i < n; i += 1) {
+            for (int i = 0, n = values.Count; i <= (n - 2); i += 1) {
                 var j = rng.Next(i, n);
                 var temp = values.Array[values.Offset + j];
                 values.Array[values.Offset + j] = values.Array[values.Offset + i];
@@ -1043,8 +1042,7 @@ namespace Squared.Util {
             Random rng,
             ref DenseList<T> values
         ) {
-            var n = values.Count;
-            for (var i = 0; i < n; i += 1) {
+            for (int i = 0, n = values.Count; i <= (n - 2); i += 1) {
                 var j = rng.Next(i, n);
                 var temp = values[j];
                 values[j] = values[i];
@@ -1056,8 +1054,7 @@ namespace Squared.Util {
             Random rng,
             IList<T> values
         ) {
-            var n = values.Count;
-            for (var i = 0; i < n; i += 1) {
+            for (int i = 0, n = values.Count; i <= (n - 2); i += 1) {
                 var j = rng.Next(i, n);
                 var temp = values[j];
                 values[j] = values[i];
@@ -1069,8 +1066,7 @@ namespace Squared.Util {
             ref CoreCLR.Xoshiro rng,
             ArraySegment<T> values
         ) {
-            var n = values.Count;
-            for (var i = 0; i < n; i += 1) {
+            for (int i = 0, n = values.Count; i <= (n - 2); i += 1) {
                 var j = rng.Next(i, n);
                 var temp = values.Array[values.Offset + j];
                 values.Array[values.Offset + j] = values.Array[values.Offset + i];
@@ -1082,8 +1078,7 @@ namespace Squared.Util {
             ref CoreCLR.Xoshiro rng,
             ref DenseList<T> values
         ) {
-            var n = values.Count;
-            for (var i = 0; i < n; i += 1) {
+            for (int i = 0, n = values.Count; i <= (n - 2); i += 1) {
                 var j = rng.Next(i, n);
                 var temp = values[j];
                 values[j] = values[i];
@@ -1095,8 +1090,7 @@ namespace Squared.Util {
             ref CoreCLR.Xoshiro rng,
             IList<T> values
         ) {
-            var n = values.Count;
-            for (var i = 0; i < n; i += 1) {
+            for (int i = 0, n = values.Count; i <= (n - 2); i += 1) {
                 var j = rng.Next(i, n);
                 var temp = values[j];
                 values[j] = values[i];
