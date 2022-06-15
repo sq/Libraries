@@ -38,7 +38,7 @@ namespace Squared.PRGUI {
                 return false;
             if (state.Options.AcceptsMouseInput.HasValue && (AcceptsMouseInput != state.Options.AcceptsMouseInput.Value))
                 return false;
-            if (state.Options.AcceptsFocus.HasValue && (AcceptsMouseInput != state.Options.AcceptsFocus.Value))
+            if (state.Options.AcceptsFocus.HasValue && (AcceptsFocus != state.Options.AcceptsFocus.Value))
                 return false;
             if (state.Options.RequiresInput && !Enabled)
                 return false;

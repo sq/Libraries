@@ -310,8 +310,12 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
-            // FIXME: Why does this duplicate ContainerBase?
-            var shell = HitTestShell(box, position, ref state);
+            // FIXME: Everything except the TitleBox check is duplicated from ContainerBase
+            var temp = state;
+            temp.Options.AcceptsMouseInput = temp.Options.AcceptsFocus = null;
+            var shell = HitTestShell(box, position, ref temp);
+            if (shell)
+                state.Result = temp.Result;
 
             if (!shell && ConstrainChildHitTests)
                 return false;

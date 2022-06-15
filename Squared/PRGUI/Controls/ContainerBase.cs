@@ -548,7 +548,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
-            var shell = HitTestShell(box, position, ref state);
+            var temp = state;
+            temp.Options.AcceptsMouseInput = temp.Options.AcceptsFocus = null;
+            var shell = HitTestShell(box, position, ref temp);
+            if (shell)
+                state.Result = temp.Result;
 
             if (!shell && ConstrainChildHitTests)
                 return false;
