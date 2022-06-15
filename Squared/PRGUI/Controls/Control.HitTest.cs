@@ -34,8 +34,6 @@ namespace Squared.PRGUI {
 
     public abstract partial class Control {
         protected virtual bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
-            if (!box.Contains(position))
-                return false;
             if (Intangible)
                 return false;
             if (state.Options.AcceptsMouseInput.HasValue && (AcceptsMouseInput != state.Options.AcceptsMouseInput.Value))
@@ -43,6 +41,8 @@ namespace Squared.PRGUI {
             if (state.Options.AcceptsFocus.HasValue && (AcceptsMouseInput != state.Options.AcceptsFocus.Value))
                 return false;
             if (state.Options.RequiresInput && !Enabled)
+                return false;
+            if (!box.Contains(position))
                 return false;
 
             state.Result = this;

@@ -310,10 +310,13 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
-            if (!HitTestShell(box, position, ref state))
+            // FIXME: Why does this duplicate ContainerBase?
+            var shell = HitTestShell(box, position, ref state);
+
+            if (!shell && ConstrainChildHitTests)
                 return false;
 
-            bool success = !DisableSelfHitTests && HitTestInterior(box, position, ref state);
+            bool success = !DisableSelfHitTests && HitTestInterior(box, position, ref state) && shell;
             if (MostRecentTitleBox.Contains(position))
                 return success;
 
