@@ -991,7 +991,17 @@ namespace PRGUI.Demo {
                 },
             };
 
-            var spinTest = new Window {
+            SomeText = new StaticText {
+                Text = "Some text",
+                Appearance = {
+                    BackgroundColor = Color.DarkBlue,
+                    Transform = Matrix.CreateRotationZ(MathHelper.ToRadians(5f)),
+                    TransformOrigin = Vector2.Zero,
+                },
+                TooltipContent = "Tooltip for some text",
+            };
+
+            SpinTest = new Window {
                 Title = "Wheeeeeeeeeee",
                 Width = 450,
                 Height = 350,
@@ -1001,20 +1011,21 @@ namespace PRGUI.Demo {
                         Matrix.Identity,
                         Matrix.CreateRotationZ(360) *
                         Matrix.CreateTranslation(300, 300, 0),
-                        seconds: 5, repeatCount: 99999, repeatMode: TweenRepeatMode.Pulse
+                        seconds: 20, repeatCount: 99999, repeatMode: TweenRepeatMode.Pulse
                     ),
                     Compositor = new MaskedCompositor(Materials, TextureLoader.Load("gauge-mask")),
                 },
+                // FIXME: Why doesn't this work?
+                Position = Vector2.Zero,
+                Alignment = Vector2.Zero,
                 Children = {
-                    new StaticText {
-                        Text = "Some text",
-                    },
+                    SomeText
                 },
             };
 
             Context.Controls.Add(topLevelContainer);
             Context.Controls.Add(window.Control);
-            Context.Controls.Add(spinTest);
+            Context.Controls.Add(SpinTest);
 
             Context.EventBus.Subscribe(columnCount, UIEvents.ValueChanged, (ei) => {
                 listBox.ColumnCount = columnCount.SelectedItem;
@@ -1485,6 +1496,11 @@ namespace PRGUI.Demo {
 
             ir.Draw(UIRenderTarget, Vector2.Zero, multiplyColor: Color.White * uiOpacity);
 
+            var dr = SpinTest.GetRect(displayRect: true);
+            ir.RasterizeRectangle(dr.Position, dr.Extent, 1f, 2f, Color.Blue * 0.1f, Color.Blue * 0.1f, outlineColor: Color.Blue);
+            dr = SomeText.GetRect(displayRect: true);
+            ir.RasterizeRectangle(dr.Position, dr.Extent, 1f, 1.5f, Color.Green * 0.1f, Color.Green * 0.1f, outlineColor: Color.Green);
+
             DrawPerformanceStats(ref ir);
 
             if (TearingTest) {
@@ -1497,6 +1513,8 @@ namespace PRGUI.Demo {
 
         private int LastPerformanceStatPrimCount;
         private Window FloatingWindow;
+        private StaticText SomeText;
+        private Window SpinTest;
 
         private void DrawPerformanceStats (ref ImperativeRenderer ir) {
             // return;

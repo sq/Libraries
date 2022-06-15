@@ -32,7 +32,7 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) => false;
+        protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) => false;
         protected override bool OnEvent<T> (string name, T args) => false;
         protected override bool OnEvent (string name) => false;
 
@@ -64,7 +64,7 @@ namespace Squared.PRGUI.Controls {
             return $"FocusProxy ({FocusBeneficiary})";
         }
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) => false;
+        protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) => false;
         protected override bool OnEvent<T> (string name, T args) => false;
         protected override bool OnEvent (string name) => false;
 
@@ -352,7 +352,7 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+        protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
             return false;
         }
 

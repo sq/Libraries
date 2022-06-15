@@ -132,13 +132,13 @@ namespace Squared.PRGUI.Controls {
                 child.Rasterize(ref context, ref passSet, 1);
         }
 
-        protected bool HitTestChildren (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+        protected bool HitTestChildren (Vector2 position, ref HitTestState state) {
             var sorted = Children.InDisplayOrder(Context.FrameIndex);
             for (int i = sorted.Count - 1; i >= 0; i--) {
                 var item = sorted[i];
-                var newResult = item.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible);
+                var newResult = item.HitTest(position, in state.Options);
                 if (newResult != null) {
-                    result = newResult;
+                    state.Result = newResult;
                     return true;
                 }
             }
@@ -146,9 +146,9 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
-            bool success = base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
-            success |= HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+        protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
+            bool success = base.OnHitTest(box, position, ref state);
+            success |= HitTestChildren(position, ref state);
             return success;
         }
 
@@ -250,11 +250,11 @@ namespace Squared.PRGUI.Controls {
             sb.Append(MarkedString.ToString());
         }
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+        protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
             var ipic = (IPartiallyIntangibleControl)this;
             if (ipic.IsIntangibleAtPosition(position))
                 return false;
-            return base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+            return base.OnHitTest(box, position, ref state);
         }
 
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

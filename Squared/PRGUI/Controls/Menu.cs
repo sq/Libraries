@@ -230,11 +230,11 @@ namespace Squared.PRGUI.Controls {
         // HACK
         private bool _OverrideHitTestResults = true;
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
-            var ok = base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+        protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
+            var ok = base.OnHitTest(box, position, ref state);
             // HACK: Ensure that hit-test does not pass through to our individual items. We want to handle all events for them
-            if (ok && _OverrideHitTestResults && (result?.AcceptsMouseInput == false))
-                result = this;
+            if (ok && _OverrideHitTestResults && (state.Result?.AcceptsMouseInput == false))
+                state.Result = this;
             return ok;
         }
 
@@ -258,7 +258,7 @@ namespace Squared.PRGUI.Controls {
             return null;
         }
 
-        private Control ChildFromGlobalPosition (Vector2 globalPosition) {
+        private Control ChildFromGlobalPosition (Vector2 globalPosition, in HitTestOptions options) {
             try {
                 var rect = this.GetRect(contentRect: true);
                 if (!rect.Contains(globalPosition))
@@ -268,10 +268,10 @@ namespace Squared.PRGUI.Controls {
                 globalPosition.X = rect.Left + 6;
                 _OverrideHitTestResults = false;
 
-                var child = HitTest(globalPosition, false, false);
+                var child = HitTest(globalPosition, options);
                 if ((child ?? this) == this) {
                     globalPosition.X = rect.Center.X;
-                    child = HitTest(globalPosition, false, false);
+                    child = HitTest(globalPosition, options);
                 }
 
                 if (child == this)
@@ -297,7 +297,8 @@ namespace Squared.PRGUI.Controls {
 
             var fireSelectEvent = true;
 
-            var item = ChildFromGlobalPosition(args.RelativeGlobalPosition);
+            var options = new HitTestOptions();
+            var item = ChildFromGlobalPosition(args.RelativeGlobalPosition, options);
             if (_HoveringItem != item) {
                 var previous = _HoveringItem;
                 _HoveringItem = item;

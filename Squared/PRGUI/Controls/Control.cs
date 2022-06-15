@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -554,6 +555,75 @@ namespace Squared.PRGUI {
             return true;
         }
 
+        // HACK
+        static readonly ThreadLocal<List<Control>> TempTransformStack = new ThreadLocal<List<Control>>(() => new List<Control>(32));
+
+        // Attempts to apply the full stack of transform matrices to our control's bounding box and produce
+        //  a new bounding box that fully contains all four of our transformed corners.
+        // The current implementation is broken but mildly broken, and this is really only used for tooltip
+        //  anchoring, so I don't care enough to fix it yet. The math is a nightmare.
+        private void ApplyCompleteTransform (ref RectF result) {
+            List<Control> stack = null;
+            {
+                // Walk the parent chain to see if any control has a transform
+                bool earlyOut = true;
+                var current = this;
+                while (current != null) {
+                    if (current.Appearance.HasTransformMatrix) {
+                        earlyOut = false;
+                        break;
+                    }
+
+                    current.TryGetParent(out current);
+                }
+
+                // If we didn't find any transforms we can bail out
+                if (earlyOut)
+                    return;
+
+                // Otherwise, we need to build a full top-down control chain
+                stack = TempTransformStack.Value;
+                stack.Clear();
+                while (current != null) {
+                    stack.Add(current);
+                    current.TryGetParent(out current);
+                }
+                stack.Reverse();
+            }
+
+            var matrix = Matrix.Identity;
+            var nowL = Context.NowL;
+            foreach (var item in stack) {
+                // Walk down the chain from root to control and apply each transform we find
+                if (!item.Appearance.GetTransform(out Matrix itemMatrix, nowL))
+                    continue;
+
+                // We need the control's rect so we can align the transform around its transform origin
+                var rect = item.GetRect();
+                var offset = (rect.Size * item.Appearance.TransformOrigin) + rect.Position;
+                Matrix.CreateTranslation(-offset.X, -offset.Y, 0f, out Matrix before);
+                Matrix.CreateTranslation(offset.X, offset.Y, 0f, out Matrix after);
+                matrix = before * itemMatrix * after * matrix;
+            }
+
+            // We've now stacked all the transforms in our parent chain and can apply them to the corners of our rect
+            Vector2 tl = result.Position, tr = new Vector2(result.Extent.X, result.Top),
+                br = result.Extent, bl = new Vector2(result.Left, result.Extent.Y);
+            Vector4 tlX, trX, brX, blX;
+            Vector4.Transform(ref tl, ref matrix, out tlX);
+            Vector4.Transform(ref tr, ref matrix, out trX);
+            Vector4.Transform(ref br, ref matrix, out brX);
+            Vector4.Transform(ref bl, ref matrix, out blX);
+            tlX /= tlX.W;
+            trX /= trX.W;
+            brX /= brX.W;
+            blX /= blX.W;
+            Arithmetic.MinMax(tlX.X, trX.X, brX.X, blX.X, out float minX, out float maxX);
+            Arithmetic.MinMax(tlX.Y, trX.Y, brX.Y, blX.Y, out float minY, out float maxY);
+            result.Position = new Vector2(minX, minY);
+            result.Size = new Vector2(maxX - minX, maxY - minY);
+        }
+
         /// <summary>
         /// Gets the current computed rectangle of the control.
         /// </summary>
@@ -584,24 +654,7 @@ namespace Squared.PRGUI {
                 result.Top -= margins.Top;
                 result.Width += margins.X;
                 result.Height += margins.Y;
-                if (Appearance.HasTransformMatrix) {
-                    Appearance.GetFinalTransformMatrix(result, Context.NowL, out Matrix matrix);
-                    Vector2 tl = Vector2.Zero, tr = new Vector2(result.Width, 0), 
-                        br = result.Size, bl = new Vector2(0, result.Height);
-                    Vector4 tlX, trX, brX, blX;
-                    Vector4.Transform(ref tl, ref matrix, out tlX);
-                    Vector4.Transform(ref tr, ref matrix, out trX);
-                    Vector4.Transform(ref br, ref matrix, out brX);
-                    Vector4.Transform(ref bl, ref matrix, out blX);
-                    tlX /= tlX.W;
-                    trX /= trX.W;
-                    brX /= brX.W;
-                    blX /= blX.W;
-                    Arithmetic.MinMax(tlX.X, trX.X, brX.X, blX.X, out float minX, out float maxX);
-                    Arithmetic.MinMax(tlX.Y, trX.Y, brX.Y, blX.Y, out float minY, out float maxY);
-                    result.Position = new Vector2(minX, minY);
-                    result.Size = new Vector2(maxX - minX, maxY - minY);
-                }
+                ApplyCompleteTransform(ref result);
             }
 
             if (applyOffset) {
@@ -637,20 +690,19 @@ namespace Squared.PRGUI {
             if (!Appearance.HasTransformMatrix)
                 return globalPosition;
 
-            var localPosition = globalPosition - box.Center;
+            var localPosition = globalPosition;
 
             // TODO: Throw on non-invertible transform or other messed up math?
-            if (!Appearance.GetInverseTransform(out Matrix matrix, Context.NowL))
+            if (!Appearance.GetInverseTransform(box, out Matrix matrix, Context.NowL))
                 return globalPosition;
 
             Vector4.Transform(ref localPosition, ref matrix, out Vector4 transformedLocalPosition);
-            var transformedLocal2 = new Vector2(transformedLocalPosition.X / transformedLocalPosition.W, transformedLocalPosition.Y / transformedLocalPosition.W);
-            var result = transformedLocal2 + box.Center;
+            localPosition = new Vector2(transformedLocalPosition.X / transformedLocalPosition.W, transformedLocalPosition.Y / transformedLocalPosition.W);
 
-            if (!force && !box.Contains(result))
+            if (!force && !box.Contains(localPosition))
                 return globalPosition;
             else
-                return result;
+                return localPosition;
         }
 
         protected void ComputeEffectiveScaleRatios (IDecorationProvider decorations, out Vector2 padding, out Vector2 margins, out Vector2 size) {
@@ -781,6 +833,9 @@ namespace Squared.PRGUI {
 
                 if (context.UIContext.CurrentTooltipAnchor == this)
                     result |= ControlStates.AnchorForTooltip;
+
+                if (context.UIContext.MouseOver == this)
+                    result |= ControlStates.MouseOver;
 
                 // HACK: If a modal has temporarily borrowed focus from us, we should still appear
                 //  to be focused.

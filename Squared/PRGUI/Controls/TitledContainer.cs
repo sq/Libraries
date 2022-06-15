@@ -389,10 +389,10 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
-            var ok = base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+        protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
+            var ok = base.OnHitTest(box, position, ref state);
             if (ok && Collapsed)
-                result = this;
+                state.Result = this;
             return ok;
         }
 

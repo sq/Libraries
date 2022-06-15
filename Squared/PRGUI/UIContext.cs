@@ -357,7 +357,7 @@ namespace Squared.PRGUI {
         private void UpdateCaptureAndHovering (Vector2 mousePosition, Control exclude = null) {
             // FIXME: This breaks drag-to-scroll
             // MouseOver = HitTest(mousePosition, rejectIntangible: true);
-            MouseOver = MouseOverLoose = HitTest(mousePosition, rejectIntangible: false);
+            MouseOver = MouseOverLoose = HitTest(mousePosition);
 
             if ((MouseOver != MouseCaptured) && (MouseCaptured != null))
                 Hovering = null;
@@ -1007,8 +1007,18 @@ namespace Squared.PRGUI {
                 FireEvent(UIEvents.TooltipShown, anchor);
         }
 
+        public Control HitTest (Vector2 position) {
+            return HitTest(position, default, out _);
+        }
+
+        public Control HitTest (Vector2 position, in HitTestOptions options) {
+            return HitTest(position, in options, out _);
+        }
+
         // Position is relative to the top-left corner of the canvas
-        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly = false, bool acceptsFocusOnly = false, bool rejectIntangible = false) {
+        public Control HitTest (Vector2 position, in HitTestOptions options, out Vector2 localPosition) {
+            localPosition = default;
+
             var areHitTestsBlocked = false;
             foreach (var m in ModalStack)
                 if (m.BlockHitTests)
@@ -1024,7 +1034,7 @@ namespace Squared.PRGUI {
                     (control.DisplayOrder <= (ActiveModal as Control)?.DisplayOrder)
                 )
                     continue;
-                var result = control.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible);
+                var result = control.HitTest(position, in options, out localPosition);
                 if (result != null)
                     return result;
             }

@@ -262,20 +262,25 @@ namespace Squared.PRGUI {
         /// </summary>
         public bool HasTransformMatrix => _TransformMatrix?.HasValue == true;
 
+        private static Vector2 DefaultTransformOrigin = new Vector2(0.5f);
+
         /// <summary>
         /// Sets the alignment of the transform matrix to allow rotating or scaling the control
         ///  relative to one of its corners instead of the default, its center (0.5)
         /// </summary>
         public Vector2 TransformOrigin {
-            get => (_TransformMatrix?.TransformOriginMinusOneHalf + new Vector2(0.5f)) ?? Vector2.Zero;
+            get => (_TransformMatrix?.TransformOriginMinusOneHalf + new Vector2(0.5f)) ?? DefaultTransformOrigin;
             set {
-                if (_TransformMatrix == null)
+                if ((_TransformMatrix == null) && (value != DefaultTransformOrigin))
                     return;
+                if (_TransformMatrix == null)
+                    _TransformMatrix = new ControlMatrixInfo {
+                    };
                 _TransformMatrix.TransformOriginMinusOneHalf = value - new Vector2(0.5f);
             }
         }
 
-        public void GetFinalTransformMatrix (RectF sourceRect, long now, out Matrix result) {
+        public void GetPlacementTransformMatrix (in RectF sourceRect, long now, out Matrix result) {
             var origin = sourceRect.Size * -TransformOrigin;
             var finalPosition = sourceRect.Position + (sourceRect.Size * TransformOrigin);
             Matrix.CreateTranslation(origin.X, origin.Y, 0, out Matrix centering);
@@ -339,13 +344,17 @@ namespace Squared.PRGUI {
             return true;
         }
 
-        public bool GetInverseTransform (out Matrix matrix, long now) {
+        public bool GetInverseTransform (in RectF box, out Matrix matrix, long now) {
             if (!HasTransformMatrix) {
                 matrix = default(Matrix);
                 return false;
             }
 
+            var offset = (box.Size * TransformOrigin) + box.Position;
+            Matrix.CreateTranslation(-offset.X, -offset.Y, 0f, out Matrix before);
             _TransformMatrix.Matrix.Get(now, out Matrix temp);
+            Matrix.CreateTranslation(offset.X, offset.Y, 0f, out Matrix after);
+            temp = before * temp * after;
             Matrix.Invert(ref temp, out matrix);
             var det = matrix.Determinant();
             return !float.IsNaN(det) && !float.IsInfinity(det);

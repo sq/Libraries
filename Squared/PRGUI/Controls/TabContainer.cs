@@ -320,20 +320,20 @@ namespace Squared.PRGUI.Controls {
             SelectedTab?.Rasterize(ref context, ref passSet);
         }
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
-            if (!HitTestShell(box, position, false, false, rejectIntangible, ref result))
+        protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
+            if (!HitTestShell(box, position, ref state))
                 return false;
 
-            bool success = HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
-            var tabResult = TabStrip.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible);
+            bool success = HitTestInterior(box, position, ref state);
+            var tabResult = TabStrip.HitTest(position, in state.Options);
             if (tabResult != null) {
                 success = true;
-                result = tabResult;
+                state.Result = tabResult;
             } else if (SelectedTab != null) {
-                var childResult = SelectedTab.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible);
+                var childResult = SelectedTab.HitTest(position, in state.Options);
                 if (childResult != null) {
                     success = true;
-                    result = childResult;
+                    state.Result = childResult;
                 }
             }
             return success;

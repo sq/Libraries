@@ -479,12 +479,21 @@ namespace Squared.PRGUI.Controls {
         // HACK
         private bool _OverrideHitTestResults = true;
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
-            var ri = rejectIntangible || _OverrideHitTestResults;
-            var ok = base.OnHitTest(box, position, acceptsMouseInputOnly || _OverrideHitTestResults, acceptsFocusOnly || _OverrideHitTestResults, ri, ref result);
+        protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
+            var temp = state;
+            if (_OverrideHitTestResults) {
+                temp.Options.AcceptsMouseInput = true;
+                temp.Options.AcceptsFocus = true;
+                temp.Options.RejectIntangible = true;
+            }
+
+            var ok = base.OnHitTest(box, position, ref temp);
             // HACK: Ensure that hit-test does not pass through to our individual items. We want to handle all events for them
             if (ok && _OverrideHitTestResults && DisableItemHitTests)
-                result = this;
+                state.Result = this;
+            else
+                state.Result = temp.Result;
+
             return ok;
         }
 
@@ -521,7 +530,7 @@ namespace Squared.PRGUI.Controls {
                         continue;
                     }
 
-                    Control child = HitTest(globalPosition, false, false);
+                    Control child = HitTest(globalPosition);
                     if ((child == this) || (child == null)) {
                         foreach (var c in Children) {
                             if (c.GetRect().Contains(globalPosition)) {
@@ -964,7 +973,7 @@ namespace Squared.PRGUI.Controls {
 
         protected void DetermineTooltip (out Control target, out AbstractTooltipContent result) {
             // FIXME: Cache this for efficiency
-            var deep = MouseOverItem?.HitTest(LastMouseOverPosition, false, false, true);
+            var deep = MouseOverItem?.HitTest(LastMouseOverPosition, new HitTestOptions { RejectIntangible = true });
             var ttc = deep?.TooltipContent;
             if ((ttc ?? default(AbstractTooltipContent)) != default(AbstractTooltipContent)) {
                 target = deep;

@@ -18,30 +18,49 @@ using Squared.Util;
 using Squared.Util.Event;
 
 namespace Squared.PRGUI {  
+    public struct HitTestOptions {
+        public bool? AcceptsMouseInput, AcceptsFocus;
+        public bool RejectIntangible;
+
+        public bool RequiresInput => (AcceptsMouseInput ?? false) || (AcceptsFocus ?? false);
+    }
+
+    public struct HitTestState {
+        public HitTestOptions Options;
+
+        public Control Result;
+        public Vector2 GlobalPosition, LocalPosition;
+    }
+
     public abstract partial class Control {
-        protected virtual bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+        protected virtual bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
             if (!box.Contains(position))
                 return false;
             if (Intangible)
                 return false;
-            if (!AcceptsMouseInput && acceptsMouseInputOnly)
+            if (state.Options.AcceptsMouseInput.HasValue && (AcceptsMouseInput != state.Options.AcceptsMouseInput.Value))
                 return false;
-            if (!AcceptsFocus && acceptsFocusOnly)
+            if (state.Options.AcceptsFocus.HasValue && (AcceptsMouseInput != state.Options.AcceptsFocus.Value))
                 return false;
-            if ((acceptsFocusOnly || acceptsMouseInputOnly) && !Enabled)
+            if (state.Options.RequiresInput && !Enabled)
                 return false;
 
-            result = this;
+            state.Result = this;
             return true;
         }
 
-        /*
-            var ipic = result as IPartiallyIntangibleControl;
-            if (rejectIntangible && (ipic?.IsIntangibleAtPosition(position) == true))
-                return null;
-        */
 
-        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible = false) {
+        public Control HitTest (Vector2 position) {
+            return HitTest(position, default, out _);
+        }
+
+        public Control HitTest (Vector2 position, in HitTestOptions options) {
+            return HitTest(position, in options, out _);
+        }
+
+        public Control HitTest (Vector2 position, in HitTestOptions options, out Vector2 localPosition) {
+            localPosition = default;
+
             if (!Visible)
                 return null;
             if (IsLayoutInvalid)
@@ -52,29 +71,33 @@ namespace Squared.PRGUI {
 
             // HACK: ApplyLocalTransformToGlobalPosition can be expensive, so we skip it this way
             if (
-                rejectIntangible &&                
+                options.RejectIntangible &&
                 !(this is IControlContainer) && 
                 !(this is IPartiallyIntangibleControl) &&
                 GetInternalFlag(InternalStateFlags.Intangible)
             )
                 return null;
 
-            var result = this;
             var box = GetRect();
-            position = ApplyLocalTransformToGlobalPosition(position, ref box, true);
 
-            var previousResult = result;
-            if (OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result)) {
-                if (result == null)
+            var state = new HitTestState {
+                Options = options,
+                Result = this,
+                GlobalPosition = position,
+                LocalPosition = ApplyLocalTransformToGlobalPosition(position, ref box, true)
+            };
+
+            if (OnHitTest(box, state.LocalPosition, ref state)) {
+                if (state.Result == null)
                     throw new Exception("OnHitTest produced a null result on success");
 
-                if (rejectIntangible) {
-                    var ipic = result as IPartiallyIntangibleControl;
+                if (options.RejectIntangible) {
+                    var ipic = state.Result as IPartiallyIntangibleControl;
                     if (ipic?.IsIntangibleAtPosition(position) == true)
-                        result = null;
+                        state.Result = null;
                 }
 
-                return result;
+                return state.Result;
             }
 
             return null;

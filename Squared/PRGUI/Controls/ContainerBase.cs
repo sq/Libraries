@@ -75,6 +75,11 @@ namespace Squared.PRGUI.Controls {
         // FIXME: Always true?
         protected override bool HasChildren => (Context != null) && (Children.Count > 0);
 
+        /// <summary>
+        /// If false, child hit testing will occur even if a point lies outside of our bounds
+        /// </summary>
+        protected virtual bool ConstrainChildHitTests => true;
+
         protected virtual bool HideChildren => false;
 
         public override void InvalidateLayout () {
@@ -124,12 +129,12 @@ namespace Squared.PRGUI.Controls {
             OnDescendantReceivedFocus(descendant, isUserInitiated);
         }
 
-        protected bool HitTestShell (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
-            return base.OnHitTest(box, position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+        protected bool HitTestShell (RectF box, Vector2 position, ref HitTestState state) {
+            return base.OnHitTest(box, position, ref state);
         }
 
-        protected virtual bool HitTestInterior (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            return AcceptsMouseInput || !acceptsMouseInputOnly;
+        protected virtual bool HitTestInterior (RectF box, Vector2 position, ref HitTestState state) {
+            return (state.Options.AcceptsMouseInput == null) || (state.Options.AcceptsMouseInput == AcceptsMouseInput);
         }
 
         public T Child<T> (Func<T, bool> predicate)
@@ -520,7 +525,7 @@ namespace Squared.PRGUI.Controls {
             base.OnIntangibleChange(newValue);
         }
 
-        protected bool HitTestChildren (Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
+        protected bool HitTestChildren (Vector2 position, ref HitTestState state) {
             if (DisableChildHitTests)
                 return false;
 
@@ -532,9 +537,9 @@ namespace Squared.PRGUI.Controls {
 
             for (int i = sorted.Count - 1; i >= 0; i--) {
                 var item = sorted[i];
-                var newResult = item.HitTest(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible);
+                var newResult = item.HitTest(position, in state.Options);
                 if (newResult != null) {
-                    result = newResult;
+                    state.Result = newResult;
                     return true;
                 }
             }
@@ -542,12 +547,14 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
-            if (!HitTestShell(box, position, false, false, rejectIntangible, ref result))
+        protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
+            var shell = HitTestShell(box, position, ref state);
+
+            if (!shell && ConstrainChildHitTests)
                 return false;
 
-            bool success = !DisableSelfHitTests && HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
-            success |= HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+            bool success = !DisableSelfHitTests && HitTestInterior(box, position, ref state) && shell;
+            success |= HitTestChildren(position, ref state);
             return success;
         }
     }

@@ -484,7 +484,7 @@ namespace Squared.PRGUI {
 
         private static void _ApplyLocalTransformMatrix (ref ViewTransform vt, object _control) {
             var control = (Control)_control;
-            control.Appearance.GetFinalTransformMatrix(
+            control.Appearance.GetPlacementTransformMatrix(
                 control.MostRecentCompositeData.Box, control.Context.NowL, out Matrix transform
             );
             vt.ModelView *= transform;

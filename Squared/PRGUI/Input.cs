@@ -659,7 +659,7 @@ namespace Squared.PRGUI.Input {
                     } else if (CurrentUnsnappedPosition.HasValue) {
                         // There are no fuzzy hit test candidates nearby, and there's no direct hit test result
                         //  which means we're not over any UI at all.
-                        if (Context.HitTest(CurrentUnsnappedPosition.Value, false, false, false) == null)
+                        if (Context.HitTest(CurrentUnsnappedPosition.Value) == null)
                             newPosition = CurrentUnsnappedPosition.Value;
                     } else {
                         ;

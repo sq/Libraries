@@ -309,15 +309,15 @@ namespace Squared.PRGUI.Controls {
             return ok;
         }
 
-        protected override bool OnHitTest (RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, bool rejectIntangible, ref Control result) {
-            if (!HitTestShell(box, position, false, false, rejectIntangible, ref result))
+        protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
+            if (!HitTestShell(box, position, ref state))
                 return false;
 
-            bool success = !DisableSelfHitTests && HitTestInterior(box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+            bool success = !DisableSelfHitTests && HitTestInterior(box, position, ref state);
             if (MostRecentTitleBox.Contains(position))
                 return success;
 
-            success |= HitTestChildren(position, acceptsMouseInputOnly, acceptsFocusOnly, rejectIntangible, ref result);
+            success |= HitTestChildren(position, ref state);
             return success;
         }
 
