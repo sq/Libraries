@@ -323,6 +323,15 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add (T item) {
+            int newCount = _Count + 1;
+            EnsureCapacity(newCount);
+
+            _Items[_BufferOffset + newCount - 1] = item;
+            _Count = newCount;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (in T item) {
             int newCount = _Count + 1;
             EnsureCapacity(newCount);

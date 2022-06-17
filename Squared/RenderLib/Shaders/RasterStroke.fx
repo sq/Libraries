@@ -39,11 +39,11 @@ uniform float4 NozzleParams;
 
 // size, angle, flow, brushIndex
 uniform float4 Constants1;
-// hardness, width, spacing, baseSize
+// hardness, color, spacing, baseSize
 uniform float4 Constants2;
 // TaperFactor, Increment, NoiseFactor, AngleFactor
 uniform float4 SizeDynamics, AngleDynamics, FlowDynamics, 
-    BrushIndexDynamics, HardnessDynamics, WidthDynamics;
+    BrushIndexDynamics, HardnessDynamics, ColorDynamics;
 // TODO: Spacing dynamics?
 
 #define RASTERSTROKE_FS_ARGS \
@@ -363,18 +363,19 @@ void rasterStrokeLineCommon(
             flow = clamp(evaluateDynamics(Constants1.z, FlowDynamics, float4(taper, i, noise1.z, angleFactor)), 0, 2),
             brushIndex = evaluateDynamics2(Constants1.w, brushCount, BrushIndexDynamics, float4(taper, i, noise1.w, angleFactor)),
             hardness = saturate(evaluateDynamics(Constants2.x, HardnessDynamics, float4(taper, i, noise2.x, angleFactor))),
-            widthFactor = saturate(evaluateDynamics(Constants2.y, WidthDynamics, float4(taper, i, noise2.y, angleFactor)));
+            // HACK: Increment here is scaled by t instead of i
+            colorT = COLOR_PER_SPLAT ? t : centerT,
+            colorFactor = saturate(evaluateDynamics(Constants2.y, ColorDynamics, float4(taper, colorT, noise2.y, angleFactor)));
 
         bool outOfRange = (d < taperRanges.z) || (d > (l - taperRanges.w));
 
-        float r = i * sizePx, widthScale = 1.0 / widthFactor, radius = sizePx * 0.5;
+        float r = i * sizePx, radius = sizePx * 0.5;
         float2 center = a + (ba * t), texCoordScale = atlasScale / sizePx;
         float distance = length(center - worldPosition);
 
         float2 posSplatRotated = (worldPosition - center),
             posSplatDerotated = rotate2D(posSplatRotated, -splatAngle),
-            // FIXME: Width doesn't work
-            posSplatDecentered = (posSplatDerotated + radius) * float2(widthScale, 1);
+            posSplatDecentered = (posSplatDerotated + radius);
 
         float g = length(posSplatDerotated);
         float4 color;
@@ -402,6 +403,16 @@ void rasterStrokeLineCommon(
                     color = texel;
                 }
             }
+
+            // Ramp the alpha channel more or less aggressively
+            if ((color.a < 1) && (color.a > 0) && (hardness != 0.5)) {
+                float softness = (1 - saturate(hardness)) * 2 - 1.0;
+                float e = softness > 0
+                    ? lerp(1, 3, softness)
+                    : lerp(1, 0.25, -softness);
+                float softA = pow(color.a, e);
+                color *= (softA / color.a);
+            }
         } else {
             // HACK: We do the early-out more conservatively because of the need to compute
             //  partial coverage at circle edges, so an exact rejection is not right
@@ -416,16 +427,16 @@ void rasterStrokeLineCommon(
             } else {
                 color = 1;
             }
-        }
 
-        if (hardness < 1) {
-            float falloff = max((1 - hardness) * radius, 1.05);
-            // HACK
-            g -= (hardness * radius);
-            g /= falloff;
-            g = saturate(g + 0.05);
-            g = sin(g * PI * 0.5);
-            color *= 1 - g;
+            if (hardness < 1) {
+                float falloff = max((1 - hardness) * radius, 1.05);
+                // HACK
+                g -= (hardness * radius);
+                g /= falloff;
+                g = saturate(g + 0.05);
+                g = sin(g * PI * 0.5);
+                color *= 1 - g;
+            }
         }
 
         // HACK: Avoid accumulating error
@@ -433,7 +444,7 @@ void rasterStrokeLineCommon(
             // TODO: Interpolate based on outer edges instead of center points,
             //  so that we don't get a nasty hard edge at the end
             color = lerp(
-                colorA, colorB, COLOR_PER_SPLAT ? t : centerT
+                colorA, colorB, colorFactor
             ) * color;
 
             result = over(color, flow, result, 1);

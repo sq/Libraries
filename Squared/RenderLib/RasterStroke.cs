@@ -127,16 +127,16 @@ namespace Squared.Render.RasterStroke {
         public static readonly BrushDynamics DefaultHardness = new BrushDynamics {
             Constant = 1,
         };
-        public static readonly BrushDynamics DefaultWidthFactor = new BrushDynamics {
-            Constant = 1,
+        public static readonly BrushDynamics DefaultColor = new BrushDynamics {
+            Increment = 1,
         };
         public static readonly BrushDynamics DefaultFlow = new BrushDynamics {
             Constant = 1,
         };
         public static readonly float DefaultSpacing = 0.33f;
 
-        private bool _HasScale, _HasBrushIndex, _HasHardness, _HasWidthFactor, _HasFlow, _HasSpacing;
-        private BrushDynamics _Scale, _BrushIndex, _Hardness, _WidthFactor, _Flow;
+        private bool _HasScale, _HasBrushIndex, _HasHardness, _HasColor, _HasFlow, _HasSpacing;
+        private BrushDynamics _Scale, _BrushIndex, _Hardness, _Color, _Flow;
         private float _Spacing;
 
         public BrushDynamics AngleDegrees;
@@ -166,11 +166,11 @@ namespace Squared.Render.RasterStroke {
             }
         }
 
-        public BrushDynamics WidthFactor {
-            get => _HasWidthFactor ? _WidthFactor : DefaultWidthFactor;
+        public BrushDynamics Color {
+            get => _HasColor ? _Color : DefaultColor;
             set {
-                _WidthFactor = value;
-                _HasWidthFactor = true;
+                _Color = value;
+                _HasColor = true;
             }
         }
 
@@ -213,7 +213,7 @@ namespace Squared.Render.RasterStroke {
                 (Flow == rhs.Flow) &&
                 (BrushIndex == rhs.BrushIndex) &&
                 (Hardness == rhs.Hardness) &&
-                (WidthFactor == rhs.WidthFactor);
+                (Color == rhs.Color);
         }
     }
     
@@ -435,7 +435,7 @@ namespace Squared.Render.RasterStroke {
                     (Brush.BrushIndex.NoiseFactor != 0) ||
                     (Brush.Hardness.NoiseFactor != 0) ||
                     (Brush.Scale.NoiseFactor != 0) ||
-                    (Brush.WidthFactor.NoiseFactor != 0);
+                    (Brush.Color.NoiseFactor != 0);
 
                 // HACK: Workaround for D3D11 debug layer shouting about no texture bound :(
                 if (hasNoise || true)
@@ -483,12 +483,12 @@ namespace Squared.Render.RasterStroke {
                 ep["FlowDynamics"].SetValue(Brush.Flow.ToVector4());
                 ep["BrushIndexDynamics"].SetValue(Brush.BrushIndex.ToVector4());
                 ep["HardnessDynamics"].SetValue(Brush.Hardness.ToVector4());
-                ep["WidthDynamics"].SetValue(Brush.WidthFactor.ToVector4());
+                ep["ColorDynamics"].SetValue(Brush.Color.ToVector4());
                 ep["Constants1"].SetValue(new Vector4(
                     Brush.Scale.Constant, Brush.AngleDegrees.Constant / 360f, Brush.Flow.Constant, Brush.BrushIndex.Constant
                 ));
                 ep["Constants2"].SetValue(new Vector4(
-                    Brush.Hardness.Constant, Brush.WidthFactor.Constant, Brush.Spacing, Brush.SizePx
+                    Brush.Hardness.Constant, Brush.Color.Constant, Brush.Spacing, Brush.SizePx
                 ));
                 ep["BlendInLinearSpace"].SetValue(BlendInLinearSpace);
                 ep["OutputInLinearSpace"].SetValue(isSrgbRenderTarget);

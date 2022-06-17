@@ -477,6 +477,16 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add (T item) {
+            if ((_Count >= 4) || (_Items != null)) {
+                Add_Slow(in item);
+            } else {
+                SetInlineItemAtIndex(_Count, in item);
+                _Count += 1;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (in T item) {
             if ((_Count >= 4) || (_Items != null)) {
                 Add_Slow(in item);
