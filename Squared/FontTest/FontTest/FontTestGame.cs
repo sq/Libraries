@@ -32,7 +32,11 @@ namespace FontTest {
 
             "This line ends with a very long string of characters: asmfkjalshasklmrasklrjhalksrmjaslkaslrklsmrs\n\n" + 
             "Then is followed by a line break and short lines.\n" +
-            "The word-wrap of the long string should produce a small bounding box."
+            "The word-wrap of the long string should produce a small bounding box.",
+
+            "$(Airburst Shot)\n.1  $(Ammo) x 1  Cooldown: 1\n" +
+            "Fire a $(Piercing Round) overhead to $(Ambush) all foes (damage decreases based on number of targets).\n" +
+            "\t$(Ambush) target for $(75%) piercing Physical damage."
         };
 
         SpriteFont DutchAndHarley;
@@ -171,7 +175,7 @@ namespace FontTest {
                 },
                 WordWrapCharacters = new uint[] {
                     '\\', '/', ':', ','
-                }
+                },
             };
 
             for (int i = 0; i < Images.Length; i++)
@@ -297,7 +301,7 @@ namespace FontTest {
             Text.ExpandHorizontallyWhenAligning = !Expand.Value;
             Text.LineBreakAtX = targetX;
             Text.DesiredWidth = Expand.Value ? targetX : 0;
-            Text.MaxExpansion = LimitExpansion.Value ? 400 : (float?)null;
+            Text.MaxExpansion = LimitExpansion.Value ? 100 : (float?)null;
             Text.StopAtY = BottomRight.Y - TopLeft.Y;
             Text.WrapIndentation = Indent.Value ? 64 : 0;
 

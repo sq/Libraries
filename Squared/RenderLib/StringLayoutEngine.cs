@@ -556,6 +556,19 @@ namespace Squared.Render.Text {
                 // In character justify mode we just spread all the characters out.
                 accumulatedSpacing += characterSpacing;
             }
+
+            for (int j = 0, c = Markers.Count; j < c; j++) {
+                ref var marker = ref Markers.Item(j);
+                // FIXME: Multiline boxes
+                if ((marker.FirstLineIndex != line) || (marker.LastLineIndex != line))
+                    continue;
+
+                for (int k = 0, ck = marker.Bounds.Count; k < ck; k++) {
+                    ref var b = ref marker.Bounds.Item(k);
+                    b.TopLeft.X += whitespace;
+                    b.BottomRight.X += whitespace;
+                }
+            }
         }
 
         private void AlignLines (
@@ -573,7 +586,7 @@ namespace Squared.Render.Text {
                 var line = buffer.Array[buffer.Offset + i].LocalData2;
 
                 if (line != currentLine) {
-                    AlignLine(buffer, (int)line, alignment, lineStartIndex, i - 1, originalMaxX);
+                    AlignLine(buffer, (int)currentLine, alignment, lineStartIndex, i - 1, originalMaxX);
 
                     lineStartIndex = i;
                     currentLine = line;
