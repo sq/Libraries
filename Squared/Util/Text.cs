@@ -80,7 +80,9 @@ namespace Squared.Util.Text {
                 case 0x0B:
                 case 0x0C:
                 case 0x0D:
+                case 0x20:
                 case 0x85:
+                case 0xA0:
                     return true;
                 default:
                     return false;

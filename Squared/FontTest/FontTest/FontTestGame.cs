@@ -17,22 +17,23 @@ namespace FontTest {
     public class FontTestGame : MultithreadedGame {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
-#if TRUE
-        // FIXME: The bounding box for 'dogs' is wrong unless there's a trailing space inside the marked region
-        public string TestText =
+        public string[] TestStrings = new[] {
+            // FIXME: The bounding box for 'dogs' is wrong unless there's a trailing space inside the marked region
             "$[img:topright]$[img:bottomright]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs )" +
             "\r\n$[img:bottomleft]$[img:left]この体は、無限のチェイサーで出来ていた $(marked)" +
-            "\r\n\r\nEmpty line before this one $(marked)\r\n$(rich substring)";
-#else
-        public string TestText =
-            "The quick brown fox jumped over the lazy dogs. Sphinx of black quartz, judge my vow. Welcome to the circus, " +
-            "we've got fun and games, here's\\a\\very-long-path\\without-spaces\\that-should-get-broken\\ok";
-#endif
+            "\r\n\r\nEmpty line before this one $(marked)\r\n$(rich substring)",
 
-        public string TestText2 =
             "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +
             "\r\nはいはい！おつかれさまでした！" +
-            "\r\n\tIndented\tText";
+            "\r\n\tIndented\tText",
+
+            "The quick brown fox jumped over the lazy dogs. Sphinx of black quartz, judge my vow. Welcome to the circus, " +
+            "we've got fun and games, here's\\a\\very-long-path\\without-spaces\\that-should-get-broken\\ok",
+
+            "This line ends with a very long string of characters: asmfkjalshasklmrasklrjhalksrmjaslkaslrklsmrs\n\n" + 
+            "Then is followed by a line break and short lines.\n" +
+            "The word-wrap of the long string should produce a small bounding box."
+        };
 
         SpriteFont DutchAndHarley;
 
@@ -43,7 +44,9 @@ namespace FontTest {
         DefaultMaterialSet Materials;
         GraphicsDeviceManager Graphics;
 
-        DynamicStringLayout Text, Text2;
+        DynamicStringLayout Text;
+        int StringIndex;
+        string SelectedString => TestStrings[StringIndex];
 
         float TextScale = 2f;
 
@@ -78,13 +81,13 @@ namespace FontTest {
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
             Alignment.Pressed += (s, e) => {
-                Text2.Alignment = Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 7);
+                Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 7);
             };
             CharacterWrap.Pressed += (s, e) => {
-                Text2.CharacterWrap = Text.CharacterWrap = !Text.CharacterWrap;
+                Text.CharacterWrap = !Text.CharacterWrap;
             };
             WordWrap.Pressed += (s, e) => {
-                Text2.WordWrap = Text.WordWrap = !Text.WordWrap;
+                Text.WordWrap = !Text.WordWrap;
             };
             Hinting.Pressed += (s, e) => {
                 var ftf = (FreeTypeFont)LatinFont;
@@ -94,14 +97,12 @@ namespace FontTest {
                 ftf.Hinting = !ftf.Hinting;
                 ftf.Invalidate();
                 Text.Invalidate();
-                Text2.Invalidate();
             };
             Margin.Pressed += (s, e) => {
                 var ftf = (FreeTypeFont)LatinFont;
                 ftf.GlyphMargin = (ftf.GlyphMargin + 1) % 6;
                 ftf.Invalidate();
                 Text.Invalidate();
-                Text2.Invalidate();
             };
             Monochrome.Pressed += (s, e) => {
                 var ftf = (FreeTypeFont)LatinFont;
@@ -111,7 +112,6 @@ namespace FontTest {
                 ftf.Monochrome = !ftf.Monochrome;
                 ftf.Invalidate();
                 Text.Invalidate();
-                Text2.Invalidate();
             };
             FreeType.Pressed += (s, e) => {
                 if (ActiveFont == FallbackFont) {
@@ -122,9 +122,7 @@ namespace FontTest {
                     TextScale = 2f;
                 }
                 Text.GlyphSource = ActiveFont;
-                Text2.GlyphSource = ActiveFont;
                 Text.Scale = TextScale;
-                Text2.Scale = TextScale;
             };
         }
 
@@ -151,7 +149,7 @@ namespace FontTest {
             Content.RootDirectory = "";
             DutchAndHarley = Content.Load<SpriteFont>("DutchAndHarley");
 
-            Text = new DynamicStringLayout(ActiveFont, TestText) {
+            Text = new DynamicStringLayout(ActiveFont, SelectedString) {
                 AlignToPixels = GlyphPixelAlignment.RoundXY,
                 CharacterWrap = true,
                 WordWrap = true,
@@ -174,13 +172,6 @@ namespace FontTest {
                 WordWrapCharacters = new uint[] {
                     '\\', '/', ':', ','
                 }
-            };
-            Text2 = new DynamicStringLayout(ActiveFont, TestText2) {
-                AlignToPixels = GlyphPixelAlignment.RoundXY,
-                CharacterWrap = true,
-                WordWrap = true,
-                Scale = TextScale,
-                ReverseOrder = true
             };
 
             for (int i = 0; i < Images.Length; i++)
@@ -258,6 +249,12 @@ namespace FontTest {
             }
 
             var ks = Keyboard.GetState();
+            for (int i = 0; i < TestStrings.Length; i++) {
+                var k = Keys.D1 + i;
+                if (ks.IsKeyDown(k))
+                    StringIndex = i;
+            }
+
             Alignment.Update(ref ks);
             CharacterWrap.Update(ref ks);
             WordWrap.Update(ref ks);
@@ -271,6 +268,11 @@ namespace FontTest {
             Expand.Update(ref ks);
             LimitExpansion.Update(ref ks);
 
+            if (!Text.Text.TextEquals(SelectedString)) {
+                Text.Text = SelectedString;
+                Text.Invalidate();
+            }
+
             var newSize = Arithmetic.Clamp(20 + (ms.ScrollWheelValue / 56f), 6, 200);
             newSize = Arithmetic.Clamp(9 + (ms.ScrollWheelValue / 100f), 4, 200);
             var font = ((FreeTypeFont)LatinFont);
@@ -279,8 +281,9 @@ namespace FontTest {
                 font.SizePoints = newSize;
                 sfont.SizePoints = newSize * 0.75f;
                 Text.Invalidate();
-                Text2.Invalidate();
             }
+
+            Text.Invalidate();
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
@@ -291,12 +294,12 @@ namespace FontTest {
 
             Text.Position = TopLeft;
             var targetX = BottomRight.X - TopLeft.X;
-            Text.ExpandHorizontallyWhenAligning = Text2.ExpandHorizontallyWhenAligning = !Expand.Value;
-            Text2.LineBreakAtX = Text.LineBreakAtX = targetX;
-            Text2.DesiredWidth = Text.DesiredWidth = Expand.Value ? targetX : 0;
-            Text2.MaxExpansion = Text.MaxExpansion = LimitExpansion.Value ? 400 : (float?)null;
-            Text2.StopAtY = Text.StopAtY = BottomRight.Y - TopLeft.Y;
-            Text.WrapIndentation = Text2.WrapIndentation = Indent.Value ? 64 : 0;
+            Text.ExpandHorizontallyWhenAligning = !Expand.Value;
+            Text.LineBreakAtX = targetX;
+            Text.DesiredWidth = Expand.Value ? targetX : 0;
+            Text.MaxExpansion = LimitExpansion.Value ? 400 : (float?)null;
+            Text.StopAtY = BottomRight.Y - TopLeft.Y;
+            Text.WrapIndentation = Indent.Value ? 64 : 0;
 
             ir.OutlineRectangle(new Bounds(TopLeft, BottomRight), Color.Red);
 
@@ -320,18 +323,6 @@ namespace FontTest {
 
             ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.Size), Color.Yellow * 0.75f);
             ir.DrawMultiple(layout, material: m, blendState: BlendState.NonPremultiplied, samplerState: RenderStates.Text, userData: new Vector4(0, 0, 0, 0.66f));
-
-            if (Which.Value) {
-                Text2.Position = TopLeft + new Vector2(0, layout.Size.Y + 20);
-                layout = Text2.Get();
-
-                if (ShowOutlines.Value)
-                foreach (var dc in layout.DrawCalls)
-                    ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
-
-                ir.OutlineRectangle(Bounds.FromPositionAndSize(Text2.Position, layout.Size), Color.Yellow * 0.75f);
-                ir.DrawMultiple(layout, material: m, samplerState: RenderStates.Text);
-            }
 
             foreach (var b in Text.Boxes) {
                 ir.OutlineRectangle(b, Color.Orange);

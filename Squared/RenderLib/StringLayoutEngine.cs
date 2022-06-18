@@ -453,7 +453,12 @@ namespace Squared.Render.Text {
                 // FIXME: Why is this padding here?
                 localMinX = firstDc.TopLeft.X - actualPosition.X, localMaxX = originalMaxX - 0.1f;
 
-            if (currentLineBreakAtX.HasValue && expandHorizontallyWhenAligning)
+            if (
+                currentLineBreakAtX.HasValue && expandHorizontallyWhenAligning &&
+                // HACK: Expanding in justify mode doesn't make sense, especially if the expand was constrained
+                (globalAlignment != HorizontalAlignment.JustifyCharacters) &&
+                (globalAlignment != HorizontalAlignment.JustifyWords)
+            )
                 localMaxX = currentLineBreakAtX.Value;
 
             // Expand the line horizontally to fit the desired width
@@ -940,7 +945,7 @@ namespace Squared.Render.Text {
         }
 
         private void AnalyzeWhitespace (char ch1, uint codepoint, out bool isWhiteSpace, out bool forcedWrap, out bool lineBreak, out bool deadGlyph, out bool isWordWrapPoint, out bool didWrapWord) {
-            isWhiteSpace = (Unicode.IsWhiteSpace(ch1) && !replacementCodepoint.HasValue);
+            isWhiteSpace = Unicode.IsWhiteSpace(ch1) && !replacementCodepoint.HasValue;
             forcedWrap = false;
             lineBreak = false;
             deadGlyph = false;
@@ -1082,9 +1087,11 @@ namespace Squared.Render.Text {
                     characterLimit--;
             }
 
-            if (isWhiteSpace)
+            if (isWhiteSpace) {
                 previousGlyphWasDead = true;
-            else
+                currentLineWrapPointLeft = Math.Max(currentLineWrapPointLeft, characterOffset.X);
+                currentLineWhitespaceMaxX = Math.Max(currentLineWhitespaceMaxX, x);
+            } else
                 previousGlyphWasDead = false;
         }
 
