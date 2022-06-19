@@ -261,6 +261,8 @@ namespace Squared.Render.RasterStroke {
     
     [StructLayout(LayoutKind.Sequential)]
     public struct RasterStrokeDrawCall {
+        public RasterStrokeType Type;
+
         public bool WorldSpace;
 
         /// <summary>

@@ -561,6 +561,36 @@ namespace Squared.Render.RasterShape {
             }
         }
 
+        private class BatchManager : SubBatchManager<RasterShapeBatch, RasterShapeDrawCall, SubBatch> {
+            public static readonly BatchManager Instance = new BatchManager();
+
+            protected override bool KeyEquals (
+                RasterShapeBatch self, ref RasterShapeDrawCall last, ref RasterShapeDrawCall dc
+            ) {
+                return !(
+                    (dc.Type != last.Type) &&
+                    (!self.UseUbershader || dc.Type == RasterShapeType.Polygon || last.Type == RasterShapeType.Polygon) ||
+                    (dc.BlendInLinearSpace != last.BlendInLinearSpace) ||
+                    !dc.Shadow.Equals(in last.Shadow) ||
+                    (dc.IsSimple != last.IsSimple) ||
+                    !dc.TextureSettings.Equals(last.TextureSettings)
+                );
+            }
+
+            protected override void CreateBatch (RasterShapeBatch self, ref RasterShapeDrawCall drawCall, int offset, int count) {
+                self._SubBatches.Add(new SubBatch {
+                    InstanceOffset = offset,
+                    InstanceCount = count,
+                    BlendInLinearSpace = drawCall.BlendInLinearSpace,
+                    Type = drawCall.Type,
+                    Shadow = drawCall.Shadow,
+                    Shadowed = ShouldBeShadowed(in drawCall.Shadow),
+                    Simple = drawCall.IsSimple != 0,
+                    TextureSettings = drawCall.TextureSettings
+                });
+            }
+        }
+
         private struct SubBatch {
             public RasterShapeType Type;
             public bool BlendInLinearSpace;
@@ -569,6 +599,8 @@ namespace Squared.Render.RasterShape {
             public int InstanceOffset, InstanceCount;
             internal RasterTextureSettings TextureSettings;
         }
+
+        private DenseList<SubBatch> _SubBatches;
 
         private BufferGenerator<RasterShapeVertex> _BufferGenerator = null;
         private BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
@@ -588,11 +620,6 @@ namespace Squared.Render.RasterShape {
         public bool UseUbershader = false;
 
         private static readonly RasterShapeDrawCallSorter ShapeDrawCallSorter = new RasterShapeDrawCallSorter();
-
-        private static ListPool<SubBatch> _SubListPool = new ListPool<SubBatch>(
-            256, 4, 32, 128, 512
-        );
-        private DenseList<SubBatch> _SubBatches;
 
         const int MaxVertexCount = 65535;
 
@@ -649,9 +676,7 @@ namespace Squared.Render.RasterShape {
             var count = _DrawCalls.Count;
             var vertexCount = count;
             if (count > 0) {
-                _SubBatches.ListPoolOrAllocator = _SubListPool;
-                _SubBatches.Clear();
-                _SubBatches.EnsureCapacity(count, true);
+                BatchManager.Instance.Setup(this, ref _SubBatches, count);
 
                 _DrawCalls.Sort(ShapeDrawCallSorter);
 
@@ -664,39 +689,11 @@ namespace Squared.Render.RasterShape {
                 var vw = vb.GetWriter(count, clear: false);
 
                 ref var firstDc = ref _DrawCalls.Item(0);
-                var lastType = firstDc.Type;
-                var lastBlend = firstDc.BlendInLinearSpace;
-                var lastShadow = firstDc.Shadow;
-                var lastOffset = 0;
-                var lastIsSimple = firstDc.IsSimple;
-                var lastTextureSettings = firstDc.TextureSettings;
+                BatchManager.Instance.Start(this, ref firstDc, out var state);
 
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     ref var dc = ref _DrawCalls.Item(i);
-
-                    if (
-                        ((dc.Type != lastType) && (!UseUbershader || dc.Type == RasterShapeType.Polygon || lastType == RasterShapeType.Polygon)) ||
-                        (dc.BlendInLinearSpace != lastBlend) ||
-                        !dc.Shadow.Equals(in lastShadow) ||
-                        (dc.IsSimple != lastIsSimple) ||
-                        !dc.TextureSettings.Equals(lastTextureSettings)
-                    ) {
-                        _SubBatches.Add(new SubBatch {
-                            InstanceOffset = lastOffset,
-                            InstanceCount = (i - lastOffset),
-                            BlendInLinearSpace = lastBlend,
-                            Type = lastType,
-                            Shadow = lastShadow,
-                            Shadowed = ShouldBeShadowed(in lastShadow),
-                            Simple = lastIsSimple != 0,
-                            TextureSettings = lastTextureSettings
-                        });
-                        lastOffset = i;
-                        lastType = dc.Type;
-                        lastShadow = dc.Shadow;
-                        lastIsSimple = dc.IsSimple;
-                        lastTextureSettings = dc.TextureSettings;
-                    }
+                    BatchManager.Instance.Step(this, ref dc, ref state, i);
 
                     var fill = dc.Fill;
                     var gpower = fill.GradientPowerMinusOne + 1f;
@@ -718,16 +715,7 @@ namespace Squared.Render.RasterShape {
                     vw.Write(vert);
                 }
 
-                _SubBatches.Add(new SubBatch {
-                    InstanceOffset = lastOffset,
-                    InstanceCount = (count - lastOffset),
-                    BlendInLinearSpace = lastBlend,
-                    Type = lastType,
-                    Shadow = lastShadow,
-                    Shadowed = ShouldBeShadowed(in lastShadow),
-                    Simple = lastIsSimple != 0,
-                    TextureSettings = lastTextureSettings
-                });
+                BatchManager.Instance.Finish(this, ref state, count);
 
                 NativeBatch.RecordPrimitives(count * CornerBufferPrimCount);
             }

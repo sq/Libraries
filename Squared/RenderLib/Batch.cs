@@ -699,4 +699,52 @@ namespace Squared.Render {
             result.Dispose();
         }
     }
+
+    public abstract class SubBatchManager<TSelf, TDrawCall, TSubBatch>
+        where TDrawCall : struct
+        where TSubBatch : struct
+    {
+        public struct State {
+            internal TDrawCall LastDrawCall;
+            internal int StartOffset;
+        }
+
+        public static ListPool<TSubBatch> _SubListPool = new ListPool<TSubBatch>(
+            256, 4, 32, 128, 512
+        );
+
+        public virtual void Clear (TSelf self, ref DenseList<TSubBatch> items) {
+            items.Clear();
+        }
+
+        public virtual void Setup (TSelf self, ref DenseList<TSubBatch> items, int count) {
+            items.Clear();
+            items.ListPoolOrAllocator = _SubListPool;
+            items.EnsureCapacity(count, true);
+        }
+
+        public virtual void Start (TSelf self, ref TDrawCall firstDc, out State currentState) {
+            currentState = new State {
+                LastDrawCall = firstDc,
+                StartOffset = 0
+            };
+        }
+
+        public virtual void Finish (TSelf self, ref State state, int count) {
+            if (count <= state.StartOffset)
+                return;
+            CreateBatch(self, ref state.LastDrawCall, state.StartOffset, count - state.StartOffset);
+        }
+
+        protected abstract void CreateBatch (TSelf self, ref TDrawCall settings, int offset, int count);
+        protected abstract bool KeyEquals (TSelf self, ref TDrawCall dc, ref TDrawCall last);
+
+        public void Step (TSelf self, ref TDrawCall dc, ref State state, int i) {
+            if (!KeyEquals(self, ref dc, ref state.LastDrawCall)) {
+                CreateBatch(self, ref state.LastDrawCall, state.StartOffset, i - state.StartOffset);
+                state.LastDrawCall = dc;
+                state.StartOffset = i;
+            }
+        }
+    }
 }

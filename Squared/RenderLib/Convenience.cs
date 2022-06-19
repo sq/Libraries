@@ -1956,8 +1956,8 @@ namespace Squared.Render.Convenience {
             return (RasterStrokeBatch)cacheEntry.Batch;
         }
 
-        public void StrokeLineSegment (
-            Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, in RasterBrush brush,
+        public void RasterizeStroke (
+            RasterStrokeType type, Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, in RasterBrush brush,
             float? seed = null, Vector4? taper = null, int? layer = null, bool? worldSpace = null, 
             bool? blendInLinearSpace = null, BlendState blendState = null, int sortKey = 0
         ) {
@@ -1965,6 +1965,7 @@ namespace Squared.Render.Convenience {
                 layer, worldSpace, blendState, brush
             ))
                 rsb.Add(new RasterStrokeDrawCall {
+                    Type = type,
                     A = a,
                     B = b,
                     ColorA = colorA,
