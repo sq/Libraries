@@ -40,7 +40,7 @@ namespace Squared.Render {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public byte Average (byte a, byte b, byte c, byte d) {
                 var sum = InvGammaTable[a] + InvGammaTable[b] + InvGammaTable[c] + InvGammaTable[d];
-                return GammaTable[sum / 4];
+                return GammaTable[sum >> 2];
             }
 
             public unsafe void PAGray (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) {
@@ -50,6 +50,40 @@ namespace Squared.Render {
                 byte* pSrc = (byte*)src, pDest = (byte*)dest;
                 var srcRowSize = srcWidth * 4;
             
+                unchecked {
+                    for (var y = 0; y < destHeight; y++) {
+                        byte* srcRow = pSrc + ((y * 2) * srcRowSize);
+                        byte* destRow = pDest + (y * destWidth * 4);
+
+                        for (var x = 0; x < destWidth; x++) {
+                            var a = srcRow + ((x * 2) * 4);
+                            var b = a + 4;
+                            var c = a + srcRowSize;
+                            var d = b + srcRowSize;
+
+                            var result = destRow + (x * 4);
+                            var gray = Average(a[3], b[3], c[3], d[3]);
+                            result[0] = result[1] = result[2] = result[3] = gray;
+                        }
+                    }
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static byte Average (byte a, byte b, byte c, byte d) {
+            var sum = a + b + c + d;
+            return (byte)(sum >> 2);
+        }
+
+        public static unsafe void Color (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) {
+            if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
+                throw new ArgumentOutOfRangeException();
+
+            byte* pSrc = (byte*)src, pDest = (byte*)dest;
+            var srcRowSize = srcWidth * 4;
+            
+            unchecked {
                 for (var y = 0; y < destHeight; y++) {
                     byte* srcRow = pSrc + ((y * 2) * srcRowSize);
                     byte* destRow = pDest + (y * destWidth * 4);
@@ -61,41 +95,11 @@ namespace Squared.Render {
                         var d = b + srcRowSize;
 
                         var result = destRow + (x * 4);
-                        var gray = Average(a[3], b[3], c[3], d[3]);
-                        result[0] = result[1] = result[2] = result[3] = gray;
+                        result[0] = Average(a[0], b[0], c[0], d[0]);
+                        result[1] = Average(a[1], b[1], c[1], d[1]);
+                        result[2] = Average(a[2], b[2], c[2], d[2]);
+                        result[3] = Average(a[3], b[3], c[3], d[3]);
                     }
-                }
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte Average (byte a, byte b, byte c, byte d) {
-            var sum = a + b + c + d;
-            return (byte)(sum / 4);
-        }
-
-        public static unsafe void Color (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) {
-            if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
-                throw new ArgumentOutOfRangeException();
-
-            byte* pSrc = (byte*)src, pDest = (byte*)dest;
-            var srcRowSize = srcWidth * 4;
-            
-            for (var y = 0; y < destHeight; y++) {
-                byte* srcRow = pSrc + ((y * 2) * srcRowSize);
-                byte* destRow = pDest + (y * destWidth * 4);
-
-                for (var x = 0; x < destWidth; x++) {
-                    var a = srcRow + ((x * 2) * 4);
-                    var b = a + 4;
-                    var c = a + srcRowSize;
-                    var d = b + srcRowSize;
-
-                    var result = destRow + (x * 4);
-                    result[0] = Average(a[0], b[0], c[0], d[0]);
-                    result[1] = Average(a[1], b[1], c[1], d[1]);
-                    result[2] = Average(a[2], b[2], c[2], d[2]);
-                    result[3] = Average(a[3], b[3], c[3], d[3]);
                 }
             }
         }
@@ -107,22 +111,24 @@ namespace Squared.Render {
             byte* pSrc = (byte*)src, pDest = (byte*)dest;
             var srcRowSize = srcWidth * 4;
             
-            for (var y = 0; y < destHeight; y++) {
-                byte* srcRow = pSrc + ((y * 2) * srcRowSize);
-                byte* destRow = pDest + (y * destWidth * 4);
+            unchecked {
+                for (var y = 0; y < destHeight; y++) {
+                    byte* srcRow = pSrc + ((y * 2) * srcRowSize);
+                    byte* destRow = pDest + (y * destWidth * 4);
 
-                for (var x = 0; x < destWidth; x++) {
-                    var a = srcRow + ((x * 2) * 4);
-                    var b = a + 4;
-                    var c = a + srcRowSize;
-                    var d = b + srcRowSize;
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + ((x * 2) * 4);
+                        var b = a + 4;
+                        var c = a + srcRowSize;
+                        var d = b + srcRowSize;
 
-                    var result = destRow + (x * 4);
-                    result[0] = ColorSpace.AveragesRGB(a[0], b[0], c[0], d[0]);
-                    result[1] = ColorSpace.AveragesRGB(a[1], b[1], c[1], d[1]);
-                    result[2] = ColorSpace.AveragesRGB(a[2], b[2], c[2], d[2]);
-                    // The alpha channel is always linear
-                    result[3] = Average(a[3], b[3], c[3], d[3]);
+                        var result = destRow + (x * 4);
+                        result[0] = ColorSpace.AveragesRGB(a[0], b[0], c[0], d[0]);
+                        result[1] = ColorSpace.AveragesRGB(a[1], b[1], c[1], d[1]);
+                        result[2] = ColorSpace.AveragesRGB(a[2], b[2], c[2], d[2]);
+                        // The alpha channel is always linear
+                        result[3] = Average(a[3], b[3], c[3], d[3]);
+                    }
                 }
             }
         }
@@ -134,22 +140,24 @@ namespace Squared.Render {
             byte* pSrc = (byte*)src, pDest = (byte*)dest;
             var srcRowSize = srcWidth * 4;
             
-            for (var y = 0; y < destHeight; y++) {
-                byte* srcRow = pSrc + ((y * 2) * srcRowSize);
-                byte* destRow = pDest + (y * destWidth * 4);
+            unchecked {
+                for (var y = 0; y < destHeight; y++) {
+                    byte* srcRow = pSrc + ((y * 2) * srcRowSize);
+                    byte* destRow = pDest + (y * destWidth * 4);
 
-                for (var x = 0; x < destWidth; x++) {
-                    var a = srcRow + ((x * 2) * 4);
-                    var b = a + 4;
-                    var c = a + srcRowSize;
-                    var d = b + srcRowSize;
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + ((x * 2) * 4);
+                        var b = a + 4;
+                        var c = a + srcRowSize;
+                        var d = b + srcRowSize;
 
-                    var result = destRow + (x * 4);
-                    // Average the alpha channel because it is linear
-                    var alphaAverage = Average(a[3], b[3], c[3], d[3]);
-                    var gray = ColorSpace.LinearByteTosRGBByteTable[alphaAverage];
-                    result[0] = result[1] = result[2] = gray;
-                    result[3] = alphaAverage;
+                        var result = destRow + (x * 4);
+                        // Average the alpha channel because it is linear
+                        var alphaAverage = Average(a[3], b[3], c[3], d[3]);
+                        var gray = ColorSpace.LinearByteTosRGBByteTable[alphaAverage];
+                        result[0] = result[1] = result[2] = gray;
+                        result[3] = alphaAverage;
+                    }
                 }
             }
         }
@@ -161,20 +169,22 @@ namespace Squared.Render {
             byte* pSrc = (byte*)src, pDest = (byte*)dest;
             var srcRowSize = srcWidth * 4;
             
-            for (var y = 0; y < destHeight; y++) {
-                byte* srcRow = pSrc + ((y * 2) * srcRowSize);
-                byte* destRow = pDest + (y * destWidth * 4);
+            unchecked {
+                for (var y = 0; y < destHeight; y++) {
+                    byte* srcRow = pSrc + ((y * 2) * srcRowSize);
+                    byte* destRow = pDest + (y * destWidth * 4);
 
-                for (var x = 0; x < destWidth; x++) {
-                    var a = srcRow + ((x * 2) * 4);
-                    var b = a + 4;
-                    var c = a + srcRowSize;
-                    var d = b + srcRowSize;
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + ((x * 2) * 4);
+                        var b = a + 4;
+                        var c = a + srcRowSize;
+                        var d = b + srcRowSize;
 
-                    var result = destRow + (x * 4);
-                    // Average the alpha channel because it is linear
-                    var gray = Average(a[3], b[3], c[3], d[3]);
-                    result[0] = result[1] = result[2] = result[3] = gray;
+                        var result = destRow + (x * 4);
+                        // Average the alpha channel because it is linear
+                        var gray = Average(a[3], b[3], c[3], d[3]);
+                        result[0] = result[1] = result[2] = result[3] = gray;
+                    }
                 }
             }
         }
@@ -251,7 +261,7 @@ namespace Squared.Render {
         private int X, Y, RowHeight;
         private object Lock = new object();
         private Action _BeforeIssue, _BeforePrepare;
-        private bool _NeedClear, _IsQueued;
+        private bool _NeedClear, _IsQueued, _NeedRequeue;
         private T[] MipBuffer;
         private int MipLevelCount;
         private readonly MipGenerator<T> GenerateMip;
@@ -325,11 +335,10 @@ namespace Squared.Render {
         }
 
         public void Invalidate (Rectangle rect) {
-            // HACK
-            Invalidate();
-            return;
-
             lock (Lock) {
+                if (_IsQueued)
+                    _NeedRequeue = true;
+
                 var myRect = new Rectangle(0, 0, Width, Height);
                 if (DirtyMipsRegion.Width > 0)
                     DirtyMipsRegion = Rectangle.Intersect(Rectangle.Union(DirtyMipsRegion, rect), myRect);
@@ -340,46 +349,59 @@ namespace Squared.Render {
                 else
                     DirtyUploadRegion = Rectangle.Intersect(rect, myRect);
 
-                if (!IsDisposed && !_IsQueued) {
-                    _IsQueued = true;
-                    Coordinator.BeforePrepare(_BeforePrepare);
-                    Coordinator.BeforeIssue(_BeforeIssue);
-                }
+                QueueHandlers();
             }
         }
 
         public void Invalidate () {
             lock (Lock) {
-                DirtyMipsRegion = DirtyUploadRegion = new Rectangle(0, 0, Width, Height);
+                if (_IsQueued)
+                    _NeedRequeue = true;
 
-                if (!IsDisposed && !_IsQueued) {
-                    _IsQueued = true;
-                    Coordinator.BeforePrepare(_BeforePrepare);
-                    Coordinator.BeforeIssue(_BeforeIssue);
-                }
+                DirtyMipsRegion = DirtyUploadRegion = new Rectangle(0, 0, Width, Height);
+                QueueHandlers();
+            }
+        }
+
+        private void QueueHandlers () {
+            if (!IsDisposed && !_IsQueued) {
+                _IsQueued = true;
+                Coordinator.BeforePrepare(_BeforePrepare);
+                // This is queued by the BeforePrepare handler
+                // Coordinator.BeforeIssue(_BeforeIssue);
             }
         }
 
         private void QueueGenerateMips () {
             lock (Lock) {
                 _IsQueued = false;
+
                 var workItem = new GenerateMipsWorkItem {
                     Atlas = this,
                     Region = DirtyMipsRegion
                 };
-                DirtyUploadRegion = Rectangle.Union(DirtyUploadRegion, DirtyMipsRegion);
                 DirtyMipsRegion = default;
                 Coordinator.ThreadGroup.Enqueue(workItem);
+
+                Coordinator.BeforeIssue(_BeforeIssue);
             }
         }
 
         public void Flush () {
             Coordinator.ThreadGroup.GetQueueForType<GenerateMipsWorkItem>().WaitUntilDrained();
+
             lock (Lock) {
                 if (IsDisposed)
                     return;
 
                 FlushLocked(false);
+
+                // HACK: If invalidation happens in the middle of us performing updates, some updates
+                //  might never get propagated into our mips
+                if (_NeedRequeue) {
+                    _NeedRequeue = false;
+                    QueueHandlers();
+                }
             }
         }
 
@@ -434,8 +456,6 @@ namespace Squared.Render {
 
             var hMips = GCHandle.Alloc(MipBuffer, GCHandleType.Pinned);
 
-            Console.WriteLine($"{this} upload {region}");
-
             try {
                 var pSrcBuffer = hSrc.AddrOfPinnedObject().ToPointer();
                 var pSrc = pSrcBuffer;
@@ -445,17 +465,12 @@ namespace Squared.Render {
                 for (var i = 1; i < MipLevelCount; i++) {
                     var destWidth = srcWidth / 2;
                     var destHeight = srcHeight / 2;
-                    // FIXME: Partial uploads are broken and I can't figure out why
-                    if (false) {
-                        mipRect = new Rectangle(
-                            (int)Math.Floor(mipRect.Left / 2f),
-                            (int)Math.Floor(mipRect.Top / 2f),
-                            (int)Math.Ceiling(mipRect.Width / 2f),
-                            (int)Math.Ceiling(mipRect.Height / 2f)
-                        );
-                    } else {
-                        mipRect = new Rectangle(0, 0, destWidth, destHeight);
-                    }
+                    mipRect = new Rectangle(
+                        (int)Math.Floor(mipRect.Left / 2f),
+                        (int)Math.Floor(mipRect.Top / 2f),
+                        (int)Math.Ceiling(mipRect.Width / 2f),
+                        (int)Math.Ceiling(mipRect.Height / 2f)
+                    );
 
                     UploadRect((IntPtr)pDest, destWidth, destHeight, i, mipRect); 
 
@@ -491,8 +506,6 @@ namespace Squared.Render {
                 return;
             }
 
-            Console.WriteLine($"{this} generate {region}");
-
             var srcBuffer = Pixels;
             var srcWidth = Width;
             var srcHeight = Height;
@@ -510,7 +523,6 @@ namespace Squared.Render {
                     var destWidth = srcWidth / 2;
                     var destHeight = srcHeight / 2;
 
-                    Console.WriteLine($"#{i} GenerateMip({(IntPtr)pSrc}, {srcWidth}, {srcHeight}, {(IntPtr)pDest}, {destWidth}, {destHeight})");
                     GenerateMip(pSrc, srcWidth, srcHeight, pDest, destWidth, destHeight);
 
                     pSrc = pDest;
