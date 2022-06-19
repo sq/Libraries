@@ -338,6 +338,32 @@ namespace Squared.Render.RasterStroke {
             }
         }
 
+        private class BatchManager : SubBatchManager<RasterStrokeBatch, RasterStrokeDrawCall, SubBatch> {
+            public static readonly BatchManager Instance = new BatchManager();
+
+            protected override bool KeyEquals (
+                RasterStrokeBatch self, ref RasterStrokeDrawCall last, ref RasterStrokeDrawCall dc
+            ) {
+                // FIXME
+                return (last.Type == dc.Type);
+            }
+
+            protected override void CreateBatch (RasterStrokeBatch self, ref RasterStrokeDrawCall drawCall, int offset, int count) {
+                self._SubBatches.Add(new SubBatch {
+                    InstanceOffset = offset,
+                    InstanceCount = count,
+                    Type = drawCall.Type
+                });
+            }
+        }
+
+        private struct SubBatch {
+            public int InstanceOffset, InstanceCount;
+            public RasterStrokeType Type;
+        }
+
+        private DenseList<SubBatch> _SubBatches;
+
         private BufferGenerator<RasterStrokeVertex> _BufferGenerator = null;
         private BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
 
@@ -382,6 +408,7 @@ namespace Squared.Render.RasterStroke {
             BlendState = null;
             RasterizerState = null;
             Brush = default;
+            BatchManager.Instance.Clear(this, ref _SubBatches);
 
             if (VertexAllocator == null)
                 VertexAllocator = container.RenderManager.GetArrayAllocator<RasterStrokeVertex>();
@@ -400,6 +427,8 @@ namespace Squared.Render.RasterStroke {
             var count = _DrawCalls.Count;
             var vertexCount = count;
             if (count > 0) {
+                BatchManager.Instance.Setup(this, ref _SubBatches, count);
+
                 _DrawCalls.Sort(StrokeDrawCallSorter);
 
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<RasterStrokeVertex>>();
@@ -411,8 +440,12 @@ namespace Squared.Render.RasterStroke {
                 var vw = vb.GetWriter(count, clear: false);
                 var seed = new Vector4(0, 0, 1f / NoiseTextureSize, 0.33f / NoiseTextureSize);
 
+                ref var firstDc = ref _DrawCalls.Item(0);
+                BatchManager.Instance.Start(this, ref firstDc, out var state);
+
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     ref var dc = ref _DrawCalls.Item(i);
+                    BatchManager.Instance.Step(this, ref dc, ref state, i);
 
                     seed.X = dc.Seed / NoiseTextureSize;
                     var vert = new RasterStrokeVertex {
@@ -426,6 +459,7 @@ namespace Squared.Render.RasterStroke {
                     vw.Write(vert);
                 }
 
+                BatchManager.Instance.Finish(this, ref state, count);
                 NativeBatch.RecordPrimitives(count * CornerBufferPrimCount);
             }
         }
@@ -470,76 +504,86 @@ namespace Squared.Render.RasterStroke {
             base.Issue(manager);
 
             var count = _DrawCalls.Count;
-            if (count > 0) {
-                // manager.Device.SetStringMarkerEXT(this.ToString());
-                var device = manager.Device;
+            if (count <= 0) {
+                _SoftwareBuffer = null;
+                return;
+            }
 
-                // FIXME: Select technique based on this
-                bool hasNoise = (Brush.Flow.NoiseFactor != 0) ||
-                    (Brush.AngleDegrees.NoiseFactor != 0) ||
-                    (Brush.BrushIndex.NoiseFactor != 0) ||
-                    (Brush.Hardness.NoiseFactor != 0) ||
-                    (Brush.Scale.NoiseFactor != 0) ||
-                    (Brush.Color.NoiseFactor != 0);
+            // manager.Device.SetStringMarkerEXT(this.ToString());
+            var device = manager.Device;
 
-                // HACK: Workaround for D3D11 debug layer shouting about no texture bound :(
-                if (hasNoise || true)
-                    NoiseTexture = GetNoiseTexture(Container.RenderManager);
-                else
-                    NoiseTexture = null;
+            // FIXME: Select technique based on this
+            bool hasNoise = (Brush.Flow.NoiseFactor != 0) ||
+                (Brush.AngleDegrees.NoiseFactor != 0) ||
+                (Brush.BrushIndex.NoiseFactor != 0) ||
+                (Brush.Hardness.NoiseFactor != 0) ||
+                (Brush.Scale.NoiseFactor != 0) ||
+                (Brush.Color.NoiseFactor != 0);
 
-                VertexBuffer vb, cornerVb;
-                DynamicIndexBuffer ib, cornerIb;
+            // HACK: Workaround for D3D11 debug layer shouting about no texture bound :(
+            if (hasNoise || true)
+                NoiseTexture = GetNoiseTexture(Container.RenderManager);
+            else
+                NoiseTexture = null;
 
-                var cornerHwb = _CornerBuffer.HardwareBuffer;
-                cornerHwb.SetActive();
-                cornerHwb.GetBuffers(out cornerVb, out cornerIb);
-                if (device.Indices != cornerIb)
-                    device.Indices = cornerIb;
+            VertexBuffer vb, cornerVb;
+            DynamicIndexBuffer ib, cornerIb;
 
-                var hwb = _SoftwareBuffer.HardwareBuffer;
-                if (hwb == null)
-                    throw new ThreadStateException("Could not get a hardware buffer for this batch");
+            var cornerHwb = _CornerBuffer.HardwareBuffer;
+            cornerHwb.SetActive();
+            cornerHwb.GetBuffers(out cornerVb, out cornerIb);
+            if (device.Indices != cornerIb)
+                device.Indices = cornerIb;
 
-                hwb.SetActive();
-                hwb.GetBuffers(out vb, out ib);
+            var hwb = _SoftwareBuffer.HardwareBuffer;
+            if (hwb == null)
+                throw new ThreadStateException("Could not get a hardware buffer for this batch");
 
-                var scratchBindings = _ScratchBindingArray.Value;
+            hwb.SetActive();
+            hwb.GetBuffers(out vb, out ib);
 
-                scratchBindings[0] = cornerVb;
-                // scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
+            var scratchBindings = _ScratchBindingArray.Value;
 
-                // if the render target/backbuffer is sRGB, we need to generate output in the correct color space
-                var format = (manager.CurrentRenderTarget?.Format ?? manager.Device.PresentationParameters.BackBufferFormat);
-                var isSrgbRenderTarget = 
-                    (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
+            scratchBindings[0] = cornerVb;
+            // scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
 
-                var ep = Material.Effect.Parameters;
-                var atlas = Brush.NozzleAtlas.Instance;
-                int nozzleBaseSize = atlas == null
-                    ? 1 
-                    : Math.Max(atlas.Width / Brush.NozzleCountX, atlas.Height / Brush.NozzleCountY);
-                ep["UsesNoise"].SetValue(hasNoise);
-                ep["NozzleParams"].SetValue(new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleBaseSize, 0));
-                ep["SizeDynamics"].SetValue(Brush.Scale.ToVector4());
-                var angle = Brush.AngleDegrees.ToVector4();
-                angle.Y /= 360f;
-                ep["AngleDynamics"].SetValue(angle);
-                ep["FlowDynamics"].SetValue(Brush.Flow.ToVector4());
-                ep["BrushIndexDynamics"].SetValue(Brush.BrushIndex.ToVector4());
-                ep["HardnessDynamics"].SetValue(Brush.Hardness.ToVector4());
-                ep["ColorDynamics"].SetValue(Brush.Color.ToVector4());
-                ep["Constants1"].SetValue(new Vector4(
+            // if the render target/backbuffer is sRGB, we need to generate output in the correct color space
+            var format = (manager.CurrentRenderTarget?.Format ?? manager.Device.PresentationParameters.BackBufferFormat);
+            var isSrgbRenderTarget = 
+                (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
+
+            var atlas = Brush.NozzleAtlas.Instance;
+            int nozzleBaseSize = atlas == null
+                ? 1 
+                : Math.Max(atlas.Width / Brush.NozzleCountX, atlas.Height / Brush.NozzleCountY);
+
+            Vector4 angle = Brush.AngleDegrees.ToVector4(),
+                constants1 = new Vector4(
                     Brush.Scale.Constant, Brush.AngleDegrees.Constant / 360f, Brush.Flow.Constant, Brush.BrushIndex.Constant
-                ));
-                ep["Constants2"].SetValue(new Vector4(
+                ),
+                constants2 = new Vector4(
                     Brush.Hardness.Constant, Brush.Color.Constant, Brush.Spacing, Brush.SizePx
-                ));
-                ep["BlendInLinearSpace"].SetValue(BlendInLinearSpace);
-                ep["OutputInLinearSpace"].SetValue(isSrgbRenderTarget);
-                ep["Textured"].SetValue(atlas != null);
+                ),
+                nozzleParams = new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleBaseSize, 0);
+            angle.Y /= 360f;
 
-                manager.ApplyMaterial(Material, ref MaterialParameters);
+            foreach (var sb in _SubBatches) {
+                var material = Materials.RasterStrokeMaterials[(int)sb.Type];
+                material.UsesNoise.SetValue(hasNoise);
+                material.NozzleParams.SetValue(nozzleParams);
+                material.SizeDynamics.SetValue(Brush.Scale.ToVector4());
+                material.AngleDynamics.SetValue(angle);
+                material.FlowDynamics.SetValue(Brush.Flow.ToVector4());
+                material.BrushIndexDynamics.SetValue(Brush.BrushIndex.ToVector4());
+                material.HardnessDynamics.SetValue(Brush.Hardness.ToVector4());
+                material.ColorDynamics.SetValue(Brush.Color.ToVector4());
+                material.Constants1.SetValue(constants1);
+                material.Constants2.SetValue(constants2);
+                material.BlendInLinearSpace.SetValue(BlendInLinearSpace);
+                material.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
+                material.Textured.SetValue(atlas != null);
+
+                manager.ApplyMaterial(material.Material, ref MaterialParameters);
 
                 if (BlendState != null)
                     device.BlendState = BlendState;
@@ -556,7 +600,7 @@ namespace Squared.Render.RasterStroke {
                 device.SamplerStates[1] = SamplerState.PointWrap;
 
                 scratchBindings[1] = new VertexBufferBinding(
-                    vb, _SoftwareBuffer.HardwareVertexOffset, 1
+                    vb, _SoftwareBuffer.HardwareVertexOffset + sb.InstanceOffset, 1
                 );
 
                 device.SetVertexBuffers(scratchBindings);
@@ -565,19 +609,18 @@ namespace Squared.Render.RasterStroke {
                     PrimitiveType.TriangleList, 
                     0, _CornerBuffer.HardwareVertexOffset, CornerBufferVertexCount, 
                     _CornerBuffer.HardwareIndexOffset, CornerBufferPrimCount, 
-                    Count
+                    sb.InstanceCount
                 );
 
                 device.Textures[0] = null;
                 device.Textures[1] = null;
-
-                NativeBatch.RecordCommands(Count);
-                hwb.SetInactive();
-                cornerHwb.SetInactive();
-
-                device.SetVertexBuffer(null);
             }
 
+            NativeBatch.RecordCommands(_SubBatches.Count);
+            hwb.SetInactive();
+            cornerHwb.SetInactive();
+
+            device.SetVertexBuffer(null);
             _SoftwareBuffer = null;
         }
 

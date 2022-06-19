@@ -592,11 +592,10 @@ namespace Squared.Render.RasterShape {
         }
 
         private struct SubBatch {
-            public RasterShapeType Type;
-            public bool BlendInLinearSpace;
-            public RasterShadowSettings Shadow;
-            public bool Shadowed, Simple;
             public int InstanceOffset, InstanceCount;
+            public RasterShapeType Type;
+            public bool BlendInLinearSpace, Shadowed, Simple;
+            public RasterShadowSettings Shadow;
             internal RasterTextureSettings TextureSettings;
         }
 
@@ -651,7 +650,7 @@ namespace Squared.Render.RasterShape {
             RampTexture = null;
             ShadowSettings = default;
             RampUVOffset = default;
-            _SubBatches.Clear();
+            BatchManager.Instance.Clear(this, ref _SubBatches);
 
             if (VertexAllocator == null)
                 VertexAllocator = container.RenderManager.GetArrayAllocator<RasterShapeVertex>();
@@ -716,7 +715,6 @@ namespace Squared.Render.RasterShape {
                 }
 
                 BatchManager.Instance.Finish(this, ref state, count);
-
                 NativeBatch.RecordPrimitives(count * CornerBufferPrimCount);
             }
         }
@@ -757,141 +755,142 @@ namespace Squared.Render.RasterShape {
             base.Issue(manager);
 
             var count = _DrawCalls.Count;
-            if (count > 0) {
-                // manager.Device.SetStringMarkerEXT(this.ToString());
-                var device = manager.Device;
+            if (count <= 0) {
+                _SoftwareBuffer = null;
+                return;
+            }
+            // manager.Device.SetStringMarkerEXT(this.ToString());
+            var device = manager.Device;
 
-                VertexBuffer vb, cornerVb;
-                DynamicIndexBuffer ib, cornerIb;
+            VertexBuffer vb, cornerVb;
+            DynamicIndexBuffer ib, cornerIb;
 
-                var cornerHwb = _CornerBuffer.HardwareBuffer;
-                cornerHwb.SetActive();
-                cornerHwb.GetBuffers(out cornerVb, out cornerIb);
-                if (device.Indices != cornerIb)
-                    device.Indices = cornerIb;
+            var cornerHwb = _CornerBuffer.HardwareBuffer;
+            cornerHwb.SetActive();
+            cornerHwb.GetBuffers(out cornerVb, out cornerIb);
+            if (device.Indices != cornerIb)
+                device.Indices = cornerIb;
 
-                var hwb = _SoftwareBuffer.HardwareBuffer;
-                if (hwb == null)
-                    throw new ThreadStateException("Could not get a hardware buffer for this batch");
+            var hwb = _SoftwareBuffer.HardwareBuffer;
+            if (hwb == null)
+                throw new ThreadStateException("Could not get a hardware buffer for this batch");
 
-                hwb.SetActive();
-                hwb.GetBuffers(out vb, out ib);
+            hwb.SetActive();
+            hwb.GetBuffers(out vb, out ib);
 
-                var scratchBindings = _ScratchBindingArray.Value;
+            var scratchBindings = _ScratchBindingArray.Value;
 
-                scratchBindings[0] = cornerVb;
-                // scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
+            scratchBindings[0] = cornerVb;
+            // scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
 
-                // if the render target/backbuffer is sRGB, we need to generate output in the correct color space
-                var format = (manager.CurrentRenderTarget?.Format ?? manager.Device.PresentationParameters.BackBufferFormat);
-                var isSrgbRenderTarget = 
-                    (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
+            // if the render target/backbuffer is sRGB, we need to generate output in the correct color space
+            var format = (manager.CurrentRenderTarget?.Format ?? manager.Device.PresentationParameters.BackBufferFormat);
+            var isSrgbRenderTarget = 
+                (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
 
-                foreach (var sb in _SubBatches) {
-                    var rasterShader = (UseUbershader && sb.Type != RasterShapeType.Polygon) 
-                        ? PickMaterial(null, sb.Shadowed, sb.Simple)
-                        : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
+            foreach (var sb in _SubBatches) {
+                var rasterShader = (UseUbershader && sb.Type != RasterShapeType.Polygon) 
+                    ? PickMaterial(null, sb.Shadowed, sb.Simple)
+                    : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
 
-                    // HACK
-                    if (sb.Type == RasterShapeType.Polygon) {
-                        _PolygonBuffer.Flush(manager);
-                        lock (_PolygonBuffer.Lock)
-                            rasterShader.Material.Effect.Parameters["PolygonVertexBufferInvSize"]?.SetValue(
-                                new Vector2(1.0f / _PolygonBuffer.TextureWidth, 1.0f / _PolygonBuffer.TextureHeight)
-                            );
-                    }
-
-                    rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
-                    rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
-                    rasterShader.RasterTexture?.SetValue(Texture);
-                    rasterShader.RampTexture?.SetValue(RampTexture);
-                    rasterShader.RampUVOffset?.SetValue(RampUVOffset);
-
-                    // HACK: If the shadow color is fully transparent, suppress the offset and softness.
-                    // If we don't do this, the bounding box of the shapes will be pointlessly expanded.
-                    var shadowColor = sb.BlendInLinearSpace ? sb.Shadow.Color.ToPLinear() : sb.Shadow.Color.ToVector4();
-                    var shadowOffset = sb.Shadowed ? sb.Shadow.Offset : Vector2.Zero;
-                    var shadowSoftness = sb.Shadowed ? sb.Shadow.Softness : 0;
-                    var shadowExpansion = (sb.Shadowed ? sb.Shadow.Expansion : 0) * (sb.Shadow.Inside ? -1 : 1);
-                    // Also suppress the shadow entirely if the parameters are such that it would basically be invisible
-                    if (!sb.Shadowed) {
-                        shadowOffset = Vector2.Zero;
-                        shadowColor = Vector4.Zero;
-                        shadowSoftness = 0;
-                        shadowExpansion = 0;
-                    }
-
-                    rasterShader.ShadowOptions.SetValue(new Vector4(
-                        shadowOffset.X, shadowOffset.Y,
-                        shadowSoftness, sb.Shadow.FillSuppression
-                    ));
-                    rasterShader.ShadowOptions2.SetValue(new Vector2(
-                        shadowExpansion, sb.Shadow.Inside ? 1 : 0
-                    ));
-                    rasterShader.ShadowColorLinear.SetValue(shadowColor);
-                    var mas = sb.TextureSettings.ModeAndScaleMinusOne;
-                    mas.Z += 1;
-                    mas.W += 1;
-                    if (Texture != null) {
-                        if ((sb.TextureSettings.Mode & RasterTextureCompositeMode.ScreenSpace) == RasterTextureCompositeMode.ScreenSpace) {
-                            mas.Z *= Texture.Width;
-                            mas.W *= Texture.Height;
-                        }
-                        var traits = Evil.TextureUtils.GetTraits(Texture.Format);
-                        rasterShader.TextureTraits?.SetValue(traits);
-                    }
-                    rasterShader.TextureModeAndSize?.SetValue(mas);
-                    rasterShader.TexturePlacement?.SetValue(sb.TextureSettings.Placement);
-
-                    manager.ApplyMaterial(rasterShader.Material, ref MaterialParameters);
-
-                    if (BlendState != null)
-                        device.BlendState = BlendState;
-                    if (DepthStencilState != null)
-                        device.DepthStencilState = DepthStencilState;
-                    if (RasterizerState != null)
-                        device.RasterizerState = RasterizerState;
-
-                    // FIXME: why the hell
-                    device.Textures[0] = Texture;
-                    device.SamplerStates[0] = sb.TextureSettings.SamplerState ?? SamplerState ?? SamplerState.LinearWrap;
-                    device.Textures[3] = RampTexture;
-
-                    if (sb.Type == RasterShapeType.Polygon) {
-                        lock (_PolygonBuffer.Lock) {
-                            device.Textures[2] = _PolygonBuffer.Texture;
-                            device.VertexTextures[2] = _PolygonBuffer.Texture;
-                        }
-                    } else {
-                        device.VertexTextures[2] = null;
-                        device.Textures[2] = null;
-                    }
-
-                    scratchBindings[1] = new VertexBufferBinding(
-                        vb, _SoftwareBuffer.HardwareVertexOffset + sb.InstanceOffset, 1
-                    );
-
-                    device.SetVertexBuffers(scratchBindings);
-
-                    device.DrawInstancedPrimitives(
-                        PrimitiveType.TriangleList, 
-                        0, _CornerBuffer.HardwareVertexOffset, CornerBufferVertexCount, 
-                        _CornerBuffer.HardwareIndexOffset, CornerBufferPrimCount, 
-                        sb.InstanceCount
-                    );
-
-                    device.Textures[0] = null;
-                    rasterShader.RasterTexture?.SetValue((Texture2D)null);
-                    rasterShader.RampTexture?.SetValue((Texture2D)null);
+                // HACK
+                if (sb.Type == RasterShapeType.Polygon) {
+                    _PolygonBuffer.Flush(manager);
+                    lock (_PolygonBuffer.Lock)
+                        rasterShader.Material.Effect.Parameters["PolygonVertexBufferInvSize"]?.SetValue(
+                            new Vector2(1.0f / _PolygonBuffer.TextureWidth, 1.0f / _PolygonBuffer.TextureHeight)
+                        );
                 }
 
-                NativeBatch.RecordCommands(_SubBatches.Count);
-                hwb.SetInactive();
-                cornerHwb.SetInactive();
+                rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
+                rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
+                rasterShader.RasterTexture?.SetValue(Texture);
+                rasterShader.RampTexture?.SetValue(RampTexture);
+                rasterShader.RampUVOffset?.SetValue(RampUVOffset);
 
-                device.SetVertexBuffer(null);
+                // HACK: If the shadow color is fully transparent, suppress the offset and softness.
+                // If we don't do this, the bounding box of the shapes will be pointlessly expanded.
+                var shadowColor = sb.BlendInLinearSpace ? sb.Shadow.Color.ToPLinear() : sb.Shadow.Color.ToVector4();
+                var shadowOffset = sb.Shadowed ? sb.Shadow.Offset : Vector2.Zero;
+                var shadowSoftness = sb.Shadowed ? sb.Shadow.Softness : 0;
+                var shadowExpansion = (sb.Shadowed ? sb.Shadow.Expansion : 0) * (sb.Shadow.Inside ? -1 : 1);
+                // Also suppress the shadow entirely if the parameters are such that it would basically be invisible
+                if (!sb.Shadowed) {
+                    shadowOffset = Vector2.Zero;
+                    shadowColor = Vector4.Zero;
+                    shadowSoftness = 0;
+                    shadowExpansion = 0;
+                }
+
+                rasterShader.ShadowOptions.SetValue(new Vector4(
+                    shadowOffset.X, shadowOffset.Y,
+                    shadowSoftness, sb.Shadow.FillSuppression
+                ));
+                rasterShader.ShadowOptions2.SetValue(new Vector2(
+                    shadowExpansion, sb.Shadow.Inside ? 1 : 0
+                ));
+                rasterShader.ShadowColorLinear.SetValue(shadowColor);
+                var mas = sb.TextureSettings.ModeAndScaleMinusOne;
+                mas.Z += 1;
+                mas.W += 1;
+                if (Texture != null) {
+                    if ((sb.TextureSettings.Mode & RasterTextureCompositeMode.ScreenSpace) == RasterTextureCompositeMode.ScreenSpace) {
+                        mas.Z *= Texture.Width;
+                        mas.W *= Texture.Height;
+                    }
+                    var traits = Evil.TextureUtils.GetTraits(Texture.Format);
+                    rasterShader.TextureTraits?.SetValue(traits);
+                }
+                rasterShader.TextureModeAndSize?.SetValue(mas);
+                rasterShader.TexturePlacement?.SetValue(sb.TextureSettings.Placement);
+
+                manager.ApplyMaterial(rasterShader.Material, ref MaterialParameters);
+
+                if (BlendState != null)
+                    device.BlendState = BlendState;
+                if (DepthStencilState != null)
+                    device.DepthStencilState = DepthStencilState;
+                if (RasterizerState != null)
+                    device.RasterizerState = RasterizerState;
+
+                // FIXME: why the hell
+                device.Textures[0] = Texture;
+                device.SamplerStates[0] = sb.TextureSettings.SamplerState ?? SamplerState ?? SamplerState.LinearWrap;
+                device.Textures[3] = RampTexture;
+
+                if (sb.Type == RasterShapeType.Polygon) {
+                    lock (_PolygonBuffer.Lock) {
+                        device.Textures[2] = _PolygonBuffer.Texture;
+                        device.VertexTextures[2] = _PolygonBuffer.Texture;
+                    }
+                } else {
+                    device.VertexTextures[2] = null;
+                    device.Textures[2] = null;
+                }
+
+                scratchBindings[1] = new VertexBufferBinding(
+                    vb, _SoftwareBuffer.HardwareVertexOffset + sb.InstanceOffset, 1
+                );
+
+                device.SetVertexBuffers(scratchBindings);
+
+                device.DrawInstancedPrimitives(
+                    PrimitiveType.TriangleList, 
+                    0, _CornerBuffer.HardwareVertexOffset, CornerBufferVertexCount, 
+                    _CornerBuffer.HardwareIndexOffset, CornerBufferPrimCount, 
+                    sb.InstanceCount
+                );
+
+                device.Textures[0] = null;
+                rasterShader.RasterTexture?.SetValue((Texture2D)null);
+                rasterShader.RampTexture?.SetValue((Texture2D)null);
             }
 
+            NativeBatch.RecordCommands(_SubBatches.Count);
+            hwb.SetInactive();
+            cornerHwb.SetInactive();
+
+            device.SetVertexBuffer(null);
             _SoftwareBuffer = null;
         }
 
