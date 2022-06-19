@@ -60,12 +60,19 @@ void RasterStrokeRectangleFragmentShader(
     RASTERSTROKE_FS_ARGS
 ) {
     result = 0;
-    float spacing = max(Constants2.w * Constants2.z, 0.05);
-    int count = ceil((ab.w - ab.y) / spacing);
-    for (int i = 0; i <= count; i++) {
-        float y = min(ab.y + (spacing * i), ab.w);
+    float maxSize = Constants2.w,
+        stepPx = max(maxSize * Constants2.z, 0.05),
+        h = ab.w - ab.y,
+        centerY = worldPosition.y,
+        startY = max(0, centerY - maxSize),
+        endY = min(centerY + maxSize, h),
+        firstIteration = floor(startY / stepPx),
+        lastIteration = ceil(endY / stepPx);
+
+    for (float i = firstIteration; i <= lastIteration; i += 1.0) {
+        float y = min(ab.y + (stepPx * i), ab.w);
         float4 _ab = float4(ab.x, y, ab.z, y);
-        float4 _seed = float4(seed.x + (i * count / 2) * seed.z, seed.y + (i * seed.w), seed.z, seed.w);
+        float4 _seed = float4(seed.x + (i * seed.z * 0.331), seed.y + (i * seed.w), seed.z, seed.w);
         rasterStrokeLineCommon(
             worldPosition, _ab, _seed, taper, GET_VPOS, colorA, colorB, result
         );
