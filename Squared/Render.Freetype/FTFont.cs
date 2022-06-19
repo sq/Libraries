@@ -11,6 +11,7 @@ using Microsoft.Xna.Framework.Graphics;
 using SharpFont;
 using Squared.Game;
 using Squared.Render;
+using Squared.Render.Mips;
 using Squared.Render.Text;
 using Squared.Util;
 using FtGlyph = SharpFont.Glyph;
