@@ -6,23 +6,46 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Squared.Render.Mips {
-    public unsafe delegate void MipGenerator<T> (
+    public unsafe delegate void MipGeneratorFn (
         void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
-    ) where T : unmanaged;
+    );
+
+    [Flags]
+    public enum MipFormat : int {
+        // Premultiplied RGBA, 4 bytes per pixel (XNA Color)
+        pRGBA = 0,
+        // Non-premultiplied RGBA, 4 bytes per pixel
+        RGBA  = 1,
+        // Grayscale, 1 byte per pixel
+        Gray1 = 2,
+        // 4 byte RGBA where RGB = A (essentially, premultiplied)
+        pGray4 = 3,
+        // Grayscale float
+        Single = 4, 
+        // 16 byte RGBA where each channel is a float
+        Vector4 = 5,
+        // 16 byte premultiplied RGBA where each channel is a float
+        pVector4 = 6,
+
+        // If set, the RGB channels are sRGB. Not valid for Gray1.
+        sRGB = 0x10,
+    }
 
     public static class MipGenerator {
         public sealed class WithGammaRamp {
             public readonly GammaRamp Ramp;
             private byte[] GammaTable, InvGammaTable;
+            private readonly MipGeneratorFn PAGray;
 
             public WithGammaRamp (double gamma)
                 : this (new GammaRamp(gamma)) {
             }
 
-            public WithGammaRamp (GammaRamp ramp) {
+            public unsafe WithGammaRamp (GammaRamp ramp) {
                 Ramp = ramp;
                 GammaTable = Ramp.GammaTable;
                 InvGammaTable = Ramp.InvGammaTable;
+                PAGray = _PAGray;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -31,7 +54,16 @@ namespace Squared.Render.Mips {
                 return GammaTable[sum >> 2];
             }
 
-            public unsafe void PAGray (
+            public unsafe MipGeneratorFn Get (MipFormat format) {
+                switch (format) {
+                    case MipFormat.pGray4:
+                        return PAGray;
+                    default:
+                        throw new ArgumentOutOfRangeException("format");
+                }
+            }
+
+            private unsafe void _PAGray (
                 void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
             ) {
                 if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
@@ -59,13 +91,55 @@ namespace Squared.Render.Mips {
             }
         }
 
+        private static readonly MipGeneratorFn[] Cache;
+
+        static MipGenerator () {
+            Cache = new MipGeneratorFn[1 + (int)(MipFormat.sRGB | MipFormat.pGray4)];
+            for (int i = 0; i < Cache.Length; i++)
+                Cache[i] = _Get((MipFormat)i);
+        }
+
+        public static void Set (MipFormat format, MipGeneratorFn implementation) {
+            Cache[(int)format] = implementation;
+        }
+
+        private static unsafe MipGeneratorFn _Get (MipFormat format) {
+            switch (format) {
+                case MipFormat.RGBA:
+                case MipFormat.pRGBA:
+                    return _Color;
+                // FIXME: Is this right? I think maybe it needs to be different
+                case MipFormat.RGBA | MipFormat.sRGB:
+                case MipFormat.pRGBA | MipFormat.sRGB:
+                    return _sRGBColor;
+                case MipFormat.Gray1:
+                    return _Gray;
+                case MipFormat.pGray4:
+                    return _PAGray;
+                case MipFormat.pGray4 | MipFormat.sRGB:
+                    return _sRGBPAGray;
+                default:
+                    return null;
+            }
+        }
+
+        public static MipGeneratorFn Get (MipFormat format) {
+            var index = (int)format;
+            if ((index < 0) || (index >= Cache.Length))
+                throw new ArgumentOutOfRangeException("format");
+            var result = Cache[index];
+            if (result == null)
+                throw new ArgumentOutOfRangeException("format");
+            return result;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte Average (byte a, byte b, byte c, byte d) {
             var sum = a + b + c + d;
             return (byte)(sum >> 2);
         }
 
-        public static unsafe void Color (
+        private static unsafe void _Color (
             void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
         ) {
             if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
@@ -94,7 +168,7 @@ namespace Squared.Render.Mips {
             }
         }
 
-        public static unsafe void sRGBColor (
+        private static unsafe void _sRGBColor (
             void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
         ) {
             if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
@@ -124,7 +198,7 @@ namespace Squared.Render.Mips {
             }
         }
 
-        public static unsafe void sRGBPAGray (
+        private static unsafe void _sRGBPAGray (
             void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
         ) {
             if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
@@ -154,7 +228,32 @@ namespace Squared.Render.Mips {
             }
         }
 
-        public static unsafe void PAGray (
+        private static unsafe void _Gray (
+            void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
+        ) {
+            if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
+                throw new ArgumentOutOfRangeException();
+
+            byte* pSrc = (byte*)src, pDest = (byte*)dest;
+            
+            unchecked {
+                for (var y = 0; y < destHeight; y++) {
+                    byte* srcRow = pSrc + ((y * 2) * srcStrideBytes);
+                    byte* destRow = pDest + (y * destStrideBytes);
+
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + (x * 2);
+                        var c = a + srcStrideBytes;
+
+                        var result = destRow + x;
+                        var gray = Average(a[0], a[1], c[0], c[1]);
+                        *result = gray;
+                    }
+                }
+            }
+        }
+
+        private static unsafe void _PAGray (
             void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
         ) {
             if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -95,12 +96,12 @@ namespace Squared.Render {
         private bool _NeedClear, _IsQueued, _NeedRequeue;
         private T[] MipBuffer;
         private int MipLevelCount;
-        private readonly MipGenerator<T> GenerateMip;
+        private readonly MipGeneratorFn GenerateMip;
         private Rectangle DirtyMipsRegion,DirtyUploadRegion;
 
         public DynamicAtlas (
             RenderCoordinator coordinator, int width, int height, SurfaceFormat format, 
-            int spacing = 2, MipGenerator<T> mipGenerator = null, object tag = null
+            int spacing = 2, MipGeneratorFn mipGenerator = null, object tag = null
         ) {
             Id = NextId++;
             Coordinator = coordinator;
@@ -212,8 +213,11 @@ namespace Squared.Render {
                     Region = DirtyMipsRegion
                 };
                 DirtyMipsRegion = default;
-                Coordinator.ThreadGroup.Enqueue(workItem);
 
+                if ((workItem.Region.Width <= 0) || (workItem.Region.Height <= 0))
+                    return;
+
+                Coordinator.ThreadGroup.Enqueue(workItem);
                 Coordinator.BeforeIssue(_BeforeIssue);
             }
         }
@@ -340,22 +344,38 @@ namespace Squared.Render {
             var srcBuffer = Pixels;
             var srcWidth = Width;
             var srcHeight = Height;
+            var started = Stopwatch.GetTimestamp();
 
             var hMips = GCHandle.Alloc(MipBuffer, GCHandleType.Pinned);
             
             try {
                 var pSrcBuffer = hSrc.AddrOfPinnedObject().ToPointer();
-                var pSrc = pSrcBuffer;
+                var pSrc = (byte*)pSrcBuffer;
                 var pDest = (byte*)(hMips.AddrOfPinnedObject().ToPointer());
-                var mipRect = region;
+                int x1 = region.Left, y1 = region.Top, x2 = region.Width, y2 = region.Height;
+                var srcRect = new Rectangle(x1, y1, x2, y2);
+                var destRect = new Rectangle(x1 / 2, y1 / 2, (x2 + 1) / 2, (y2 + 1) / 2);
 
-                // FIXME: Only re-generate mips for the portion of the atlas that changed
                 for (var i = 1; i < MipLevelCount; i++) {
-                    var destWidth = srcWidth / 2;
-                    var destHeight = srcHeight / 2;
-                    var srcStrideBytes = srcWidth * BytesPerPixel;
-                    var destStrideBytes = destWidth * BytesPerPixel;
+                    int destWidth = srcWidth / 2, 
+                        destHeight = srcHeight / 2,
+                        srcStrideBytes = srcWidth * BytesPerPixel, 
+                        destStrideBytes = destWidth * BytesPerPixel;
 
+                    // FIXME
+                    /*
+                    var pSrcOffset = pSrc + (srcStrideBytes * srcRect.Y) + (BytesPerPixel * srcRect.X);
+                    var pDestOffset = pDest + (destStrideBytes * destRect.Y) + (BytesPerPixel * destRect.X);
+                    int srcGap = srcWidth - srcRect.Width,
+                        destGap = destWidth / destRect.Width,
+                        srcOffsetStride = srcStrideBytes + (srcGap * BytesPerPixel),
+                        destOffsetStride = destStrideBytes + (destGap * BytesPerPixel);
+
+                    GenerateMip(
+                        pSrcOffset, srcRect.Width, srcRect.Height, srcOffsetStride,
+                        pDestOffset, destRect.Width, destRect.Height, destOffsetStride
+                    );
+                    */
                     GenerateMip(
                         pSrc, srcWidth, srcHeight, srcStrideBytes,
                         pDest, destWidth, destHeight, destStrideBytes
@@ -366,10 +386,14 @@ namespace Squared.Render {
 
                     srcWidth = destWidth;
                     srcHeight = destHeight;
+                    srcRect = destRect;
                 }
             } finally {
                 DirtyUploadRegion = Rectangle.Union(DirtyUploadRegion, region);
                 hMips.Free();
+                var elapsedMs = (Stopwatch.GetTimestamp() - started) / (double)Time.MillisecondInTicks;
+                if (elapsedMs >= 3)
+                    Debug.WriteLine($"Generating mips took {elapsedMs}ms for {region.Width}x{region.Height} region");
             }
         }
 

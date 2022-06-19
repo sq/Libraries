@@ -75,11 +75,12 @@ namespace Squared.Render.Text {
                 }
             }
 
-            private unsafe static MipGenerator<Color> PickMipGenerator (FreeTypeFont font) {
+            private unsafe static MipGeneratorFn PickMipGenerator (FreeTypeFont font) {
                 // TODO: Add a property that controls whether srgb is used. Or is freetype always srgb?
                 return font.sRGB
-                    ? (MipGenerator<Color>)MipGenerator.sRGBPAGray 
-                    : font.MipGen.PAGray;
+                    // FIXME: Use a sRGB gamma ramp for this?
+                    ? MipGenerator.Get(MipFormat.pGray4 | MipFormat.sRGB)
+                    : font.MipGen?.Get(MipFormat.pGray4) ?? MipGenerator.Get(MipFormat.pGray4);
             }
 
             private unsafe DynamicAtlas<Color>.Reservation Upload (FTBitmap bitmap) {
@@ -116,7 +117,7 @@ namespace Squared.Render.Text {
                     var pDest = (byte*)pPixels;
                     switch (bitmap.PixelMode) {
                         case PixelMode.Gray:
-                            var table = Font.GammaRamp.GammaTable;
+                            var table = Font.GammaRamp?.GammaTable;
                             var srgb = (surfaceFormat != SurfaceFormat.Color);
 
                             for (var y = 0; y < rows; y++) {
@@ -124,13 +125,24 @@ namespace Squared.Render.Text {
                                 var pDestRow = pDest + (rowOffset * 4);
                                 int yPitch = y * pitch;
 
-                                for (var x = 0; x < width; x++) {
-                                    var a = table[pSrc[x + yPitch]];
-                                    var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
+                                if (table == null) {
+                                    for (var x = 0; x < width; x++) {
+                                        var a = pSrc[x + yPitch];
+                                        var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
                                     
-                                    pDestRow[3] = a;
-                                    pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
-                                    pDestRow += 4;
+                                        pDestRow[3] = a;
+                                        pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
+                                        pDestRow += 4;
+                                    }
+                                } else {
+                                    for (var x = 0; x < width; x++) {
+                                        var a = table[pSrc[x + yPitch]];
+                                        var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
+                                    
+                                        pDestRow[3] = a;
+                                        pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
+                                        pDestRow += 4;
+                                    }
                                 }
                             }
                             break;
@@ -451,8 +463,13 @@ namespace Squared.Render.Text {
             }
             set {
                 _Gamma = value;
-                GammaRamp = new GammaRamp(value);
-                MipGen = new MipGenerator.WithGammaRamp(GammaRamp);
+                if (value == 1) {
+                    GammaRamp = null;
+                    MipGen = null;
+                } else {
+                    GammaRamp = new GammaRamp(value);
+                    MipGen = new MipGenerator.WithGammaRamp(GammaRamp);
+                }
             }
         }
 

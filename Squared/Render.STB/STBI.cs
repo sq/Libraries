@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Render.Mips;
 using Squared.Threading;
 using Squared.Util;
 
@@ -20,6 +21,7 @@ namespace Squared.Render.STB {
         public bool IsDisposed { get; private set; }
         private volatile void* _Data;
         public void* Data => _Data;
+        public bool IsPremultiplied { get; set; }
         public bool IsFloatingPoint { get; private set; }
         public bool Is16Bit { get; private set; }
 
@@ -145,8 +147,10 @@ namespace Squared.Render.STB {
             else
                 ConvertData(premultiply);
 
+            IsPremultiplied = premultiply;
+
             if (generateMips)
-                GenerateMips();
+                GenerateMips(sRGB);
         }
 
         private unsafe void ConvertFPData (bool premultiply) {
@@ -321,13 +325,35 @@ namespace Squared.Render.STB {
             return new Future<Texture2D>(result);
         }
 
-        private unsafe void GenerateMips () {
+        private unsafe void GenerateMips (bool sRGB) {
             void* pPreviousLevelData = null, pLevelData = Data;
             int levelWidth = Width, levelHeight = Height;
             int previousLevelWidth = Width, previousLevelHeight = Height;
             // FIXME
             MipChain = new byte[64][];
             var pins = new List<GCHandle>();
+
+            MipFormat format = (MipFormat)(-1);
+            if (IsFloatingPoint) {
+                if (ChannelCount == 4) {
+                    format = IsPremultiplied ? MipFormat.pVector4 : MipFormat.Vector4;
+                } else if (ChannelCount == 1) {
+                    format = MipFormat.Single;
+                }
+            } else if (!Is16Bit) {
+                if (ChannelCount == 4) {
+                    format = IsPremultiplied ? MipFormat.pRGBA : MipFormat.RGBA;
+                } else {
+                    format = MipFormat.Gray1;
+                }
+            }
+
+            if (format == (MipFormat)(-1))
+                throw new ArgumentOutOfRangeException("Mip generation is not supported for this image format");
+            if (sRGB)
+                format |= MipFormat.sRGB;
+
+            var mipGenerator = STBMipGenerator.Get(format);
 
             for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
                 if (IsDisposed)
@@ -340,7 +366,12 @@ namespace Squared.Render.STB {
                     pins.Add(pin);
                     pLevelData = (void*)pin.AddrOfPinnedObject();
                     // FIXME: Do this one step at a time in a list of work items
-                    MipGenerator.Color(pPreviousLevelData, previousLevelWidth, previousLevelHeight, pLevelData, levelWidth, levelHeight);
+                    var previousStrideBytes = previousLevelWidth * SizeofPixel;
+                    var levelStrideBytes = levelWidth * SizeofPixel;
+                    mipGenerator(
+                        pPreviousLevelData, previousLevelWidth, previousLevelHeight, previousStrideBytes,
+                        pLevelData, levelWidth, levelHeight, levelStrideBytes
+                    );
                 }
 
                 previousLevelWidth = levelWidth;

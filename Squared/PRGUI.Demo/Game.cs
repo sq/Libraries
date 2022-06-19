@@ -121,7 +121,7 @@ namespace PRGUI.Demo {
             var result = FontLoader.Load(name);
             result.EqualizeNumberWidths = true;
             result.sRGB = false;
-            result.Gamma = 2.2f;
+            // result.Gamma = 2.2f;
             // High-DPI offscreen surface so the text is sharp even at subpixel positions
             result.DPIPercent = (int)(100f / DPIFactor);
             // Big margin on glyphs so shadows aren't clipped

@@ -3,6 +3,7 @@
 
 #define STBIDEF  extern "C" __declspec(dllexport)
 #define STBIWDEF extern "C" __declspec(dllexport)
+#define STBIRDEF extern "C" __declspec(dllexport)
 
 #define STBI_NO_STDIO
 #define STBI_WRITE_NO_STDIO
@@ -17,14 +18,19 @@
 
 #define STBI_WRITE_NO_HDR
 
+#define STBIR_MAX_CHANNELS 4
+
 #include "stb_image.h"
 #include "stb_image_write.h"
+#include "stb_image_resize.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
 
 #include "stb_image.h"
 #include "stb_image_write.h"
+#include "stb_image_resize.h"
 
 STBIWDEF int get_stbi_write_png_compression_level () {
     return stbi_write_png_compression_level;

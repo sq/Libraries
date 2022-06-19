@@ -54,6 +54,48 @@ namespace Squared.Render.RasterStroke {
         }
     }
 
+    public enum RasterStrokeType : short {
+        LineSegment = 0,
+        Rectangle = 1,
+        // Polyline = 2
+    }
+
+    internal struct StrokeShader {
+        public Material Material;
+        public EffectParameter BlendInLinearSpace,
+            OutputInLinearSpace,
+            UsesNoise,
+            Textured,
+            NozzleParams,
+            Constants1,
+            Constants2,
+            SizeDynamics,
+            AngleDynamics,
+            FlowDynamics,
+            BrushIndexDynamics,
+            HardnessDynamics,
+            ColorDynamics;
+
+        public StrokeShader (Material material) {
+            Material = material;
+            var p = material.Effect.Parameters;
+            BlendInLinearSpace = p["BlendInLinearSpace"];
+            OutputInLinearSpace = p["OutputInLinearSpace"];
+            UsesNoise = p["UsesNoise"];
+            // TODO: Separate technique
+            Textured = p["Textured"];
+            NozzleParams = p["NozzleParams"];
+            Constants1 = p["Constants1"];
+            Constants2 = p["Constants2"];
+            SizeDynamics = p["SizeDynamics"];
+            AngleDynamics = p["AngleDynamics"];
+            FlowDynamics = p["FlowDynamics"];
+            BrushIndexDynamics = p["BrushIndexDynamics"];
+            HardnessDynamics = p["HardnessDynamics"];
+            ColorDynamics = p["ColorDynamics"];
+        }
+    }
+
     public struct BrushDynamics {
         public float Constant;
         public float TaperFactor;
@@ -328,7 +370,8 @@ namespace Squared.Render.RasterStroke {
         }
 
         public void Initialize (IBatchContainer container, int layer, DefaultMaterialSet materials) {
-            base.Initialize(container, layer, materials.RasterStrokeLineSegment, true);
+            // FIXME: Default material
+            base.Initialize(container, layer, materials.RasterStrokeMaterials[(int)RasterStrokeType.LineSegment].Material, true);
 
             Materials = materials;
 
