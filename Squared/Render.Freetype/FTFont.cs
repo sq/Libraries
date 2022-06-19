@@ -158,6 +158,7 @@ namespace Squared.Render.Text {
                     }
                 }
 
+                result.Invalidate();
                 return result;
             }
 

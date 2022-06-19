@@ -196,9 +196,10 @@ namespace Squared.Render {
                 };
 
             public DynamicAtlas<T> Atlas;
+            public Rectangle Region;
 
             public void Execute () {
-                Atlas.GenerateMips();
+                Atlas.GenerateMips(Region);
             }
         }
 
@@ -221,7 +222,11 @@ namespace Squared.Render {
                     Array.Copy(pixels, src, Atlas.Pixels, dest, Width);
                 }
 
-                Atlas.IsDirty = true;
+                Atlas.Invalidate(new Rectangle(X, Y, Width, Height));
+            }
+
+            public void Invalidate () {
+                Atlas.Invalidate(new Rectangle(X, Y, Width, Height));
             }
 
             public Rectangle Rectangle {
@@ -240,17 +245,17 @@ namespace Squared.Render {
         public SurfaceFormat Format { get; private set; }
         public Texture2D Texture { get; private set; }
         public T[] Pixels { get; private set; }
-        public bool IsDirty { get; private set; }
+        public bool IsDirty => (DirtyMipsRegion.Width + DirtyUploadRegion.Width + DirtyMipsRegion.Height + DirtyUploadRegion.Height) > 0;
         public int Spacing { get; private set; }
 
         private int X, Y, RowHeight;
         private object Lock = new object();
         private Action _BeforeIssue, _BeforePrepare;
-        private bool _NeedClear;
+        private bool _NeedClear, _IsQueued;
         private T[] MipBuffer;
         private int MipLevelCount;
         private readonly MipGenerator<T> GenerateMip;
-        private Rectangle DirtyRegion;
+        private Rectangle DirtyMipsRegion,DirtyUploadRegion;
 
         public DynamicAtlas (
             RenderCoordinator coordinator, int width, int height, SurfaceFormat format, 
@@ -320,18 +325,23 @@ namespace Squared.Render {
         }
 
         public void Invalidate (Rectangle rect) {
-            lock (Lock) {
-                if (IsDirty) {
-                    DirtyRegion = Rectangle.Intersect(
-                        Rectangle.Union(DirtyRegion, rect),
-                        new Rectangle(0, 0, Width, Height)
-                    );
-                    return;
-                }
+            // HACK
+            Invalidate();
+            return;
 
-                IsDirty = true;
-                DirtyRegion = rect;
-                if (!IsDisposed) {
+            lock (Lock) {
+                var myRect = new Rectangle(0, 0, Width, Height);
+                if (DirtyMipsRegion.Width > 0)
+                    DirtyMipsRegion = Rectangle.Intersect(Rectangle.Union(DirtyMipsRegion, rect), myRect);
+                else
+                    DirtyMipsRegion = Rectangle.Intersect(rect, myRect);
+                if (DirtyUploadRegion.Width > 0)
+                    DirtyUploadRegion = Rectangle.Intersect(Rectangle.Union(DirtyUploadRegion, rect), myRect);
+                else
+                    DirtyUploadRegion = Rectangle.Intersect(rect, myRect);
+
+                if (!IsDisposed && !_IsQueued) {
+                    _IsQueued = true;
                     Coordinator.BeforePrepare(_BeforePrepare);
                     Coordinator.BeforeIssue(_BeforeIssue);
                 }
@@ -340,24 +350,27 @@ namespace Squared.Render {
 
         public void Invalidate () {
             lock (Lock) {
-                DirtyRegion = new Rectangle(0, 0, Width, Height);
+                DirtyMipsRegion = DirtyUploadRegion = new Rectangle(0, 0, Width, Height);
 
-                if (IsDirty)
-                    return;
-
-                if (!IsDisposed) {
+                if (!IsDisposed && !_IsQueued) {
+                    _IsQueued = true;
                     Coordinator.BeforePrepare(_BeforePrepare);
                     Coordinator.BeforeIssue(_BeforeIssue);
                 }
-                IsDirty = true;
             }
         }
 
         private void QueueGenerateMips () {
-            var workItem = new GenerateMipsWorkItem {
-                Atlas = this
-            };
-            Coordinator.ThreadGroup.Enqueue(workItem);
+            lock (Lock) {
+                _IsQueued = false;
+                var workItem = new GenerateMipsWorkItem {
+                    Atlas = this,
+                    Region = DirtyMipsRegion
+                };
+                DirtyUploadRegion = Rectangle.Union(DirtyUploadRegion, DirtyMipsRegion);
+                DirtyMipsRegion = default;
+                Coordinator.ThreadGroup.Enqueue(workItem);
+            }
         }
 
         public void Flush () {
@@ -377,23 +390,22 @@ namespace Squared.Render {
                 return;
 
             var hSrc = GCHandle.Alloc(Pixels, GCHandleType.Pinned);
+            var dr = DirtyUploadRegion;
             try {
-                UploadRect(hSrc.AddrOfPinnedObject(), Width, Height, 0, DirtyRegion);
-                UploadMipsLocked(hSrc, DirtyRegion);
-                IsDirty = false;
+                DirtyUploadRegion = default;
+                UploadRect(hSrc.AddrOfPinnedObject(), Width, Height, 0, dr);
+                UploadMipsLocked(hSrc, dr);
             } catch (ObjectDisposedException ode) {
                 if (isRetrying)
                     throw;
 
                 Texture = null;
                 EnsureValidResource();
-                IsDirty = true;
+                DirtyUploadRegion = dr;
                 FlushLocked(true);
             } finally {
                 hSrc.Free();
             }
-
-            DirtyRegion = default(Rectangle);
         }
 
         private unsafe void UploadRect (IntPtr src, int srcWidth, int srcHeight, int destLevel, Rectangle rect) {
@@ -421,23 +433,29 @@ namespace Squared.Render {
             var srcHeight = Height;
 
             var hMips = GCHandle.Alloc(MipBuffer, GCHandleType.Pinned);
-            
+
+            Console.WriteLine($"{this} upload {region}");
+
             try {
                 var pSrcBuffer = hSrc.AddrOfPinnedObject().ToPointer();
                 var pSrc = pSrcBuffer;
                 var pDest = (byte*)(hMips.AddrOfPinnedObject().ToPointer());
                 var mipRect = region;
 
-                // FIXME: Only re-generate mips for the portion of the atlas that changed
                 for (var i = 1; i < MipLevelCount; i++) {
                     var destWidth = srcWidth / 2;
                     var destHeight = srcHeight / 2;
-                    mipRect = new Rectangle(
-                        (int)Math.Floor(mipRect.Left / 2f),
-                        (int)Math.Floor(mipRect.Top / 2f),
-                        (int)Math.Ceiling(mipRect.Width / 2f),
-                        (int)Math.Ceiling(mipRect.Height / 2f)
-                    );
+                    // FIXME: Partial uploads are broken and I can't figure out why
+                    if (false) {
+                        mipRect = new Rectangle(
+                            (int)Math.Floor(mipRect.Left / 2f),
+                            (int)Math.Floor(mipRect.Top / 2f),
+                            (int)Math.Ceiling(mipRect.Width / 2f),
+                            (int)Math.Ceiling(mipRect.Height / 2f)
+                        );
+                    } else {
+                        mipRect = new Rectangle(0, 0, destWidth, destHeight);
+                    }
 
                     UploadRect((IntPtr)pDest, destWidth, destHeight, i, mipRect); 
 
@@ -452,13 +470,12 @@ namespace Squared.Render {
             }
         }
 
-        private unsafe void GenerateMips () {
+        private unsafe void GenerateMips (Rectangle region) {
             lock (Lock) {
                 if (IsDisposed)
                     return;
 
                 var hSrc = GCHandle.Alloc(Pixels, GCHandleType.Pinned);
-                var region = DirtyRegion;
                 try {
                     GenerateMipsLocked(hSrc, region);
                 } finally {
@@ -469,8 +486,12 @@ namespace Squared.Render {
 
         // FIXME: Deduplicate?
         private unsafe void GenerateMipsLocked (GCHandle hSrc, Rectangle region) {
-            if (MipLevelCount <= 1)
+            if (MipLevelCount <= 1) {
+                DirtyUploadRegion = Rectangle.Union(DirtyUploadRegion, region);
                 return;
+            }
+
+            Console.WriteLine($"{this} generate {region}");
 
             var srcBuffer = Pixels;
             var srcWidth = Width;
@@ -488,13 +509,8 @@ namespace Squared.Render {
                 for (var i = 1; i < MipLevelCount; i++) {
                     var destWidth = srcWidth / 2;
                     var destHeight = srcHeight / 2;
-                    mipRect = new Rectangle(
-                        (int)Math.Floor(mipRect.Left / 2f),
-                        (int)Math.Floor(mipRect.Top / 2f),
-                        (int)Math.Ceiling(mipRect.Width / 2f),
-                        (int)Math.Ceiling(mipRect.Height / 2f)
-                    );
 
+                    Console.WriteLine($"#{i} GenerateMip({(IntPtr)pSrc}, {srcWidth}, {srcHeight}, {(IntPtr)pDest}, {destWidth}, {destHeight})");
                     GenerateMip(pSrc, srcWidth, srcHeight, pDest, destWidth, destHeight);
 
                     pSrc = pDest;
@@ -504,6 +520,7 @@ namespace Squared.Render {
                     srcHeight = destHeight;
                 }
             } finally {
+                DirtyUploadRegion = Rectangle.Union(DirtyUploadRegion, region);
                 hMips.Free();
             }
         }
@@ -534,7 +551,6 @@ namespace Squared.Render {
             }
 
             AutoClear();
-            Invalidate(new Rectangle(X, Y, width, height));
 
             return true;
         }
@@ -580,5 +596,7 @@ namespace Squared.Render {
         public static implicit operator AbstractTextureReference (DynamicAtlas<T> atlas) {
             return new AbstractTextureReference(atlas);
         }
+
+        public override string ToString () => $"DynamicAtlas<{typeof(T).Name}> #{GetHashCode():X8}";
     }
 }
