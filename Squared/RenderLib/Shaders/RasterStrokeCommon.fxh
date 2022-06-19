@@ -214,11 +214,10 @@ void rasterStrokeLineCommon(
     in float2 worldPosition, in float4 ab, 
     in float4 seed, in float4 taperRanges, in float2 vpos,
     in float4 colorA, in float4 colorB,
-    out float4 result
+    inout float4 result
 ) {
     float2 a = ab.xy, b = ab.zw, ba = b - a,
         atlasScale = float2(1.0 / NozzleParams.x, 1.0 / NozzleParams.y);
-    result = 0;
 
     const float threshold = (1 / 512.0);
 

@@ -68,6 +68,7 @@ void RasterStrokeLineSegmentVertexShader(
 void RasterStrokeLineSegmentFragmentShader(
     RASTERSTROKE_FS_ARGS
 ) {
+    result = 0;
     rasterStrokeLineCommon(
         worldPosition, ab, seed, taper, GET_VPOS, colorA, colorB, result
     );
@@ -85,7 +86,6 @@ void RasterStrokeLineSegmentFragmentShader(
     }
 
     result = ApplyDither4(result, GET_VPOS);
-    result += float4(0.5, 0, 0, 0.5);
 }
 
 technique RasterStrokeLineSegment

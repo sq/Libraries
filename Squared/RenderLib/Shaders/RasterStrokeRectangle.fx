@@ -59,10 +59,17 @@ void RasterStrokeRectangleVertexShader(
 void RasterStrokeRectangleFragmentShader(
     RASTERSTROKE_FS_ARGS
 ) {
-    // FIXME
-    rasterStrokeLineCommon(
-        worldPosition, ab, seed, taper, GET_VPOS, colorA, colorB, result
-    );
+    result = 0;
+    float spacing = max(Constants2.w * Constants2.z, 0.05);
+    int count = ceil((ab.w - ab.y) / spacing);
+    for (int i = 0; i <= count; i++) {
+        float y = min(ab.y + (spacing * i), ab.w);
+        float4 _ab = float4(ab.x, y, ab.z, y);
+        float4 _seed = float4(seed.x + (i * count / 2) * seed.z, seed.y + (i * seed.w), seed.z, seed.w);
+        rasterStrokeLineCommon(
+            worldPosition, _ab, _seed, taper, GET_VPOS, colorA, colorB, result
+        );
+    }
 
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
     //  for alpha gradients because the A we premultiply by does not match the A the GPU selected
@@ -77,7 +84,6 @@ void RasterStrokeRectangleFragmentShader(
     }
 
     result = ApplyDither4(result, GET_VPOS);
-    result += float4(0, 0.5, 0, 0.5);
 }
 
 technique RasterStrokeRectangle
