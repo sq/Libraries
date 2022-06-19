@@ -10,7 +10,6 @@
 // 1.0 / (System.Math.PI * (PIXEL_COVERAGE_RADIUS * PIXEL_COVERAGE_RADIUS))
 #define PIXEL_COVERAGE_FACTOR 2.5257677935631083E-06
 #define ENABLE_DITHERING 1
-#define COLOR_PER_SPLAT false
 
 #include "CompilerWorkarounds.fxh"
 #include "ViewTransformCommon.fxh"
@@ -211,7 +210,7 @@ inline float2 rotate2D(
 }
 
 void rasterStrokeLineCommon(
-    in float2 worldPosition, in float4 ab, 
+    in float shuffle, in float2 worldPosition, in float4 ab, 
     in float4 seed, in float4 taperRanges, in float2 vpos,
     in float4 colorA, in float4 colorB,
     inout float4 result
@@ -241,9 +240,12 @@ void rasterStrokeLineCommon(
         endD = min(centerD + maxSize, l),
         firstIteration = floor(startD / stepPx), 
         lastIteration = ceil(endD / stepPx),
+        iterationCount = lastIteration - firstIteration,
         brushCount = NozzleParams.x * NozzleParams.y;
 
-    for (float i = firstIteration; i <= lastIteration; i += 1.0) {
+    for (float _i = firstIteration; _i <= lastIteration; _i += 1.0) {
+        float i = ((_i + shuffle - firstIteration) % iterationCount) + firstIteration;
+
         float4 noise1, noise2;
         if (UsesNoise) {
             float4 seedUv = float4(seed.x + (i * 2 * seed.z), seed.y + (i * seed.w), 0, 0);

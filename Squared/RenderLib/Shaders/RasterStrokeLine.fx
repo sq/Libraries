@@ -1,6 +1,7 @@
 // O3 produces literally 1/3 the instructions of OD or O0 so let's just be kind to the driver
 #pragma fxcparams(/O3 /Zi)
 
+#define COLOR_PER_SPLAT false
 #include "RasterStrokeCommon.fxh"
 
 void computePosition(
@@ -70,7 +71,7 @@ void RasterStrokeLineSegmentFragmentShader(
 ) {
     result = 0;
     rasterStrokeLineCommon(
-        worldPosition, ab, seed, taper, GET_VPOS, colorA, colorB, result
+        0, worldPosition, ab, seed, taper, GET_VPOS, colorA, colorB, result
     );
 
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts

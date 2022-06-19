@@ -1,6 +1,7 @@
 // O3 produces literally 1/3 the instructions of OD or O0 so let's just be kind to the driver
 #pragma fxcparams(/O3 /Zi)
 
+#define COLOR_PER_SPLAT false
 #include "RasterStrokeCommon.fxh"
 
 void computePosition(
@@ -61,7 +62,8 @@ void RasterStrokeRectangleFragmentShader(
 ) {
     result = 0;
     float maxSize = Constants2.w,
-        stepPx = max(maxSize * Constants2.z, 0.05),
+        // HACK: Low spacings are way worse for rectangles
+        stepPx = max(maxSize * Constants2.z, 2),
         h = ab.w - ab.y,
         centerY = worldPosition.y,
         startY = max(0, centerY - maxSize),
@@ -72,9 +74,11 @@ void RasterStrokeRectangleFragmentShader(
     for (float i = firstIteration; i <= lastIteration; i += 1.0) {
         float y = min(ab.y + (stepPx * i), ab.w);
         float4 _ab = float4(ab.x, y, ab.z, y);
-        float4 _seed = float4(seed.x + (i * seed.z * 0.331), seed.y + (i * seed.w), seed.z, seed.w);
+        float4 _seed = float4(seed.x + (i * seed.w * 1.276), seed.y + (i * seed.z * 0.912), seed.z, seed.w);
+        // FIXME
+        float shuffle = 0; // floor(i * 0.7);
         rasterStrokeLineCommon(
-            worldPosition, _ab, _seed, taper, GET_VPOS, colorA, colorB, result
+            shuffle, worldPosition, _ab, _seed, taper, GET_VPOS, colorA, colorB, result
         );
     }
 
