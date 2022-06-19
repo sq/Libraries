@@ -271,12 +271,17 @@ namespace Squared.PRGUI {
         public Vector2 TransformOrigin {
             get => (_TransformMatrix?.TransformOriginMinusOneHalf + new Vector2(0.5f)) ?? DefaultTransformOrigin;
             set {
-                if ((_TransformMatrix == null) && (value != DefaultTransformOrigin))
+                var tm = _TransformMatrix;
+                if ((tm == null) && (value != DefaultTransformOrigin))
                     return;
-                if (_TransformMatrix == null)
-                    _TransformMatrix = new ControlMatrixInfo {
-                    };
-                _TransformMatrix.TransformOriginMinusOneHalf = value - new Vector2(0.5f);
+                if (tm?.TransformOriginMinusOneHalf == value - new Vector2(0.5f))
+                    return;
+
+                _TransformMatrix = new ControlMatrixInfo {
+                    HasValue = tm?.HasValue ?? false,
+                    Matrix = tm?.Matrix ?? Matrix.Identity,
+                    TransformOriginMinusOneHalf = value - new Vector2(0.5f)
+                };
             }
         }
 
@@ -302,16 +307,32 @@ namespace Squared.PRGUI {
         public Tween<Matrix>? Transform {
             get => _TransformMatrix?.Matrix;
             set {
+                var tm = _TransformMatrix;
                 if (
                     (value == null) ||
-                    ((value.Value.From == Matrix.Identity) && (value.Value.To == Matrix.Identity))
+                    (
+                        ((value.Value.From == Matrix.Identity) && 
+                        (value.Value.To == Matrix.Identity))
+                    )
                 ) {
-                    _TransformMatrix = null;
+                    if (
+                        (tm != null) && 
+                        (tm.TransformOriginMinusOneHalf != Vector2.Zero) &&
+                        tm.HasValue
+                    ) {
+                        _TransformMatrix = new ControlMatrixInfo {
+                            TransformOriginMinusOneHalf = tm.TransformOriginMinusOneHalf,
+                            Matrix = Matrix.Identity,
+                            HasValue = false
+                        };
+                    } else
+                        _TransformMatrix = null;
+
                     return;
                 }
 
                 // Avoid an unnecessary allocation if this won't change anything
-                if (_TransformMatrix?.Matrix == value)
+                if ((tm?.Matrix == value) && tm.HasValue)
                     return;
 
                 // Unfortunately we have to allocate a new one every time,
@@ -320,6 +341,7 @@ namespace Squared.PRGUI {
                 _TransformMatrix = new ControlMatrixInfo {
                     HasValue = true,
                     Matrix = value.Value,
+                    TransformOriginMinusOneHalf = tm?.TransformOriginMinusOneHalf ?? Vector2.Zero
                 };
             }
         }
