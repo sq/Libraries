@@ -306,7 +306,7 @@ namespace Squared.Threading {
                 }
             }
 
-            if (isMainThreadOnly) {
+            if (isMainThreadOnly && resultIsNew) {
                 lock (MainThreadQueueList)
                     MainThreadQueueList.Add(result);
             }
