@@ -20,7 +20,7 @@ void computePosition(
         left = alongNorm.yx * float2(-1, 1),
         right = alongNorm.yx * float2(1, -1);
 
-    // FIXME
+    // FIXME: Tighten box based on start and end offset
     xy = lerp(a - alongNorm, b + alongNorm, cornerWeights.x) + lerp(left, right, cornerWeights.y);
 }
 

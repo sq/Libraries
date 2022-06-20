@@ -12,6 +12,7 @@ void computePosition(
     //  pixel overhang and antialiasing
     float totalRadius = (Constants2.w * 0.55) + 1;
 
+    // FIXME: Tighten box based on start and end offset
     xy = lerp(a - totalRadius, b + totalRadius, cornerWeights.xy);
 }
 

@@ -104,7 +104,7 @@ namespace Squared.Render {
         private bool _Running = true;
         private bool _ActualEnableThreading = true;
         private bool _EnableThreadedPrepare = true;
-        private bool _EnableThreadedIssue = true;
+        private bool _EnableThreadedIssue = false;
         private object _FrameLock = new object();
         private Frame  _FrameBeingPrepared = null;
 

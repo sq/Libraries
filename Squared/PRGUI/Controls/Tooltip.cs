@@ -66,6 +66,9 @@ namespace Squared.PRGUI.Controls {
             set => base.Text = value;
         }
 
+        /// <param name="anchor">If set, alignment will be relative to this control. Otherwise, the screen will be used.</param>
+        /// <param name="anchorPoint">Configures what point on the anchor [0 - 1] is used as the center for alignment</param>
+        /// <param name="controlAlignmentPoint">Configures what point on the control [0 - 1] is aligned onto the anchor point</param>
         public void Move (Control anchor, Vector2? anchorPoint, Vector2? controlAlignmentPoint) {
             Aligner.Enabled = true;
             Aligner.Anchor = anchor;

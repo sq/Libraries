@@ -417,11 +417,13 @@ namespace Squared.Render.Resources {
                 if ((Extensions?.Length ?? 0) == 0)
                     return "*";
 
-                return string.Join(";", Extensions.Select(e => "*." + e));
+                return string.Join(";", Extensions.Select(e => "*" + e));
             }
         }
 
         public string[] GetNames () {
+            if (!Directory.Exists(Path))
+                return Array.Empty<string>();
             return Directory.GetFiles(Path, Filter, Options);
         }
 
