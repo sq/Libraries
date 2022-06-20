@@ -541,7 +541,7 @@ namespace Squared.Render {
             AutoClear();
             var index = Find(entry.Name);
             if (index < 0)
-                Entries.Add(in entry);
+                Entries.Add(entry);
             else
                 Entries[index] = entry;
         }

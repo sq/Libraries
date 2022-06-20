@@ -350,7 +350,7 @@ namespace Squared.PRGUI.Controls {
                 if (settings.IsCompositing && (material == null))
                     blendState = BlendState.Opaque;
                 renderer.Parameters.AddRange(in MaterialParameters);
-                renderer.Draw(in drawCall, material: Material ?? material, blendState: blendState);
+                renderer.Draw(ref drawCall, material: Material ?? material, blendState: blendState);
                 renderer.Parameters = p;
             }
 

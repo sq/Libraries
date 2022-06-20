@@ -96,12 +96,12 @@ namespace Squared.Render {
                     var drawCallsRhsBuffer = b.Data;
 
                     for (int i = 0, l = b.Count; i < l; i++) {
-                        if (!BitmapDrawCall.CheckValid(in drawCallsRhsBuffer[i + b.Offset]))
+                        if (!BitmapDrawCall.CheckValid(ref drawCallsRhsBuffer[i + b.Offset]))
                             // FIXME
                             // throw new Exception("Invalid draw call in batch");
                             continue;
 
-                        bl._DrawCalls.Add(in drawCallsRhsBuffer[i + b.Offset]);
+                        bl._DrawCalls.Add(ref drawCallsRhsBuffer[i + b.Offset]);
                     }
                 }
 
@@ -228,21 +228,29 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        new public void Add (in BitmapDrawCall item) {
-            if (!BitmapDrawCall.CheckValid(in item))
+        new public void Add (BitmapDrawCall item) {
+            if (!BitmapDrawCall.CheckValid(ref item))
                 throw new InvalidOperationException("Invalid draw call");
 
-            _DrawCalls.Add(item);
+            _DrawCalls.Add(ref item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (in BitmapDrawCall item, Material material) {
-            if (!BitmapDrawCall.CheckValid(in item))
+        new public void Add (ref BitmapDrawCall item) {
+            if (!BitmapDrawCall.CheckValid(ref item))
+                throw new InvalidOperationException("Invalid draw call");
+
+            _DrawCalls.Add(ref item);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add (ref BitmapDrawCall item, Material material) {
+            if (!BitmapDrawCall.CheckValid(ref item))
                 throw new InvalidOperationException("Invalid draw call");
             if (material != null)
                 throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
 
-            _DrawCalls.Add(item);
+            _DrawCalls.Add(ref item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -292,7 +300,7 @@ namespace Squared.Render {
             _DrawCalls.EnsureCapacity(newCount);
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];
-                if (!BitmapDrawCall.CheckValid(in item))
+                if (!BitmapDrawCall.CheckValid(ref item))
                     continue;
 
                 if (hasScale) {
@@ -321,7 +329,7 @@ namespace Squared.Render {
                 if (hasSortKey)
                     item.SortKey = _sortKey;
 
-                DenseList<BitmapDrawCall>.UnsafeAddWithKnownCapacity(ref _DrawCalls, item);
+                DenseList<BitmapDrawCall>.UnsafeAddWithKnownCapacity(ref _DrawCalls, ref item);
             }
         }
         

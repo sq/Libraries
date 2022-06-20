@@ -175,7 +175,8 @@ namespace Squared.Render {
             get; set;
         }
 
-        void Add (in BitmapDrawCall item);
+        void Add (BitmapDrawCall item);
+        void Add (ref BitmapDrawCall item);
         void AddRange (ArraySegment<BitmapDrawCall> items);
     }
 
@@ -1590,7 +1591,7 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CheckValid (in BitmapDrawCall drawCall) {
+        public static bool CheckValid (ref BitmapDrawCall drawCall) {
             if (ValidateFields && !CheckFieldValidity(in drawCall))
                 return false;
 
@@ -1618,7 +1619,7 @@ namespace Squared.Render {
         public bool IsValid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return CheckValid(in this);
+                return CheckValid(ref this);
             }
         }
 

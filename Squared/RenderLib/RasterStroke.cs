@@ -628,7 +628,7 @@ namespace Squared.Render.RasterStroke {
             var result = dc;
             // FIXME
             result.Index = _DrawCalls.Count;
-            _DrawCalls.Add(in result);
+            _DrawCalls.Add(result);
         }
 
         public static RasterStrokeBatch New (

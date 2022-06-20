@@ -903,7 +903,7 @@ namespace Squared.Render.RasterShape {
                 (int)result.Type | (result.IsSimple << 16) | (result.Shadow.IsEnabled << 17) | ((result.BlendInLinearSpace ? 1 : 0) << 18) |
                 ((result.Shadow.Inside ? 1 : 0) << 19) | ((result.SoftOutline ? 1 : 0) << 20)
             );
-            _DrawCalls.Add(in result);
+            _DrawCalls.Add(ref result);
         }
 
         public static RasterShapeBatch New (

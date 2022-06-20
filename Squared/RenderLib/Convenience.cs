@@ -801,7 +801,21 @@ namespace Squared.Render.Convenience {
         }
 
         public void Draw (
-            in BitmapDrawCall drawCall, 
+            BitmapDrawCall drawCall, 
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
+            DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
+            Material material = null
+        ) {
+            Draw(
+                ref drawCall, layer, worldSpace, 
+                blendState, samplerState, samplerState2,
+                depthStencilState, rasterizerState, material
+            );
+        }
+
+        public void Draw (
+            ref BitmapDrawCall drawCall, 
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
@@ -828,16 +842,16 @@ namespace Squared.Render.Convenience {
                     if (worldSpace.HasValue && (drawCall.WorldSpace != worldSpace)) {
                         var temp = drawCall;
                         temp.WorldSpace = worldSpace;
-                        mmbb.Add(in temp, material, samplerState, samplerState2);
+                        mmbb.Add(ref temp, material, samplerState, samplerState2);
                     } else
-                        mmbb.Add(in drawCall, material, samplerState, samplerState2);
+                        mmbb.Add(ref drawCall, material, samplerState, samplerState2);
                 } else {
                     if (worldSpace.HasValue && (drawCall.WorldSpace != worldSpace)) {
                         var temp = drawCall;
                         temp.WorldSpace = worldSpace;
-                        batch.Add(in temp);
+                        batch.Add(ref temp);
                     } else
-                        batch.Add(in drawCall);
+                        batch.Add(ref drawCall);
                 }
             }
         }
@@ -875,7 +889,7 @@ namespace Squared.Render.Convenience {
                 NextSortKey.Order += 1;
 
             Draw(
-                in drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: SamplerState2, 
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
             );
@@ -908,7 +922,7 @@ namespace Squared.Render.Convenience {
                 NextSortKey.Order += 1;
 
             Draw(
-                in drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: samplerState2,
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
             );
@@ -941,7 +955,7 @@ namespace Squared.Render.Convenience {
                 NextSortKey.Order += 1;
 
             Draw(
-                in drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: samplerState2,
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState
             );
@@ -978,7 +992,7 @@ namespace Squared.Render.Convenience {
                 NextSortKey.Order += 1;
 
             Draw(
-                in drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: samplerState2,
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
             );

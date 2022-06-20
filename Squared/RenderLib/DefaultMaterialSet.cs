@@ -116,7 +116,7 @@ namespace Squared.Render {
             };
         }
 
-        public bool Equals (in ViewTransform rhs) {
+        public bool Equals (ref ViewTransform rhs) {
             return (Scale == rhs.Scale) &&
                 (Position == rhs.Position) &&
                 (Projection == rhs.Projection) &&
@@ -126,7 +126,7 @@ namespace Squared.Render {
 
         public override bool Equals (object obj) {
             if (obj is ViewTransform vt)
-                return Equals(vt);
+                return Equals(ref vt);
             else
                 return false;
         }
@@ -152,7 +152,7 @@ namespace Squared.Render {
 
         public bool AutoApply (Material m) {
             bool hasChanged = m.ActiveViewTransformId != Id;
-            MaterialSet.ApplyViewTransformToMaterial(m, in ViewTransform);
+            MaterialSet.ApplyViewTransformToMaterial(m, ref ViewTransform);
             m.ActiveViewTransformId = Id;
             return hasChanged;
         }
@@ -966,7 +966,7 @@ namespace Squared.Render {
         public void SetViewTransform (in ViewTransform value) {
             ref var item = ref ViewTransformMutable;
             item = value;
-            ApplyViewTransform(value, !LazyViewTransformChanges);
+            ApplyViewTransform(ref item, !LazyViewTransformChanges);
         }
 
         public Vector2 ViewportZRange {
@@ -1026,7 +1026,7 @@ namespace Squared.Render {
         public void PushViewTransform (in ViewTransform? viewTransform) {
             var vt = viewTransform ?? ViewTransform;
             ViewTransformStack.Add(vt);
-            ApplyViewTransform(in vt, !LazyViewTransformChanges);
+            ApplyViewTransform(ref vt, !LazyViewTransformChanges);
         }
 
         /// <summary>
@@ -1034,7 +1034,7 @@ namespace Squared.Render {
         /// </summary>
         public void PushViewTransform (in ViewTransform viewTransform, bool force = false) {
             ViewTransformStack.Add(viewTransform);
-            ApplyViewTransform(in viewTransform, force || !LazyViewTransformChanges);
+            ApplyViewTransform(viewTransform, force || !LazyViewTransformChanges);
         }
 
         /// <summary>
@@ -1043,7 +1043,7 @@ namespace Squared.Render {
         public void PopViewTransform (out ViewTransform previous, bool force = false) {
             previous = ViewTransform;
             ViewTransformStack.DangerousRemoveAt(ViewTransformStack.Count - 1);
-            ApplyViewTransform(in ViewTransform, force || !LazyViewTransformChanges);
+            ApplyViewTransform(ViewTransform, force || !LazyViewTransformChanges);
         }
 
         /// <summary>
@@ -1051,7 +1051,7 @@ namespace Squared.Render {
         /// </summary>
         public void PopViewTransform (bool force = false) {
             ViewTransformStack.DangerousRemoveAt(ViewTransformStack.Count - 1);
-            ApplyViewTransform(in ViewTransform, force || !LazyViewTransformChanges);
+            ApplyViewTransform(ViewTransform, force || !LazyViewTransformChanges);
         }
 
         private FrameParams? LastAppliedFrameParams;
@@ -1088,10 +1088,11 @@ namespace Squared.Render {
                 ForEachMaterial(_ApplyParamsDelegate, @params);
             }
 
-            ref readonly var vt = ref ViewTransform;
+            // HACK
+            ref var vt = ref ViewTransformMutable;
             if (!LastAppliedViewTransform.HasValue ||
-                !LastAppliedViewTransform.Value.Equals(in vt))
-                ApplyViewTransform(in vt, force || !LazyViewTransformChanges);
+                !LastAppliedViewTransform.Value.Equals(ref vt))
+                ApplyViewTransform(ref vt, force || !LazyViewTransformChanges);
         }
 
 
@@ -1188,11 +1189,11 @@ namespace Squared.Render {
             var ds = DefaultDitheringSettings;
             ds.FrameIndex = @params.FrameIndex.GetValueOrDefault(0);
 
-            uDithering.TrySet(m, in ds);
+            uDithering.TrySet(m, ref ds);
         }
 
-        internal void ApplyViewTransformToMaterial (Material m, in ViewTransform viewTransform) {
-            uViewport.TrySet(m, in viewTransform);
+        internal void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
+            uViewport.TrySet(m, ref viewTransform);
         }
 
         /// <summary>
@@ -1200,7 +1201,16 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="viewTransform">The view transform to apply.</param>
         /// <param name="force">Forcibly applies it now to all materials instead of lazily</param>
-        public void ApplyViewTransform (in ViewTransform viewTransform, bool force) {
+        public void ApplyViewTransform (ViewTransform viewTransform, bool force) {
+            ApplyViewTransform(ref viewTransform, force);
+        }
+
+        /// <summary>
+        /// Lazily sets the view transform of all material(s) owned by this material set without changing the ViewTransform field.
+        /// </summary>
+        /// <param name="viewTransform">The view transform to apply.</param>
+        /// <param name="force">Forcibly applies it now to all materials instead of lazily</param>
+        public void ApplyViewTransform (ref ViewTransform viewTransform, bool force) {
             ActiveViewTransform.ViewTransform = viewTransform;
             unchecked {
                 ActiveViewTransform.Id++;
@@ -1212,7 +1222,7 @@ namespace Squared.Render {
                 FlushViewTransformForFrameParamsChange = false;
                 LastAppliedViewTransform = viewTransform;
                 LastRenderTargetChangeIndex = rtci;
-                ForEachMaterial(_ApplyViewTransformDelegate, in viewTransform);
+                ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
             } else if (am != null) {
                 ActiveViewTransform.AutoApply(am);
                 am.Flush(Coordinator.Manager.DeviceManager);

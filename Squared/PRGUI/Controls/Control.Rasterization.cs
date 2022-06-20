@@ -458,7 +458,7 @@ namespace Squared.PRGUI {
             canvasRect.Clamp(ref br);
 
             var compositeBox = new RectF(tl, br - tl);
-            var srt = context.UIContext.GetScratchRenderTarget(context.Prepass, in compositeBox);
+            var srt = context.UIContext.GetScratchRenderTarget(context.Prepass, ref compositeBox);
             if (context.RenderTargetStack.Count > 0)
                 context.RenderTargetStack[context.RenderTargetStack.Count - 1].Dependencies.Add(srt);
             context.RenderTargetStack.Add(srt);
@@ -474,12 +474,12 @@ namespace Squared.PRGUI {
 
         private static void _BeforeIssueComposite (DeviceManager dm, object _control) {
             var control = (Control)_control;
-            control.Appearance.Compositor?.BeforeIssueComposite(control, dm, in control.MostRecentCompositeData.DrawCall);
+            control.Appearance.Compositor?.BeforeIssueComposite(control, dm, ref control.MostRecentCompositeData.DrawCall);
         }
 
         private static void _AfterIssueComposite (DeviceManager dm, object _control) {
             var control = (Control)_control;
-            control.Appearance.Compositor?.AfterIssueComposite(control, dm, in control.MostRecentCompositeData.DrawCall);
+            control.Appearance.Compositor?.AfterIssueComposite(control, dm, ref control.MostRecentCompositeData.DrawCall);
         }
 
         private static void _ApplyLocalTransformMatrix (ref ViewTransform vt, object _control) {
@@ -532,13 +532,13 @@ namespace Squared.PRGUI {
             );
 
             if (Appearance.HasTransformMatrix || enableCompositor) {
-                RasterizeIntoPrepassComposited(ref passSet, ref compositeBox, dc, enableCompositor, effectiveOpacity);
+                RasterizeIntoPrepassComposited(ref passSet, ref compositeBox, ref dc, enableCompositor, effectiveOpacity);
             } else if (Appearance.Overlay) {
-                passSet.OverlayQueue.Add(in dc);
+                passSet.OverlayQueue.Add(ref dc);
             } else {
                 GetMaterialAndBlendStateForCompositing(out Material compositeMaterial, out BlendState compositeBlendState);
                 passSet.Above.Draw(
-                    in dc, material: compositeMaterial,
+                    ref dc, material: compositeMaterial,
                     blendState: compositeBlendState ?? RenderStates.PorterDuffOver
                 );
                 passSet.Above.Layer += 1;
@@ -546,7 +546,7 @@ namespace Squared.PRGUI {
         }
 
         private void RasterizeIntoPrepassComposited (
-            ref RasterizePassSet passSet, ref RectF compositeBox, in BitmapDrawCall dc,
+            ref RasterizePassSet passSet, ref RectF compositeBox, ref BitmapDrawCall dc,
             bool enableCompositor, float effectiveOpacity
         ) {
             if (MostRecentCompositeData == null)
@@ -561,9 +561,9 @@ namespace Squared.PRGUI {
             ((BatchGroup)subgroup.Container).SetViewTransform(Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null);
             subgroup.BlendState = RenderStates.PorterDuffOver;
             if (enableCompositor)
-                Appearance.Compositor.Composite(this, ref subgroup, in dc, effectiveOpacity);
+                Appearance.Compositor.Composite(this, ref subgroup, ref dc, effectiveOpacity);
             else
-                subgroup.Draw(in dc, material: Appearance.CompositeMaterial);
+                subgroup.Draw(ref dc, material: Appearance.CompositeMaterial);
         }
     }
 }

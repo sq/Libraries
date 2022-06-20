@@ -243,8 +243,8 @@ namespace Squared.PRGUI.Layout {
             newData._Key.ID = newIndex;
             newData.Tag = tag;
 
-            Layout.Add(in newData);
-            Boxes.Add(in RectTemplate);
+            Layout.Add(ref newData);
+            Boxes.Add(ref RectTemplate);
 
             _Count = newIndex + 1;
 

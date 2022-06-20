@@ -332,7 +332,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (in T item) {
+        public void Add (ref T item) {
             int newCount = _Count + 1;
             EnsureCapacity(newCount);
 
@@ -596,7 +596,7 @@ namespace Squared.Util {
         public void CopyTo (UnorderedList<T> output) {
             output.EnsureCapacity(output.Count + Count);
             for (int i = 0; i < _Count; i++)
-                output.Add(in _Items[_BufferOffset + i]);
+                output.Add(ref _Items[_BufferOffset + i]);
         }
 
         public void CopyTo (T[] buffer, int offset, int count) {

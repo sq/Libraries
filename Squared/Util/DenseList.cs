@@ -60,7 +60,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe void SetInlineItemAtIndex (int index, in T value) {
+        private unsafe void SetInlineItemAtIndex (int index, ref T value) {
             switch (index) {
                 case 0:
                     Item1 = value;
@@ -115,19 +115,19 @@ namespace Squared.Util {
                 } else {
                     for (int i = 0, c = items.Count; i < c; i++) {
                         ref var item = ref items.DangerousItem(i);
-                        output.Add(in item);
+                        output.Add(ref item);
                     }
                 }
             } else if (output.HasList) {
                 var outItems = output._Items;
                 for (int i = 0, c = Count; i < c; i++) {
                     ref var item = ref Ext.Item(ref this, i);
-                    outItems.Add(in item);
+                    outItems.Add(ref item);
                 }
             } else {
                 for (int i = 0, c = Count; i < c; i++) {
                     ref var item = ref Ext.Item(ref this, i);
-                    output.Add(in item);
+                    output.Add(ref item);
                 }
             }
         }
@@ -217,13 +217,13 @@ namespace Squared.Util {
 
             _Items = items;
             if (_Count > 0)
-                items.Add(in Item1);
+                items.Add(ref Item1);
             if (_Count > 1)
-                items.Add(in Item2);
+                items.Add(ref Item2);
             if (_Count > 2)
-                items.Add(in Item3);
+                items.Add(ref Item3);
             if (_Count > 3)
-                items.Add(in Item4);
+                items.Add(ref Item4);
 
             Item1 = Item2 = Item3 = Item4 = default;
             _Count = 0;
@@ -247,16 +247,21 @@ namespace Squared.Util {
         T IList<T>.this[int index] { get => this[index]; set => this[index] = value; }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Insert (int index, in T item) {
+        public void Insert (int index, T item) {
+            Insert(index, ref item);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Insert (int index, ref T item) {
             if (index == Count) {
-                Add(in item);
+                Add(ref item);
                 return;
             }
             // FIXME: Add fast path
-            Insert_Slow(index, in item);
+            Insert_Slow(index, ref item);
         }
 
-        private void Insert_Slow (int index, in T item) {
+        private void Insert_Slow (int index, ref T item) {
             EnsureList();
             _Items.InsertOrdered(index, in item);
         }
@@ -458,16 +463,16 @@ namespace Squared.Util {
             }
         }
 
-        private void Add_Slow (in T item) {
+        private void Add_Slow (ref T item) {
             EnsureList();
-            _Items.Add(in item);
+            _Items.Add(ref item);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void UnsafeAddWithKnownCapacity (ref DenseList<T> list, in T item) {
+        public static void UnsafeAddWithKnownCapacity (ref DenseList<T> list, ref T item) {
             var items = list._Items;
             if (items != null) {
-                items.Add(in item);
+                items.Add(ref item);
                 return;
             }
 
@@ -479,19 +484,19 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (T item) {
             if ((_Count >= 4) || (_Items != null)) {
-                Add_Slow(in item);
+                Add_Slow(ref item);
             } else {
-                SetInlineItemAtIndex(_Count, in item);
+                SetInlineItemAtIndex(_Count, ref item);
                 _Count += 1;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (in T item) {
+        public void Add (ref T item) {
             if ((_Count >= 4) || (_Items != null)) {
-                Add_Slow(in item);
+                Add_Slow(ref item);
             } else {
-                SetInlineItemAtIndex(_Count, in item);
+                SetInlineItemAtIndex(_Count, ref item);
                 _Count += 1;
             }
         }
@@ -517,7 +522,7 @@ namespace Squared.Util {
             var newCount = _Count + count;
             if (newCount <= 4) {
                 for (int i = 0; i < count; i++)
-                    Add(in items[offset + i]);
+                    Add(ref items[offset + i]);
             } else {
                 EnsureCapacity(newCount);
                 _Items.AddRange(items, offset, count);
@@ -533,18 +538,18 @@ namespace Squared.Util {
             if (enumerable is T[] array) {
                 EnsureCapacity(Count + array.Length);
                 for (int i = 0, c = array.Length; i < c; i++)
-                    Add(in array[i]);
+                    Add(ref array[i]);
             } else if (enumerable is IList<T> list) {
                 EnsureCapacity(Count + list.Count);
                 for (int i = 0, c = list.Count; i < c; i++) {
                     item = list[i];
-                    Add(in item);
+                    Add(ref item);
                 }
             } else {
                 using (var e = enumerable.GetEnumerator())
                 while (e.MoveNext()) {
                     item = e.Current;
-                    Add(in item);
+                    Add(ref item);
                 }
             }
         }
@@ -561,21 +566,21 @@ namespace Squared.Util {
                 EnsureCapacity(Count + array.Length);
                 for (int i = 0, c = array.Length; i < c; i++) {
                     if (where(array[i]))
-                        Add(in array[i]);
+                        Add(ref array[i]);
                 }
             } else if (enumerable is IList<T> list) {
                 EnsureCapacity(Count + list.Count);
                 for (int i = 0, c = list.Count; i < c; i++) {
                     item = list[i];
                     if (where(item))
-                        Add(in item);
+                        Add(ref item);
                 }
             } else {
                 using (var e = enumerable.GetEnumerator())
                 while (e.MoveNext()) {
                     item = e.Current;
                     if (where(item))
-                        Add(in item);
+                        Add(ref item);
                 }
             }
         }
@@ -692,7 +697,7 @@ namespace Squared.Util {
             } else {
                 _Count = count;
                 for (int i = 0; i < count; i++)
-                    SetInlineItemAtIndex(i, in data[sourceOffset]);
+                    SetInlineItemAtIndex(i, ref data[sourceOffset]);
             }
         }
 
@@ -1074,7 +1079,7 @@ namespace Squared.Util {
         }
 
         void ICollection<T>.Add (T item) {
-            Add(in item);
+            Add(ref item);
         }
 
         void ICollection<T>.Clear () {

@@ -639,11 +639,11 @@ namespace Squared.Render.Text {
             float width, float height, out Bounds box
         ) {
             box = Bounds.FromPositionAndSize(characterOffset.X, characterOffset.Y, width, height);
-            CreateBox(in box);
+            CreateBox(ref box);
         }
 
-        public void CreateBox (in Bounds box) {
-            boxes.Add(in box);
+        public void CreateBox (ref Bounds box) {
+            boxes.Add(ref box);
         }
 
         /// <summary>
@@ -752,7 +752,7 @@ namespace Squared.Render.Text {
                 estimatedBounds.TopLeft.Y -= my;
                 estimatedBounds.BottomRight.X += mx;
                 estimatedBounds.BottomRight.Y += my;
-                CreateBox(in estimatedBounds);
+                CreateBox(ref estimatedBounds);
             }
         }
 

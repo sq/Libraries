@@ -576,7 +576,7 @@ namespace Squared.Util {
             var result = new DenseList<TResult>();
             Reset();
             while (MoveNext())
-                result.Add(in _Current);
+                result.Add(ref _Current);
             return result.ToArray();
         }
 
@@ -592,7 +592,7 @@ namespace Squared.Util {
             var result = new DenseList<TResult>();
             Reset();
             while (MoveNext())
-                result.Add(in _Current);
+                result.Add(ref _Current);
             return result;
         }
 
@@ -753,7 +753,7 @@ namespace Squared.Util {
                 if (_SeenItemSet != null)
                     _SeenItemSet.Add(_Current);
                 else
-                    _SeenItems.Add(in _Current);
+                    _SeenItems.Add(ref _Current);
 
                 return true;
             }
@@ -810,7 +810,7 @@ namespace Squared.Util {
             var result = new DenseList<T>();
             Reset();
             while (MoveNext())
-                result.Add(in _Current);
+                result.Add(ref _Current);
             return result.ToArray();
         }
 
@@ -826,7 +826,7 @@ namespace Squared.Util {
             var result = new DenseList<T>();
             Reset();
             while (MoveNext())
-                result.Add(in _Current);
+                result.Add(ref _Current);
             return result;
         }
 

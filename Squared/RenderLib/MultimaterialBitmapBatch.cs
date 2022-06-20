@@ -77,19 +77,24 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (in BitmapDrawCall item) {
-            Add(in item, Material, null, null);
+        public void Add (BitmapDrawCall item) {
+            Add(ref item, Material, null, null);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add (ref BitmapDrawCall item) {
+            Add(ref item, Material, null, null);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (ArraySegment<BitmapDrawCall> items) {
             for (int i = 0; i < items.Count; i++)
-                Add(in items.Array[i + items.Offset]);
+                Add(ref items.Array[i + items.Offset]);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (in BitmapDrawCall item, Material material, SamplerState samplerState1 = null, SamplerState samplerState2 = null) {
-            if (!BitmapDrawCall.CheckValid(in item))
+        public void Add (ref BitmapDrawCall item, Material material, SamplerState samplerState1 = null, SamplerState samplerState2 = null) {
+            if (!BitmapDrawCall.CheckValid(ref item))
                 throw new InvalidOperationException("Invalid draw call");
 
             var dcm = material ?? Material;
@@ -97,7 +102,7 @@ namespace Squared.Render {
                 throw new InvalidOperationException("Draw call has no material and this batch has no material");
 
             var dc = new MaterialBitmapDrawCall(in item, dcm, samplerState1, samplerState2);
-            _DrawCalls.Add(in dc);
+            _DrawCalls.Add(ref dc);
         }
 
         public void AddRange (
@@ -109,7 +114,7 @@ namespace Squared.Render {
             MaterialBitmapDrawCall dc;
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];
-                if (!BitmapDrawCall.CheckValid(in item))
+                if (!BitmapDrawCall.CheckValid(ref item))
                     throw new InvalidOperationException("Invalid draw call");
 
                 if (scale.HasValue)
@@ -136,7 +141,7 @@ namespace Squared.Render {
                 dc.SamplerState1 = samplerState1;
                 dc.SamplerState2 = samplerState2;
 
-                _DrawCalls.Add(in dc);
+                _DrawCalls.Add(ref dc);
             }
         }
 

@@ -16,12 +16,12 @@ using Squared.Threading;
 namespace Squared.Render {
     public interface IMaterialCollection {
         void ForEachMaterial<T> (Action<Material, T> action, T userData);
-        void ForEachMaterial<T> (RefMaterialAction<T> action, in T userData);
+        void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData);
         void AddToSet (HashSet<Material> set);
         IEnumerable<Material> Materials { get; }
     }
 
-    public delegate void RefMaterialAction<T> (Material material, in T userData);
+    public delegate void RefMaterialAction<T> (Material material, ref T userData);
 
     public class MaterialList : List<Material>, IMaterialCollection, IDisposable {
         public void ForEachMaterial<T> (Action<Material, T> action, T userData) {
@@ -29,9 +29,9 @@ namespace Squared.Render {
                 action(material, userData);
         }
 
-        public void ForEachMaterial<T> (RefMaterialAction<T> action, in T userData) {
+        public void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData) {
             foreach (var material in this)
-                action(material, in userData);
+                action(material, ref userData);
         }
 
         public void Dispose () {
@@ -70,9 +70,9 @@ namespace Squared.Render {
                 action(material, userData);
         }
 
-        public void ForEachMaterial<T> (RefMaterialAction<T> action, in T userData) {
+        public void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData) {
             foreach (var material in Values)
-                action(material, in userData);
+                action(material, ref userData);
         }
 
         public void AddToSet (HashSet<Material> set) {
@@ -226,7 +226,7 @@ namespace Squared.Render {
             }
         }
 
-        public void ForEachMaterial<T> (RefMaterialAction<T> action, in T userData) {
+        public void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData) {
             if (IsDisposed)
                 return;
 
@@ -235,7 +235,7 @@ namespace Squared.Render {
                     BuildMaterialCache();
 
                 foreach (var m in MaterialCache)
-                    action(m, in userData);
+                    action(m, ref userData);
             }
         }
 

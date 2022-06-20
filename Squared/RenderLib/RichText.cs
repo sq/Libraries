@@ -460,7 +460,7 @@ namespace Squared.Render.Text {
                                 Text = bracketed
                             });
                         ai = new AsyncRichImage(ref image);
-                        referencedImages.Add(in ai);
+                        referencedImages.Add(ref ai);
                     } else if (
                         commandMode && (ImageProvider != null) && 
                         (ai = ImageProvider(bracketed.ToString())).IsInitialized
@@ -476,7 +476,7 @@ namespace Squared.Render.Text {
                             });
                         } else if (ai.TryGetValue(out RichImage ri)) {
                             AppendImage(ref layoutEngine, ri);
-                            referencedImages.Add(in ai);
+                            referencedImages.Add(ref ai);
                         } else if (ai.Width.HasValue) {
                             var m = ai.Margin ?? Vector2.Zero;
                             var halfM = m / 2f;
@@ -493,7 +493,7 @@ namespace Squared.Render.Text {
                                     // FIXME
                                     boxY = Arithmetic.Lerp(layoutEngine.actualPosition.Y, layoutEngine.actualPosition.Y + layoutEngine.stopAtY - h ?? 0f, ai.HardVerticalAlignment.Value);
                                 box = Bounds.FromPositionAndSize(boxX - halfM.X, boxY - halfM.Y, w + m.X, h + m.Y);
-                                layoutEngine.CreateBox(in box);
+                                layoutEngine.CreateBox(ref box);
                                 if (ai.HardHorizontalAlignment.HasValue || ai.HardVerticalAlignment.HasValue)
                                     ;
                                 else
@@ -501,9 +501,9 @@ namespace Squared.Render.Text {
                             } else {
                                 layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
                             }
-                            referencedImages.Add(in ai);
+                            referencedImages.Add(ref ai);
                         } else {
-                            referencedImages.Add(in ai);
+                            referencedImages.Add(ref ai);
                         }
                     } else if (commandMode && bracketed.Contains(":")) {
                         foreach (var rule in RichText.ParseRules(bracketed, ref parseErrors)) {

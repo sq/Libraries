@@ -99,7 +99,7 @@ namespace Squared.PRGUI {
             OverlayQueue.Clear();
         }
 
-        internal ScratchRenderTarget GetScratchRenderTarget (BatchGroup prepass, in RectF rectangle) {
+        internal ScratchRenderTarget GetScratchRenderTarget (BatchGroup prepass, ref RectF rectangle) {
             ScratchRenderTarget result = null;
 
             foreach (var rt in ScratchRenderTargets) {
@@ -123,7 +123,7 @@ namespace Squared.PRGUI {
                 }
             }
 
-            result.UsedRectangles.Add(in rectangle);
+            result.UsedRectangles.Add(ref rectangle);
             return result;
         }
 

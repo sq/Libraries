@@ -279,7 +279,7 @@ namespace Squared.Render {
                 throw new InvalidOperationException("This batch is already in another container.");
 
             batch.Container = this;
-            base.Add(in batch);
+            base.Add(ref batch);
         }
 
         protected override void OnReleaseResources () {

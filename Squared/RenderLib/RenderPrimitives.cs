@@ -164,7 +164,11 @@ namespace Squared.Render {
             _UserData = userData;
         }
 
-        new public void Add (in PrimitiveDrawCall<T> item) {
+        new public void Add (PrimitiveDrawCall<T> item) {
+            Add(ref item);
+        }
+
+        new public void Add (ref PrimitiveDrawCall<T> item) {
             if (item.Vertices == null)
                 return;
 
@@ -209,7 +213,7 @@ namespace Squared.Render {
                 return;
             }
 
-            base.Add(in item);
+            base.Add(ref item);
         }
 
         protected override void Prepare (PrepareManager manager) {
@@ -400,10 +404,14 @@ namespace Squared.Render {
             _UserData = userData;
         }
 
-        new public void Add (in NativeDrawCall item) {
+        new public void Add (NativeDrawCall item) {
+            Add(ref item);
+        }
+
+        new public void Add (ref NativeDrawCall item) {
             if (item.PrimitiveCount < 1)
                 throw new ArgumentException("At least one primitive must be drawn", "item.PrimitiveCount");
-            base.Add(in item);
+            base.Add(ref item);
         }
 
         protected override void Prepare (PrepareManager manager) {

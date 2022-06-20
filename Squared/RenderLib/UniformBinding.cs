@@ -436,7 +436,7 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TrySet (Material m, in T value) {
+        public bool TrySet (Material m, ref T value) {
             var ub = MaterialSet.GetUniformBinding(m, this);
             if (ub == null)
                 return false;
@@ -446,8 +446,8 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Set (Material m, in T value) {
-            if (!TrySet(m, in value))
+        public void Set (Material m, ref T value) {
+            if (!TrySet(m, ref value))
                 throw new UniformBindingException("Failed to set uniform " + Name);
         }
 
