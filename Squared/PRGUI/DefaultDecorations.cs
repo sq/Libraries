@@ -614,13 +614,14 @@ namespace Squared.PRGUI {
 
         public void Button_Below_Common (
             UIOperationContext context, DecorationSettings settings, 
-            out float alpha, out float thickness, out float pulse,
+            out float alpha, out float focusedAlpha, 
+            out float thickness, out float pulse,
             out pSRGBColor baseColor, out pSRGBColor outlineColor 
         ) {
             var now = context.NowL;
             var nowF = context.Now;
             var state = settings.State;
-            var focusedAlpha = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
+            focusedAlpha = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
             baseColor = settings.BackgroundColor ?? (pSRGBColor)(
                 Color.Lerp(ColorScheme.Inactive, ColorScheme.Focused, focusedAlpha)
             );
@@ -671,7 +672,8 @@ namespace Squared.PRGUI {
             float alpha, thickness, pulse;
             pSRGBColor baseColor, outlineColor;
             Button_Below_Common(
-                context, settings, out alpha, out thickness, out pulse, 
+                context, settings, out alpha, out _, 
+                out thickness, out pulse, 
                 out baseColor, out outlineColor
             );
 
@@ -736,7 +738,8 @@ namespace Squared.PRGUI {
             float alpha, thickness, pulse;
             pSRGBColor baseColor, outlineColor;
             Button_Below_Common(
-                context, settings, out alpha, out thickness, out pulse, 
+                context, settings, out alpha, out _,
+                out thickness, out pulse, 
                 out baseColor, out outlineColor
             );
 
@@ -776,7 +779,8 @@ namespace Squared.PRGUI {
             float alpha, thickness, pulse;
             pSRGBColor baseColor, outlineColor;
             Button_Below_Common(
-                context, settings, out alpha, out thickness, out pulse, 
+                context, settings, out alpha, out _,
+                out thickness, out pulse, 
                 out baseColor, out outlineColor
             );
 
@@ -1072,7 +1076,8 @@ namespace Squared.PRGUI {
             float alpha, thickness, pulse;
             pSRGBColor baseColor, outlineColor;
             Button_Below_Common(
-                context, settings, out alpha, out thickness, out pulse, 
+                context, settings, out alpha, out _,
+                out thickness, out pulse, 
                 out baseColor, out outlineColor
             );
             
@@ -1168,7 +1173,8 @@ namespace Squared.PRGUI {
             float alpha, thickness, pulse;
             pSRGBColor baseColor, outlineColor;
             Button_Below_Common(
-                context, settings, out alpha, out thickness, out pulse, 
+                context, settings, out alpha, out _,
+                out thickness, out pulse, 
                 out baseColor, out outlineColor
             );
 
