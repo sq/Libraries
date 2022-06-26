@@ -46,6 +46,12 @@ sampler TapSampler : register(s0) {
     AddressV = CLAMP;
 };
 
+float computeMip (in float2 texCoordPx) {
+    float2 dx = ddx(texCoordPx), dy = ddy(texCoordPx);
+    float mag = max(dot(dx, dx), dot(dy, dy));
+    return 0.5 * log2(mag);
+}
+
 float tapA(
     in float2 texCoord,
     in float4 texRgn,
@@ -194,7 +200,12 @@ void GaussianOutlinedPixelShader(
     shadowColorIn.a = abs(shadowColorIn.a);
 
     // Artificially expand spacing since we're going for outlines
-    float spacingFactor = TapSpacingFactor * 1.75;
+    // We compute the mip bias (using ddx/ddy) to determine how far out we can space the taps if the source texture
+    //  is being scaled down, since the actual texels are farther apart if we're not reading from mip 0
+    // This should provide a roughly constant outline size in screen space pixels regardless of scale
+    // TODO: Factor in the mip bias as well
+    float mip = computeMip(texCoord * BitmapTextureSize.xy);
+    float spacingFactor = TapSpacingFactor * clamp(mip + 1.5, 1, 8);
     float2 innerStepSize = HalfTexel * float2(spacingFactor, 0), outerStepSize = HalfTexel * float2(0, spacingFactor);
 
     texCoord -= ShadowOffset * HalfTexel * 2;
