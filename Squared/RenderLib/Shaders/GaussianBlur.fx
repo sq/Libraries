@@ -228,7 +228,7 @@ void GaussianOutlinedPixelShader(
     shadowAlpha = pow(shadowAlpha, OutlineExponent);
 
     float4 shadowColor = float4(shadowColorIn.rgb, 1) * saturate(shadowColorIn.a);
-    shadowColor = lerp(GlobalShadowColor, shadowColor, shadowColorIn.a > 0 ? 1 : 0);
+    shadowColor = lerp(GlobalShadowColor, shadowColor, shadowColorIn.a > 0 ? 1 : 0) * multiplyColor.a;
 
     float4 overColor = (texColor * multiplyColor);
     overColor += (addColor * overColor.a);

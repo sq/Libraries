@@ -1214,6 +1214,7 @@ namespace Squared.Render {
         // 8
         public Vector2    Position;
         // 16
+        // TODO: ScaleMinusOne
         public Vector2    Scale;
         // 24
         public Vector2    Origin;

@@ -101,6 +101,27 @@ namespace Squared.Game {
             return BoundsFromRectangle(@this.Width, @this.Height, in rectangle);
         }
 
+        public static Bounds BoundsFromPositionAndSize (this Texture2D @this, in Vector2 position, in Vector2 size) {
+            if (@this == null)
+                return default(Bounds);
+
+            return BoundsFromPositionAndSize(@this, position.X, position.Y, size.X, size.Y);
+        }
+
+        public static Bounds BoundsFromPositionAndSize (this Texture2D @this, float x, float y, float width, float height) {
+            if (@this == null)
+                return default(Bounds);
+
+            float fw = @this.Width;
+            float fh = @this.Height;
+            float xScale = 1f / fw, yScale = 1f / fh;
+            float offsetX = xScale * -0.0f;
+            float offsetY = yScale * -0.0f;
+            var tl = new Vector2(x * xScale + offsetX, y * yScale + offsetY);
+            var br = new Vector2(tl.X + (width * xScale), tl.Y + (height * yScale));
+            return new Bounds(tl, br);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsFinite (this in Vector2 v) {
             return Arithmetic.IsFinite(v.X) && Arithmetic.IsFinite(v.Y);
