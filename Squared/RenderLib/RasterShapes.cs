@@ -160,6 +160,9 @@ namespace Squared.Render.RasterShape {
         }
         internal float ModeF => Convenience.ImperativeRenderer.ConvertFillMode(Mode, Angle);
         internal float GradientPowerMinusOne;
+        /// <summary>
+        /// For angular fills, the angle in degrees
+        /// </summary>
         public float Angle;
         public bool Repeat;
 

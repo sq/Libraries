@@ -76,6 +76,61 @@ namespace Squared.Render.Convenience {
         };
 
 
+        public static readonly BlendState ReplaceDestinationPremultiplied = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.Zero,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.InverseSourceAlpha,
+            ColorSourceBlend = Blend.One
+        };
+
+        public static readonly BlendState ReplaceDestinationNonPremultiplied = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.Zero,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.InverseSourceAlpha,
+            ColorSourceBlend = Blend.SourceAlpha
+        };
+
+        public static readonly BlendState ReplaceDestinationAlpha = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.Zero,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.Zero
+        };
+
+        public static readonly BlendState IncreaseDestinationAlpha = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.Zero
+        };
+
+        public static readonly BlendState RefineDestinationAlpha = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.SourceAlpha,
+            AlphaSourceBlend = Blend.Zero,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.Zero
+        };
+
+        public static readonly BlendState DestinationAlphaMask = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.Zero,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.InverseDestinationAlpha,
+            ColorSourceBlend = Blend.DestinationAlpha
+        };
+
+
         public static readonly BlendState RasterShapeAlphaBlend = PorterDuffNonPremultipliedOver;
 
         public static readonly BlendState RasterShapeAdditiveBlend = new BlendState {

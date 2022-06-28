@@ -923,7 +923,7 @@ namespace Squared.Game {
         public static Vector2 ClosestPointOnLine (Vector2 sourcePoint, Vector2 lineStart, Vector2 lineEnd) {
             var lineDelta = lineEnd - lineStart;
             var u = (((sourcePoint.X - lineStart.X) * lineDelta.X) + ((sourcePoint.Y - lineStart.Y) * lineDelta.Y)) / lineDelta.LengthSquared();
-            return lineStart + (lineDelta * Arithmetic.Clamp(u, 0.0f, 1.0f));
+            return lineStart + (lineDelta * Arithmetic.Saturate(u));
         }
     }
 }

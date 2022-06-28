@@ -1453,6 +1453,10 @@ namespace Squared.Render {
         }
 
         public void AdjustOrigin (Vector2 newOrigin) {
+            if (Origin == newOrigin)
+                return;
+
+            // FIXME: Rotation
             var newPosition = Position;
 
             var textureSize = new Vector2(Texture.Width, Texture.Height) * TextureRegion.Size;
