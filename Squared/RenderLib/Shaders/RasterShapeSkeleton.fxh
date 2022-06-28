@@ -53,10 +53,6 @@ uniform float4 ShadowOptions;
 uniform float4 ShadowOptions2;
 uniform float4 ShadowColorLinear;
 
-// FIXME: This is not currently faster even though it seems like it could be,
-//  and it also breaks gradient fills in a weird way somehow
-#define OptimizeRectangleInterior false
-
 #define ShadowSoftness ShadowOptions.z
 #define ShadowOffset ShadowOptions.xy
 #define ShadowFillSuppression ShadowOptions.w
@@ -204,10 +200,6 @@ void computeHullCorners (
     float y2 = max(tl.y, br.y - edgeSize + offsetNegative.y);
 
     if (index < 1) {
-        if (OptimizeRectangleInterior) {
-            tl += edgeSize + offsetPositive;
-            br -= edgeSize + offsetNegative;
-        }
     } else if (index < 2) {
         // top
         br.y = y1;
@@ -286,7 +278,9 @@ void RasterShapeVertexShader_Core (
     in float4 cornerWeights,
     in float4 ab_in,
     in float4 cd_in,
+    // outline size (negative for soft outline), annular radius, fill mode, outline gamma minus one
     inout float4 params,
+    // gradient power, fill range 1, fill range 2, fill offset
     inout float4 params2,
     inout float4 texRgn,
     inout float4 centerColor,
@@ -301,18 +295,24 @@ void RasterShapeVertexShader_Core (
     int type = abs(typeAndWorldSpace.x);
     type = EVALUATE_TYPE ;
 
+    params.x *= OutlineSizeCompensation;
+    float outlineSize = abs(params.x);
+
     bool isUnshadowed = (ShadowColorLinear.a <= 0) || (ShadowInside <= 0);
     bool isSimpleRectangle = (centerColor == edgeColor) && 
         (type == TYPE_Rectangle) && 
         (params.y <= 0); /* FIXME: Annular radius */
     bool isHollow = isSimpleRectangle && 
-        (centerColor.a <= 0);
+        (centerColor.a <= 0) &&
+        // HACK: If a rectangle's outline is big enough, it can cause the hollow optimization
+        //  to produce overlapping halves, and then we get overdraw at the intersection
+        // FIXME: Is this a problem for shadows too?
+        (abs(ab_in.z - ab_in.x) > (outlineSize * 2)) &&
+        (abs(ab_in.w - ab_in.y) > (outlineSize * 2));
 
     bool dead;
     if (isHollow) {
         dead = cornerWeights.w < 1;
-    } else if (OptimizeRectangleInterior && isSimpleRectangle) {
-        dead = false;
     } else {
         dead = cornerWeights.w >= 1;
     }
@@ -326,8 +326,6 @@ void RasterShapeVertexShader_Core (
     ab = ab_in; cd = cd_in;
     float4 position = float4(ab_in.x, ab_in.y, 0, 1);
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw;
-    params.x *= OutlineSizeCompensation;
-    float outlineSize = abs(params.x);
 
     float2 tl, br;
 
@@ -938,18 +936,6 @@ void rasterShapeCommon (
 
     tl = min(a, b);
     br = max(a, b);
-
-#ifdef INCLUDE_RECTANGLE
-    bool isSimpleInterior = worldPositionTypeAndInteriorFlag.w > 0;
-    PREFER_BRANCH
-    if (OptimizeRectangleInterior && (type == TYPE_Rectangle) && (isSimpleInterior)) {
-        gradientWeight = 0;
-        fillAlpha = 1;
-        outlineAlpha = 0;
-        shadowAlpha = 0;
-        return;
-    }
-#endif
 
     float distance = 0;
     float outlineSize = abs(params.x);

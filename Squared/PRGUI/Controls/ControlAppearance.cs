@@ -358,7 +358,7 @@ namespace Squared.PRGUI {
 
         public bool GetTransform (out Matrix matrix, long now) {
             if (!HasTransformMatrix) {
-                matrix = default(Matrix);
+                matrix = Matrix.Identity;
                 return false;
             }
 

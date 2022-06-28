@@ -195,8 +195,8 @@ void GaussianOutlinedPixelShader(
 
     float4 traits = BitmapTraits;
     float4 texColor = tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
-    if ((shadowColorIn.a < 0) || PremultiplyTexture)
-        traits.z = 1;
+    bool needPremul = PremultiplyTexture || (shadowColorIn.a < 0) || (traits.z >= 1);
+    traits.z = 0;
     shadowColorIn.a = abs(shadowColorIn.a);
 
     // Artificially expand spacing since we're going for outlines
@@ -228,17 +228,25 @@ void GaussianOutlinedPixelShader(
     shadowAlpha = pow(shadowAlpha, OutlineExponent);
 
     float4 shadowColor = float4(shadowColorIn.rgb, 1) * saturate(shadowColorIn.a);
-    shadowColor = lerp(GlobalShadowColor, shadowColor, shadowColorIn.a > 0 ? 1 : 0) * multiplyColor.a;
+    shadowColor = lerp(GlobalShadowColor, shadowColor, shadowColorIn.a > 0 ? 1 : 0);
 
     float4 overColor = (texColor * multiplyColor);
     overColor += (addColor * overColor.a);
 
-    // Significantly improves the appearance of colored outlines and/or colored text
-    float4 overSRGB = pSRGBToPLinear(overColor),
-        shadowSRGB = pSRGBToPLinear(shadowColor);
+    // FIXME: Something about pSRGB is totally hosed here and produces garbage data at image edges, so we have to fudge it by hand
+    overColor.rgb = SRGBToLinear(overColor.rgb);
+    if (needPremul)
+        overColor.rgb *= overColor.a;
+    result = pLinearToPSRGB(over(overColor, 1, pSRGBToPLinear(shadowColor), shadowAlpha * multiplyColor.a));
 
-    result = over(overSRGB, 1, shadowSRGB, shadowAlpha);
+    /*
+    // Significantly improves the appearance of colored outlines and/or colored text
+    float4 shadowSRGB = pSRGBToPLinear(shadowColor);
+
+    float4 overSRGB = pSRGBToPLinear(overColor);
+    result = over(overSRGB, 1, shadowSRGB, shadowAlpha * multiplyColor.a);
     result = pLinearToPSRGB(result);
+    */
 }
 
 void GaussianOutlinedPixelShaderWithDiscard(

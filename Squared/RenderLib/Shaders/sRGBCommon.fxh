@@ -26,26 +26,34 @@ float3 approxLinearToSRGB (float3 rgb) {
 }
 
 float4 pSRGBToPLinear_Accurate (float4 psrgba) {
-    float3 srgb = psrgba.rgb / max(psrgba.a, 0.00001);
+    if (psrgba.a <= (1 / 512))
+        return 0;
+    float3 srgb = psrgba.rgb / psrgba.a;
     float3 linearRgb = SRGBToLinear(srgb);
     return float4(linearRgb * psrgba.a, psrgba.a);
 }
 
 float4 pLinearToPSRGB_Accurate (float4 pLinear) {
-    float3 rgb = pLinear.rgb / max(pLinear.a, 0.00001);
+    if (pLinear.a <= (1 / 512))
+        return 0;
+    float3 rgb = pLinear.rgb / pLinear.a;
     float3 srgb = LinearToSRGB(rgb);
     float4 pSrgb = float4(srgb * pLinear.a, pLinear.a);
     return pSrgb;
 }
 
 float4 pSRGBToPLinear (float4 psrgba) {
-    float3 srgb = psrgba.rgb / max(psrgba.a, 0.00001);
+    if (psrgba.a <= (1 / 512))
+        return 0;
+    float3 srgb = psrgba.rgb / psrgba.a;
     float3 linearRgb = approxSRGBToLinear(srgb);
     return float4(linearRgb * psrgba.a, psrgba.a);
 }
 
 float4 pLinearToPSRGB (float4 pLinear) {
-    float3 rgb = pLinear.rgb / max(pLinear.a, 0.00001);
+    if (pLinear.a <= (1 / 512))
+        return 0;
+    float3 rgb = pLinear.rgb / pLinear.a;
     float3 srgb = approxLinearToSRGB(rgb);
     float4 pSrgb = float4(srgb * pLinear.a, pLinear.a);
     return pSrgb;
