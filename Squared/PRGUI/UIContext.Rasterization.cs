@@ -265,7 +265,7 @@ namespace Squared.PRGUI {
                     var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity * maxFadeLevel;
                     renderer.FillRectangle(
                         Game.Bounds.FromPositionAndSize(Vector2.One * -9999, Vector2.One * 99999), 
-                        Color.White * opacity, blendState: RenderStates.SubtractiveBlend
+                        new Color(opacity, opacity, opacity, 0), blendState: RenderStates.SubtractiveBlend
                     );
                     renderer.Layer += 1;
                 }

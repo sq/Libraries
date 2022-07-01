@@ -198,7 +198,7 @@ namespace Squared.PRGUI.Controls {
                 var newPosition = DragStartedMaximized
                     ? new Vector2(args.GlobalPosition.X - (MostRecentUnmaximizedRect.Width / 2f), args.GlobalPosition.Y - 4)
                     : (DragStartWindowPosition + delta);
-                var shouldMaximize = (newPosition.Y < -5) && !Maximized && AllowMaximize;
+                var shouldMaximize = (newPosition.Y < -5) && !Maximized && AllowMaximize && !Collapsed;
                 var isPullingBackAway = (newPosition.Y > 4) && !DragStartedMaximized;
                 var shouldUnmaximize = (((delta.Y > 4) || isPullingBackAway) || !AllowMaximize) && Maximized;
                 if (shouldUnmaximize) {

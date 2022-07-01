@@ -572,21 +572,21 @@ namespace Squared.PRGUI {
         public float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
 
-        public float GetHoveringAlpha (ref UIOperationContext context, ControlStates state, out bool isHovering) {
+        public float GetHoveringAlpha (ref UIOperationContext context, ControlStates state, out bool isHovering, float? fadeLength = null) {
             isHovering = state.IsFlagged(ControlStates.Hovering);
 
             float previousAlpha = 0f, newAlpha = 0f;
             if (state.IsFlagged(ControlStates.PreviouslyHovering))
-                previousAlpha = 1f - Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverLoss).TotalSeconds / HoverFadeLength);
+                previousAlpha = 1f - Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverLoss).TotalSeconds / (fadeLength ?? HoverFadeLength));
             if (isHovering)
-                newAlpha = Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverGain).TotalSeconds / HoverFadeLength);
+                newAlpha = Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverGain).TotalSeconds / (fadeLength ?? HoverFadeLength));
 
             // It's possible to both be the previous and current hovering control (mouse moved off and then back on), so in that case
             //  we sum both alpha values to minimize any glitch and cause the edge to become bright faster
             return Arithmetic.Saturate(previousAlpha + newAlpha);
         }
 
-        public float GetFocusedAlpha (ref UIOperationContext context, ControlStates state, out bool isFocused, bool includeContains = true) {
+        public float GetFocusedAlpha (ref UIOperationContext context, ControlStates state, out bool isFocused, bool includeContains = true, float? fadeLength = null) {
             var previouslyFocused = state.IsFlagged(ControlStates.PreviouslyFocused);
             isFocused = state.IsFlagged(ControlStates.Focused);
             var fadeFlag = isFocused;
@@ -603,7 +603,7 @@ namespace Squared.PRGUI {
             if (state.IsFlagged(ControlStates.Hovering) && isFocused)
                 return 1;
 
-            var result = (float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastFocusChange).TotalSeconds / FocusFadeLength;
+            var result = (float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastFocusChange).TotalSeconds / (fadeLength ?? FocusFadeLength);
             if (!isFocused)
                 return state.IsFlagged(ControlStates.PreviouslyFocused)
                     ? 1 - Arithmetic.Saturate(result)

@@ -317,7 +317,7 @@ namespace Squared.PRGUI {
                 pll = new UnorderedList<IPostLayoutListener>();
             else
                 pll.Clear();
-            context.PostLayoutListeners = pll;
+            context.Shared.PostLayoutListeners = pll;
 
             try {
                 Layout.Clear();
@@ -903,7 +903,7 @@ namespace Squared.PRGUI {
                 pll = new UnorderedList<IPostLayoutListener>();
             else
                 pll.Clear();
-            tempCtx.PostLayoutListeners = pll;
+            tempCtx.Shared.PostLayoutListeners = pll;
 
             var wasUpdatingSubtreeLayout = IsUpdatingSubtreeLayout;
             try {
@@ -1043,15 +1043,19 @@ namespace Squared.PRGUI {
         }
 
         internal UIOperationContext MakeOperationContext () {
-            return new UIOperationContext {
-                UIContext = this,
-                Opacity = 1,
+            var shared = new UIOperationContextShared {
+                Context = this,
                 Now = Now,
                 NowL = NowL,
                 Modifiers = CurrentModifiers,
                 ActivateKeyHeld = _LastInput.ActivateKeyHeld,
                 MouseButtonHeld = (LastMouseButtons != MouseButtons.None),
                 MousePosition = LastMousePosition,
+            };
+
+            return new UIOperationContext {
+                Shared = shared,
+                Opacity = 1,
                 VisibleRegion = new RectF(-VisibilityPadding, -VisibilityPadding, CanvasSize.X + (VisibilityPadding * 2), CanvasSize.Y + (VisibilityPadding * 2))
             };
         }
@@ -1066,31 +1070,44 @@ namespace Squared.PRGUI {
         }
     }
 
+    internal class UIOperationContextShared {
+        public UIContext Context;
+        public float Now;
+        public long NowL;
+        public KeyboardModifiers Modifiers;
+        public bool ActivateKeyHeld;
+        public bool MouseButtonHeld;
+        public Vector2 MousePosition;
+        internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
+    }
+
     public struct UIOperationContext {
         public static UIOperationContext Default = default(UIOperationContext);
 
-        public UIContext UIContext;
+        internal UIOperationContextShared Shared;
+
+        public UIContext UIContext => Shared?.Context;
         public DefaultMaterialSet Materials => UIContext?.Materials;
         public LayoutContext Layout => UIContext?.Layout;
         public NewEngine.LayoutEngine Engine => UIContext?.Engine;
+
+        public float Now => Shared?.Now ?? 0f;
+        public long NowL => Shared?.NowL ?? 0;
+        public KeyboardModifiers Modifiers => Shared?.Modifiers ?? default;
+        public bool ActivateKeyHeld => Shared?.ActivateKeyHeld ?? false;
+        public bool MouseButtonHeld => Shared?.MouseButtonHeld ?? false;
+        public ref readonly Vector2 MousePosition => ref Shared.MousePosition;
+        internal UnorderedList<IPostLayoutListener> PostLayoutListeners => Shared?.PostLayoutListeners;
+
         public RasterizePasses Pass;
         public float Opacity { get; internal set; }
-        public float Now { get; internal set; }
-        public long NowL { get; internal set; }
-        public KeyboardModifiers Modifiers { get; internal set; }
-        public bool ActivateKeyHeld { get; internal set; }
-        public bool MouseButtonHeld { get; internal set; }
-        public bool TransformActive { get; internal set; }
-        public Vector2 MousePosition { get; internal set; }
         public RectF VisibleRegion { get; internal set; }
         public BatchGroup Prepass;
         private DenseList<IDecorator> DecoratorStack, TextDecoratorStack;
         private DenseList<IDecorationProvider> DecorationProviderStack;
         internal DenseList<UIContext.ScratchRenderTarget> RenderTargetStack;
-        internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
-        internal bool RelayoutRequestedForVisibilityChange;
-        internal int HiddenCount;
-        internal int Depth;
+        internal short HiddenCount, Depth;
+        internal bool RelayoutRequestedForVisibilityChange, TransformActive;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private T GetStackTop<T> (in DenseList<T> stack) {
@@ -1141,20 +1158,14 @@ namespace Squared.PRGUI {
 
         public void Clone (out UIOperationContext result) {
             result = new UIOperationContext {
-                UIContext = UIContext,
+                Shared = Shared,
                 Pass = Pass,
-                Now = Now,
-                NowL = NowL,
-                Modifiers = Modifiers,
-                ActivateKeyHeld = ActivateKeyHeld,
-                MouseButtonHeld = MouseButtonHeld,
-                MousePosition = MousePosition,
                 VisibleRegion = VisibleRegion,
-                RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange,
-                Depth = Depth + 1,
+                Depth = (short)(Depth + 1),
                 HiddenCount = HiddenCount,
                 Opacity = Opacity,
                 Prepass = Prepass,
+                RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange
             };
             RenderTargetStack.Clone(ref result.RenderTargetStack, true);
             DecoratorStack.Clone(ref result.DecoratorStack, true);
