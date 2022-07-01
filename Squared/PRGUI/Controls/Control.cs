@@ -735,9 +735,9 @@ namespace Squared.PRGUI {
                 unscaledPadding = default(Margins);
         }
 
-        protected void ComputeEffectiveSpacing (ref UIOperationContext context, IDecorator decorations, out Margins padding, out Margins margins) {
+        protected void ComputeEffectiveSpacing (ref UIOperationContext context, IDecorationProvider decorationProvider, IDecorator decorations, out Margins padding, out Margins margins) {
             ComputeAppearanceSpacing(ref context, decorations, out var scaledMargins, out var scaledPadding, out var unscaledPadding);
-            ComputeEffectiveScaleRatios(context.DecorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
+            ComputeEffectiveScaleRatios(decorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
             Margins.Scale(ref scaledPadding, in paddingScale);
             Margins.Add(in scaledPadding, in unscaledPadding, out padding);
             Margins.Scale(ref scaledMargins, in marginScale);
@@ -767,8 +767,9 @@ namespace Squared.PRGUI {
 
             var result = existingKey ?? context.Layout.CreateItem();
 
-            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
-            ComputeEffectiveSpacing(ref context, decorations, out Margins computedPadding, out Margins computedMargins);
+            var decorationProvider = context.DecorationProvider;
+            var decorations = GetDecorator(decorationProvider, context.DefaultDecorator);
+            ComputeEffectiveSpacing(ref context, decorationProvider, decorations, out Margins computedPadding, out Margins computedMargins);
 
             MostRecentComputedMargins = computedMargins;
 

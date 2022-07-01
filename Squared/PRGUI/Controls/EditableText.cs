@@ -483,7 +483,7 @@ namespace Squared.PRGUI.Controls {
                 ? Appearance.GlyphSourceProvider()
                 : decorations.GlyphSource;
             decorations.GetTextSettings(ref context, settings.State, out material, ref color, out Vector4 userData);
-            ComputeEffectiveSpacing(ref context, decorations, out CachedPadding, out Margins computedMargins);
+            ComputeEffectiveSpacing(ref context, context.DecorationProvider, decorations, out CachedPadding, out Margins computedMargins);
 
             if (Appearance.GlyphSourceProvider != null)
                 DynamicLayout.GlyphSourceProvider = Appearance.GlyphSourceProvider;

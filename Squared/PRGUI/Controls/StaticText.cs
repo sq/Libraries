@@ -467,8 +467,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
-            ComputeEffectiveSpacing(ref context, decorations, out Margins computedPadding, out Margins computedMargins);
+            var decorationProvider = context.DecorationProvider;
+            var decorations = GetDecorator(decorationProvider, context.DefaultDecorator);
+            ComputeEffectiveSpacing(ref context, decorationProvider, decorations, out Margins computedPadding, out Margins computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
             UpdateLineBreak(ref context, decorations, null, ref computedPadding, ref computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
@@ -637,7 +638,8 @@ namespace Squared.PRGUI.Controls {
             if (context.Pass != Pass)
                 return;
 
-            ComputeEffectiveSpacing(ref context, decorations, out Margins computedPadding, out Margins computedMargins);
+            var decorationProvider = context.DecorationProvider;
+            ComputeEffectiveSpacing(ref context, decorationProvider, decorations, out Margins computedPadding, out Margins computedMargins);
 
             var overrideColor = GetTextColor(context.NowL);
             Color? defaultColor = 
@@ -647,7 +649,7 @@ namespace Squared.PRGUI.Controls {
             if (Appearance.TextColorIsDefault)
                 overrideColor = null;
             Material material;
-            var textDecorations = GetTextDecorator(context.DecorationProvider, context.DefaultTextDecorator);
+            var textDecorations = GetTextDecorator(decorationProvider, context.DefaultTextDecorator);
             GetTextSettings(ref context, textDecorations, decorations, settings.State, out material, ref defaultColor, out Vector4 userData);
             material = CustomTextMaterial ?? material;
 

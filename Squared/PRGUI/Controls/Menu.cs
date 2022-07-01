@@ -615,11 +615,12 @@ namespace Squared.PRGUI.Controls {
         }
 
         private Vector2 AdjustPosition_Classic (UIContext context, Vector2 desiredPosition) {
-            var decorator = GetDecorator(context.Decorations, null);
+            var decorationProvider = context.Decorations;
+            var decorator = GetDecorator(decorationProvider, null);
 
             // HACK city: Need an operation context to compute margins
             var tempContext = context.MakeOperationContext();
-            ComputeEffectiveSpacing(ref tempContext, decorator, out Margins computedPadding, out Margins computedMargins);
+            ComputeEffectiveSpacing(ref tempContext, decorationProvider, decorator, out Margins computedPadding, out Margins computedMargins);
             // Shift ourself up/left to compensate for our decoration margins and align perfectly
             //  with any anchor point
             desiredPosition -= new Vector2(computedMargins.Left, computedMargins.Top);

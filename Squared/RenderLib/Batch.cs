@@ -16,7 +16,7 @@ namespace Squared.Render {
         void Prepare (Batch.PrepareContext context);
         void Suspend ();
 
-        bool AreParametersEqual (in MaterialParameterValues rhs);
+        bool AreParametersEqual (ref MaterialParameterValues rhs);
     }
 
     public abstract class Batch : IBatch {
@@ -204,8 +204,8 @@ namespace Squared.Render {
             }
         }
 
-        bool IBatch.AreParametersEqual (in MaterialParameterValues rhs) {
-            return MaterialParameters.Equals(in rhs);
+        bool IBatch.AreParametersEqual (ref MaterialParameterValues rhs) {
+            return MaterialParameters.Equals(ref rhs);
         }
 
         protected void Initialize (IBatchContainer container, int layer, Material material, bool addToContainer) {

@@ -419,8 +419,7 @@ namespace Squared.Render {
             V2,
             V3,
             V4,
-            Q,
-            M
+            Q
         }
 
         [StructLayout(LayoutKind.Explicit)]
@@ -439,8 +438,6 @@ namespace Squared.Render {
             public Vector4 V4;
             [FieldOffset(0)]
             public Quaternion Q;
-            [FieldOffset(0)]
-            public Matrix M;
         }
 
         internal struct Entry {
@@ -471,8 +468,6 @@ namespace Squared.Render {
                         return lhs.PrimitiveValue.V4 == rhs.PrimitiveValue.V4;
                     case EntryValueType.Q:
                         return lhs.PrimitiveValue.Q == rhs.PrimitiveValue.Q;
-                    case EntryValueType.M:
-                        return lhs.PrimitiveValue.M == rhs.PrimitiveValue.M;
                     default:
                         throw new ArgumentOutOfRangeException("lhs.ValueType");
                 }
@@ -588,7 +583,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Add (string name, in Vector2 value) {
+        public void Add (string name, Vector2 value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V2,
@@ -598,7 +593,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Add (string name, in Vector3 value) {
+        public void Add (string name, Vector3 value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V3,
@@ -608,7 +603,7 @@ namespace Squared.Render {
             });
         }
 
-        public void Add (string name, in Vector4 value) {
+        public void Add (string name, Vector4 value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.V4,
@@ -618,22 +613,12 @@ namespace Squared.Render {
             });
         }
 
-        public void Add (string name, in Quaternion value) {
+        public void Add (string name, Quaternion value) {
             Set(new Entry {
                 Name = name,
                 ValueType = EntryValueType.Q,
                 PrimitiveValue = {
                     Q = value
-                }
-            });
-        }
-
-        public void Add (string name, in Matrix value) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.M,
-                PrimitiveValue = {
-                    M = value
                 }
             });
         }
@@ -714,9 +699,6 @@ namespace Squared.Render {
                 case EntryValueType.V4:
                     p.SetValue(entry.PrimitiveValue.V4);
                     break;
-                case EntryValueType.M:
-                    p.SetValue(entry.PrimitiveValue.M);
-                    break;
                 case EntryValueType.Q:
                     p.SetValue(entry.PrimitiveValue.Q);
                     break;
@@ -725,7 +707,7 @@ namespace Squared.Render {
             }
         }
 
-        public bool Equals (in MaterialParameterValues pRhs) {
+        public bool Equals (ref MaterialParameterValues pRhs) {
             var count = Count;
             if (count != pRhs.Count)
                 return false;
@@ -751,7 +733,7 @@ namespace Squared.Render {
 
         public override bool Equals (object obj) {
             if (obj is MaterialParameterValues mpv)
-                return Equals(in mpv);
+                return Equals(ref mpv);
             else
                 return false;
         }

@@ -1,7 +1,12 @@
-﻿using System;
+﻿#if DEBUG
+#define MEASURE_CACHE_HIT_COUNTS
+#endif
+
+using System;
 using System.Collections.Generic;
 using System.Runtime;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
@@ -377,7 +382,30 @@ namespace Squared.Render.Convenience {
         }
     }
 
+    [Flags]
+    public enum ImperativeRendererFlags : int { 
+        WorldSpace                  = 0b1,
+        UseZBuffer                  = 0b10,
+        ZBufferOnlySorting          = 0b100,
+        DepthPrePass                = 0b1000,
+        AutoIncrementLayer          = 0b10000,
+        AutoIncrementSortKey        = 0b100000,
+        LowPriorityMaterialOrdering = 0b1000000,
+        UseDiscard                  = 0b10000000,
+        RasterSoftOutlines          = 0b100000000,
+        RasterUseUbershader         = 0b1000000000,
+        RasterBlendInLinearSpace    = 0b10000000000,
+    }
+
     public struct ImperativeRenderer {
+        [Flags]
+        private enum CachedBatchFlags : byte {
+            WorldSpace = 0b1,
+            UseZBuffer = 0b10,
+            ZBufferOnlySorting = 0b100,
+            DepthPrePass = 0b1000,
+        }
+
         private struct CachedBatch {
             public IBatch Batch;
 
@@ -389,24 +417,18 @@ namespace Squared.Render.Convenience {
             public RasterizerState RasterizerState;
             public DepthStencilState DepthStencilState;
             public Material CustomMaterial;
-            public bool WorldSpace;
-            public bool UseZBuffer;
-            public bool ZBufferOnlySorting;
-            public bool DepthPrePass;
+            public CachedBatchFlags Flags;
             
-            public static bool KeysEqual (in CachedBatch lhs, in CachedBatch rhs) {
+            public static bool KeysEqual (ref CachedBatch lhs, ref CachedBatch rhs) {
                 var result = (
                     (lhs.BatchType == rhs.BatchType) &&
                     (lhs.Container == rhs.Container) &&
                     (lhs.Layer == rhs.Layer) &&
-                    (lhs.WorldSpace == rhs.WorldSpace) &&
+                    (lhs.Flags == rhs.Flags) &&
                     (lhs.BlendState == rhs.BlendState) &&
-                    (lhs.UseZBuffer == rhs.UseZBuffer) &&
-                    (lhs.ZBufferOnlySorting == rhs.ZBufferOnlySorting) &&
                     (lhs.RasterizerState == rhs.RasterizerState) &&
                     (lhs.DepthStencilState == rhs.DepthStencilState) &&
                     (lhs.CustomMaterial == rhs.CustomMaterial) &&
-                    (lhs.DepthPrePass == rhs.DepthPrePass) &&
                     object.ReferenceEquals(lhs.SamplerState1, rhs.SamplerState1) &&
                     object.ReferenceEquals(lhs.SamplerState2, rhs.SamplerState2)
                 );
@@ -427,7 +449,7 @@ namespace Squared.Render.Convenience {
             }
         }
 
-        private enum CachedBatchType {
+        private enum CachedBatchType : byte {
             Bitmap,
             MultimaterialBitmap,
             Geometry,
@@ -436,77 +458,27 @@ namespace Squared.Render.Convenience {
         }
 
         private struct CachedBatches {
+#if MEASURE_CACHE_HIT_COUNTS
+            public static volatile int HitCount, MissCount;
+
+            public static double HitRate => (HitCount * 100.0) / (HitCount + MissCount);
+#endif
+
             public const int Capacity = 4;
 
             public int Count;
-            private CachedBatch Batch0, Batch1, Batch2, Batch3;
+            public CachedBatch Batch0, Batch1, Batch2, Batch3;
 
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Clear () {
                 Count = 0;
                 Batch0 = Batch1 = Batch2 = Batch3 = default(CachedBatch);
             }
 
-            public bool TryGet<T> (
-                out CachedBatch result,
-                ref MaterialParameterValues parameters,
-                CachedBatchType cbt,
-                IBatchContainer container, 
-                int layer, 
-                bool worldSpace, 
-                RasterizerState rasterizerState, 
-                DepthStencilState depthStencilState, 
-                BlendState blendState, 
-                SamplerState samplerState1, 
-                SamplerState samplerState2,
-                Material customMaterial,
-                bool useZBuffer,
-                bool zBufferOnlySorting,
-                bool depthPrePass
-            ) {
-                result = new CachedBatch {
-                    BatchType = cbt,
-                    Container = container,
-                    Layer = layer,
-                    // FIXME: Mask if multimaterial?
-                    WorldSpace = worldSpace,
-                    UseZBuffer = useZBuffer,
-                    ZBufferOnlySorting = zBufferOnlySorting,
-                    DepthPrePass = depthPrePass
-                };
-
-                if (cbt != CachedBatchType.MultimaterialBitmap) {
-                    result.RasterizerState = rasterizerState;
-                    result.DepthStencilState = depthStencilState;
-                    result.BlendState = blendState;
-                    result.SamplerState1 = samplerState1;
-                    result.SamplerState2 = samplerState2;
-                    result.CustomMaterial = customMaterial;
-                }
-
-                int i;
-                if (CachedBatch.KeysEqual(Batch0, result) && Batch0.Batch.AreParametersEqual(parameters)) {
-                    result = Batch0;
-                    i = 0;
-                } else if (CachedBatch.KeysEqual(Batch1, result) && Batch1.Batch.AreParametersEqual(parameters)) {
-                    result = Batch1;
-                    i = 1;
-                } else if (CachedBatch.KeysEqual(Batch2, result) && Batch2.Batch.AreParametersEqual(parameters)) {
-                    result = Batch2;
-                    i = 2;
-                } else if (CachedBatch.KeysEqual(Batch3, result) && Batch3.Batch.AreParametersEqual(parameters)) {
-                    result = Batch3;
-                    i = 3;
-                } else {
-                    return false;
-                }
-
-                InsertAtFront(in result, i);
-                return (result.Batch != null);
-            }
-
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void InsertAtFront (in CachedBatch item, int previousIndex) {
+            public void InsertAtFront (ref CachedBatch item, int previousIndex) {
                 // No-op
                 if (previousIndex == 0)
                     return;
@@ -570,6 +542,8 @@ namespace Squared.Render.Convenience {
         public BlendState BlendState;
         public SamplerState SamplerState, SamplerState2;
 
+        public ImperativeRendererFlags Flags;
+
         /// <summary>
         /// Overrides the default material used to draw bitmaps if no custom material has been specified.
         /// </summary>
@@ -578,38 +552,100 @@ namespace Squared.Render.Convenience {
         /// <summary>
         /// Uses world-space coordinates.
         /// </summary>
-        public bool WorldSpace;
+        public bool WorldSpace {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.WorldSpace);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetFlag(ImperativeRendererFlags.WorldSpace, value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void SetFlag (ImperativeRendererFlags flag, bool value) {
+            if (value)
+                Flags |= flag;
+            else
+                Flags &= ~flag;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool GetFlag (ImperativeRendererFlags flag) {
+            return (Flags & flag) == flag;
+        }
 
         /// <summary>
         /// Generates z coordinates so that the z buffer can be used to order draw calls.
         /// </summary>
-        public bool UseZBuffer;
+        public bool UseZBuffer {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.UseZBuffer);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetFlag(ImperativeRendererFlags.UseZBuffer, value);
+        }
 
         /// <summary>
         /// Disables draw call sorting and relies on the z buffer to maintain ordering.
         /// </summary>
-        public bool ZBufferOnlySorting;
+        public bool ZBufferOnlySorting {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.ZBufferOnlySorting);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetFlag(ImperativeRendererFlags.ZBufferOnlySorting, value);
+        }
 
         /// <summary>
         /// If z-buffering is enabled, only a depth buffer generating pass will happen, not color rendering.
         /// </summary>
-        public bool DepthPrePass;
+        public bool DepthPrePass {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.DepthPrePass);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetFlag(ImperativeRendererFlags.DepthPrePass, value);
+        }
 
         /// <summary>
         /// Increments the Layer after each drawing operation.
         /// </summary>
-        public bool AutoIncrementLayer;
+        public bool AutoIncrementLayer {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.AutoIncrementLayer);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetFlag(ImperativeRendererFlags.AutoIncrementLayer, value);
+        }
 
         /// <summary>
         /// Increments the sorting key's order value after each drawing operation.
         /// </summary>
-        public bool AutoIncrementSortKey;
+        public bool AutoIncrementSortKey {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.AutoIncrementSortKey);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetFlag(ImperativeRendererFlags.AutoIncrementSortKey, value);
+        }
 
         /// <summary>
         /// If true, materials are last in the sort order instead of first.
         /// This allows precise ordering of bitmaps by sort key, regardless of material.
         /// </summary>
-        public bool LowPriorityMaterialOrdering;
+        public bool LowPriorityMaterialOrdering {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.LowPriorityMaterialOrdering);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetFlag(ImperativeRendererFlags.LowPriorityMaterialOrdering, value);
+        }
 
         /// <summary>
         /// Specifies a custom set of declarative sorting rules used to order draw calls.
@@ -622,32 +658,55 @@ namespace Squared.Render.Convenience {
         /// <summary>
         /// Bitmaps will use a shader with discard by default. Discard ensures transparent pixels are not drawn.
         /// </summary>
-        public bool UseDiscard;
+        public bool UseDiscard {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.UseDiscard);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetFlag(ImperativeRendererFlags.UseDiscard, value);
+        }
 
         private float RasterOutlineGammaMinusOne;
 
         /// <summary>
         /// If set, outlines on raster shapes will be soft instead of hard.
         /// </summary>
-        public bool RasterSoftOutlines;
+        public bool RasterSoftOutlines {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.RasterSoftOutlines);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetFlag(ImperativeRendererFlags.RasterSoftOutlines, value);
+        }
 
         /// <summary>
         /// If set, raster shapes will be drawn using the generic ubershader in a single large pass.
         /// This is slower for large shapes but produces fewer draw calls.
         /// </summary>
-        public bool RasterUseUbershader;
+        public bool RasterUseUbershader {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.RasterUseUbershader);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetFlag(ImperativeRendererFlags.RasterUseUbershader, value);
+        }
 
         /// <summary>
         /// If true, raster shape colors will be converted from sRGB to linear space before
         ///  blending and then converted back to sRGB for rendering.
         /// If false, colors will be directly blended. This might look bad.
         /// </summary>
-        public bool RasterBlendInLinearSpace;
-
-        /// <summary>
-        /// Specifies default shadow settings for raster shapes. Can be overridden on a per-call basis.
-        /// </summary>
-        public RasterShadowSettings RasterShadow;
+        public bool RasterBlendInLinearSpace {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace, value);
+        }
 
         /// <summary>
         /// If set, newly created batches will be expanded to have capacity for this many items once they
@@ -661,6 +720,77 @@ namespace Squared.Render.Convenience {
         /// </summary>
         public MaterialParameterValues Parameters;
 
+        private bool TryGetCachedBatch<T> (
+            out CachedBatch result,
+            CachedBatchType cbt,
+            int layer, 
+            bool worldSpace, 
+            RasterizerState rasterizerState, 
+            DepthStencilState depthStencilState, 
+            BlendState blendState, 
+            SamplerState samplerState1, 
+            SamplerState samplerState2,
+            Material customMaterial
+        ) {
+            result = new CachedBatch {
+                BatchType = cbt,
+                Container = Container,
+                Layer = layer,
+                // FIXME: Mask if multimaterial?
+            };
+            if (worldSpace)
+                result.Flags |= CachedBatchFlags.WorldSpace;
+            if (UseZBuffer)
+                result.Flags |= CachedBatchFlags.UseZBuffer;
+            if (ZBufferOnlySorting)
+                result.Flags |= CachedBatchFlags.ZBufferOnlySorting;
+            if (DepthPrePass)
+                result.Flags |= CachedBatchFlags.DepthPrePass;
+
+            if (cbt != CachedBatchType.MultimaterialBitmap) {
+                result.RasterizerState = rasterizerState;
+                result.DepthStencilState = depthStencilState;
+                result.BlendState = blendState;
+                result.SamplerState1 = samplerState1;
+                result.SamplerState2 = samplerState2;
+                result.CustomMaterial = customMaterial;
+            }
+
+            int i;
+            if (CompareCachedBatch(ref Cache.Batch0, ref result, ref Parameters))
+                i = 0;
+            else if (CompareCachedBatch(ref Cache.Batch1, ref result, ref Parameters))
+                i = 1;
+            else if (CompareCachedBatch(ref Cache.Batch2, ref result, ref Parameters))
+                i = 2;
+            else if (CompareCachedBatch(ref Cache.Batch3, ref result, ref Parameters))
+                i = 3;
+            else {
+#if MEASURE_CACHE_HIT_COUNTS
+                CachedBatches.MissCount++;
+#endif
+                return false;
+            }
+
+            Cache.InsertAtFront(ref result, i);
+            return (result.Batch != null);
+        }
+
+        private bool CompareCachedBatch (ref CachedBatch cached, ref CachedBatch result, ref MaterialParameterValues parameters) {
+            if (cached.Batch == null)
+                return false;
+            else if (!CachedBatch.KeysEqual(ref cached, ref result))
+                return false;
+            else if (!cached.Batch.AreParametersEqual(ref parameters))
+                return false;
+
+            result = cached;
+#if MEASURE_CACHE_HIT_COUNTS
+            CachedBatches.HitCount++;
+#endif
+            return true;
+        }
+
         public ImperativeRenderer (
             IBatchContainer container,
             DefaultMaterialSet materials,
@@ -671,12 +801,9 @@ namespace Squared.Render.Convenience {
             SamplerState samplerState = null,
             SamplerState samplerState2 = null,
             bool worldSpace = true,
-            bool useZBuffer = false,
             bool autoIncrementSortKey = false,
             bool autoIncrementLayer = false,
-            bool lowPriorityMaterialOrdering = false,
-            bool zBufferOnlySorting = false,
-            bool depthPrePass = false,
+            ImperativeRendererFlags flags = default,
             Sorter<BitmapDrawCall> declarativeSorter = null,
             Tags tags = default(Tags)
         ) {
@@ -693,25 +820,21 @@ namespace Squared.Render.Convenience {
             BlendState = blendState;
             SamplerState = samplerState;
             SamplerState2 = samplerState2;
-            UseZBuffer = useZBuffer;
-            ZBufferOnlySorting = zBufferOnlySorting;
-            DepthPrePass = depthPrePass;
-            WorldSpace = worldSpace;
-            AutoIncrementSortKey = autoIncrementSortKey;
-            AutoIncrementLayer = autoIncrementLayer;
             NextSortKey = new DrawCallSortKey(tags, 0);
-            Cache = new CachedBatches();
-            LowPriorityMaterialOrdering = lowPriorityMaterialOrdering;
+            Cache = default;
             DeclarativeSorter = declarativeSorter;
             RasterOutlineGammaMinusOne = 0;
-            RasterBlendInLinearSpace = true;
-            RasterSoftOutlines = false;
-            RasterUseUbershader = false;
-            RasterShadow = default(RasterShadowSettings);
-            UseDiscard = false;
             DefaultBitmapMaterial = null;
             BitmapBatchInitialCapacity = null;
-            Parameters = default(MaterialParameterValues);
+            Parameters = default;
+            if (worldSpace)
+                flags |= ImperativeRendererFlags.WorldSpace;
+            if (autoIncrementSortKey)
+                flags |= ImperativeRendererFlags.AutoIncrementSortKey;
+            if (autoIncrementLayer)
+                flags |= ImperativeRendererFlags.AutoIncrementLayer;
+            flags |= ImperativeRendererFlags.RasterBlendInLinearSpace;
+            Flags = flags;
         }
 
         /// <summary>
@@ -1292,7 +1415,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow ?? default,
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1328,7 +1451,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow ?? default,
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1363,7 +1486,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow ?? default,
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1402,7 +1525,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow.GetValueOrDefault(),
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1438,7 +1561,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow.GetValueOrDefault(),
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1474,7 +1597,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow.GetValueOrDefault(),
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1510,7 +1633,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow.GetValueOrDefault(),
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1545,7 +1668,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow.GetValueOrDefault(),
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1580,7 +1703,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow.GetValueOrDefault(),
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1614,7 +1737,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow.GetValueOrDefault(),
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1652,7 +1775,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow.GetValueOrDefault(),
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1688,7 +1811,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow.GetValueOrDefault(),
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1757,7 +1880,7 @@ namespace Squared.Render.Convenience {
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? RasterShadow,
+                    Shadow = shadow.GetValueOrDefault(),
                     TextureBounds = textureRegion ?? Bounds.Unit,
                     TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
@@ -1782,11 +1905,9 @@ namespace Squared.Render.Convenience {
                 desiredSamplerState1 = desiredSamplerState2 = null;
 
             CachedBatch cacheEntry;
-            if (!Cache.TryGet<IBitmapBatch>(
+            if (!TryGetCachedBatch<IBitmapBatch>(
                 out cacheEntry,
-                ref Parameters,
                 LowPriorityMaterialOrdering ? CachedBatchType.MultimaterialBitmap : CachedBatchType.Bitmap,
-                container: Container,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,
                 rasterizerState: rasterizerState ?? RasterizerState,
@@ -1794,10 +1915,7 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState1: desiredSamplerState1,
                 samplerState2: desiredSamplerState2,
-                customMaterial: customMaterial,
-                useZBuffer: UseZBuffer,
-                depthPrePass: DepthPrePass,
-                zBufferOnlySorting: ZBufferOnlySorting
+                customMaterial: customMaterial
             )) {
                 Material material;
 
@@ -1835,7 +1953,7 @@ namespace Squared.Render.Convenience {
 
                 bb.Sorter = DeclarativeSorter;
                 cacheEntry.Batch = bb;
-                Cache.InsertAtFront(in cacheEntry, -1);
+                Cache.InsertAtFront(ref cacheEntry, -1);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
@@ -1853,11 +1971,9 @@ namespace Squared.Render.Convenience {
             var desiredBlendState = blendState ?? BlendState;
 
             CachedBatch cacheEntry;
-            if (!Cache.TryGet<GeometryBatch>(
+            if (!TryGetCachedBatch<GeometryBatch>(
                 out cacheEntry,
-                ref Parameters,
                 CachedBatchType.Geometry,
-                container: Container,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,
                 rasterizerState: RasterizerState,
@@ -1865,10 +1981,7 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState1: null,
                 samplerState2: null,
-                customMaterial: customMaterial,
-                useZBuffer: UseZBuffer,
-                zBufferOnlySorting: ZBufferOnlySorting,
-                depthPrePass: DepthPrePass
+                customMaterial: customMaterial
             )) {
                 Material material;
 
@@ -1888,7 +2001,7 @@ namespace Squared.Render.Convenience {
                 var b = GeometryBatch.New(Container, actualLayer, material);
                 b.MaterialParameters = Parameters;
                 cacheEntry.Batch = b;
-                Cache.InsertAtFront(in cacheEntry, -1);
+                Cache.InsertAtFront(ref cacheEntry, -1);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
@@ -1924,11 +2037,9 @@ namespace Squared.Render.Convenience {
                 desiredBlendState = RenderStates.RasterShapeMaxBlend;
 
             CachedBatch cacheEntry;
-            if (!Cache.TryGet<RasterShapeBatch>(
+            if (!TryGetCachedBatch<RasterShapeBatch>(
                 out cacheEntry,
-                ref Parameters,
                 CachedBatchType.RasterShape,
-                container: Container,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,
                 rasterizerState: RasterizerState,
@@ -1936,10 +2047,7 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState1: desiredSamplerState,
                 samplerState2: null,
-                customMaterial: null,
-                useZBuffer: UseZBuffer,
-                zBufferOnlySorting: ZBufferOnlySorting,
-                depthPrePass: DepthPrePass
+                customMaterial: null
             ) || (((RasterShapeBatch)cacheEntry.Batch).Texture != texture) 
               || (((RasterShapeBatch)cacheEntry.Batch).RampTexture != rampTexture)
               || (((RasterShapeBatch)cacheEntry.Batch).RampUVOffset != (rampUVOffset ?? Vector2.Zero))
@@ -1955,7 +2063,7 @@ namespace Squared.Render.Convenience {
                 // FIXME: why the hell
                 batch.UseUbershader = RasterUseUbershader;
                 cacheEntry.Batch = batch;
-                Cache.InsertAtFront(in cacheEntry, -1);
+                Cache.InsertAtFront(ref cacheEntry, -1);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
@@ -1989,11 +2097,9 @@ namespace Squared.Render.Convenience {
                 desiredBlendState = RenderStates.RasterShapeMaxBlend;
 
             CachedBatch cacheEntry;
-            if (!Cache.TryGet<RasterStrokeBatch>(
+            if (!TryGetCachedBatch<RasterStrokeBatch>(
                 out cacheEntry,
-                ref Parameters,
                 CachedBatchType.RasterStroke,
-                container: Container,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,
                 rasterizerState: RasterizerState,
@@ -2001,10 +2107,7 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState1: brush.NozzleSamplerState,
                 samplerState2: null,
-                customMaterial: null,
-                useZBuffer: UseZBuffer,
-                zBufferOnlySorting: ZBufferOnlySorting,
-                depthPrePass: DepthPrePass
+                customMaterial: null
             ) || !(((RasterStrokeBatch)cacheEntry.Batch).Brush.Equals(brush))
             ) {
                 var batch = RasterStrokeBatch.New(
@@ -2014,7 +2117,7 @@ namespace Squared.Render.Convenience {
                 batch.BlendInLinearSpace = RasterBlendInLinearSpace;
                 batch.MaterialParameters = Parameters;
                 cacheEntry.Batch = batch;
-                Cache.InsertAtFront(in cacheEntry, -1);
+                Cache.InsertAtFront(ref cacheEntry, -1);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
