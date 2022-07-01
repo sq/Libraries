@@ -409,7 +409,7 @@ namespace Squared.PRGUI {
                 //  this allows simple transform animations that end at the identity matrix to work
                 //  without explicitly clearing the transform after the animation is over.
                 Appearance.GetTransform(out Matrix transform, context.NowL) &&
-                (transform != Matrix.Identity);
+                (transform != ControlMatrixInfo.IdentityMatrix);
 
             var needsComposition = NeedsComposition(opacity < 1, hasTransformMatrix) || enableCompositor;
             var oldOpacity = context.Opacity;

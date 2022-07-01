@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -413,12 +414,8 @@ namespace Squared.Render.Convenience {
                 return result;
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public override bool Equals (object obj) {
-                if (obj is CachedBatch cb)
-                    return KeysEqual(in this, in cb);
-
-                return false;
+                throw new InvalidOperationException("Don't box this");
             }
 
             public override int GetHashCode () {
@@ -507,6 +504,7 @@ namespace Squared.Render.Convenience {
                 return (result.Batch != null);
             }
 
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void InsertAtFront (in CachedBatch item, int previousIndex) {
                 // No-op

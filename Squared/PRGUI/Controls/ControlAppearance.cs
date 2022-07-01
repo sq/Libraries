@@ -279,7 +279,7 @@ namespace Squared.PRGUI {
 
                 _TransformMatrix = new ControlMatrixInfo {
                     HasValue = tm?.HasValue ?? false,
-                    Matrix = tm?.Matrix ?? Matrix.Identity,
+                    Matrix = tm?.Matrix ?? ControlMatrixInfo.IdentityMatrix,
                     TransformOriginMinusOneHalf = value - new Vector2(0.5f)
                 };
             }
@@ -293,7 +293,7 @@ namespace Squared.PRGUI {
             if (GetTransform(out Matrix xform, now))
                 result = centering * xform * placement;
             else
-                result = Matrix.Identity;
+                result = ControlMatrixInfo.IdentityMatrix;
         }
 
         private ControlMatrixInfo _TransformMatrix;
@@ -309,10 +309,10 @@ namespace Squared.PRGUI {
             set {
                 var tm = _TransformMatrix;
                 if (
-                    (value == null) ||
+                    !value.HasValue ||
                     (
-                        ((value.Value.From == Matrix.Identity) && 
-                        (value.Value.To == Matrix.Identity))
+                        ((value.Value.From == ControlMatrixInfo.IdentityMatrix) && 
+                        (value.Value.To == ControlMatrixInfo.IdentityMatrix))
                     )
                 ) {
                     if (
@@ -322,7 +322,7 @@ namespace Squared.PRGUI {
                     ) {
                         _TransformMatrix = new ControlMatrixInfo {
                             TransformOriginMinusOneHalf = tm.TransformOriginMinusOneHalf,
-                            Matrix = Matrix.Identity,
+                            Matrix = ControlMatrixInfo.IdentityMatrix,
                             HasValue = false
                         };
                     } else
@@ -351,14 +351,14 @@ namespace Squared.PRGUI {
                 return;
             
             if (_TransformMatrix.Matrix.Get(now, out Matrix m)) {
-                if (m == Matrix.Identity)
+                if (m == ControlMatrixInfo.IdentityMatrix)
                     _TransformMatrix.HasValue = false;
             }
         }
 
         public bool GetTransform (out Matrix matrix, long now) {
             if (!HasTransformMatrix) {
-                matrix = Matrix.Identity;
+                matrix = ControlMatrixInfo.IdentityMatrix;
                 return false;
             }
 
@@ -384,6 +384,8 @@ namespace Squared.PRGUI {
     }
 
     internal class ControlMatrixInfo {
+        public static Matrix IdentityMatrix = Microsoft.Xna.Framework.Matrix.Identity;
+
         public bool HasValue = true;
         public Tween<Matrix> Matrix;
         public Vector2 TransformOriginMinusOneHalf;

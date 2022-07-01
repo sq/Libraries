@@ -69,6 +69,8 @@ namespace Squared.Util {
             GetValue = _GetValue;
         }
 
+        static EqualityComparer<T> DefaultComparer = EqualityComparer<T>.Default;
+
         private static ref readonly T _GetValue (in Tween<T> tween, int index) {
             if (index == 0)
                 return ref tween.From;
@@ -304,7 +306,10 @@ namespace Squared.Util {
             return From.GetHashCode() ^ To.GetHashCode();
         }
 
-        public bool Equals (in Tween<T> rhs) {
+        public bool Equals (in Tween<T> rhs, EqualityComparer<T> comparer = null) {
+            if (comparer == null)
+                comparer = DefaultComparer;
+
             return
                 (StartedWhen == rhs.StartedWhen) &&
                 (EndWhen == rhs.EndWhen) &&
@@ -313,17 +318,21 @@ namespace Squared.Util {
                 (RepeatDelay == rhs.RepeatDelay) &&
                 (RepeatExtraDuration == rhs.RepeatExtraDuration) &&
                 (Interpolator == rhs.Interpolator) &&
-                object.Equals(From, rhs.From) &&
-                object.Equals(To, rhs.To);
+                comparer.Equals(From, rhs.From) &&
+                comparer.Equals(To, rhs.To);
+        }
+
+        public bool Equals (Tween<T> rhs, EqualityComparer<T> comparer) {
+            return Equals(in rhs, comparer);
         }
 
         public bool Equals (Tween<T> rhs) {
-            return Equals(in rhs);
+            return Equals(in rhs, null);
         }
 
         public override bool Equals (object obj) {
-            if (obj is Tween<T>)
-                return Equals((Tween<T>)obj);
+            if (obj is Tween<T> t)
+                return Equals(in t, null);
             else
                 return false;
         }

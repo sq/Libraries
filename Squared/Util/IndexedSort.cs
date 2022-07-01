@@ -38,7 +38,6 @@ namespace Squared.Util {
         private readonly ArraySegment<int>      Indices;
         private readonly TComparer  Comparer;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal IndexedSorter (ArraySegment<TElement> items, ArraySegment<int> indices, TComparer comparer) {
             Items = items;
             Indices = indices;
@@ -46,13 +45,13 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal int Compare (int i, int j) {
+        private int Compare (int i, int j) {
             int a = Indices.Array[Indices.Offset + i], b = Indices.Array[Indices.Offset + j];
             return Comparer.Compare(ref Items.Array[Items.Offset + a], ref Items.Array[Items.Offset + b]);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void SwapIfGreaterWithItems (int i, int j) {
+        private void SwapIfGreaterWithItems (int i, int j) {
             if (i != j) {
                 if (Compare(i, j) > 0) {
                     var temp = Indices.Array[Indices.Offset + i];

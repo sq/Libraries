@@ -16,6 +16,7 @@ using System.Reflection;
 using Squared.Util.DeclarativeSort;
 using System.Threading;
 using System.Runtime.CompilerServices;
+using System.Runtime;
 
 namespace Squared.Render {
     public sealed class BitmapBatch : BitmapBatchBase<BitmapDrawCall>, IBitmapBatch {
@@ -227,6 +228,7 @@ namespace Squared.Render {
                 throw new ThreadStateException("This batch is currently in use");
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         new public void Add (BitmapDrawCall item) {
             if (!BitmapDrawCall.CheckValid(ref item))
@@ -235,6 +237,7 @@ namespace Squared.Render {
             _DrawCalls.Add(ref item);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         new public void Add (ref BitmapDrawCall item) {
             if (!BitmapDrawCall.CheckValid(ref item))
@@ -243,6 +246,7 @@ namespace Squared.Render {
             _DrawCalls.Add(ref item);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (ref BitmapDrawCall item, Material material) {
             if (!BitmapDrawCall.CheckValid(ref item))
@@ -253,11 +257,13 @@ namespace Squared.Render {
             _DrawCalls.Add(ref item);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (ArraySegment<BitmapDrawCall> items) {
             _DrawCalls.AddRange(items);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (BitmapDrawCall[] items, int firstIndex, int count) {
             _DrawCalls.AddRange(items, firstIndex, count);

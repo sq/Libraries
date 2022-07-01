@@ -12,6 +12,7 @@ using Squared.Util;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
 using Squared.Threading;
+using System.Runtime;
 
 namespace Squared.Render {
     public interface IMaterialCollection {
@@ -284,6 +285,7 @@ namespace Squared.Render {
             }
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal UniformBinding<T> GetUniformBinding<T> (Material material, TypedUniform<T> uniform)
             where T: unmanaged

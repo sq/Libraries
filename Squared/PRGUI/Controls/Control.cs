@@ -591,7 +591,7 @@ namespace Squared.PRGUI {
                 stack.Reverse();
             }
 
-            var matrix = Matrix.Identity;
+            var matrix = ControlMatrixInfo.IdentityMatrix;
             var nowL = Context.NowL;
             foreach (var item in stack) {
                 // Walk down the chain from root to control and apply each transform we find

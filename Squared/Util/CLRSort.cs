@@ -25,6 +25,7 @@ SOFTWARE.
 
 using System;
 using System.Collections.Generic;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 
 namespace Squared.Util {
@@ -37,7 +38,6 @@ namespace Squared.Util {
         private readonly ArraySegment<TElement> Items;
         private readonly TComparer              RefComparer;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal FastCLRSorterRef (ArraySegment<TElement> items, TComparer comparer) {
             Items = items;
             RefComparer = comparer;
@@ -47,7 +47,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void SwapIfGreaterWithItems (int a, int b) {
+        private void SwapIfGreaterWithItems (int a, int b) {
             if (a == b)
                 return;
 
@@ -218,14 +218,13 @@ namespace Squared.Util {
         private readonly ArraySegment<TElement> Items;
         private readonly TComparer              NonRefComparer;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal FastCLRSorter (ArraySegment<TElement> items, TComparer comparer) {
             Items = items;
             NonRefComparer = comparer;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void SwapIfGreaterWithItems (int a, int b) {
+        private void SwapIfGreaterWithItems (int a, int b) {
             if (a == b)
                 return;
 

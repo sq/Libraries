@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -34,6 +35,7 @@ namespace Squared.Util {
             return result;
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref readonly T ReadItem<T> (this in DenseList<T> list, int index) {
             var items = list._Items;
@@ -54,6 +56,7 @@ namespace Squared.Util {
             }
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T Item<T> (this ref DenseList<T> list, int index) {
             var items = list._Items;
@@ -135,6 +138,7 @@ namespace Squared.Util {
             }
 
             public T Current {
+                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
                     if (HasList)
@@ -155,6 +159,7 @@ namespace Squared.Util {
             }
 
             object IEnumerator.Current {
+                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
                     if (HasList)
@@ -178,6 +183,7 @@ namespace Squared.Util {
                 Index = -1;
             }
 
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
                 if (Index < Count) {
@@ -187,6 +193,7 @@ namespace Squared.Util {
                 return false;
             }
 
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool TryGetNext (ref T result) {
                 var countMinus1 = Count - 1;
@@ -302,7 +309,7 @@ namespace Squared.Util {
             for (int i = 0, c = Count; i < c; i++) {
                 GetItem(i, out T item);
                 var items = selector(item);
-                result.AddRange(in items);
+                result.AddRange(ref items);
             }
             return result;
         }
@@ -404,9 +411,15 @@ namespace Squared.Util {
             Sort(new OrderByAdapter<TKey, TComparer>(keySelector, comparer, descending ? -1 : 1));
         }
 
-        public DenseList<T> Concat (in DenseList<T> rhs) {
+        public DenseList<T> Concat (DenseList<T> rhs) {
             Clone(out DenseList<T> result);
-            result.AddRange(in rhs);
+            result.AddRange(ref rhs);
+            return result;
+        }
+
+        public DenseList<T> Concat (ref DenseList<T> rhs) {
+            Clone(out DenseList<T> result);
+            result.AddRange(ref rhs);
             return result;
         }
 

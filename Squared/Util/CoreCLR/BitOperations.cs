@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -35,6 +36,7 @@ namespace Squared.CoreCLR
         /// Evaluate whether a given integral value is a power of 2.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPow2(int value) => (value & (value - 1)) == 0 && value > 0;
 
@@ -42,6 +44,7 @@ namespace Squared.CoreCLR
         /// Evaluate whether a given integral value is a power of 2.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPow2(uint value) => (value & (value - 1)) == 0 && value != 0 ;
 
@@ -49,6 +52,7 @@ namespace Squared.CoreCLR
         /// Evaluate whether a given integral value is a power of 2.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPow2(long value) => (value & (value - 1)) == 0 && value > 0;
 
@@ -56,6 +60,7 @@ namespace Squared.CoreCLR
         /// Evaluate whether a given integral value is a power of 2.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPow2(ulong value) => (value & (value - 1)) == 0 && value != 0;
 
@@ -83,6 +88,7 @@ namespace Squared.CoreCLR
         /// Similar in behavior to the x86 instruction LZCNT.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int LeadingZeroCount(uint value)
         {
@@ -100,6 +106,7 @@ namespace Squared.CoreCLR
         /// Similar in behavior to the x86 instruction LZCNT.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int LeadingZeroCount(ulong value)
         {
@@ -118,6 +125,7 @@ namespace Squared.CoreCLR
         /// Note that by convention, input value 0 returns 0 since log(0) is undefined.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Log2(uint value)
         {
@@ -141,6 +149,7 @@ namespace Squared.CoreCLR
         /// Note that by convention, input value 0 returns 0 since log(0) is undefined.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Log2(ulong value)
         {
@@ -190,6 +199,7 @@ namespace Squared.CoreCLR
 
         /// <summary>Returns the integer (ceiling) log of the specified value, base 2.</summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Log2Ceiling(uint value)
         {
@@ -203,6 +213,7 @@ namespace Squared.CoreCLR
 
         /// <summary>Returns the integer (ceiling) log of the specified value, base 2.</summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Log2Ceiling(ulong value)
         {
@@ -219,6 +230,7 @@ namespace Squared.CoreCLR
         /// Similar in behavior to the x86 instruction POPCNT.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int PopCount(uint value)
         {
@@ -241,6 +253,7 @@ namespace Squared.CoreCLR
         /// Similar in behavior to the x86 instruction POPCNT.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int PopCount(ulong value)
         {
@@ -263,6 +276,7 @@ namespace Squared.CoreCLR
         /// Similar in behavior to the x86 instruction TZCNT.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int TrailingZeroCount(int value)
             => TrailingZeroCount((uint)value);
@@ -272,6 +286,7 @@ namespace Squared.CoreCLR
         /// Similar in behavior to the x86 instruction TZCNT.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int TrailingZeroCount(uint value)
         {
@@ -299,6 +314,7 @@ namespace Squared.CoreCLR
         /// Similar in behavior to the x86 instruction TZCNT.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int TrailingZeroCount(long value)
             => TrailingZeroCount((ulong)value);
@@ -308,6 +324,7 @@ namespace Squared.CoreCLR
         /// Similar in behavior to the x86 instruction TZCNT.
         /// </summary>
         /// <param name="value">The value.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int TrailingZeroCount(ulong value)
         {
@@ -330,6 +347,7 @@ namespace Squared.CoreCLR
         /// <param name="offset">The number of bits to rotate by.
         /// Any value outside the range [0..31] is treated as congruent mod 32.</param>
         /// <returns>The rotated value.</returns>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint RotateLeft(uint value, int offset)
             => (value << offset) | (value >> (32 - offset));
@@ -342,6 +360,7 @@ namespace Squared.CoreCLR
         /// <param name="offset">The number of bits to rotate by.
         /// Any value outside the range [0..63] is treated as congruent mod 64.</param>
         /// <returns>The rotated value.</returns>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong RotateLeft(ulong value, int offset)
             => (value << offset) | (value >> (64 - offset));
@@ -354,6 +373,7 @@ namespace Squared.CoreCLR
         /// <param name="offset">The number of bits to rotate by.
         /// Any value outside the range [0..31] is treated as congruent mod 32.</param>
         /// <returns>The rotated value.</returns>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint RotateRight(uint value, int offset)
             => (value >> offset) | (value << (32 - offset));
@@ -366,6 +386,7 @@ namespace Squared.CoreCLR
         /// <param name="offset">The number of bits to rotate by.
         /// Any value outside the range [0..63] is treated as congruent mod 64.</param>
         /// <returns>The rotated value.</returns>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong RotateRight(ulong value, int offset)
             => (value >> offset) | (value << (64 - offset));

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Collections;
 using System.Runtime.CompilerServices;
+using System.Runtime;
 
 namespace Squared.Util {
     public class UnorderedList<T> : IEnumerable<T> {
@@ -110,6 +111,7 @@ namespace Squared.Util {
             }
 
             public T Current {
+                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get { return _List._Items[_Index + _Offset]; }
             }
@@ -121,11 +123,13 @@ namespace Squared.Util {
                 get { return _List._Items[_Index + _Offset]; }
             }
 
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void SetCurrent (in T newValue) {
                 _List._Items[_Index + _Offset] = newValue;
             }
 
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool GetCurrent (out T value) {
                 if ((_Index < 0) || (_Index >= _Count)) {
@@ -136,6 +140,7 @@ namespace Squared.Util {
                 return true;
             }
 
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool PeekNext (out T value) {
                 if ((_Index < -1) || (_Index >= (_Count - 1))) {
@@ -146,6 +151,7 @@ namespace Squared.Util {
                 return true;
             }
 
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool GetNext (out T nextItem) {
                 _Index += 1;
@@ -159,6 +165,7 @@ namespace Squared.Util {
                 }
             }
 
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
                 _Index += 1;
@@ -251,17 +258,18 @@ namespace Squared.Util {
             return new Enumerator(this, start + _BufferOffset, Math.Min(_Count - start, partitionSize));
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator () {
             return new Enumerator(this, _BufferOffset, _Count);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         IEnumerator<T> IEnumerable<T>.GetEnumerator () {
             return new Enumerator(this, _BufferOffset, _Count);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         IEnumerator IEnumerable.GetEnumerator () {
             return new Enumerator(this, _BufferOffset, _Count);
         }
@@ -398,6 +406,7 @@ namespace Squared.Util {
             return (index >= 0);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref readonly T DangerousReadItem (int index) {
             if ((index < 0) || (index >= _Count))
@@ -406,6 +415,7 @@ namespace Squared.Util {
             return ref _Items[_BufferOffset + index];
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T DangerousItem (int index) {
             if ((index < 0) || (index >= _Count))
@@ -414,6 +424,7 @@ namespace Squared.Util {
             return ref _Items[_BufferOffset + index];
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T DangerousGetItem (int index) {
             if ((index < 0) || (index >= _Count))
@@ -422,6 +433,7 @@ namespace Squared.Util {
             return _Items[_BufferOffset + index];
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DangerousGetItem (int index, out T result) {
             if ((index < 0) || (index >= _Count))
@@ -430,6 +442,7 @@ namespace Squared.Util {
             result = _Items[_BufferOffset + index];
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool DangerousTryGetItem (int index, out T result) {
             if ((index < 0) || (index >= _Count)) {
@@ -442,6 +455,7 @@ namespace Squared.Util {
             return true;
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DangerousSetItem (int index, in T newValue) {
             if ((index < 0) || (index >= _Count))

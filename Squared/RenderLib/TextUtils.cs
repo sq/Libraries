@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -818,6 +819,7 @@ namespace Squared.Render.Text {
         }
 
         public bool IsValid {
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return (
@@ -1125,6 +1127,7 @@ namespace Squared.Render.Text {
         }
 
         int IGlyphSource.Version {
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 int result = 0;

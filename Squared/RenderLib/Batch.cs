@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -56,14 +57,18 @@ namespace Squared.Render {
         public struct PrepareState {
             public volatile PrepareStateFlags Flags;
 
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Reset () {
                 Flags = PrepareStateFlags.Initialized;
             }
 
             public bool IsInitialized {
+                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => (Flags & PrepareStateFlags.Initialized) == PrepareStateFlags.Initialized;
+                [TargetedPatchingOptOut("")]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 set {
                     if (value)
                         Flags |= PrepareStateFlags.Initialized;
@@ -73,8 +78,11 @@ namespace Squared.Render {
             }
 
             public bool IsPrepareQueued {
+                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => (Flags & PrepareStateFlags.PrepareQueued) == PrepareStateFlags.PrepareQueued;
+                [TargetedPatchingOptOut("")]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 set {
                     if (value)
                         Flags |= PrepareStateFlags.PrepareQueued;
@@ -84,8 +92,11 @@ namespace Squared.Render {
             }
 
             public bool IsPrepared {
+                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => (Flags & PrepareStateFlags.Prepared) == PrepareStateFlags.Prepared;
+                [TargetedPatchingOptOut("")]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 set {
                     if (value)
                         Flags |= PrepareStateFlags.Prepared;
@@ -95,8 +106,11 @@ namespace Squared.Render {
             }
 
             public bool IsIssued {
+                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => (Flags & PrepareStateFlags.Issued) == PrepareStateFlags.Issued;
+                [TargetedPatchingOptOut("")]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 set {
                     if (value)
                         Flags |= PrepareStateFlags.Issued;
@@ -106,8 +120,11 @@ namespace Squared.Render {
             }
 
             public bool IsCombined {
+                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => (Flags & PrepareStateFlags.Combined) == PrepareStateFlags.Combined;
+                [TargetedPatchingOptOut("")]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 set {
                     if (value)
                         Flags |= PrepareStateFlags.Combined;

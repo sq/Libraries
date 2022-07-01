@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -97,6 +98,7 @@ namespace Squared.Util {
             _ListPoolOrAllocator as IListPool<T>;
 
         public bool HasList {
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_Items != null);
         }
@@ -187,6 +189,7 @@ namespace Squared.Util {
             _Items?.Clear();
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         // TODO: Make this return the list to avoid extra field reads
         public void EnsureList (int? capacity = null) {
@@ -230,6 +233,7 @@ namespace Squared.Util {
         }
 
         public int Count {
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 var items = _Items;
@@ -246,11 +250,13 @@ namespace Squared.Util {
 
         T IList<T>.this[int index] { get => this[index]; set => this[index] = value; }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Insert (int index, T item) {
             Insert(index, ref item);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Insert (int index, ref T item) {
             if (index == Count) {
@@ -266,6 +272,7 @@ namespace Squared.Util {
             _Items.InsertOrdered(index, in item);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GetItem (int index, out T result) {
             var items = _Items;
@@ -295,6 +302,7 @@ namespace Squared.Util {
             }
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetItem (int index, out T result) {
             var items = _Items;
@@ -306,25 +314,11 @@ namespace Squared.Util {
                 return false;
             }
 
-            switch (index) {
-                case 0:
-                    result = Item1;
-                    return true;
-                case 1:
-                    result = Item2;
-                    return true;
-                case 2:
-                    result = Item3;
-                    return true;
-                case 3:
-                    result = Item4;
-                    return true;
-                default:
-                    result = default(T);
-                    return false;
-            }
+            GetInlineItemAtIndex(index, out result);
+            return (index <= 3);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T First () {
             if (Count <= 0)
@@ -333,6 +327,7 @@ namespace Squared.Util {
                 return this[0];
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T FirstOrDefault (in T defaultValue = default) {
             if (Count <= 0)
@@ -345,6 +340,7 @@ namespace Squared.Util {
                 return Item1;
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T FirstOrDefault (Func<T, bool> predicate, in T defaultValue = default) {
             if (Count <= 0)
@@ -356,6 +352,7 @@ namespace Squared.Util {
                 return this[index];
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Last () {
             if (Count <= 0)
@@ -364,6 +361,7 @@ namespace Squared.Util {
                 return this[Count - 1];
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T LastOrDefault (in T defaultValue = default) {
             if (Count <= 0)
@@ -376,11 +374,13 @@ namespace Squared.Util {
                 return this[Count - 1];
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Contains (in T value) {
             return IndexOf(in value) >= 0;
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Contains<TComparer> (in T value, TComparer comparer)
             where TComparer : IEqualityComparer<T>
@@ -388,11 +388,13 @@ namespace Squared.Util {
             return IndexOf(in value, comparer) >= 0;
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf (in T value) {
             return IndexOf(in value, EqualityComparer<T>.Default);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf<TComparer> (in T value, TComparer comparer)
             where TComparer : IEqualityComparer<T>
@@ -409,6 +411,7 @@ namespace Squared.Util {
         }
 
         public T this [int index] {
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 var items = _Items;
@@ -431,6 +434,7 @@ namespace Squared.Util {
                         throw new IndexOutOfRangeException();
                 }
             }
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 SetItem(index, in value);
@@ -468,6 +472,7 @@ namespace Squared.Util {
             _Items.Add(ref item);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void UnsafeAddWithKnownCapacity (ref DenseList<T> list, ref T item) {
             var items = list._Items;
@@ -481,6 +486,7 @@ namespace Squared.Util {
             list.SetItem(count, in item);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (T item) {
             if ((_Count >= 4) || (_Items != null)) {
@@ -491,6 +497,7 @@ namespace Squared.Util {
             }
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (ref T item) {
             if ((_Count >= 4) || (_Items != null)) {
@@ -501,19 +508,20 @@ namespace Squared.Util {
             }
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddRange (in DenseList<T> items) {
-            // FIXME: Do an optimized copy when the source does not have a backing list
-            // FIXME: Use ref
-            foreach (var item in items)
-                Add(item);
+        public void AddRange (ref DenseList<T> items) {
+            for (int i = 0, c = items.Count; i < c; i++)
+                Add(ref items.Item(i));
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (ArraySegment<T> items) {
             AddRange(items.Array, items.Offset, items.Count);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (T[] items, int offset, int count) {
             if (count < 1)
@@ -752,6 +760,7 @@ namespace Squared.Util {
             public int Index;
             public T Value;
 
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public IndexAndValue (in DenseList<T> list, int[] indices, int index) {
                 if (indices != null) {
@@ -767,6 +776,7 @@ namespace Squared.Util {
             }
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int CompareValues<TComparer> (TComparer comparer, ref IndexAndValue a, ref IndexAndValue b) 
             where TComparer : IRefComparer<T>
@@ -802,6 +812,7 @@ namespace Squared.Util {
             return -1;
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
             var items = _Items;
@@ -833,6 +844,7 @@ namespace Squared.Util {
             return -1;
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf (Predicate predicate) {
             var items = _Items;
@@ -864,6 +876,7 @@ namespace Squared.Util {
             return -1;
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf (Func<T, bool> predicate) {
             if (HasList) {
@@ -985,6 +998,7 @@ namespace Squared.Util {
         /// NOTE: If the list is small this method may sort the values instead of the indices.
         /// </summary>
         /// <param name="indices">The element indices to use for sorting.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Sort<TComparer> (TComparer comparer, int[] indices = null)
             where TComparer : IRefComparer<T>
@@ -1001,6 +1015,7 @@ namespace Squared.Util {
         /// NOTE: If the list is small this method may sort the values instead of the indices.
         /// </summary>
         /// <param name="indices">The element indices to use for sorting.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Sort<TComparer> (int offset, int count, TComparer comparer)
             where TComparer : IRefComparer<T>
@@ -1021,12 +1036,14 @@ namespace Squared.Util {
         /// NOTE: If the list is small this method may sort the values instead of the indices.
         /// </summary>
         /// <param name="indices">The element indices to use for sorting.</param>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SortNonRef (IComparer<T> comparer, int[] indices = null) {
             var wrapped = new RefComparerAdapter<IComparer<T>, T>(comparer);
             Sort(wrapped, indices);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SortNonRef (int offset, int count, IComparer<T> comparer) {
             var wrapped = new RefComparerAdapter<IComparer<T>, T>(comparer);

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -40,6 +41,7 @@ namespace Squared.Util.Testing {
         /// Decreases the fault injection countdown, and if it reaches 0,
         ///  randomly decides whether to inject a fault in this step.
         /// </summary>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Step () {
             if (!Enabled || (Countdown-- > 0))
@@ -55,6 +57,7 @@ namespace Squared.Util.Testing {
         ///  randomly decides whether to inject a fault in this step.
         /// If a fault will be injected, the exception is returned so you can throw it.
         /// </summary>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Exception StepNonThrowing () {
             if (!Enabled || (Countdown-- > 0))

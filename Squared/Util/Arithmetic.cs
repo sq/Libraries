@@ -8,6 +8,7 @@ using System.Linq.Expressions;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Runtime;
 
 namespace Squared.Util {
     internal static class PrimitiveOperators {
@@ -518,6 +519,7 @@ namespace Squared.Util {
             }
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Lerp (float a, float b, float x) {
             if (x <= 0)
@@ -527,6 +529,7 @@ namespace Squared.Util {
             return a + ((b - a) * x);
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double Lerp (double a, double b, double x) {
             if (x <= 0)
@@ -554,6 +557,7 @@ namespace Squared.Util {
             );
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsFinite (float f) {
             if (float.IsInfinity(f))
@@ -939,6 +943,7 @@ namespace Squared.Util {
     }
 
     public static class FastMath {
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int FloorLog2 (int n) {
             // FIXME
@@ -949,6 +954,7 @@ namespace Squared.Util {
             }
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe int SignF (float f) {
             unchecked {
@@ -973,6 +979,7 @@ namespace Squared.Util {
             public float F2;
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int CompareF (in U32F32 buf) {
             // Hot magic in action!
@@ -1008,6 +1015,7 @@ namespace Squared.Util {
             }
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe bool EqualsF (float lhs, float rhs) {
             unchecked {
@@ -1015,6 +1023,7 @@ namespace Squared.Util {
             }
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe int CompareF (float lhs, float rhs) {
             U32F32 u = default;

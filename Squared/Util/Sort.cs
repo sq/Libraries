@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -39,6 +40,7 @@ namespace Squared.Util {
             }
         }
 
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref TElement lhs, ref TElement rhs) {
             return _Comparer.Compare(lhs, rhs);

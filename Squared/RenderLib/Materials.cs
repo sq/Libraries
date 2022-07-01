@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Collections;
 using System.Runtime.CompilerServices;
+using System.Runtime;
 
 namespace Squared.Render {
     public sealed class Material : IDisposable {
@@ -482,6 +483,7 @@ namespace Squared.Render {
         private DenseList<Entry> Entries;
         
         public int Count {
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return IsCleared ? 0 : Entries.Count;

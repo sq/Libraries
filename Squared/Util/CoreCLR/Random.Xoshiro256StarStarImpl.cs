@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -82,10 +83,12 @@ namespace Squared.CoreCLR
         }
 
         /// <summary>Produces a value in the range [0, uint.MaxValue].</summary>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // small-ish hot path used by very few call sites
         public uint NextUInt32() => (uint)(NextUInt64() >> 32);
 
         /// <summary>Produces a value in the range [0, ulong.MaxValue].</summary>
+        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // small-ish hot path used by a handful of "next" methods
         public ulong NextUInt64()
         {

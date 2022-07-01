@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -205,11 +206,13 @@ namespace Squared.Threading {
         where TObject : class
     {
         public sealed class EntryComparer : IEqualityComparer<Entry> {
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool Equals (Entry x, Entry y) {
                 return x.Equals(y);
             }
 
+            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public int GetHashCode (Entry obj) {
                 return obj.HashCode;
