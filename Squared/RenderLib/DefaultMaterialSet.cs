@@ -963,7 +963,13 @@ namespace Squared.Render {
             }
         }
 
-        public void SetViewTransform (in ViewTransform value) {
+        public void SetViewTransform (ViewTransform value) {
+            ref var item = ref ViewTransformMutable;
+            item = value;
+            ApplyViewTransform(ref item, !LazyViewTransformChanges);
+        }
+
+        public void SetViewTransform (ref ViewTransform value) {
             ref var item = ref ViewTransformMutable;
             item = value;
             ApplyViewTransform(ref item, !LazyViewTransformChanges);
@@ -1023,7 +1029,7 @@ namespace Squared.Render {
         /// Immediately changes the view transform of the material set, without waiting for a clear.
         /// If the viewTransform argument is null, the current transform is pushed instead.
         /// </summary>
-        public void PushViewTransform (in ViewTransform? viewTransform) {
+        public void PushViewTransform (ViewTransform? viewTransform) {
             var vt = viewTransform ?? ViewTransform;
             ViewTransformStack.Add(vt);
             ApplyViewTransform(ref vt, !LazyViewTransformChanges);
@@ -1032,7 +1038,25 @@ namespace Squared.Render {
         /// <summary>
         /// Immediately changes the view transform of the material set, without waiting for a clear.
         /// </summary>
-        public void PushViewTransform (in ViewTransform viewTransform, bool force = false) {
+        public void PushViewTransform (ViewTransform viewTransform, bool force = false) {
+            ViewTransformStack.Add(viewTransform);
+            ApplyViewTransform(viewTransform, force || !LazyViewTransformChanges);
+        }
+
+        /// <summary>
+        /// Immediately changes the view transform of the material set, without waiting for a clear.
+        /// If the viewTransform argument is null, the current transform is pushed instead.
+        /// </summary>
+        public void PushViewTransform (ref ViewTransform? viewTransform) {
+            var vt = viewTransform ?? ViewTransform;
+            ViewTransformStack.Add(vt);
+            ApplyViewTransform(ref vt, !LazyViewTransformChanges);
+        }
+
+        /// <summary>
+        /// Immediately changes the view transform of the material set, without waiting for a clear.
+        /// </summary>
+        public void PushViewTransform (ref ViewTransform viewTransform, bool force = false) {
             ViewTransformStack.Add(viewTransform);
             ApplyViewTransform(viewTransform, force || !LazyViewTransformChanges);
         }
@@ -1222,6 +1246,8 @@ namespace Squared.Render {
                 FlushViewTransformForFrameParamsChange = false;
                 LastAppliedViewTransform = viewTransform;
                 LastRenderTargetChangeIndex = rtci;
+                if (force)
+                    ;
                 ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
             } else if (am != null) {
                 ActiveViewTransform.AutoApply(am);
