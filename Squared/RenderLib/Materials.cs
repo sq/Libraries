@@ -363,6 +363,8 @@ namespace Squared.Render {
         public readonly EffectParameter RenderTargetDimensions;
         public readonly EffectParameter Palette, PaletteSize;
 
+        internal readonly EffectParameter BitmapTexture, SecondTexture;
+
         public MaterialEffectParameters (Effect effect) {
             Effect = effect;
             var viewport = this["Viewport"];
@@ -392,6 +394,8 @@ namespace Squared.Render {
             RenderTargetDimensions = this["__RenderTargetDimensions__"];
             Palette = this["Palette"];
             PaletteSize = this["PaletteSize"];
+            BitmapTexture = this["BitmapTexture"];
+            SecondTexture = this["SecondTexture"];
         }
 
         public void SetPalette (Texture2D palette) {

@@ -641,14 +641,9 @@ namespace Squared.Render {
 
             public void SetMaterial (Material m) {
                 Material = m;
-                Parameters = m.Parameters;
-                var ep = m?.Effect?.Parameters;
-                if (ep != null) {
-                    Texture1 = ep["BitmapTexture"];
-                    Texture2 = ep["SecondTexture"];
-                } else {
-                    Texture1 = Texture2 = null;
-                }
+                Parameters = m?.Parameters;
+                Texture1 = m?.Parameters?.BitmapTexture;
+                Texture2 = m?.Parameters?.SecondTexture;
             }
         }
 

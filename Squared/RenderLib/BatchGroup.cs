@@ -57,14 +57,18 @@ namespace Squared.Render {
             if (ViewTransform.HasValue || ViewTransformModifier != null) {
                 if (MaterialSet == null)
                     throw new NullReferenceException("MaterialSet must be set if ViewTransform or ViewTransformModifier are set");
-                var vt = ViewTransform ?? MaterialSet.ViewTransform;
+
+                ViewTransform oldVt = MaterialSet.ViewTransform, newVt = ViewTransform ?? oldVt;
                 if (ViewTransformModifier != null)
-                    ViewTransformModifier(ref vt, _UserData);
-                // FIXME: We shouldn't need force: true
-                MaterialSet.PushViewTransform(ref vt, force: false);
-                if (Material != null)
-                    MaterialSet.ApplyViewTransformToMaterial(Material, ref vt);
-                pop = true;
+                    ViewTransformModifier(ref newVt, _UserData);
+
+                if (!newVt.Equals(ref oldVt)) {
+                    // FIXME: We shouldn't need force: true
+                    MaterialSet.PushViewTransform(ref newVt, force: false);
+                    if (Material != null)
+                        MaterialSet.ApplyViewTransformToMaterial(Material, ref newVt);
+                    pop = true;
+                }
             }
 
             if (_Before != null)
@@ -73,10 +77,9 @@ namespace Squared.Render {
             try {
                 // manager.Device.SetStringMarkerEXT(this.ToString());
 
-                using (var b = _DrawCalls.GetBuffer(false)) {
-                    for (int i = 0; i < b.Count; i++)
-                        if (b[i] != null)
-                            b[i].IssueAndWrapExceptions(manager);
+                for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
+                    _DrawCalls.GetItem(i, out var batch);
+                    batch?.IssueAndWrapExceptions(manager);
                 }
             } finally {
                 if (_After != null)

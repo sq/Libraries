@@ -236,16 +236,13 @@ void rasterStrokeLineCommon(
 
     closestPointOnLineSegment2(a, b, worldPosition, centerT);
     float centerD = centerT * l,
-        startD = max(0, centerD - maxSize),
-        endD = min(centerD + maxSize, l),
+        startD = max(0, centerD - (stepPx + maxSize)),
+        endD = min(centerD + (stepPx + maxSize), l),
         firstIteration = floor(startD / stepPx), 
         lastIteration = ceil(endD / stepPx),
-        iterationCount = lastIteration - firstIteration,
         brushCount = NozzleParams.x * NozzleParams.y;
 
-    for (float _i = firstIteration; _i <= lastIteration; _i += 1.0) {
-        float i = ((_i + shuffle - firstIteration) % iterationCount) + firstIteration;
-
+    for (float i = firstIteration; i <= lastIteration; i += 1.0) {
         float4 noise1, noise2;
         if (UsesNoise) {
             float4 seedUv = float4(seed.x + (i * 2 * seed.z), seed.y + (i * seed.w), 0, 0);
@@ -287,7 +284,7 @@ void rasterStrokeLineCommon(
             posSplatDerotated = rotate2D(posSplatRotated, -splatAngle),
             posSplatDecentered = (posSplatDerotated + radius);
 
-        float g = length(posSplatDerotated);
+        float g = length(posSplatDerotated), discardDistance = (hardness < 1) ? radius + 1 : radius;
         float4 color;
 
         if (Textured) {
@@ -326,7 +323,7 @@ void rasterStrokeLineCommon(
         } else {
             // HACK: We do the early-out more conservatively because of the need to compute
             //  partial coverage at circle edges, so an exact rejection is not right
-            if (outOfRange || (g > (radius + 1)))
+            if (outOfRange || (g >= discardDistance))
                 continue;
 
             PREFER_BRANCH

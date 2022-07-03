@@ -31,6 +31,8 @@ void RasterStrokeRectangleVertexShader(
     ab = ab_in;
     float4 position = float4(ab_in.x, ab_in.y, 0, 1);
     float2 a = ab.xy, b = ab.zw;
+    if (b.y < a.y)
+        ab = float4(b.x, b.y, a.x, a.y);
 
     computePosition(a, b, cornerWeights, position.xy);
 
@@ -67,13 +69,16 @@ void RasterStrokeRectangleFragmentShader(
         stepPx = max(maxSize * Constants2.z, 2),
         h = ab.w - ab.y,
         centerY = worldPosition.y,
-        startY = max(0, centerY - maxSize),
-        endY = min(centerY + maxSize, h),
-        firstIteration = floor(startY / stepPx),
-        lastIteration = ceil(endY / stepPx);
+        startY = max(0, centerY - (stepPx + maxSize)),
+        endY = min(centerY + (stepPx + maxSize), ab.w),
+        firstIteration = floor((startY - ab.y) / stepPx),
+        lastIteration = ceil((endY - ab.y) / stepPx);
 
     for (float i = firstIteration; i <= lastIteration; i += 1.0) {
-        float y = min(ab.y + (stepPx * i), ab.w);
+        float y = ab.y + (stepPx * i);
+        if ((y < ab.y) || (y > ab.w))
+            continue;
+
         float4 _ab = float4(ab.x, y, ab.z, y);
         float4 _seed = float4(seed.x + (i * seed.w * 1.276), seed.y + (i * seed.z * 0.912), seed.z, seed.w);
         // FIXME

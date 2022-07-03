@@ -183,6 +183,9 @@ namespace Squared.Util {
             _Items?.UnsafeFastClear();
         }
 
+        /// <summary>
+        /// Clears the list's internal storage but does not release any heap objects (like backing stores).
+        /// </summary>
         public void Clear () {
             Item1 = Item2 = Item3 = Item4 = default;
             _Count = 0;
@@ -1050,8 +1053,11 @@ namespace Squared.Util {
             Sort(offset, count, wrapped);
         }
 
+        /// <summary>
+        /// Frees any heap resources used by the list and zeroes its count. *Does not* clear internal storage,
+        ///  so it can still leak heap references and keep objects alive (call Clear first to do that.)
+        /// </summary>
         public void Dispose () {
-            Item1 = Item2 = Item3 = Item4 = default;
             _Count = 0;
             if (ListPool != null)
                 ListPool.Release(ref _Items);
