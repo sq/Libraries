@@ -976,7 +976,15 @@ namespace Squared.PRGUI {
             instance.Visible = true;
             instance.DisplayOrder = int.MaxValue;
 
-            if (textChanged || !IsTooltipVisible) {
+            // HACK: TextLayoutIsIncomplete == true indicates that an image embedded in the tooltip content is
+            //  still loading. We need to keep recalculating our size until all the images have loaded, since
+            //  the images can change the size of our tooltip content
+            if (textChanged || !IsTooltipVisible || instance.TextLayoutIsIncomplete) {
+                /*
+                if (instance.TextLayoutIsIncomplete)
+                    System.Diagnostics.Debug.WriteLine($"TextLayoutIsIncomplete {FrameIndex}");
+                */
+
                 var idealMaxSize = CanvasSize * (content.Settings.MaxSize ?? tts?.MaxSize ?? MaxTooltipSize);
 
                 instance.Text = text;
@@ -987,6 +995,11 @@ namespace Squared.PRGUI {
                 instance.Invalidate();
 
                 UpdateSubtreeLayout(instance);
+
+                /*
+                if (instance.TextLayoutIsIncomplete)
+                    System.Diagnostics.Debug.WriteLine($"TextLayoutStillIncomplete {FrameIndex}");
+                */
             }
 
             var currentOpacity = instance.Appearance.Opacity.Get(Now);

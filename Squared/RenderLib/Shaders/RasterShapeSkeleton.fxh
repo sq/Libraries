@@ -25,6 +25,7 @@ uniform float4 TextureModeAndSize;
 // Origin, Position
 uniform float4 TexturePlacement;
 uniform float4 TextureTraits;
+uniform bool   TextureClamp;
 
 // A bunch of the distance formulas in here are thanks to inigo quilez
 // http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
@@ -1137,7 +1138,8 @@ float4 texturedShapeCommon (
         texCoord = (posTextureScaled * texSize) + texRgn.xy;
     }
 
-    texCoord = clamp(texCoord, texRgn.xy, texRgn.zw);
+    if (TextureClamp)
+        texCoord = clamp(texCoord, texRgn.xy, texRgn.zw);
 
     // TODO: Will the automatic mip selection work correctly here? Probably not
     float4 texColor = tex2Dbias(TextureSampler, float4(texCoord, 0, BACKGROUND_MIP_BIAS));

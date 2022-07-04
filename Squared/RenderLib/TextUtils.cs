@@ -945,6 +945,8 @@ namespace Squared.Render.Text {
             SetFlag(InternalFlags.AwaitingDependencies, false);
         }
 
+        public bool IsAwaitingDependencies => GetFlag(InternalFlags.AwaitingDependencies);
+
         public bool Get (out StringLayout result) {
             if (GetFlag(InternalFlags.HasCachedStringLayout) && (_GlyphSource != null) &&
                 ((_CachedGlyphVersion < _GlyphSource.Version) || _GlyphSource.IsDisposed)
@@ -1007,6 +1009,8 @@ namespace Squared.Render.Text {
                             if (_Dependencies == null)
                                 _Dependencies = new List<AsyncRichImage>();
 
+                            SetFlag(InternalFlags.AwaitingDependencies, false);
+
                             for (int i = 0, c = dependencies.Count; i < c; i++) {
                                 var d = dependencies[i];
                                 if (!d.HasValue)
@@ -1015,6 +1019,7 @@ namespace Squared.Render.Text {
                             }
                         } else
                             SetFlag(InternalFlags.AwaitingDependencies, false);
+
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             _RichTextConfiguration.Append(ref le, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
                         _RichTextConfiguration.KerningAdjustments = ka;

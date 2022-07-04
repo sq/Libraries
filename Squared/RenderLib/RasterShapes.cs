@@ -525,7 +525,8 @@ namespace Squared.Render.RasterShape {
             ShadowColorLinear,
             TextureModeAndSize,
             TexturePlacement,
-            TextureTraits;
+            TextureTraits,
+            TextureClamp;
 
         public RasterShader (Material material) {
             Material = material;
@@ -541,6 +542,7 @@ namespace Squared.Render.RasterShape {
             TextureModeAndSize = p["TextureModeAndSize"];
             TexturePlacement = p["TexturePlacement"];
             TextureTraits = p["TextureTraits"];
+            TextureClamp = p["TextureClamp"];
         }
     }
 
@@ -825,6 +827,8 @@ namespace Squared.Render.RasterShape {
                     shadowExpansion = 0;
                 }
 
+                var textureSamplerState = sb.TextureSettings.SamplerState ?? SamplerState ?? SamplerState.LinearWrap;
+
                 rasterShader.ShadowOptions.SetValue(new Vector4(
                     shadowOffset.X, shadowOffset.Y,
                     shadowSoftness, sb.Shadow.FillSuppression
@@ -846,6 +850,10 @@ namespace Squared.Render.RasterShape {
                 }
                 rasterShader.TextureModeAndSize?.SetValue(mas);
                 rasterShader.TexturePlacement?.SetValue(sb.TextureSettings.Placement);
+                rasterShader.TextureClamp?.SetValue(
+                    ((textureSamplerState?.AddressU == TextureAddressMode.Clamp) &&
+                    (textureSamplerState?.AddressV == TextureAddressMode.Clamp)) == true
+                );
 
                 manager.ApplyMaterial(rasterShader.Material, ref MaterialParameters);
 
@@ -858,7 +866,7 @@ namespace Squared.Render.RasterShape {
 
                 // FIXME: why the hell
                 device.Textures[0] = Texture;
-                device.SamplerStates[0] = sb.TextureSettings.SamplerState ?? SamplerState ?? SamplerState.LinearWrap;
+                device.SamplerStates[0] = textureSamplerState;
                 device.Textures[3] = RampTexture;
 
                 if (sb.Type == RasterShapeType.Polygon) {

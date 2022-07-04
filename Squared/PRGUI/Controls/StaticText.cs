@@ -111,6 +111,11 @@ namespace Squared.PRGUI.Controls {
         private StaticTextStateFlags InternalState = 
             StaticTextStateFlags.AutoSizeWidth | StaticTextStateFlags.AutoSizeHeight | StaticTextStateFlags.AutoSizeIsMaximum;
 
+        internal bool TextLayoutIsIncomplete => IsLayoutInvalid || 
+            Content.IsAwaitingDependencies || 
+            // In some cases the measurement layout will be awaiting dependencies but content isn't, because we haven't been rendered yet
+            (ContentMeasurement?.IsAwaitingDependencies ?? false);
+
         private bool GetInternalFlag (StaticTextStateFlags flag) {
             return (InternalState & flag) == flag;
         }
