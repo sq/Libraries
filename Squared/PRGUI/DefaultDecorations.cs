@@ -668,10 +668,14 @@ namespace Squared.PRGUI {
             }
         }
 
-        protected virtual void ConfigureTexture (string type, ref DecorationSettings settings, out Texture2D texture, out Bounds textureRegion, out RasterTextureSettings textureSettings) {
+        protected virtual void ConfigureTexture (
+            string type, ref DecorationSettings settings, out Texture2D texture, out Bounds textureRegion, out RasterTextureSettings textureSettings
+        ) {
             texture = settings.GetTexture();
             textureRegion = settings.GetTextureRegion();
             textureSettings = settings.GetTextureSettings();
+            if (settings.State.IsFlagged(ControlStates.Disabled))
+                textureSettings.Saturation *= 0.5f;
         }
 
         protected virtual void Button_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
@@ -1693,14 +1697,20 @@ namespace Squared.PRGUI {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
                 settings.State.IsFlagged(ControlStates.ContainsFocus);
+
+            ConfigureTexture("MenuSelection", ref settings, out var texture, out var textureRegion, out var textureSettings);
+
             var fillColor = (
-                 isFocused
+                isFocused || (texture != null)
                     ? ColorScheme.SelectionFill
                     : pSRGBColor.Lerp(ColorScheme.SelectionFill, ColorScheme.SelectionFill.ToGrayscale(0.65f), 0.5f)
                 );
             fillColor *= Arithmetic.Pulse(context.Now / 2f, 0.9f, 1f);
 
-            ConfigureTexture("MenuSelection", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            if ((texture != null) && !isFocused) {
+                textureSettings.Saturation -= 0.35f;
+                textureSettings.Brightness -= 0.1f;
+            }
 
             renderer.RasterizeRectangle(
                 a, b,
@@ -1718,8 +1728,10 @@ namespace Squared.PRGUI {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
                 settings.State.IsFlagged(ControlStates.ContainsFocus);
+            ConfigureTexture("ListSelection", ref settings, out var texture, out var textureRegion, out var textureSettings);
+
             var fillColor = (
-                 isFocused
+                isFocused || (texture != null)
                     ? ColorScheme.SelectionFill
                     : pSRGBColor.Lerp(ColorScheme.SelectionFill, ColorScheme.SelectionFill.ToGrayscale(0.65f), 0.5f)
                 );
@@ -1727,7 +1739,10 @@ namespace Squared.PRGUI {
                 ? Color.White
                 : fillColor * 0.5f;
 
-            ConfigureTexture("ListSelection", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            if ((texture != null) && !isFocused) {
+                textureSettings.Saturation -= 0.35f;
+                textureSettings.Brightness -= 0.1f;
+            }
 
             renderer.RasterizeRectangle(
                 a, b,

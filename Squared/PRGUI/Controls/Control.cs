@@ -130,6 +130,7 @@ namespace Squared.PRGUI {
             set {
                 if (ChangeInternalFlag(InternalStateFlags.Enabled, value) && (value == false))
                     Context?.NotifyControlBecomingInvalidFocusTarget(this, false);
+                OnEnabledChange(value);
             }
         }
 
@@ -411,6 +412,9 @@ namespace Squared.PRGUI {
         protected virtual void OnVisibleChange (bool newValue) {
             if (newValue == false)
                 Context?.NotifyControlBecomingInvalidFocusTarget(this, false);
+        }
+
+        protected virtual void OnEnabledChange (bool newValue) {
         }
 
         protected virtual void OnIntangibleChange (bool newValue) {
