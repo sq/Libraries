@@ -178,7 +178,7 @@ namespace Squared.PRGUI {
                 var inTabOrder = Controls.InTabOrder(FrameIndex, false)
                     .ToDenseList(where: c => 
                         (((c as IControlContainer)?.ChildrenAcceptFocus ?? false) || c.AcceptsFocus) &&
-                        c.Enabled && !c.IsTransparent &&
+                        (c.Enabled || c.AcceptsFocusWhenDisabled) && !c.IsTransparent &&
                         !(c is FocusProxy)
                     );
                 var currentIndex = inTabOrder.IndexOf(currentTopLevel);
@@ -427,7 +427,8 @@ namespace Squared.PRGUI {
                 return false;
             else if (!ic.ChildrenAcceptFocus)
                 return false;
-            return control.Enabled && control.Visible && !Control.IsRecursivelyTransparent(control);
+            return (control.Enabled || control.AcceptsFocusWhenDisabled)
+                && control.Visible && !Control.IsRecursivelyTransparent(control);
         }
     }
 }

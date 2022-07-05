@@ -144,6 +144,10 @@ namespace Squared.PRGUI {
         }
 
         /// <summary>
+        /// Can receive focus even when disabled
+        /// </summary>
+        public virtual bool AcceptsFocusWhenDisabled => false;
+        /// <summary>
         /// Can receive focus via user input
         /// </summary>
         public virtual bool AcceptsFocus {
@@ -197,7 +201,7 @@ namespace Squared.PRGUI {
         internal bool IsValidFocusTarget => 
             (
                 AcceptsFocus || (FocusBeneficiary != null)
-            ) && Enabled && !Control.IsRecursivelyTransparent(this);
+            ) && (Enabled || AcceptsFocusWhenDisabled) && !Control.IsRecursivelyTransparent(this);
 
         internal bool IsValidMouseInputTarget =>
             AcceptsMouseInput && Visible && !IsTransparent && Enabled;
