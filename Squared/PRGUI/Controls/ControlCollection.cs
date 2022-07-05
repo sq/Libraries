@@ -289,6 +289,7 @@ namespace Squared.PRGUI {
                 UpdatingDisplayOrder = true;
                 try {
                     foreach (var item in Items) {
+                        // TODO: Exclude invisible controls
                         PaintOrderRange.Update(item.DisplayOrder);
                         PaintOrderedItems.Add(item);
                     }

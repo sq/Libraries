@@ -283,6 +283,11 @@ namespace Squared.Render {
             if (Effect == null)
                 return;
 
+            /*
+            if (Thread.CurrentThread != coordinator.Manager.MainThread)
+                // throw new ThreadStateException("Material.Preload must only be called from the main thread.");
+            */
+
             PipelineHint hint;
             if (DelegatedHintPipeline != null)
                 hint = DelegatedHintPipeline.HintPipeline ?? HintPipeline;

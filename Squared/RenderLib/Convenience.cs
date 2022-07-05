@@ -264,6 +264,13 @@ namespace Squared.Render.Convenience {
             Filter = TextureFilter.Linear,
             MipMapLevelOfDetailBias = -0.65f
         };
+
+        public static readonly SamplerState LinearMirror = new SamplerState {
+            AddressU = TextureAddressMode.Mirror,
+            AddressV = TextureAddressMode.Mirror,
+            AddressW = TextureAddressMode.Mirror,
+            Filter = TextureFilter.Linear,
+        };
     }
 
     public sealed class MaterialStateSet {

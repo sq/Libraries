@@ -430,8 +430,8 @@ namespace Squared.PRGUI.Controls {
                     passSet.Above.Layer = layerA;
                     RasterizeChild(ref context, item, ref passSet);
                     maxB = Math.Max(maxB, passSet.Below.Layer);
-                    maxC = Math.Max(maxC, passSet.Below.Layer);
-                    maxA = Math.Max(maxA, passSet.Below.Layer);
+                    maxC = Math.Max(maxC, passSet.Content.Layer);
+                    maxA = Math.Max(maxA, passSet.Above.Layer);
                 }
             }
         }

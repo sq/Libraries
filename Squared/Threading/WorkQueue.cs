@@ -272,6 +272,9 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int AddInternal (ref InternalWorkItem<T> item) {
+            if (IsMainThreadWorkItem && !IsMainThreadQueue)
+                throw new ArgumentException("Cannot queue main-thread work item to non-main-thread queue");
+
             AssertCanEnqueue();
             var result = Interlocked.Increment(ref ItemsQueued);
             lock (ItemsLock) {

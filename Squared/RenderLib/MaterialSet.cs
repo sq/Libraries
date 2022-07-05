@@ -416,15 +416,23 @@ namespace Squared.Render {
         private IEnumerator<object> PreloadShadersAsyncImpl (RenderCoordinator coordinator, DeviceManager dm, IndexBuffer tempIb, List<Material> materials, Action<float> onProgress, int speed) {
             var sw = Stopwatch.StartNew();
             var wfns = new Task.WaitForNextStep();
+            int remaining = 0;
 
             for (int i = 0; i < materials.Count; i++) {
                 var m = materials[i];
                 if (onProgress != null)
                     onProgress(i / (float)materials.Count);
-                coordinator.BeforeIssue(() => m.Preload(coordinator, dm, tempIb));
+                Interlocked.Increment(ref remaining);
+                coordinator.BeforeIssue(() => {
+                    m.Preload(coordinator, dm, tempIb);
+                    Interlocked.Decrement(ref remaining);
+                });
                 if ((i % speed) == 0)
                     yield return wfns;
             }
+
+            while (remaining > 0)
+                yield return wfns;
 
             onProgress(1f);
 
