@@ -25,7 +25,8 @@ uniform float4 TextureModeAndSize;
 // Origin, Position
 uniform float4 TexturePlacement;
 uniform float4 TextureTraits;
-uniform bool   TextureClamp;
+// Saturation, Brightness, Clamp X, Clamp Y
+uniform float4 TextureOptions;
 
 // A bunch of the distance formulas in here are thanks to inigo quilez
 // http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
@@ -1138,14 +1139,20 @@ float4 texturedShapeCommon (
         texCoord = (posTextureScaled * texSize) + texRgn.xy;
     }
 
-    if (TextureClamp)
-        texCoord = clamp(texCoord, texRgn.xy, texRgn.zw);
+    float2 texCoordClamped = clamp(texCoord, texRgn.xy, texRgn.zw);
+    texCoord = lerp(texCoord, texCoordClamped, TextureOptions.zw);
 
     // TODO: Will the automatic mip selection work correctly here? Probably not
     float4 texColor = tex2Dbias(TextureSampler, float4(texCoord, 0, BACKGROUND_MIP_BIAS));
     texColor = ExtractRgba(texColor, TextureTraits);
     if (BlendInLinearSpace)
         texColor = pSRGBToPLinear(texColor);
+
+    float texColorGray = dot(texColor.rgb, float3(0.299, 0.587, 0.144));
+    // FIXME: Oversaturate will break the premultiplication
+    texColor.rgb += ((texColor.rgb - texColorGray) * TextureOptions.x);
+    // FIXME: This will break premul too if the value is greater than 1 i think
+    texColor.rgb *= (TextureOptions.y + 1);
 
     // Under
     if (mode > 1.5) {

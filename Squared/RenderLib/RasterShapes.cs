@@ -224,10 +224,21 @@ namespace Squared.Render.RasterShape {
     }
 
     public struct RasterTextureSettings {
-        public SamplerState SamplerState;
+        public SamplerState SamplerState;        
         private int ShadowMode;
         internal Vector4 ModeAndScaleMinusOne;
         internal Vector4 Placement;
+        internal Vector4 TextureOptions;
+
+        public float Saturation {
+            get => TextureOptions.X + 1;
+            set => TextureOptions.X = value - 1;
+        }
+
+        public float Brightness {
+            get => TextureOptions.Y + 1;
+            set => TextureOptions.Y = value - 1;
+        }
 
         public RasterTextureCompositeMode Mode {
             get {
@@ -289,7 +300,8 @@ namespace Squared.Render.RasterShape {
         public bool Equals (RasterTextureSettings rhs) {
             return (SamplerState == rhs.SamplerState) && 
                 (ModeAndScaleMinusOne == rhs.ModeAndScaleMinusOne) &&
-                (Placement == rhs.Placement);
+                (Placement == rhs.Placement) &&
+                (TextureOptions == rhs.TextureOptions);
         }
 
         public override bool Equals (object obj) {
@@ -526,7 +538,7 @@ namespace Squared.Render.RasterShape {
             TextureModeAndSize,
             TexturePlacement,
             TextureTraits,
-            TextureClamp;
+            TextureOptions;
 
         public RasterShader (Material material) {
             Material = material;
@@ -542,7 +554,7 @@ namespace Squared.Render.RasterShape {
             TextureModeAndSize = p["TextureModeAndSize"];
             TexturePlacement = p["TexturePlacement"];
             TextureTraits = p["TextureTraits"];
-            TextureClamp = p["TextureClamp"];
+            TextureOptions = p["TextureOptions"];
         }
     }
 
@@ -837,9 +849,14 @@ namespace Squared.Render.RasterShape {
                     shadowExpansion, sb.Shadow.Inside ? 1 : 0
                 ));
                 rasterShader.ShadowColorLinear.SetValue(shadowColor);
-                var mas = sb.TextureSettings.ModeAndScaleMinusOne;
+                Vector4 mas = sb.TextureSettings.ModeAndScaleMinusOne, to = sb.TextureSettings.TextureOptions;
                 mas.Z += 1;
                 mas.W += 1;
+
+                var tempSamplerState = textureSamplerState ?? SamplerState ?? SamplerState.LinearClamp;
+                to.Z = tempSamplerState?.AddressU == TextureAddressMode.Clamp ? 1 : 0;
+                to.W = tempSamplerState?.AddressV == TextureAddressMode.Clamp ? 1 : 0;
+
                 if (Texture != null) {
                     if ((sb.TextureSettings.Mode & RasterTextureCompositeMode.ScreenSpace) == RasterTextureCompositeMode.ScreenSpace) {
                         mas.Z *= Texture.Width;
@@ -850,10 +867,7 @@ namespace Squared.Render.RasterShape {
                 }
                 rasterShader.TextureModeAndSize?.SetValue(mas);
                 rasterShader.TexturePlacement?.SetValue(sb.TextureSettings.Placement);
-                rasterShader.TextureClamp?.SetValue(
-                    ((textureSamplerState?.AddressU == TextureAddressMode.Clamp) &&
-                    (textureSamplerState?.AddressV == TextureAddressMode.Clamp)) == true
-                );
+                rasterShader.TextureOptions?.SetValue(to);
 
                 manager.ApplyMaterial(rasterShader.Material, ref MaterialParameters);
 
