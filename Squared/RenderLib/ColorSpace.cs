@@ -67,18 +67,24 @@ namespace Squared.Render {
     }
 
     public struct pSRGBColor : IEquatable<pSRGBColor>, IComparable<pSRGBColor> {
+        public static readonly pSRGBColor Transparent = new pSRGBColor(Vector4.Zero, true);
+        private static readonly pSRGBColor _Black = new pSRGBColor(new Vector4(0, 0, 0, 1), true),
+            _White = new pSRGBColor(Vector4.One, true);
+
         private bool IsVector4;
         private Vector4 _Vector4;
         private Color _Color;
 
         public pSRGBColor (int r, int g, int b, float a = 1f) {
             IsVector4 = true;
+            // FIXME: sRGB
             _Vector4 = new Vector4(r * a / 255f, g * a / 255f, b * a / 255f, a);
             _Color = default(Color);
         }
 
         public pSRGBColor (int r, int g, int b, int _a, bool isPremultiplied = false) {
             IsVector4 = true;
+            // FIXME: sRGB
             if (isPremultiplied)
                 _Vector4 = new Vector4(r / 255f, g / 255f, b / 255f, 1);
             else {
@@ -90,6 +96,7 @@ namespace Squared.Render {
 
         public pSRGBColor (float r, float g, float b, float a = 1f, bool isPremultiplied = false) {
             IsVector4 = true;
+            // FIXME: sRGB
             if (isPremultiplied)
                 _Vector4 = new Vector4(r, g, b, a);
             else
@@ -106,12 +113,40 @@ namespace Squared.Render {
             } else {
                 IsVector4 = true;
                 _Vector4 = new Vector4(
-                    ColorSpace.sRGBByteToLinearFloatTable[c.R],
-                    ColorSpace.sRGBByteToLinearFloatTable[c.G],
-                    ColorSpace.sRGBByteToLinearFloatTable[c.B],
-                    ColorSpace.sRGBByteToLinearFloatTable[c.A]
+                    (float)ColorSpace.LinearByteTosRGBTable[c.R],
+                    (float)ColorSpace.LinearByteTosRGBTable[c.G],
+                    (float)ColorSpace.LinearByteTosRGBTable[c.B],
+                    c.A / 255f
                 );
                 _Color = default(Color);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public pSRGBColor (Color c, float alpha, bool issRGB = true) {
+            if (issRGB && (alpha == 1.0f)) {
+                IsVector4 = false;
+                _Vector4 = default(Vector4);
+                _Color = c;
+            } else {
+                IsVector4 = true;
+                _Color = default(Color);
+                if (issRGB) {
+                    // FIXME: The alpha/srgb relationship is a bit messed up here
+                    _Vector4 = new Vector4(
+                        c.R / 255f * alpha,
+                        c.G / 255f * alpha,
+                        c.B / 255f * alpha,
+                        c.A / 255f * alpha
+                    );
+                } else {
+                    _Vector4 = new Vector4(
+                        (float)ColorSpace.LinearByteTosRGBTable[c.R] * alpha,
+                        (float)ColorSpace.LinearByteTosRGBTable[c.G] * alpha,
+                        (float)ColorSpace.LinearByteTosRGBTable[c.B] * alpha,
+                        c.A / 255f * alpha
+                    );
+                }
             }
         }
 
@@ -126,6 +161,19 @@ namespace Squared.Render {
                 _Vector4 = v4;
             }
             _Color = default(Color);
+        }
+
+        public static pSRGBColor Black (float opacity = 1.0f) {
+            if (opacity == 1.0f)
+                return _Black;
+            return new pSRGBColor(0, 0, 0, opacity, true);
+        }
+
+        public static pSRGBColor White (float opacity = 1.0f) {
+            if (opacity == 1.0f)
+                return _White;
+            float g = (float)ColorSpace.LinearTosRGB(opacity);
+            return new pSRGBColor(g, g, g, opacity, true);
         }
 
         public static pSRGBColor LinearLerp (pSRGBColor a, pSRGBColor b, float t) {
@@ -191,10 +239,20 @@ namespace Squared.Render {
                 return new Vector4(_Color.R / 255f, _Color.G / 255f, _Color.B / 255f, _Color.A / 255f);
         }
 
-        public Vector4 ToPLinear () {
+        const float ToGrayR = 0.299f, ToGrayG = 0.587f, ToGrayB = 0.144f;
+
+        public pSRGBColor ToGrayscale (float opacity = 1.0f) {
+            var plinear = ToPLinear();
+            var g = (plinear.X * ToGrayR) + (plinear.Y * ToGrayG) + (plinear.Z * ToGrayB);
+            plinear.X = plinear.Y = plinear.Z = g;
+            plinear *= opacity;
+            return FromPLinear(plinear);
+        }
+
+        public Vector4 ToPLinear (float opacity = 1.0f) {
             var v4 = ToVector4();
             float alpha = v4.W;
-            if (alpha <= 0)
+            if ((alpha * opacity) <= 0)
                 return Vector4.Zero;
 
             // Unpremultiply
@@ -216,7 +274,7 @@ namespace Squared.Render {
                 1
             );
 
-            result *= alpha;
+            result *= alpha * opacity;
             return result;
         }
 
@@ -316,8 +374,7 @@ namespace Squared.Render {
         }
 
         public static pSRGBColor operator * (pSRGBColor color, float multiplier) {
-            var result = color.ToVector4();
-            result *= multiplier;
+            var result = color.ToVector4() * multiplier;
             return new pSRGBColor(result, true);
         }
 

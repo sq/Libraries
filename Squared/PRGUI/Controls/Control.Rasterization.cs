@@ -337,7 +337,7 @@ namespace Squared.PRGUI {
                         ? new Vector2(rect.Extent.X, rect.Position.Y)
                         : new Vector2(rect.Position.X, rect.Extent.Y);
 
-                var arrowColor =
+                pSRGBColor arrowColor =
                     flags.IsFlagged(ControlFlags.Layout_ForceBreak)
                         ? Color.White
                         : Color.Yellow;
@@ -345,7 +345,7 @@ namespace Squared.PRGUI {
                 passSet.Above.RasterizeTriangle(
                     a, b, c, radius: 0f, outlineRadius: 1f,
                     innerColor: arrowColor * alpha, outerColor: arrowColor * alpha, 
-                    outlineColor: Color.Black * (alpha * 0.8f)
+                    outlineColor: pSRGBColor.Black(alpha * 0.8f)
                 );
             }
         }

@@ -17,7 +17,7 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public class DefaultDecorationColorScheme {
-        public Color Focused = new Color(170, 200, 255),
+        public pSRGBColor Focused = new Color(170, 200, 255),
             Active = new Color(245, 245, 245),
             Inactive = new Color(170, 170, 170),
             ContainerOutline = new Color(32, 32, 32) * 0.5f,
@@ -25,18 +25,18 @@ namespace Squared.PRGUI {
             TooltipOutline = new Color(16, 16, 16) * 0.5f,
             ScrollbarThumb = new Color(200, 200, 200),
             ScrollbarTrack = new Color(48, 48, 48),
-            AcceleratorOutline = Color.White;
+            AcceleratorOutline = pSRGBColor.White();
 
-        public Color TitleFill = new Color(40, 100, 120),
-            ContainerFill = Color.Transparent,
-            InertFill = Color.Transparent,
+        public pSRGBColor TitleFill = new Color(40, 100, 120),
+            ContainerFill = pSRGBColor.Transparent,
+            InertFill = pSRGBColor.Transparent,
             SelectionFill = new Color(200, 230, 255),
             TooltipFill = new Color(48, 48, 48),
-            SliderFill = Color.Black * 0.1f,
-            AcceleratorFill = Color.Black * 0.8f,
-            GaugeFill = Color.Black * 0.1f,
+            SliderFill = pSRGBColor.Black(0.1f),
+            AcceleratorFill = pSRGBColor.Black(0.8f),
+            GaugeFill = pSRGBColor.Black(0.1f),
             GaugeLimitFill = new Color(64, 64, 64),
-            GaugeValueFill = Color.Transparent;
+            GaugeValueFill = pSRGBColor.Transparent;
 
         public Color SelectedText = new Color(0, 30, 55),
             TitleText = Color.White,
@@ -163,7 +163,7 @@ namespace Squared.PRGUI {
             OutlineScaleRatio = 1f;
 
             InteractableShadow = new RasterShadowSettings {
-                Color = Color.Black * 0.25f,
+                Color = pSRGBColor.Black(0.25f),
                 Offset = new Vector2(1.5f, 2f),
                 Softness = 5f
             };
@@ -172,13 +172,13 @@ namespace Squared.PRGUI {
             ScrollbarThumbShadow = null;
 
             FloatingContainerShadow = new RasterShadowSettings {
-                Color = Color.Black * 0.33f,
+                Color = pSRGBColor.Black(0.33f),
                 Offset = new Vector2(2.5f, 3f),
                 Softness = 8f
             };
 
             EditableShadow = new RasterShadowSettings {
-                Color = Color.Black * 0.3f,
+                Color = pSRGBColor.Black(0.3f),
                 Offset = new Vector2(1.25f, 1.5f),
                 Softness = 6f,
                 Expansion = 0.4f,
@@ -186,7 +186,7 @@ namespace Squared.PRGUI {
             };
 
             SliderShadow = new RasterShadowSettings {
-                Color = Color.Black * 0.2f,
+                Color = pSRGBColor.Black(0.2f),
                 Offset = new Vector2(1.25f, 1.5f),
                 Softness = 6f,
                 Expansion = 0.4f,
@@ -196,13 +196,13 @@ namespace Squared.PRGUI {
             GaugeShadow = SliderShadow;
 
             SelectionShadow = new RasterShadowSettings {
-                Color = Color.White * 0.15f,
+                Color = pSRGBColor.White(0.15f),
                 Offset = new Vector2(1.15f, 1.35f),
                 Softness = 2f
             };
 
             AcceleratorTargetShadow = new RasterShadowSettings {
-                Color = Color.Black * 0.5f,
+                Color = pSRGBColor.Black(0.5f),
                 Softness = 10f,
                 Expansion = 1.5f
             };
@@ -496,12 +496,12 @@ namespace Squared.PRGUI {
             var alpha = (settings.TextColor?.ToColor() ?? Color.White).A / 255f;
             renderer.RasterizeArc(
                 center, angle1, LoadingSpinnerLength, radius, fillRadius + outlineRadius,
-                0f, Color.Transparent, Color.Black * 0.6f * alpha, Color.Transparent,
+                0f, pSRGBColor.Transparent, pSRGBColor.Black(0.6f * alpha), Color.Transparent,
                 fill: RasterFillMode.Along, annularRadius: outlineRadius
             );
             renderer.RasterizeArc(
                 center, angle1, LoadingSpinnerLength, radius, fillRadius,
-                0f, Color.Transparent, Color.White * alpha, Color.Transparent,
+                0f, pSRGBColor.Transparent, pSRGBColor.White(alpha), Color.Transparent,
                 fill: RasterFillMode.Along,
                 layer: renderer.Layer + 1
             );
@@ -622,8 +622,8 @@ namespace Squared.PRGUI {
             var nowF = context.Now;
             var state = settings.State;
             focusedAlpha = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
-            baseColor = settings.BackgroundColor ?? (pSRGBColor)(
-                Color.Lerp(ColorScheme.Inactive, ColorScheme.Focused, focusedAlpha)
+            baseColor = settings.BackgroundColor ?? (
+                pSRGBColor.Lerp(ColorScheme.Inactive, ColorScheme.Focused, focusedAlpha)
             );
             var hasColor = settings.BackgroundColor.HasValue;
             var colorIsGray = hasColor && (baseColor.ColorDelta <= 0.05f);
@@ -732,7 +732,7 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: InteractableCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * (EdgeGleamOpacity * alpha), outerColor: Color.White * 0.0f,
+                innerColor: pSRGBColor.White(EdgeGleamOpacity * alpha), outerColor: pSRGBColor.White(0.0f),
                 fill: new RasterFillSettings {
                     Mode = RasterFillMode.Angular,
                     Size = fillSize,
@@ -845,7 +845,7 @@ namespace Squared.PRGUI {
                 a, b,
                 radiusCW: radiusCW,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * (EdgeGleamOpacity * alpha), outerColor: Color.White * 0.0f,
+                innerColor: pSRGBColor.White(EdgeGleamOpacity * alpha), outerColor: pSRGBColor.White(0.0f),
                 fill: new RasterFillSettings {
                     Mode = RasterFillMode.Angular,
                     Size = fillSize,
@@ -1131,7 +1131,7 @@ namespace Squared.PRGUI {
                 a, b,
                 radiusCW: new Vector4(InertCornerRadius, InertCornerRadius, tip, tip),
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * (EdgeGleamOpacity * alpha), outerColor: Color.White * 0.0f,
+                innerColor: pSRGBColor.White(EdgeGleamOpacity * alpha), outerColor: pSRGBColor.White(0.0f),
                 fill: new RasterFillSettings {
                     Mode = RasterFillMode.Angular,
                     Size = fillSize,
@@ -1169,7 +1169,7 @@ namespace Squared.PRGUI {
                 var a = isChecked
                     ? 1f
                     : Math.Max(ha, fa) * 0.5f;
-                Color f = Color.White * a, o = Color.Black * (a * 0.66f);
+                pSRGBColor f = pSRGBColor.White(a), o = pSRGBColor.Black(a * 0.66f);
                 CheckboxTemp[0].Position = new Vector2(settings.Box.Left + 8f, settings.Box.Center.Y + 1.75f);
                 CheckboxTemp[1].Position = new Vector2(settings.Box.Center.X, settings.Box.Extent.Y - 6.5f);
                 CheckboxTemp[2].Position = new Vector2(settings.Box.Extent.X - 8.5f, settings.Box.Top + 7f);
@@ -1218,16 +1218,18 @@ namespace Squared.PRGUI {
             var fa = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
             var isChecked = settings.State.IsFlagged(ControlStates.Checked);
             if (isHovering || isChecked || isFocused) {
-                var f = Color.White * (
-                    isChecked
-                        ? 1f
-                        : Math.Max(ha, fa) * 0.2f
-                );
-                var o = Color.White * (
-                    isChecked
-                        ? 0.6f
-                        : Math.Max(ha, fa) * 0.4f
-                );
+                pSRGBColor 
+                    f = pSRGBColor.White(
+                        isChecked
+                            ? 1f
+                            : Math.Max(ha, fa) * 0.2f
+                    ),
+                    o = pSRGBColor.White(
+                        isChecked
+                            ? 0.6f
+                            : Math.Max(ha, fa) * 0.4f
+                    );
+
                 var so = renderer.RasterSoftOutlines;
                 renderer.RasterSoftOutlines = true;
                 renderer.RasterizeEllipse(
@@ -1252,7 +1254,7 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: ScaledCheckboxSize * 0.45f,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * (EdgeGleamOpacity * alpha), outerColor: Color.White * 0.0f,
+                innerColor: pSRGBColor.White(EdgeGleamOpacity * alpha), outerColor: pSRGBColor.White(0.0f),
                 fill: new RasterFillSettings {
                     Mode = RasterFillMode.Angular,
                     Size = fillSize,
@@ -1404,7 +1406,7 @@ namespace Squared.PRGUI {
                 outlineRadius: Button_GetOutlineSize(isFocused
                     ? EditableFocusedOutlineThickness 
                     : InactiveOutlineThickness), 
-                outlineColor: Color.Lerp(ColorScheme.ContainerOutline, ColorScheme.Focused, focusedAlpha),
+                outlineColor: pSRGBColor.Lerp(ColorScheme.ContainerOutline, ColorScheme.Focused, focusedAlpha),
                 // FIXME: Separate textarea fill color?
                 innerColor: (settings.BackgroundColor ?? ColorScheme.ContainerFill), 
                 outerColor: (settings.BackgroundColor ?? ColorScheme.ContainerFill),
@@ -1691,10 +1693,10 @@ namespace Squared.PRGUI {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
                 settings.State.IsFlagged(ControlStates.ContainsFocus);
-            var fillColor = (pSRGBColor)(
+            var fillColor = (
                  isFocused
                     ? ColorScheme.SelectionFill
-                    : Color.Lerp(ColorScheme.SelectionFill, ColorScheme.SelectionFill.ToGrayscale(0.65f), 0.5f)
+                    : pSRGBColor.Lerp(ColorScheme.SelectionFill, ColorScheme.SelectionFill.ToGrayscale(0.65f), 0.5f)
                 );
             fillColor *= Arithmetic.Pulse(context.Now / 2f, 0.9f, 1f);
 
@@ -1716,10 +1718,10 @@ namespace Squared.PRGUI {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
                 settings.State.IsFlagged(ControlStates.ContainsFocus);
-            var fillColor = (pSRGBColor)(
+            var fillColor = (
                  isFocused
                     ? ColorScheme.SelectionFill
-                    : Color.Lerp(ColorScheme.SelectionFill, ColorScheme.SelectionFill.ToGrayscale(0.65f), 0.5f)
+                    : pSRGBColor.Lerp(ColorScheme.SelectionFill, ColorScheme.SelectionFill.ToGrayscale(0.65f), 0.5f)
                 );
             var outlineColor = (isFocused)
                 ? Color.White
@@ -1796,7 +1798,7 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: 0f,
                 outlineRadius: Button_GetOutlineSize(1f), outlineColor: outlineColor,
-                innerColor: Color.Transparent, outerColor: Color.Transparent,
+                innerColor: pSRGBColor.Transparent, outerColor: pSRGBColor.Transparent,
                 shadow: AcceleratorTargetShadow
             );
         }
@@ -1806,7 +1808,7 @@ namespace Squared.PRGUI {
             bool isFocused = settings.State.IsFlagged(ControlStates.Focused),
                 isHovering = settings.State.IsFlagged(ControlStates.Hovering);
             var outlineRadius = isFocused ? 1f : 0f;
-            var outlineColor = Color.Black * 0.8f;
+            var outlineColor = pSRGBColor.Black(0.8f);
             settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
             float alpha1 = (isFocused ? 0.75f : 0.6f) * (isHovering ? 0.75f : 0.6f);
             float alpha2 = (isFocused ? 1.0f : 0.7f) * (isHovering ? 1.0f : 0.75f);
@@ -1814,7 +1816,7 @@ namespace Squared.PRGUI {
             renderer.RasterizeRectangle(
                 a, b, radiusCW: radius,
                 outlineRadius: Button_GetOutlineSize(outlineRadius), outlineColor: outlineColor,
-                innerColor: Color.White * alpha1, outerColor: Color.White * alpha2,
+                innerColor: pSRGBColor.White(alpha1), outerColor: pSRGBColor.White(alpha2),
                 fill: RasterFillMode.Horizontal
             );
         }
@@ -1828,7 +1830,7 @@ namespace Squared.PRGUI {
             VirtualCursorOutlineAlpha = 0.9f,
             VirtualCursorLockedAlpha = 0.55f,
             VirtualCursorUnlockedAlpha = 0.95f;
-        public Color VirtualCursorColor = Color.White,
+        public pSRGBColor VirtualCursorColor = Color.White,
             VirtualCursorOutlineColor = Color.Black;
 
         protected virtual void VirtualCursor_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
@@ -1867,15 +1869,15 @@ namespace Squared.PRGUI {
                 renderer.RasterizeLineSegment(
                     a: unsnapped, b: snapped,
                     startRadius: VirtualCursorAnchorRadius2, endRadius: VirtualCursorAnchorRadius1,
-                    innerColor: Color.White * (alpha * 0.75f), outerColor: Color.White,
-                    outlineRadius: Button_GetOutlineSize(outlineRadius), outlineColor: Color.Black * alpha
+                    innerColor: pSRGBColor.White(alpha * 0.75f), outerColor: pSRGBColor.White(),
+                    outlineRadius: Button_GetOutlineSize(outlineRadius), outlineColor: pSRGBColor.Black(alpha)
                 );
             } else {
                 var fillAlpha = alpha * 0.85f;
                 renderer.RasterizeEllipse(
                     snapped, new Vector2(1.7f),
-                    innerColor: Color.White * fillAlpha, outerColor: Color.White * fillAlpha,
-                    outlineRadius: Button_GetOutlineSize(outlineRadius), outlineColor: Color.Black * alpha
+                    innerColor: pSRGBColor.White(fillAlpha), outerColor: pSRGBColor.White(fillAlpha),
+                    outlineRadius: Button_GetOutlineSize(outlineRadius), outlineColor: pSRGBColor.Black(alpha)
                 );
             }
         }

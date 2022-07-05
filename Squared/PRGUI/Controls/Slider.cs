@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Util;
 using Squared.Util.Text;
@@ -17,8 +18,8 @@ namespace Squared.PRGUI.Controls {
         public const int ControlMinimumHeight = 32, ControlMinimumWidth = 100,
             ThumbMinimumWidth = 13, MaxNotchCount = 128;
         public const float NotchThickness = 0.75f;
-        public static readonly Color NotchColor = Color.Black * 0.2f,
-            CenterMarkColor = Color.White * 0.3f;
+        public static readonly pSRGBColor NotchColor = pSRGBColor.Black(0.2f),
+            CenterMarkColor = pSRGBColor.White(0.3f);
 
         // HACK: Track whether this is a default-initialized slider so we can respond appropriately to min/max changes
         private bool _HasValue;

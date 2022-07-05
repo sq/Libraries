@@ -410,8 +410,7 @@ namespace Squared.PRGUI.Controls {
             c = c.Rotate(radians);
             var offset = new Vector2(tl.X + pad + centering, tl.Y + ySpace + centering);
             var alpha = DisclosureArrowHitTest(context.MousePosition - tl) ? 1.0f : 0.85f;
-            var color = Color.White * alpha;
-            var outlineColor = Color.Black * alpha;
+            pSRGBColor color = pSRGBColor.White(alpha), outlineColor = pSRGBColor.Black(alpha);
             a += offset;
             b += offset;
             c += offset;

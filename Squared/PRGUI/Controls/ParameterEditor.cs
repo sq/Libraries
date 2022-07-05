@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Decorations;
+using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Util;
 
@@ -305,7 +306,7 @@ namespace Squared.PRGUI.Controls {
 
             renderer.RasterizeTriangle(
                 a, b, c, radius: 0f, outlineRadius: 1f,
-                innerColor: Color.White * alpha, outerColor: Color.White * alpha, 
+                innerColor: pSRGBColor.White(alpha), outerColor: pSRGBColor.White(alpha), 
                 outlineColor: Color.Black
             );
         }
