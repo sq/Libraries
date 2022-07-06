@@ -21,6 +21,7 @@ namespace Squared.PRGUI.Layout {
 #endif
         {
         public static readonly ControlKey Invalid = new ControlKey(-1);
+        internal static readonly ControlKey Corrupt = new ControlKey(-2);
 
         internal int ID;
 

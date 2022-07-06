@@ -21,6 +21,8 @@ using Squared.Util.Event;
 
 namespace Squared.PRGUI {
     public abstract partial class Control {
+        private static int RasterizeOrderingWarningCount = 0;
+
         // HACK: No point having fields for this on every control, so create storage on the fly when
         //  a control is composited
         internal class CompositionData {
@@ -366,6 +368,8 @@ namespace Squared.PRGUI {
             bool isZeroSized = false, isOutOfView = false,
                 transformActive = context.TransformActive || Appearance.HasTransformMatrix;
             if (IsLayoutInvalid) {
+                if ((_LayoutKey == ControlKey.Corrupt) && !hidden && (RasterizeOrderingWarningCount++ < 10))
+                    System.Diagnostics.Debug.WriteLine($"WARNING: Control {this} failed to rasterize because it had no valid layout. This likely means it was created after the most recent UIContext.Update.");
                 hidden = true;
             } else {
                 box = GetRect();

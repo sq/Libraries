@@ -84,7 +84,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        private ControlKey _LayoutKey = ControlKey.Invalid;
+        private ControlKey _LayoutKey = ControlKey.Corrupt;
         public ControlKey LayoutKey {
             get => _LayoutKey;
             private set {

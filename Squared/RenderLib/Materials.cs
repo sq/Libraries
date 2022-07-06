@@ -283,6 +283,7 @@ namespace Squared.Render {
             if (Effect == null)
                 return;
 
+            // FIXME: I think this limitation was just due to the async preload one-frame-early bug
             /*
             if (Thread.CurrentThread != coordinator.Manager.MainThread)
                 // throw new ThreadStateException("Material.Preload must only be called from the main thread.");
