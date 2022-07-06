@@ -168,7 +168,7 @@ namespace Squared.PRGUI {
             var stop = false;
             for (int i = ordered.Count - 1; (i >= 0) && !stop; i--) {
                 var control = ordered[i];
-                if (control.IsTransparent || control.Intangible)
+                if (!control.Visible || control.Intangible)
                     continue;
 
                 var result = new Result {

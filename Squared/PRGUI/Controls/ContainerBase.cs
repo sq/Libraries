@@ -490,7 +490,7 @@ namespace Squared.PRGUI.Controls {
                     var ok = RasterizeChild(
                         ref context, item1, ref passSet
                     );
-                    if (item1.IsTransparent) {
+                    if (!item1.Visible) {
                         ;
                     } else if (!ok && hasRenderedAny) {
                         lastOffset1 = i;
@@ -506,7 +506,7 @@ namespace Squared.PRGUI.Controls {
                     var ok = RasterizeChild(
                         ref context, item2, ref passSet
                     );
-                    if (item2.IsTransparent) {
+                    if (!item2.Visible) {
                         ;
                     } else if (!ok && hasRenderedAny) {
                         lastOffset2 = j;

@@ -689,7 +689,7 @@ namespace Squared.PRGUI {
 
         private bool IsTooltipActive {
             get {
-                return (CachedTooltip != null) && !CachedTooltip.IsTransparent;
+                return CachedTooltip?.Visible == true;
             }
         }
 

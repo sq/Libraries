@@ -178,7 +178,7 @@ namespace Squared.PRGUI {
                 var inTabOrder = Controls.InTabOrder(FrameIndex, false)
                     .ToDenseList(where: c => 
                         (((c as IControlContainer)?.ChildrenAcceptFocus ?? false) || c.AcceptsFocus) &&
-                        (c.Enabled || c.AcceptsFocusWhenDisabled) && !c.IsTransparent &&
+                        (c.Enabled || c.AcceptsFocusWhenDisabled) && c.Visible &&
                         !(c is FocusProxy)
                     );
                 var currentIndex = inTabOrder.IndexOf(currentTopLevel);

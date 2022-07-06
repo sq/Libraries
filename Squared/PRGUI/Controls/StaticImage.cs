@@ -84,6 +84,8 @@ namespace Squared.PRGUI.Controls {
                 if (_Image == value)
                     return;
                 _Image = value;
+                if (!value.IsDisposedOrNull)
+                    _ShowLoadingSpinner = false;
                 InvalidateAutoSize();
             }
         }
@@ -103,7 +105,11 @@ namespace Squared.PRGUI.Controls {
 
         public StaticImageCompositeMode Image2Mode = StaticImageCompositeMode.Over;
 
-        public bool ShowLoadingSpinner;
+        private bool _ShowLoadingSpinner;
+        public bool ShowLoadingSpinner {
+            get => _ShowLoadingSpinner && _Image.IsDisposedOrNull;
+            set => _ShowLoadingSpinner = value;
+        }
 
         public ColorVariable MultiplyColor, AddColor;
         public MaterialParameterValues MaterialParameters;

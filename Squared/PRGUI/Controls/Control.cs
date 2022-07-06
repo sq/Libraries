@@ -94,22 +94,6 @@ namespace Squared.PRGUI {
             }
         }
 
-        public bool IsTransparent {
-            get {
-                if (!Visible)
-                    return true;
-
-                // FIXME: This causes problems when setting up focus for a control that is going to animate into visibility
-                /*
-                var ctx = Context;
-                if ((ctx != null) && (GetOpacity(ctx.NowL) <= 0))
-                    return true;
-                */
-
-                return false;
-            }
-        }
-
         /// <summary>
         /// If false, the control will not participate in layout or rasterization
         /// </summary>
@@ -204,7 +188,7 @@ namespace Squared.PRGUI {
             ) && (Enabled || AcceptsFocusWhenDisabled) && !Control.IsRecursivelyTransparent(this);
 
         internal bool IsValidMouseInputTarget =>
-            AcceptsMouseInput && Visible && !IsTransparent && Enabled;
+            AcceptsMouseInput && Visible && Enabled;
 
         // HACK
         internal bool EligibleForFocusRotation => IsValidFocusTarget && (FocusBeneficiary == null);
@@ -378,7 +362,7 @@ namespace Squared.PRGUI {
         }
 
         public static bool IsRecursivelyTransparent (Control control, bool includeSelf = true) {
-            if (control.IsTransparent && includeSelf)
+            if (!control.Visible && includeSelf)
                 return true;
 
             var current = control;
@@ -391,7 +375,7 @@ namespace Squared.PRGUI {
                     return true;
 
                 current = parent;
-                if (current.IsTransparent)
+                if (!current.Visible)
                     return true;
             }
         }
