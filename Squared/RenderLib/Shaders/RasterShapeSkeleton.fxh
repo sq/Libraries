@@ -177,6 +177,9 @@ void computeTLBR (
             radius, outlineSize, params,
             a.x, a.y, b.x, tl, br
         );
+
+        tl += c;
+        br += c;
     }
 #endif
 }
@@ -870,7 +873,7 @@ void evaluateRasterShape (
     else if (type == TYPE_Polygon) {
         evaluatePolygon(
             radius, outlineSize, params,
-            worldPosition, a.x, a.y, b.x, simple,
+            worldPosition - c, a.x, a.y, b.x, simple,
             distance, tl, br,
             gradientType, gradientWeight, gradientAngle
         );

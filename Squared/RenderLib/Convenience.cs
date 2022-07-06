@@ -1755,7 +1755,7 @@ namespace Squared.Render.Convenience {
             ArraySegment<RasterPolygonVertex> vertices, bool closed,
             float radius, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
-            RasterFillSettings fill = default, float? annularRadius = null,
+            Vector2 offset = default, RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
@@ -1766,13 +1766,14 @@ namespace Squared.Render.Convenience {
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             )) {
-                rsb.AddPolygonVertices(vertices, out int offset, out int count);
+                rsb.AddPolygonVertices(vertices, out int indexOffset, out int count);
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Polygon,
                     SortKey = sortKey,
                     WorldSpace = worldSpace ?? WorldSpace,
-                    A = new Vector2(offset, count),
+                    A = new Vector2(indexOffset, count),
                     B = new Vector2(closed ? 1f : 0f, 0f),
+                    C = offset,
                     Radius = new Vector2(radius, 0),
                     OutlineSize = outlineRadius,
                     InnerColor = innerColor,

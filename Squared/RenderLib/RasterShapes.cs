@@ -319,8 +319,8 @@ namespace Squared.Render.RasterShape {
         public float LocalRadius;
         public RasterVertexType Type;
 
-        public RasterPolygonVertex (Vector2 position, float localRadius = 0) {
-            Type = RasterVertexType.Line;
+        public RasterPolygonVertex (Vector2 position, float localRadius = 0, bool skip = false) {
+            Type = skip ? RasterVertexType.Skip : RasterVertexType.Line;
             Position = position;
             ControlPoint = default;
             LocalRadius = localRadius;
