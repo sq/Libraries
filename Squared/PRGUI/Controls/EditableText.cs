@@ -509,7 +509,7 @@ namespace Squared.PRGUI.Controls {
             var lineHeight = DynamicLayout.GlyphSource.LineSpacing;
             var contentMinimumHeight = lineHeight * (Multiline ? 2 : 1) + CachedPadding.Y; // FIXME: Why is the padding value too big?
             if (!DisableMinimumSize)
-                width.Minimum = width.Minimum ?? (ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
+                width.Minimum = width.Minimum ?? (ControlMinimumWidth * sizeScale.X);
 
             height.Minimum = Math.Max(height.Minimum ?? 0, contentMinimumHeight);
         }

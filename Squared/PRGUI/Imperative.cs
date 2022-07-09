@@ -63,10 +63,12 @@ namespace Squared.PRGUI.Imperative {
             CurrentRemovedControls = temp;
             CurrentRemovedControls.Clear();
 
-            // Trim off any excess controls
-            for (int i = Children.Count - 1; i >= NextIndex; i--) {
-                PreviousRemovedControls.Add(Children[i]);
-                Children.RemoveAt(i);
+            if (Children != null) {
+                // Trim off any excess controls
+                for (int i = Children.Count - 1; i >= NextIndex; i--) {
+                    PreviousRemovedControls.Add(Children[i]);
+                    Children.RemoveAt(i);
+                }
             }
 
             WaitingForFocusBeneficiary = null;

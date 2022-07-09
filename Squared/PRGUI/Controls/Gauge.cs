@@ -198,14 +198,14 @@ namespace Squared.PRGUI.Controls {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             if ((Direction == GaugeDirection.Clockwise) || (Direction == GaugeDirection.CounterClockwise)) {
                 var m = Math.Max(ControlMinimumLength, ControlMinimumHeight);
-                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, m * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
-                width.Minimum = Math.Max(width.Minimum ?? 0, m * Context.Decorations.SizeScaleRatio.X);
+                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, m * sizeScale.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                width.Minimum = Math.Max(width.Minimum ?? 0, m * sizeScale.X);
             } else if (DetermineIfHorizontal(width.Minimum, height.Minimum)) {
-                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
-                width.Minimum = Math.Max(width.Minimum ?? 0, ControlMinimumLength * Context.Decorations.SizeScaleRatio.X);
+                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumHeight * sizeScale.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                width.Minimum = Math.Max(width.Minimum ?? 0, ControlMinimumLength * sizeScale.X);
             } else {
-                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumLength * Context.Decorations.SizeScaleRatio.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
-                width.Minimum = Math.Max(width.Minimum ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.X);
+                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumLength * sizeScale.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                width.Minimum = Math.Max(width.Minimum ?? 0, ControlMinimumHeight * sizeScale.X);
             }
         }
 

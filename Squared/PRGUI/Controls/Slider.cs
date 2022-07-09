@@ -21,6 +21,11 @@ namespace Squared.PRGUI.Controls {
         public static readonly pSRGBColor NotchColor = pSRGBColor.Black(0.2f),
             CenterMarkColor = pSRGBColor.White(0.3f);
 
+        /// <summary>
+        /// If set, the slider will increase its minimum size to match that of the sibling to produce consistent row layouts in a 2-column view
+        /// </summary>
+        public Control RowSibling;
+
         // HACK: Track whether this is a default-initialized slider so we can respond appropriately to min/max changes
         private bool _HasValue;
         private float _Minimum = 0, _Maximum = 100;
@@ -171,11 +176,16 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
-            var decorations = GetDefaultDecorator(Context.Decorations);
+            var decorations = GetDefaultDecorator(context.DecorationProvider);
             var glyphSource = decorations.GlyphSource;
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
-            height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumHeight * Context.Decorations.SizeScaleRatio.Y), (glyphSource?.LineSpacing ?? 0) * 0.6f);
-            width.Minimum = Math.Max(width.Minimum ?? 0, ControlMinimumWidth * Context.Decorations.SizeScaleRatio.X);
+            height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumHeight * sizeScale.Y), (glyphSource?.LineSpacing ?? 0) * 0.6f);
+            width.Minimum = Math.Max(width.Minimum ?? 0, ControlMinimumWidth * sizeScale.X);
+
+            if ((RowSibling != null) && (RowSibling != this)) {
+                GetSizeConstraints(RowSibling, ref context, out _, out var siblingHeight);
+                height = height.Intersection(ref siblingHeight);
+            }
         }
 
         private float ApplyNotchMagnetism (float result) {
@@ -309,6 +319,13 @@ namespace Squared.PRGUI.Controls {
             var thumbSize = ComputeThumbSize();
             unscaledPadding.Left += thumbSize.X * 0.5f;
             unscaledPadding.Right += thumbSize.X * 0.5f;
+
+            if ((RowSibling != null) && (RowSibling != this)) {
+                ComputeAppearanceSpacing(RowSibling, ref context, out var sm, out var sp, out var usp);
+                scaledMargins = scaledMargins.Max(ref sm);
+                scaledPadding = scaledPadding.Max(ref sp);
+                unscaledPadding = unscaledPadding.Max(ref usp);
+            }
         }
 
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

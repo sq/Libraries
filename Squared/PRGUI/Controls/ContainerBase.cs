@@ -162,6 +162,7 @@ namespace Squared.PRGUI.Controls {
         private int _ColumnCount = 1;
 
         public bool AutoBreakColumnItems = false;
+        public bool[] ColumnExpansion;
 
         /// <summary>
         /// Splits the container into multiple columns arranged left-to-right.
@@ -295,7 +296,15 @@ namespace Squared.PRGUI.Controls {
             // FIXME
             if (cf.IsFlagged(ControlFlags.Container_No_Expansion))
                 resultFlags |= ControlFlags.Container_No_Expansion;
-            var layoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top;
+
+            ControlFlags layoutFlags;
+            if ((ColumnExpansion == null) || (columnIndex >= ColumnExpansion.Length) || ColumnExpansion[columnIndex])
+                layoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top;
+            else
+                layoutFlags = columnIndex >= (ColumnCount - 1)
+                    ? ControlFlags.Layout_Anchor_Right | ControlFlags.Layout_Anchor_Top
+                    : ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top;
+
             context.Layout.InsertAtEnd(parent, result);
             context.Layout.SetLayoutFlags(result, layoutFlags);
             context.Layout.SetContainerFlags(result, resultFlags);

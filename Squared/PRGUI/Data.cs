@@ -798,6 +798,24 @@ namespace Squared.PRGUI {
         public override string ToString () {
             return $"Margins (L{Left}, T{Top}, R{Right}, B{Bottom})";
         }
+
+        public Margins Min (ref Margins rhs) {
+            return new Margins(
+                Math.Min(Left, rhs.Left),
+                Math.Min(Top, rhs.Top),
+                Math.Min(Right, rhs.Right),
+                Math.Min(Bottom, rhs.Bottom)
+            );
+        }
+
+        public Margins Max (ref Margins rhs) {
+            return new Margins(
+                Math.Max(Left, rhs.Left),
+                Math.Max(Top, rhs.Top),
+                Math.Max(Right, rhs.Right),
+                Math.Max(Bottom, rhs.Bottom)
+            );
+        }
     }
 
     public struct NameAndIndex {

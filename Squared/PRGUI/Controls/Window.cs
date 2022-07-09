@@ -105,8 +105,8 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             if (_Maximized) {
-                width.Fixed = Context.CanvasSize.X;
-                height.Fixed = Context.CanvasSize.Y;
+                width.Fixed = context.UIContext.CanvasSize.X;
+                height.Fixed = context.UIContext.CanvasSize.Y;
             }
         }
 

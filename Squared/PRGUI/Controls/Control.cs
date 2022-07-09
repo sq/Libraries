@@ -727,6 +727,12 @@ namespace Squared.PRGUI {
                 unscaledPadding = default(Margins);
         }
 
+        protected static void ComputeAppearanceSpacing (Control control, ref UIOperationContext context, out Margins scaledMargins, out Margins scaledPadding, out Margins unscaledPadding) {
+            // HACK
+            var decorations = control.GetDecorator(context.DecorationProvider, context.DefaultDecorator);
+            control.ComputeAppearanceSpacing(ref context, decorations, out scaledMargins, out scaledPadding, out unscaledPadding);
+        }
+
         protected void ComputeEffectiveSpacing (ref UIOperationContext context, IDecorationProvider decorationProvider, IDecorator decorations, out Margins padding, out Margins margins) {
             ComputeAppearanceSpacing(ref context, decorations, out var scaledMargins, out var scaledPadding, out var unscaledPadding);
             ComputeEffectiveScaleRatios(decorationProvider, out Vector2 paddingScale, out Vector2 marginScale, out Vector2 sizeScale);
@@ -734,6 +740,13 @@ namespace Squared.PRGUI {
             Margins.Add(in scaledPadding, in unscaledPadding, out padding);
             Margins.Scale(ref scaledMargins, in marginScale);
             margins = scaledMargins;
+        }
+
+        protected static void GetSizeConstraints (Control control, ref UIOperationContext context, out ControlDimension width, out ControlDimension height) {
+            width = control.Width.AutoComputeFixed();
+            height = control.Height.AutoComputeFixed();
+            var sizeScale = control.Appearance.AutoScaleMetrics ? context.DecorationProvider.SizeScaleRatio : Vector2.One;
+            control.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
         }
 
         protected virtual void ComputeSizeConstraints (
@@ -765,10 +778,7 @@ namespace Squared.PRGUI {
 
             MostRecentComputedMargins = computedMargins;
 
-            var width = Width.AutoComputeFixed();
-            var height = Height.AutoComputeFixed();
-            var sizeScale = Appearance.AutoScaleMetrics ? Context.Decorations.SizeScaleRatio : Vector2.One;
-            ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
+            GetSizeConstraints(this, ref context, out var width, out var height);
 
             var actualLayoutFlags = ComputeLayoutFlags(width.Fixed.HasValue, height.Fixed.HasValue);
 
