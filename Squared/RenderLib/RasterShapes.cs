@@ -305,8 +305,8 @@ namespace Squared.Render.RasterShape {
         }
 
         public override bool Equals (object obj) {
-            if (obj is RasterTextureSettings)
-                return Equals((RasterTextureSettings)obj);
+            if (obj is RasterTextureSettings rts)
+                return Equals(rts);
             else
                 return false;
         }

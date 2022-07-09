@@ -423,7 +423,7 @@ namespace Squared.Render.Convenience {
             public SamplerState SamplerState1, SamplerState2;
             public RasterizerState RasterizerState;
             public DepthStencilState DepthStencilState;
-            public Material CustomMaterial;
+            public object ExtraData;
             public CachedBatchFlags Flags;
             
             public static bool KeysEqual (ref CachedBatch lhs, ref CachedBatch rhs) {
@@ -435,7 +435,7 @@ namespace Squared.Render.Convenience {
                     (lhs.BlendState == rhs.BlendState) &&
                     (lhs.RasterizerState == rhs.RasterizerState) &&
                     (lhs.DepthStencilState == rhs.DepthStencilState) &&
-                    (lhs.CustomMaterial == rhs.CustomMaterial) &&
+                    object.ReferenceEquals(lhs.ExtraData, rhs.ExtraData) &&
                     object.ReferenceEquals(lhs.SamplerState1, rhs.SamplerState1) &&
                     object.ReferenceEquals(lhs.SamplerState2, rhs.SamplerState2)
                 );
@@ -452,7 +452,7 @@ namespace Squared.Render.Convenience {
             }
 
             public override string ToString () {
-                return string.Format("{0} (layer={1} material={2})", Batch, Layer, CustomMaterial);
+                return string.Format("{0} (layer={1} extra={2})", Batch, Layer, ExtraData);
             }
         }
 
@@ -737,7 +737,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState, 
             SamplerState samplerState1, 
             SamplerState samplerState2,
-            Material customMaterial
+            object extraData
         ) {
             result = new CachedBatch {
                 BatchType = cbt,
@@ -760,7 +760,7 @@ namespace Squared.Render.Convenience {
                 result.BlendState = blendState;
                 result.SamplerState1 = samplerState1;
                 result.SamplerState2 = samplerState2;
-                result.CustomMaterial = customMaterial;
+                result.ExtraData = extraData;
             }
 
             int i;
@@ -1923,7 +1923,7 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState1: desiredSamplerState1,
                 samplerState2: desiredSamplerState2,
-                customMaterial: customMaterial
+                extraData: customMaterial
             )) {
                 Material material;
 
@@ -1989,7 +1989,7 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState1: null,
                 samplerState2: null,
-                customMaterial: customMaterial
+                extraData: customMaterial
             )) {
                 Material material;
 
@@ -2055,9 +2055,8 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState1: desiredSamplerState,
                 samplerState2: null,
-                customMaterial: null
-            ) || (((RasterShapeBatch)cacheEntry.Batch).Texture != texture) 
-              || (((RasterShapeBatch)cacheEntry.Batch).RampTexture != rampTexture)
+                extraData: texture
+            ) || (((RasterShapeBatch)cacheEntry.Batch).RampTexture != rampTexture)
               || (((RasterShapeBatch)cacheEntry.Batch).RampUVOffset != (rampUVOffset ?? Vector2.Zero))
             ) {
                 // FIXME: The way this works will cause churn when mixing textured and untextured shape batches
@@ -2115,9 +2114,8 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState1: brush.NozzleSamplerState,
                 samplerState2: null,
-                customMaterial: null
-            ) || !(((RasterStrokeBatch)cacheEntry.Batch).Brush.Equals(brush))
-            ) {
+                extraData: brush
+            )) {
                 var batch = RasterStrokeBatch.New(
                     Container, actualLayer, Materials, brush,
                     RasterizerState, DepthStencilState, desiredBlendState
