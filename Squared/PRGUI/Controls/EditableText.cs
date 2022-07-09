@@ -469,7 +469,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected StringLayout UpdateLayout (
-            ref UIOperationContext context, DecorationSettings settings, IDecorator decorations, out Material material
+            ref UIOperationContext context, ref DecorationSettings settings, IDecorator decorations, out Material material
         ) {
             // HACK: Avoid accumulating too many extra hit tests from previous mouse positions
             // This will invalidate the layout periodically as the mouse moves, but whatever
@@ -481,7 +481,7 @@ namespace Squared.PRGUI.Controls {
             Color? color = null;
             var font = Appearance.GlyphSourceProvider != null
                 ? Appearance.GlyphSourceProvider()
-                : decorations.GlyphSource;
+                : decorations.GetGlyphSource(ref settings);
             decorations.GetTextSettings(ref context, settings.State, out material, ref color, out Vector4 userData);
             ComputeEffectiveSpacing(ref context, context.DecorationProvider, decorations, out CachedPadding, out Margins computedMargins);
 
@@ -516,7 +516,8 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             // HACK: Populate various fields that we will use to compute minimum size
-            UpdateLayout(ref context, new DecorationSettings(), context.DecorationProvider.EditableText, out Material temp);
+            var temp = new DecorationSettings();
+            UpdateLayout(ref context, ref temp, context.DecorationProvider.EditableText, out _);
             return base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
@@ -1185,7 +1186,7 @@ namespace Squared.PRGUI.Controls {
             return LastLocalCursorPosition;
         }
 
-        private void RasterizeDescription (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, float textExtentX) {
+        private void RasterizeDescription (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings, float textExtentX) {
             var decorator = context.DecorationProvider.Description;
             if (decorator == null)
                 return;
@@ -1193,7 +1194,7 @@ namespace Squared.PRGUI.Controls {
             var color = default(Color?);
             var font = Appearance.GlyphSourceProvider != null
                 ? Appearance.GlyphSourceProvider()
-                : decorator.GlyphSource;
+                : decorator.GetGlyphSource(ref settings);
             decorator.GetTextSettings(ref context, settings.State, out Material material, ref color, out _);
             if (material == null)
                 return;
@@ -1237,7 +1238,7 @@ namespace Squared.PRGUI.Controls {
             MarkSelection();
 
             var selectionDecorator = context.DecorationProvider.Selection;
-            var layout = UpdateLayout(ref context, settings, decorations, out Material textMaterial);
+            var layout = UpdateLayout(ref context, ref settings, decorations, out Material textMaterial);
 
             AlignmentOffset = Vector2.Zero;
             if (Builder.Length > 0) {
@@ -1267,7 +1268,7 @@ namespace Squared.PRGUI.Controls {
             // Draw in the Below pass for better batching
             if (context.Pass == RasterizePasses.Below) {
                 if (Description != null)
-                    RasterizeDescription(ref context, ref renderer, settings, layout.Size.X);
+                    RasterizeDescription(ref context, ref renderer, ref settings, layout.Size.X);
             }
 
             if (context.Pass != RasterizePasses.Content)
@@ -1299,7 +1300,7 @@ namespace Squared.PRGUI.Controls {
                     ContentBox = selBox
                 };
 
-                selectionDecorator.Rasterize(ref context, ref renderer, selSettings);
+                selectionDecorator.Rasterize(ref context, ref renderer, ref selSettings);
                 renderer.Layer += 1;
 
                 // HACK to ensure that we don't provide a null rect for the cursor if there's no selection

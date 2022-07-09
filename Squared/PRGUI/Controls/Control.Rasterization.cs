@@ -45,15 +45,19 @@ namespace Squared.PRGUI {
         private static readonly Action<DeviceManager, object> BeforeComposite = _BeforeIssueComposite,
             AfterComposite = _AfterIssueComposite;
 
-        protected virtual void OnPreRasterize (ref UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+        protected virtual void OnPreRasterize (ref UIOperationContext context, ref DecorationSettings settings, IDecorator decorations) {
             UpdateAnimation(context.NowL);
         }
 
         protected virtual void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            decorations?.Rasterize(ref context, ref renderer, settings);
+            decorations?.Rasterize(ref context, ref renderer, ref settings);
         }
 
         protected virtual void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
+        }
+
+        protected DecorationSettings MakeDecorationSettings (RectF tempBox, ControlStates state) {
+            return MakeDecorationSettings(ref tempBox, ref tempBox, state, false);
         }
 
         protected virtual DecorationSettings MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state, bool compositing) {
@@ -85,7 +89,7 @@ namespace Squared.PRGUI {
             ref DecorationSettings settings, ref RasterizePassSet passSet, IDecorator decorations
         ) {
             if (HasPreRasterizeHandler && isContentPass)
-                OnPreRasterize(ref context, settings, decorations);
+                OnPreRasterize(ref context, ref settings, decorations);
 
             OnRasterize(ref context, ref renderer, settings, decorations);
 
@@ -190,7 +194,7 @@ namespace Squared.PRGUI {
             var crLayer = contentRenderer.Layer;
             contentRenderer.Layer = -999;
             settings.State = default(ControlStates);
-            decorations?.Rasterize(ref contentContext, ref contentRenderer, temp);
+            decorations?.Rasterize(ref contentContext, ref contentRenderer, ref temp);
 
             contentRenderer.Layer = crLayer;
 
@@ -444,7 +448,7 @@ namespace Squared.PRGUI {
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             var state = GetCurrentState(ref context) | ControlStates.Invisible;
             var settings = MakeDecorationSettings(ref box, ref box, state, false);
-            OnPreRasterize(ref context, settings, decorations);
+            OnPreRasterize(ref context, ref settings, decorations);
         }
 
         private void RasterizeComposited (ref UIOperationContext context, ref RectF box, ref RasterizePassSet passSet, float opacity, bool enableCompositor) {

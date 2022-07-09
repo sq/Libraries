@@ -210,10 +210,11 @@ namespace Squared.PRGUI.Controls {
             sb.Append(Checked ? "Yes" : "No");
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override ControlStates GetCurrentState (ref UIOperationContext context) {
+            var result = base.GetCurrentState(ref context);
             if (Checked)
-                settings.State |= ControlStates.Checked;
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+                result |= ControlStates.Checked;
+            return result;
         }
 
         protected override bool OnEvent<T> (string name, T args) {
@@ -324,10 +325,11 @@ namespace Squared.PRGUI.Controls {
                 sb.Append("Selected");
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override ControlStates GetCurrentState (ref UIOperationContext context) {
+            var result = base.GetCurrentState(ref context);
             if (Checked)
-                settings.State |= ControlStates.Checked;
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+                result |= ControlStates.Checked;
+            return result;
         }
 
         protected override bool OnEvent<T> (string name, T args) {

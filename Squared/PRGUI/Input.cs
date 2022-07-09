@@ -744,11 +744,11 @@ namespace Squared.PRGUI.Input {
             var total = padding + decorator.Margins;
 
             var unsnapped = CurrentUnsnappedPosition ?? pos;
-            MakeSettingsForPosition(unsnapped, total, padding, out DecorationSettings settings);
-            decorator.Rasterize(ref context, ref renderer, settings);
+            MakeSettingsForPosition(unsnapped, total, padding, out var settings);
+            decorator.Rasterize(ref context, ref renderer, ref settings);
 
             settings.Box = new RectF(unsnapped, pos - unsnapped);
-            context.DecorationProvider.VirtualCursorAnchor?.Rasterize(ref context, ref renderer, settings);
+            context.DecorationProvider.VirtualCursorAnchor?.Rasterize(ref context, ref renderer, ref settings);
 
             if (SnapToControl != null)
                 return;

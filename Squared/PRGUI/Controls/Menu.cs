@@ -486,7 +486,7 @@ namespace Squared.PRGUI.Controls {
                     selectionSettings.State = ControlStates.Hovering | ControlStates.Focused;
                 else
                     selectionSettings.State = ControlStates.Hovering;
-                context.DecorationProvider.MenuSelection?.Rasterize(ref context, ref passSet.Below, selectionSettings);
+                context.DecorationProvider.MenuSelection?.Rasterize(ref context, ref passSet.Below, ref selectionSettings);
                 context.Pass = oldPass;
 
                 passSet.Below.Layer += 1;

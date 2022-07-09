@@ -83,21 +83,21 @@ namespace Squared.PRGUI.Decorations {
         Margins Margins { get; }
         Margins Padding { get; }
         Margins UnscaledPadding { get; }
-        IGlyphSource GlyphSource { get; }
+        IGlyphSource GetGlyphSource (ref DecorationSettings settings);
         void GetContentAdjustment (ref UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
         bool GetTextSettings (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData);
     }
 
     public interface IWidgetDecorator<TData> : IMetricsProvider {
         Vector2 MinimumSize { get; }
-        bool OnMouseEvent (DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args);
-        bool HitTest (DecorationSettings settings, ref TData data, Vector2 position);
-        void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data);
+        bool OnMouseEvent (ref DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args);
+        bool HitTest (ref DecorationSettings settings, ref TData data, Vector2 position);
+        void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings, ref TData data);
     }
 
     public interface IDecorator : IMetricsProvider {
         bool IsPassDisabled (RasterizePasses pass);
-        void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
+        void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings);
     }
 
     public interface IAnimationProvider {
@@ -170,26 +170,45 @@ namespace Squared.PRGUI.Decorations {
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
-    public delegate bool TextSettingsGetter (UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData);
-    public delegate void DecoratorDelegate (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
-    public delegate void ContentAdjustmentGetter (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
+    public delegate bool TextSettingsGetter (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData);
+    public delegate void DecoratorDelegate (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings);
+    public delegate void ContentAdjustmentGetter (ref UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
+    public delegate IGlyphSource DecorationFontGetter (ref DecorationSettings settings);
 
     public abstract class DelegateBaseDecorator : IMetricsProvider {
         public Margins Margins { get; set; }
         public Margins Padding { get; set; }
         public Margins UnscaledPadding { get; set; }
 
-        public IGlyphSource Font;
-        public Func<IGlyphSource> GetFont;
+        private object _Font;
+
+        public IGlyphSource Font {
+            get => _Font as IGlyphSource;
+            set => _Font = value;
+        }
+        public Func<IGlyphSource> GetFont {
+            get => _Font as Func<IGlyphSource>;
+            set => _Font = value;
+        }
+        public DecorationFontGetter GetFont2 {
+            get => _Font as DecorationFontGetter;
+            set => _Font = value;
+        }
         public TextSettingsGetter GetTextSettings;
         public ContentAdjustmentGetter GetContentAdjustment;
 
-        IGlyphSource IMetricsProvider.GlyphSource => 
-            (GetFont != null) ? GetFont() : Font;
+        public IGlyphSource GetGlyphSource (ref DecorationSettings settings) {
+            if (_Font is DecorationFontGetter dfg)
+                return dfg(ref settings);
+            else if (_Font is Func<IGlyphSource> fg)
+                return fg();
+            else
+                return _Font as IGlyphSource;
+        }
 
         bool IMetricsProvider.GetTextSettings (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData) {
             if (GetTextSettings != null) {
-                return GetTextSettings(context, state, out material, ref color, out userData);
+                return GetTextSettings(ref context, state, out material, ref color, out userData);
             } else {
                 material = default;
                 userData = default;
@@ -199,7 +218,7 @@ namespace Squared.PRGUI.Decorations {
 
         void IMetricsProvider.GetContentAdjustment (ref UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale) {
             if (GetContentAdjustment != null)
-                GetContentAdjustment(context, state, out offset, out scale);
+                GetContentAdjustment(ref context, state, out offset, out scale);
             else {
                 offset = Vector2.Zero;
                 scale = Vector2.One;
@@ -241,31 +260,31 @@ namespace Squared.PRGUI.Decorations {
             }
         }
 
-        void IDecorator.Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+        void IDecorator.Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             switch (context.Pass) {
                 case RasterizePasses.Below:
                     if (Below != null)
-                        Below(context, ref renderer, settings);
+                        Below(ref context, ref renderer, ref settings);
                     return;
                 case RasterizePasses.Content:
                     if (Content != null)
-                        Content(context, ref renderer, settings);
+                        Content(ref context, ref renderer, ref settings);
                     return;
                 case RasterizePasses.Above:
                     if (Above != null)
-                        Above(context, ref renderer, settings);
+                        Above(ref context, ref renderer, ref settings);
                     return;
                 case RasterizePasses.ContentClip:
                     if (ContentClip != null)
-                        ContentClip(context, ref renderer, settings);
+                        ContentClip(ref context, ref renderer, ref settings);
                     return;
             }
         }
     }
 
-    public delegate void WidgetDecoratorRasterizer<TData> (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data);
-    public delegate bool WidgetDecoratorMouseEventHandler<TData> (DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args);
-    public delegate bool WidgetDecoratorHitTestHandler<TData> (DecorationSettings settings, ref TData data, Vector2 position);
+    public delegate void WidgetDecoratorRasterizer<TData> (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings, ref TData data);
+    public delegate bool WidgetDecoratorMouseEventHandler<TData> (ref DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args);
+    public delegate bool WidgetDecoratorHitTestHandler<TData> (ref DecorationSettings settings, ref TData data, Vector2 position);
 
     public sealed class DelegateWidgetDecorator<TData> : DelegateBaseDecorator, IWidgetDecorator<TData> {
         public Vector2 MinimumSize { get; set; }
@@ -274,37 +293,37 @@ namespace Squared.PRGUI.Decorations {
         public WidgetDecoratorHitTestHandler<TData> OnHitTest;
         public WidgetDecoratorMouseEventHandler<TData> OnMouseEvent;
 
-        public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data) {
+        public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings, ref TData data) {
             switch (context.Pass) {
                 case RasterizePasses.Below:
                     if (Below != null)
-                        Below(context, ref renderer, settings, ref data);
+                        Below(ref context, ref renderer, ref settings, ref data);
                     return;
                 case RasterizePasses.Content:
                     if (Content != null)
-                        Content(context, ref renderer, settings, ref data);
+                        Content(ref context, ref renderer, ref settings, ref data);
                     return;
                 case RasterizePasses.Above:
                     if (Above != null)
-                        Above(context, ref renderer, settings, ref data);
+                        Above(ref context, ref renderer, ref settings, ref data);
                     return;
                 case RasterizePasses.ContentClip:
                     if (ContentClip != null)
-                        ContentClip(context, ref renderer, settings, ref data);
+                        ContentClip(ref context, ref renderer, ref settings, ref data);
                     return;
             }
         }
 
-        bool IWidgetDecorator<TData>.OnMouseEvent (DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args) {
+        bool IWidgetDecorator<TData>.OnMouseEvent (ref DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args) {
             if (OnMouseEvent != null)
-                return OnMouseEvent(settings, ref data, eventName, args);
+                return OnMouseEvent(ref settings, ref data, eventName, args);
             else
                 return false;
         }
 
-        public bool HitTest (DecorationSettings settings, ref TData data, Vector2 position) {
+        public bool HitTest (ref DecorationSettings settings, ref TData data, Vector2 position) {
             if (OnHitTest != null)
-                return OnHitTest(settings, ref data, position);
+                return OnHitTest(ref settings, ref data, position);
             else
                 return false;
         }

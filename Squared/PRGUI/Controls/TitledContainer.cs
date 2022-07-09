@@ -133,7 +133,7 @@ namespace Squared.PRGUI.Controls {
             decorations.GetTextSettings(ref context, state, out material, ref color, out Vector4 userData);
             TitleLayout.SetText(Title, true, true);
             var wasValid = TitleLayout.IsValid;
-            TitleLayout.GlyphSource = decorations.GlyphSource;
+            TitleLayout.GlyphSource = GetGlyphSource(ref context, decorations);
             TitleLayout.DefaultColor = color ?? Color.White;
             TitleLayout.LineBreakAtX = contentBox.Width;
             TitleLayout.UserData = userData;
@@ -214,10 +214,11 @@ namespace Squared.PRGUI.Controls {
 
             Color? color = null;
             titleDecorations.GetTextSettings(ref context, default(ControlStates), out Material temp, ref color, out _);
+            var gs = GetGlyphSource(ref context, titleDecorations);
             var height = titleDecorations.Margins.Bottom +
                 // FIXME: Scale this?
                 titleDecorations.Padding.Y +
-                (MostRecentTitleHeight ?? titleDecorations.GlyphSource.LineSpacing);
+                (MostRecentTitleHeight ?? gs.LineSpacing);
             unscaledPadding.Top += height;
         }
 
@@ -376,7 +377,7 @@ namespace Squared.PRGUI.Controls {
 
                 if (layout.DrawCalls.Count > 0) {
                     renderer.Layer += 1;
-                    titleDecorator.Rasterize(ref context, ref renderer, subSettings);
+                    titleDecorator.Rasterize(ref context, ref renderer, ref subSettings);
 
                     var textPosition = new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top);
 

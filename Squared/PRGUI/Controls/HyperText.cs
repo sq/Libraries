@@ -265,7 +265,7 @@ namespace Squared.PRGUI.Controls {
                 r.Position = r.Position - new Vector2(decorations.Margins.Left, decorations.Margins.Top);
                 r.Size = r.Size + decorations.Margins.Size;
                 settings.Box = r;
-                decorations?.Rasterize(ref context, ref renderer, settings);
+                decorations?.Rasterize(ref context, ref renderer, ref settings);
             }
         }
 

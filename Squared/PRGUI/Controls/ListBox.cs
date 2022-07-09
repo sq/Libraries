@@ -785,7 +785,7 @@ namespace Squared.PRGUI.Controls {
                         State = settings.State
                     };
                     // FIXME
-                    selectionDecorator.Rasterize(ref context, ref passSet.Below, selectionSettings);
+                    selectionDecorator.Rasterize(ref context, ref passSet.Below, ref selectionSettings);
                 }
                 context.Pass = oldPass;
                 passSet.Below.Layer += 1;

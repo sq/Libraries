@@ -177,7 +177,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             var decorations = GetDefaultDecorator(context.DecorationProvider);
-            var glyphSource = decorations.GlyphSource;
+            var glyphSource = GetGlyphSource(ref context, decorations);
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumHeight * sizeScale.Y), (glyphSource?.LineSpacing ?? 0) * 0.6f);
             width.Minimum = Math.Max(width.Minimum ?? 0, ControlMinimumWidth * sizeScale.X);
@@ -360,7 +360,7 @@ namespace Squared.PRGUI.Controls {
             thumbSettings.State = (thumbSettings.State & ~ControlStates.Hovering);
             if (hoveringThumb)
                 thumbSettings.State |= ControlStates.Hovering;
-            thumb.Rasterize(ref context, ref renderer, thumbSettings);
+            thumb.Rasterize(ref context, ref renderer, ref thumbSettings);
             // renderer.RasterizeRectangle(thumbSettings.Box.Position, thumbSettings.Box.Extent, 1f, Color.Red * 0.5f);
         }
 

@@ -158,8 +158,8 @@ namespace Squared.PRGUI.Controls {
             if (!PrepareScrollbarsForMethodCall(out IWidgetDecorator<ScrollbarState> scroll, out DecorationSettings settings))
                 return false;
 
-            var result = scroll.HitTest(settings, ref HScrollbar, position) ||
-                scroll.HitTest(settings, ref VScrollbar, position);
+            var result = scroll.HitTest(ref settings, ref HScrollbar, position) ||
+                scroll.HitTest(ref settings, ref VScrollbar, position);
             if (result)
                 ;
             return result;
@@ -188,8 +188,8 @@ namespace Squared.PRGUI.Controls {
             if (!PrepareScrollbarsForMethodCall(out IWidgetDecorator<ScrollbarState> scroll, out DecorationSettings settings))
                 return false;
 
-            var hScrollProcessed = ShouldShowHorizontalScrollbar && scroll.OnMouseEvent(settings, ref HScrollbar, name, args);
-            var vScrollProcessed = ShouldShowVerticalScrollbar && scroll.OnMouseEvent(settings, ref VScrollbar, name, args);
+            var hScrollProcessed = ShouldShowHorizontalScrollbar && scroll.OnMouseEvent(ref settings, ref HScrollbar, name, args);
+            var vScrollProcessed = ShouldShowVerticalScrollbar && scroll.OnMouseEvent(ref settings, ref VScrollbar, name, args);
 
             if (hScrollProcessed || vScrollProcessed) {
                 var newOffset = new Vector2(HScrollbar.Position, VScrollbar.Position);
@@ -225,9 +225,9 @@ namespace Squared.PRGUI.Controls {
                 settings.ContentBox.Height -= MostRecentHeaderHeight;
                 var scrollbar = context.DecorationProvider?.Scrollbar;
                 if (ShouldShowHorizontalScrollbar)
-                    scrollbar?.Rasterize(ref context, ref renderer, settings, ref HScrollbar);
+                    scrollbar?.Rasterize(ref context, ref renderer, ref settings, ref HScrollbar);
                 if (ShouldShowVerticalScrollbar)
-                    scrollbar?.Rasterize(ref context, ref renderer, settings, ref VScrollbar);
+                    scrollbar?.Rasterize(ref context, ref renderer, ref settings, ref VScrollbar);
             }
         }
 

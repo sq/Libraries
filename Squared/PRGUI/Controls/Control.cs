@@ -749,6 +749,14 @@ namespace Squared.PRGUI {
             control.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
         }
 
+        protected IGlyphSource GetGlyphSource (ref UIOperationContext context, IDecorator decorator) {
+            if (decorator == null)
+                return null;
+
+            var settings = MakeDecorationSettings(default, GetCurrentState(ref context));
+            return decorator.GetGlyphSource(ref settings);
+        }
+
         protected virtual void ComputeSizeConstraints (
             ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale
         ) {
@@ -825,7 +833,7 @@ namespace Squared.PRGUI {
             return Appearance.TextDecorator ?? (over ?? GetDefaultDecorator(provider));
         }
 
-        protected ControlStates GetCurrentState (ref UIOperationContext context) {
+        protected virtual ControlStates GetCurrentState (ref UIOperationContext context) {
             var result = default(ControlStates);
 
             if (!Enabled) {

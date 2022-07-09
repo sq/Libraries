@@ -196,15 +196,18 @@ namespace Squared.PRGUI.Controls {
             Color? color = null;
             decorations.GetTextSettings(ref UIOperationContext.Default, default(ControlStates), out Render.Material temp, ref color, out _);
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
+            var temp2 = default(DecorationSettings);
+            var gs = decorations.GetGlyphSource(ref temp2);
+            var lineSpacing = (gs?.LineSpacing ?? 0) * 0.6f;
             if ((Direction == GaugeDirection.Clockwise) || (Direction == GaugeDirection.CounterClockwise)) {
                 var m = Math.Max(ControlMinimumLength, ControlMinimumHeight);
-                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, m * sizeScale.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, m * sizeScale.Y), lineSpacing);
                 width.Minimum = Math.Max(width.Minimum ?? 0, m * sizeScale.X);
             } else if (DetermineIfHorizontal(width.Minimum, height.Minimum)) {
-                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumHeight * sizeScale.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumHeight * sizeScale.Y), lineSpacing);
                 width.Minimum = Math.Max(width.Minimum ?? 0, ControlMinimumLength * sizeScale.X);
             } else {
-                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumLength * sizeScale.Y), (decorations.GlyphSource?.LineSpacing ?? 0) * 0.6f);
+                height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumLength * sizeScale.Y), lineSpacing);
                 width.Minimum = Math.Max(width.Minimum ?? 0, ControlMinimumHeight * sizeScale.X);
             }
         }
@@ -339,7 +342,7 @@ namespace Squared.PRGUI.Controls {
                 settings.UserData = new Vector4(_Limit, 1f, 0, 0);
                 settings.Traits.Add("limit");
                 MakeContentBox(direction, _Limit, 1f, ref settings.ContentBox, thickness);
-                fill.Rasterize(ref context, ref renderer, settings);
+                fill.Rasterize(ref context, ref renderer, ref settings);
             }
 
             needBumpLayer = true;
@@ -381,7 +384,7 @@ namespace Squared.PRGUI.Controls {
             if (mr.StaticColor)
                 settings.Traits.Add("static");
             MakeContentBox(direction, value1, value2, ref settings.ContentBox, thickness);
-            (mr.Decorator ?? fill).Rasterize(ref context, ref renderer, settings);
+            (mr.Decorator ?? fill).Rasterize(ref context, ref renderer, ref settings);
             return true;
         }
 

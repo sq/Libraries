@@ -361,7 +361,7 @@ namespace Squared.PRGUI.Controls {
             }
 
             if (ShowLoadingSpinner)
-                context.DecorationProvider.LoadingSpinner?.Rasterize(ref context, ref renderer, settings);
+                context.DecorationProvider.LoadingSpinner?.Rasterize(ref context, ref renderer, ref settings);
         }
 
         void IPostLayoutListener.OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {

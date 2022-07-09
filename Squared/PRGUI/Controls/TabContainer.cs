@@ -153,6 +153,7 @@ namespace Squared.PRGUI.Controls {
 
             for (var i = 1; i < children.Count; i++) {
                 var child = children[i];
+                var c = (i == idx + 1);
                 Labels.TryGetValue(child, out string label);
                 var btn = new RadioButton {
                     GroupId = GroupId,
@@ -161,6 +162,7 @@ namespace Squared.PRGUI.Controls {
                     EventFilter = this,
                     Appearance = {
                         Decorator = Context?.Decorations?.Tab,
+                        TextDecorator = Context?.Decorations?.Tab,
                         DecorationTraits = {
                             TabsOnLeft ? "left" : "top"
                         }
@@ -176,8 +178,7 @@ namespace Squared.PRGUI.Controls {
                     Margins = new Margins(0, 0, TabsOnLeft ? 0 : 1, TabsOnLeft ? 1 : 0),
                 };
                     
-                if (i == idx + 1)
-                    btn.Checked = true;
+                btn.Checked = c;
                 TabStrip.Add(btn);
             }
         }
@@ -299,7 +300,7 @@ namespace Squared.PRGUI.Controls {
                 settings.Box.Height -= stripRect.Height;
             }
             settings.ContentBox = tabContentRect;
-            tabPage.Rasterize(ref context, ref renderer, settings);
+            tabPage.Rasterize(ref context, ref renderer, ref settings);
         }
 
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {

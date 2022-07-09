@@ -806,7 +806,7 @@ namespace Squared.PRGUI.Controls {
             IGlyphSource font = null;
             if (Appearance.GlyphSourceProvider != null)
                 font = Appearance.GlyphSourceProvider();
-            font = font ?? Appearance.GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource;
+            font = font ?? Appearance.GlyphSource ?? GetGlyphSource(ref context, textDecorations) ?? GetGlyphSource(ref context, decorations);
             if (font == null)
                 throw new NullReferenceException($"Decorators provided no font for control {this} ({textDecorations}, {decorations})");
             return SyncWithCurrentFont(font);
@@ -817,7 +817,7 @@ namespace Squared.PRGUI.Controls {
             out Material material, ref Color? color, out Vector4 userData
         ) {
             (textDecorations ?? decorations).GetTextSettings(ref context, state, out material, ref color, out userData);
-            SyncWithCurrentFont(Appearance.GlyphSource ?? textDecorations?.GlyphSource ?? decorations.GlyphSource);
+            SyncWithCurrentFont(Appearance.GlyphSource ?? GetGlyphSource(ref context, textDecorations) ?? GetGlyphSource(ref context, decorations));
             if (TextMaterial != null)
                 material = TextMaterial;
             return false;

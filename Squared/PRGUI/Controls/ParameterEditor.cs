@@ -396,7 +396,7 @@ namespace Squared.PRGUI.Controls {
                 // HACK to prevent the background from covering the gauge fill
                 if (Appearance.HasBackgroundColor)
                     renderer.Layer += 1;
-                gauge.Rasterize(ref context, ref renderer, tempSettings);
+                gauge.Rasterize(ref context, ref renderer, ref tempSettings);
             }
 
             // Draw in the "Above" pass to ensure it is not clipped (better batching)

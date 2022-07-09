@@ -473,13 +473,14 @@ namespace Squared.PRGUI {
                 Box = box,
                 ContentBox = box
             };
-            decorator.Rasterize(ref context, ref targetRenderer, settings);
+            decorator.Rasterize(ref context, ref targetRenderer, ref settings);
 
             var outlinePadding = 1f;
             decorator = Decorations.AcceleratorLabel;
             Color? textColor = null;
             decorator.GetTextSettings(ref context, default(ControlStates), out Material material, ref textColor, out _);
-            var layout = decorator.GlyphSource.LayoutString(label, buffer: AcceleratorOverlayBuffer);
+            var gs = decorator.GetGlyphSource(ref settings);
+            var layout = gs.LayoutString(label, buffer: AcceleratorOverlayBuffer);
             var textScale = 1f;
             if (layout.Size.X > (box.Width - decorator.Padding.X))
                 textScale = Math.Max(0.25f, (box.Width - decorator.Padding.X) / layout.Size.X);
@@ -523,7 +524,7 @@ namespace Squared.PRGUI {
                 ContentBox = box,
                 Traits = labelTraits
             };
-            decorator.Rasterize(ref context, ref labelRenderer, settings);
+            decorator.Rasterize(ref context, ref labelRenderer, ref settings);
             labelRenderer.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), scale: new Vector2(textScale), layer: 1);
 
             RasterizedOverlayBoxes.Add(new RasterizedOverlayBox {

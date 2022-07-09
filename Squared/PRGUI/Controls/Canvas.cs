@@ -131,8 +131,9 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnPreRasterize (ref UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
-            base.OnPreRasterize(ref context, settings, decorations);
+        protected override void OnPreRasterize (ref UIOperationContext context, ref DecorationSettings _settings, IDecorator decorations) {
+            var settings = _settings;
+            base.OnPreRasterize(ref context, ref settings, decorations);
             AutoDisposeBuffer(context.Prepass.Container.Coordinator);
             var bufferSize = (settings.ContentBox.Size * InternalResolution).Ceiling();
             int w = (int)bufferSize.X, h = (int)bufferSize.Y;

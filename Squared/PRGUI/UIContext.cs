@@ -188,7 +188,8 @@ namespace Squared.PRGUI {
                     Appearance = {
                         BackgroundColor = Color.White,
                         TextColor = Color.Black,
-                        Decorator = Decorations.CompositionPreview
+                        Decorator = Decorations.CompositionPreview,
+                        TextDecorator = Decorations.CompositionPreview,
                     }
                 };
                 Controls.Add(CachedCompositionPreview);

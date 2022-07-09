@@ -263,12 +263,17 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override ControlStates GetCurrentState (ref UIOperationContext context) {
+            var result = base.GetCurrentState(ref context);
             if (ItemsMenu.IsActive)
-                settings.State |= ControlStates.Pressed;
+                result |= ControlStates.Pressed;
+            return result;
+        }
+
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(ref context, ref renderer, settings, decorations);
 
-            context.DecorationProvider.DropdownArrow?.Rasterize(ref context, ref renderer, settings);
+            context.DecorationProvider.DropdownArrow?.Rasterize(ref context, ref renderer, ref settings);
 
             // FIXME: There is probably a better place to clear this flag
             MenuJustClosed = false;
