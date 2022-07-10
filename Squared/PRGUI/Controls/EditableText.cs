@@ -84,6 +84,7 @@ namespace Squared.PRGUI.Controls {
 
         public bool AllowCopy = true;
         public bool AllowScroll = true;
+        public bool ReadOnly { get; set; }
 
         public bool StripNewlines = true;
 
@@ -277,9 +278,11 @@ namespace Squared.PRGUI.Controls {
                 return result;
             }
             set {
-                var newRange = ReplaceRange(ExpandedSelection, FilterInput(value).ToString());
-                SetSelection(new Pair<int>(newRange.Second, newRange.Second), 1);
-                NextScrollInstant = true;
+                var newRange = ReplaceRange(ExpandedSelection, FilterInput(value).ToString(), true);
+                if (newRange != default) {
+                    SetSelection(new Pair<int>(newRange.Second, newRange.Second), 1);
+                    NextScrollInstant = true;
+                }
             }
         }
 
@@ -345,6 +348,13 @@ namespace Squared.PRGUI.Controls {
             newValue.CopyTo(Builder);
             NextScrollInstant = true;
             NotifyValueChanged(false);
+        }
+
+        protected override ControlStates GetCurrentState (ref UIOperationContext context) {
+            var result = base.GetCurrentState(ref context);
+            if (ReadOnly)
+                result |= ControlStates.Disabled;
+            return result;
         }
 
         public void GetText (StringBuilder output) {
@@ -737,9 +747,11 @@ namespace Squared.PRGUI.Controls {
             SetSelection(new Pair<int>(characterIndex, characterIndex), scrollBias);
         }
 
-        protected void RemoveRange (Pair<int> range, bool fireEvent) {
+        protected bool RemoveRange (Pair<int> range, bool fireEvent, bool force = false) {
+            if (ReadOnly && !force)
+                return false;
             if (range.First >= range.Second)
-                return;
+                return false;
 
             if (char.IsLowSurrogate(Builder[range.First]))
                 range.First--;
@@ -750,12 +762,17 @@ namespace Squared.PRGUI.Controls {
             Builder.Remove(range.First, range.Second - range.First);
             if (fireEvent)
                 NotifyValueChanged(true); // FIXME
+
+            return true;
         }
 
-        protected Pair<int> Insert (int offset, char newText) {
+        protected Pair<int> Insert (int offset, char newText, bool force = false) {
+            if (ReadOnly && !force)
+                return default;
+
             var filtered = FilterInput(newText);
             if (!filtered.HasValue)
-                return default(Pair<int>);
+                return default;
 
             PushUndoEntry();
             Builder.Insert(offset, newText);
@@ -763,7 +780,10 @@ namespace Squared.PRGUI.Controls {
             return new Pair<int>(offset, offset + 1);
         }
 
-        protected Pair<int> Insert (int offset, string newText) {
+        protected Pair<int> Insert (int offset, string newText, bool force = false) {
+            if (ReadOnly && !force)
+                return default;
+
             var filtered = FilterInput(newText);
             if (filtered == null)
                 return default(Pair<int>);
@@ -776,30 +796,41 @@ namespace Squared.PRGUI.Controls {
             return new Pair<int>(offset, offset + filtered.Length);
         }
 
-        protected Pair<int> ReplaceRange (Pair<int> range, char newText) {
-            RemoveRange(range, false);
-            return Insert(range.First, newText);
+        protected Pair<int> ReplaceRange (Pair<int> range, char newText, bool force = false) {
+            if (RemoveRange(range, false, force))
+                return Insert(range.First, newText, force);
+            else
+                return default;
         }
 
-        protected Pair<int> ReplaceRange (Pair<int> range, string newText) {
-            RemoveRange(range, false);
-            return Insert(range.First, newText);
+        protected Pair<int> ReplaceRange (Pair<int> range, string newText, bool force = false) {
+            if (RemoveRange(range, false, force))
+                return Insert(range.First, newText, force);
+            else
+                return default;
         }
 
-        private void Erase (bool forward) {
+        private bool Erase (bool forward, bool force = false) {
+            if (ReadOnly && !force)
+                return false;
+
             // FIXME: Ctrl-delete and Ctrl-backspace should eat entire words
             if (Selection.Second != Selection.First) {
-                RemoveRange(ExpandedSelection, true);
-                MoveCaret(Selection.First, 1);
+                if (RemoveRange(ExpandedSelection, true, force)) {
+                    MoveCaret(Selection.First, 1);
+                    return true;
+                }
+
+                return false;
             } else {
                 int pos = Selection.First, count = 1;
                 if (!forward)
                     pos -= 1;
 
                 if (pos < 0)
-                    return;
+                    return false;
                 else if (pos >= Builder.Length)
-                    return;
+                    return false;
 
                 if (char.IsLowSurrogate(Builder[pos])) {
                     if (!forward)
@@ -813,6 +844,8 @@ namespace Squared.PRGUI.Controls {
                     MoveCaret(Selection.First - count, -1);
 
                 NotifyValueChanged(true);
+
+                return true;
             }
         }
 
@@ -834,9 +867,12 @@ namespace Squared.PRGUI.Controls {
                         SetSelection(new Pair<int>(Selection.First, Selection.First + 1), 1);
                 }
 
-                ReplaceRange(ExpandedSelection, evt.Char.Value);
-                MoveCaret(Selection.First + 1, 1);
-                return true;
+                if (ReplaceRange(ExpandedSelection, evt.Char.Value) != default) {
+                    MoveCaret(Selection.First + 1, 1);
+                    return true;
+                }
+
+                return false;
             } else if (evt.Key.HasValue) {
                 switch (evt.Key.Value) {
                     case Keys.Apps:

@@ -20,6 +20,7 @@ namespace Squared.PRGUI.Controls {
         object Value { get; set; }
         bool TrySetValue (object value, bool forUserInput);
         Type ValueType { get; }
+        bool ReadOnly { get; set; }
         bool IntegerOnly { get; set; }
         bool DoubleOnly { get; set; }
         string Description { get; set; }
@@ -164,8 +165,7 @@ namespace Squared.PRGUI.Controls {
 
         bool IParameterEditor.TrySetValue (object value, bool forUserInput) {
             if (value is T tv) {
-                SetValue(tv, forUserInput);
-                return true;
+                return SetValue(tv, forUserInput);
             }
 
             return false;
@@ -180,16 +180,19 @@ namespace Squared.PRGUI.Controls {
                 return -1;
         }
 
-        public void SetValue (T value, bool forUserInput) {
+        public bool SetValue (T value, bool forUserInput) {
+            if (ReadOnly && forUserInput)
+                return false;
+
             try {
                 IsSettingValue = true;
                 var clamped = ClampValue(value);
                 if (clamped == null)
-                    return;
+                    return false;
 
                 value = clamped.Value;
                 if ((CompareTo(_Value, value) == 0) && HasValue)
-                    return;
+                    return true;
 
                 CachedFractionD = null;
                 HasValue = true;
@@ -203,6 +206,8 @@ namespace Squared.PRGUI.Controls {
 
                 if (forUserInput)
                     FireEvent(UIEvents.ValueChangedByUser, true);
+
+                return true;
             } finally {
                 IsSettingValue = false;
             }
@@ -507,15 +512,13 @@ namespace Squared.PRGUI.Controls {
                     else
                         value = Arithmetic.OperatorCache<T>.Subtract(value, increment);
                 }
-                SetValue(value, true);
+                return SetValue(value, true);
             } else {
                 if (positive)
-                    SetValue(Arithmetic.OperatorCache<T>.Add(_Value, increment), true);
+                    return SetValue(Arithmetic.OperatorCache<T>.Add(_Value, increment), true);
                 else
-                    SetValue(Arithmetic.OperatorCache<T>.Subtract(_Value, increment), true);
+                    return SetValue(Arithmetic.OperatorCache<T>.Subtract(_Value, increment), true);
             }
-
-            return true;
         }
 
         protected override bool OnKeyPress (KeyEventArgs evt) {
@@ -547,16 +550,20 @@ namespace Squared.PRGUI.Controls {
                     return Adjust(false, true);
                 case Keys.Home:
                     if (Minimum.HasValue && evt.Modifiers.Control) {
-                        SetValue(Minimum.Value, true);
-                        SelectNone();
-                        return true;
+                        if (SetValue(Minimum.Value, true)) {
+                            SelectNone();
+                            return true;
+                        }
+                        return false;
                     }
                     break;
                 case Keys.End:
                     if (Maximum.HasValue && evt.Modifiers.Control) {
-                        SetValue(Maximum.Value, true);
-                        SelectNone();
-                        return true;
+                        if (SetValue(Maximum.Value, true)) {
+                            SelectNone();
+                            return true;
+                        }
+                        return false;
                     }
                     break;
             }
@@ -609,9 +616,11 @@ namespace Squared.PRGUI.Controls {
             var range = sub(_Maximum.Value, _Minimum.Value);
             var offset = Convert.ToDouble(range) * fraction;
             var result = add(_Minimum.Value, (T)Convert.ChangeType(offset, typeof(T)));
-            SetValue(result, true);
-            SelectNone();
-            return true;
+            if (SetValue(result, true)) {
+                SelectNone();
+                return true;
+            }
+            return false;
         }
 
         protected override bool OnMouseEvent (string name, MouseEventArgs args) {

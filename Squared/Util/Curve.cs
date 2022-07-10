@@ -46,7 +46,7 @@ namespace Squared.Util.Containers {
         where TValue : struct
         where TData : struct 
     {
-        public const float DefaultEpsilon = 0.001f;
+        public const float DefaultEpsilon = (float)(1.0 / 10000);
 
         public readonly struct Window {
             public readonly CurveBase<TValue, TData> Curve;
