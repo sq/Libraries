@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -26,9 +27,9 @@ namespace Squared.PRGUI.Controls {
     }
 
     public static class ParameterEditor {
-        public static IParameterEditor Create (Type valueType) {
+        public static IParameterEditor Create (Type valueType, Delegate tryParseValue = null, Delegate compare = null) {
             var type = typeof(ParameterEditor<>).MakeGenericType(valueType);
-            return (IParameterEditor)Activator.CreateInstance(type);
+            return (IParameterEditor)Activator.CreateInstance(type, tryParseValue, compare);
         }
 
         public delegate bool TryParseDelegate (string value, out object result);
@@ -45,7 +46,10 @@ namespace Squared.PRGUI.Controls {
     }
 
     public class ParameterEditor<T> : EditableText, IScrollableControl, IParameterEditor, IValueControl<T>
-        where T : struct, IComparable<T> {
+        where T : struct
+    {
+
+        public delegate bool TypedTryParseDelegate (string value, out T result);
 
         public const double NormalAccelerationMultiplier = 1.0,
             NormalRepeatSpeed = 0.75,
@@ -79,8 +83,74 @@ namespace Squared.PRGUI.Controls {
         public IFormatProvider FormatProvider;
         public Func<T, T?> ValueFilter;
         public Func<T, string> ValueEncoder;
-        private ParameterEditor.TryParseDelegate TryParseValue;
-        public Func<string, T> ValueDecoder;
+        static Delegate DefaultTryParseValue;
+        static Comparison<T> DefaultCompare;
+        private Delegate _TryParseValue;
+        private Comparison<T> _Compare;
+
+        public TypedTryParseDelegate ValueDecoder {
+            get => _TryParseValue as TypedTryParseDelegate;
+            set => _TryParseValue = value;
+        }
+
+        static bool AwfulTryParseValue (string text, out T result) {
+            try {
+                result = (T)Convert.ChangeType(text, typeof(T));
+                return true;
+            } catch {
+                result = default;
+                return false;
+            }
+        }
+
+        static ParameterEditor () {
+            var staticFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+
+            var tryParse = typeof(T).GetMethod(
+                "TryParse", staticFlags, null, new [] { typeof(string), typeof(T).MakeByRefType() }, null
+            );
+            if (tryParse != null)
+                DefaultTryParseValue = (TypedTryParseDelegate)Delegate.CreateDelegate(typeof(TypedTryParseDelegate), null, tryParse);            
+            if (DefaultTryParseValue == null)
+                DefaultTryParseValue = ParameterEditor.GetParseDelegate(typeof(T));
+            if (DefaultTryParseValue == null)
+                DefaultTryParseValue = (TypedTryParseDelegate)AwfulTryParseValue;
+
+            if (DefaultCompare == null) {
+                var compareTo = typeof(T).GetMethod("CompareTo", staticFlags, null, new[] { typeof(T), typeof(T) }, null) 
+                    ?? typeof(T).GetMethod("Compare", staticFlags, null, new[] { typeof(T), typeof(T) }, null)
+                    ?? typeof(Squared.Game.GameExtensionMethods).GetMethod("CompareTo", staticFlags, null, new[] { typeof(T), typeof(T) }, null);
+                if (compareTo != null)
+                    DefaultCompare = (Comparison<T>)Delegate.CreateDelegate(typeof(Comparison<T>), null, compareTo);
+            }
+
+            if (DefaultCompare == null) {
+                if (typeof(IComparable).IsAssignableFrom(typeof(T)) || typeof(IComparable<T>).IsAssignableFrom(typeof(T))) {
+                    // FIXME: There are probably other cases where this will work
+                    try {
+                        var dc = (Comparison<T>)Comparer<T>.Default.Compare;
+                        var temp = Activator.CreateInstance<T>();
+                        if (dc(temp, temp) == 0)
+                            DefaultCompare = dc;
+                    } catch {
+                    }
+                }
+            }
+        }
+
+        protected bool TryParseValue (string text, out T result) {
+            if (_TryParseValue is TypedTryParseDelegate ttpd)
+                return ttpd(text, out result);
+            else if (_TryParseValue is ParameterEditor.TryParseDelegate tpd) {
+                if (tpd(text, out object temp)) {
+                    result = (T)temp;
+                    return true;
+                }
+            }
+
+            result = default;
+            return false;
+        }
 
         bool IsSettingValue;
         public T Value {
@@ -101,6 +171,15 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
+        private int CompareTo (T lhs, T rhs) {
+            if (_Compare != null)
+                return _Compare(lhs, rhs);
+            else if (Equals(lhs, rhs))
+                return 0;
+            else // YUCK
+                return -1;
+        }
+
         public void SetValue (T value, bool forUserInput) {
             try {
                 IsSettingValue = true;
@@ -109,7 +188,7 @@ namespace Squared.PRGUI.Controls {
                     return;
 
                 value = clamped.Value;
-                if ((_Value.CompareTo(value) == 0) && HasValue)
+                if ((CompareTo(_Value, value) == 0) && HasValue)
                     return;
 
                 CachedFractionD = null;
@@ -135,7 +214,7 @@ namespace Squared.PRGUI.Controls {
                 if (
                     (value.HasValue == _Minimum.HasValue) &&
                     (
-                        (value.HasValue && (value.Value.CompareTo(_Minimum.Value) == 0)) ||
+                        (value.HasValue && (CompareTo(value.Value, _Minimum.Value) == 0)) ||
                         !value.HasValue
                     )
                 )
@@ -152,7 +231,7 @@ namespace Squared.PRGUI.Controls {
                 if (
                     (value.HasValue == _Maximum.HasValue) &&
                     (
-                        (value.HasValue && (value.Value.CompareTo(_Maximum.Value) == 0)) ||
+                        (value.HasValue && (CompareTo(value.Value, _Maximum.Value) == 0)) ||
                         !value.HasValue
                     )
                 )
@@ -182,12 +261,16 @@ namespace Squared.PRGUI.Controls {
         }
 
         public ParameterEditor ()
-            : base () {
-            AllowScroll = false;
-            ClampVirtualPositionToTextbox = false;
+            : this (null, null) {
+        }
+
+        public ParameterEditor (TypedTryParseDelegate tryParse, Comparison<T> compare = null) {
             var t = typeof(T);
             if (!t.IsValueType)
                 throw new ArgumentException("T must be a value type");
+
+            AllowScroll = false;
+            ClampVirtualPositionToTextbox = false;
 
             if (t == typeof(double) || t == typeof(float))
                 DoubleOnly = true;
@@ -196,10 +279,9 @@ namespace Squared.PRGUI.Controls {
 
             FormatProvider = (IFormatProvider)CultureInfo.CurrentUICulture.NumberFormat.Clone();
 
-            TryParseValue = ParameterEditor.GetParseDelegate(typeof(T));
-            var type = typeof(T);
+            _TryParseValue = tryParse ?? DefaultTryParseValue;
+            _Compare = compare ?? DefaultCompare;
 
-            ValueDecoder = (s) => (T)Convert.ChangeType(s, typeof(T), FormatProvider);
             ValueEncoder = (v) => {
                 var nfi = FormatProvider as NumberFormatInfo;
                 if (nfi != null) {
@@ -214,10 +296,13 @@ namespace Squared.PRGUI.Controls {
         }
 
         private T? ClampValue (T value) {
-            if (_Minimum.HasValue && (value.CompareTo(_Minimum.Value) < 0))
-                value = _Minimum.Value;
-            if (_Maximum.HasValue && (value.CompareTo(_Maximum.Value) > 0))
-                value = _Maximum.Value;
+            if (_Compare != null) {
+                // FIXME: Throw
+                if (_Minimum.HasValue && (CompareTo(value, _Minimum.Value) < 0))
+                    value = _Minimum.Value;
+                if (_Maximum.HasValue && (CompareTo(value, _Maximum.Value) > 0))
+                    value = _Maximum.Value;
+            }
 
             if (ValueFilter != null)
                 return ValueFilter(value);
@@ -229,13 +314,10 @@ namespace Squared.PRGUI.Controls {
             try {
                 if (!IsSettingValue) {
                     T newValue;
-                    if (TryParseValue != null) {
-                        if (!TryParseValue(Text, out object parsed))
-                            return;
-                        newValue = (T)parsed;
-                    } else
-                        newValue = ValueDecoder(Text);
-                    var converted = ClampValue((T)newValue);
+                    if (!TryParseValue(Text, out var parsed))
+                        return;
+                    newValue = parsed;
+                    var converted = ClampValue(newValue);
                     if (converted == null)
                         return;
                     HasValue = true;
@@ -297,12 +379,14 @@ namespace Squared.PRGUI.Controls {
                     : new Vector2(box.Position.X, box.Extent.Y);
 
             float alpha = 1;
-            if (_Minimum.HasValue && !facingRight)
-                if (_Minimum.Value.CompareTo(_Value) >= 0)
-                    alpha = 0.6f;
-            if (_Maximum.HasValue && facingRight)
-                if (_Maximum.Value.CompareTo(_Value) <= 0)
-                    alpha = 0.6f;
+            if (_Compare != null) {
+                if (_Minimum.HasValue && !facingRight)
+                    if (CompareTo(_Minimum.Value, _Value) >= 0)
+                        alpha = 0.6f;
+                if (_Maximum.HasValue && facingRight)
+                    if (CompareTo(_Maximum.Value, _Value) <= 0)
+                        alpha = 0.6f;
+            }
 
             renderer.RasterizeTriangle(
                 a, b, c, radius: 0f, outlineRadius: 1f,
@@ -357,7 +441,7 @@ namespace Squared.PRGUI.Controls {
             get {
                 if (!_Maximum.HasValue)
                     return double.NaN;
-                if (CachedFractionD.HasValue && (CachedFractionValue.CompareTo(_Value) == 0))
+                if (CachedFractionD.HasValue && (CompareTo(CachedFractionValue, _Value) == 0))
                     return CachedFractionD.Value;
 
                 // FIXME: Handle omitted minimum?
@@ -377,7 +461,7 @@ namespace Squared.PRGUI.Controls {
             if (
                 (Minimum.HasValue && Maximum.HasValue) &&
                 (gauge != null) &&
-                (Minimum.Value.CompareTo(Maximum.Value) != 0)
+                (CompareTo(Minimum.Value, Maximum.Value) != 0)
             ) {
                 var gaugeBox = ComputeGaugeBox(context.DecorationProvider, settings.Box);
                 var fraction = FractionD;

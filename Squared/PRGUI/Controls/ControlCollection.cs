@@ -38,16 +38,18 @@ namespace Squared.PRGUI {
                 return _WeakHost;
             }
         }
-        public UIContext Context { get; private set; }
+
+        UIContext _Context;
+        public UIContext Context => _Context ?? Host?.Context;
 
         internal ControlCollection (UIContext parent) {
             Host = null;
-            Context = parent;
+            _Context = parent;
         }
 
         public ControlCollection (Control parent, UIContext context) {
             Host = parent;
-            Context = context ?? parent.Context;
+            _Context = context ?? parent.Context;
         }
 
         public void CopyTo (List<Control> destination) {

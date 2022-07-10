@@ -7,11 +7,23 @@ using System.Reflection;
 using System.Linq.Expressions;
 
 namespace Squared.Util.Containers {
-    public interface ICurve<TValue> where TValue : struct {
+    public interface ICurve {
         int Count { get; }
         float Start { get; }
         float End { get; }
-        void GetValueAtPosition (float position, out TValue value);
+        bool FindNearestPoint (float position, out int resultIndex, out float resultPosition);
+        int GetLowerIndexForPosition (float position);
+        bool CreateNewPointAtPosition (float position, float epsilon);
+        bool TryGetPositionAtIndex (int index, out float result);
+        bool GetValueAtPosition (float position, out object result);
+        bool RemoveAtIndex (int index);
+        bool RemoveAtPosition (float position, float epsilon);
+    }
+
+    public interface ICurve<TValue> : ICurve
+        where TValue : struct 
+    {
+        bool GetValueAtPosition (float position, out TValue result);
         TValue this[float position] {
             get;
         }
@@ -34,6 +46,8 @@ namespace Squared.Util.Containers {
         where TValue : struct
         where TData : struct 
     {
+        public const float DefaultEpsilon = 0.001f;
+
         public readonly struct Window {
             public readonly CurveBase<TValue, TData> Curve;
             public readonly int FirstIndex, LastIndex;
@@ -103,6 +117,30 @@ namespace Squared.Util.Containers {
             return GetLowerIndexForPosition(position, 0, _Items.Count - 1);
         }
 
+        public bool FindNearestPoint (float position, out int resultIndex, out float resultPosition) {
+            resultPosition = float.NaN;
+            resultIndex = -1;
+
+            int lower = GetLowerIndexForPosition(position), higher = lower + 1;
+            if ((lower < 0) || (lower >= Count))
+                return false;
+            if (higher >= Count)
+                higher = lower;
+
+            float position1 = GetPositionAtIndex(lower),
+                position2 = GetPositionAtIndex(higher),
+                distance1 = Math.Abs(position - position1),
+                distance2 = Math.Abs(position - position2);
+            if (distance1 > distance2) {
+                resultPosition = position2;
+                resultIndex = higher;
+            } else {
+                resultPosition = position1;
+                resultIndex = lower;
+            }
+            return true;
+        }
+
         protected int GetLowerIndexForPosition (float position, int firstIndex, int lastIndex) {
             int count = _Items.Count, max = count - 1;
 
@@ -152,8 +190,37 @@ namespace Squared.Util.Containers {
 
             return count - 1;
         }
+
+        public bool CreateNewPointAtPosition (float position, float epsilon = DefaultEpsilon) {
+            if (
+                FindNearestPoint(position, out int index, out float existingPosition) &&
+                (Math.Abs(existingPosition - position) < epsilon)
+            )
+                return false;
+
+            if (!GetValueAtPosition(position, out TValue value))
+                ; // FIXME return false;
+
+            SetValueAtPositionInternal(position, in value, default, true);
+            return true;
+        }
+
+        public bool TryGetPositionAtIndex (int index, out float result) {
+            result = float.NaN;
+
+            if (index < 0)
+                return false;
+            else if (index >= _Items.Count)
+                return false;
+
+            result = GetPositionAtIndex(index);
+            return true;
+        }
         
         public ref readonly float GetPositionAtIndex (int index) {
+            if (_Items.Count == 0)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
             var max = _Items.Count - 1;
             index = (index < 0)
                 ? 0
@@ -189,11 +256,17 @@ namespace Squared.Util.Containers {
             return ref item.Value;
         }
 
-        public void GetValueAtPosition (float position, out TValue result) {
-            GetValueAtPosition(position, 0, _Items.Count - 1, out result);
+        bool ICurve.GetValueAtPosition (float position, out object result) {
+            var ok = GetValueAtPosition(position, 0, _Items.Count - 1, out var temp);
+            result = temp;
+            return ok;
         }
 
-        protected abstract void GetValueAtPosition (float position, int firstIndex, int lastIndex, out TValue result);
+        public bool GetValueAtPosition (float position, out TValue result) {
+            return GetValueAtPosition(position, 0, _Items.Count - 1, out result);
+        }
+
+        protected abstract bool GetValueAtPosition (float position, int firstIndex, int lastIndex, out TValue result);
 
         public void Clear () {
             _Items.Clear();
@@ -221,10 +294,23 @@ namespace Squared.Util.Containers {
             OnChanged();
         }
 
-        public bool RemoveAtPosition (float position, float precision = 0.01f) {
+        public bool RemoveAtIndex (int index) {
+            if ((index < 0) || (index >= _Items.Count))
+                return false;
+
+            _Items.DangerousRemoveAt(index);
+
+            if (_Items.Count == 0)
+                _Items.Add(default(Point));
+
+            OnChanged();
+            return true;
+        }
+
+        public bool RemoveAtPosition (float position, float epsilon = DefaultEpsilon) {
             var index = GetLowerIndexForPosition(position);
             var item = _Items.DangerousGetItem(index);
-            if (Math.Abs(item.Position - position) > precision)
+            if (Math.Abs(item.Position - position) > epsilon)
                 return false;
 
             _Items.DangerousRemoveAt(index);
@@ -300,6 +386,13 @@ namespace Squared.Util.Containers {
         }
     }
 
+    public static class Curve {
+        public static ICurve New (Type valueType) {
+            var t = typeof(Curve<>).MakeGenericType(valueType);
+            return (ICurve)Activator.CreateInstance(t);
+        }
+    }
+
     public class Curve<T> : CurveBase<T, Curve<T>.PointData>
         where T : struct {
 
@@ -331,7 +424,12 @@ namespace Squared.Util.Containers {
             SetValueAtPositionInternal(position, value, new PointData { Interpolator = interpolator }, true);
         }
 
-        protected override void GetValueAtPosition (float position, int firstIndex, int lastIndex, out T result) {
+        protected override bool GetValueAtPosition (float position, int firstIndex, int lastIndex, out T result) {
+            if (lastIndex < firstIndex) {
+                result = default;
+                return false;
+            }
+
             int index = GetLowerIndexForPosition(position, firstIndex, lastIndex);
 
             ref var lowerItem = ref _Items.DangerousItem(index);
@@ -351,6 +449,8 @@ namespace Squared.Util.Containers {
             } else {
                 result = lowerItem.Value;
             }
+
+            return true;
         }
 
         new public T this[float position] {
@@ -361,6 +461,13 @@ namespace Squared.Util.Containers {
             set {
                 SetValueAtPositionInternal(position, value, default(PointData), true);
             }
+        }
+    }
+
+    public static class HermiteSpline {
+        public static ICurve New (Type valueType) {
+            var t = typeof(HermiteSpline<>).MakeGenericType(valueType);
+            return (ICurve)Activator.CreateInstance(t);
         }
     }
 
@@ -387,7 +494,12 @@ namespace Squared.Util.Containers {
             _InterpolatorSource = GetHermiteInputForIndex;
         }
 
-        protected override void GetValueAtPosition (float position, int firstIndex, int lastIndex, out T result) {
+        protected override bool GetValueAtPosition (float position, int firstIndex, int lastIndex, out T result) {
+            if (lastIndex < firstIndex) {
+                result = default;
+                return false;
+            }
+
             int index = GetLowerIndexForPosition(position, firstIndex, lastIndex);
             ref var lowerItem = ref _Items.DangerousItem(index);
             ref var upperItem = ref _Items.DangerousItem(Math.Min(index + 1, _Items.Count - 1));
@@ -404,6 +516,7 @@ namespace Squared.Util.Containers {
             } else {
                 result = lowerItem.Value;
             }
+            return true;
         }
 
         private ref readonly T GetHermiteInputForIndex (int index) {

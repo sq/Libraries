@@ -207,5 +207,32 @@ namespace Squared.Game {
             }
             */
         }
+
+        public static int CompareTo (this Vector2 lhs, Vector2 rhs) {
+            var result = lhs.X.CompareTo(rhs.X);
+            if (result == 0)
+                result = lhs.Y.CompareTo(rhs.Y);
+            return result;
+        }
+
+        public static int CompareTo (this Vector3 lhs, Vector3 rhs) {
+            var result = lhs.X.CompareTo(rhs.X);
+            if (result == 0)
+                result = lhs.Y.CompareTo(rhs.Y);
+            if (result == 0)
+                result = lhs.Z.CompareTo(rhs.Z);
+            return result;
+        }
+
+        public static int CompareTo (this Vector4 lhs, Vector4 rhs) {
+            var result = lhs.X.CompareTo(rhs.X);
+            if (result == 0)
+                result = lhs.Y.CompareTo(rhs.Y);
+            if (result == 0)
+                result = lhs.Z.CompareTo(rhs.Z);
+            if (result == 0)
+                result = lhs.W.CompareTo(rhs.W);
+            return result;
+        }
     }
 }
