@@ -15,15 +15,21 @@ using Squared.Game;
 using Squared.Util;
 
 namespace Squared.PRGUI.Layout {
-    public struct ControlKey
 #if DEBUG
+    public struct ControlKey
         : IXmlSerializable
+#else
+    public readonly struct ControlKey
 #endif
         {
         public static readonly ControlKey Invalid = new ControlKey(-1);
         internal static readonly ControlKey Corrupt = new ControlKey(-2);
 
+#if DEBUG
         internal int ID;
+#else
+        internal readonly int ID;
+#endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal ControlKey (int id) {
@@ -815,20 +821,6 @@ namespace Squared.PRGUI {
                 Math.Max(Right, rhs.Right),
                 Math.Max(Bottom, rhs.Bottom)
             );
-        }
-    }
-
-    public struct NameAndIndex {
-        public string Name;
-        public int Index;
-
-        public NameAndIndex (string name, int index = 0) {
-            Name = name;
-            Index = index;
-        }
-
-        public static implicit operator NameAndIndex (string name) {
-            return new NameAndIndex(name);
         }
     }
 

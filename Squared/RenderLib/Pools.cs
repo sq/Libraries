@@ -298,7 +298,7 @@ namespace Squared.Render {
 
     // Thread-safe
     public class ArrayPoolAllocator<T> : IArrayPoolAllocator {
-        public struct Allocation {
+        public readonly struct Allocation {
             public readonly int Origin;
             public readonly T[] Buffer;
 

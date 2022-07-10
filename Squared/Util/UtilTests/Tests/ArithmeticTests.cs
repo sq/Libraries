@@ -292,7 +292,7 @@ namespace Squared.Util {
         private static void TestPairImpl (float a, float b, ref int errorCount) {
             var buf = new FastMath.U32F32 { F1 = a, F2 = b };
             var expected = a.CompareTo(b);
-            var actual = Math.Sign(FastMath.CompareF(in buf));
+            var actual = Math.Sign(FastMath.CompareF(ref buf));
             if (expected != actual) {
                 var sA = a.ToString("R");
                 var sB = b.ToString("R");
@@ -376,7 +376,7 @@ namespace Squared.Util {
                 buf.F1 = a;
                 foreach (var b in allTestValues) {
                     buf.F2 = b;
-                    var temp = FastMath.CompareF(in buf);
+                    var temp = FastMath.CompareF(ref buf);
                     accumulator += (temp > 0) ? 1 : 0;
                 }
             }

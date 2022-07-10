@@ -981,7 +981,7 @@ namespace Squared.Util {
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int CompareF (in U32F32 buf) {
+        public static int CompareF (ref U32F32 buf) {
             // Hot magic in action!
             // We pass the union by reference and have the caller initialize it.
             // Otherwise, we'd have to initialize it at entry to this function, which is expensive
@@ -1030,7 +1030,7 @@ namespace Squared.Util {
             u.F1 = lhs;
             u.F2 = rhs;
 
-            return CompareF(in u);
+            return CompareF(ref u);
         }
     }
 

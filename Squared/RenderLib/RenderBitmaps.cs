@@ -126,7 +126,7 @@ namespace Squared.Render {
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             unchecked {
                 Buffer.F1 = x.SortOrder; Buffer.F2 = y.SortOrder;
-                var result = FastMath.CompareF(in Buffer);
+                var result = FastMath.CompareF(ref Buffer);
                 if (result == 0)
                     result = x.Textures.CompareTo(in y.Textures);
                 return result;
@@ -150,7 +150,7 @@ namespace Squared.Render {
                 var result = x.Textures.CompareTo(in y.Textures);
                 if (result == 0) {
                     Buffer.F1 = y.SortOrder; Buffer.F2 = x.SortOrder;
-                    result = FastMath.CompareF(in Buffer);
+                    result = FastMath.CompareF(ref Buffer);
                 }
                 return result;
             }

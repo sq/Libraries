@@ -45,7 +45,7 @@ namespace Squared.Render {
             }
         }
 
-        public struct Reservation {
+        public readonly struct Reservation {
             public readonly DynamicAtlas<T> Atlas;
             public readonly int X, Y, Width, Height;
 

@@ -11,7 +11,7 @@ namespace Squared.Util.Containers {
         int Count { get; }
         float Start { get; }
         float End { get; }
-        TValue GetValueAtPosition (float position);
+        void GetValueAtPosition (float position, out TValue value);
         TValue this[float position] {
             get;
         }
@@ -20,11 +20,11 @@ namespace Squared.Util.Containers {
         }
     }
 
-    public struct CurvePoint<TValue> {
-        public float Position;
-        public TValue Value;
+    public readonly struct CurvePoint<TValue> {
+        public readonly float Position;
+        public readonly TValue Value;
 
-        public CurvePoint (float position, TValue value) {
+        public CurvePoint (float position, in TValue value) {
             Position = position;
             Value = value;
         }
@@ -34,7 +34,7 @@ namespace Squared.Util.Containers {
         where TValue : struct
         where TData : struct 
     {
-        public struct Window {
+        public readonly struct Window {
             public readonly CurveBase<TValue, TData> Curve;
             public readonly int FirstIndex, LastIndex;
             public readonly float Start, End;
@@ -45,8 +45,9 @@ namespace Squared.Util.Containers {
                         return Curve.GetValueAtIndex(FirstIndex);
                     else if (position >= End)
                         return Curve.GetValueAtIndex(LastIndex);
-                    else
-                        return Curve.GetValueAtPosition(position, FirstIndex, LastIndex);
+
+                    Curve.GetValueAtPosition(position, FirstIndex, LastIndex, out var result);
+                    return result;
                 }
             }
 
@@ -188,11 +189,11 @@ namespace Squared.Util.Containers {
             return ref item.Value;
         }
 
-        public TValue GetValueAtPosition (float position) {
-            return GetValueAtPosition(position, 0, _Items.Count - 1);
+        public void GetValueAtPosition (float position, out TValue result) {
+            GetValueAtPosition(position, 0, _Items.Count - 1, out result);
         }
 
-        protected abstract TValue GetValueAtPosition (float position, int firstIndex, int lastIndex);
+        protected abstract void GetValueAtPosition (float position, int firstIndex, int lastIndex, out TValue result);
 
         public void Clear () {
             _Items.Clear();
@@ -201,8 +202,8 @@ namespace Squared.Util.Containers {
         }
 
         public void Clamp (float newStartPosition, float newEndPosition) {
-            TValue newStartValue = GetValueAtPosition(newStartPosition);
-            TValue newEndValue = GetValueAtPosition(newEndPosition);
+            GetValueAtPosition(newStartPosition, out var newStartValue);
+            GetValueAtPosition(newEndPosition, out var newEndValue);
 
             int i = 0;
             while (i < _Items.Count) {
@@ -268,10 +269,7 @@ namespace Squared.Util.Containers {
         public IEnumerable<CurvePoint<TValue>> Points {
             get {
                 foreach (var item in _Items)
-                    yield return new CurvePoint<TValue> {
-                        Position = item.Position, 
-                        Value = item.Value
-                    };
+                    yield return new CurvePoint<TValue>(item.Position, item.Value);
             }
         }
 
@@ -281,7 +279,8 @@ namespace Squared.Util.Containers {
 
         public TValue this[float position] {
             get {
-                return GetValueAtPosition(position);
+                GetValueAtPosition(position, out TValue result);
+                return result;
             }
         }
 
@@ -332,7 +331,7 @@ namespace Squared.Util.Containers {
             SetValueAtPositionInternal(position, value, new PointData { Interpolator = interpolator }, true);
         }
 
-        protected override T GetValueAtPosition (float position, int firstIndex, int lastIndex) {
+        protected override void GetValueAtPosition (float position, int firstIndex, int lastIndex, out T result) {
             int index = GetLowerIndexForPosition(position, firstIndex, lastIndex);
 
             ref var lowerItem = ref _Items.DangerousItem(index);
@@ -348,15 +347,16 @@ namespace Squared.Util.Containers {
                     offset = 1.0f;
 
                 var interpolator = lowerItem.Data.Interpolator ?? DefaultInterpolator;
-                return interpolator(_InterpolatorSource, index, offset);
+                result = interpolator(_InterpolatorSource, index, offset);
             } else {
-                return lowerItem.Value;
+                result = lowerItem.Value;
             }
         }
 
         new public T this[float position] {
             get {
-                return GetValueAtPosition(position);
+                GetValueAtPosition(position, out T result);
+                return result;
             }
             set {
                 SetValueAtPositionInternal(position, value, default(PointData), true);
@@ -387,7 +387,7 @@ namespace Squared.Util.Containers {
             _InterpolatorSource = GetHermiteInputForIndex;
         }
 
-        protected override T GetValueAtPosition (float position, int firstIndex, int lastIndex) {
+        protected override void GetValueAtPosition (float position, int firstIndex, int lastIndex, out T result) {
             int index = GetLowerIndexForPosition(position, firstIndex, lastIndex);
             ref var lowerItem = ref _Items.DangerousItem(index);
             ref var upperItem = ref _Items.DangerousItem(Math.Min(index + 1, _Items.Count - 1));
@@ -400,9 +400,9 @@ namespace Squared.Util.Containers {
                 else if (offset > 1.0f)
                     offset = 1.0f;
 
-                return _Interpolator(_InterpolatorSource, (index * 2), offset);
+                result = _Interpolator(_InterpolatorSource, (index * 2), offset);
             } else {
-                return lowerItem.Value;
+                result = lowerItem.Value;
             }
         }
 
@@ -595,7 +595,8 @@ namespace Squared.Util.Containers {
 
             for (int i = 0; i < actualSubdivision; i++) {
                 var samplePosition = low + (partitionSize * i) + partitionSizeHalf;
-                var score = heuristic(samplePosition, curve.GetValueAtPosition(samplePosition));
+                curve.GetValueAtPosition(samplePosition, out var value);
+                var score = heuristic(samplePosition, value);
 
                 if (score < bestScore) {
                     bestScore = score;

@@ -66,14 +66,14 @@ namespace Squared.Render {
         }
     }
 
-    public struct pSRGBColor : IEquatable<pSRGBColor>, IComparable<pSRGBColor> {
+    public readonly struct pSRGBColor : IEquatable<pSRGBColor>, IComparable<pSRGBColor> {
         public static readonly pSRGBColor Transparent = new pSRGBColor(Vector4.Zero, true);
         private static readonly pSRGBColor _Black = new pSRGBColor(new Vector4(0, 0, 0, 1), true),
             _White = new pSRGBColor(Vector4.One, true);
 
-        private bool IsVector4;
-        private Vector4 _Vector4;
-        private Color _Color;
+        private readonly bool IsVector4;
+        private readonly Vector4 _Vector4;
+        private readonly Color _Color;
 
         public pSRGBColor (int r, int g, int b, float a = 1f) {
             IsVector4 = true;
