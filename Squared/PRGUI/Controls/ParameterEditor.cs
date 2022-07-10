@@ -109,6 +109,8 @@ namespace Squared.PRGUI.Controls {
 
             var tryParse = typeof(T).GetMethod(
                 "TryParse", staticFlags, null, new [] { typeof(string), typeof(T).MakeByRefType() }, null
+            ) ?? typeof(Game.Geometry).GetMethod(
+                "TryParse", staticFlags, null, new [] { typeof(string), typeof(T).MakeByRefType() }, null
             );
             if (tryParse != null)
                 DefaultTryParseValue = (TypedTryParseDelegate)Delegate.CreateDelegate(typeof(TypedTryParseDelegate), null, tryParse);            
@@ -274,8 +276,8 @@ namespace Squared.PRGUI.Controls {
             if (!t.IsValueType)
                 throw new ArgumentException("T must be a value type");
 
-            AllowScroll = false;
             ClampVirtualPositionToTextbox = false;
+            AllowScroll = false;
 
             if (t == typeof(double) || t == typeof(float))
                 DoubleOnly = true;
@@ -624,6 +626,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool OnMouseEvent (string name, MouseEventArgs args) {
+            ClampVirtualPositionToTextbox = Context.HasBeenFocusedSinceStartOfUpdate(this);
+
             var gauge = Context.Decorations.ParameterGauge;
             if (gauge != null) {
                 var gaugeBox = ComputeGaugeBox(Context.Decorations, args.Box);

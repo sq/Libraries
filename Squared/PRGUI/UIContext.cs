@@ -439,6 +439,7 @@ namespace Squared.PRGUI {
         public void UpdateInput (bool processEvents = true) {
             Now = (float)TimeProvider.Seconds;
             NowL = TimeProvider.Ticks;
+            FocusedAtStartOfUpdate = Focused;
 
             if ((_CurrentInput.CursorPosition.X < -999) ||
                 (_CurrentInput.CursorPosition.Y < -999))

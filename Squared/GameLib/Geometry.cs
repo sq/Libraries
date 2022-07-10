@@ -5,6 +5,7 @@ using Squared.Util;
 using Microsoft.Xna.Framework;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
+using System.Text.RegularExpressions;
 
 namespace Squared.Game {
     public sealed class Vector2Comparer : IEqualityComparer<Vector2> {
@@ -426,6 +427,53 @@ namespace Squared.Game {
     public static partial class Geometry {
         public const int RoundingDecimals = 2;
         public const float IntersectionEpsilon = (float)0.001;
+
+        // FIXME: Optimize this
+        static readonly Regex VectorRegex = new Regex(
+            @"{\s*(X:)?\s*(?<x>[0-9.\-]+)\s*(Y:|,)?\s*(?<y>[0-9.\-]+)\s*((Z:|,)?\s*(?<z>[0-9.\-]+))?(\s*(W:|,)?\s*(?<w>[0-9.\-]+))?\s*}", 
+            RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase
+        );
+
+        public static bool TryParse (string text, out Vector2 result) {
+            result = default;
+            var m = VectorRegex.Match(text);
+            if (!m.Success)
+                return false;
+            Group x = m.Groups["x"], y = m.Groups["y"];
+            if (!x.Success || !y.Success)
+                return false;
+            if (!float.TryParse(x.Value, out result.X) || !float.TryParse(y.Value, out result.Y))
+                return false;
+            return true;
+        }
+
+        public static bool TryParse (string text, out Vector3 result) {
+            result = default;
+            var m = VectorRegex.Match(text);
+            if (!m.Success)
+                return false;
+            Group x = m.Groups["x"], y = m.Groups["y"], z = m.Groups["z"];
+            if (!x.Success || !y.Success || !z.Success)
+                return false;
+            if (!float.TryParse(x.Value, out result.X) || !float.TryParse(y.Value, out result.Y) ||
+                !float.TryParse(z.Value, out result.Z))
+                return false;
+            return true;
+        }
+
+        public static bool TryParse (string text, out Vector4 result) {
+            result = default;
+            var m = VectorRegex.Match(text);
+            if (!m.Success)
+                return false;
+            Group x = m.Groups["x"], y = m.Groups["y"], z = m.Groups["z"], w = m.Groups["w"];
+            if (!x.Success || !y.Success || !z.Success || !w.Success)
+                return false;
+            if (!float.TryParse(x.Value, out result.X) || !float.TryParse(y.Value, out result.Y) ||
+                !float.TryParse(z.Value, out result.Z) || !float.TryParse(w.Value, out result.W))
+                return false;
+            return true;
+        }
 
         internal static double DotProduct (double x1, double y1, double x2, double y2) {
             return (x1 * x2 + y1 * y2);

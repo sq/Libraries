@@ -134,7 +134,7 @@ namespace Squared.PRGUI {
         public Control PreviousHovering { get; private set; }
         public Control PreviousTopLevelFocused { get; private set; }
 
-        private Control PreviousMouseDownTarget = null;
+        private Control PreviousMouseDownTarget = null, FocusedAtStartOfUpdate = null;
 
         private ConditionalWeakTable<Control, Control> TopLevelFocusMemory = new ConditionalWeakTable<Control, Control>();
 
@@ -213,6 +213,10 @@ namespace Squared.PRGUI {
             if ((texture != null) && TextureBlendStateTable.TryGetValue(texture, out BlendState result))
                 return result;
             return DefaultTextureBlendState;
+        }
+
+        public bool HasBeenFocusedSinceStartOfUpdate (Control control) {
+            return (Focused == control) && (FocusedAtStartOfUpdate == control);
         }
     }
 }

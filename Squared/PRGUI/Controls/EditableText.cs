@@ -581,6 +581,8 @@ namespace Squared.PRGUI.Controls {
             return null;
         }
 
+        private bool ClampValueForMouseDown;
+
         protected virtual bool OnMouseEvent (string name, MouseEventArgs args) {
             if (name == UIEvents.Click)
                 return OnClick(args.SequentialClickCount);
@@ -594,6 +596,7 @@ namespace Squared.PRGUI.Controls {
             var esel = ExpandedSelection;
 
             if (name == UIEvents.MouseDown) {
+                ClampValueForMouseDown = ClampVirtualPositionToTextbox;
                 DisableAutoscrollUntil = Context.Now + AutoscrollClickTimeout;
 
                 ClickStartVirtualPosition = virtualPosition;
@@ -616,44 +619,53 @@ namespace Squared.PRGUI.Controls {
                 (name == UIEvents.MouseMove) ||
                 (name == UIEvents.MouseUp)
             ) {
-                if (args.PreviousButtons == MouseButtons.Left) {
-                    // FIXME: Ideally we would just clamp the mouse coordinates into our rectangle instead of rejecting
-                    //  coordinates outside our rect. Maybe UIContext should do this?
-                    if (ClickStartVirtualPosition.HasValue) {
-                        // If the user is drag-selecting multiple characters, we want to expand the selection
-                        //  to cover all the character hitboxes touched by the mouse drag instead of just picking
-                        //  the character(s) the positions were leaning towards. For clicks that just place the
-                        //  caret on one side of a character, we honor the leaning value
-                        var csvp = ClickStartVirtualPosition.Value;
-                        var deltaBigEnough = Math.Abs(virtualPosition.X - csvp.X) >= 4;
-                        var forceClamp = deltaBigEnough;
-                        bool? leanA = null, // deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null,
-                            leanB = deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null;
-                        // FIXME: This -1 shouldn't be needed
-                        // Console.WriteLine("leanA={0}, leanB={1}", leanA, leanB);
-                        var _a = CharacterIndexFromVirtualPosition(csvp, leanA, forceClamp);
-                        var _b = CharacterIndexFromVirtualPosition(virtualPosition, leanB, forceClamp);
+                var oldClamp = ClampVirtualPositionToTextbox;
+                ClampVirtualPositionToTextbox = ClampValueForMouseDown;
+                try {
+                    if (args.PreviousButtons == MouseButtons.Left) {
+                        // FIXME: Ideally we would just clamp the mouse coordinates into our rectangle instead of rejecting
+                        //  coordinates outside our rect. Maybe UIContext should do this?
+                        if (ClickStartVirtualPosition.HasValue) {
+                            // If the user is drag-selecting multiple characters, we want to expand the selection
+                            //  to cover all the character hitboxes touched by the mouse drag instead of just picking
+                            //  the character(s) the positions were leaning towards. For clicks that just place the
+                            //  caret on one side of a character, we honor the leaning value
+                            var csvp = ClickStartVirtualPosition.Value;
+                            var deltaBigEnough = Math.Abs(virtualPosition.X - csvp.X) >= 4;
+                            var forceClamp = deltaBigEnough;
+                            bool? leanA = null, // deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null,
+                                leanB = deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null;
+                            // FIXME: This -1 shouldn't be needed
+                            // Console.WriteLine("leanA={0}, leanB={1}", leanA, leanB);
+                            var _a = CharacterIndexFromVirtualPosition(csvp, leanA, forceClamp);
+                            var _b = CharacterIndexFromVirtualPosition(virtualPosition, leanB, forceClamp);
 
-                        if (_a.HasValue || ClampVirtualPositionToTextbox) {
-                            var a = _a ?? -1;
-                            var b = _b ?? -1;
-                            // FIXME: bias
-                            int selectionBias = virtualPosition.X > csvp.X ? 1 : -1;
-                            SetSelection(new Pair<int>(Math.Min(a, b), Math.Max(a, b)), selectionBias);
+                            if (_a.HasValue || ClampVirtualPositionToTextbox) {
+                                var a = _a ?? -1;
+                                var b = _b ?? -1;
+                                // FIXME: bias
+                                int selectionBias = virtualPosition.X > csvp.X ? 1 : -1;
+                                SetSelection(new Pair<int>(Math.Min(a, b), Math.Max(a, b)), selectionBias);
+                            }
                         }
+
+                        if (name != UIEvents.MouseUp)
+                            DisableAutoscrollUntil = Context.Now + AutoscrollClickTimeout;
                     }
 
-                    if (name != UIEvents.MouseUp)
-                        DisableAutoscrollUntil = Context.Now + AutoscrollClickTimeout;
-                }
+                    // Right mouse button was released, show context menu
+                    if (
+                        args.PreviousButtons.HasFlag(MouseButtons.Right) &&
+                        !args.Buttons.HasFlag(MouseButtons.Right)
+                    ) {
+                        if (ClampVirtualPositionToTextbox || CharacterIndexFromVirtualPosition(virtualPosition, null).HasValue)
+                            ShowContextMenu(true);
+                    }
 
-                // Right mouse button was released, show context menu
-                if (
-                    args.PreviousButtons.HasFlag(MouseButtons.Right) &&
-                    !args.Buttons.HasFlag(MouseButtons.Right)
-                ) {
-                    if (ClampVirtualPositionToTextbox || CharacterIndexFromVirtualPosition(virtualPosition, null).HasValue)
-                        ShowContextMenu(true);
+                    if (ClampVirtualPositionToTextbox != ClampValueForMouseDown)
+                        oldClamp = ClampVirtualPositionToTextbox;
+                } finally {
+                    ClampVirtualPositionToTextbox = oldClamp;
                 }
 
                 return true;
