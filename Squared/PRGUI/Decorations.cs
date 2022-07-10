@@ -194,6 +194,7 @@ namespace Squared.PRGUI.Decorations {
             get => _Font as DecorationFontGetter;
             set => _Font = value;
         }
+        public Material TextMaterial;
         public TextSettingsGetter GetTextSettings;
         public ContentAdjustmentGetter GetContentAdjustment;
 
@@ -207,13 +208,15 @@ namespace Squared.PRGUI.Decorations {
         }
 
         bool IMetricsProvider.GetTextSettings (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData) {
+            var ok = false;
             if (GetTextSettings != null) {
-                return GetTextSettings(ref context, state, out material, ref color, out userData);
+                ok = GetTextSettings(ref context, state, out material, ref color, out userData);
+                material = TextMaterial ?? material;
             } else {
-                material = default;
+                material = TextMaterial;
                 userData = default;
-                return false;
             }
+            return ok;
         }
 
         void IMetricsProvider.GetContentAdjustment (ref UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale) {

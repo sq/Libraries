@@ -30,6 +30,17 @@ namespace Squared.PRGUI {
             return pLinear?.Get(now);
         }
 
+        public bool Equals (ColorVariable rhs) {
+            return pLinear == rhs.pLinear;
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is ColorVariable cv)
+                return Equals(cv);
+            else
+                return false;
+        }
+
         internal static void Update (ref Tween<Vector4>? v4, Tween<Color>? value) {
             if (value == null) {
                 v4 = null;

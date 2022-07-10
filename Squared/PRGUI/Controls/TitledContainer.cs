@@ -384,7 +384,8 @@ namespace Squared.PRGUI.Controls {
                     renderer.Layer += 1;
                     renderer.DrawMultiple(
                         layout.DrawCalls, textPosition.Floor(),
-                        samplerState: RenderStates.Text, multiplyColor: titleColor
+                        samplerState: RenderStates.Text, multiplyColor: titleColor,
+                        material: titleMaterial
                     );
                 }
             }

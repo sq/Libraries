@@ -397,7 +397,7 @@ namespace Squared.Render {
 
         public bool Equals (pSRGBColor rhs) {
             if (IsVector4 != rhs.IsVector4)
-                return false;
+                return ToVector4().FastEquals(rhs.ToVector4());
 
             if (IsVector4) {
                 return _Vector4.FastEquals(in rhs._Vector4);

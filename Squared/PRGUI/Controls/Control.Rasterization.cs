@@ -93,6 +93,17 @@ namespace Squared.PRGUI {
 
             OnRasterize(ref context, ref renderer, settings, decorations);
 
+            // HACK: Without this our background color can cover our children's below pass, because
+            //  they both rasterize on the same layer
+            // It may be best to just always advance the below layer
+            if (
+                (context.Pass == RasterizePasses.Below) && 
+                (!Appearance.BackgroundColor.IsTransparent || Appearance.BackgroundImage != null) &&
+                HasChildren
+            ) {
+                passSet.Below.Layer += 1;
+            }
+
             if (isContentPass && HasChildren)
                 // FIXME: Save/restore layers?
                 OnRasterizeChildren(ref context, ref passSet, settings);

@@ -631,7 +631,7 @@ namespace Squared.PRGUI {
         }
 
         private bool HandleMouseDown (Control target, Vector2 globalPosition, MouseButtons newButtons) {
-            System.Diagnostics.Debug.WriteLine($"HandleMouseDown {target} {globalPosition} {newButtons}");
+            // System.Diagnostics.Debug.WriteLine($"HandleMouseDown {target} {globalPosition} {newButtons}");
 
             HandleMouseDownPrologue();
             var relinquishedHandlers = new HashSet<Control>();
