@@ -613,7 +613,10 @@ namespace Squared.PRGUI.Controls {
         private void CreateControlForValueEpilogue (
             ref T value, Control newControl
         ) {
-            if (value != null)
+            if (newControl == null)
+                throw new NullReferenceException($"CreateControlForValue created a null control for {value}");
+
+            if (typeof(T).IsValueType || !ReferenceEquals(value, null))
                 ControlForValue[value] = newControl;
 
             if (!GetValueForControl(newControl, out T existingValue) || !Comparer.Equals(existingValue, value))
