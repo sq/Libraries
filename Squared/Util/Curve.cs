@@ -18,6 +18,7 @@ namespace Squared.Util.Containers {
         bool GetValueAtPosition (float position, out object result);
         bool RemoveAtIndex (int index);
         bool RemoveAtPosition (float position, float epsilon);
+        void SetValueAtPosition (float position, object value);
     }
 
     public interface ICurve<TValue> : ICurve
@@ -191,6 +192,15 @@ namespace Squared.Util.Containers {
             return count - 1;
         }
 
+        void ICurve.SetValueAtPosition (float position, object value) {
+            TData data = default;
+            var index = GetLowerIndexForPosition(position);
+            if ((index >= 0) && (index < _Items.Count))
+                data = GetDataAtIndex(index);
+
+            SetValueAtPositionInternal(position, (TValue)value, in data, true);
+        }
+
         public bool CreateNewPointAtPosition (float position, float epsilon = DefaultEpsilon) {
             if (
                 FindNearestPoint(position, out int index, out float existingPosition) &&
@@ -201,7 +211,8 @@ namespace Squared.Util.Containers {
             if (!GetValueAtPosition(position, out TValue value))
                 ; // FIXME return false;
 
-            SetValueAtPositionInternal(position, in value, default, true);
+            TryGetDataAtIndex(index, out TData data);
+            SetValueAtPositionInternal(position, in value, in data, true);
             return true;
         }
 
@@ -232,8 +243,20 @@ namespace Squared.Util.Containers {
             return ref item.Position;
         }
 
+        public bool TryGetDataAtIndex (int index, out TData result) {
+            result = default;
+            if (_Items.Count <= 0)
+                return false;
+
+            result = GetDataAtIndex(index);
+            return true;
+        }
+
         public ref readonly TData GetDataAtIndex (int index) {
             var max = _Items.Count - 1;
+            if (max < 0)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
             index = (index < 0)
                 ? 0
                 : ((index > max)

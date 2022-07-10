@@ -751,7 +751,7 @@ namespace Squared.PRGUI.Controls {
             if (ReadOnly && !force)
                 return false;
             if (range.First >= range.Second)
-                return false;
+                return true;
 
             if (char.IsLowSurrogate(Builder[range.First]))
                 range.First--;
