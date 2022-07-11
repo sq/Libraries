@@ -49,7 +49,6 @@ namespace Squared.PRGUI.Controls {
     public class ParameterEditor<T> : EditableText, IScrollableControl, IParameterEditor, IValueControl<T>
         where T : struct
     {
-
         public delegate bool TypedTryParseDelegate (string value, out T result);
 
         public const double NormalAccelerationMultiplier = 1.0,
@@ -73,6 +72,9 @@ namespace Squared.PRGUI.Controls {
 
         private bool IsDraggingGauge = false;
 
+        public bool ClampToMinimum = true,
+            ClampToMaximum = true;
+
         private double LastRepeatTimestamp;
 
         // FIXME: If for some reason your FastIncrementRate is very large, pgup/pgdn will be slow
@@ -84,8 +86,10 @@ namespace Squared.PRGUI.Controls {
         public IFormatProvider FormatProvider;
         public Func<T, T?> ValueFilter;
         public Func<T, string> ValueEncoder;
-        static Delegate DefaultTryParseValue;
-        static Comparison<T> DefaultCompare;
+
+        public static readonly Delegate DefaultTryParseValue;
+        public static readonly Comparison<T> DefaultCompare;
+
         private Delegate _TryParseValue;
         private Comparison<T> _Compare;
 
@@ -305,9 +309,9 @@ namespace Squared.PRGUI.Controls {
         private T? ClampValue (T value) {
             if (_Compare != null) {
                 // FIXME: Throw
-                if (_Minimum.HasValue && (CompareTo(value, _Minimum.Value) < 0))
+                if (ClampToMinimum && _Minimum.HasValue && (CompareTo(value, _Minimum.Value) < 0))
                     value = _Minimum.Value;
-                if (_Maximum.HasValue && (CompareTo(value, _Maximum.Value) > 0))
+                if (ClampToMaximum && _Maximum.HasValue && (CompareTo(value, _Maximum.Value) > 0))
                     value = _Maximum.Value;
             }
 

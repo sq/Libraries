@@ -521,6 +521,20 @@ namespace Squared.PRGUI {
             }
         }
 
+        public Vector2 BottomLeft {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                return new Vector2(Left, Top + Height);
+            }
+        }
+
+        public Vector2 TopRight {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                return new Vector2(Left + Width, Top);
+            }
+        }
+
         public float Right => Left + Width;
         public float Bottom => Top + Height;
 
@@ -664,6 +678,10 @@ namespace Squared.PRGUI {
 
         public override string ToString () {
             return $"({Left}, {Top}) {Width}x{Height}";
+        }
+
+        public static RectF FromPoints (Vector2 position, Vector2 extent) {
+            return new RectF(position, extent - position);
         }
     }
 

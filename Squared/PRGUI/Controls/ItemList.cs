@@ -485,9 +485,12 @@ namespace Squared.PRGUI.Controls {
         /// <summary>
         /// Flags a single item as having changed so its control will be updated
         /// </summary>
-        public void Invalidate (T item) {
-            if (ControlForValue.TryGetValue(item, out Control control))
+        public bool Invalidate (T item) {
+            if (ControlForValue.TryGetValue(item, out Control control)) {
                 InvalidatedControls.Add(control);
+                return true;
+            }
+            return false;
         }
 
         public void Clear (bool invalidateControls = false) {

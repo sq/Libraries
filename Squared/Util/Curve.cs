@@ -8,6 +8,8 @@ using System.Linq.Expressions;
 
 namespace Squared.Util.Containers {
     public interface ICurve {
+        Type ValueType { get; }
+        Type DataType { get; }
         int Count { get; }
         float Start { get; }
         float End { get; }
@@ -19,6 +21,7 @@ namespace Squared.Util.Containers {
         bool RemoveAtIndex (int index);
         bool RemoveAtPosition (float position, float epsilon);
         void SetValueAtPosition (float position, object value);
+        IEnumerable<CurvePoint<object>> Points { get; }
     }
 
     public interface ICurve<TValue> : ICurve
@@ -28,7 +31,7 @@ namespace Squared.Util.Containers {
         TValue this[float position] {
             get;
         }
-        IEnumerable<CurvePoint<TValue>> Points {
+        new IEnumerable<CurvePoint<TValue>> Points {
             get;
         }
     }
@@ -82,6 +85,9 @@ namespace Squared.Util.Containers {
 
         private PointPositionComparer _PositionComparer = new PointPositionComparer();
 
+        Type ICurve.ValueType => typeof(TValue);
+        Type ICurve.DataType => typeof(TData);
+
         public struct Point {
             public float Position;
             public TValue Value;
@@ -96,6 +102,8 @@ namespace Squared.Util.Containers {
 
         public float Start {
             get {
+                if (_Items.Count == 0)
+                    return 0;
                 ref var item = ref _Items.DangerousItem(0);
                 return item.Position;
             }
@@ -103,6 +111,8 @@ namespace Squared.Util.Containers {
 
         public float End {
             get {
+                if (_Items.Count == 0)
+                    return 0;
                 ref var item = ref _Items.DangerousItem(_Items.Count - 1);
                 return item.Position;
             }
@@ -305,7 +315,7 @@ namespace Squared.Util.Containers {
             while (i < _Items.Count) {
                 float position = _Items.DangerousGetItem(i).Position;
                 if ((position <= newStartPosition) || (position >= newEndPosition)) {
-                    _Items.DangerousRemoveAt(i);
+                    _Items.RemoveAtOrdered(i);
                 } else {
                     i++;
                 }
@@ -321,7 +331,7 @@ namespace Squared.Util.Containers {
             if ((index < 0) || (index >= _Items.Count))
                 return false;
 
-            _Items.DangerousRemoveAt(index);
+            _Items.RemoveAtOrdered(index);
 
             if (_Items.Count == 0)
                 _Items.Add(default(Point));
@@ -336,7 +346,7 @@ namespace Squared.Util.Containers {
             if (Math.Abs(item.Position - position) > epsilon)
                 return false;
 
-            _Items.DangerousRemoveAt(index);
+            _Items.RemoveAtOrdered(index);
 
             if (_Items.Count == 0)
                 _Items.Add(default(Point));
@@ -373,6 +383,13 @@ namespace Squared.Util.Containers {
 
         public IEnumerator<Point> GetEnumerator () {
             return _Items.GetEnumerator();
+        }
+
+        IEnumerable<CurvePoint<object>> ICurve.Points {
+            get {
+                foreach (var item in _Items)
+                    yield return new CurvePoint<object>(item.Position, item.Value);
+            }
         }
 
         public IEnumerable<CurvePoint<TValue>> Points {

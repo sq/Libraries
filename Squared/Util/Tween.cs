@@ -10,7 +10,8 @@ namespace Squared.Util {
         public static Tween<T> StartNow<T> (
             T from, T to, long ticks, long? delay = null,
             long? now = null, BoundInterpolator<T, Tween<T>> interpolator = null,
-            int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop
+            int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop,
+            long repeatDelay = 0, long repeatExtraDuration = 0
         ) 
             where T : struct {
             var _now = now.HasValue ? now.Value : Time.Ticks;
@@ -19,14 +20,17 @@ namespace Squared.Util {
                 _now + delay.GetValueOrDefault(0),
                 _now + delay.GetValueOrDefault(0) + ticks,
                 interpolator: interpolator, repeatCount: repeatCount,
-                repeatMode: repeatMode
+                repeatMode: repeatMode,
+                repeatDelay: repeatDelay,
+                repeatExtraDuration: repeatExtraDuration
             );
         }
 
         public static Tween<T> StartNow<T> (
             T from, T to, float seconds, float? delay = null,
             long? now = null, BoundInterpolator<T, Tween<T>> interpolator = null,
-            int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop
+            int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop,
+            float repeatDelay = 0, float repeatExtraDuration = 0
         )
             where T : struct {
             return StartNow(
@@ -34,7 +38,9 @@ namespace Squared.Util {
                 ticks: TimeSpan.FromSeconds(seconds).Ticks,
                 delay: TimeSpan.FromSeconds(delay.GetValueOrDefault(0)).Ticks,
                 now: now, interpolator: interpolator, repeatCount: repeatCount,
-                repeatMode: repeatMode
+                repeatMode: repeatMode,
+                repeatDelay: TimeSpan.FromSeconds(repeatDelay).Ticks,
+                repeatExtraDuration: TimeSpan.FromSeconds(repeatExtraDuration).Ticks
             );
         }
 
