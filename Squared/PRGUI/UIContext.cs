@@ -312,7 +312,7 @@ namespace Squared.PRGUI {
         public void Update () {
             FrameIndex++;
 
-            var context = MakeOperationContext();
+            var context = MakeOperationContext(ref _UpdateFree, ref _UpdateInUse);
             var pll = Interlocked.Exchange(ref _PostLayoutListeners, null);
             if (pll == null)
                 pll = new UnorderedList<IPostLayoutListener>();
@@ -348,11 +348,12 @@ namespace Squared.PRGUI {
                     }
                     NotifyLayoutListeners(ref context);
                 }
+
+                UpdateAutoscroll();
             } finally {
                 Interlocked.CompareExchange(ref _PostLayoutListeners, pll, null);
+                context.Shared.InUse = false;
             }
-
-            UpdateAutoscroll();
         }
 
         private void UpdateCaptureAndHovering (Vector2 mousePosition, Control exclude = null) {
@@ -1000,6 +1001,7 @@ namespace Squared.PRGUI {
                 instance.Height.Maximum = idealMaxSize.Y;
                 instance.Invalidate();
 
+                // FIXME: Sometimes this keeps happening every frame
                 UpdateSubtreeLayout(instance);
 
                 /*
@@ -1061,16 +1063,44 @@ namespace Squared.PRGUI {
             return null;
         }
 
+        private volatile UIOperationContextShared _RasterizeFree, _RasterizeInUse, _UpdateFree, _UpdateInUse;
+
+        internal UIOperationContext MakeOperationContext (ref UIOperationContextShared _free, ref UIOperationContextShared _inUse) {
+            var free = Interlocked.Exchange(ref _free, null);
+            if (free?.InUse != false)
+                free = new UIOperationContextShared();
+
+            var inUse = Interlocked.Exchange(ref _inUse, null);
+            if (inUse?.InUse == false)
+                Interlocked.CompareExchange(ref _free, inUse, null);
+
+            Interlocked.CompareExchange(ref _inUse, free, null);
+
+            InitializeOperationContextShared(free);
+            return MakeOperationContextFromInitializedShared(free);
+        }
+
+        private void InitializeOperationContextShared (UIOperationContextShared shared) {
+            shared.InUse = true;
+            shared.Context = this;
+            shared.Now = Now;
+            shared.NowL = NowL;
+            shared.Modifiers = CurrentModifiers;
+            shared.ActivateKeyHeld = _LastInput.ActivateKeyHeld;
+            shared.MouseButtonHeld = (LastMouseButtons != MouseButtons.None);
+            shared.MousePosition = LastMousePosition;
+            shared.PostLayoutListeners = null;
+        }
+
         internal UIOperationContext MakeOperationContext () {
-            var shared = new UIOperationContextShared {
-                Context = this,
-                Now = Now,
-                NowL = NowL,
-                Modifiers = CurrentModifiers,
-                ActivateKeyHeld = _LastInput.ActivateKeyHeld,
-                MouseButtonHeld = (LastMouseButtons != MouseButtons.None),
-                MousePosition = LastMousePosition,
-            };
+            var shared = new UIOperationContextShared();
+            InitializeOperationContextShared(shared);
+            return MakeOperationContextFromInitializedShared(shared);
+        }
+
+        private UIOperationContext MakeOperationContextFromInitializedShared (UIOperationContextShared shared) {
+            if (!shared.InUse)
+                throw new Exception("Not initialized");
 
             return new UIOperationContext {
                 Shared = shared,
@@ -1097,6 +1127,7 @@ namespace Squared.PRGUI {
         public bool ActivateKeyHeld;
         public bool MouseButtonHeld;
         public Vector2 MousePosition;
+        internal volatile bool InUse;
         internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
     }
 

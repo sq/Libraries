@@ -117,6 +117,7 @@ namespace Squared.Render {
 
         private readonly Func<bool> _SyncBeginDraw;
         private readonly Action _SyncEndDraw;
+        private readonly Action<Frame> _ThreadedDraw;
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
         private readonly ManualResetEvent _SynchronousDrawFinishedSignal = new ManualResetEvent(true);
 
@@ -187,6 +188,7 @@ namespace Squared.Render {
 
             _SyncBeginDraw = synchronousBeginDraw;
             _SyncEndDraw = synchronousEndDraw;
+            _ThreadedDraw = ThreadedDraw;
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
@@ -210,6 +212,7 @@ namespace Squared.Render {
 
             _SyncBeginDraw = synchronousBeginDraw ?? DefaultBeginDraw;
             _SyncEndDraw = synchronousEndDraw ?? DefaultEndDraw;
+            _ThreadedDraw = ThreadedDraw;
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
@@ -707,7 +710,7 @@ namespace Squared.Render {
                         if (!_SyncBeginDraw())
                             return;
 
-                        DrawQueue.Enqueue(new DrawTask(ThreadedDraw, newFrame));
+                        DrawQueue.Enqueue(new DrawTask(_ThreadedDraw, newFrame));
                     } else {
                         ThreadedDraw(newFrame);
                     }

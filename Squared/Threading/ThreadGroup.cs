@@ -397,9 +397,12 @@ namespace Squared.Threading {
             public void Execute () {
                 try {
                     Action();
-                    Future.Complete();
+                    Future?.Complete();
                 } catch (Exception exc) {
-                    Future.SetResult2(NoneType.None, ExceptionDispatchInfo.Capture(exc));
+                    if (Future != null)
+                        Future.SetResult2(NoneType.None, ExceptionDispatchInfo.Capture(exc));
+                    else
+                        throw;
                 }
             }
         }
@@ -416,6 +419,14 @@ namespace Squared.Threading {
                     Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
                 }
             }
+        }
+
+        public static void InvokeAndForget (this ThreadGroup group, Action action, bool forMainThread = false) {
+            var workItem = new ActionWorkItem {
+                Action = action
+            };
+            var queue = group.GetQueueForType<ActionWorkItem>(forMainThread);
+            queue.Enqueue(ref workItem);
         }
 
         public static SignalFuture Invoke (this ThreadGroup group, Action action, bool forMainThread = false) {

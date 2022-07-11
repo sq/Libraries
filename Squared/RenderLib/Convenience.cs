@@ -1086,7 +1086,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, 
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
-            Material material = null, in Vector4 userData = default(Vector4)
+            Material material = null, Vector4 userData = default(Vector4)
         ) {
             var drawCall = new BitmapDrawCall(texture, position);
             if (sourceRectangle.HasValue)
@@ -1119,7 +1119,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
-            Material material = null, in Vector4 userData = default(Vector4)
+            Material material = null, Vector4 userData = default(Vector4)
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(x, y));
             if (sourceRectangle.HasValue)
@@ -1152,7 +1152,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
-            Material material = null, in Vector4 userData = default(Vector4)
+            Material material = null, Vector4 userData = default(Vector4)
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(destRectangle.X, destRectangle.Y));
             if (sourceRectangle.HasValue) {
@@ -1187,7 +1187,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
-            Material material = null, Vector2? scale = null, in Vector4? userData = null,
+            Material material = null, Vector2? scale = null, Vector4? userData = null,
             float? multiplyOpacity = null
         ) {
             using (var batch = GetBitmapBatch(
