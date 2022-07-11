@@ -522,7 +522,7 @@ namespace Squared.Util.Containers {
         protected InterpolatorSource<T> _InterpolatorSource;
 
         protected static Arithmetic.BinaryOperatorMethod<T, T> _Sub;
-        protected static Arithmetic.BinaryOperatorMethod<T, float> _Mul; 
+        protected static Arithmetic.BinaryOperatorMethod<T, float> _Mul;
 
         static HermiteSpline () {
             _Sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract);
@@ -600,13 +600,20 @@ namespace Squared.Util.Containers {
             SetValueAtPositionInternal(position, value, new PointData { Velocity = velocity }, true);
         }
 
-        public void ConvertToCardinal (float tension) {
+        /// <summary>
+        /// Automatically generates velocity values for each point using a cardinal spline algorithm
+        /// </summary>
+        /// <param name="looping">If set, the first and last points are equivalent and velocity values will be generated for a closed loop</param>
+        public void ConvertToCardinal (float tension, bool looping) {
             float tensionFactor = (1f / 2f) * (1f - tension);
 
-            for (int start = 1, end = _Items.Count - 2, i = start; i <= end; i++) {
-                var previous = _Items.DangerousGetItem(i - 1);
+            if (_Items.Count < (looping ? 3 : 2))
+                return;
+
+            for (int start = looping ? 0 : 1, end = _Items.Count - (looping ? 1 : 2), i = start; i <= end; i++) {
+                var previous = _Items.DangerousGetItem((i == 0) ? (end - 1) : i - 1);
                 var pt = _Items.DangerousGetItem(i);
-                var next = _Items.DangerousGetItem(i + 1);
+                var next = _Items.DangerousGetItem((i == _Items.Count - 1) ? 1 : i + 1);
 
                 var tangent = _Sub(next.Value, previous.Value);
                 pt.Data.Velocity = _Mul(tangent, tensionFactor);
@@ -614,17 +621,27 @@ namespace Squared.Util.Containers {
             }
         }
 
-        public static HermiteSpline<T> CatmullRom (IEnumerable<CurvePoint<T>> points) {
-            return Cardinal(points, 0);
+        public static HermiteSpline<T> CatmullRom (IEnumerable<CurvePoint<T>> points, bool looping) =>
+            CatmullRom<HermiteSpline<T>>(points, looping);
+
+        public static TSpline CatmullRom<TSpline> (IEnumerable<CurvePoint<T>> points, bool looping)
+            where TSpline : HermiteSpline<T>, new()
+        {
+            return Cardinal<TSpline>(points, 0.5f, looping);
         }
 
-        public static HermiteSpline<T> Cardinal (IEnumerable<CurvePoint<T>> points, float tension) {
-            var result = new HermiteSpline<T>();
+        public static HermiteSpline<T> Cardinal (IEnumerable<CurvePoint<T>> points, float tension, bool looping)
+            => Cardinal<HermiteSpline<T>>(points, tension, looping);
+
+        public static TSpline Cardinal<TSpline> (IEnumerable<CurvePoint<T>> points, float tension, bool looping)
+            where TSpline : HermiteSpline<T>, new()
+        {
+            var result = new TSpline();
 
             foreach (var pt in points)
                 result.Add(pt.Position, pt.Value, default(T));
 
-            result.ConvertToCardinal(tension);
+            result.ConvertToCardinal(tension, looping);
 
             return result;
         }
