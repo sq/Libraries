@@ -642,9 +642,13 @@ namespace Squared.PRGUI {
                     ((Hovering == previouslyCaptured) && (previouslyCaptured != null)) ||
                     ((previouslyCaptured == null) && (Hovering == PreviousMouseDownTarget))
                 ) {
-                    if ((LastMouseButtons & MouseButtons.Left) == MouseButtons.Left)
-                        // FIXME: Is this ?? right
-                        HandleClick(previouslyCaptured ?? PreviousMouseDownTarget, mousePosition, mouseDownPosition ?? mousePosition);
+                    // FIXME: Is this ?? right
+                    var clickTarget = previouslyCaptured ?? PreviousMouseDownTarget;
+                    if (
+                        (clickTarget?.AcceptsNonLeftClicks == true) || 
+                        ((LastMouseButtons & MouseButtons.Left) == MouseButtons.Left)
+                    )
+                        HandleClick(clickTarget, mousePosition, mouseDownPosition ?? mousePosition);
                     else
                         ; // FIXME: Fire another event here?
                 } else

@@ -39,6 +39,8 @@ namespace Squared.PRGUI {
             EventFiredBackgroundColor   = 0b100000000,
             EventFiredOpacity           = 0b1000000000,
             EventFiredTextColor         = 0b10000000000,
+            AcceptsFocusWhenDisabled    = 0b100000000000,
+            AcceptsNonLeftClicks        = 0b1000000000000,
             // TODO
             // EventFiredMatrix      = 0b100000000000,
         }
@@ -130,27 +132,37 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Can receive focus even when disabled
         /// </summary>
-        public virtual bool AcceptsFocusWhenDisabled => false;
+        public bool AcceptsFocusWhenDisabled {
+            get => GetInternalFlag(InternalStateFlags.AcceptsFocusWhenDisabled);
+            protected set => SetInternalFlag(InternalStateFlags.AcceptsFocusWhenDisabled, value);
+        }
         /// <summary>
         /// Can receive focus via user input
         /// </summary>
-        public virtual bool AcceptsFocus {
+        public bool AcceptsFocus {
             get => GetInternalFlag(InternalStateFlags.AcceptsFocus);
             protected set => SetInternalFlag(InternalStateFlags.AcceptsFocus, value);
         }
         /// <summary>
         /// Receives mouse events and can capture the mouse
         /// </summary>
-        public virtual bool AcceptsMouseInput {
+        public bool AcceptsMouseInput {
             get => GetInternalFlag(InternalStateFlags.AcceptsMouseInput);
             protected set => SetInternalFlag(InternalStateFlags.AcceptsMouseInput, value);
+        }
+        /// <summary>
+        /// If set, click events will be generated for right/middle clicks instead of only left
+        /// </summary>
+        public bool AcceptsNonLeftClicks {
+            get => GetInternalFlag(InternalStateFlags.AcceptsNonLeftClicks);
+            set => SetInternalFlag(InternalStateFlags.AcceptsNonLeftClicks, value);
         }
         /// <summary>
         /// Controls whether textual input (IME composition, on-screen keyboard, etc) should 
         ///  be enabled while this control is focused. You will still get key events even if 
         ///  this is false, so things like arrow key navigation will work.
         /// </summary>
-        public virtual bool AcceptsTextInput {
+        public bool AcceptsTextInput {
             get => GetInternalFlag(InternalStateFlags.AcceptsTextInput);
             protected set => SetInternalFlag(InternalStateFlags.AcceptsTextInput, value);
         }
