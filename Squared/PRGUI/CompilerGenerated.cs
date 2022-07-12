@@ -224,7 +224,7 @@ namespace Squared.PRGUI {
 	        private int _i_5__2;
 
 	        // Token: 0x040004F4 RID: 1268
-	        private List<Control> _tabOrdered_5__3;
+	        private DenseList<Control> _tabOrdered_5__3;
 
 	        // Token: 0x040004F5 RID: 1269
 	        private Control _dft_5__4;
@@ -386,7 +386,7 @@ namespace Squared.PRGUI {
 			        if (host.TryGetParent(out control3) && (controlContainer3 = (control3 as IControlContainer)) != null)
 			        {
 				        this._currentCollection_5__4 = controlContainer3.Children;
-				        this._tabOrdered_5__5 = null;
+				        this._tabOrdered_5__5 = default;
 				        this._proxyTarget_5__8 = null;
 				        goto IL_CD;
 			        }
@@ -490,7 +490,7 @@ namespace Squared.PRGUI {
 	        private ControlCollection _currentCollection_5__4;
 
 	        // Token: 0x04000505 RID: 1285
-	        private List<Control> _tabOrdered_5__5;
+	        private DenseList<Control> _tabOrdered_5__5;
 
 	        // Token: 0x04000506 RID: 1286
 	        private int _index_5__6;

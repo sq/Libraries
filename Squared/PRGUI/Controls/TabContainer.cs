@@ -414,12 +414,9 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        public IEnumerator<Control> GetEnumerator () {
-            return ((IEnumerable<Control>)Children).GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator () {
-            return ((IEnumerable<Control>)Children).GetEnumerator();
-        }
+        // TODO: Skip the first control
+        DenseList<Control>.Enumerator GetEnumerator () => Children.GetEnumerator();
+        IEnumerator<Control> IEnumerable<Control>.GetEnumerator () => GetEnumerator();            
+        IEnumerator IEnumerable.GetEnumerator () => GetEnumerator();
     }
 }

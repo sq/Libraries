@@ -567,7 +567,8 @@ namespace Squared.Render.RasterStroke {
                 nozzleParams = new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleBaseSize, 0);
             angle.Y /= 360f;
 
-            foreach (var sb in _SubBatches) {
+            for (int i = 0; i < _SubBatches.Count; i++) {
+                ref var sb = ref _SubBatches.Item(i);
                 var material = Materials.RasterStrokeMaterials[(int)sb.Type];
                 material.UsesNoise.SetValue(hasNoise);
                 material.NozzleParams.SetValue(nozzleParams);

@@ -407,12 +407,8 @@ namespace Squared.PRGUI.Controls {
             Children.Add(control);
         }
 
-        public IEnumerator<Control> GetEnumerator () {
-            return ((IEnumerable<Control>)Children).GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator () {
-            return ((IEnumerable<Control>)Children).GetEnumerator();
-        }
+        DenseList<Control>.Enumerator GetEnumerator () => Children.GetEnumerator();
+        IEnumerator<Control> IEnumerable<Control>.GetEnumerator () => GetEnumerator();            
+        IEnumerator IEnumerable.GetEnumerator () => GetEnumerator();
     }
 }

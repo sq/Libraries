@@ -18,10 +18,10 @@ namespace Squared.PRGUI {
         }
 
         private OrderRange PaintOrderRange, TabOrderRange;
-        private List<Control> PaintOrderedItems = new List<Control>(),
-            TabOrderedItemsResult = new List<Control>();
-        private List<IndexedControl> TabOrderedItems = new List<IndexedControl>();
-        private List<Control> Items = new List<Control>();
+        private DenseList<Control> PaintOrderedItems = new DenseList<Control>(),
+            TabOrderedItemsResult = new DenseList<Control>();
+        private DenseList<IndexedControl> TabOrderedItems = new DenseList<IndexedControl>();
+        private DenseList<Control> Items = new DenseList<Control>();
         private Dictionary<Control, int> IndexTable = 
             new Dictionary<Control, int>(new ReferenceComparer<Control>());
         private DenseList<Control> DeadControlScratchBuffer = new DenseList<Control>();
@@ -200,9 +200,9 @@ namespace Squared.PRGUI {
             Invalidate();
         }
 
-        public List<Control>.Enumerator GetEnumerator () {
-            return Items.GetEnumerator();
-        }
+        public DenseList<Control>.Enumerator GetEnumerator () => Items.GetEnumerator();
+        IEnumerator<Control> IEnumerable<Control>.GetEnumerator () => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator () => GetEnumerator();
 
         public bool Contains (Control control) {
             if (control == null)
@@ -233,7 +233,7 @@ namespace Squared.PRGUI {
         private int TabOrderLastValidFrame = -1, PaintOrderLastValidFrame = -1;
 
         // TODO: Switch these lists to some sort of intrusive linked list system
-        private bool PrepareToUpdateSortedList<T> (ref int lastValidFrame, int currentFrame, List<T> targetList, ref OrderRange range) {
+        private bool PrepareToUpdateSortedList<T> (ref int lastValidFrame, int currentFrame, ref DenseList<T> targetList, ref OrderRange range) {
             if ((targetList.Count == Count) && (lastValidFrame == currentFrame))
                 return false;
 
@@ -242,15 +242,15 @@ namespace Squared.PRGUI {
                 Max = (Items.Count > 0) ? int.MinValue : 0
             };
             targetList.Clear();
-            targetList.Capacity = Math.Max(Math.Max(targetList.Capacity, Items.Count), 16);
+            targetList.EnsureCapacity(Items.Count);
             lastValidFrame = currentFrame;
             return true;
         }
 
         private bool UpdatingTabOrder, UpdatingDisplayOrder;
 
-        internal List<Control> InTabOrder (int frameIndex, bool suitableTargetsOnly) {
-            if (PrepareToUpdateSortedList(ref TabOrderLastValidFrame, frameIndex, TabOrderedItems, ref TabOrderRange)) {
+        internal DenseList<Control> InTabOrder (int frameIndex, bool suitableTargetsOnly) {
+            if (PrepareToUpdateSortedList(ref TabOrderLastValidFrame, frameIndex, ref TabOrderedItems, ref TabOrderRange)) {
                 if (UpdatingTabOrder)
                     throw new Exception("Already updating tab order list");
                 UpdatingTabOrder = true;
@@ -275,17 +275,12 @@ namespace Squared.PRGUI {
             return TabOrderedItemsResult;
         }
 
-        public void Sort (IComparer<Control> comparer) {
-            Items.Sort(comparer);
-            Invalidate();
-        }
-
-        internal List<Control> InDisplayOrder (int frameIndex) {
+        internal DenseList<Control> InDisplayOrder (int frameIndex) {
             return InDisplayOrder(frameIndex, out OrderRange temp);
         }
 
-        internal List<Control> InDisplayOrder (int frameIndex, out OrderRange range) {
-            if (PrepareToUpdateSortedList(ref PaintOrderLastValidFrame, frameIndex, PaintOrderedItems, ref PaintOrderRange)) {
+        internal DenseList<Control> InDisplayOrder (int frameIndex, out OrderRange range) {
+            if (PrepareToUpdateSortedList(ref PaintOrderLastValidFrame, frameIndex, ref PaintOrderedItems, ref PaintOrderRange)) {
                 if (UpdatingDisplayOrder)
                     throw new Exception("Already updating display order list");
                 UpdatingDisplayOrder = true;
@@ -296,7 +291,7 @@ namespace Squared.PRGUI {
                         PaintOrderedItems.Add(item);
                     }
                     PaintOrderedItems.Sort(
-                        (Host == null) ? (IComparer<Control>)IndexPreservingPaintOrderComparer.Instance : PaintOrderComparer.Instance
+                        (Host == null) ? (IRefComparer<Control>)IndexPreservingPaintOrderComparer.Instance : PaintOrderComparer.Instance
                     );
                 } finally {
                     UpdatingDisplayOrder = false;
@@ -304,14 +299,6 @@ namespace Squared.PRGUI {
             }
             range = PaintOrderRange;
             return PaintOrderedItems;
-        }
-
-        IEnumerator<Control> IEnumerable<Control>.GetEnumerator () {
-            return ((IEnumerable<Control>)Items).GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator () {
-            return ((IEnumerable)Items).GetEnumerator();
         }
 
         public int PickNewHighestDisplayOrder (Control ctl, bool topmost) {
@@ -416,27 +403,33 @@ namespace Squared.PRGUI {
         public Control Control;
     }
 
-    internal sealed class TabOrderComparer : IComparer<IndexedControl> {
+    internal sealed class TabOrderComparer : IComparer<IndexedControl>, IRefComparer<IndexedControl> {
         public static readonly TabOrderComparer Instance = new TabOrderComparer();
 
-        public int Compare (IndexedControl x, IndexedControl y) {
+        public int Compare (ref IndexedControl x, ref IndexedControl y) {
             var result = x.SortOrder.CompareTo(y.SortOrder);
             if (result == 0)
                 result = x.Index.CompareTo(y.Index);
             return result;
         }
+
+        public int Compare (IndexedControl x, IndexedControl y) => Compare(ref x, ref y);
     }
 
-    internal sealed class IndexPreservingPaintOrderComparer : IComparer<Control> {
+    internal sealed class IndexPreservingPaintOrderComparer : IComparer<Control>, IRefComparer<Control> {
         public static readonly IndexPreservingPaintOrderComparer Instance = new IndexPreservingPaintOrderComparer();
+
+        public int Compare (ref Control x, ref Control y) => Compare(x, y);
 
         public int Compare (Control x, Control y) {
             return x.DisplayOrder.CompareTo(y.DisplayOrder);
         }
     }
 
-    internal sealed class PaintOrderComparer : IComparer<Control> {
+    internal sealed class PaintOrderComparer : IComparer<Control>, IRefComparer<Control> {
         public static readonly PaintOrderComparer Instance = new PaintOrderComparer();
+
+        public int Compare (ref Control x, ref Control y) => Compare(x, y);
 
         public int Compare (Control x, Control y) {
             var result = x.DisplayOrder.CompareTo(y.DisplayOrder);

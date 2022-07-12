@@ -805,7 +805,8 @@ namespace Squared.Render.RasterShape {
             var isSrgbRenderTarget = 
                 (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
 
-            foreach (var sb in _SubBatches) {
+            for (int i = 0; i < _SubBatches.Count; i++) {
+                ref var sb = ref _SubBatches.Item(i);
                 var rasterShader = (UseUbershader && sb.Type != RasterShapeType.Polygon) 
                     ? PickMaterial(null, sb.Shadowed, sb.Simple)
                     : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);

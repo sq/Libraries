@@ -228,6 +228,7 @@ namespace Squared.Render {
 
             if (IsOpenGL) {
                 try {
+                    // HACK: This is necessary to disable threaded issue/present in OpenGL, since it deadlocks
 #if FNA
                     var hDevice = (IntPtr)f.GetValue(device);
                     Evil.FNA3D_SysRendererEXT sr;
@@ -1185,12 +1186,7 @@ namespace Squared.Render {
             var tcd = resource as ITraceCapturingDisposable;
             tcd?.AutoCaptureTraceback();
 
-            if (IsDisposed) {
-                resource.Dispose();
-                return;
-            }
-
-            if (IsDisposingResources > 0) {
+            if (IsDisposed || (IsDisposingResources > 0)) {
                 resource.Dispose();
                 return;
             }
