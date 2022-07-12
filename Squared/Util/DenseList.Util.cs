@@ -8,14 +8,125 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Ext = Squared.Util.DenseListExtensions;
+using Ext = Squared.Util.EnumerableExtensions;
 
 namespace Squared.Util {
     public interface IDenseQuerySource<TSource> : IEnumerator {
         void CloneInto (out TSource result);
     }
 
-    public static class DenseListExtensions {
+    public struct ListWhereEnumerator<T> : IEnumerable<T>, IEnumerator<T> {
+        private bool InUse;
+        private List<T>.Enumerator Enumerator;
+        private readonly List<T> List;
+        private readonly Predicate<T> Predicate;
+
+        public T Current => Enumerator.Current;
+        object IEnumerator.Current => Current;
+
+        public ListWhereEnumerator (List<T> list, Predicate<T> predicate) {
+            List = list;
+            Predicate = predicate;
+            InUse = false;
+            Enumerator = default;
+        }
+
+        public ListWhereEnumerator<T> GetEnumerator () {
+            var result = this;
+            result.InUse = true;
+            result.Enumerator = List.GetEnumerator();
+            return result;
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator () => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator () => GetEnumerator();
+
+        public void Dispose () {
+            if (InUse) {
+                InUse = false;
+                Enumerator.Dispose();
+                Enumerator = default;
+            }
+        }
+
+        public bool MoveNext () {
+            if (!InUse)
+                throw new Exception("Not initialized");
+
+            while (Enumerator.MoveNext()) {
+                if (Predicate(Enumerator.Current))
+                    return true;
+            }
+
+            return false;
+        }
+
+        public void Reset () {
+            if (InUse)
+                Reset();
+        }
+    }
+
+    public struct ListSelectEnumerator<To, From> : IEnumerable<To>, IEnumerator<To> {
+        private bool InUse;
+        private List<From>.Enumerator Enumerator;
+        private readonly List<From> List;
+        private readonly Func<From, To> Selector;
+
+        public To Current => Selector(Enumerator.Current);
+        object IEnumerator.Current => Current;
+
+        public ListSelectEnumerator (List<From> list, Func<From, To> selector) {
+            List = list;
+            Selector = selector;
+            InUse = false;
+            Enumerator = default;
+        }
+
+        public ListSelectEnumerator<To, From> GetEnumerator () {
+            var result = this;
+            result.InUse = true;
+            result.Enumerator = List.GetEnumerator();
+            return result;
+        }
+
+        IEnumerator<To> IEnumerable<To>.GetEnumerator () => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator () => GetEnumerator();
+
+        public void Dispose () {
+            if (InUse) {
+                InUse = false;
+                Enumerator.Dispose();
+                Enumerator = default;
+            }
+        }
+
+        public bool MoveNext () {
+            if (!InUse)
+                throw new Exception("Not initialized");
+
+            return Enumerator.MoveNext();
+        }
+
+        public void Reset () {
+            if (InUse)
+                Reset();
+        }
+    }
+
+    public static class EnumerableExtensions {
+        // The default versions of these will allocate for lists, so just fix that pattern
+        public static T First<T> (this List<T> list) => list[0];
+        public static T Last<T> (this List<T> list) => list[list.Count - 1];
+        public static T FirstOrDefault<T> (this List<T> list) => list.Count > 0 ? list[0] : default;
+        public static T LastOrDefault<T> (this List<T> list) => list.Count > 0 ? list[list.Count - 1] : default;
+        public static int Count<T> (this List<T> list) => list.Count;
+
+        public static ListWhereEnumerator<T> Where<T> (this List<T> list, Predicate<T> predicate) =>
+            new ListWhereEnumerator<T>(list, predicate);
+        public static ListSelectEnumerator<To, From> Select<To, From> (this List<From> list, Func<From, To> selector) =>
+            new ListSelectEnumerator<To, From>(list, selector);
+
         /// <summary>
         /// Returns a dense list containing all the items from a sequence.
         /// </summary>
@@ -141,7 +252,9 @@ namespace Squared.Util {
                 [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
-                    if (HasList)
+                    if ((Index < 0) || (Index >= Count))
+                        throw new InvalidOperationException("No current value");
+                    else if (HasList)
                         return Items[Index];
                     else switch (Index) {
                         case 0:
@@ -152,31 +265,16 @@ namespace Squared.Util {
                             return Item3;
                         case 3:
                             return Item4;
+                        default:
+                            throw new Exception("Internal Error");
                     }
-
-                    throw new InvalidOperationException("No current value");
                 }
             }
 
             object IEnumerator.Current {
                 [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get {
-                    if (HasList)
-                        return Items[Index];
-                    else switch (Index) {
-                        case 0:
-                            return Item1;
-                        case 1:
-                            return Item2;
-                        case 2:
-                            return Item3;
-                        case 3:
-                            return Item4;
-                    }
-
-                    throw new InvalidOperationException("No current value");
-                }
+                get => Current;
             }
 
             public void Dispose () {

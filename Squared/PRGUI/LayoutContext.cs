@@ -240,7 +240,7 @@ namespace Squared.PRGUI.Layout {
         public ControlKey CreateItem (LayoutTags tag = LayoutTags.Default) {
             var newData = ItemTemplate;
             var newIndex = Layout.Count;
-            newData._Key.ID = newIndex;
+            newData._Key = new ControlKey(newIndex);
             newData.Tag = tag;
 
             Layout.Add(ref newData);

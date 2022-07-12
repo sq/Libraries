@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Ext = Squared.Util.DenseListExtensions;
+using Ext = Squared.Util.EnumerableExtensions;
 
 namespace Squared.Util {
     public interface IListPool<T> {
