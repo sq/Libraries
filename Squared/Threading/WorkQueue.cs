@@ -136,6 +136,21 @@ namespace Squared.Threading {
         int Priority { get; }
     }
 
+    internal static class WorkItemConfigurationForType<T>
+        where T : IWorkItem 
+    {
+        public static readonly WorkItemConfiguration Configuration;
+
+        static WorkItemConfigurationForType () {
+            Configuration = (WorkItemConfiguration)typeof(T).GetProperty("Configuration", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)?.GetValue(null)
+                ?? new WorkItemConfiguration();
+            if (typeof(T).GetField("Configuration", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public) != null)
+                throw new Exception($"{typeof(T).FullName}.Configuration must be a property not a field");
+            if (typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T)))
+                Configuration.AllowMainThread = Configuration.MainThreadOnly = true;
+        }
+    }
+
     public sealed class WorkItemConfiguration {
         /// <summary>
         /// Work items with higher priority values have their queues stepped before queues
@@ -166,6 +181,15 @@ namespace Squared.Threading {
         /// The default is 1 unless the thread group has been configured with a different default.
         /// </summary>
         public int? ConcurrencyPadding = null;
+
+        /// <summary>
+        /// If set, all work items will be queued to the main thread.
+        /// </summary>
+        public bool MainThreadOnly = false;
+        /// <summary>
+        /// If false, attempts to queue these items to the main thread will fail.
+        /// </summary>
+        public bool AllowMainThread = true;
     }
 
     // This job must be run on the main thread
@@ -251,11 +275,7 @@ namespace Squared.Threading {
 
         public WorkQueue (ThreadGroup owner) {
             Owner = owner;
-            IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
-            Configuration = (WorkItemConfiguration)typeof(T).GetProperty("Configuration", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)?.GetValue(null)
-                ?? new WorkItemConfiguration();
-            if (typeof(T).GetField("Configuration", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public) != null)
-                throw new Exception($"{typeof(T).FullName}.Configuration must be a property not a field");
+            Configuration = WorkItemConfigurationForType<T>.Configuration;
             _Items = new InternalWorkItem<T>[DefaultBufferSize];
         }
 

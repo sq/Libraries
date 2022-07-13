@@ -97,7 +97,7 @@ namespace Squared.Render {
         private T[] MipBuffer;
         private int MipLevelCount;
         private readonly MipGeneratorFn GenerateMip;
-        private Rectangle DirtyMipsRegion,DirtyUploadRegion;
+        private Rectangle DirtyMipsRegion, DirtyUploadRegion;
 
         public DynamicAtlas (
             RenderCoordinator coordinator, int width, int height, SurfaceFormat format, 

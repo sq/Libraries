@@ -291,7 +291,15 @@ namespace Squared.Threading {
             WorkQueue<T> result;
 
             var queues = Queues;
-            var isMainThreadOnly = typeof(IMainThreadWorkItem).IsAssignableFrom(type) || forMainThread;
+            var config = WorkItemConfigurationForType<T>.Configuration;
+
+            if (!config.AllowMainThread) {
+                if (config.MainThreadOnly)
+                    throw new Exception($"{typeof(T).FullName} has AllowMainThread==false and MainThreadOnly==true");
+
+                forMainThread = false;
+            }
+            var isMainThreadOnly = config.MainThreadOnly || forMainThread;
 
             // If the job must be run on the main thread, add to the main thread queue
             // Note that you must manually pump this queue yourself.

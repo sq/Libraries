@@ -276,9 +276,9 @@ namespace Squared.Render.STB {
 
             // FIXME: FP mips, 16bit mips
             if ((MipChain != null) && !IsFloatingPoint && !Is16Bit)
-                UploadWithMips(coordinator, result, false, true);
+                UploadWithMips(coordinator, result, false);
             else
-                UploadDirect(coordinator, result, false, true);
+                UploadDirect(coordinator, result, false);
 
             return result;
         }
@@ -302,9 +302,9 @@ namespace Squared.Render.STB {
             // FIXME: FP mips, 16bit mips
             Future<Texture2D> result;
             if ((MipChain != null) && !IsFloatingPoint && !Is16Bit)
-                result = UploadWithMips(coordinator, tex, true, mainThread);
+                result = UploadWithMips(coordinator, tex, true);
             else
-                result = UploadDirect(coordinator, tex, true, mainThread);
+                result = UploadDirect(coordinator, tex, true);
 
             return result;
         }
@@ -313,10 +313,11 @@ namespace Squared.Render.STB {
 
         private Stopwatch UploadTimer = new Stopwatch();
 
-        private Future<Texture2D> UploadDirect (RenderCoordinator coordinator, Texture2D result, bool async, bool mainThread) {
+        private Future<Texture2D> UploadDirect (RenderCoordinator coordinator, Texture2D result, bool async) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image");
             // FIXME: async?
+            // FIXME: Make sure this happens before the next issue
             UploadTimer.Restart();
             lock (coordinator.UseResourceLock)
                 Evil.TextureUtils.SetDataFast(result, 0, Data, new Rectangle(0, 0, Width, Height), (uint)(Width * SizeofPixel));
@@ -387,7 +388,7 @@ namespace Squared.Render.STB {
                 pin.Free();
         }
 
-        private unsafe Future<Texture2D> UploadWithMips (RenderCoordinator coordinator, Texture2D result, bool async, bool mainThread) {
+        private unsafe Future<Texture2D> UploadWithMips (RenderCoordinator coordinator, Texture2D result, bool async) {
             var pPreviousLevelData = Data;
             var pLevelData = Data;
             int levelWidth = Width, levelHeight = Height;
@@ -401,6 +402,7 @@ namespace Squared.Render.STB {
             var f = new Future<Texture2D>();
             int itemsPending = 1;
 
+            var mainThread = (coordinator.GraphicsBackendName == "OpenGL");
             var queue = coordinator.ThreadGroup.GetQueueForType<UploadMipWorkItem>(mainThread);
             for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
                 if (IsDisposed)
@@ -448,6 +450,7 @@ namespace Squared.Render.STB {
             if (UploadTimer.Elapsed.TotalMilliseconds > 2)
                 Debug.Print($"Uploading mipped texture took {UploadTimer.Elapsed.TotalMilliseconds}ms");
 
+            // FIXME: Ensure this is finished before the next issue
             return f;
 
             void OnItemComplete (ref UploadMipWorkItem wi) {
