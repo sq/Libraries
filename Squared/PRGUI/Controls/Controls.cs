@@ -164,8 +164,6 @@ namespace Squared.PRGUI.Controls {
     }
 
     public class Checkbox : StaticTextBase, IValueControl<bool> {
-        public bool Checked;
-
         new public DynamicStringLayout Content => base.Content;
         new public AbstractString Text {
             get => base.Text;
@@ -177,6 +175,8 @@ namespace Squared.PRGUI.Controls {
         }
         new public void Invalidate () => base.Invalidate();
 
+        protected bool _Checked;
+
         public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);
 
         public Checkbox ()
@@ -186,6 +186,28 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = true;
             AcceptsFocus = true;
             Wrap = false;
+        }
+
+        public void SetValue (bool value, bool forUserInput) {
+            if (value == _Checked)
+                return;
+
+            if (value == false) {
+                _Checked = false;
+                FireEvent(UIEvents.CheckedChanged);
+                if (forUserInput)
+                    FireEvent(UIEvents.ValueChangedByUser);
+            } else {
+                _Checked = true;
+                FireEvent(UIEvents.CheckedChanged);
+                if (forUserInput)
+                    FireEvent(UIEvents.ValueChangedByUser);
+            }
+        }
+
+        public bool Checked {
+            get => _Checked;
+            set => SetValue(value, false);
         }
 
         bool IValueControl<bool>.Value {
@@ -218,10 +240,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool OnEvent<T> (string name, T args) {
-            if (name == UIEvents.Click) {
-                Checked = !Checked;
-                FireEvent(UIEvents.CheckedChanged);
-            }
+            if (name == UIEvents.Click)
+                SetValue(!Checked, true);
 
             return base.OnEvent(name, args);
         }
@@ -255,23 +275,29 @@ namespace Squared.PRGUI.Controls {
             Wrap = false;
         }
 
+        public void SetValue (bool value, bool forUserInput) {
+            if (value == _Checked)
+                return;
+
+            if (value == false) {
+                Unsubscribe();
+                _Checked = false;
+                FireEvent(UIEvents.CheckedChanged);
+                if (forUserInput)
+                    FireEvent(UIEvents.ValueChangedByUser);
+            } else {
+                Subscribe();
+                _Checked = true;
+                FireEvent(UIEvents.RadioButtonSelected, GroupId);
+                FireEvent(UIEvents.CheckedChanged);
+                if (forUserInput)
+                    FireEvent(UIEvents.ValueChangedByUser);
+            }
+        }
+
         public bool Checked {
             get => _Checked;
-            set {
-                if (value == _Checked)
-                    return;
-
-                if (value == false) {
-                    Unsubscribe();
-                    _Checked = false;
-                    FireEvent(UIEvents.CheckedChanged);
-                } else {
-                    Subscribe();
-                    _Checked = true;
-                    FireEvent(UIEvents.RadioButtonSelected, GroupId);
-                    FireEvent(UIEvents.CheckedChanged);
-                }
-            }
+            set => SetValue(value, false);
         }
 
         bool IValueControl<bool>.Value {
@@ -334,7 +360,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override bool OnEvent<T> (string name, T args) {
             if (name == UIEvents.Click)
-                Checked = true;
+                SetValue(true, true);
 
             return base.OnEvent(name, args);
         }
