@@ -36,7 +36,6 @@ namespace Squared.Render {
         protected bool IsLoadingContent { get; private set; }
         public bool IsContentLoaded { get; private set; }
 
-        private FrameTiming NextFrameTiming;
         private readonly ConcurrentQueue<Action<GameTime>> BeforeDrawQueue = new ConcurrentQueue<Action<GameTime>>();
 
         public event Action BeginDrawFailed;
@@ -146,12 +145,11 @@ namespace Squared.Render {
         public abstract void Draw (GameTime gameTime, Frame frame);
 
         protected override bool BeginDraw() {
-            RenderCoordinator.WorkStopwatch.Restart();
-
             ThreadGroup.TryStepMainThreadUntilDrained();
 
             var settling = RenderCoordinator.IsWaitingForDeviceToSettle;
 
+            RenderCoordinator.StartWorkPhase(RenderCoordinator.WorkPhases.BeginDraw);
             try {
                 var ok = IsContentLoaded && !settling && RenderCoordinator.BeginDraw();
                 if (!ok) {
@@ -162,8 +160,7 @@ namespace Squared.Render {
                 }
                 return ok;
             } finally {
-                RenderCoordinator.WorkStopwatch.Stop();
-                NextFrameTiming.BeginDraw = RenderCoordinator.WorkStopwatch.Elapsed;
+                RenderCoordinator.NextFrameTiming.BeginDraw = RenderCoordinator.EndWorkPhase(RenderCoordinator.WorkPhases.BeginDraw);
             }
         }
 
@@ -231,58 +228,45 @@ namespace Squared.Render {
         }
 
         sealed protected override void Draw (GameTime gameTime) {
-            RenderCoordinator.WorkStopwatch.Restart();
-
             var priorIndex = Batch.LifetimeCount;
-            NextFrameTiming.PriorPrimitiveCount = NativeBatch.LifetimePrimitiveCount;
-            NextFrameTiming.PriorCommandCount = NativeBatch.LifetimeCommandCount;
+            RenderCoordinator.NextFrameTiming.PriorPrimitiveCount = NativeBatch.LifetimePrimitiveCount;
+            RenderCoordinator.NextFrameTiming.PriorCommandCount = NativeBatch.LifetimeCommandCount;
 
             // ????
+            RenderCoordinator.StartWorkPhase(RenderCoordinator.WorkPhases.Wait);
             RenderCoordinator.WaitForActiveDraws();
+            RenderCoordinator.NextFrameTiming.Wait += RenderCoordinator.EndWorkPhase(RenderCoordinator.WorkPhases.Wait);
 
             try {
                 OnBeforeDraw(gameTime);
                 var frame = RenderCoordinator.BeginFrame(true);
                 Squared.Threading.Profiling.Superluminal.BeginEventFormat("Build Frame", "SRFrame #{0}", frame.Index, color: 0x1010CF);
+                RenderCoordinator.StartWorkPhase(RenderCoordinator.WorkPhases.BuildFrame);
                 Draw(gameTime, frame);
             } finally {
                 Squared.Threading.Profiling.Superluminal.EndEvent();
                 RenderCoordinator.SynchronousDrawsEnabled = true;
-                RenderCoordinator.WorkStopwatch.Stop();
-                NextFrameTiming.Draw = RenderCoordinator.WorkStopwatch.Elapsed;
-                NextFrameTiming.BatchCount = (int)(Batch.LifetimeCount - priorIndex);
+                RenderCoordinator.NextFrameTiming.BuildFrame = RenderCoordinator.EndWorkPhase(RenderCoordinator.WorkPhases.BuildFrame);
+                RenderCoordinator.NextFrameTiming.BatchCount = (int)(Batch.LifetimeCount - priorIndex);
             }
         }
 
         protected override void EndDraw() {
-            RenderCoordinator.WorkStopwatch.Restart();
-
             try {
                 RenderCoordinator.EndDraw();
             } catch (Exception exc) {
                 Console.WriteLine("Caught {0} in EndDraw", exc);
                 throw;
             } finally {
-                RenderCoordinator.WorkStopwatch.Stop();
-
                 var lpc = NativeBatch.LifetimePrimitiveCount;
-                var ppc = NextFrameTiming.PriorPrimitiveCount;
+                var ppc = RenderCoordinator.NextFrameTiming.PriorPrimitiveCount;
                 var lcc = NativeBatch.LifetimeCommandCount;
-                var pcc = NextFrameTiming.PriorCommandCount;
+                var pcc = RenderCoordinator.NextFrameTiming.PriorCommandCount;
 
-                NextFrameTiming.Prepare = RenderCoordinator.PrepareStopwatch.Elapsed;
-                NextFrameTiming.EndDraw = RenderCoordinator.WorkStopwatch.Elapsed;
-                NextFrameTiming.BeforeIssue = RenderCoordinator.BeforeIssueStopwatch.Elapsed;
-                NextFrameTiming.BeforePresent = RenderCoordinator.BeforePresentStopwatch.Elapsed;
-                NextFrameTiming.AfterPresent = RenderCoordinator.AfterPresentStopwatch.Elapsed;
-                NextFrameTiming.Wait = RenderCoordinator.WaitStopwatch.Elapsed;
-                NextFrameTiming.PrimitiveCount = (int)(lpc - ppc);
-                NextFrameTiming.CommandCount = (int)(lcc - pcc);
-                PreviousFrameTiming = NextFrameTiming;
-
-                RenderCoordinator.WaitStopwatch.Reset();
-                RenderCoordinator.BeforePresentStopwatch.Reset();
-                RenderCoordinator.AfterPresentStopwatch.Reset();
+                RenderCoordinator.NextFrameTiming.PrimitiveCount = (int)(lpc - ppc);
+                RenderCoordinator.NextFrameTiming.CommandCount = (int)(lcc - pcc);
+                PreviousFrameTiming = RenderCoordinator.NextFrameTiming;
+                RenderCoordinator.NextFrameTiming = default;
             }
 
             ThreadGroup.TryStepMainThreadUntilDrained();
@@ -307,11 +291,9 @@ namespace Squared.Render {
     ///     Run AfterPresent handlers
     /// </summary>
     public struct FrameTiming {
-        public TimeSpan Wait, BeginDraw, Draw, Prepare, EndDraw;
-        /// <summary>
-        /// These handlers run during the EndDraw phase (i.e. don't sum them up for a total)
-        /// </summary>
-        public TimeSpan BeforeIssue, BeforePresent, AfterPresent;
+        public TimeSpan Wait, BeginDraw, BuildFrame, BeforePrepare, Prepare, BeforeIssue, Issue, BeforePresent, Present, AfterPresent;
+        public TimeSpan Handlers => BeforePrepare + BeforeIssue + BeforePresent + AfterPresent;
+        public TimeSpan EndDraw => BeforeIssue + Issue + BeforePresent + Present + AfterPresent;
         public int BatchCount, CommandCount, PrimitiveCount;
 
         internal long PriorPrimitiveCount, PriorCommandCount;

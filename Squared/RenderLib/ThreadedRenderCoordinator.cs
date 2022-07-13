@@ -111,6 +111,7 @@ namespace Squared.Render {
         private readonly IGraphicsDeviceService DeviceService;
 
         internal bool SynchronousDrawsEnabled = true;
+        internal FrameTiming NextFrameTiming;
 
         private volatile bool IsResetting;
         private volatile bool FirstFrameSinceReset;
@@ -121,14 +122,22 @@ namespace Squared.Render {
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
         private readonly ManualResetEvent _SynchronousDrawFinishedSignal = new ManualResetEvent(true);
 
-        public readonly Stopwatch
-            WorkStopwatch = new Stopwatch(),
-            WaitStopwatch = new Stopwatch(),
-            PrepareStopwatch = new Stopwatch(),
-            BeforePrepareStopwatch = new Stopwatch(),
-            BeforePresentStopwatch = new Stopwatch(),
-            BeforeIssueStopwatch = new Stopwatch(),
-            AfterPresentStopwatch = new Stopwatch();
+        internal enum WorkPhases : int {
+            NONE,
+            Wait,
+            BuildFrame,
+            BeforePrepare,
+            Prepare,
+            BeginDraw,
+            BeforeIssue,
+            Issue,
+            BeforePresent,
+            Present,
+            AfterPresent,
+            COUNT,
+        }
+
+        private readonly Stopwatch[] Stopwatches = new Stopwatch[(int)WorkPhases.COUNT];
 
         // Used to detect re-entrant painting (usually means that an
         //  exception was thrown on the render thread)
@@ -149,8 +158,6 @@ namespace Squared.Render {
         private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> AfterPresentQueue = new ConcurrentQueue<Action>();
 
-        private Stopwatch EndDrawStopwatch = new Stopwatch();
-
         private readonly ManualResetEvent PresentBegunSignal = new ManualResetEvent(false),
             PresentEndedSignal = new ManualResetEvent(false);
         private long PresentBegunWhen = 0, PresentEndedWhen = 0;
@@ -170,6 +177,43 @@ namespace Squared.Render {
         public string GraphicsBackendName { get; private set; }
 
         public readonly HashSet<Texture2D> AutoAllocatedTextureResources = new HashSet<Texture2D>(new ReferenceComparer<Texture2D>());
+
+        internal void StartWorkPhase (WorkPhases phase) {
+            var sw = Stopwatches[(int)phase];
+            sw.Restart();
+        }
+
+        internal bool SuspendWorkPhase (WorkPhases phase) {
+            var sw = Stopwatches[(int)phase];
+            if (!sw.IsRunning)
+                return false;
+            sw.Stop();
+            return true;
+        }
+
+        internal void ResumeWorkPhase (WorkPhases phase) {
+            var sw = Stopwatches[(int)phase];
+            sw.Start();
+        }
+
+        internal TimeSpan EndWorkPhase (WorkPhases phase) {
+            var sw = Stopwatches[(int)phase];
+            if (!sw.IsRunning)
+                return default;
+
+            sw.Stop();
+
+#if DEBUG
+            /*
+            for (int i = 0; i < Stopwatches.Length; i++) {
+                if (Stopwatches[i].IsRunning)
+                    throw new Exception($"Stopwatch {(WorkPhases)i} was still running at the end of phase {phase}");
+            }
+            */
+#endif
+
+            return sw.Elapsed;
+        }
 
         /// <summary>
         /// Constructs a render coordinator.
@@ -194,6 +238,8 @@ namespace Squared.Render {
 
             UpdateGraphicsBackend(Device);
             RegisterForDeviceEvents();
+            for (int i = 0; i < Stopwatches.Length; i++)
+                Stopwatches[i] = new Stopwatch();
         }
 
         /// <summary>
@@ -220,6 +266,8 @@ namespace Squared.Render {
             RegisterForDeviceEvents();
 
             deviceService.DeviceCreated += DeviceService_DeviceCreated;
+            for (int i = 0; i < Stopwatches.Length; i++)
+                Stopwatches[i] = new Stopwatch();
         }
 
         private void UpdateGraphicsBackend (GraphicsDevice device) {
@@ -397,11 +445,7 @@ namespace Squared.Render {
             if (IsDisposed)
                 return;
 
-            var working = WorkStopwatch.IsRunning;
-            if (working)
-                WorkStopwatch.Stop();
-
-            WaitStopwatch.Start();
+            StartWorkPhase(WorkPhases.Wait);
             try {
                 DrawQueue.WaitUntilDrained();
             } catch (DeviceLostException) {
@@ -412,10 +456,7 @@ namespace Squared.Render {
                 else
                     throw;
             }
-            WaitStopwatch.Stop();
-
-            if (working)
-                WorkStopwatch.Start();
+            NextFrameTiming.Wait += EndWorkPhase(WorkPhases.Wait);
         }
 
         private bool WaitForActiveSynchronousDraw () {
@@ -587,8 +628,11 @@ namespace Squared.Render {
                 return false;
 
             try {
+                var suspended = SuspendWorkPhase(WorkPhases.BeginDraw);
                 WaitForActiveSynchronousDraw();
                 WaitForActiveDraw();
+                if (suspended)
+                    ResumeWorkPhase(WorkPhases.BeginDraw);
             } catch (Exception exc) {
                 if (ShouldSuppressResetRelatedDrawErrors) {
                     if (
@@ -645,12 +689,9 @@ namespace Squared.Render {
 
             Squared.Threading.Profiling.Superluminal.BeginEventFormat("Prepare Frame", "SRFrame #{0}", frame.Index, color: 0x10CF10);
             try {
-                PrepareStopwatch.Reset();
-                PrepareStopwatch.Start();
                 Manager.ResetBufferGenerators(frame.Index);
                 frame.Prepare(DoThreadedPrepare && threaded);
             } finally {
-                PrepareStopwatch.Stop();
                 if (DoThreadedPrepare)
                     Monitor.Exit(PrepareLock);
                 Squared.Threading.Profiling.Superluminal.EndEvent();
@@ -698,12 +739,13 @@ namespace Squared.Render {
                 lock (_FrameLock)
                     newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
-                var sw = EndDrawStopwatch;
-                sw.Reset();
-                sw.Start();
-
+                StartWorkPhase(WorkPhases.BeforePrepare);
                 RunBeforePrepareHandlers();
+                NextFrameTiming.BeforePrepare = EndWorkPhase(WorkPhases.BeforePrepare);
+
+                StartWorkPhase(WorkPhases.Prepare);
                 PrepareNextFrame(newFrame, true);
+                NextFrameTiming.Prepare = EndWorkPhase(WorkPhases.Prepare);
             
                 if (_Running) {
                     if (DoThreadedIssue) {
@@ -723,9 +765,6 @@ namespace Squared.Render {
                     }
                 }
 
-                if (false && sw.Elapsed.TotalMilliseconds >= 17)
-                    Console.WriteLine("Prepare + draw took {0:00.00}ms", sw.Elapsed.TotalMilliseconds);
-
                 FlushPendingDisposes();
             } finally {
                 Interlocked.Decrement(ref _InsideDrawOperation);
@@ -741,15 +780,20 @@ namespace Squared.Render {
                 //  so that if it's not, we don't waste cpu time/gc pressure on trace messages
                 Tracing.RenderTrace.BeforeFrame();
 
+                StartWorkPhase(WorkPhases.BeforeIssue);
                 RunBeforeIssueHandlers();
+                NextFrameTiming.BeforeIssue = EndWorkPhase(WorkPhases.BeforeIssue);
 
                 if (frame != null) {
                     _DeviceLost |= IsDeviceLost;
 
-                    if (!_DeviceLost)
+                    if (!_DeviceLost) {
+                        StartWorkPhase(WorkPhases.Issue);
                         frame.Draw();
+                    }
                 }
             } finally {
+                NextFrameTiming.Issue = EndWorkPhase(WorkPhases.Issue);
                 if (acquireLock)
                     Monitor.Exit(UseResourceLock);
             }
@@ -758,9 +802,6 @@ namespace Squared.Render {
         }
 
         protected void RunBeforePrepareHandlers () {
-            BeforePrepareStopwatch.Reset();
-            BeforePrepareStopwatch.Start();
-
             while (BeforePrepareQueue.Count > 0) {
                 Action beforePrepare;
                 if (!BeforePrepareQueue.TryDequeue(out beforePrepare))
@@ -768,14 +809,9 @@ namespace Squared.Render {
 
                 beforePrepare();
             }
-
-            BeforePrepareStopwatch.Stop();
         }
 
         protected void RunBeforeIssueHandlers () {
-            BeforeIssueStopwatch.Reset();
-            BeforeIssueStopwatch.Start();
-
             while (BeforeIssueQueue.Count > 0) {
                 Action beforeIssue;
                 if (!BeforeIssueQueue.TryDequeue(out beforeIssue))
@@ -783,14 +819,9 @@ namespace Squared.Render {
 
                 beforeIssue();
             }
-
-            BeforeIssueStopwatch.Stop();
         }
 
         protected void RunBeforePresentHandlers () {
-            BeforePresentStopwatch.Reset();
-            BeforePresentStopwatch.Start();
-
             while (BeforePresentQueue.Count > 0) {
                 Action beforePresent;
                 if (!BeforePresentQueue.TryDequeue(out beforePresent))
@@ -798,14 +829,9 @@ namespace Squared.Render {
 
                 beforePresent();
             }
-
-            BeforePresentStopwatch.Stop();
         }
 
         protected void RunAfterPresentHandlers () {
-            AfterPresentStopwatch.Reset();
-            AfterPresentStopwatch.Start();
-
             NotifyPendingDrawCompletions();
 
             while (AfterPresentQueue.Count > 0) {
@@ -815,8 +841,6 @@ namespace Squared.Render {
 
                 afterPresent();
             }
-
-            AfterPresentStopwatch.Stop();
         }
 
         public bool TryWaitForPresentToStart (int millisecondsTimeout, out bool didPresentEnd, float delayMs = 1) {
@@ -875,14 +899,18 @@ namespace Squared.Render {
                 }
 
                 if (endDraw) {
+                    StartWorkPhase(WorkPhases.BeforePresent);
                     RunBeforePresentHandlers();
+                    NextFrameTiming.BeforePresent = EndWorkPhase(WorkPhases.BeforePresent);
+
                     SetPresentBegun();
                     _SyncEndDraw();
                     SetPresentEnded();
-                }
 
-                if (endDraw)
+                    StartWorkPhase(WorkPhases.AfterPresent);
                     RunAfterPresentHandlers();
+                    NextFrameTiming.AfterPresent = EndWorkPhase(WorkPhases.AfterPresent);
+                }
             } finally {
                 if (frameToDraw != null)
                     frameToDraw.Dispose();
