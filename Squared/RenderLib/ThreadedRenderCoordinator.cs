@@ -134,6 +134,7 @@ namespace Squared.Render {
             BeforePresent,
             Present,
             AfterPresent,
+            SyncEndDraw,
             COUNT,
         }
 
@@ -735,6 +736,8 @@ namespace Squared.Render {
 
             Interlocked.Increment(ref _InsideDrawOperation);
             try {
+                StartWorkPhase(WorkPhases.SyncEndDraw);
+
                 Frame newFrame;
                 lock (_FrameLock)
                     newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
@@ -767,6 +770,7 @@ namespace Squared.Render {
 
                 FlushPendingDisposes();
             } finally {
+                NextFrameTiming.SyncEndDraw = EndWorkPhase(WorkPhases.SyncEndDraw);
                 Interlocked.Decrement(ref _InsideDrawOperation);
             }
         }

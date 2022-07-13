@@ -279,19 +279,21 @@ namespace Squared.Render {
     /// <summary>
     /// Records timing and count information for the most recent frame.
     /// Phases occur in this order:
-    /// Wait: Waiting for the render queue to become empty.
-    /// BeginDraw: Initializing the device for rendering.
-    /// Draw: Running Game.Draw to build the frame.
-    /// Prepare: Prepare the frame and its batches for rendering.
+    /// Wait: Waiting for the render queue to become empty. (Main thread)
+    /// BeginDraw: Initializing the device for rendering. (Main thread)
+    /// Draw: Running Game.Draw to build the frame. (Main thread)
+    /// BeforePrepare (Main thread)
+    /// Prepare: Prepare the frame and its batches for rendering. (Main thread)
+    /// SyncEndDraw: Measures the amount of time the main thread spent on EndDraw tasks, below:
     /// EndDraw: Multiple steps:
-    ///     Run BeforeIssue handlers
-    ///     Issue draw calls to the hardware
-    ///     Run BeforePresent handlers
-    ///     Present the final frame to the screen
-    ///     Run AfterPresent handlers
+    ///     Run BeforeIssue handlers (Render thread)
+    ///     Issue draw calls to the hardware (Render thread)
+    ///     Run BeforePresent handlers (Render thread)
+    ///     Present the final frame to the screen (Render thread)
+    ///     Run AfterPresent handlers (Render thread)
     /// </summary>
     public struct FrameTiming {
-        public TimeSpan Wait, BeginDraw, BuildFrame, BeforePrepare, Prepare, BeforeIssue, Issue, BeforePresent, Present, AfterPresent;
+        public TimeSpan Wait, BeginDraw, BuildFrame, BeforePrepare, Prepare, BeforeIssue, Issue, BeforePresent, Present, AfterPresent, SyncEndDraw;
         public TimeSpan Handlers => BeforePrepare + BeforeIssue + BeforePresent + AfterPresent;
         public TimeSpan EndDraw => BeforeIssue + Issue + BeforePresent + Present + AfterPresent;
         public int BatchCount, CommandCount, PrimitiveCount;
