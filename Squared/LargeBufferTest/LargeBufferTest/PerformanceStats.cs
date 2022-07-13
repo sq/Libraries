@@ -53,9 +53,9 @@ namespace LargeBufferTest {
         public static void Record (MultithreadedGame game) {
             PushSample(WaitSamples, game.PreviousFrameTiming.Wait.TotalMilliseconds);
             PushSample(BeginDrawSamples, game.PreviousFrameTiming.BeginDraw.TotalMilliseconds);
-            PushSample(DrawSamples, game.PreviousFrameTiming.Draw.TotalMilliseconds);
+            PushSample(DrawSamples, game.PreviousFrameTiming.BuildFrame.TotalMilliseconds);
             PushSample(BeforePresentSamples, game.PreviousFrameTiming.BeforePresent.TotalMilliseconds);
-            PushSample(EndDrawSamples, game.PreviousFrameTiming.EndDraw.TotalMilliseconds);
+            PushSample(EndDrawSamples, game.PreviousFrameTiming.SyncEndDraw.TotalMilliseconds);
 
             _CachedString = null;
         }

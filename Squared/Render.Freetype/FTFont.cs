@@ -192,8 +192,10 @@ namespace Squared.Render.Text {
             }
 
             const uint FirstDigit = '0', LastDigit = '9';
+            private bool NeedNormalization = true;
 
             private void ApplyWidthNormalization () {
+                NeedNormalization = false;
                 Color? nullableDefaultColor = null;
                 Color defaultColor;
                 SrGlyph temp;
@@ -208,6 +210,7 @@ namespace Squared.Render.Text {
                     maxWidth = Math.Max(maxWidth, temp.WidthIncludingBearing);
                 }
 
+                maxWidth = (float)Math.Round(maxWidth, 0);
                 if (maxWidth < 0)
                     return;
 
@@ -225,7 +228,7 @@ namespace Squared.Render.Text {
                 }
 
                 if (ch < LowCacheSize) {
-                    if (Font.EqualizeNumberWidths && (ch >= FirstDigit) && (ch <= LastDigit))
+                    if (Font.EqualizeNumberWidths && (ch >= FirstDigit) && (ch <= LastDigit) && NeedNormalization)
                         ApplyWidthNormalization();
 
                     if (LowCache[ch].Texture.IsInitialized) {

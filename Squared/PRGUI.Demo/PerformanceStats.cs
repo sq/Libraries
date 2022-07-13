@@ -80,9 +80,9 @@ namespace Framework {
             PushSample(UpdateSamples, (double)updateElapsedTicks / (double)Time.MillisecondInTicks);
             PushSample(WaitSamples, timing.Wait.TotalMilliseconds);
             PushSample(BeginDrawSamples, timing.BeginDraw.TotalMilliseconds);
-            PushSample(DrawSamples, timing.Draw.TotalMilliseconds);
+            PushSample(DrawSamples, timing.BuildFrame.TotalMilliseconds);
             PushSample(BeforePresentSamples, timing.BeforePresent.TotalMilliseconds);
-            PushSample(EndDrawSamples, timing.EndDraw.TotalMilliseconds);
+            PushSample(EndDrawSamples, timing.SyncEndDraw.TotalMilliseconds);
             LastBatchCount = timing.BatchCount;
             LastPrimitiveCount = timing.PrimitiveCount;
         }
