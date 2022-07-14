@@ -49,6 +49,7 @@ namespace Squared.PRGUI.Controls {
     public class ParameterEditor<T> : EditableText, IScrollableControl, IParameterEditor, IValueControl<T>
         where T : struct
     {
+        public delegate bool TypedTryParseDelegate2 (string value, IFormatProvider provider, out T result);
         public delegate bool TypedTryParseDelegate (string value, out T result);
 
         public const double NormalAccelerationMultiplier = 1.0,
@@ -89,10 +90,15 @@ namespace Squared.PRGUI.Controls {
 
         public static readonly Delegate DefaultTryParseValue;
         public static readonly Comparison<T> DefaultCompare;
+        public static readonly Delegate DefaultFormatter;
 
         private Delegate _TryParseValue;
         private Comparison<T> _Compare;
 
+        public TypedTryParseDelegate2 ValueDecoder2 {
+            get => _TryParseValue as TypedTryParseDelegate2;
+            set => _TryParseValue = value;
+        }
         public TypedTryParseDelegate ValueDecoder {
             get => _TryParseValue as TypedTryParseDelegate;
             set => _TryParseValue = value;
@@ -108,25 +114,34 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private static MethodInfo FindMethod (Type[] searchTypes, string name, BindingFlags flags, Type[] parameterTypes) {
+            foreach (var type in searchTypes) {
+                var result = type.GetMethod(name, flags, null, parameterTypes, null);
+                if (result != null)
+                    return result;
+            }
+            return null;
+        }
+
         static ParameterEditor () {
             var staticFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+            var searchTypes = new[] { typeof(T), typeof(Game.Geometry), typeof(Game.GameExtensionMethods) };
 
-            var tryParse = typeof(T).GetMethod(
-                "TryParse", staticFlags, null, new [] { typeof(string), typeof(T).MakeByRefType() }, null
-            ) ?? typeof(Game.Geometry).GetMethod(
-                "TryParse", staticFlags, null, new [] { typeof(string), typeof(T).MakeByRefType() }, null
-            );
-            if (tryParse != null)
-                DefaultTryParseValue = (TypedTryParseDelegate)Delegate.CreateDelegate(typeof(TypedTryParseDelegate), null, tryParse);            
-            if (DefaultTryParseValue == null)
+            var tryParse3 = FindMethod(searchTypes, "TryParse", staticFlags, new[] { typeof(string), typeof(IFormatProvider), typeof(T).MakeByRefType() });
+            var tryParse = FindMethod(searchTypes, "TryParse", staticFlags, new[] { typeof(string), typeof(T).MakeByRefType() });
+            if (tryParse3 != null)
+                DefaultTryParseValue = (TypedTryParseDelegate2)Delegate.CreateDelegate(typeof(TypedTryParseDelegate2), null, tryParse3);
+            else if (tryParse != null)
+                DefaultTryParseValue = (TypedTryParseDelegate)Delegate.CreateDelegate(typeof(TypedTryParseDelegate), null, tryParse);
+            else 
                 DefaultTryParseValue = ParameterEditor.GetParseDelegate(typeof(T));
+
             if (DefaultTryParseValue == null)
                 DefaultTryParseValue = (TypedTryParseDelegate)AwfulTryParseValue;
 
             if (DefaultCompare == null) {
-                var compareTo = typeof(T).GetMethod("CompareTo", staticFlags, null, new[] { typeof(T), typeof(T) }, null) 
-                    ?? typeof(T).GetMethod("Compare", staticFlags, null, new[] { typeof(T), typeof(T) }, null)
-                    ?? typeof(Squared.Game.GameExtensionMethods).GetMethod("CompareTo", staticFlags, null, new[] { typeof(T), typeof(T) }, null);
+                var compareTo = FindMethod(searchTypes, "CompareTo", staticFlags, new[] { typeof(T), typeof(T) }) ??
+                    FindMethod(searchTypes, "Compare", staticFlags, new[] { typeof(T), typeof(T) });
                 if (compareTo != null)
                     DefaultCompare = (Comparison<T>)Delegate.CreateDelegate(typeof(Comparison<T>), null, compareTo);
             }
@@ -143,10 +158,24 @@ namespace Squared.PRGUI.Controls {
                     }
                 }
             }
+
+            if (DefaultFormatter == null) {
+                var format2 = FindMethod(searchTypes, "ToString", staticFlags, new[] { typeof(T), typeof(IFormatProvider) });
+                if (format2 != null)
+                    DefaultFormatter = (Func<T, IFormatProvider, string>)Delegate.CreateDelegate(typeof(Func<T, IFormatProvider, string>), null, format2);
+            }
+
+            if (DefaultFormatter == null) {
+                var format1 = FindMethod(searchTypes, "ToString", staticFlags, new[] { typeof(T) });
+                if (format1 != null)
+                    DefaultFormatter = (Func<T, string>)Delegate.CreateDelegate(typeof(Func<T, string>), null, format1);
+            }
         }
 
         protected bool TryParseValue (string text, out T result) {
-            if (_TryParseValue is TypedTryParseDelegate ttpd)
+            if (_TryParseValue is TypedTryParseDelegate2 ttpd2)
+                return ttpd2(text, FormatProvider, out result);
+            else if (_TryParseValue is TypedTryParseDelegate ttpd)
                 return ttpd(text, out result);
             else if (_TryParseValue is ParameterEditor.TryParseDelegate tpd) {
                 if (tpd(text, out object temp)) {
@@ -300,7 +329,12 @@ namespace Squared.PRGUI.Controls {
                     nfi.NumberGroupSeparator = "";
                     nfi.NumberDecimalDigits = IntegerOnly ? 0 : DecimalDigits;
                 }
-                return string.Format(FormatProvider, "{0:N}", v);
+                if (DefaultFormatter is Func<T, string> f)
+                    return f(v);
+                else if (DefaultFormatter is Func<T, IFormatProvider, string> fp)
+                    return fp(v, FormatProvider);
+                else
+                    return string.Format(FormatProvider, "{0:N}", v);
             };
             SelectAllOnFocus = true;
             SelectNoneOnFocusLoss = true;

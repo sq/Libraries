@@ -61,15 +61,21 @@ namespace Squared.PRGUI {
             v4 = v.CloneWithNewValues(v.From.ToPLinear(), v.To.ToPLinear());
         }
 
-        public static implicit operator ColorVariable (Tween<Color> c) {
+        public static implicit operator ColorVariable (Tween<Color> t) {
             var result = new ColorVariable();
-            Update(ref result.pLinear, c);
+            Update(ref result.pLinear, t);
             return result;
         }
 
         public static implicit operator ColorVariable (Color c) {
             var pLinear = new pSRGBColor(c).ToPLinear();
             return new ColorVariable { pLinear = pLinear };
+        }
+
+        public static implicit operator ColorVariable (Tween<pSRGBColor> t) {
+            var result = new ColorVariable();
+            Update(ref result.pLinear, t);
+            return result;
         }
 
         public static implicit operator ColorVariable (pSRGBColor c) {

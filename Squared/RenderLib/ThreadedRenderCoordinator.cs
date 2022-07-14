@@ -399,8 +399,8 @@ namespace Squared.Render {
                 IsResetting = true;
 
                 Monitor.Enter(DrawLock);
-                Monitor.Enter(CreateResourceLock);
                 Monitor.Enter(UseResourceLock);
+                Monitor.Enter(CreateResourceLock);
             }
 
             UniformBinding.HandleDeviceReset();
@@ -416,8 +416,8 @@ namespace Squared.Render {
             }
 
             if (IsResetting) {
-                Monitor.Exit(UseResourceLock);
                 Monitor.Exit(CreateResourceLock);
+                Monitor.Exit(UseResourceLock);
                 Monitor.Exit(DrawLock);
 
                 IsResetting = false;
@@ -1194,8 +1194,8 @@ namespace Squared.Render {
         }
 
         private void FlushPendingDisposes () {
-            lock (CreateResourceLock)
-            lock (UseResourceLock) {
+            lock (UseResourceLock)
+            lock (CreateResourceLock) {
                 FlushDisposeList(_PendingDisposes, ref IsDisposingResources);
 
                 Manager.FlushPendingDisposes();

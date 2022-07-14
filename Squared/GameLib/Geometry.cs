@@ -6,6 +6,9 @@ using Microsoft.Xna.Framework;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
+using System.Globalization;
+using System.Threading;
+using System.Text;
 
 namespace Squared.Game {
     public sealed class Vector2Comparer : IEqualityComparer<Vector2> {
@@ -434,7 +437,53 @@ namespace Squared.Game {
             RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase
         );
 
-        public static bool TryParse (string text, out Vector2 result) {
+        static ThreadLocal<StringBuilder> VectorBuilders = new ThreadLocal<StringBuilder>(() => new StringBuilder());
+
+        private static StringBuilder GetVectorBuilder () {
+            var result = VectorBuilders.Value;
+            result.Clear();
+            return result;
+        }
+
+        public static string ToString (this Vector2 v2, IFormatProvider provider) {
+            var sb = GetVectorBuilder();
+            sb.Append('{');
+            sb.Append(v2.X.ToString("N", provider));
+            sb.Append(", ");
+            sb.Append(v2.Y.ToString("N", provider));
+            sb.Append('}');
+            return sb.ToString();
+        }
+
+        public static string ToString (this Vector3 v3, IFormatProvider provider) {
+            var sb = GetVectorBuilder();
+            sb.Append('{');
+            sb.Append(v3.X.ToString("N", provider));
+            sb.Append(", ");
+            sb.Append(v3.Y.ToString("N", provider));
+            sb.Append(", ");
+            sb.Append(v3.Z.ToString("N", provider));
+            sb.Append('}');
+            return sb.ToString();
+        }
+
+        public static string ToString (this Vector4 v4, IFormatProvider provider) {
+            var sb = GetVectorBuilder();
+            sb.Append('{');
+            sb.Append(v4.X.ToString("N", provider));
+            sb.Append(", ");
+            sb.Append(v4.Y.ToString("N", provider));
+            sb.Append(", ");
+            sb.Append(v4.Z.ToString("N", provider));
+            sb.Append(", ");
+            sb.Append(v4.W.ToString("N", provider));
+            sb.Append('}');
+            return sb.ToString();
+        }
+
+        public static bool TryParse (string text, out Vector2 result) => TryParse(text, null, out result);
+
+        public static bool TryParse (string text, IFormatProvider provider, out Vector2 result) {
             result = default;
             var m = VectorRegex.Match(text);
             if (!m.Success)
@@ -442,12 +491,14 @@ namespace Squared.Game {
             Group x = m.Groups["x"], y = m.Groups["y"];
             if (!x.Success || !y.Success)
                 return false;
-            if (!float.TryParse(x.Value, out result.X) || !float.TryParse(y.Value, out result.Y))
+            if (!float.TryParse(x.Value, NumberStyles.Float, provider, out result.X) || !float.TryParse(y.Value, NumberStyles.Float, provider, out result.Y))
                 return false;
             return true;
         }
 
-        public static bool TryParse (string text, out Vector3 result) {
+        public static bool TryParse (string text, out Vector3 result) => TryParse(text, null, out result);
+
+        public static bool TryParse (string text, IFormatProvider provider, out Vector3 result) {
             result = default;
             var m = VectorRegex.Match(text);
             if (!m.Success)
@@ -455,13 +506,15 @@ namespace Squared.Game {
             Group x = m.Groups["x"], y = m.Groups["y"], z = m.Groups["z"];
             if (!x.Success || !y.Success || !z.Success)
                 return false;
-            if (!float.TryParse(x.Value, out result.X) || !float.TryParse(y.Value, out result.Y) ||
-                !float.TryParse(z.Value, out result.Z))
+            if (!float.TryParse(x.Value, NumberStyles.Float, provider, out result.X) || !float.TryParse(y.Value, NumberStyles.Float, provider, out result.Y) ||
+                !float.TryParse(z.Value, NumberStyles.Float, provider, out result.Z))
                 return false;
             return true;
         }
 
-        public static bool TryParse (string text, out Vector4 result) {
+        public static bool TryParse (string text, out Vector4 result) => TryParse(text, null, out result);
+
+        public static bool TryParse (string text, IFormatProvider provider, out Vector4 result) {
             result = default;
             var m = VectorRegex.Match(text);
             if (!m.Success)
@@ -469,8 +522,8 @@ namespace Squared.Game {
             Group x = m.Groups["x"], y = m.Groups["y"], z = m.Groups["z"], w = m.Groups["w"];
             if (!x.Success || !y.Success || !z.Success || !w.Success)
                 return false;
-            if (!float.TryParse(x.Value, out result.X) || !float.TryParse(y.Value, out result.Y) ||
-                !float.TryParse(z.Value, out result.Z) || !float.TryParse(w.Value, out result.W))
+            if (!float.TryParse(x.Value, NumberStyles.Float, provider, out result.X) || !float.TryParse(y.Value, NumberStyles.Float, provider, out result.Y) ||
+                !float.TryParse(z.Value, NumberStyles.Float, provider, out result.Z) || !float.TryParse(w.Value, NumberStyles.Float, provider, out result.W))
                 return false;
             return true;
         }
