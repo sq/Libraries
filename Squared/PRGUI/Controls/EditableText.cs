@@ -67,16 +67,7 @@ namespace Squared.PRGUI.Controls {
         public const int ControlMinimumWidth = 250;
         public bool DisableMinimumSize = false;
 
-        public static readonly Menu ContextMenu = new Menu {
-            Children = {
-                new StaticText { Text = "Undo" },
-                new StaticText { Text = "Cut" },
-                new StaticText { Text = "Copy" },
-                new StaticText { Text = "Paste" },
-                new StaticText { Text = "Delete" },
-                new StaticText { Text = "Select All" }
-            }
-        };
+        public static readonly Menu ContextMenu = MakeDefaultContextMenu();
 
         // FIXME
         public const bool OptimizedClipping = true;
@@ -143,6 +134,19 @@ namespace Squared.PRGUI.Controls {
 
         private HistoryBuffer UndoBuffer = new HistoryBuffer(),
             RedoBuffer = new HistoryBuffer();
+
+        public static Menu MakeDefaultContextMenu () {
+            return new Menu {
+                Children = {
+                    new StaticText { Text = "Undo" },
+                    new StaticText { Text = "Cut" },
+                    new StaticText { Text = "Copy" },
+                    new StaticText { Text = "Paste" },
+                    new StaticText { Text = "Delete" },
+                    new StaticText { Text = "Select All" }
+                }
+            };
+        }
 
         public EditableText ()
             : base () {
@@ -673,66 +677,74 @@ namespace Squared.PRGUI.Controls {
                 return false;
         }
 
-        private void ShowContextMenu (bool forMouseEvent) {
-            ContextMenu.Child<StaticText>(st => st.Text == "Undo").Enabled =
-                UndoBuffer.Count > 0;
+        protected virtual Menu PrepareContextMenu (Menu menu, bool forMouseEvent) {
+            menu.Child<StaticText>(st => st.Text == "Undo").Enabled =
+                (UndoBuffer.Count > 0) && !ReadOnly;
 
-            ContextMenu.Child<StaticText>(st => st.Text == "Cut").Enabled =
-                ContextMenu.Child<StaticText>(st => st.Text == "Copy").Enabled =
-                (Selection.First != Selection.Second) && AllowCopy;
+            var copy = menu.Child<StaticText>(st => st.Text == "Copy");
+            copy.Enabled = (Selection.First != Selection.Second) && AllowCopy;
 
-            ContextMenu.Child<StaticText>(st => st.Text == "Delete").Enabled =
-                Selection.First != Selection.Second;
+            menu.Child<StaticText>(st => st.Text == "Cut").Enabled = 
+                copy.Enabled && !ReadOnly;                
+            menu.Child<StaticText>(st => st.Text == "Delete").Enabled =
+                (Selection.First != Selection.Second) && !ReadOnly;
 
             try {
-                ContextMenu.Child<StaticText>(st => st.Text == "Paste").Enabled =
-                    !string.IsNullOrEmpty(SDL2.SDL.SDL_GetClipboardText());
+                menu.Child<StaticText>(st => st.Text == "Paste").Enabled =
+                    !ReadOnly && !string.IsNullOrEmpty(SDL2.SDL.SDL_GetClipboardText());
             } catch {
             }
 
-            ContextMenu.Child<StaticText>(st => st.Text == "Select All").Enabled =
-                Text.Length > 0;
+            menu.Child<StaticText>(st => st.Text == "Select All").Enabled = (Text.Length > 0);
+
+            return menu;
+        }
+
+        private void ShowContextMenu (bool forMouseEvent) {
+            var menu = PrepareContextMenu(ContextMenu, forMouseEvent);
 
             Future<Control> menuResult;
             if (!forMouseEvent) {
                 if (LastSelectionRect.HasValue) {
                     var myRect = GetRect();
                     LastSelectionRect.Value.Intersection(in myRect, out RectF intersected);
-                    menuResult = ContextMenu.Show(Context, intersected);
+                    menuResult = menu.Show(Context, intersected);
                 } else
-                    menuResult = ContextMenu.Show(Context, this);
+                    menuResult = menu.Show(Context, this);
             } else
-                menuResult = ContextMenu.Show(Context);
+                menuResult = menu.Show(Context);
 
-            menuResult.RegisterOnComplete((_) => {
-                if (menuResult.Result == null)
+            menuResult.RegisterOnResolved2(HandleContextMenuResult);
+        }
+
+        protected virtual void HandleContextMenuResult (Future<Control> menuResult) {
+            if (menuResult.Failed || (menuResult.Result == null))
+                return;
+
+            var item = menuResult.Result as StaticText;
+            switch (item?.Text.ToString()) {
+                case "Undo":
+                    TryUndo();
                     return;
-
-                var item = menuResult.Result as StaticText;
-                switch (item?.Text.ToString()) {
-                    case "Undo":
-                        TryUndo();
-                        return;
-                    case "Redo":
-                        TryRedo();
-                        return;
-                    case "Cut":
-                        CutSelection();
-                        return;
-                    case "Copy":
-                        CopySelection();
-                        return;
-                    case "Delete":
-                        Erase(true);
-                        return;
-                    case "Paste":
-                        Paste();
-                        return;
-                    case "Select All":
-                        SelectAll();
-                        return;
-                }
-            });
+                case "Redo":
+                    TryRedo();
+                    return;
+                case "Cut":
+                    CutSelection();
+                    return;
+                case "Copy":
+                    CopySelection();
+                    return;
+                case "Delete":
+                    Erase(true);
+                    return;
+                case "Paste":
+                    Paste();
+                    return;
+                case "Select All":
+                    SelectAll();
+                    return;
+            }
         }
 
         protected override bool OnEvent<T> (string name, T args) {

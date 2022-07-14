@@ -440,14 +440,20 @@ namespace Squared.Util {
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                SetItem(index, in value);
+                SetItem(index, ref value);
             }
         }
 
-        public void SetItem (int index, in T value) {
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetItem (int index, T value) {
+            SetItem(index, ref value);
+        }
+
+        public void SetItem (int index, ref T value) {
             var items = _Items;
             if (items != null) {
-                items.DangerousSetItem(index, in value);
+                items.DangerousSetItem(index, ref value);
                 return;
             }
 
@@ -486,7 +492,7 @@ namespace Squared.Util {
 
             var count = list._Count;
             list._Count = count + 1;
-            list.SetItem(count, in item);
+            list.SetItem(count, ref item);
         }
 
         [TargetedPatchingOptOut("")]

@@ -457,7 +457,16 @@ namespace Squared.Util {
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void DangerousSetItem (int index, in T newValue) {
+        public void DangerousSetItem (int index, T newValue) {
+            if ((index < 0) || (index >= _Count))
+                throw new IndexOutOfRangeException();
+
+            _Items[_BufferOffset + index] = newValue;
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void DangerousSetItem (int index, ref T newValue) {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();
 

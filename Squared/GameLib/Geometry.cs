@@ -485,6 +485,11 @@ namespace Squared.Game {
 
         public static bool TryParse (string text, IFormatProvider provider, out Vector2 result) {
             result = default;
+            if (float.TryParse(text, NumberStyles.Float, provider, out float v)) {
+                result = new Vector2(v);
+                return true;
+            }
+
             var m = VectorRegex.Match(text);
             if (!m.Success)
                 return false;
@@ -500,6 +505,11 @@ namespace Squared.Game {
 
         public static bool TryParse (string text, IFormatProvider provider, out Vector3 result) {
             result = default;
+            if (float.TryParse(text, NumberStyles.Float, provider, out float v)) {
+                result = new Vector3(v);
+                return true;
+            }
+
             var m = VectorRegex.Match(text);
             if (!m.Success)
                 return false;
@@ -516,6 +526,11 @@ namespace Squared.Game {
 
         public static bool TryParse (string text, IFormatProvider provider, out Vector4 result) {
             result = default;
+            if (float.TryParse(text, NumberStyles.Float, provider, out float v)) {
+                result = new Vector4(v);
+                return true;
+            }
+
             var m = VectorRegex.Match(text);
             if (!m.Success)
                 return false;

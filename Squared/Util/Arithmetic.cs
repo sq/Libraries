@@ -157,7 +157,6 @@ namespace Squared.Util {
             { typeof(Double), 4 }
         };
 
-#if WINDOWS
         internal static Dictionary<ExpressionType, Operators> _ExpressionTypeToOperator = new Dictionary<ExpressionType, Operators> {
             { ExpressionType.Add, Operators.Add },
             { ExpressionType.Subtract, Operators.Subtract },
@@ -168,7 +167,6 @@ namespace Squared.Util {
             { ExpressionType.Equal, Operators.Equality },
             { ExpressionType.NotEqual, Operators.Inequality }
         };
-#endif
 
         private struct OperatorKey {
             public Operators Operator;
@@ -284,6 +282,14 @@ namespace Squared.Util {
             bsa[1] = typeof(U);
             return GetOperatorDelegate<BinaryOperatorMethod<T, U>>(op, bsa, optional: optional);
         }
+
+        public static object InvokeOperatorSlow (Operators op, object lhs, object rhs) {
+            // TODO: Optimize this. It's really for editors so the speed probably doesn't matter much though...
+            var gm = typeof(Arithmetic).GetMethod("InvokeOperator2", BindingFlags.NonPublic | BindingFlags.Static).MakeGenericMethod(lhs.GetType(), rhs.GetType());
+            return gm.Invoke(null, new[] { op, lhs, rhs });
+        }
+
+        private static T InvokeOperator2<T, U> (Operators op, T lhs, U rhs) => InvokeOperator(op, lhs, rhs);
 
         public static T InvokeOperator<T> (Operators op, T value) {
             var method = GetOperator<T>(op);
@@ -608,7 +614,6 @@ namespace Squared.Util {
             max = Math.Max(a, Math.Max(b, Math.Max(c, d)));
         }
 
-#if WINDOWS
         #region CompileExpression<T> overloads
 
         public static void CompileExpression<T> (Expression<Func<double>> expression, out T result)
@@ -945,7 +950,6 @@ namespace Squared.Util {
         }
 
         #endregion
-#endif
     }
 
     public static class FastMath {

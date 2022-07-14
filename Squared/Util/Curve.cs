@@ -262,6 +262,22 @@ namespace Squared.Util.Containers {
             return true;
         }
 
+        public bool TryGetItemAtIndex (int index, out float position, out TValue value, out TData data) {
+            var max = _Items.Count - 1;
+            if ((max < 0) || (index < 0) || (index > max)) {
+                position = float.NaN;
+                value = default;
+                data = default;
+                return false;
+            }
+
+            ref var item = ref _Items.DangerousItem(index);
+            position = item.Position;
+            value = item.Value;
+            data = item.Data;
+            return true;
+        }
+
         public ref readonly TData GetDataAtIndex (int index) {
             var max = _Items.Count - 1;
             if (max < 0)
@@ -617,7 +633,7 @@ namespace Squared.Util.Containers {
 
                 var tangent = _Sub(next.Value, previous.Value);
                 pt.Data.Velocity = _Mul(tangent, tensionFactor);
-                _Items.DangerousSetItem(i, in pt);
+                _Items.DangerousSetItem(i, ref pt);
             }
         }
 

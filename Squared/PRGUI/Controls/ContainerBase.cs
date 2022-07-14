@@ -237,7 +237,8 @@ namespace Squared.PRGUI.Controls {
             DynamicContentIsInvalid = true;
         }
 
-        private bool IsGeneratingDynamicContent = false;
+        private bool IsGeneratingDynamicContent = false,
+            IsNewInstanceForDynamicContent = true;
 
         internal void EnsureDynamicBuilderInitialized (out ContainerBuilder result) {
             if (
@@ -248,7 +249,8 @@ namespace Squared.PRGUI.Controls {
                 DynamicBuilder.CurrentRemovedControls.EnsureList();
                 result = DynamicBuilder;
             } else {
-                result = DynamicBuilder = new ContainerBuilder(this);
+                result = DynamicBuilder = new ContainerBuilder(this, IsNewInstanceForDynamicContent);
+                IsNewInstanceForDynamicContent = false;
             }
         }
 
@@ -267,8 +269,9 @@ namespace Squared.PRGUI.Controls {
             IsGeneratingDynamicContent = true;
             try {
                 if (DynamicBuilder.Container != this)
-                    DynamicBuilder = new ContainerBuilder(this);
-                DynamicBuilder.Reset();
+                    DynamicBuilder = new ContainerBuilder(this, true);
+                else
+                    DynamicBuilder.Reset();
                 DynamicContents(ref DynamicBuilder);
                 DynamicBuilder.Finish();
                 // FIXME: Is this right?

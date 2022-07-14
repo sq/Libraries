@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Decorations;
@@ -16,7 +17,19 @@ using Squared.Util.Event;
 namespace Squared.PRGUI.Controls {
     public delegate void TypedContainerContentsDelegate<TParameters> (ref ContainerBuilder builder, TParameters parameters);
 
-    public class ModalDialog<TParameters, TResult> : Window, IModal, IAcceleratorSource {
+    public interface IModalDialog : IModal {
+        Control AcceptControl { get; set; }
+        Control CancelControl { get; set; }
+        object AcceptResult { get; set; }
+        object CancelResult { get; set; }
+    }
+
+    public interface IModalDialog<TResult> : IModalDialog {
+        new TResult AcceptResult { get; set; }
+        new TResult CancelResult { get; set; }
+    }
+
+    public class ModalDialog<TParameters, TResult> : Window, IModalDialog<TResult>, IAcceleratorSource {
         public event Action<IModal> Shown, Closed;
         public event Func<IModal, bool> Accepted, Cancelled;
 
@@ -53,19 +66,23 @@ namespace Squared.PRGUI.Controls {
         private TResult _AcceptResult, _CancelResult;
         // private bool HasAcceptResult, HasCancelResult;
 
+        object IModalDialog.AcceptResult {
+            get => _AcceptResult;
+            set => _AcceptResult = (TResult)value;
+        }
+
+        object IModalDialog.CancelResult {
+            get => _CancelResult;
+            set => _CancelResult = (TResult)value;
+        }
+
         public TResult AcceptResult {
             get => _AcceptResult;
-            set {
-                _AcceptResult = value;
-                // HasAcceptResult = true;
-            }
+            set => _AcceptResult = value;
         }
         public TResult CancelResult {
             get => _CancelResult;
-            set {
-                _CancelResult = value;
-                // HasCancelResult = true;
-            }
+            set => _CancelResult = value;
         }
 
         public float BackgroundFadeLevel { get; set; } = 1.0f;
@@ -123,12 +140,19 @@ namespace Squared.PRGUI.Controls {
             this.Show(context);
         }
 
-        public Future<TResult> Show (UIContext context, Control focusDonor = null) {
+        public Future<TResult> Show (UIContext context, Control focusDonor = null, Vector2? donorAlignment = null) {
             Context = context;
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
             InvalidateLayout();
             // Force realignment
-            Alignment = Alignment;
+            if (donorAlignment.HasValue) {
+                AlignmentAnchor = focusDonor;
+                Alignment = donorAlignment.Value;
+                // HACK
+                AlignmentAnchorPoint = Vector2.One - donorAlignment.Value;
+            } else {
+                Alignment = Alignment;
+            }
             IsFadingOut = false;
             Visible = true;
             Intangible = false;

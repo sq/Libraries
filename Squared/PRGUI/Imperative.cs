@@ -17,6 +17,7 @@ namespace Squared.PRGUI.Imperative {
     public delegate void ContainerContentsDelegate (ref ContainerBuilder builder);
     
     public struct ContainerBuilder {
+        public bool IsNewInstance { get; private set; }
         public UIContext Context { get; internal set; }
         public IControlContainer Container { get; private set; }
         public ControlCollection Children { get; private set; }
@@ -30,7 +31,7 @@ namespace Squared.PRGUI.Imperative {
 
         private Control WaitingForFocusBeneficiary;
 
-        internal ContainerBuilder (UIContext context, Control control) {
+        internal ContainerBuilder (UIContext context, Control control, bool isNewInstance) {
             if (control == null)
                 throw new ArgumentNullException("control");
             if (!(control is IControlContainer))
@@ -46,15 +47,17 @@ namespace Squared.PRGUI.Imperative {
             ExtraLayoutFlags = default(ControlFlags);
             OverrideLayoutFlags = null;
             WaitingForFocusBeneficiary = null;
+            IsNewInstance = isNewInstance;
         }
 
-        public ContainerBuilder (Control container)
-            : this (container.Context, container) {
+        public ContainerBuilder (Control container, bool isNewInstance = true)
+            : this (container.Context, container, isNewInstance) {
         }
 
         public void Reset () {
             WaitingForFocusBeneficiary = null;
             NextIndex = Container?.ChildrenToSkipWhenBuilding ?? 0;
+            IsNewInstance = false;
         }
 
         public void Finish () {
@@ -245,11 +248,11 @@ namespace Squared.PRGUI.Imperative {
             if (instance == null) {
                 instance = new TControl();
                 instance.Context = Control.Context;
-                result = new ContainerBuilder(instance);
+                result = new ContainerBuilder(instance, true);
             } else if ((container = (instance as ContainerBase)) != null) {
                 container.EnsureDynamicBuilderInitialized(out result);
             } else {
-                result = new ContainerBuilder(instance);
+                result = new ContainerBuilder(instance, false);
             }
 
             ApplyLayoutFlags(instance, layoutFlags);
@@ -348,7 +351,7 @@ namespace Squared.PRGUI.Imperative {
             var cast = Control as IControlContainer;
             if (cast == null)
                 throw new InvalidCastException("Control is not a container");
-            return new ContainerBuilder(Control);
+            return new ContainerBuilder(Control, false);
         }
 
         public bool GetEvent (string eventName) {
