@@ -207,23 +207,32 @@ namespace Squared.Util {
                     return (TDelegate)(object)result;
 
             Type delegateType = typeof(TDelegate);
+            var name = _OperatorInfo[(int)op].MethodName;
+            var methodInfo = typeof(PrimitiveOperators).GetMethod(name, argumentTypes) ??
+                argumentTypes[0].GetMethod(name, argumentTypes);
+            if ((methodInfo == null) && (argumentTypes.Length > 1))
+                methodInfo = argumentTypes[1].GetMethod(name, argumentTypes);
 
-            DynamicMethod dm = new DynamicMethod(
-                _OperatorInfo[(int)op].MethodName,
-                argumentTypes[0],
-                argumentTypes,
-                true
-            );
+            if (methodInfo != null) {
+                result = Delegate.CreateDelegate(typeof(TDelegate), methodInfo);
+            } else {
+                DynamicMethod dm = new DynamicMethod(
+                    name,
+                    argumentTypes[0],
+                    argumentTypes,
+                    true
+                );
 
-            ILGenerator ilGenerator = dm.GetILGenerator();
-            var exc = GenerateArithmeticIL(ilGenerator, argumentTypes, op);
-            if (exc != null) {
-                if (optional)
-                    return null;
-                else
-                    throw exc;
+                ILGenerator ilGenerator = dm.GetILGenerator();
+                var exc = GenerateArithmeticIL(ilGenerator, argumentTypes, op);
+                if (exc != null) {
+                    if (optional)
+                        return null;
+                    else
+                        throw exc;
+                }
+                result = dm.CreateDelegate(delegateType);
             }
-            result = dm.CreateDelegate(delegateType);
 
             lock (CachedDelegates)
                 CachedDelegates[key] = result;
@@ -233,14 +242,11 @@ namespace Squared.Util {
 #else
         private static TDelegate GetOperatorDelegate<TDelegate> (Operators op, Type[] argumentTypes, bool optional = false)
             where TDelegate : class {
-            var name = _OperatorInfo[op].MethodName;
-            var methodInfo = argumentTypes[0].GetMethod(name, argumentTypes);
-
+            var name = _OperatorInfo[(int)op].MethodName;
+            var methodInfo = typeof(PrimitiveOperators).GetMethod(name, argumentTypes) ??
+                argumentTypes[0].GetMethod(name, argumentTypes);
             if ((methodInfo == null) && (argumentTypes.Length > 1))
                 methodInfo = argumentTypes[1].GetMethod(name, argumentTypes);
-
-            if (methodInfo == null)
-                methodInfo = typeof(PrimitiveOperators).GetMethod(name, argumentTypes);
 
             if (methodInfo == null) {
                 if (optional)

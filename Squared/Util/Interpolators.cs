@@ -38,7 +38,8 @@ namespace Squared.Util {
 
         private static bool FindPrecompiledExpression<TDelegate> (out TDelegate result, Type type, string name, Type[] signature)
             where TDelegate : Delegate {
-            var method = type.GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static, null, signature, null);
+            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+            var method = type.GetMethod(name, flags, null, signature, null);
             if (method != null) {
                 result = (TDelegate)Delegate.CreateDelegate(typeof(TDelegate), method, false);
                 if (result == null)
@@ -52,13 +53,18 @@ namespace Squared.Util {
 
         private static void FindPrecompiledExpressions (Type type) {
             var basicSignature = new[] { typeof(T), typeof(T), typeof(float) };
-            if (_Linear == null) {
+            if (_Linear == null)
                 if (!FindPrecompiledExpression(out _Linear, type, "Lerp", basicSignature))
                     FindPrecompiledExpression(out _Linear, type, "Linear", basicSignature);
-            }
-            if (_Cosine == null) {
+
+            if (_Cosine == null)
                 FindPrecompiledExpression(out _Cosine, type, "Cosine", basicSignature);
-            }
+
+            if (_CubicP == null)
+                FindPrecompiledExpression(out _CubicP, type, "CubicP", typeof(CubicPFn).GetMethod("Invoke").GetParameters().Select(p => p.ParameterType).ToArray());
+
+            if (_CubicR == null)
+                FindPrecompiledExpression(out _CubicR, type, "CubicR", typeof(CubicRFn).GetMethod("Invoke").GetParameters().Select(p => p.ParameterType).ToArray());
         }
 
         private static void CompileFallbackExpressions () {
@@ -131,7 +137,7 @@ namespace Squared.Util {
         }
 
         private static void CompileNativeExpressions () {
-#if !DYNAMICMETHOD
+#if !NODYNAMICMETHOD
             if (_Linear == null)
                 Arithmetic.CompileExpression(
                     (a, b, x) =>
@@ -551,10 +557,20 @@ namespace Squared.Util {
         public static float Cosine (float a, float b, float t) =>
             a + ((b - a) * ((1.0f - (float)Math.Cos(t * Math.PI)) * 0.5f));
 
+        public static float CubicP (float a, float b, float c, float d) => (d - c) - (a - b);
+
+        public static float CubicR (float a, float b, float c, float d, float p, float x, float x2, float x3) => 
+            (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b;
+
         public static double Linear (double a, double b, float t) =>
             a + ((b - a) * t);
 
         public static double Cosine (double a, double b, float t) =>
-            a + ((b - a) * ((1.0f - (float)Math.Cos(t * Math.PI)) * 0.5f));
+            a + ((b - a) * ((1.0 - Math.Cos(t * Math.PI)) * 0.5));
+
+        public static double CubicP (double a, double b, double c, double d) => (d - c) - (a - b);
+
+        public static double CubicR (double a, double b, double c, double d, double p, float x, float x2, float x3) => 
+            (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b;
     }
 }

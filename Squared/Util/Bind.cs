@@ -152,9 +152,22 @@ namespace Squared.Util.Bind {
             }
         }
 
+        // FIXME: I haven't tested this
+        class ReflectiveFieldThunk<TSelf, TValue> {
+            public FieldInfo Field;
+
+            public ReflectiveFieldThunk (FieldInfo field) {
+                Field = field;
+            }
+
+            public TValue GetValue (TSelf target) => (TValue)Field.GetValue(target);
+            public void SetValue (TSelf target, TValue value) => Field.SetValue(target, value);
+        }
+
         public static TDelegate MakeFieldSetter<TDelegate> (object target, FieldInfo field)
             where TDelegate : class {
 
+#if !NODYNAMICMETHOD
             DynamicMethod m = new DynamicMethod(
                 String.Format("{0}.set{1}", field.DeclaringType.Name, field.Name), typeof(void),
                 new Type[] { field.DeclaringType, field.FieldType }, field.DeclaringType, true
@@ -170,11 +183,17 @@ namespace Squared.Util.Bind {
                 return m.CreateDelegate(typeof(TDelegate), target) as TDelegate;
             else
                 return m.CreateDelegate(typeof(TDelegate)) as TDelegate;
+#else
+            var tThunk = typeof(ReflectiveFieldThunk<,>).MakeGenericType(field.DeclaringType, field.FieldType);
+            var thunk = Activator.CreateInstance(tThunk, field);
+            return (TDelegate)(object)Delegate.CreateDelegate(typeof(TDelegate), thunk, tThunk.GetMethod("SetValue"));
+#endif
         }
 
         public static TDelegate MakeFieldGetter<TDelegate> (object target, FieldInfo field)
             where TDelegate : class {
 
+#if !NODYNAMICMETHOD
             DynamicMethod m = new DynamicMethod(
                 String.Format("{0}.get{1}", field.DeclaringType.Name, field.Name), field.FieldType,
                 new Type[] { field.DeclaringType }, field.DeclaringType, true
@@ -189,6 +208,11 @@ namespace Squared.Util.Bind {
                 return m.CreateDelegate(typeof(TDelegate), target) as TDelegate;
             else
                 return m.CreateDelegate(typeof(TDelegate)) as TDelegate;
+#else
+            var tThunk = typeof(ReflectiveFieldThunk<,>).MakeGenericType(field.DeclaringType, field.FieldType);
+            var thunk = Activator.CreateInstance(tThunk, field);
+            return (TDelegate)(object)Delegate.CreateDelegate(typeof(TDelegate), thunk, tThunk.GetMethod("GetValue"));
+#endif
         }
     }
 
