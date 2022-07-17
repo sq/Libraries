@@ -424,7 +424,8 @@ namespace Squared.Render {
                     onProgress(i / (float)materials.Count);
                 Interlocked.Increment(ref remaining);
                 coordinator.BeforeIssue(() => {
-                    m.Preload(coordinator, dm, tempIb);
+                    lock (coordinator.UseResourceLock)
+                        m.Preload(coordinator, dm, tempIb);
                     Interlocked.Decrement(ref remaining);
                 });
                 if ((i % speed) == 0)
