@@ -154,14 +154,14 @@ namespace Squared.Threading {
         void RegisterHandlers (OnFutureResolved completeHandler, OnFutureResolved disposeHandler);
         void RegisterHandlers (OnFutureResolvedWithData completeHandler, OnFutureResolvedWithData disposeHandler, object userData);
         void RegisterOnResolved (Action handler);
+        void RegisterOnResolved (OnFutureResolved handler);
         void RegisterOnResolved (OnFutureResolvedWithData handler, object userData);
         void RegisterOnComplete (Action handler);
+        void RegisterOnComplete (OnFutureResolved handler);
         void RegisterOnComplete (OnFutureResolvedWithData handler, object userData);
         void RegisterOnDispose (Action handler);
-        void RegisterOnDispose (OnFutureResolvedWithData handler, object userData);
-        void RegisterOnResolved (OnFutureResolved handler);
-        void RegisterOnComplete (OnFutureResolved handler);
         void RegisterOnDispose (OnFutureResolved handler);
+        void RegisterOnDispose (OnFutureResolvedWithData handler, object userData);
         void RegisterOnErrorCheck (Action handler);
         bool CopyFrom (IFuture source);
     }
