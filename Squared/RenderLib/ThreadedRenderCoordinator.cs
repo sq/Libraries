@@ -776,9 +776,6 @@ namespace Squared.Render {
         }
 
         private void RenderFrame (Frame frame, bool acquireLock) {
-            if (acquireLock)
-                Monitor.Enter(UseResourceLock);
-
             try {
                 // In D3D builds, this checks to see whether PIX is attached right now
                 //  so that if it's not, we don't waste cpu time/gc pressure on trace messages
@@ -787,6 +784,9 @@ namespace Squared.Render {
                 StartWorkPhase(WorkPhases.BeforeIssue);
                 RunBeforeIssueHandlers();
                 NextFrameTiming.BeforeIssue = EndWorkPhase(WorkPhases.BeforeIssue);
+
+                if (acquireLock)
+                    Monitor.Enter(UseResourceLock);
 
                 if (frame != null) {
                     _DeviceLost |= IsDeviceLost;

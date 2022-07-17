@@ -65,6 +65,23 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        new public bool ScaleToFit {
+            get => base.ScaleToFit;
+            set => base.ScaleToFit = value;
+        }
+        new public bool ScaleToFitX {
+            get => base.ScaleToFitX;
+            set => base.ScaleToFitX = value;
+        }
+        new public bool ScaleToFitY {
+            get => base.ScaleToFitY;
+            set => base.ScaleToFitY = value;
+        }
+        new public float? MinScale {
+            get => base.MinScale;
+            set => base.MinScale = value;
+        }
+
         public bool HasSelectedItem => Manager.HasSelectedItem;
 
         public void SetSelectedItem (T value, bool forUserInput) {

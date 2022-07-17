@@ -367,10 +367,23 @@ namespace Squared.Util {
             }
         }
 
+        internal static Dictionary<Easing, Interpolator<T>> EasedCache = 
+            new Dictionary<Easing, Interpolator<T>>(new ReferenceComparer<Easing>());
+
+        public static Interpolator<T> Eased (Easing easing) {
+            lock (EasedCache) {
+                if (!EasedCache.TryGetValue(easing, out var result)) {
+                    result = easing.Get;
+                    EasedCache[easing] = result;
+                }
+                return result;
+            }
+        }
+
         public static BoundInterpolator<T, U> Eased<U> (Easing easing) {
             var cache = EasedInterpolator<U>.Cache;
             lock (cache) {
-                if (!cache.TryGetValue(easing, out EasedInterpolator<U> result)) {
+                if (!cache.TryGetValue(easing, out var result)) {
                     result = new EasedInterpolator<U>(easing);
                     cache[easing] = result;
                 }
@@ -468,14 +481,21 @@ namespace Squared.Util {
             Type myType = typeof(Interpolators<T>);
             Type resultType = typeof(Interpolator<T>);
 
-            var mi = myType.GetMethod(name, types);
-            if (mi == null)
-                mi = myType.GetMethod("Null", types);
-            result = Delegate.CreateDelegate(resultType, null, mi) as Interpolator<T>;
+            var mi = myType.GetMethod(name, BindingFlags.Static | BindingFlags.IgnoreCase | BindingFlags.Public, null, types, null);
+            if (mi != null) {
+                result = Delegate.CreateDelegate(resultType, null, mi) as Interpolator<T>;
+            } else {
+                var tname = $"{typeof(Ease).FullName}".Replace("+Ease[[", $"+Ease+{name}[[");
+                var possibleType = typeof(Ease).Assembly.GetType(tname, false, true);
+                if (possibleType != null)
+                    result = Eased((Easing)Activator.CreateInstance(possibleType));
+            }
 
             lock (Cache)
                 Cache[name] = result;
 
+            if (result == null)
+                throw new ArgumentOutOfRangeException(nameof(name), $"No interpolator named '{name}'");
             return result;
         }
 
@@ -514,14 +534,21 @@ namespace Squared.Util {
                 break;
             }
 
-            if (mi == null)
-                return GetBoundByName<U>("Null");
-
-            var mii = mi.MakeGenericMethod(typeof(U));
-            result = Delegate.CreateDelegate(resultType, null, mii) as BoundInterpolator<T, U>;
+            if (mi != null) {
+                var mii = mi.MakeGenericMethod(typeof(U));
+                result = Delegate.CreateDelegate(resultType, null, mii) as BoundInterpolator<T, U>;
+            } else {
+                var tname = $"{typeof(Ease).FullName}".Replace("+Ease[[", $"+Ease+{name}[[");
+                var possibleType = typeof(Ease).Assembly.GetType(tname, false, true);
+                if (possibleType != null)
+                    result = Eased<U>((Easing)Activator.CreateInstance(possibleType));
+            }
 
             lock (CacheContainer<U>.Cache)
                 CacheContainer<U>.Cache[name] = result;
+
+            if (result == null)
+                throw new ArgumentOutOfRangeException(nameof(name), $"No interpolator named '{name}'");
 
             return result;
         }

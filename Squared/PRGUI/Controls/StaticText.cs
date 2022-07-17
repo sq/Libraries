@@ -92,7 +92,7 @@ namespace Squared.PRGUI.Controls {
 
         public float VerticalAlignment = 0.5f;
 
-        public float? MinScale = null;
+        protected float? MinScale = null;
 
         private int _CachedTextVersion, _CachedTextLength;
 
@@ -921,6 +921,10 @@ namespace Squared.PRGUI.Controls {
         new public RasterizePasses Pass {
             get => base.Pass;
             set => base.Pass = value;
+        }
+        new public float? MinScale {
+            get => base.MinScale;
+            set => base.MinScale = value;
         }
 
         public RichTextConfiguration RichTextConfiguration { get; set; }

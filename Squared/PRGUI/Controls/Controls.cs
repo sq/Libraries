@@ -192,17 +192,11 @@ namespace Squared.PRGUI.Controls {
             if (value == _Checked)
                 return;
 
-            if (value == false) {
-                _Checked = false;
-                FireEvent(UIEvents.CheckedChanged);
-                if (forUserInput)
-                    FireEvent(UIEvents.ValueChangedByUser);
-            } else {
-                _Checked = true;
-                FireEvent(UIEvents.CheckedChanged);
-                if (forUserInput)
-                    FireEvent(UIEvents.ValueChangedByUser);
-            }
+            _Checked = value;
+            if (!FireEvent(UIEvents.CheckedChanged))
+                FireEvent(UIEvents.ValueChanged);
+            if (forUserInput)
+                FireEvent(UIEvents.ValueChangedByUser);
         }
 
         public bool Checked {
@@ -282,17 +276,17 @@ namespace Squared.PRGUI.Controls {
             if (value == false) {
                 Unsubscribe();
                 _Checked = false;
-                FireEvent(UIEvents.CheckedChanged);
-                if (forUserInput)
-                    FireEvent(UIEvents.ValueChangedByUser);
             } else {
                 Subscribe();
                 _Checked = true;
-                FireEvent(UIEvents.RadioButtonSelected, GroupId);
-                FireEvent(UIEvents.CheckedChanged);
-                if (forUserInput)
-                    FireEvent(UIEvents.ValueChangedByUser);
             }
+
+            if (value)
+                FireEvent(UIEvents.RadioButtonSelected, GroupId);
+            if (!FireEvent(UIEvents.CheckedChanged))
+                FireEvent(UIEvents.ValueChanged);
+            if (forUserInput)
+                FireEvent(UIEvents.ValueChangedByUser);
         }
 
         public bool Checked {

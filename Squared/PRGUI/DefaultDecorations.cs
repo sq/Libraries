@@ -397,7 +397,7 @@ namespace Squared.PRGUI {
 
             Dropdown = new DelegateDecorator {
                 Margins = new Margins(GlobalDefaultMargin),
-                Padding = new Margins(8, 8),
+                Padding = new Margins(6, 8),
                 UnscaledPadding = new Margins(4, 0),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
