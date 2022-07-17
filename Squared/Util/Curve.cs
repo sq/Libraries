@@ -15,6 +15,7 @@ namespace Squared.Util.Containers {
         float End { get; }
         bool FindNearestPoint (float position, out int resultIndex, out float resultPosition);
         int GetLowerIndexForPosition (float position);
+        void Clear ();
         bool CreateNewPointAtPosition (float position, float epsilon);
         bool TryGetPositionAtIndex (int index, out float result);
         bool GetValueAtPosition (float position, out object result);

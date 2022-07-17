@@ -221,6 +221,7 @@ namespace Squared.Render.RasterShape {
 
         ScreenSpace = 128,
         ScreenSpaceLocal = ScreenSpace | 64,
+        AfterOutline = 1024,
     }
 
     public struct RasterTextureSettings {

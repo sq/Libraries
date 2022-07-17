@@ -1073,7 +1073,7 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return top + (bottom * (1 - top.a));
 }
 
-float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool isSimple, bool enableShadow, float2 vpos) {
+float4 compositeFirstStep (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool isSimple, bool enableShadow, float2 vpos) {
     float4 result = fillColor * fillAlpha;
     if (enableShadow) {
         // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
@@ -1081,8 +1081,11 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
         float aa = ShadowInside ? shadowAlpha : 1, ab = ShadowInside ? 1 : shadowAlpha;
         result = over(ca, aa, cb, ab);
     }
-    result = over(outlineColor, outlineAlpha, result, 1);
+    return over(outlineColor, outlineAlpha, result, 1);
+}
 
+float4 compositeSecondStep (float4 pLinear, bool isSimple, float2 vpos) {
+    float4 result = pLinear;
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
     //  for alpha gradients because the A we premultiply by does not match the A the GPU selected
     // It's also important to do dithering and sRGB conversion on a result that is not premultiplied
@@ -1100,6 +1103,26 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
     return ApplyDither4(result, vpos);
 }
 
+float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool isSimple, bool enableShadow, float2 vpos) {
+    return compositeSecondStep(compositeFirstStep(fillColor, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, isSimple, enableShadow, vpos), isSimple, vpos);
+}
+
+float4 texComposite (float4 fill, float fillAlpha, float4 texColor, float mode) {
+    // Under
+    if (mode > 1.5) {
+        fill = over(fill, fillAlpha, texColor, fillAlpha);
+        fillAlpha = 1;
+    // Over
+    } else if (mode > 0.5) {
+        fill = over(texColor, fillAlpha, fill, fillAlpha);
+        fillAlpha = 1;
+    // Multiply
+    } else
+        fill *= texColor;
+
+    return fill;
+}
+
 float4 texturedShapeCommon (
     in float2 worldPosition, in float4 texRgn,
     in float4 ab, in float4 cd,
@@ -1112,6 +1135,10 @@ float4 texturedShapeCommon (
     
     sizePx = max(abs(sizePx), 0.001) * sign(sizePx);
     float mode = TextureModeAndSize.x;
+    bool afterOutline = afterOutline = mode >= 1024;
+    if (afterOutline)
+        mode -= 1024;
+
     bool screenSpace = mode >= 128, screenSpaceLocal = mode >= 192;
     if (screenSpaceLocal)
         mode -= 192;
@@ -1157,18 +1184,13 @@ float4 texturedShapeCommon (
     // FIXME: This will break premul too if the value is greater than 1 i think
     texColor.rgb *= (TextureOptions.y + 1);
 
-    // Under
-    if (mode > 1.5) {
-        fill = over(fill, fillAlpha, texColor, fillAlpha);
-        fillAlpha = 1;
-    // Over
-    } else if (mode > 0.5) {
-        fill = over(texColor, fillAlpha, fill, fillAlpha);
-        fillAlpha = 1;
-    // Multiply
-    } else
-        fill *= texColor;
+    if (!afterOutline)
+        fill = texComposite(fill, fillAlpha, texColor, mode);
 
-    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, false, enableShadow, vpos);
-    return result;
+    float4 result = compositeFirstStep(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, false, enableShadow, vpos);
+
+    if (afterOutline && (result.a > 0))
+        result = texComposite(result, 1, texColor, mode);
+
+    return compositeSecondStep(result, false, vpos);
 }
