@@ -20,13 +20,13 @@ namespace Squared.PRGUI.Controls {
     public interface IModalDialog : IModal {
         Control AcceptControl { get; set; }
         Control CancelControl { get; set; }
-        object AcceptResult { get; set; }
-        object CancelResult { get; set; }
+        void SetResultValues (object accept, object cancel);
     }
 
     public interface IModalDialog<TResult> : IModalDialog {
-        new TResult AcceptResult { get; set; }
-        new TResult CancelResult { get; set; }
+        new void SetResultValues (TResult accept, TResult cancel);
+        void SetResultValues (Func<TResult> getAccept, TResult cancel);
+        void SetResultValues (Func<TResult> getAccept, Func<TResult> getCancel);
     }
 
     public class ModalDialog<TParameters, TResult> : Window, IModalDialog<TResult>, IAcceleratorSource {
@@ -66,26 +66,83 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private Func<TResult> _GetAcceptResult, _GetCancelResult;
         private TResult _AcceptResult, _CancelResult;
         // private bool HasAcceptResult, HasCancelResult;
 
-        object IModalDialog.AcceptResult {
-            get => _AcceptResult;
-            set => _AcceptResult = (TResult)value;
+        void IModalDialog.SetResultValues(object accept, object cancel) {
+            if (accept is Func<TResult> getAccept) {
+                if (cancel is TResult cv)
+                    SetResultValues(getAccept, cv);
+                else
+                    SetResultValues(getAccept, cancel as Func<TResult>);
+            } else
+                SetResultValues((TResult)accept, (TResult)cancel);
         }
 
-        object IModalDialog.CancelResult {
-            get => _CancelResult;
-            set => _CancelResult = (TResult)value;
+        /// <summary>
+        /// If set, when the modal is accepted it will call this function to compute its result value.
+        /// </summary>
+        public Func<TResult> GetAcceptResult {
+            get => _GetAcceptResult;
+            set => _GetAcceptResult = value;
         }
 
+        /// <summary>
+        /// If set, when the modal is accepted it will call this function to compute its result value.
+        /// </summary>
+        public Func<TResult> GetCancelResult {
+            get => _GetCancelResult;
+            set => _GetCancelResult = value;
+        }
+
+        /// <summary>
+        /// If set, when the modal is accepted it will have this result value.
+        /// </summary>
         public TResult AcceptResult {
-            get => _AcceptResult;
-            set => _AcceptResult = value;
+            get => (_GetAcceptResult != null) ? _GetAcceptResult() : _AcceptResult;
+            set {
+                _GetAcceptResult = null;
+                _AcceptResult = value;
+            }
         }
+        /// <summary>
+        /// If set, when the modal is cancelled it will have this result value.
+        /// </summary>
         public TResult CancelResult {
-            get => _CancelResult;
-            set => _CancelResult = value;
+            get => (_GetCancelResult != null) ? _GetCancelResult() : _CancelResult;
+            set {
+                _GetCancelResult = null;
+                _CancelResult = value;
+            }
+        }
+
+        public void SetResultValues (TResult accept, TResult cancel) {
+            _AcceptResult = accept;
+            _GetAcceptResult = null;
+            _CancelResult = cancel;
+            _GetCancelResult = null;
+        }
+
+        public void SetResultValues (Func<TResult> getAccept, TResult cancel) {
+            _AcceptResult = default;
+            _GetAcceptResult = getAccept;
+            _CancelResult = cancel;
+            _GetCancelResult = null;
+        }
+
+        public void SetResultValues (Func<TResult> getAccept, Func<TResult> getCancel) {
+            _AcceptResult = default;
+            _GetAcceptResult = getAccept;
+            _CancelResult = default;
+            _GetCancelResult = getCancel;
+        }
+
+        public virtual TResult GetResultForReason (ModalCloseReason reason) {
+            if (reason == ModalCloseReason.UserConfirmed)
+                return AcceptResult;
+            else
+                return CancelResult;
         }
 
         public float BackgroundFadeLevel { get; set; } = 1.0f;
@@ -182,10 +239,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         bool IModal.Close (ModalCloseReason reason) {
-            var value = (reason == ModalCloseReason.UserConfirmed)
-                ? AcceptResult
-                : CancelResult;
-            return Close(value, reason);
+            return Close(reason);
+        }
+
+        public bool Close (ModalCloseReason reason) {
+            return Close(GetResultForReason(reason), reason);
         }
 
         public bool Close (TResult result, ModalCloseReason reason) {
