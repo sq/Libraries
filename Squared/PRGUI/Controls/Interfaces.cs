@@ -10,9 +10,32 @@ using Squared.Render.Convenience;
 using Squared.Util.Event;
 
 namespace Squared.PRGUI {
+    public enum ModalCloseReason {
+        /// <summary>
+        /// The user explicitly closed the modal with an affirmative input like an OK button or enter press
+        /// </summary>
+        UserConfirmed,
+        /// <summary>
+        /// The user explicitly sent a cancel input to the modal like an ESC press
+        /// </summary>
+        UserCancelled,
+        /// <summary>
+        /// The user implicitly closed the modal, like clicking outside of a menu
+        /// </summary>
+        Dismissed,
+        /// <summary>
+        /// The modal was closed programmatically for some other reason
+        /// </summary>
+        Other,
+        /// <summary>
+        /// The modal was closed programmatically by a caller who will not take no for an answer
+        /// </summary>
+        Force
+    }
+
     public interface IModal {
         event Action<IModal> Shown;
-        event Action<IModal> Closed;
+        event Action<IModal, ModalCloseReason> Closed;
         /// <summary>
         /// Focus was transferred to this control from another control, and it will
         ///  be returned when this control goes away. Used for menus and modal dialogs
@@ -35,16 +58,15 @@ namespace Squared.PRGUI {
         /// </summary>
         float BackgroundFadeLevel { get; }
         /// <summary>
-        /// The modal allows programmatic closing (with Close()). You can still override this with force: true
+        /// Returns true if the modal can be closed for this reason.
         /// </summary>
-        bool AllowProgrammaticClose { get; }
+        bool CanClose (ModalCloseReason reason);
         void Show (UIContext context);
         /// <summary>
         /// Attempts to close the modal.
         /// </summary>
-        /// <param name="force">Overrides any preference for the modal not to close.</param>
         /// <returns>true if the modal was successfully closed.</returns>
-        bool Close (bool force);
+        bool Close (ModalCloseReason reason);
         bool OnUnhandledKeyEvent (string name, KeyEventArgs args);
         bool OnUnhandledEvent (string name, IEventInfo args);
     }

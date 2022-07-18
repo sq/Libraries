@@ -28,7 +28,8 @@ namespace Squared.PRGUI.Controls {
     {
         protected ControlAlignmentHelper<Menu> Aligner;
 
-        public event Action<IModal> Shown, Closed;
+        public event Action<IModal> Shown;
+        public event Action<IModal, ModalCloseReason> Closed;
 
         public float ItemSpacing = 1;
 
@@ -86,6 +87,18 @@ namespace Squared.PRGUI.Controls {
         public bool BlockHitTests { get; set; } = false;
         public bool RetainFocus { get; set; } = true;
         public float BackgroundFadeLevel { get; set; } = 0f;
+
+        bool IModal.CanClose (ModalCloseReason reason) {
+            switch (reason) {
+                case ModalCloseReason.UserCancelled:
+                case ModalCloseReason.UserConfirmed:
+                    return true;
+                case ModalCloseReason.Other:
+                    return AllowProgrammaticClose;
+                default:
+                    return true;
+            }
+        }
 
         public override int ColumnCount {
             get => base.ColumnCount;
@@ -313,10 +326,8 @@ namespace Squared.PRGUI.Controls {
                 MouseInsideWhenShown = false;
 
                 if ((item != this) && !Children.Contains(item)) {
-                    if (CloseOnClickOutside) {
-                        Context.ReleaseCapture(this, FocusDonor, !args.IsSynthetic);
-                        Close(true);
-                    }
+                    if (CloseOnClickOutside)
+                        ClickedOutside(args);
                     return true;
                 }
             }
@@ -338,7 +349,7 @@ namespace Squared.PRGUI.Controls {
                 } else if (item != null) {
                     return ChooseItem(item);
                 } else if (CloseOnClickOutside) {
-                    Close(true);
+                    ClickedOutside(args);
                 }
             }
 
@@ -356,13 +367,18 @@ namespace Squared.PRGUI.Controls {
                 return OnMouseEvent(name, ma);
             else if (name == UIEvents.LostFocus) {
                 if (CloseWhenFocusLost)
-                    Close(true);
+                    Close(ModalCloseReason.Dismissed);
             } else if (args is KeyEventArgs ka)
                 return OnKeyEvent(name, ka);
             else
                 return base.OnEvent(name, args);
 
             return false;
+        }
+
+        internal void ClickedOutside (MouseEventArgs args) {
+            Context.ReleaseCapture(this, FocusDonor, !args.IsSynthetic);
+            Close(ModalCloseReason.Dismissed);
         }
 
         private void SelectItemViaKeyboard (Control item) {
@@ -405,7 +421,7 @@ namespace Squared.PRGUI.Controls {
             switch (args.Key) {
                 case Keys.Escape:
                     if (CloseOnEscapePress)
-                        Close(true);
+                        Close(ModalCloseReason.UserCancelled);
                     return true;
                 case Keys.Space:
                 case Keys.Enter:
@@ -532,7 +548,7 @@ namespace Squared.PRGUI.Controls {
             Context.FireEvent(UIEvents.Click, item, args);
             if (CloseWhenItemChosen) {
                 SetResult(item);
-                Close(true);
+                Close(ModalCloseReason.UserConfirmed);
             } else if (((IModal)this).BlockInput) {
                 Context.RetainCapture(this);
             }
@@ -701,10 +717,10 @@ namespace Squared.PRGUI.Controls {
             return ShowInternalEpilogue(context, selectedItem);
         }
 
-        public bool Close (bool force = false) {
+        public bool Close (ModalCloseReason reason) {
             if (!IsActive)
                 return false;
-            if (!AllowProgrammaticClose && !force)
+            if (!AllowProgrammaticClose && (reason == ModalCloseReason.Other))
                 return false;
             // HACK: We likely were the tooltip target, so hide it
             // FIXME: The context should really do this automatically
@@ -722,7 +738,7 @@ namespace Squared.PRGUI.Controls {
             }
             Listener?.Closed(this);
             if (Closed != null)
-                Closed(this);
+                Closed(this, reason);
             Context.NotifyModalClosed(this);
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);

@@ -30,7 +30,8 @@ namespace Squared.PRGUI.Controls {
     }
 
     public class ModalDialog<TParameters, TResult> : Window, IModalDialog<TResult>, IAcceleratorSource {
-        public event Action<IModal> Shown, Closed;
+        public event Action<IModal> Shown;
+        public event Action<IModal, ModalCloseReason> Closed;
         public event Func<IModal, bool> Accepted, Cancelled;
 
         public TParameters Parameters;
@@ -42,6 +43,8 @@ namespace Squared.PRGUI.Controls {
 
         private bool IsAcceptHandlerRegistered, IsCancelHandlerRegistered;
         private Control _AcceptControl, _CancelControl;
+
+        bool IModal.CanClose (ModalCloseReason reason) => true;
 
         public Control AcceptControl {
             get => _AcceptControl;
@@ -118,7 +121,7 @@ namespace Squared.PRGUI.Controls {
             }
 
             e.Consume();
-            Close(AcceptResult);
+            Close(AcceptResult, ModalCloseReason.UserConfirmed);
         }
 
         protected virtual void OnCancelClick (IEventInfo e) {
@@ -128,7 +131,7 @@ namespace Squared.PRGUI.Controls {
             }
 
             e.Consume();
-            Close(CancelResult);
+            Close(CancelResult, ModalCloseReason.UserCancelled);
         }
 
         public static Future<TResult> ShowNew (UIContext context, TParameters parameters) {
@@ -137,7 +140,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         void IModal.Show (UIContext context) {
-            this.Show(context);
+            Show(context);
         }
 
         public Future<TResult> Show (UIContext context, Control focusDonor = null, Vector2? donorAlignment = null) {
@@ -178,11 +181,14 @@ namespace Squared.PRGUI.Controls {
             return f;
         }
 
-        bool IModal.Close (bool force) {
-            return this.Close(default(TResult), force);
+        bool IModal.Close (ModalCloseReason reason) {
+            var value = (reason == ModalCloseReason.UserConfirmed)
+                ? AcceptResult
+                : CancelResult;
+            return Close(value, reason);
         }
 
-        public bool Close (TResult result, bool force = false) {
+        public bool Close (TResult result, ModalCloseReason reason) {
             CancelDrag();
             if (!IsActive)
                 return false;
@@ -194,7 +200,7 @@ namespace Squared.PRGUI.Controls {
             StartAnimation(Context.Animations?.HideModalDialog);
             Context.NotifyModalClosed(this);
             if (Closed != null)
-                Closed(this);
+                Closed(this, reason);
             Context.Controls.Remove(this);
             AcceptsFocus = false;
             _FocusDonor = null;
@@ -251,8 +257,6 @@ namespace Squared.PRGUI.Controls {
                     yield return new AcceleratorInfo(CancelControl, Keys.Escape);
             }
         }
-
-        bool IModal.AllowProgrammaticClose => true;
     }
 
     public class ModalDialog : ModalDialog<object, object> {
@@ -287,8 +291,8 @@ namespace Squared.PRGUI.Controls {
             };
         }
 
-        public void Close () {
-            base.Close(null);
+        public void Close (ModalCloseReason reason) {
+            base.Close(default, reason);
         }
     }
 }

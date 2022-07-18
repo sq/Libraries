@@ -1217,8 +1217,12 @@ namespace PRGUI.Demo {
             if (builder.GetEvent(UIEvents.Click, out Button button))
                 window.Close(
                     button == window.AcceptControl 
-                    ? username.ToString()
-                    : null);
+                        ? username.ToString()
+                        : null,
+                    button == window.AcceptControl
+                        ? ModalCloseReason.UserConfirmed
+                        : ModalCloseReason.UserCancelled
+                );
         }
 
         private void ShowLoginWindow () {

@@ -664,6 +664,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool OnMouseEvent (string name, MouseEventArgs args) {
+            if (!Enabled)
+                return base.OnMouseEvent(name, args);
+
             ClampVirtualPositionToTextbox = Context.HasBeenFocusedSinceStartOfUpdate(this);
 
             var gauge = Context.Decorations.ParameterGauge;
