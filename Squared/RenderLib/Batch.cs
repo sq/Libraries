@@ -169,13 +169,7 @@ namespace Squared.Render {
 
         internal volatile Threading.IFuture SuspendFuture = null;
 
-        private static List<long[]> ThreadBatchCounters = new List<long[]>();
-        private static ThreadLocal<long[]> ThreadBatchCounts = new ThreadLocal<long[]>(() => {
-            var result = new long[1];
-            lock (ThreadBatchCounters)
-                ThreadBatchCounters.Add(result);
-            return result;
-        });
+        private static long LifetimeBatchCount = 0;
         private static long NextInstanceId = 0;
 
         protected PrepareState State;
@@ -239,8 +233,7 @@ namespace Squared.Render {
             if (addToContainer)
                 container.Add(this);
 
-            var arr = ThreadBatchCounts.Value;
-            arr[0]++;
+            Interlocked.Increment(ref LifetimeBatchCount);
         }
 
         /// <summary>
@@ -414,11 +407,7 @@ namespace Squared.Render {
 
         public static long LifetimeCount {
             get {
-                long result = 0;
-                lock (ThreadBatchCounters)
-                for (int i = 0, c = ThreadBatchCounters.Count; i < c; i++)
-                    result += ThreadBatchCounters[i][0];
-                return result;
+                return Volatile.Read(ref LifetimeBatchCount);
             }
         }
 
@@ -489,6 +478,7 @@ namespace Squared.Render {
         );
 
         protected DenseList<T> _DrawCalls = new DenseList<T>();
+        private static bool _CanFastClearDrawCalls = false;
 
         public static void SetAllocator (UnorderedList<T>.Allocator allocator) {
             _ListPool.Allocator = allocator ?? UnorderedList<T>.Allocator.Default;
@@ -499,7 +489,10 @@ namespace Squared.Render {
             bool addToContainer, int? capacity = null
         ) {
             _DrawCalls.ListPoolOrAllocator = _ListPool;
-            _DrawCalls.Clear();
+            if (_CanFastClearDrawCalls)
+                _DrawCalls.UnsafeFastClear();
+            else
+                _DrawCalls.Clear();
             base.Initialize(container, layer, material, addToContainer);
         }
 
@@ -514,6 +507,7 @@ namespace Squared.Render {
         }
 
         public static void ConfigureClearBehavior (bool enableFastClear) {
+            _CanFastClearDrawCalls = enableFastClear;
             _ListPool.FastClearEnabled = enableFastClear;
         }
 
@@ -731,11 +725,11 @@ namespace Squared.Render {
         );
 
         public virtual void Clear (TSelf self, ref DenseList<TSubBatch> items) {
-            items.Clear();
+            items.UnsafeFastClear();
         }
 
         public virtual void Setup (TSelf self, ref DenseList<TSubBatch> items, int count) {
-            items.Clear();
+            items.UnsafeFastClear();
             items.ListPoolOrAllocator = _SubListPool;
             items.EnsureCapacity(count, true);
         }

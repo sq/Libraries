@@ -507,6 +507,8 @@ namespace Squared.PRGUI.Controls {
             DynamicLayout.DefaultColor = color ?? Color.White;
             DynamicLayout.UserData = userData;
 
+            material = Appearance.TextMaterial ?? material;
+
             return DynamicLayout.Get();
         }
 

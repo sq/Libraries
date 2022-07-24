@@ -644,6 +644,7 @@ namespace Squared.Render {
         }
 
         internal void SynchronousPrepareBatches (Frame frame) {
+            PrepareManager.TextureCache = AbstractTextureReference.Cache.GetCurrentLocalCache();
             var context = new Batch.PrepareContext(PrepareManager, false);
             context.PrepareMany(ref frame.Batches);
 
@@ -653,6 +654,7 @@ namespace Squared.Render {
         }
 
         internal void ParallelPrepareBatches (Frame frame) {
+            PrepareManager.TextureCache = AbstractTextureReference.Cache.GetCurrentLocalCache();
             var context = new Batch.PrepareContext(PrepareManager, true);
             context.PrepareMany(ref frame.Batches);
 
@@ -698,6 +700,7 @@ namespace Squared.Render {
 
         private IDrainable[] CollectAllocatorsBuffer = new IDrainable[256];
         private Stopwatch CollectAllocatorsTimer = new Stopwatch();
+        public LocalObjectCache<object> TextureCache => PrepareManager.TextureCache;
 
         public void CollectAllocators () {
             lock (_ArrayAllocators)
@@ -948,6 +951,7 @@ namespace Squared.Render {
 
         public  readonly ThreadGroup         Group;
         private readonly WorkQueue<Task>     Queue;
+        public  LocalObjectCache<object>     TextureCache { get; internal set; }
 
         public PrepareManager (ThreadGroup threadGroup) {
             Group = threadGroup;

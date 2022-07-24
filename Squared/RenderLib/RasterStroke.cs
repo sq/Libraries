@@ -395,6 +395,7 @@ namespace Squared.Render.RasterStroke {
 
         static RasterStrokeBatch () {
             AdjustPoolCapacities(1024, null, 512, 16);
+            ConfigureClearBehavior(true);
         }
 
         public void Initialize (IBatchContainer container, int layer, DefaultMaterialSet materials) {

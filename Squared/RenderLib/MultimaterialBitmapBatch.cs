@@ -234,7 +234,7 @@ namespace Squared.Render {
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
             _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container);
 
-            var textureCache = AbstractTextureReference.Cache.GetCurrentLocalCache();
+            var textureCache = manager.TextureCache;
 
             using (var b = _DrawCalls.GetBuffer(true)) {
                 var drawCalls = b.Data;

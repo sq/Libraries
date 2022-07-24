@@ -74,13 +74,12 @@ namespace Squared.Util {
         }
     }
 
+    [SuppressUnmanagedCodeSecurity]
     public sealed class Win32TimeProvider : ITimeProvider {
         [DllImport("Kernel32.dll")]
-        [SuppressUnmanagedCodeSecurity()]
         private static extern bool QueryPerformanceCounter (out long lpPerformanceCount);
 
         [DllImport("Kernel32.dll")]
-        [SuppressUnmanagedCodeSecurity()]
         private static extern bool QueryPerformanceFrequency (out long lpFrequency);
 
         private decimal _Frequency;

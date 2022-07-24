@@ -491,7 +491,7 @@ namespace Squared.Render.Convenience {
                     return;
                 else if (Count == 0) {
                     Batch0 = item;
-                    Count += 1;
+                    Count = 1;
                     return;
                 }
 
@@ -546,8 +546,17 @@ namespace Squared.Render.Convenience {
         public int Layer;
         public DepthStencilState DepthStencilState;
         public RasterizerState RasterizerState;
-        public BlendState BlendState;
         public SamplerState SamplerState, SamplerState2;
+
+        private object _BlendStateOrSelector;
+        public BlendState BlendState {
+            get => _BlendStateOrSelector as BlendState;
+            set => _BlendStateOrSelector = value;
+        }
+        public Func<AbstractTextureReference, BlendState> BlendStateSelector {
+            get => _BlendStateOrSelector as Func<AbstractTextureReference, BlendState>;
+            set => _BlendStateOrSelector = value;
+        }
 
         public ImperativeRendererFlags Flags;
 
@@ -824,7 +833,7 @@ namespace Squared.Render.Convenience {
             Layer = layer;
             RasterizerState = rasterizerState;
             DepthStencilState = depthStencilState;
-            BlendState = blendState;
+            _BlendStateOrSelector = blendState;
             SamplerState = samplerState;
             SamplerState2 = samplerState2;
             NextSortKey = new DrawCallSortKey(tags, 0);
@@ -895,8 +904,7 @@ namespace Squared.Render.Convenience {
             );
             if (viewTransformModifier != null)
                 group.SetViewTransform(viewTransformModifier);
-            // FIXME: is this necessary? seems like it might be...
-            // result.Cache.Clear();
+            result.Cache.Count = 0;
             group.Dispose();
             result.Container = group;
             result.Layer = 0;
@@ -937,6 +945,7 @@ namespace Squared.Render.Convenience {
             );
             group.Dispose();
             result.Container = group;
+            result.Cache.Count = 0;
             // FIXME: is this ever correct?
             result.Layer = 0;
 
@@ -957,6 +966,7 @@ namespace Squared.Render.Convenience {
             );
             group.Dispose();
             result.Container = group;
+            result.Cache.Count = 0;
             // FIXME: is this ever correct?
             result.Layer = 0;
 
@@ -997,6 +1007,15 @@ namespace Squared.Render.Convenience {
             );
         }
 
+        private BlendState PickBlendStateForTextures (ref TextureSet textures) {
+            if (_BlendStateOrSelector is BlendState bs)
+                return bs;
+            else if (_BlendStateOrSelector is Func<AbstractTextureReference, BlendState> selector)
+                return selector(textures.Texture1) ?? selector(textures.Texture2);
+            else
+                return null;
+        }
+
         public void Draw (
             ref BitmapDrawCall drawCall, 
             int? layer = null, bool? worldSpace = null,
@@ -1011,7 +1030,7 @@ namespace Squared.Render.Convenience {
 
             using (var batch = GetBitmapBatch(
                 layer, worldSpace,
-                blendState ?? BlendState, samplerState, depthStencilState ?? DepthStencilState, 
+                blendState ?? PickBlendStateForTextures(ref drawCall.Textures), samplerState, depthStencilState ?? DepthStencilState, 
                 rasterizerState ?? RasterizerState, material ?? DefaultBitmapMaterial,
                 samplerState2: samplerState2 ?? SamplerState2
             )) {

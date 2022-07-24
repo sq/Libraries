@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Squared.Util;
 
 namespace Squared.Threading.Profiling {
+    [SuppressUnmanagedCodeSecurity]
     public static class Superluminal {
         public static bool Enabled = Environment.CommandLine.Contains("--superluminal");
 
@@ -42,8 +44,10 @@ namespace Squared.Threading.Profiling {
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        [SuppressUnmanagedCodeSecurity]
         unsafe delegate void TSetCurrentThreadName (byte* inThreadName);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet=CharSet.Unicode)]
+        [SuppressUnmanagedCodeSecurity]
         unsafe delegate void TBeginEventWide (
             [MarshalAs(UnmanagedType.LPWStr)]
             string inId,
@@ -51,6 +55,7 @@ namespace Squared.Threading.Profiling {
             string inData, UInt32 inColor
         );
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        [SuppressUnmanagedCodeSecurity]
         delegate PerformanceAPI_SuppressTailCallOptimization TEndEvent ();
 
         private static TSetCurrentThreadName _SetCurrentThreadName;

@@ -125,14 +125,25 @@ namespace Squared.PRGUI {
         /// </summary>
         public IDecorator Decorator;
         /// <summary>
-        /// Specifies a custom decorator to use for text instead of the current default;
+        /// Specifies a custom decorator to use for text instead of the current default.
         /// </summary>
-        public IDecorator TextDecorator;
+        public IDecorator TextDecorator {
+            get => _TextDecoratorOrMaterial as IDecorator;
+            set => _TextDecoratorOrMaterial = value;
+        }
+        /// <summary>
+        /// Specifies a custom material to use for text instead of the one selected by the decorator.
+        /// </summary>
+        public Material TextMaterial {
+            get => _TextDecoratorOrMaterial as Material;
+            set => _TextDecoratorOrMaterial = value;
+        }
         /// <summary>
         /// Specifies a custom list of traits to pass into the decorator during rendering.
         /// </summary>
         public DenseList<string> DecorationTraits;
 
+        private object _TextDecoratorOrMaterial;
         private object _CompositorOrMaterial;
         private object _GlyphSourceOrProvider;
 

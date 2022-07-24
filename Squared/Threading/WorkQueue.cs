@@ -314,7 +314,7 @@ namespace Squared.Threading {
         private static int SlowOutCount = 0;
 #endif
 
-        private bool TryDequeue (out InternalWorkItem<T> item, out bool empty) {
+        private bool TryDequeue (ref InternalWorkItem<T> item, out bool empty) {
             // Attempt to transition the semilock into read mode, and as long as it wasn't in add mode,
             if (Interlocked.CompareExchange(ref _Semilock, Semilock_Reading, Semilock_Open) != 3) {
                 // Determine whether we can early-out this dequeue operation because we successfully entered
@@ -325,7 +325,6 @@ namespace Squared.Threading {
                 //  whoever has it (in dequeue mode) will release it when they're done
                 Interlocked.CompareExchange(ref _Semilock, Semilock_Open, Semilock_Reading);
                 if (empty) {
-                    item = default(InternalWorkItem<T>);
 #if INSTRUMENT_FAST_PATH
                     Interlocked.Increment(ref EarlyOutCount);
 #endif
@@ -338,7 +337,6 @@ namespace Squared.Threading {
                 Volatile.Write(ref _Semilock, Semilock_Dequeuing);
                 if (_Count <= 0) {
                     empty = true;
-                    item = default(InternalWorkItem<T>);
 #if INSTRUMENT_FAST_PATH
                     Interlocked.Increment(ref SlowOutCount);
 #endif
@@ -518,7 +516,7 @@ namespace Squared.Threading {
                     bool empty = false;
                     running = (actualMaximumCount > 0) &&
                         (numProcessed < actualMaximumCount) &&
-                        TryDequeue(out item, out empty);
+                        TryDequeue(ref item, out empty);
 
                     if (empty) {
                         signalDrained = true;

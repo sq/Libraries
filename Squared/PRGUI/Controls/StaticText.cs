@@ -656,7 +656,7 @@ namespace Squared.PRGUI.Controls {
             Material material;
             var textDecorations = GetTextDecorator(decorationProvider, context.DefaultTextDecorator);
             GetTextSettings(ref context, textDecorations, decorations, settings.State, out material, ref defaultColor, out Vector4 userData);
-            material = CustomTextMaterial ?? material;
+            material = Appearance.TextMaterial ?? CustomTextMaterial ?? material;
 
             Content.DefaultColor = defaultColor ?? Color.White;
 

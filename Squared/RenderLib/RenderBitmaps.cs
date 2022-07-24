@@ -757,7 +757,7 @@ namespace Squared.Render {
                 VertexBuffer vb, cornerVb;
                 DynamicIndexBuffer ib, cornerIb;
 
-                var textureCache = AbstractTextureReference.Cache.GetCurrentLocalCache();
+                var textureCache = manager.RenderManager.TextureCache;
 
                 var totalDraws = 0;
 

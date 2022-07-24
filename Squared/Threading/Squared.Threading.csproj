@@ -31,6 +31,10 @@
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+  <PropertyGroup>
+    <SquaredPropertiesOverridePath>$(SolutionDir)Squared.Override.props</SquaredPropertiesOverridePath>
+  </PropertyGroup>
+  <Import Project="$(SquaredPropertiesOverridePath)" Condition="Exists('$(SquaredPropertiesOverridePath)')" />
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />

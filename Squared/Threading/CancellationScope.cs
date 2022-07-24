@@ -280,6 +280,7 @@ namespace Squared.Threading.AsyncAwait {
             var tBuilder = fBuilder.FieldType;
             var pTask = tBuilder.GetProperty("Task", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
+            // TODO: Write a non-LINQ version of this that just uses reflection to read the fields
             {
                 var pStateMachine = Expression.Parameter(typeof(object), "stateMachine");
                 var eCast = Expression.Convert(pStateMachine, tMachine);

@@ -35,6 +35,10 @@
     <PlatformTarget>x86</PlatformTarget>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
+  <PropertyGroup>
+    <SquaredPropertiesOverridePath>$(SolutionDir)Squared.Override.props</SquaredPropertiesOverridePath>
+  </PropertyGroup>
+  <Import Project="$(SquaredPropertiesOverridePath)" Condition="Exists('$(SquaredPropertiesOverridePath)')" />
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core">

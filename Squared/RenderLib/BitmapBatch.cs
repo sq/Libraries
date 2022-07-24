@@ -344,7 +344,7 @@ namespace Squared.Render {
 
             AllocateNativeBatches();
 
-            var textureCache = AbstractTextureReference.Cache.GetCurrentLocalCache();
+            var textureCache = manager.TextureCache;
 
             var count = _DrawCalls.Count;
             int[] indexArray = null;

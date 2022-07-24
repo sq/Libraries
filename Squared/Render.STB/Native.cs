@@ -66,6 +66,7 @@ namespace Squared.Render.STB.Native {
         FLOAT ,
     }
 
+    [System.Security.SuppressUnmanagedCodeSecurity]
     public static unsafe partial class API {
         static API () {
             try {
