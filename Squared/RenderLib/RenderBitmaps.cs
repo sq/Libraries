@@ -374,6 +374,8 @@ namespace Squared.Render {
             new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
         protected static ThreadLocal<int[]> _SortIndexArray = new ThreadLocal<int[]>();
 
+        protected TDrawCall[] _TinyScratchBuffer = new TDrawCall[4];
+
         protected static ThreadLocal<DepthStencilState> _DepthPrePass = new ThreadLocal<DepthStencilState>();
         protected static BlendState PrePassBlend = new BlendState {
             ColorWriteChannels = ColorWriteChannels.None,

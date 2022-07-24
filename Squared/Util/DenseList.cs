@@ -109,6 +109,29 @@ namespace Squared.Util {
             return output;
         }
 
+        public void CopyTo (T[] destination) => CopyTo(destination, 0, _Count);
+
+        public void CopyTo (T[] destination, int destinationOffset, int count) {
+            var items = _Items;
+            if ((count > _Count) || (count < 0))
+                throw new ArgumentOutOfRangeException(nameof(count));
+            if (count + destinationOffset > destination.Length)
+                throw new ArgumentOutOfRangeException(nameof(destinationOffset));
+
+            if (items != null)
+                _Items.CopyTo(destination, destinationOffset, count);
+            else {
+                if (count > 0)
+                    destination[destinationOffset + 0] = Item1;
+                if (count > 1)
+                    destination[destinationOffset + 1] = Item2;
+                if (count > 2)
+                    destination[destinationOffset + 2] = Item3;
+                if (count > 3)
+                    destination[destinationOffset + 3] = Item4;
+            }
+        }
+
         public void CopyTo (ref DenseList<T> output) {
             var items = _Items;
             if (items != null) {
@@ -718,7 +741,7 @@ namespace Squared.Util {
             }
         }
 
-        public Buffer GetBuffer (bool writable) {
+        public Buffer GetBuffer (bool writable, T[] scratchBuffer = null) {
             if (writable)
                 EnsureList();
 
@@ -730,11 +753,20 @@ namespace Squared.Util {
                     Data = segment.Array,
                     Count = _Items.Count
                 };
+            } else if (scratchBuffer != null) {
+                if (scratchBuffer.Length < _Count)
+                    throw new ArgumentOutOfRangeException($"Scratch buffer should have room for at least {_Count} items");
+
+                CopyTo(scratchBuffer);
+                return new Buffer {
+                    IsTemporary = false,
+                    Data = scratchBuffer,
+                    Count = _Count
+                };
             } else {
                 var alloc = BufferPool<T>.Allocate(4);
                 var buf = alloc.Data;
-                for (int i = 0; i < _Count; i++)
-                    GetInlineItemAtIndex(i, out buf[i]);
+                CopyTo(buf);
                 return new Buffer {
                     IsTemporary = true,
                     Data = buf,

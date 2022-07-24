@@ -93,17 +93,14 @@ namespace Squared.Render {
                 var bl = (BitmapBatch)lhs;
                 var br = (BitmapBatch)rhs;
 
-                using (var b = br._DrawCalls.GetBuffer(false)) {
-                    var drawCallsRhsBuffer = b.Data;
+                for (int i = 0, l = br._DrawCalls.Count; i < l; i++) {
+                    ref var rb = ref br._DrawCalls.Item(i);
+                    if (!BitmapDrawCall.CheckValid(ref rb))
+                        // FIXME
+                        // throw new Exception("Invalid draw call in batch");
+                        continue;
 
-                    for (int i = 0, l = b.Count; i < l; i++) {
-                        if (!BitmapDrawCall.CheckValid(ref drawCallsRhsBuffer[i + b.Offset]))
-                            // FIXME
-                            // throw new Exception("Invalid draw call in batch");
-                            continue;
-
-                        bl._DrawCalls.Add(ref drawCallsRhsBuffer[i + b.Offset]);
-                    }
+                    bl._DrawCalls.Add(ref rb);
                 }
 
                 br._DrawCalls.Clear();
@@ -386,7 +383,7 @@ namespace Squared.Render {
                 return false;
             }
 
-            using (var callBuffer = _DrawCalls.GetBuffer(false)) {
+            using (var callBuffer = _DrawCalls.GetBuffer(false, _TinyScratchBuffer)) {
                 var callSegment = new ArraySegment<BitmapDrawCall>(callBuffer.Data, callBuffer.Offset, callBuffer.Count);
                 int drawCallsPrepared = 0;
                 var parameters = new BatchBuilderParameters {
