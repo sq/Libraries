@@ -1160,7 +1160,7 @@ namespace Squared.PRGUI {
         internal bool RelayoutRequestedForVisibilityChange, TransformActive;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private T GetStackTop<T> (in DenseList<T> stack) {
+        private T GetStackTop<T> (ref DenseList<T> stack) {
             var index = stack.Count - 1;
             if (index < 0)
                 return default;
@@ -1181,17 +1181,17 @@ namespace Squared.PRGUI {
             stack.RemoveAt(index);
         }
 
-        public IDecorationProvider DecorationProvider => GetStackTop(in DecorationProviderStack) ?? UIContext?.Decorations;
+        public IDecorationProvider DecorationProvider => GetStackTop(ref DecorationProviderStack) ?? UIContext?.Decorations;
         public static void PushDecorationProvider (ref UIOperationContext context, IDecorationProvider value) => 
             StackPush(ref context.DecorationProviderStack, value);
         public static void PopDecorationProvider (ref UIOperationContext context) => 
             StackPop(ref context.DecorationProviderStack);
-        public IDecorator DefaultDecorator => GetStackTop(in DecoratorStack);
+        public IDecorator DefaultDecorator => GetStackTop(ref DecoratorStack);
         public static void PushDecorator (ref UIOperationContext context, IDecorator value) => 
             StackPush(ref context.DecoratorStack, value);
         public static void PopDecorator (ref UIOperationContext context) => 
             StackPop(ref context.DecoratorStack);
-        public IDecorator DefaultTextDecorator => GetStackTop(in TextDecoratorStack);
+        public IDecorator DefaultTextDecorator => GetStackTop(ref TextDecoratorStack);
         public static void PushTextDecorator (ref UIOperationContext context, IDecorator value) => 
             StackPush(ref context.TextDecoratorStack, value);
         public static void PopTextDecorator (ref UIOperationContext context) => 

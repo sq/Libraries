@@ -192,7 +192,11 @@ namespace Squared.Threading {
                 return null;
 
             var entry = Table.GetValue(id);
-            return entry.Object ?? (TObject)entry.Handle.Target;
+            if (entry.Object != null)
+                return entry.Object;
+
+            entry.Weak.TryGetTarget(out var result);
+            return result;
         }
 
         public bool TryGetValue (Id id, out TObject result) {
@@ -206,8 +210,12 @@ namespace Squared.Threading {
                 result = null;
                 return false;
             }
-            result = entry.Object ?? (TObject)entry.Handle.Target;
-            return true;
+
+            result = entry.Object;
+            if (result != null)
+                return true;
+
+            return entry.Weak.TryGetTarget(out result);
         }
     }
 
@@ -228,20 +236,34 @@ namespace Squared.Threading {
             }
         }
 
-        public struct Entry {
-            public int HashCode;
-            public GCHandle Handle;
-            public TObject Object;
+        public readonly struct Entry {
+            public readonly int HashCode;
+            public readonly WeakReference<TObject> Weak;
+            public readonly TObject Object;
+
+            public Entry (TObject obj, int hashCode, bool strong) {
+                HashCode = hashCode;
+                Object = strong ? obj : null;
+                Weak = strong ? null : new WeakReference<TObject>(obj, false);
+            }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool Equals (Entry rhs) {
                 if (HashCode != rhs.HashCode)
                     return false;
 
-                object o1 = (Handle.IsAllocated ? Handle.Target : Object),
-                    o2 = (rhs.Handle.IsAllocated ? rhs.Handle.Target : rhs.Object);
+                TObject o1, o2;
+                if (Weak == null)
+                    o1 = Object;
+                else
+                    Weak.TryGetTarget(out o1);
 
-                return object.ReferenceEquals(o1, o2);
+                if (rhs.Weak == null)
+                    o2 = rhs.Object;
+                else
+                    rhs.Weak.TryGetTarget(out o2);
+
+                return ReferenceEquals(o1, o2);
             }
         }
 
@@ -272,7 +294,11 @@ namespace Squared.Threading {
 
             if (!Cache.TryGetValue(id, out Entry entry))
                 return null;
-            return (TObject)(entry.Object ?? entry.Handle.Target);
+
+            if (entry.Object != null)
+                return entry.Object;
+            entry.Weak.TryGetTarget(out var result);
+            return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -280,20 +306,13 @@ namespace Squared.Threading {
             if (obj == null)
                 return 0;
 
-            var key = new Entry {
-                HashCode = obj.GetHashCode(),
-                Object = obj
-            };
+            var key = new Entry(obj, obj.GetHashCode(), true);
             return Cache.GetOrAssignId(key);
         }
 
         private static Entry PrepareValueForStorage_Impl (Entry e) {
             if (e.Object != null) {
-                return new Entry {
-                    HashCode = e.HashCode,
-                    Handle = GCHandle.Alloc(e.Object, GCHandleType.Weak),
-                    Object = null
-                };
+                return new Entry(e.Object, e.HashCode, false);
             } else
                 return e;
         }
