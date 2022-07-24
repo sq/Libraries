@@ -82,7 +82,7 @@ namespace Squared.Threading {
             LocalCache = new ThreadLocal<Table>(AllocateTable);
         }
 
-        private Table AllocateTable () {
+        internal Table AllocateTable () {
             return new Table(Comparer);
         }
 
@@ -167,6 +167,15 @@ namespace Squared.Threading {
             }
             return true;
         }
+
+        internal void UpdateSnapshot (Table table) {
+            try {
+                SharedCacheLock.EnterReadLock();
+                table.ReplicateFrom(SharedCache);
+            } finally {
+                SharedCacheLock.ExitReadLock();
+            }
+        }
     }
 
     public readonly struct LocalObjectCache<TObject>
@@ -240,6 +249,15 @@ namespace Squared.Threading {
 
         public LocallyReplicatedObjectCache () {
             Cache = new LocallyReplicatedCache<Entry>(new EntryComparer(), PrepareValueForStorage_Impl);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void GetShareableSnapshot (ref LocalObjectCache<TObject> result) {
+            if (result.Table == null)
+                result = new LocalObjectCache<TObject>(Cache.AllocateTable());
+
+            lock (result.Table)
+                Cache.UpdateSnapshot(result.Table);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

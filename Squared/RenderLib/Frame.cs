@@ -147,7 +147,7 @@ namespace Squared.Render {
             if (Tracing.RenderTrace.EnableTracing)
                 Tracing.RenderTrace.ImmediateMarker(device, "{1} {0:0000} : Begin Draw", Index, Label);
 
-            RenderManager.PrepareManager.TextureCache = AbstractTextureReference.Cache.GetCurrentLocalCache();
+            RenderManager.PrepareManager.UpdateTextureCache();
 
             dm.Begin(ChangeRenderTargets);
 

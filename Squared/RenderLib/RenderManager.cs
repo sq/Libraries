@@ -644,7 +644,7 @@ namespace Squared.Render {
         }
 
         internal void SynchronousPrepareBatches (Frame frame) {
-            PrepareManager.TextureCache = AbstractTextureReference.Cache.GetCurrentLocalCache();
+            PrepareManager.UpdateTextureCache();
             var context = new Batch.PrepareContext(PrepareManager, false);
             context.PrepareMany(ref frame.Batches);
 
@@ -654,7 +654,7 @@ namespace Squared.Render {
         }
 
         internal void ParallelPrepareBatches (Frame frame) {
-            PrepareManager.TextureCache = AbstractTextureReference.Cache.GetCurrentLocalCache();
+            PrepareManager.UpdateTextureCache();
             var context = new Batch.PrepareContext(PrepareManager, true);
             context.PrepareMany(ref frame.Batches);
 
@@ -951,7 +951,9 @@ namespace Squared.Render {
 
         public  readonly ThreadGroup         Group;
         private readonly WorkQueue<Task>     Queue;
-        public  LocalObjectCache<object>     TextureCache { get; internal set; }
+
+        internal LocalObjectCache<object> _TextureCache;
+        public   LocalObjectCache<object> TextureCache => _TextureCache;
 
         public PrepareManager (ThreadGroup threadGroup) {
             Group = threadGroup;
@@ -1039,6 +1041,10 @@ namespace Squared.Render {
             } else {
                 task.Execute();
             }
+        }
+
+        internal void UpdateTextureCache () {
+            AbstractTextureReference.Cache.GetShareableSnapshot(ref _TextureCache);
         }
     }
 
