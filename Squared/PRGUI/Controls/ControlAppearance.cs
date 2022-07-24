@@ -11,75 +11,111 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public struct ColorVariable {
-        public Tween<Vector4>? pLinear;
+        public Tween<Vector4>? pLinear {
+            get => HasValue ? Value : (Tween<Vector4>?)null;
+            set {
+                if (value.HasValue) {
+                    _Value = value.Value;
+                    _HasValue = true;
+                } else
+                    _HasValue = false;
+            }
+        }
 
-        public bool HasValue => pLinear.HasValue;
+        public bool HasValue => _HasValue;
+        public Tween<Vector4> Value {
+            get => _HasValue ? _Value : throw new NullReferenceException();
+            set {
+                _Value = value;
+                _HasValue = true;
+            }
+        }
 
-        public bool IsTransparent => !HasValue ||
-            (pLinear.Value.IsConstant && (pLinear.Value.From.W <= 0));
+        internal bool _HasValue;
+        internal Tween<Vector4> _Value;
+
+        public bool IsTransparent => !_HasValue ||
+            (_Value.IsConstant && (_Value.From.W <= 0));
 
         public Tween<Color>? Color {
-            set => Update(ref pLinear, value);
+            set => Update(value);
         }
 
         public Tween<pSRGBColor>? pSRGB {
-            set => Update(ref pLinear, value);
+            set => Update(value);
         }
 
         public Vector4? Get (long now) {
-            return pLinear?.Get(now);
+            if (HasValue)
+                return _Value.Get(now);
+            else
+                return null;
         }
 
-        public bool Equals (ColorVariable rhs) {
-            return pLinear == rhs.pLinear;
+        public bool Equals (ref ColorVariable rhs) {
+            if (!_HasValue)
+                return !rhs._HasValue;
+            else
+                return rhs._HasValue && (_Value == rhs._Value);
         }
+
+        public bool Equals (ColorVariable rhs) => Equals(ref rhs);
 
         public override bool Equals (object obj) {
             if (obj is ColorVariable cv)
-                return Equals(cv);
+                return Equals(ref cv);
             else
                 return false;
         }
 
-        internal static void Update (ref Tween<Vector4>? v4, Tween<Color>? value) {
-            if (value == null) {
-                v4 = null;
-                return;
-            }
-
-            var v = value.Value;
-            v4 = v.CloneWithNewValues(((pSRGBColor)v.From).ToPLinear(), ((pSRGBColor)v.To).ToPLinear());
+        public override int GetHashCode () {
+            if (_HasValue)
+                return _Value.GetHashCode();
+            else
+                return 0;
         }
 
-        internal static void Update (ref Tween<Vector4>? v4, Tween<pSRGBColor>? value) {
+        internal void Update (Tween<Color>? value) {
             if (value == null) {
-                v4 = null;
+                _HasValue = false;
                 return;
             }
 
             var v = value.Value;
-            v4 = v.CloneWithNewValues(v.From.ToPLinear(), v.To.ToPLinear());
+            _Value = v.CloneWithNewValues(((pSRGBColor)v.From).ToPLinear(), ((pSRGBColor)v.To).ToPLinear());
+            _HasValue = true;
+        }
+
+        internal void Update (Tween<pSRGBColor>? value) {
+            if (value == null) {
+                _HasValue = false;
+                return;
+            }
+
+            var v = value.Value;
+            _Value = v.CloneWithNewValues(v.From.ToPLinear(), v.To.ToPLinear());
+            _HasValue = true;
         }
 
         public static implicit operator ColorVariable (Tween<Color> t) {
             var result = new ColorVariable();
-            Update(ref result.pLinear, t);
+            result.Update(t);
             return result;
         }
 
         public static implicit operator ColorVariable (Color c) {
             var pLinear = new pSRGBColor(c).ToPLinear();
-            return new ColorVariable { pLinear = pLinear };
+            return new ColorVariable { _Value = pLinear, _HasValue = true };
         }
 
         public static implicit operator ColorVariable (Tween<pSRGBColor> t) {
             var result = new ColorVariable();
-            Update(ref result.pLinear, t);
+            result.Update(t);
             return result;
         }
 
         public static implicit operator ColorVariable (pSRGBColor c) {
-            return new ColorVariable { pLinear = c.ToPLinear() };
+            return new ColorVariable { _Value = c.ToPLinear(), _HasValue = true };
         }
     }
     

@@ -440,14 +440,12 @@ namespace Squared.PRGUI {
                 (Context?.FireEvent(name, this, suppressHandler: true) ?? false);
         }
 
-        protected T? AutoFireTweenEvent<T> (long now, string name, ref Tween<T>? tween, InternalStateFlags flag)
+        protected T? AutoFireTweenEvent<T> (long now, string name, bool hasValue, ref Tween<T> tween, InternalStateFlags flag)
             where T : struct 
         {
-            if (!tween.HasValue)
+            if (!hasValue)
                 return null;
-
-            var v = tween.Value;
-            return AutoFireTweenEvent(now, name, ref v, flag);
+            return AutoFireTweenEvent(now, name, ref tween, flag);
         }
 
         protected T AutoFireTweenEvent<T> (long now, string name, ref Tween<T> tween, InternalStateFlags flag)
@@ -677,14 +675,14 @@ namespace Squared.PRGUI {
         }
 
         protected pSRGBColor? GetBackgroundColor (long now) {
-            var v4 = AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref Appearance.BackgroundColor.pLinear, InternalStateFlags.EventFiredBackgroundColor);
+            var v4 = AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, Appearance.BackgroundColor._HasValue, ref Appearance.BackgroundColor._Value, InternalStateFlags.EventFiredBackgroundColor);
             if (!v4.HasValue)
                 return null;
             return pSRGBColor.FromPLinear(v4.Value);
         }
 
         protected pSRGBColor? GetTextColor (long now) {
-            var v4 = AutoFireTweenEvent(now, UIEvents.TextColorTweenEnded, ref Appearance.TextColor.pLinear, InternalStateFlags.EventFiredTextColor);
+            var v4 = AutoFireTweenEvent(now, UIEvents.TextColorTweenEnded, Appearance.TextColor._HasValue, ref Appearance.TextColor._Value, InternalStateFlags.EventFiredTextColor);
             if (!v4.HasValue)
                 return null;
             return pSRGBColor.FromPLinear(v4.Value);
