@@ -599,12 +599,12 @@ namespace Squared.PRGUI {
             var nowL = Context.NowL;
             foreach (var item in stack) {
                 // Walk down the chain from root to control and apply each transform we find
-                if (!item.Appearance.GetTransform(out Matrix itemMatrix, nowL))
+                if (!item.Appearance.GetTransform(out Matrix itemMatrix, out var itemOrigin, nowL))
                     continue;
 
                 // We need the control's rect so we can align the transform around its transform origin
                 var rect = item.GetRect();
-                var offset = (rect.Size * item.Appearance.TransformOrigin) + rect.Position;
+                var offset = (rect.Size * itemOrigin) + rect.Position;
                 Matrix.CreateTranslation(-offset.X, -offset.Y, 0f, out Matrix before);
                 Matrix.CreateTranslation(offset.X, offset.Y, 0f, out Matrix after);
                 matrix = before * itemMatrix * after * matrix;

@@ -427,7 +427,7 @@ namespace Squared.PRGUI {
                 // HACK: If the current transform matrix is the identity matrix, suppress composition
                 //  this allows simple transform animations that end at the identity matrix to work
                 //  without explicitly clearing the transform after the animation is over.
-                Appearance.GetTransform(out Matrix transform, context.NowL) &&
+                Appearance.GetTransform(out Matrix transform, out _, context.NowL) &&
                 (transform != ControlMatrixInfo.IdentityMatrix);
 
             var needsComposition = NeedsComposition(opacity < 1, hasTransformMatrix) || enableCompositor;
@@ -506,11 +506,11 @@ namespace Squared.PRGUI {
 
         private static void _ApplyGlobalTransformMatrix (ref ViewTransform vt, object _control) {
             var control = (Control)_control;
-            if (!control.Appearance.GetTransform(out Matrix matrix, control.Context.NowL))
+            if (!control.Appearance.GetTransform(out Matrix matrix, out Vector2 origin, control.Context.NowL))
                 return;
 
             var rect = control.MostRecentCompositeData.Box;
-            var offset = (rect.Size * control.Appearance.TransformOrigin) + rect.Position;
+            var offset = (rect.Size * origin) + rect.Position;
             Matrix.CreateTranslation(-offset.X, -offset.Y, 0f, out Matrix before);
             Matrix.CreateTranslation(offset.X, offset.Y, 0f, out Matrix after);
 

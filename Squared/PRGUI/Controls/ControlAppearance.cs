@@ -314,14 +314,17 @@ namespace Squared.PRGUI {
         }
 
         public void GetPlacementTransformMatrix (in RectF sourceRect, long now, out Matrix result) {
-            var origin = sourceRect.Size * -TransformOrigin;
-            var finalPosition = sourceRect.Position + (sourceRect.Size * TransformOrigin);
-            Matrix.CreateTranslation(origin.X, origin.Y, 0, out Matrix centering);
-            Matrix.CreateTranslation(finalPosition.X, finalPosition.Y, 0, out Matrix placement);
-            if (GetTransform(out Matrix xform, now))
-                result = centering * xform * placement;
-            else
+            if (!GetTransform(out Matrix xform, out var unscaledOrigin, now)) {
                 result = ControlMatrixInfo.IdentityMatrix;
+                return;
+            }
+
+            var scaledOrigin = sourceRect.Size * -unscaledOrigin;
+            var finalPosition = sourceRect.Position + (sourceRect.Size * unscaledOrigin);
+            Matrix.CreateTranslation(scaledOrigin.X, scaledOrigin.Y, 0, out Matrix centering);
+            Matrix.CreateTranslation(finalPosition.X, finalPosition.Y, 0, out Matrix placement);
+            Matrix.Multiply(ref centering, ref xform, out var temp);
+            Matrix.Multiply(ref temp, ref placement, out result);
         }
 
         private ControlMatrixInfo _TransformMatrix;
@@ -384,13 +387,15 @@ namespace Squared.PRGUI {
             }
         }
 
-        public bool GetTransform (out Matrix matrix, long now) {
+        public bool GetTransform (out Matrix matrix, out Vector2 origin, long now) {
             if (!HasTransformMatrix) {
                 matrix = ControlMatrixInfo.IdentityMatrix;
+                origin = DefaultTransformOrigin;
                 return false;
             }
 
             _TransformMatrix.Matrix.Get(now, out matrix);
+            origin = _TransformMatrix.TransformOriginMinusOneHalf + new Vector2(0.5f);
             return true;
         }
 
@@ -400,7 +405,8 @@ namespace Squared.PRGUI {
                 return false;
             }
 
-            var offset = (box.Size * TransformOrigin) + box.Position;
+            var origin = _TransformMatrix.TransformOriginMinusOneHalf + new Vector2(0.5f);
+            var offset = (box.Size * origin) + box.Position;
             Matrix.CreateTranslation(-offset.X, -offset.Y, 0f, out Matrix before);
             _TransformMatrix.Matrix.Get(now, out Matrix temp);
             Matrix.CreateTranslation(offset.X, offset.Y, 0f, out Matrix after);
