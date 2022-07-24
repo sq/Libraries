@@ -239,7 +239,8 @@ namespace Squared.Util {
         [Test]
         public void InterpolatorByName () {
             Assert.AreEqual(Interpolators<float>.GetByName("Linear"), (Interpolator<float>)Interpolators<float>.Linear);
-            Assert.AreEqual(Interpolators<float>.GetByName("Foozle"), (Interpolator<float>)Interpolators<float>.Null);
+            Assert.AreEqual(Interpolators<float>.GetByName("Null"), (Interpolator<float>)Interpolators<float>.Null);
+            Assert.Throws<ArgumentOutOfRangeException>(() => Interpolators<float>.GetByName("Foozle"));
         }
 
         [Test]

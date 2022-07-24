@@ -9,6 +9,7 @@ using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 using System.Diagnostics;
 using System.Reflection;
 using Squared.Util.Containers;
+using System.Runtime.ExceptionServices;
 
 namespace Squared.Task {
     public interface ISchedulable {
@@ -154,10 +155,39 @@ namespace Squared.Task {
     public delegate bool BackgroundTaskErrorHandler (Exception error);
 
     public sealed class TaskSchedulerSynchronizationContext : SynchronizationContext {
+        private class SendThunk {
+            public readonly AutoResetEvent Signal = new AutoResetEvent(false);
+            public readonly Action Invoke;
+
+            public ExceptionDispatchInfo Exception;
+            public SendOrPostCallback Callback;
+            public object State;
+
+            public SendThunk () {
+                Invoke = _Invoke;
+            }
+
+            private void _Invoke () {
+                try {
+                    Callback(State);
+                } catch (Exception exc) {
+                    Exception = ExceptionDispatchInfo.Capture(exc);
+                } finally {
+                    Signal.Set();
+                }
+            }
+        }
+
+        private static readonly ThreadLocal<SendThunk> SendThunkInstance = new ThreadLocal<SendThunk>(() => new SendThunk());
+
         public readonly TaskScheduler Scheduler;
 
         public TaskSchedulerSynchronizationContext (TaskScheduler scheduler) {
             Scheduler = scheduler;
+        }
+
+        public override SynchronizationContext CreateCopy () {
+            return new TaskSchedulerSynchronizationContext(Scheduler);
         }
 
         public override void Post (SendOrPostCallback d, object state) {
@@ -165,8 +195,20 @@ namespace Squared.Task {
         }
 
         public override void Send (SendOrPostCallback d, object state) {
-            // FIXME
-            d(state);
+            if (Thread.CurrentThread == Scheduler.MainThread) {
+                // It's impossible for the queue+wait below to work in this scenario
+                d(state);
+                return;
+            }
+
+            var thunk = SendThunkInstance.Value;
+            thunk.Callback = d;
+            thunk.State = state;
+            thunk.Exception = null;
+            Scheduler.QueueWorkItem(new WorkItemQueueEntry { Action = thunk.Invoke });
+            thunk.Signal.WaitOne();
+            if (thunk.Exception != null)
+                thunk.Exception.Throw();
         }
     }
 

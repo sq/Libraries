@@ -122,17 +122,22 @@ namespace Squared.Util {
             Modulo = 5,
             Equality = 6,
             Inequality = 7,
+            GreaterThan = 9,
+            LessThan = 10,
+            GreaterThanOrEqual = 11,
+            LessThanOrEqual = 12,
             // Unary operators
             Negation = 8
         }
 
         public delegate T UnaryOperatorMethod<T> (T value);
         public delegate T BinaryOperatorMethod<T, in U> (T lhs, U rhs);
+        public delegate bool ComparisonMethod<in T, in U> (T lhs, U rhs);
 
         internal struct OperatorInfo {
             public OpCode OpCode;
             public String MethodName, Sigil;
-            public bool IsComparison, IsUnary;
+            public bool IsComparison, IsUnary, NeedsInversion;
         }
 
         internal static Dictionary<int, OperatorInfo> _OperatorInfo = new Dictionary<int, OperatorInfo> {
@@ -141,8 +146,13 @@ namespace Squared.Util {
             { (int)Operators.Multiply, new OperatorInfo { OpCode = OpCodes.Mul, MethodName = "op_Multiply", Sigil = "*" } },
             { (int)Operators.Divide, new OperatorInfo { OpCode = OpCodes.Div, MethodName = "op_Division", Sigil = "/" } },
             { (int)Operators.Modulo, new OperatorInfo { OpCode = OpCodes.Rem, MethodName = "op_Modulus", Sigil = "%" } },
+            // FIXME: These are not currently completely usable
             { (int)Operators.Equality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality", Sigil = "==", IsComparison = true } },
-            { (int)Operators.Inequality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Inequality", Sigil = "!=", IsComparison = true } },
+            { (int)Operators.Inequality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Inequality", Sigil = "!=", IsComparison = true, NeedsInversion = true } },
+            { (int)Operators.GreaterThan, new OperatorInfo { OpCode = OpCodes.Cgt, MethodName = "op_GreaterThan", Sigil = ">", IsComparison = true } },
+            { (int)Operators.LessThan, new OperatorInfo { OpCode = OpCodes.Clt, MethodName = "op_LessThan", Sigil = "<", IsComparison = true } },
+            { (int)Operators.GreaterThanOrEqual, new OperatorInfo { OpCode = OpCodes.Clt, MethodName = "op_GreaterThan", Sigil = ">", IsComparison = true, NeedsInversion = true } },
+            { (int)Operators.LessThanOrEqual, new OperatorInfo { OpCode = OpCodes.Cgt, MethodName = "op_LessThan", Sigil = "<", IsComparison = true, NeedsInversion = true } },
             { (int)Operators.Negation, new OperatorInfo { OpCode = OpCodes.Neg, MethodName = "op_UnaryNegation", Sigil = "-", IsUnary = true } },
         };
 
@@ -265,7 +275,7 @@ namespace Squared.Util {
         private static ThreadLocal<Type[]> BinaryScratchArray = new ThreadLocal<Type[]>(() => new Type[2]);
 
         public static UnaryOperatorMethod<T> GetOperator<T> (Operators op, bool optional = false) {
-            if (!_OperatorInfo[(int)op].IsUnary)
+            if (!_OperatorInfo[(int)op].IsUnary || _OperatorInfo[(int)op].IsComparison)
                 throw new InvalidOperationException("Operator is not unary");
 
             var usa = UnaryScratchArray.Value;
@@ -274,13 +284,23 @@ namespace Squared.Util {
         }
 
         public static BinaryOperatorMethod<T, U> GetOperator<T, U> (Operators op, bool optional = false) {
-            if (_OperatorInfo[(int)op].IsUnary)
+            if (_OperatorInfo[(int)op].IsUnary || _OperatorInfo[(int)op].IsComparison)
                 throw new InvalidOperationException("Operator is not binary");
 
             var bsa = BinaryScratchArray.Value;
             bsa[0] = typeof(T);
             bsa[1] = typeof(U);
             return GetOperatorDelegate<BinaryOperatorMethod<T, U>>(op, bsa, optional: optional);
+        }
+
+        public static ComparisonMethod<T, U> GetComparison<T, U> (Operators op, bool optional = false) {
+            if (_OperatorInfo[(int)op].IsUnary || !_OperatorInfo[(int)op].IsComparison)
+                throw new InvalidOperationException("Operator is not a comparison");
+
+            var bsa = BinaryScratchArray.Value;
+            bsa[0] = typeof(T);
+            bsa[1] = typeof(U);
+            return GetOperatorDelegate<ComparisonMethod<T, U>>(op, bsa, optional: optional);
         }
 
         public static object InvokeOperatorSlow (Operators op, object lhs, object rhs) {
@@ -723,7 +743,7 @@ namespace Squared.Util {
 
             var oi = GetOperatorInfo(expr.NodeType);
 
-            GenerateOperatorIL(es.ILGenerator, new [] { typeLeft, typeRight }, oi.MethodName, oi.OpCode);
+            GenerateOperatorIL(es.ILGenerator, new [] { typeLeft, typeRight }, oi.MethodName, oi.OpCode, oi.NeedsInversion);
 
             if (expr.Conversion != null)
                 return EmitExpression(expr.Conversion, es);
@@ -760,6 +780,8 @@ namespace Squared.Util {
             } else {
                 var oi = GetOperatorInfo(expr.NodeType);
                 es.ILGenerator.Emit(oi.OpCode);
+                if (oi.NeedsInversion)
+                    es.ILGenerator.Emit(OpCodes.Not);
                 return t;
             }
         }
@@ -903,7 +925,7 @@ namespace Squared.Util {
                 ilGenerator.Emit(OpCodes.Ldarg_1);
 
             var oi = _OperatorInfo[(int)op];
-            var result = GenerateOperatorIL(ilGenerator, argumentTypes, oi.MethodName, oi.OpCode);
+            var result = GenerateOperatorIL(ilGenerator, argumentTypes, oi.MethodName, oi.OpCode, oi.NeedsInversion);
 
             ilGenerator.Emit(OpCodes.Ret);
             return result;
@@ -922,7 +944,7 @@ namespace Squared.Util {
             }
         }
 
-        internal static Exception GenerateOperatorIL (ILGenerator ilGenerator, Type[] argumentTypes, string methodName, OpCode? opCode) {
+        internal static Exception GenerateOperatorIL (ILGenerator ilGenerator, Type[] argumentTypes, string methodName, OpCode? opCode, bool needsInversion) {
             var lhs = argumentTypes[0];
             Type rhs = lhs;
 
@@ -931,6 +953,8 @@ namespace Squared.Util {
 
             if ((lhs.IsPrimitive && rhs.IsPrimitive) && opCode.HasValue) {
                 ilGenerator.Emit(opCode.Value);
+                if (needsInversion)
+                    ilGenerator.Emit(OpCodes.Not);
                 GetPrimitiveResult(lhs, rhs);
                 return null;
             } else {
