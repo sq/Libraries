@@ -419,7 +419,7 @@ namespace Squared.Render {
     }
 
     public struct MaterialParameterValues : IEnumerable<KeyValuePair<string, object>> {
-        internal enum EntryValueType {
+        internal enum EntryValueType : int {
             None,
             Texture,
             Array,
@@ -456,7 +456,7 @@ namespace Squared.Render {
             public object ReferenceValue;
             public EntryUnion PrimitiveValue;
 
-            public static bool Equals (in Entry lhs, in Entry rhs) {
+            public static bool Equals (ref Entry lhs, ref Entry rhs) {
                 if (lhs.ValueType != rhs.ValueType)
                     return false;
 
@@ -519,10 +519,10 @@ namespace Squared.Render {
             Entries.RemoveAt(index);
         }
 
-        public void AddRange (in MaterialParameterValues rhs) {
+        public void AddRange (ref MaterialParameterValues rhs) {
             for (int i = 0, c = rhs.Count; i < c; i++) {
-                ref readonly var entry = ref rhs.Entries.ReadItem(i);
-                Set(in entry);
+                ref var entry = ref rhs.Entries.Item(i);
+                Set(ref entry);
             }
         }
 
@@ -544,7 +544,7 @@ namespace Squared.Render {
             IsCleared = false;
         }
 
-        private void Set (in Entry entry) {
+        private void Set (ref Entry entry) {
             AutoClear();
             var index = Find(entry.Name);
             if (index < 0)
@@ -552,6 +552,8 @@ namespace Squared.Render {
             else
                 Entries[index] = entry;
         }
+
+        private void Set (Entry entry) => Set(ref entry);
 
         public void Add (string name, int value) {
             Set(new Entry {
@@ -661,11 +663,11 @@ namespace Squared.Render {
                 var p = cache[entry.Name];
                 if (p == null)
                     continue;
-                ApplyEntry(entry, p);
+                ApplyEntry(ref entry, p);
             }
         }
 
-        private static void ApplyEntry (in Entry entry, EffectParameter p) {
+        private static void ApplyEntry (ref Entry entry, EffectParameter p) {
             var r = entry.ReferenceValue;
             switch (entry.ValueType) {
                 case EntryValueType.Texture:
@@ -730,7 +732,7 @@ namespace Squared.Render {
                 if (j < 0)
                     return false;
                 pRhs.Entries.TryGetItem(j, out Entry rhs);
-                if (!Entry.Equals(in lhs, in rhs))
+                if (!Entry.Equals(ref lhs, ref rhs))
                     return false;
             }
 

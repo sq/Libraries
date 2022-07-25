@@ -22,6 +22,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -56,6 +57,8 @@ namespace Squared.PRGUI.Layout {
             }
 
             public ControlKey Current {
+                [TargetedPatchingOptOut("")]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
                     if (pCurrent == null) {
                         Context.AssertionFailed("No current item");

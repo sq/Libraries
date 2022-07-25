@@ -1332,8 +1332,21 @@ namespace PRGUI.Demo {
             "  hello  "
         };
 
+        // HACK: This is here so i can easily inspect the disassembly to make sure things got inlined and the code isn't gross
+        protected void DenseListTest (ref DenseList<int> dl) {
+            ref int one = ref dl.Item(0);
+            ref int two = ref dl.Item(1);
+            if (one == two)
+                throw new Exception();
+            else if (one != 1)
+                throw new Exception();
+        }
+
         protected override void Update (GameTime gameTime) {
             var started = Time.Ticks;
+
+            var temp = new DenseList<int> { 1, 2 };
+            DenseListTest(ref temp);
 
             DynamicStaticText.Text = DynamicStaticStrings[(DynamicStringIndex++ / 16) % DynamicStaticStrings.Length];
 

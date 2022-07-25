@@ -147,7 +147,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void BoundsCheckFailed () {
+        internal static void BoundsCheckFailed () {
             throw new ArgumentOutOfRangeException("index");
         }
 
@@ -156,28 +156,24 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe ref readonly T ReadItem<T> (this in DenseList<T> list, int index) {
             var items = list._Items;
-            if ((index < 0) || (index >= (items?.Count ?? list._Count)))
+            if (items != null)
+                return ref items.DangerousReadItem(index);
+
+            if ((index < 0) || (index >= list._Count))
                 BoundsCheckFailed();
-
-            ref var item1 = ref ((items != null)
-                ? ref items.Item1()
-                : ref Unsafe.AsRef(in list.Item1));
-
-            return ref Unsafe.Add(ref item1, index);
+            return ref Unsafe.Add(ref Unsafe.AsRef(in list.Item1), index);
         }
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe ref T Item<T> (this ref DenseList<T> list, int index) {
             var items = list._Items;
-            if ((index < 0) || (index >= (items?.Count ?? list._Count)))
+            if (items != null)
+                return ref items.DangerousItem(index);
+
+            if ((index < 0) || (index >= list._Count))
                 BoundsCheckFailed();
-
-            ref var item1 = ref ((items != null)
-                ? ref items.Item1()
-                : ref list.Item1);
-
-            return ref Unsafe.Add(ref item1, index);
+            return ref Unsafe.Add(ref list.Item1, index);
         }
 #else
         [TargetedPatchingOptOut("")]

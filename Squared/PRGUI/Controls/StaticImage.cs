@@ -355,7 +355,7 @@ namespace Squared.PRGUI.Controls {
                 // We have the compositor apply our blend state instead
                 if (settings.IsCompositing && (material == null))
                     blendState = BlendState.Opaque;
-                renderer.Parameters.AddRange(in MaterialParameters);
+                renderer.Parameters.AddRange(ref MaterialParameters);
                 renderer.Draw(ref drawCall, material: Material ?? material, blendState: blendState);
                 renderer.Parameters = p;
             }

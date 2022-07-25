@@ -42,8 +42,18 @@ namespace Squared.Util {
             }
         }
 
+        internal static void ListIsEmpty () {
+            throw new ArgumentOutOfRangeException("List is empty");
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe void GetInlineItemAtIndex (int index, out T result) {
+#if !NOSPAN
+            // FIXME: This is a bit slower than the switch version for some reason?
+            if ((index < 0) || (index > 3))
+                EnumerableExtensions.BoundsCheckFailed();
+            result = Unsafe.Add(ref Item1, index);
+#else
             switch (index) {
                 case 0:
                     result = Item1;
@@ -58,10 +68,17 @@ namespace Squared.Util {
                     result = Item4;
                     return;
             }
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe void SetInlineItemAtIndex (int index, ref T value) {
+#if !NOSPAN
+            // FIXME: This is a bit slower than the switch version for some reason?
+            if ((index < 0) || (index > 3))
+                EnumerableExtensions.BoundsCheckFailed();
+            Unsafe.Add(ref Item1, index) = value;
+#else
             switch (index) {
                 case 0:
                     Item1 = value;
@@ -76,6 +93,7 @@ namespace Squared.Util {
                     Item4 = value;
                     return;
             }
+#endif
         }
 
         public DenseList (T[] items) 
@@ -307,10 +325,14 @@ namespace Squared.Util {
                 return;
             }
 
-            if (index >= _Count)
-                throw new IndexOutOfRangeException();
+            if ((index < 0) || (index >= _Count))
+                EnumerableExtensions.BoundsCheckFailed();
 
+#if !NOSPAN
+            result = Unsafe.Add(ref Item1, index);
+#else
             switch (index) {
+                default:
                 case 0:
                     result = Item1;
                     return;
@@ -323,9 +345,8 @@ namespace Squared.Util {
                 case 3:
                     result = Item4;
                     return;
-                default:
-                    throw new IndexOutOfRangeException();
             }
+#endif
         }
 
         [TargetedPatchingOptOut("")]
@@ -347,9 +368,10 @@ namespace Squared.Util {
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T First () {
-            if (Count <= 0)
-                throw new ArgumentOutOfRangeException("List is empty");
-            else
+            if (Count <= 0) {
+                ListIsEmpty();
+                return default;
+            } else
                 return this[0];
         }
 
@@ -361,7 +383,7 @@ namespace Squared.Util {
 
             var items = _Items;
             if (items != null)
-                return items.DangerousGetItem(0);
+                return items.DangerousItem(0);
             else
                 return Item1;
         }
@@ -381,9 +403,10 @@ namespace Squared.Util {
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Last () {
-            if (Count <= 0)
-                throw new ArgumentOutOfRangeException("List is empty");
-            else
+            if (Count <= 0) {
+                ListIsEmpty();
+                return default;
+            } else
                 return this[Count - 1];
         }
 
@@ -395,7 +418,7 @@ namespace Squared.Util {
 
             var items = _Items;
             if (items != null)
-                return items.DangerousGetItem(items.Count - 1);
+                return items.DangerousItem(items.Count - 1);
             else
                 return this[Count - 1];
         }
@@ -442,12 +465,16 @@ namespace Squared.Util {
             get {
                 var items = _Items;
                 if (items != null)
-                    return items.DangerousGetItem(index);
+                    return items.DangerousItem(index);
 
-                if (index >= _Count)
-                    throw new IndexOutOfRangeException();
+                if ((index < 0) || (index >= _Count))
+                    EnumerableExtensions.BoundsCheckFailed();
 
+#if !NOSPAN
+                return Unsafe.Add(ref Item1, index);
+#else
                 switch (index) {
+                    default:
                     case 0:
                         return Item1;
                     case 1:
@@ -456,9 +483,8 @@ namespace Squared.Util {
                         return Item3;
                     case 3:
                         return Item4;
-                    default:
-                        throw new IndexOutOfRangeException();
                 }
+#endif
             }
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -480,10 +506,14 @@ namespace Squared.Util {
                 return;
             }
 
-            if (index >= _Count)
-                throw new IndexOutOfRangeException();
+            if ((index < 0) || (index >= _Count))
+                EnumerableExtensions.BoundsCheckFailed();
 
+#if !NOSPAN
+            Unsafe.Add(ref Item1, index) = value;
+#else
             switch (index) {
+                default:
                 case 0:
                     Item1 = value;
                     return;
@@ -497,6 +527,7 @@ namespace Squared.Util {
                     Item4 = value;
                     return;
             }
+#endif
         }
 
         private void Add_Slow (ref T item) {
@@ -803,7 +834,7 @@ namespace Squared.Util {
 
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public IndexAndValue (in DenseList<T> list, int[] indices, int index) {
+            public IndexAndValue (ref DenseList<T> list, int[] indices, int index) {
                 if (indices != null) {
                     if (index >= indices.Length) {
                         Index = -1;
@@ -953,10 +984,10 @@ namespace Squared.Util {
             if ((indices != null) && (indices.Length < count))
                 throw new ArgumentOutOfRangeException("indices", "index array length must must match or exceed number of elements");
 
-            IndexAndValue v1 = new IndexAndValue(in this, indices, 0),
-                v2 = new IndexAndValue(in this, indices, 1),
-                v3 = new IndexAndValue(in this, indices, 2),
-                v4 = new IndexAndValue(in this, indices, 3);
+            IndexAndValue v1 = new IndexAndValue(ref this, indices, 0),
+                v2 = new IndexAndValue(ref this, indices, 1),
+                v3 = new IndexAndValue(ref this, indices, 2),
+                v4 = new IndexAndValue(ref this, indices, 3);
 
             IndexAndValue va, vb;
             if (CompareValues(comparer, ref v1, ref v2) <= 0) {
@@ -1132,7 +1163,7 @@ namespace Squared.Util {
         }
 
         void IList<T>.Insert (int index, T item) {
-            throw new NotImplementedException();
+            Insert(index, ref item);
         }
 
         void IList<T>.RemoveAt (int index) {

@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -32,6 +33,7 @@ namespace Squared.PRGUI.NewEngine {
 
             private ControlKey _Current;
             public ControlKey Current {
+                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => _Current;
             }
@@ -151,6 +153,7 @@ namespace Squared.PRGUI.NewEngine {
 
             private int _Current;
             public int Current {
+                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => _Current;
             }

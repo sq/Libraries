@@ -847,11 +847,13 @@ namespace Squared.PRGUI {
         public float? Minimum, Maximum, Fixed;
 
         public static ControlDimension operator * (float lhs, ControlDimension rhs) {
-            return rhs.Scale(lhs);
+            Scale(ref rhs, lhs, out rhs);
+            return rhs;
         }
 
         public static ControlDimension operator * (ControlDimension lhs, float rhs) {
-            return lhs.Scale(rhs);
+            Scale(ref lhs, rhs, out lhs);
+            return lhs;
         }
 
         internal float EffectiveMinimum => Math.Min(Maximum ?? float.MaxValue, Fixed ?? Minimum ?? 0);
@@ -865,6 +867,12 @@ namespace Squared.PRGUI {
                 };
 
             return this;
+        }
+
+        public static void Scale (ref ControlDimension value, float scale, out ControlDimension result) {
+            result.Minimum = value.Minimum * scale;
+            result.Maximum = value.Maximum * scale;
+            result.Fixed = value.Fixed * scale;
         }
 
         public ControlDimension Scale (float scale) {

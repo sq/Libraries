@@ -763,15 +763,17 @@ namespace Squared.PRGUI {
             if (decorator == null)
                 return null;
 
-            var settings = MakeDecorationSettings(default, GetCurrentState(ref context));
+            var tempBox = default(RectF);
+            // Build an incomplete decorationsettings that omits colors and box since we just need enough state to get the glyph source
+            MakeDecorationSettings(ref tempBox, ref tempBox, GetCurrentState(ref context), false, true, out var settings);
             return decorator.GetGlyphSource(ref settings);
         }
 
         protected virtual void ComputeSizeConstraints (
             ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale
         ) {
-            width *= sizeScale.X;
-            height *= sizeScale.Y;
+            ControlDimension.Scale(ref width, sizeScale.X, out width);
+            ControlDimension.Scale(ref height, sizeScale.Y, out height);
         }
 
 #if DETECT_DOUBLE_RASTERIZE

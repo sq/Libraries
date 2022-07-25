@@ -56,18 +56,14 @@ namespace Squared.PRGUI {
         protected virtual void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
         }
 
-        protected DecorationSettings MakeDecorationSettings (RectF tempBox, ControlStates state) {
-            return MakeDecorationSettings(ref tempBox, ref tempBox, state, false);
-        }
-
-        protected virtual DecorationSettings MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state, bool compositing) {
-            return new DecorationSettings {
+        protected virtual void MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state, bool compositing, bool fast, out DecorationSettings result) {
+            result = new DecorationSettings {
                 Box = box,
                 ContentBox = contentBox,
                 State = state,
-                BackgroundColor = GetBackgroundColor(Context.NowL),
-                TextColor = GetTextColor(Context.NowL),
-                BackgroundImage = Appearance.BackgroundImage,
+                BackgroundColor = fast ? null : GetBackgroundColor(Context.NowL),
+                TextColor = fast ? null : GetTextColor(Context.NowL),
+                BackgroundImage = fast ? null : Appearance.BackgroundImage,
                 Traits = Appearance.DecorationTraits,
                 IsCompositing = compositing
             };
@@ -228,7 +224,7 @@ namespace Squared.PRGUI {
                 var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
                 var contentBox = GetRect(contentRect: true);
                 var state = GetCurrentState(ref context);
-                var settings = MakeDecorationSettings(ref box, ref contentBox, state, compositing);
+                MakeDecorationSettings(ref box, ref contentBox, state, compositing, false, out var settings);
                 if (!IsPassDisabled(RasterizePasses.Below, decorations))
                     RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
                 if (!IsPassDisabled(RasterizePasses.Content, decorations))
@@ -458,7 +454,7 @@ namespace Squared.PRGUI {
 
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             var state = GetCurrentState(ref context) | ControlStates.Invisible;
-            var settings = MakeDecorationSettings(ref box, ref box, state, false);
+            MakeDecorationSettings(ref box, ref box, state, false, false, out var settings);
             OnPreRasterize(ref context, ref settings, decorations);
         }
 
