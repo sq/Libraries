@@ -98,7 +98,7 @@ namespace Squared.Util {
         protected int _BufferOffset, _BufferSize;
         internal int _Count;
 
-        public struct Enumerator : IEnumerator<T>{
+        public struct Enumerator : IEnumerator<T> {
             UnorderedList<T> _List;
             int _Index, _Offset, _Count;
 
@@ -110,17 +110,23 @@ namespace Squared.Util {
                 _Count = count;
             }
 
-            public T Current {
+            T IEnumerator<T>.Current {
                 [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get { return _List._Items[_Index + _Offset]; }
+                get => _List._Items[_Index + _Offset];
+            }
+
+            public ref readonly T Current {
+                [TargetedPatchingOptOut("")]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => ref _List._Items[_Index + _Offset];
             }
 
             public void Dispose () {
             }
 
-            object System.Collections.IEnumerator.Current {
-                get { return _List._Items[_Index + _Offset]; }
+            object IEnumerator.Current {
+                get => _List._Items[_Index + _Offset];
             }
 
             [TargetedPatchingOptOut("")]
@@ -405,6 +411,10 @@ namespace Squared.Util {
             var index = Array.IndexOf(_Items, item, _BufferOffset, _Count);
             return (index >= 0);
         }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ref T Item1 () => ref _Items[_BufferOffset];
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

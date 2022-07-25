@@ -11,6 +11,10 @@
       <Project>{d7f549cf-e0a6-491c-a78c-ecab590bb2a7}</Project>
       <Name>Squared.Util</Name>
     </ProjectReference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe" Condition=" '$(DisableSpan)' != 'true' ">
+      <HintPath>$(SquaredPath)\Ext\span\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+      <CopyLocal>True</CopyLocal>
+    </Reference>
   </ItemGroup>
 
   <Choose>

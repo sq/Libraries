@@ -324,7 +324,7 @@ namespace Squared.Util {
             var dense = new DenseList<decimal> { 1, 2, 3, 4 };
             var list = new List<decimal> { 1, 2, 3, 4 };
             // for int64 try something like 32
-            const int count = 1024000 * 10;
+            const int count = 1024000 * 32;
 
             var started1 = Stopwatch.GetTimestamp();
             unchecked {
@@ -442,6 +442,16 @@ namespace Squared.Util {
                 new int[] { 16, 14, 1, 2, 3, 15, 4 },
                 items.ToArray()
             );
+        }
+
+        [Test]
+        public void ItemRef () {
+            var nums = new DenseList<int> { 1, 2, 3 };
+            var strings = new DenseList<string> { "a", "b", "hello" };
+            ref var two = ref nums.Item(1);
+            ref var hello = ref strings.Item(2);
+            Assert.AreEqual(2, two);
+            Assert.AreEqual("hello", hello);
         }
     }
 }

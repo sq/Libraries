@@ -146,6 +146,40 @@ namespace Squared.Util {
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void BoundsCheckFailed () {
+            throw new ArgumentOutOfRangeException("index");
+        }
+
+#if !NOSPAN
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe ref readonly T ReadItem<T> (this in DenseList<T> list, int index) {
+            var items = list._Items;
+            if ((index < 0) || (index >= (items?.Count ?? list._Count)))
+                BoundsCheckFailed();
+
+            ref var item1 = ref ((items != null)
+                ? ref items.Item1()
+                : ref Unsafe.AsRef(in list.Item1));
+
+            return ref Unsafe.Add(ref item1, index);
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe ref T Item<T> (this ref DenseList<T> list, int index) {
+            var items = list._Items;
+            if ((index < 0) || (index >= (items?.Count ?? list._Count)))
+                BoundsCheckFailed();
+
+            ref var item1 = ref ((items != null)
+                ? ref items.Item1()
+                : ref list.Item1);
+
+            return ref Unsafe.Add(ref item1, index);
+        }
+#else
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref readonly T ReadItem<T> (this in DenseList<T> list, int index) {
@@ -187,6 +221,7 @@ namespace Squared.Util {
                     throw new ArgumentOutOfRangeException(nameof(index));
             }
         }
+#endif
 
         // TODO: Add a select version of ToDenseList? Harder to do
     }
@@ -247,6 +282,9 @@ namespace Squared.Util {
                     Items = null;
                 }
             }
+
+            // TODO: Find a way to expose a ref version of this without upsetting the compiler
+            // The 'Unsafe.Add' approach used in .Item and .ReadItem doesn't work for some reason
 
             public T Current {
                 [TargetedPatchingOptOut("")]

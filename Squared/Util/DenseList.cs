@@ -436,7 +436,7 @@ namespace Squared.Util {
             return -1;
         }
 
-        public T this [int index] {
+        public unsafe T this [int index] {
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {

@@ -39,10 +39,15 @@
     <SquaredPropertiesOverridePath>$(SolutionDir)Squared.Override.props</SquaredPropertiesOverridePath>
   </PropertyGroup>
   <Import Project="$(SquaredPropertiesOverridePath)" Condition="Exists('$(SquaredPropertiesOverridePath)')" />
+  <PropertyGroup Condition=" '$(DisableSpan)' == 'true' ">
+    <DefineConstants>NOSPAN;$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.CompilerServices.Unsafe" Condition=" '$(DisableSpan)' != 'true' ">
+      <HintPath>..\..\Ext\span\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+      <CopyLocal>True</CopyLocal>
     </Reference>
   </ItemGroup>
   <ItemGroup>
