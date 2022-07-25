@@ -169,6 +169,10 @@ namespace Squared.Render.Tracing {
     internal sealed class MarkerBatch : Batch {
         public readonly string Text;
 
+        // HACK: For the allocator stuff
+        public MarkerBatch () {
+        }
+
         public MarkerBatch (int layer, string text) {
             Layer = layer;
             Text = text;

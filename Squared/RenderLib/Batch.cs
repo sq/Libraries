@@ -20,6 +20,50 @@ namespace Squared.Render {
     }
 
     public abstract class Batch : IBatch {
+        public static class IdForType<T> where T : Batch {
+            public static readonly int Id;
+
+            static IdForType () {
+                lock (Types.IdForType) {
+                    if (!Types.IdForType.TryGetValue(typeof(T), out var id))
+                        id = Types.AssignIdLocked(typeof(T));
+
+                    Id = id;
+                }
+            }
+        }
+
+        public static class Types {
+            internal static int NextTypeId;
+            internal static Dictionary<Type, int> IdForType = new Dictionary<Type, int>(new ReferenceComparer<Type>());
+            private static readonly List<Type> _All = new List<Type>();
+            public static Type[] All;
+
+            static Types () {
+                var tBatch = typeof(Batch);
+                foreach (var type in tBatch.Assembly.GetTypes()) {
+                    if (!tBatch.IsAssignableFrom(type))
+                        continue;
+                    if (type.IsAbstract)
+                        continue;
+                    if (type.IsGenericTypeDefinition)
+                        continue;
+
+                    IdForType[type] = NextTypeId++;
+                    _All.Add(type);
+                }
+                All = _All.ToArray();
+            }
+
+            internal static int AssignIdLocked (Type type) {
+                var id = NextTypeId++;
+                IdForType[type] = id;
+                _All.Add(type);
+                Volatile.Write(ref All, _All.ToArray());
+                return id;
+            }
+        }
+
         public struct PrepareContext {
             private PrepareManager Manager;
 
@@ -143,11 +187,7 @@ namespace Squared.Render {
             Combined = 16
         }
 
-        private static Dictionary<Type, int> TypeIds = new Dictionary<Type, int>(new ReferenceComparer<Type>());
-
         public static bool CaptureStackTraces = false;
-
-        public readonly int TypeId;
 
         /// <summary>
         /// Set a name for the batch to aid debugging;
@@ -176,12 +216,11 @@ namespace Squared.Render {
 
         internal int TimesIssued = 0;
 
+        public readonly int TypeId;
+
         protected Batch () {
             var thisType = GetType();
-            lock (TypeIds) {
-                if (!TypeIds.TryGetValue(thisType, out TypeId))
-                    TypeIds.Add(thisType, TypeId = TypeIds.Count);
-            }
+            TypeId = Types.IdForType[thisType];
 
             State = new PrepareState();
 

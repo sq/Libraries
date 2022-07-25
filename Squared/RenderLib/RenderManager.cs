@@ -509,12 +509,9 @@ namespace Squared.Render {
         private readonly Dictionary<Type, IBufferGenerator> _AllBufferGenerators =
             new Dictionary<Type, IBufferGenerator>(new ReferenceComparer<Type>());
 
-        private readonly Dictionary<Type, int> _PreferredPoolCapacities =
-            new Dictionary<Type, int>(new ReferenceComparer<Type>());
         private readonly Dictionary<Type, IArrayPoolAllocator> _ArrayAllocators = 
             new Dictionary<Type, IArrayPoolAllocator>(new ReferenceComparer<Type>());
-        private readonly Dictionary<Type, IBatchPool> _BatchAllocators =
-            new Dictionary<Type, IBatchPool>(new ReferenceComparer<Type>());
+        private readonly List<IBatchPool> _BatchAllocators;
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
 
         /// <summary>
@@ -542,9 +539,39 @@ namespace Squared.Render {
             ThreadGroup = threadGroup;
             PrepareManager = new PrepareManager(ThreadGroup);
 
+            // Create most batch allocators up front and put them in a list instead of a dictionary.
+            // This reduces overhead significantly
+            _BatchAllocators = new List<IBatchPool>(Batch.Types.All.Length + 16);
+            var mCreate = GetType().GetMethod("CreateBatchAllocatorLocked", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            foreach (var batchType in Batch.Types.All) {
+                var mSpecific = mCreate.MakeGenericMethod(batchType);
+                var id = Batch.Types.IdForType[batchType];
+                mSpecific.Invoke(this, new object[] { id });
+            }
+
             CreateNewBufferGenerators();
 
             _Frame = null;
+        }
+
+        private void CreateBatchAllocatorLocked<T> (int id)
+            where T : Batch, new()
+        {
+            Func<IBatchPool, T> constructFn = (_) =>
+                new T() {
+                    Pool = _
+                };
+
+            var t = typeof(T);
+            if (id < 0)
+                throw new Exception("Batch type has no Id");
+
+            var pool = new BatchPool<T>(constructFn);
+            while (_BatchAllocators.Count <= id)
+                _BatchAllocators.Add(null);
+            if (_BatchAllocators[id] != null)
+                throw new Exception($"Already have an allocator for id {id}: {_BatchAllocators[id]}");
+            _BatchAllocators[id] = pool;
         }
 
         internal void CreateNewBufferGenerators () {
@@ -737,20 +764,11 @@ namespace Squared.Render {
         }
 
         public bool TrySetPoolCapacity<T> (int newCapacity)
-            where T : Batch {
-
-            var t = typeof(T);
-            IBatchPool p;
-            lock (_BatchAllocators) {
-                _PreferredPoolCapacities[t] = newCapacity;
-
-                if (_BatchAllocators.TryGetValue(t, out p)) {
-                    p.SetCapacity(newCapacity);
-                    return true;
-                }
-            }
-
-            return false;
+            where T : Batch, new()
+        {
+            var pool = GetBatchAllocator<T>();
+            pool?.SetCapacity(newCapacity);
+            return (pool != null);
         }
 
         public T GetBufferGenerator<T> ()
@@ -803,37 +821,25 @@ namespace Squared.Render {
             return result;
         }
 
-        public T AllocateBatch<T> () 
-            where T : Batch, new() {
+        private BatchPool<T> GetBatchAllocator<T> () 
+            where T : Batch, new()
+        {
+            var id = Batch.IdForType<T>.Id;
+            if (id < 0)
+                throw new Exception($"{typeof(T)} has no type Id");
 
-            var t = typeof(T);
-            IBatchPool p;
-            lock (_BatchAllocators)
-                _BatchAllocators.TryGetValue(t, out p);
+            lock (_BatchAllocators) {
+                if ((id >= _BatchAllocators.Count) || (_BatchAllocators[id] == null))
+                    CreateBatchAllocatorLocked<T>(id);
 
-            BatchPool<T> allocator;
-            if (p == null) {
-                Func<IBatchPool, T> constructFn = (pool) =>
-                    new T() {
-                        Pool = pool
-                    };
-
-                allocator = new BatchPool<T>(constructFn);
-
-                lock (_BatchAllocators) {
-                    if (!_BatchAllocators.TryGetValue(t, out p))
-                        _BatchAllocators[t] = allocator;
-                    else
-                        allocator = (BatchPool<T>)p;
-
-                    int desiredCapacity;
-                    if (_PreferredPoolCapacities.TryGetValue(t, out desiredCapacity))
-                        allocator.SetCapacity(desiredCapacity);
-                }
-            } else {
-                allocator = (BatchPool<T>)p;
+                return (BatchPool<T>)_BatchAllocators[id];
             }
+        }
 
+        public T AllocateBatch<T> () 
+            where T : Batch, new() 
+        {
+            var allocator = GetBatchAllocator<T>();
             return allocator.Allocate();
         }
 

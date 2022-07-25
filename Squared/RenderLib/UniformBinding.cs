@@ -46,6 +46,7 @@ namespace Squared.Render {
         }
 
         private Layout NativeLayout;
+        private static Type tMatrix = typeof(Matrix);
 
         unsafe void NativeFlush () {
             if (!IsDirty)
@@ -64,7 +65,7 @@ namespace Squared.Render {
                     Buffer.MemoryCopy(srcPtr, destPtr, m.NativeSize, m.ManagedSize);
 
                     // Convert from HLSL row/column order to GLSL (funny that D3DX9 uses this order too...)
-                    if (m.FieldType == typeof(Matrix))
+                    if (m.FieldType == tMatrix)
                         InPlaceTranspose((float*)destPtr);
                 }
             }
