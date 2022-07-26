@@ -280,6 +280,58 @@ namespace Squared.Util {
             end = Time.Ticks;
             Console.WriteLine("No interpolation: {0} ticks ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
         }
+
+        [Test]
+        public void MoveControlPoint () {
+            var c = new Curve<float> {
+                { 0f, 1f },
+                { 0.5f, 0f },
+                { 1f, 2f },
+                { 2f, 1f },
+                { 3f, 0f },
+            };
+
+            Assert.AreEqual(0f, c[0.5f]);
+            Assert.False(c.MoveControlPointFromPosition(0.25f, 0.5f));
+            Assert.False(c.MoveControlPointFromPosition(0.5f, 1.0f));
+            Assert.False(c.MoveControlPointFromPosition(1.5f, 0.5f));
+
+            Assert.AreEqual(0f, c[0.5f]);
+            Assert.AreEqual(1.5f, c[1.5f]);
+            Assert.True(c.MoveControlPointFromPosition(0.5f, 1.5f));
+            Assert.AreEqual(1.5f, c[0.5f]);
+            Assert.AreEqual(0f, c[1.5f]);
+
+            Assert.False(c.MoveControlPointFromPosition(0.25f, 0.5f));
+            Assert.False(c.MoveControlPointFromPosition(0.5f, 1.0f));
+            Assert.True(c.MoveControlPointFromPosition(1.5f, 0.5f));
+        }
+
+        [Test]
+        public void CopyTo () {
+            var a = new Curve<float> {
+                { 0f, 1f },
+                { 1f, 2f },
+            };
+            var b = new Curve<float> {
+                { 0.5f, 3f },
+                { 1.5f, 0f },
+            };
+
+            Assert.AreEqual(3f, b[0f]);
+            Assert.AreEqual(1.5f, b[1f]);
+            Assert.AreEqual(0f, b[1.5f]);
+
+            a.CopyTo(b, false);
+            Assert.AreEqual(1f, b[0f]);
+            Assert.AreEqual(2f, b[1f]);
+            Assert.AreEqual(0f, b[1.5f]);
+
+            a.CopyTo(b, true);
+            Assert.AreEqual(1f, b[0f]);
+            Assert.AreEqual(2f, b[1f]);
+            Assert.AreEqual(2f, b[1.5f]);
+        }
     }
 
     [TestFixture]

@@ -203,6 +203,31 @@ namespace Squared.Util.Containers {
             return count - 1;
         }
 
+        public bool MoveControlPointFromPosition (float oldPosition, float newPosition, float epsilon = DefaultEpsilon) {
+            var index = GetLowerIndexForPosition(oldPosition);
+            var distance = (GetPositionAtIndex(index) - oldPosition);
+            if (Math.Abs(distance) > epsilon)
+                return false;
+
+            return MoveControlPointFromIndex(index, newPosition, epsilon);
+        }
+
+        public bool MoveControlPointFromIndex (int oldIndex, float newPosition, float epsilon = DefaultEpsilon) {
+            if (!TryGetItemAtIndex(oldIndex, out var oldPosition, out var value, out var data))
+                return false;
+
+            if (FindNearestPoint(newPosition, out _, out var newNearestPosition)) {
+                if (Math.Abs(newNearestPosition - newPosition) <= epsilon)
+                    return false;
+            }
+
+            var removed = RemoveAtPosition(oldPosition, epsilon);
+            SetValueAtPositionInternal(newPosition, value, data, !removed);
+            if (!removed)
+                throw new Exception("Failed to remove old control point");
+            return true;
+        }
+
         void ICurve.SetValueAtPosition (float position, object value) {
             TData data = default;
             var index = GetLowerIndexForPosition(position);
@@ -322,6 +347,25 @@ namespace Squared.Util.Containers {
             _Items.Clear();
 
             OnChanged();
+        }
+
+        /// <summary>
+        /// Copies all the control points from this curve into the destination curve.
+        /// </summary>
+        /// <param name="erase">If true, any existing control points in the destination will be removed first.</param>
+        public void CopyTo (CurveBase<TValue, TData> destination, bool erase) {
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+            else if (!GetType().IsAssignableFrom(destination.GetType()))
+                throw new Exception("Destination curve's type is incompatible with source curve's type");
+
+            if (erase)
+                destination._Items.Clear();
+
+            foreach (var item in _Items)
+                destination.SetValueAtPositionInternal(item.Position, item.Value, item.Data, false);
+
+            destination.OnChanged();
         }
 
         public void Clamp (float newStartPosition, float newEndPosition) {

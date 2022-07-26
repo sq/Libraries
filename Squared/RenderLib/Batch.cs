@@ -620,10 +620,12 @@ namespace Squared.Render {
 
     public sealed class SetScissorBatch : Batch {
         public Rectangle? Scissor;
+        public bool Intersect;
 
-        public void Initialize (IBatchContainer container, int layer, Material material, Rectangle? scissor) {
+        public void Initialize (IBatchContainer container, int layer, Material material, Rectangle? scissor, bool intersect) {
             base.Initialize(container, layer, material, true);
             Scissor = scissor;
+            Intersect = intersect;
         }
 
         protected override void Prepare (PrepareManager manager) {
@@ -637,17 +639,20 @@ namespace Squared.Render {
             if (Scissor == null) {
                 manager.Device.ScissorRectangle = viewportRect;
             } else {
-                var intersected = Rectangle.Intersect(viewportRect, Scissor.Value);
+                var intersected = Rectangle.Intersect(
+                    Intersect ? manager.Device.ScissorRectangle : viewportRect, 
+                    Scissor.Value
+                );
                 manager.Device.ScissorRectangle = intersected;
             }
         }
 
-        public static void AddNew (IBatchContainer container, int layer, Material material, Rectangle? scissor) {
+        public static void AddNew (IBatchContainer container, int layer, Material material, Rectangle? scissor, bool intersect) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<SetScissorBatch>();
-            result.Initialize(container, layer, material, scissor);
+            result.Initialize(container, layer, material, scissor, intersect);
             result.CaptureStack(0);
             result.Dispose();
         }

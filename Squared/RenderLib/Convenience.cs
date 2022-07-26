@@ -1290,8 +1290,13 @@ namespace Squared.Render.Convenience {
             }
         }
 
-        public void SetScissor (Rectangle? rectangle, int? layer = null) {
-            SetScissorBatch.AddNew(Container, layer.GetValueOrDefault(Layer), Materials.SetScissor, rectangle);
+        /// <summary>
+        /// Sets the current scissor rectangle.
+        /// </summary>
+        /// <param name="rectangle">The new scissor rectangle (will automatically be clipped to fit into the viewport), or null to reset to default.</param>
+        /// <param name="intersect">If true, the new scissor rectangle will be intersected with the current scissor rectangle instead of replacing it.</param>
+        public void SetScissor (Rectangle? rectangle, int? layer = null, bool intersect = false) {
+            SetScissorBatch.AddNew(Container, layer.GetValueOrDefault(Layer), Materials.SetScissor, rectangle, intersect);
 
             if (AutoIncrementLayer && !layer.HasValue)
                 Layer += 1;
