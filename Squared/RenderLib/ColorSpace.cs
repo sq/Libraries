@@ -511,5 +511,11 @@ namespace Squared.Render {
                 result = v4l.W.CompareTo(v4r.W);
             return result;
         }
+
+        public static pSRGBColor Over (pSRGBColor top, pSRGBColor bottom) {
+            Vector4 _top = top.ToVector4(), _bottom = bottom.ToVector4();
+            _bottom *= (1 - _top.W);
+            return new pSRGBColor(_top + _bottom, true);
+        }
     }
 }

@@ -219,6 +219,18 @@ namespace Squared.Util {
         }
 #endif
 
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref T First<T> (this ref DenseList<T> list) {
+            return ref Item(ref list, 0);
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref T Last<T> (this ref DenseList<T> list) {
+            return ref Item(ref list, list.Count - 1);
+        }
+
         // TODO: Add a select version of ToDenseList? Harder to do
     }
 
@@ -361,6 +373,10 @@ namespace Squared.Util {
             public void CloneInto (out Enumerator result) {
                 result = this;
                 result.Reset();
+            }
+
+            public bool GetNext (out object tup) {
+                throw new NotImplementedException();
             }
         }
 

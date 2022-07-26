@@ -42,7 +42,7 @@ namespace Squared.Util {
             }
         }
 
-        internal static void ListIsEmpty () {
+        internal static ref T ListIsEmpty () {
             throw new ArgumentOutOfRangeException("List is empty");
         }
 
@@ -367,16 +367,6 @@ namespace Squared.Util {
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T First () {
-            if (Count <= 0) {
-                ListIsEmpty();
-                return default;
-            } else
-                return this[0];
-        }
-
-        [TargetedPatchingOptOut("")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T FirstOrDefault (in T defaultValue = default) {
             if (Count <= 0)
                 return defaultValue;
@@ -398,16 +388,6 @@ namespace Squared.Util {
                 return defaultValue;
             else
                 return this[index];
-        }
-
-        [TargetedPatchingOptOut("")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T Last () {
-            if (Count <= 0) {
-                ListIsEmpty();
-                return default;
-            } else
-                return this[Count - 1];
         }
 
         [TargetedPatchingOptOut("")]
