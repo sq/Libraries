@@ -380,16 +380,30 @@ namespace Squared.Util.Text {
             );
         }
 
-        public bool TextEquals (string other) {
-            if (Length != other?.Length)
-                return false;
-            return string.Equals(ToString(), other);
+        private bool AllCodepointsEqual (AbstractString other, StringComparison comparison) {
+            if (comparison != StringComparison.Ordinal)
+                return string.Equals(ToString(), other.ToString(), comparison);
+
+            for (int i = 0; i < Length; i++) {
+                var lhs = this[i];
+                var rhs = other[i];
+                if (lhs != rhs)
+                    return false;
+            }
+
+            return true;
         }
+
+        public bool TextEquals (string other) => TextEquals(other, StringComparison.Ordinal);
 
         public bool TextEquals (string other, StringComparison comparison) {
             if (Length != other?.Length)
                 return false;
-            return string.Equals(ToString(), other, comparison);
+
+            if (String != null)
+                return string.Compare(String, SubstringOffset, other, 0, Length, comparison) == 0;
+            else
+                return AllCodepointsEqual((AbstractString)other, comparison);
         }
 
         public bool TextEquals (AbstractString other, StringComparison comparison) {
@@ -399,8 +413,11 @@ namespace Squared.Util.Text {
                 return true;
             if (Length != other.Length)
                 return false;
-            // FIXME: Optimize this
-            return string.Equals(ToString(), other.ToString(), comparison);
+
+            if ((String != null) && (other.String != null))
+                return string.Compare(String, SubstringOffset, other.String, other.SubstringOffset, Length, comparison) == 0;
+
+            return AllCodepointsEqual(other, comparison);
         }
 
         public override int GetHashCode () {
@@ -410,10 +427,10 @@ namespace Squared.Util.Text {
         }
 
         public override bool Equals (object obj) {
-            if (obj is string)
-                return TextEquals((string)obj);
-            else if (obj is AbstractString)
-                return Equals((AbstractString)obj);
+            if (obj is string s)
+                return TextEquals(s);
+            else if (obj is AbstractString abs)
+                return Equals(abs);
             else
                 return false;
         }
