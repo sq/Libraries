@@ -83,7 +83,7 @@ namespace Squared.Render {
                 if ((bblhs.Count > combineThreshold) || (bbrhs.Count > combineThreshold))
                     return false;
 
-                if (!bblhs.MaterialParameters.Equals(bbrhs.MaterialParameters))
+                if (!bblhs.MaterialParameters.Equals(ref bbrhs.MaterialParameters))
                     return false;
 
                 return true;

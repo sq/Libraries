@@ -719,6 +719,8 @@ namespace Squared.Render {
             }
         }
 
+        public bool Equals (MaterialParameterValues pRhs) => Equals(ref pRhs);
+
         public bool Equals (ref MaterialParameterValues pRhs) {
             var count = Count;
             if (count != pRhs.Count)
