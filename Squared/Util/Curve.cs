@@ -341,6 +341,49 @@ namespace Squared.Util.Containers {
             return GetValueAtPosition(position, 0, _Items.Count - 1, out result);
         }
 
+        /// <summary>
+        /// Estimates the minimum and maximum values of the entire curve.
+        /// </summary>
+        /// <param name="comparer">The comparer used to determine which of two values is larger.</param>
+        /// <param name="detail">The number of steps between each control point to evaluate (to account for non-linear interpolation)</param>
+        public bool EstimateExtents<TComparer> (TComparer comparer, out TValue minimum, out TValue maximum, int detail = 10)
+            where TComparer : IComparer<TValue>
+        {
+            if (!typeof(TComparer).IsValueType) {
+                if (comparer == null)
+                    throw new ArgumentNullException(nameof(comparer));
+            }
+            if ((detail < 1) || (detail > 100))
+                throw new ArgumentOutOfRangeException(nameof(detail));
+
+            bool result = false;
+            minimum = maximum = default;
+
+            for (int i = 0; i < Count; i++) {
+                if (!TryGetPositionAtIndex(i + 1, out float p1))
+                    detail = 1;
+                float p0 = GetPositionAtIndex(i),
+                    fDetail = 1.0f / detail;
+
+                for (int j = 0; j < detail; j++) {
+                    float p = Arithmetic.Lerp(p0, p1, j * fDetail);
+                    if (GetValueAtPosition(p, out var current)) {
+                        if (result) {
+                            if (comparer.Compare(current, minimum) < 0)
+                                minimum = current;
+                            if (comparer.Compare(current, maximum) > 0)
+                                maximum = current;
+                        } else {
+                            result = true;
+                            minimum = maximum = current;
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
         protected abstract bool GetValueAtPosition (float position, int firstIndex, int lastIndex, out TValue result);
 
         public void Clear () {

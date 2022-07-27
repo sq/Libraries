@@ -170,6 +170,20 @@ namespace Squared.Util {
         }
 
         [Test]
+        public void EstimateExtents () {
+            var c = new Curve<float>();
+            c.DefaultInterpolator = Interpolators<float>.Cubic;
+            c[-1] = 10.0f;
+            c[0] = 5.0f;
+            c[1] = 11.0f;
+            c[2] = -2.0f;
+
+            Assert.IsTrue(c.EstimateExtents(Comparer<float>.Default, out float minimum, out float maximum));
+            Assert.AreEqual(-2f, minimum);
+            Assert.AreEqual(11.408f, maximum);
+        }
+
+        [Test]
         public void Clamp () {
             var c = new Curve<float>();
             c.DefaultInterpolator = Interpolators<float>.Linear;

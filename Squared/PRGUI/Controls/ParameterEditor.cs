@@ -18,6 +18,7 @@ namespace Squared.PRGUI.Controls {
         object Maximum { get; set; }
         object Increment { get; set; }
         object Value { get; set; }
+        void SetRange (object minimum, object maximum);
         bool TrySetValue (object value, bool forUserInput);
         Type ValueType { get; }
         bool ReadOnly { get; set; }
@@ -251,37 +252,44 @@ namespace Squared.PRGUI.Controls {
         public T? Minimum {
             get => _Minimum;
             set {
-                if (
-                    (value.HasValue == _Minimum.HasValue) &&
-                    (
-                        (value.HasValue && (CompareTo(value.Value, _Minimum.Value) == 0)) ||
-                        !value.HasValue
-                    )
-                )
+                if (Equals(value, _Minimum))
                     return;
                 CachedFractionD = null;
                 _Minimum = value;
-                if (HasValue)
-                    Value = Value;
+                if (HasValue && ClampToMinimum)
+                    SetValue(Value, false);
             }
         }
         public T? Maximum {
             get => _Maximum;
             set {
-                if (
-                    (value.HasValue == _Maximum.HasValue) &&
-                    (
-                        (value.HasValue && (CompareTo(value.Value, _Maximum.Value) == 0)) ||
-                        !value.HasValue
-                    )
-                )
+                if (Equals(value, _Maximum))
                     return;
                 CachedFractionD = null;
                 _Maximum = value;
-                if (HasValue)
-                    Value = Value;
+                if (HasValue && ClampToMaximum)
+                    SetValue(Value, false);
             }
         }
+
+        private bool Equals (T? lhs, T? rhs) =>
+            (lhs.HasValue == rhs.HasValue) &&
+            (
+                (lhs.HasValue && (CompareTo(lhs.Value, rhs.Value) == 0)) ||
+                !lhs.HasValue
+            );
+
+        public void SetRange (T? minimum, T? maximum) {
+            if (Equals(minimum, _Minimum) && Equals(maximum, _Maximum))
+                return;
+            CachedFractionD = null;
+            _Minimum = minimum;
+            _Maximum = maximum;
+            if (HasValue && (ClampToMinimum || ClampToMaximum))
+                SetValue(Value, false);
+        }
+
+        void IParameterEditor.SetRange (object minimum, object maximum) => SetRange((T?)minimum, (T?)maximum);
 
         object IParameterEditor.Minimum {
             get => Minimum;
