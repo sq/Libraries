@@ -2158,16 +2158,17 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeStroke (
             RasterStrokeType type, Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, RasterBrush brush,
-            float? seed = null, Vector4? taper = null, int? layer = null, bool? worldSpace = null,
+            float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null,
             bool? blendInLinearSpace = null, BlendState blendState = null, int sortKey = 0
         ) => RasterizeStroke(
             type, a, b, colorA, colorB, ref brush, 
-            seed, taper, layer, worldSpace, blendInLinearSpace, blendState, sortKey
+            seed, taper, biases, layer, worldSpace, 
+            blendInLinearSpace, blendState, sortKey
         );
 
         public void RasterizeStroke (
             RasterStrokeType type, Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, ref RasterBrush brush,
-            float? seed = null, Vector4? taper = null, int? layer = null, bool? worldSpace = null, 
+            float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null, 
             bool? blendInLinearSpace = null, BlendState blendState = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterStrokeBatch(
@@ -2181,6 +2182,7 @@ namespace Squared.Render.Convenience {
                     ColorB = colorB,
                     Seed = seed ?? rsb.Count,
                     TaperRanges = taper ?? default,
+                    Biases = biases ?? default,
                     BlendInLinearSpace = blendInLinearSpace ?? true,
                     SortKey = sortKey,
                     WorldSpace = worldSpace ?? WorldSpace

@@ -21,6 +21,7 @@ void RasterStrokeRectangleVertexShader(
     in float4 ab_in : POSITION0,
     inout float4 seed : TEXCOORD0,
     inout float4 taper : TEXCOORD1,
+    inout float4 biases : TEXCOORD2,
     inout float4 colorA : COLOR0,
     inout float4 colorB : COLOR1,
     in  int2 unusedAndWorldSpace : BLENDINDICES1,
@@ -84,7 +85,7 @@ void RasterStrokeRectangleFragmentShader(
         // FIXME
         float shuffle = 0; // floor(i * 0.7);
         rasterStrokeLineCommon(
-            shuffle, worldPosition, _ab, _seed, taper, GET_VPOS, colorA, colorB, result
+            shuffle, worldPosition, _ab, _seed, taper, biases, GET_VPOS, colorA, colorB, result
         );
     }
 

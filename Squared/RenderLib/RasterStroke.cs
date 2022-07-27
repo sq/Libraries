@@ -19,6 +19,7 @@ namespace Squared.Render.RasterStroke {
         public Vector4 ColorA, ColorB;
         public Vector4 Seed;
         public Vector4 Taper;
+        public Vector4 Biases;
         public short   Unused, WorldSpace;
 
         public static readonly VertexElement[] Elements;
@@ -38,6 +39,8 @@ namespace Squared.Render.RasterStroke {
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Taper").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 1 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "Biases").ToInt32(),
+                    VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 2 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Unused").ToInt32(),
                     VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 1 )
             };
@@ -313,6 +316,12 @@ namespace Squared.Render.RasterStroke {
         /// </summary>
         public Vector4 ColorB4;
 
+        /// <summary>
+        /// Bias values that apply to the dynamic constants for this stroke.
+        /// (Size, Flow, Hardness, Color)
+        /// </summary>
+        public Vector4 Biases;
+
         public pSRGBColor ColorA {
             get {
                 return new pSRGBColor(ColorA4);
@@ -475,6 +484,7 @@ namespace Squared.Render.RasterStroke {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         Seed = seed,
                         Taper = dc.TaperRanges,
+                        Biases = dc.Biases,
                         ColorA = dc.ColorA4,
                         ColorB = dc.ColorB4,
                         WorldSpace = (short)(dc.WorldSpace ? 1 : 0)

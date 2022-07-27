@@ -29,6 +29,7 @@ void RasterStrokeLineSegmentVertexShader(
     in float4 ab_in : POSITION0,
     inout float4 seed : TEXCOORD0,
     inout float4 taper : TEXCOORD1,
+    inout float4 biases : TEXCOORD2,
     inout float4 colorA : COLOR0,
     inout float4 colorB : COLOR1,
     in  int2 unusedAndWorldSpace : BLENDINDICES1,
@@ -71,7 +72,7 @@ void RasterStrokeLineSegmentFragmentShader(
 ) {
     result = 0;
     rasterStrokeLineCommon(
-        0, worldPosition, ab, seed, taper, GET_VPOS, colorA, colorB, result
+        0, worldPosition, ab, seed, taper, biases, GET_VPOS, colorA, colorB, result
     );
 
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts

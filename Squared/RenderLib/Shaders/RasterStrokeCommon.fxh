@@ -47,6 +47,7 @@ uniform float4 SizeDynamics, AngleDynamics, FlowDynamics,
     in float4 ab : TEXCOORD3, \
     in float4 seed : TEXCOORD0, \
     in float4 taper : TEXCOORD1, \
+    in float4 biases : TEXCOORD2, \
     in float4 colorA : COLOR0, \
     in float4 colorB : COLOR1, \
     ACCEPTS_VPOS, \
@@ -211,8 +212,8 @@ inline float2 rotate2D(
 
 void rasterStrokeLineCommon(
     in float shuffle, in float2 worldPosition, in float4 ab, 
-    in float4 seed, in float4 taperRanges, in float2 vpos,
-    in float4 colorA, in float4 colorB,
+    in float4 seed, in float4 taperRanges, in float4 biases,
+    in float2 vpos, in float4 colorA, in float4 colorB,
     inout float4 result
 ) {
     float2 a = ab.xy, b = ab.zw, ba = b - a,
@@ -261,18 +262,19 @@ void rasterStrokeLineCommon(
             taper1 = abs(taperRanges.x) >= 1 ? saturate((d - taperRanges.z) / abs(taperRanges.x)) : 1,
             taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - (d - taperRanges.z)) / taperRanges.y) : 1,
             taper = min(taper1, taper2);
-        float sizePx = clamp(evaluateDynamics2(Constants1.x * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor)), 0, maxSize);
+        float sizePx = clamp(evaluateDynamics2((Constants1.x + biases.x) * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor)), 0, maxSize);
         if (sizePx <= 0)
             continue;
 
+        // biases are: (Size, Flow, Hardness, Color)
         float splatAngleFactor = evaluateDynamics(Constants1.y, AngleDynamics, float4(taper, i, noise1.y, angleFactor)),
             splatAngle = splatAngleFactor * PI * 2,
-            flow = clamp(evaluateDynamics(Constants1.z, FlowDynamics, float4(taper, i, noise1.z, angleFactor)), 0, 2),
+            flow = clamp(evaluateDynamics(Constants1.z + biases.y, FlowDynamics, float4(taper, i, noise1.z, angleFactor)), 0, 2),
             brushIndex = evaluateDynamics2(Constants1.w, brushCount, BrushIndexDynamics, float4(taper, i, noise1.w, angleFactor)),
-            hardness = saturate(evaluateDynamics(Constants2.x, HardnessDynamics, float4(taper, i, noise2.x, angleFactor))),
+            hardness = saturate(evaluateDynamics(Constants2.x + biases.z, HardnessDynamics, float4(taper, i, noise2.x, angleFactor))),
             // HACK: Increment here is scaled by t instead of i
             colorT = COLOR_PER_SPLAT ? t : centerT,
-            colorFactor = saturate(evaluateDynamics(Constants2.y, ColorDynamics, float4(taper, colorT, noise2.y, angleFactor)));
+            colorFactor = saturate(evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(taper, colorT, noise2.y, angleFactor)));
 
         bool outOfRange = (d < taperRanges.z) || (d > (l - taperRanges.w));
 
