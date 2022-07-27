@@ -45,25 +45,32 @@ namespace Squared.Render.Resources {
             public object Data, PreloadedData;
             public bool Optional;
             public bool Async;
+            public bool StreamIsDisposed;
             public long WaitDuration, PreloadDuration;
 
             void IWorkItem.Execute () {
                 var createStarted = Provider.Now;
                 Future<T> instance = null;
-                using (Stream) {
-                    try {
-                        // Console.WriteLine($"CreateInstance('{Name}') on thread {Thread.CurrentThread.Name}");
-                        instance = Provider.CreateInstance(Name, Stream, Data, PreloadedData, Async);
-                        if (instance.Completed)
-                            OnCompleted(instance);
-                        else
-                            instance.RegisterOnComplete(OnCompleted);
-                    } catch (Exception exc) {
-                        Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
-                    } finally {
-                        lock (Provider.PendingLoadLock)
-                            Provider._PendingLoads--;
+                try {
+                    // Console.WriteLine($"CreateInstance('{Name}') on thread {Thread.CurrentThread.Name}");
+                    instance = Provider.CreateInstance(Name, Stream, Data, PreloadedData, Async);
+                    if (instance.Completed)
+                        OnCompleted(instance);
+                    else
+                        instance.RegisterOnComplete(OnCompleted);
+                } catch (Exception exc) {
+                    Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
+                    if (!StreamIsDisposed) {
+                        StreamIsDisposed = true;
+                        Stream?.Dispose();
                     }
+                } finally {
+                    if (!Async && !StreamIsDisposed) {
+                        StreamIsDisposed = true;
+                        Stream?.Dispose();
+                    }
+                    lock (Provider.PendingLoadLock)
+                        Provider._PendingLoads--;
                 }
 
                 void OnCompleted (IFuture _) {
@@ -72,6 +79,10 @@ namespace Squared.Render.Resources {
                     if (err == null)
                         Provider.FireLoadEvent(Name, value, WaitDuration, PreloadDuration, createElapsed);
                     Future.SetResult(value, err);
+                    if (!StreamIsDisposed) {
+                        StreamIsDisposed = true;
+                        Stream?.Dispose();
+                    }
                 }
             }
         }
@@ -171,7 +182,9 @@ namespace Squared.Render.Resources {
             bool enableThreadedPreload, bool enableThreadedCreate
         ) {
             if (coordinator == null)
-                throw new ArgumentNullException("A render coordinator is required", "coordinator");
+                throw new ArgumentNullException(nameof(coordinator));
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
             StreamSource = source;
             Coordinator = coordinator;
 
@@ -396,7 +409,7 @@ namespace Squared.Render.Resources {
 
     public interface IResourceProviderStreamSource {
         string FixupName (string name, bool stripExtension);
-        string[] GetNames ();
+        string[] GetNames (bool asFullPaths = false);
         bool TryGetStream (string name, bool optional, out Stream result, out Exception error);
     }
 
@@ -421,10 +434,20 @@ namespace Squared.Render.Resources {
             }
         }
 
-        public string[] GetNames () {
+        public string[] GetNames (bool asFullPaths) {
             if (!Directory.Exists(Path))
                 return Array.Empty<string>();
-            return Directory.GetFiles(Path, Filter, Options);
+            var result = new DenseList<string>();
+            foreach (var file in Directory.EnumerateFiles(Path, Filter, Options)) {
+                if (!asFullPaths && file.StartsWith(Path)) {
+                    if (file[Path.Length] == System.IO.Path.DirectorySeparatorChar)
+                        result.Add(file.Substring(Path.Length + 1));
+                    else
+                        result.Add(file.Substring(Path.Length));
+                } else
+                    result.Add(file);
+            }
+            return result.ToArray();
         }
 
         public string FixupName (string name, bool stripExtension) {
@@ -497,7 +520,7 @@ namespace Squared.Render.Resources {
             Suffix = suffix ?? Suffix ?? "";
         }
 
-        public string[] GetNames () {
+        public string[] GetNames (bool asFullPaths) {
             return (
                 from n in Assembly.GetManifestResourceNames()
                 where n.StartsWith(Prefix) && n.EndsWith(Suffix)
@@ -549,7 +572,7 @@ namespace Squared.Render.Resources {
             Archive.Dispose();
         }
 
-        public string[] GetNames () {
+        public string[] GetNames (bool asFullPaths) {
             return (
                 from e in Archive.Entries
                 let n = e.FullName
@@ -620,10 +643,10 @@ namespace Squared.Render.Resources {
             Sources = sources;
         }
 
-        public string[] GetNames () {
+        public string[] GetNames (bool asFullPaths) {
             var result = new List<string>();
             foreach (var source in Sources)
-                result.AddRange(source.GetNames());
+                result.AddRange(source.GetNames(asFullPaths));
             return result.ToArray();
         }
 
