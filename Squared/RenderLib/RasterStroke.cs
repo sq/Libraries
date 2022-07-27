@@ -103,6 +103,14 @@ namespace Squared.Render.RasterStroke {
         public float NoiseFactor;
         public float AngleFactor;
 
+        public BrushDynamics (float constant, float taper = 0, float increment = 0, float noise = 0, float angle = 0) {
+            Constant = constant;
+            TaperFactor = taper;
+            Increment = increment;
+            NoiseFactor = noise;
+            AngleFactor = angle;
+        }
+
         public override string ToString () {
             return $"<dynamics(({Constant} * taper({TaperFactor})) + step({Increment}) + noise({NoiseFactor}) + angle({AngleFactor}))>";
         }
@@ -112,7 +120,9 @@ namespace Squared.Render.RasterStroke {
             return Constant.GetHashCode();
         }
 
-        public bool Equals (in BrushDynamics rhs) {
+        public bool Equals (BrushDynamics rhs) => Equals(ref rhs);
+
+        public bool Equals (ref BrushDynamics rhs) {
             return (Constant == rhs.Constant) &&
                 (TaperFactor == rhs.TaperFactor) &&
                 (Increment == rhs.Increment) &&
@@ -122,7 +132,7 @@ namespace Squared.Render.RasterStroke {
 
         public override bool Equals (object obj) {
             if (obj is BrushDynamics bd)
-                return Equals(bd);
+                return Equals(ref bd);
             else
                 return false;
         }
@@ -175,7 +185,8 @@ namespace Squared.Render.RasterStroke {
         public static readonly BrushDynamics DefaultFlow = new BrushDynamics {
             Constant = 1,
         };
-        public static readonly float DefaultSpacing = 0.33f;
+
+        public const float DefaultSpacing = 0.33f;
 
         private bool _HasScale, _HasBrushIndex, _HasHardness, _HasColor, _HasFlow, _HasSpacing;
         private BrushDynamics _Scale, _BrushIndex, _Hardness, _Color, _Flow;
@@ -232,9 +243,18 @@ namespace Squared.Render.RasterStroke {
             }
         }
 
+        public RasterBrush (AbstractTextureReference atlas, float sizePx, float spacing = DefaultSpacing, int countX = 1, int countY = 1) {
+            this = default;
+            NozzleAtlas = atlas;
+            NozzleCountX = countX;
+            NozzleCountY = countY;
+            SizePx = sizePx;
+            Spacing = spacing;
+        }
+
         public override bool Equals (object obj) {
             if (obj is RasterBrush rb)
-                return Equals(rb);
+                return Equals(ref rb);
             else
                 return false;
         }
@@ -243,7 +263,9 @@ namespace Squared.Render.RasterStroke {
             return NozzleAtlas.GetHashCode();
         }
 
-        public bool Equals (in RasterBrush rhs) {
+        public bool Equals (RasterBrush rhs) => Equals(ref rhs);
+
+        public bool Equals (ref RasterBrush rhs) {
             return (NozzleAtlas == rhs.NozzleAtlas) &&
                 (NozzleSamplerState == rhs.NozzleSamplerState) &&
                 (_NozzleCountXMinusOne == rhs._NozzleCountXMinusOne) &&

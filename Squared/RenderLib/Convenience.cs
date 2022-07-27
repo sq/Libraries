@@ -2157,7 +2157,16 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeStroke (
-            RasterStrokeType type, Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, in RasterBrush brush,
+            RasterStrokeType type, Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, RasterBrush brush,
+            float? seed = null, Vector4? taper = null, int? layer = null, bool? worldSpace = null,
+            bool? blendInLinearSpace = null, BlendState blendState = null, int sortKey = 0
+        ) => RasterizeStroke(
+            type, a, b, colorA, colorB, ref brush, 
+            seed, taper, layer, worldSpace, blendInLinearSpace, blendState, sortKey
+        );
+
+        public void RasterizeStroke (
+            RasterStrokeType type, Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, ref RasterBrush brush,
             float? seed = null, Vector4? taper = null, int? layer = null, bool? worldSpace = null, 
             bool? blendInLinearSpace = null, BlendState blendState = null, int sortKey = 0
         ) {

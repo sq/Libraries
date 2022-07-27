@@ -357,7 +357,7 @@ namespace Squared.Util.Containers {
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
             else if (!GetType().IsAssignableFrom(destination.GetType()))
-                throw new Exception("Destination curve's type is incompatible with source curve's type");
+                throw new ArgumentException(nameof(destination), "Destination curve's type is incompatible with source curve's type");
 
             if (erase)
                 destination._Items.Clear();
