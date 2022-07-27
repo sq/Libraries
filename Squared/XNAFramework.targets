@@ -9,7 +9,6 @@
     <!-- Squared libraries use Unsafe so just enable it -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <EnableFNA Condition="'$(EnableFNA)' == ''">false</EnableFNA>
     <!-- workaround for common typo in project files -->
     <FNALibsPath Condition="'$(FNALibsPath)' == ''">$(FNALibPath)</FNALibsPath>
 
@@ -59,6 +58,11 @@
     <AutoPlatformTarget>x86</AutoPlatformTarget>
     <FNAPlatformTarget>x86</FNAPlatformTarget>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'x64' ">
+    <AutoEnableFNA>false</AutoEnableFNA>
+    <AutoPlatformTarget>x64</AutoPlatformTarget>
+    <FNAPlatformTarget>x64</FNAPlatformTarget>
+  </PropertyGroup>
   <PropertyGroup Condition=" '$(Platform)' == 'FNA' ">
     <AutoEnableFNA>true</AutoEnableFNA>
     <AutoPlatformTarget>x86</AutoPlatformTarget>
@@ -71,7 +75,11 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(AutoPlatforms)' == 'true'">
-    <EnableFNA>$(AutoEnableFNA)</EnableFNA>
+    <EnableFNA Condition="'$(EnableFNA)' == ''">$(AutoEnableFNA)</EnableFNA>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(AutoPlatforms)' != 'true'">
+    <EnableFNA Condition="'$(EnableFNA)' == ''">false</EnableFNA>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(EnableFNA)' == 'true'">
