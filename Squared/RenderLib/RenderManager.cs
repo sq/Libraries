@@ -1080,6 +1080,9 @@ namespace Squared.Render {
     }
 
     public static class BatchExtensions {
+        private static int IssueDepth = 0;
+        private static StringBuilder IssueBuilder = new StringBuilder();
+
         public static void IssueAndWrapExceptions (this Batch batch, DeviceManager manager) {
             if (manager.IsDisposed)
                 return;
@@ -1105,11 +1108,35 @@ namespace Squared.Render {
             else if (!isPrepared)
                 throw new BatchIssueFailedException(batch, new Exception("Batch not prepared"));
 
+            var bg = batch as BatchGroup;
+            var targetTracingLevel = (bg != null) ? Tracing.RenderTraceDetailLevel.Concise : Tracing.RenderTraceDetailLevel.Verbose;
+            var tracing = (Tracing.RenderTrace.DetailLevel >= targetTracingLevel) && ((bg?.Count ?? 1) > 0);
+            string markerName = tracing ? batch.ToString() : null;
+
+            if (tracing) {
+                IssueBuilder.Clear();
+                for (int i = 0; i < IssueDepth; i++)
+                    IssueBuilder.Append(". ");
+                IssueBuilder.Append("+ ");
+                IssueBuilder.Append(markerName);
+                manager.Device.SetStringMarkerEXT(IssueBuilder.ToString());
+                IssueDepth++;
+            }
+
             try {
                 batch.Issue(manager);
             } catch (Exception exc) {                
                 throw new BatchIssueFailedException(batch, exc);
             } finally {
+                if (tracing) {
+                    IssueDepth--;
+                    IssueBuilder.Clear();
+                    for (int i = 0; i < IssueDepth; i++)
+                        IssueBuilder.Append(". ");
+                    IssueBuilder.Append("- ");
+                    IssueBuilder.Append(markerName);
+                    manager.Device.SetStringMarkerEXT(IssueBuilder.ToString());
+                }
                 batch.TimesIssued++;
             }
 #if DEBUG

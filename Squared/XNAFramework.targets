@@ -144,6 +144,7 @@
     <Message Importance="High" Text="Automatic platforms enabled? $(AutoPlatforms)" />
     <Message Importance="High" Condition="'$(AutoPlatforms)' == 'true'" Text="Automatic platforms selected FNA? $(AutoEnableFNA)" />
     <Message Importance="High" Text="FNA enabled? $(EnableFNA)" />
+    <Message Importance="High" Condition="'$(EnableFNA)' == 'false'" Text="Automatically forcing x86 for XNA." />
     <Message Importance="High" Condition="'$(EnableFNA)' == 'true'" Text="FNA path: '$(FNAPath)'" />
     <Message Importance="High" Condition="'$(FNAPathWasAutoselected)' == 'true'" Text="FNA path was auto-selected" />
     <Message Importance="High" Condition="'$(EnableFNA)' == 'true'" Text="FNAlibs path: '$(FNALibsPath)'" />
@@ -159,7 +160,7 @@
     <Message Importance="High" Text="Shader compiler mode switches: '$(ShaderCompilerModeSwitches)'" />
 
     <Error Text="EnableFNA is set and FNAPath could not be automatically detected after searching nearby folders." Condition=" ('$(FNAPath)' == '') And ('$(EnableFNA)' == 'true') " />
-    <Error Text="SDL2.dll could not be found in the configured FNALibsPath." Condition=" ('$(EnableFNA)' == 'true') And !Exists('$(FNALibsPath)\$(PlatformTarget)\SDL2.dll') " />
+    <Error Text="SDL2.dll could not be found in the configured FNALibsPath." Condition=" ('$(EnableFNA)' == 'true') And !Exists('$(FNALibsPath)\$(FNAPlatformTarget)\SDL2.dll') " />
 
     <Error Text="FNALibsPath '$(FNALibsPath)' does not exist or is not set" Condition=" !Exists('$(FNALibsPath)') And ('$(EnableFNA)' == 'true') " />
   </Target>

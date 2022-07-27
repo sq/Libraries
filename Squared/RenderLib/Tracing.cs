@@ -232,7 +232,15 @@ namespace Squared.Render.Tracing {
         }
     }
 
+    public enum RenderTraceDetailLevel : int {
+        Silent = 0,
+        Concise = 1,
+        Verbose = 2
+    }
+
     public static class RenderTrace {
+        public static RenderTraceDetailLevel DetailLevel = RenderTraceDetailLevel.Silent;
+
         private static volatile int TracingBroken = 0;
 
         private static bool? _EnableTracing;
@@ -241,11 +249,23 @@ namespace Squared.Render.Tracing {
             get {
                 // FIXME: Thread safety
                 if (!_EnableTracing.HasValue) {
-                    var explicitlyEnabled = Environment.GetCommandLineArgs().Any(arg => arg.Equals("--rendertrace", StringComparison.OrdinalIgnoreCase));
+                    var ca = Environment.GetCommandLineArgs().FirstOrDefault(arg => arg.StartsWith("--rendertrace", StringComparison.OrdinalIgnoreCase));
+                    var explicitlyEnabled = !string.IsNullOrWhiteSpace(ca);
                     if (Squared.Threading.Profiling.Superluminal.Enabled)
                         // This may clear the enabled flag if loading it fails
                         Squared.Threading.Profiling.Superluminal.LoadAPI();
                     _EnableTracing = explicitlyEnabled || (RenderDoc.API != IntPtr.Zero) || Squared.Threading.Profiling.Superluminal.Enabled;
+                    var equalsLocation = ca?.IndexOf("=") ?? 0;
+                    if (equalsLocation > 0) {
+                        var detailLevel = ca.Substring(equalsLocation + 1);
+                        if (int.TryParse(detailLevel, out int i))
+                            DetailLevel = (RenderTraceDetailLevel)i;
+                        else if (!Enum.TryParse(detailLevel, out DetailLevel)) {
+                            var msg = $"Invalid tracing detail level '{detailLevel}'";
+                            Console.Error.WriteLine(msg);
+                            Debug.WriteLine(msg);
+                        }
+                    }
                 }
 
                 return _EnableTracing.Value && (TracingBroken == 0);

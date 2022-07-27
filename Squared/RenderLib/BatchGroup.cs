@@ -71,13 +71,13 @@ namespace Squared.Render {
                 }
             }
 
+            var count = _DrawCalls.Count;
+
             if (_Before != null)
                 _Before(manager, _UserData);
 
             try {
-                // manager.Device.SetStringMarkerEXT(this.ToString());
-
-                for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
+                for (int i = 0; i < count; i++) {
                     _DrawCalls.GetItem(i, out var batch);
                     batch?.IssueAndWrapExceptions(manager);
                 }
@@ -223,6 +223,8 @@ namespace Squared.Render {
             Action<DeviceManager, object> before, Action<DeviceManager, object> after, 
             object userData, DefaultMaterialSet materialSet = null, bool addToContainer = true
         ) {
+            Name = "Group";
+
             base.Initialize(container, layer, null, addToContainer);
 
             Frame = container.Frame;
