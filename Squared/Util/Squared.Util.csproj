@@ -52,6 +52,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Arithmetic.cs" />
+    <Compile Include="BitSet.cs" />
     <Compile Include="CoreCLR\BitOperations.cs" />
     <Compile Include="CoreCLR\Random.Xoshiro256StarStarImpl.cs" />
     <Compile Include="DenseList.Util.cs" />
