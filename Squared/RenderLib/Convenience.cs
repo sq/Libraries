@@ -402,6 +402,7 @@ namespace Squared.Render.Convenience {
         RasterSoftOutlines          = 0b100000000,
         RasterUseUbershader         = 0b1000000000,
         RasterBlendInLinearSpace    = 0b10000000000,
+        RasterBlendInOKLABSpace     = 0b100000000000,
     }
 
     public struct ImperativeRenderer {
@@ -721,7 +722,27 @@ namespace Squared.Render.Convenience {
             get => GetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace);
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => SetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace, value);
+            set {
+                SetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace, value);
+                SetFlag(ImperativeRendererFlags.RasterBlendInOKLABSpace, false);
+            }
+        }
+
+        /// <summary>
+        /// If true, raster shape colors will be converted from sRGB to OKLAB space before
+        ///  blending and then converted back to sRGB for rendering. This is a superset of linear space.
+        /// </summary>
+        public bool RasterBlendInOKLABSpace {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.RasterBlendInOKLABSpace);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set {
+                SetFlag(ImperativeRendererFlags.RasterBlendInOKLABSpace, value);
+                if (value)
+                    SetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace, true);
+            }
         }
 
         /// <summary>
@@ -1418,11 +1439,24 @@ namespace Squared.Render.Convenience {
             return fillModeF;
         }
 
+        private RasterShapeColorSpace RasterColorSpace {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                if (GetFlag(ImperativeRendererFlags.RasterBlendInOKLABSpace))
+                    return RasterShapeColorSpace.OKLAB;
+                else if (GetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace))
+                    return RasterShapeColorSpace.LinearRGB;
+                else
+                    return RasterShapeColorSpace.sRGB;
+            }
+        }
+
         public void RasterizeEllipse (
             Vector2 center, Vector2 radius, pSRGBColor innerColor, pSRGBColor? outerColor = null,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1443,7 +1477,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? default,
@@ -1458,7 +1492,7 @@ namespace Squared.Render.Convenience {
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1479,7 +1513,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? default,
@@ -1493,7 +1527,7 @@ namespace Squared.Render.Convenience {
             Vector2 a, Vector2 b, float radius, pSRGBColor innerColor, pSRGBColor? outerColor = null,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1514,7 +1548,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? default,
@@ -1529,7 +1563,7 @@ namespace Squared.Render.Convenience {
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1553,7 +1587,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow.GetValueOrDefault(),
@@ -1568,7 +1602,7 @@ namespace Squared.Render.Convenience {
             pSRGBColor innerColor, pSRGBColor? outerColor = null,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1589,7 +1623,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow.GetValueOrDefault(),
@@ -1604,7 +1638,7 @@ namespace Squared.Render.Convenience {
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1625,7 +1659,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow.GetValueOrDefault(),
@@ -1640,7 +1674,7 @@ namespace Squared.Render.Convenience {
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1661,7 +1695,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow.GetValueOrDefault(),
@@ -1676,7 +1710,7 @@ namespace Squared.Render.Convenience {
             pSRGBColor innerColor, pSRGBColor? outerColor = null,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1696,7 +1730,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow.GetValueOrDefault(),
@@ -1711,7 +1745,7 @@ namespace Squared.Render.Convenience {
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1731,7 +1765,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow.GetValueOrDefault(),
@@ -1745,7 +1779,7 @@ namespace Squared.Render.Convenience {
             Vector2 a, Vector2 b, Vector2 c, float radius, pSRGBColor color,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1765,7 +1799,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = color,
                     OutlineColor = color,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow.GetValueOrDefault(),
@@ -1781,7 +1815,7 @@ namespace Squared.Render.Convenience {
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             Vector2 offset = default, RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1804,7 +1838,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow.GetValueOrDefault(),
@@ -1820,7 +1854,7 @@ namespace Squared.Render.Convenience {
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1840,7 +1874,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow.GetValueOrDefault(),
@@ -1862,7 +1896,7 @@ namespace Squared.Render.Convenience {
             pSRGBColor innerColor, pSRGBColor? outerColor = null, pSRGBColor? outlineColor = null, 
             RasterFillSettings fill = default,
             float? annularRadius = null, RasterShadowSettings? shadow = null,
-            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
@@ -1909,7 +1943,7 @@ namespace Squared.Render.Convenience {
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow.GetValueOrDefault(),
@@ -2159,17 +2193,17 @@ namespace Squared.Render.Convenience {
         public void RasterizeStroke (
             RasterStrokeType type, Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, RasterBrush brush,
             float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null,
-            bool? blendInLinearSpace = null, BlendState blendState = null, int sortKey = 0
+            RasterShapeColorSpace? colorSpace = null, BlendState blendState = null, int sortKey = 0
         ) => RasterizeStroke(
             type, a, b, colorA, colorB, ref brush, 
             seed, taper, biases, layer, worldSpace, 
-            blendInLinearSpace, blendState, sortKey
+            colorSpace, blendState, sortKey
         );
 
         public void RasterizeStroke (
             RasterStrokeType type, Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, ref RasterBrush brush,
             float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null, 
-            bool? blendInLinearSpace = null, BlendState blendState = null, int sortKey = 0
+            RasterShapeColorSpace? colorSpace = null, BlendState blendState = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterStrokeBatch(
                 layer, worldSpace, blendState, brush
@@ -2183,7 +2217,7 @@ namespace Squared.Render.Convenience {
                     Seed = seed ?? rsb.Count,
                     TaperRanges = taper ?? default,
                     Biases = biases ?? default,
-                    BlendInLinearSpace = blendInLinearSpace ?? true,
+                    BlendIn = colorSpace ?? RasterShapeColorSpace.LinearRGB,
                     SortKey = sortKey,
                     WorldSpace = worldSpace ?? WorldSpace
                 });

@@ -23,6 +23,7 @@ namespace Squared.Util.Containers {
         bool RemoveAtPosition (float position, float epsilon);
         void SetValueAtPosition (float position, object value);
         IEnumerable<CurvePoint<object>> Points { get; }
+        bool EstimateExtents (IComparer comparer, out object minimum, out object maximum, int detail);
     }
 
     public interface ICurve<TValue> : ICurve
@@ -35,6 +36,8 @@ namespace Squared.Util.Containers {
         new IEnumerable<CurvePoint<TValue>> Points {
             get;
         }
+        bool EstimateExtents<TComparer> (TComparer comparer, out TValue minimum, out TValue maximum, int detail = 10)
+            where TComparer : IComparer<TValue>;
     }
 
     public readonly struct CurvePoint<TValue> {
@@ -341,8 +344,19 @@ namespace Squared.Util.Containers {
             return GetValueAtPosition(position, 0, _Items.Count - 1, out result);
         }
 
+        bool ICurve.EstimateExtents(IComparer comparer, out object minimum, out object maximum, int detail) {
+            if (EstimateExtents((IComparer<TValue>)comparer ?? Comparer<TValue>.Default, out var min, out var max, detail)) {
+                minimum = min;
+                maximum = max;
+                return true;
+            } else {
+                minimum = maximum = null;
+                return false;
+            }
+        }
+
         /// <summary>
-        /// Estimates the minimum and maximum values of the entire curve.
+        /// Estimates the minimum and maximum values of the entire curve (if possible).
         /// </summary>
         /// <param name="comparer">The comparer used to determine which of two values is larger.</param>
         /// <param name="detail">The number of steps between each control point to evaluate (to account for non-linear interpolation)</param>
@@ -358,6 +372,9 @@ namespace Squared.Util.Containers {
 
             bool result = false;
             minimum = maximum = default;
+
+            if (Count < 1)
+                return false;
 
             for (int i = 0; i < Count; i++) {
                 if (!TryGetPositionAtIndex(i + 1, out float p1))

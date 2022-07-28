@@ -46,7 +46,7 @@ uniform float4 TextureOptions;
     ACCEPTS_VPOS, \
     out float4 result : COLOR0
 
-uniform bool BlendInLinearSpace, OutputInLinearSpace;
+uniform bool BlendInLinearSpace, OutputInLinearSpace, BlendInOKLAB;
 uniform float HalfPixelOffset;
 
 // offsetx, offsety, softness, fillSuppression
@@ -359,11 +359,18 @@ void RasterShapeVertexShader_Core (
     // FIXME: Is this reasonably correct for simple shapes with outlines? Probably
     if (
         (OutputInLinearSpace && isSimple) || 
-        (BlendInLinearSpace && !isSimple)
+        (BlendInLinearSpace && !isSimple) ||
+        BlendInOKLAB
     ) {
-        centerColor = pSRGBToPLinear_Accurate(centerColor);
-        edgeColor = pSRGBToPLinear_Accurate(edgeColor);
-        outlineColor = pSRGBToPLinear_Accurate(outlineColor);
+        if (BlendInOKLAB) {
+            centerColor = pSRGBToPOKLAB(centerColor);
+            edgeColor = pSRGBToPOKLAB(edgeColor);
+            outlineColor = pSRGBToPOKLAB(outlineColor);
+        } else {
+            centerColor = pSRGBToPLinear_Accurate(centerColor);
+            edgeColor = pSRGBToPLinear_Accurate(edgeColor);
+            outlineColor = pSRGBToPLinear_Accurate(outlineColor);
+        }
     }
 }
 
@@ -1091,9 +1098,13 @@ float4 compositeSecondStep (float4 pLinear, bool isSimple, float2 vpos) {
     // It's also important to do dithering and sRGB conversion on a result that is not premultiplied
     result.rgb = float4(result.rgb / max(result.a, 0.0001), result.a);
 
-    if (isSimple) {
+    if (isSimple)
         return result;
-    } else if (BlendInLinearSpace != OutputInLinearSpace) {
+
+    if (BlendInOKLAB)
+        result.rgb = OKLABToLinearSRGB(result.rgb);
+
+    if (BlendInLinearSpace != OutputInLinearSpace) {
         if (OutputInLinearSpace)
             result.rgb = SRGBToLinear(result).rgb;
         else
@@ -1175,6 +1186,8 @@ float4 texturedShapeCommon (
     // TODO: Will the automatic mip selection work correctly here? Probably not
     float4 texColor = tex2Dbias(TextureSampler, float4(texCoord, 0, BACKGROUND_MIP_BIAS));
     texColor = ExtractRgba(texColor, TextureTraits);
+
+    // FIXME: OKLAB
     if (BlendInLinearSpace)
         texColor = pSRGBToPLinear(texColor);
 

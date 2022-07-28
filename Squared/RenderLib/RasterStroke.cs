@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.Render.Internal;
+using Squared.Render.RasterShape;
 using Squared.Util;
 
 namespace Squared.Render.RasterStroke {
@@ -341,10 +342,8 @@ namespace Squared.Render.RasterStroke {
         }
 
         public int SortKey;
-        /// <summary>
-        /// If set, blending between inner/outer/outline colors occurs in linear space.
-        /// </summary>
-        public bool BlendInLinearSpace;
+        // FIXME
+        public RasterShapeColorSpace BlendIn;
 
         internal int Index;
     }

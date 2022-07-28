@@ -24,6 +24,8 @@ namespace Squared.PRGUI.Controls {
         bool ReadOnly { get; set; }
         bool IntegerOnly { get; set; }
         bool DoubleOnly { get; set; }
+        bool ClampToMinimum { get; set; }
+        bool ClampToMaximum { get; set; }
         string Description { get; set; }
         int DecimalDigits { get; set; }
     }
@@ -74,8 +76,8 @@ namespace Squared.PRGUI.Controls {
 
         private bool IsDraggingGauge = false;
 
-        public bool ClampToMinimum = true,
-            ClampToMaximum = true;
+        public bool ClampToMinimum { get; set; } = true;
+        public bool ClampToMaximum { get; set; } = true;
 
         private double LastRepeatTimestamp;
 

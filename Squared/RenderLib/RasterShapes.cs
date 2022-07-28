@@ -345,6 +345,12 @@ namespace Squared.Render.RasterShape {
         }
     }
 
+    public enum RasterShapeColorSpace : byte {
+        LinearRGB = 0,
+        sRGB = 1,
+        OKLAB = 2
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct RasterShapeDrawCall {
         public RasterShapeType Type;
@@ -425,9 +431,16 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         public float OutlineGammaMinusOne;
         /// <summary>
+        /// Configures the color space to blend between colors in.
+        /// </summary>
+        public RasterShapeColorSpace BlendIn;
+        /// <summary>
         /// If set, blending between inner/outer/outline colors occurs in linear space.
         /// </summary>
-        public bool BlendInLinearSpace;
+        public bool BlendInLinearSpace {
+            get => BlendIn == RasterShapeColorSpace.LinearRGB;
+            set => BlendIn = value ? RasterShapeColorSpace.LinearRGB : RasterShapeColorSpace.sRGB;
+        }
         public RasterFillSettings Fill;
         /// <summary>
         /// If above zero, the shape becomes annular (hollow) instead of solid, with a border this size in pixels.
@@ -529,6 +542,7 @@ namespace Squared.Render.RasterShape {
     internal struct RasterShader {
         public Material Material;
         public EffectParameter BlendInLinearSpace,
+            BlendInOKLAB,
             OutputInLinearSpace,
             RasterTexture,
             RampTexture,
@@ -545,6 +559,7 @@ namespace Squared.Render.RasterShape {
             Material = material;
             var p = material.Effect.Parameters;
             BlendInLinearSpace = p["BlendInLinearSpace"];
+            BlendInOKLAB = p["BlendInOKLAB"];
             OutputInLinearSpace = p["OutputInLinearSpace"];
             RasterTexture = p["RasterTexture"];
             RampTexture = p["RampTexture"];
@@ -599,7 +614,8 @@ namespace Squared.Render.RasterShape {
                 self._SubBatches.Add(new SubBatch {
                     InstanceOffset = offset,
                     InstanceCount = count,
-                    BlendInLinearSpace = drawCall.BlendInLinearSpace,
+                    BlendInLinearSpace = drawCall.BlendIn != RasterShapeColorSpace.sRGB,
+                    BlendInOKLAB = drawCall.BlendIn == RasterShapeColorSpace.OKLAB,
                     Type = drawCall.Type,
                     Shadow = drawCall.Shadow,
                     Shadowed = ShouldBeShadowed(in drawCall.Shadow),
@@ -612,7 +628,7 @@ namespace Squared.Render.RasterShape {
         private struct SubBatch {
             public int InstanceOffset, InstanceCount;
             public RasterShapeType Type;
-            public bool BlendInLinearSpace, Shadowed, Simple;
+            public bool BlendInLinearSpace, BlendInOKLAB, Shadowed, Simple;
             public RasterShadowSettings Shadow;
             internal RasterTextureSettings TextureSettings;
         }
@@ -823,6 +839,7 @@ namespace Squared.Render.RasterShape {
                 }
 
                 rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
+                rasterShader.BlendInOKLAB.SetValue(sb.BlendInOKLAB);
                 rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
                 rasterShader.RasterTexture?.SetValue(Texture);
                 rasterShader.RampTexture?.SetValue(RampTexture);
@@ -926,7 +943,10 @@ namespace Squared.Render.RasterShape {
             var result = dc;
             // FIXME
             result.Index = _DrawCalls.Count;
-            result.IsSimple = (result.OuterColor4.FastEquals(in result.InnerColor4) || (result.Fill.Mode == RasterFillMode.None)) ? 1 : 0;
+            result.IsSimple = (
+                (result.OuterColor4.FastEquals(in result.InnerColor4) || (result.Fill.Mode == RasterFillMode.None)) &&
+                (result.BlendIn != RasterShapeColorSpace.OKLAB)
+            ) ? 1 : 0;
             result.PackedFlags = (
                 (int)result.Type | (result.IsSimple << 16) | (result.Shadow.IsEnabled << 17) | ((result.BlendInLinearSpace ? 1 : 0) << 18) |
                 ((result.Shadow.Inside ? 1 : 0) << 19) | ((result.SoftOutline ? 1 : 0) << 20)
