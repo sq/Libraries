@@ -34,8 +34,36 @@ namespace Squared.Render {
     }
 
     public static class NamedColor {
+        private static bool _AllIsPopulated;
+        private static KeyValuePair<string, Color>[] _All;
+
         private static readonly Dictionary<string, Color?> SystemNamedColorCache = 
             new Dictionary<string, Color?>(StringComparer.OrdinalIgnoreCase);
+
+        public static KeyValuePair<string, Color>[] All {
+            get {
+                lock (SystemNamedColorCache) {
+                    if (!_AllIsPopulated) {
+                        var result = new List<KeyValuePair<string, Color>>();
+                        foreach (var prop in typeof(Color).GetProperties(BindingFlags.Public | BindingFlags.Static)) {
+                            if (prop.PropertyType != typeof(Color))
+                                continue;
+                            var v = prop.GetValue(null);
+                            if (v == null)
+                                continue;
+                            var c = (Color)v;
+                            SystemNamedColorCache[prop.Name] = c;
+                            result.Add(new KeyValuePair<string, Color>(prop.Name, c));
+                        }
+
+                        _All = result.ToArray();
+                        _AllIsPopulated = true;
+                    }
+                }
+
+                return _All;
+            }
+        }
 
         public static bool TryParse (string text, out Color result) {
             if (string.IsNullOrWhiteSpace(text)) {
@@ -182,20 +210,17 @@ namespace Squared.Render {
         // SOFTWARE.
 
         public static pSRGBColor FromOkLab (float L, float a, float b, float opacity = 1.0f) {
-            float l_ = L + 0.3963377774f * a + 0.2158037573f * b;
-            float m_ = L - 0.1055613458f * a - 0.0638541728f * b;
-            float s_ = L - 0.0894841775f * a - 1.2914855480f * b;
+            float l_ = L + 0.3963377774f * a + 0.2158037573f * b,
+                m_ = L - 0.1055613458f * a - 0.0638541728f * b,
+                s_ = L - 0.0894841775f * a - 1.2914855480f * b,
+                l = l_ * l_ * l_,
+                m = m_ * m_ * m_,
+                s = s_ * s_ * s_,
+                R = 4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s,
+                G = -1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s,
+                B = -0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s;
 
-            float l = l_*l_*l_;
-            float m = m_*m_*m_;
-            float s = s_*s_*s_;
-
-            return new pSRGBColor(
-		         4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s,
-		        -1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s,
-		        -0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s,
-                opacity
-            );            
+            return new pSRGBColor(Arithmetic.Saturate(R), Arithmetic.Saturate(G), Arithmetic.Saturate(B), opacity);
         }
 
         public void ToOkLab (out float L, out float a, out float b, out float opacity) {

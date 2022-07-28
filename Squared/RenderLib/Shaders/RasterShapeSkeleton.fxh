@@ -631,12 +631,12 @@ float computeLocalRectangleRadius (
     in float2 a, in float2 b, 
     in float2 radiusTLTR, in float2 radiusBRBL
 ) {
-    // Smoothly interpolate the transition between radius values over the [0.25 - 0.75]
+    // Smoothly interpolate the transition between radius values over the boundary
     //  region, because otherwise the immediate jump can cause very weird discontinuities
     float2 radiusWeight = saturate((
         (
             (worldPosition - a) / max((b - a), 0.001)
-        ) - 0.5) * 2
+        ) - 0.5) * 4
     );
     return lerp(
         lerp(radiusTLTR.x, radiusTLTR.y, radiusWeight.x),
