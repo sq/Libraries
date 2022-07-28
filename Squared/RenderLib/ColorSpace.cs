@@ -355,6 +355,8 @@ namespace Squared.Render {
             result *= opacity;
             if (premultiply)
                 result *= alpha;
+            else
+                result.W = alpha;
             return result;
         }
 
