@@ -352,11 +352,10 @@ namespace Squared.Render {
                 1
             );
 
-            result *= opacity;
             if (premultiply)
-                result *= alpha;
+                result *= alpha * opacity;
             else
-                result.W = alpha;
+                result.W = alpha * opacity;
             return result;
         }
 
@@ -400,20 +399,17 @@ namespace Squared.Render {
             );
         }
 
-        public static pSRGBColor FromPLinear (in Vector4 pLinear) {
-            if (pLinear.W <= 0)
-                return new pSRGBColor(in pLinear, true);
+        public static pSRGBColor FromLinear (float r, float g, float b, float a = 1.0f) =>
+            FromLinear(new Vector4(r, g, b, a));
 
-            var linear = pLinear / pLinear.W;
-            linear.W = pLinear.W;
-
+        public static pSRGBColor FromLinear (in Vector4 linear) {
             var low = linear / 12.92f;
             var inv2_4 = 1.0 / 2.4;
             var high = new Vector4(
                 (float)((1.055 * Math.Pow(linear.X, inv2_4)) - 0.055),
                 (float)((1.055 * Math.Pow(linear.Y, inv2_4)) - 0.055),
                 (float)((1.055 * Math.Pow(linear.Z, inv2_4)) - 0.055),
-                pLinear.W
+                linear.W
             );
             var result = new Vector4(
                 linear.X < 0.0031308f ? low.X : high.X,
@@ -421,8 +417,17 @@ namespace Squared.Render {
                 linear.Z < 0.0031380f ? low.Z : high.Z,
                 1f
             );
-            result *= pLinear.W;
+            result *= linear.W;
             return result;
+        }
+
+        public static pSRGBColor FromPLinear (in Vector4 pLinear) {
+            if (pLinear.W <= 0)
+                return new pSRGBColor(in pLinear, true);
+
+            var linear = pLinear / pLinear.W;
+            linear.W = pLinear.W;
+            return FromLinear(linear);
         }
 
         public float ColorDelta {
