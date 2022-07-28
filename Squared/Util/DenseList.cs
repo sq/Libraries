@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define NOSPAN
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,15 +44,11 @@ namespace Squared.Util {
             }
         }
 
-        internal static ref T ListIsEmpty () {
-            throw new ArgumentOutOfRangeException("List is empty");
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe void GetInlineItemAtIndex (int index, out T result) {
 #if !NOSPAN
             // FIXME: This is a bit slower than the switch version for some reason?
-            if ((index < 0) || (index > 3))
+            if ((index < 0) || (index >= _Count))
                 EnumerableExtensions.BoundsCheckFailed();
             result = Unsafe.Add(ref Item1, index);
 #else
@@ -75,7 +73,7 @@ namespace Squared.Util {
         private unsafe void SetInlineItemAtIndex (int index, ref T value) {
 #if !NOSPAN
             // FIXME: This is a bit slower than the switch version for some reason?
-            if ((index < 0) || (index > 3))
+            if ((index < 0) || (index >= _Count))
                 EnumerableExtensions.BoundsCheckFailed();
             Unsafe.Add(ref Item1, index) = value;
 #else
@@ -362,7 +360,7 @@ namespace Squared.Util {
             }
 
             GetInlineItemAtIndex(index, out result);
-            return (index <= 3);
+            return true;
         }
 
         [TargetedPatchingOptOut("")]
@@ -439,7 +437,7 @@ namespace Squared.Util {
             return -1;
         }
 
-        public unsafe T this [int index] {
+        public T this [int index] {
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
@@ -535,8 +533,7 @@ namespace Squared.Util {
             if ((_Count >= 4) || (_Items != null)) {
                 Add_Slow(ref item);
             } else {
-                SetInlineItemAtIndex(_Count, ref item);
-                _Count += 1;
+                SetInlineItemAtIndex(_Count++, ref item);
             }
         }
 
@@ -546,8 +543,7 @@ namespace Squared.Util {
             if ((_Count >= 4) || (_Items != null)) {
                 Add_Slow(ref item);
             } else {
-                SetInlineItemAtIndex(_Count, ref item);
-                _Count += 1;
+                SetInlineItemAtIndex(_Count++, ref item);
             }
         }
 

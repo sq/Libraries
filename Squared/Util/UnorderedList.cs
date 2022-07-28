@@ -307,10 +307,14 @@ namespace Squared.Util {
             _BufferSize = newBuffer.Count;
         }
 
+        protected void BoundsCheckFailed () {
+            throw new ArgumentOutOfRangeException("index");
+        }
+
         public void InsertOrdered (int index, in T item) {
             EnsureCapacity(_Count + 1);
             if ((index < 0) || (index > _Count))
-                throw new ArgumentOutOfRangeException(nameof(index));
+                BoundsCheckFailed();
             if (index < Count)
                 Array.Copy(_Items, index + _BufferOffset, _Items, index + _BufferOffset + 1, Count - index);
             _Items[index + _BufferOffset] = item;
@@ -420,7 +424,7 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref readonly T DangerousReadItem (int index) {
             if ((index < 0) || (index >= _Count))
-                throw new IndexOutOfRangeException();
+                BoundsCheckFailed();
 
             return ref _Items[_BufferOffset + index];
         }
@@ -429,7 +433,7 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T DangerousItem (int index) {
             if ((index < 0) || (index >= _Count))
-                throw new IndexOutOfRangeException();
+                BoundsCheckFailed();
 
             return ref _Items[_BufferOffset + index];
         }
@@ -438,7 +442,7 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T DangerousGetItem (int index) {
             if ((index < 0) || (index >= _Count))
-                throw new IndexOutOfRangeException();
+                BoundsCheckFailed();
 
             return _Items[_BufferOffset + index];
         }
@@ -447,7 +451,7 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DangerousGetItem (int index, out T result) {
             if ((index < 0) || (index >= _Count))
-                throw new IndexOutOfRangeException();
+                BoundsCheckFailed();
 
             result = _Items[_BufferOffset + index];
         }
@@ -458,7 +462,6 @@ namespace Squared.Util {
             if ((index < 0) || (index >= _Count)) {
                 result = default(T);
                 return false;
-                throw new IndexOutOfRangeException();
             }
 
             result = _Items[_BufferOffset + index];
@@ -469,7 +472,7 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DangerousSetItem (int index, T newValue) {
             if ((index < 0) || (index >= _Count))
-                throw new IndexOutOfRangeException();
+                BoundsCheckFailed();
 
             _Items[_BufferOffset + index] = newValue;
         }
@@ -478,7 +481,7 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DangerousSetItem (int index, ref T newValue) {
             if ((index < 0) || (index >= _Count))
-                throw new IndexOutOfRangeException();
+                BoundsCheckFailed();
 
             _Items[_BufferOffset + index] = newValue;
         }
@@ -596,7 +599,8 @@ namespace Squared.Util {
         }
 
         public void Clear () {
-            Array.Clear(_Items, _BufferOffset, _Count);
+            Array.Clear(_Items, _BufferOffset, _BufferSize);
+            // Array.Clear(_Items, _BufferOffset, _Count);
             _Count = 0;
         }
 

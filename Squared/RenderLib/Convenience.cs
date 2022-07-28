@@ -2138,7 +2138,7 @@ namespace Squared.Render.Convenience {
         }
 
         public RasterStrokeBatch GetRasterStrokeBatch (
-            int? layer, bool? worldSpace, BlendState blendState, in RasterBrush brush
+            int? layer, bool? worldSpace, BlendState blendState, ref RasterBrush brush
         ) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
@@ -2172,10 +2172,11 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState1: brush.NozzleSamplerState,
                 samplerState2: null,
-                extraData: brush
-            )) {
+                extraData: brush.NozzleAtlas
+            ) || !((RasterStrokeBatch)cacheEntry.Batch).Brush.Equals(ref brush)
+            ) {
                 var batch = RasterStrokeBatch.New(
-                    Container, actualLayer, Materials, brush,
+                    Container, actualLayer, Materials, ref brush,
                     RasterizerState, DepthStencilState, desiredBlendState
                 );
                 batch.BlendInLinearSpace = RasterBlendInLinearSpace;
@@ -2206,7 +2207,7 @@ namespace Squared.Render.Convenience {
             RasterShapeColorSpace? colorSpace = null, BlendState blendState = null, int sortKey = 0
         ) {
             using (var rsb = GetRasterStrokeBatch(
-                layer, worldSpace, blendState, brush
+                layer, worldSpace, blendState, ref brush
             ))
                 rsb.Add(new RasterStrokeDrawCall {
                     Type = type,

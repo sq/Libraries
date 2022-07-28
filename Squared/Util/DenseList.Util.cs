@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define NOSPAN
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -183,7 +185,11 @@ namespace Squared.Util {
             if (items != null)
                 return ref items.DangerousItem(index);
             
+            if ((index < 0) || (index >= list._Count))
+                BoundsCheckFailed();
+
             switch (index) {
+                default:
                 case 0:
                     return ref list.Item1;
                 case 1:
@@ -192,8 +198,6 @@ namespace Squared.Util {
                     return ref list.Item3;
                 case 3:
                     return ref list.Item4;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(index));
             }
         }
 
@@ -204,7 +208,11 @@ namespace Squared.Util {
             if (items != null)
                 return ref items.DangerousItem(index);
             
+            if ((index < 0) || (index >= list._Count))
+                BoundsCheckFailed();
+
             switch (index) {
+                default:
                 case 0:
                     return ref list.Item1;
                 case 1:
@@ -213,8 +221,6 @@ namespace Squared.Util {
                     return ref list.Item3;
                 case 3:
                     return ref list.Item4;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(index));
             }
         }
 #endif

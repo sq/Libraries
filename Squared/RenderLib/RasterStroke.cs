@@ -161,7 +161,7 @@ namespace Squared.Render.RasterStroke {
     }
 
     public struct RasterBrush {
-        public AbstractTextureReference NozzleAtlas;
+        public Texture2D NozzleAtlas;
         public SamplerState NozzleSamplerState;
 
         private int _NozzleCountXMinusOne, _NozzleCountYMinusOne;
@@ -247,7 +247,7 @@ namespace Squared.Render.RasterStroke {
             }
         }
 
-        public RasterBrush (AbstractTextureReference atlas, float sizePx, float spacing = DefaultSpacing, int countX = 1, int countY = 1) {
+        public RasterBrush (Texture2D atlas, float sizePx, float spacing = DefaultSpacing, int countX = 1, int countY = 1) {
             this = default;
             NozzleAtlas = atlas;
             NozzleCountX = countX;
@@ -584,7 +584,7 @@ namespace Squared.Render.RasterStroke {
             var isSrgbRenderTarget = 
                 (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
 
-            var atlas = Brush.NozzleAtlas.Instance;
+            var atlas = Brush.NozzleAtlas;
             int nozzleBaseSize = atlas == null
                 ? 1 
                 : Math.Max(atlas.Width / Brush.NozzleCountX, atlas.Height / Brush.NozzleCountY);
@@ -665,7 +665,7 @@ namespace Squared.Render.RasterStroke {
         }
 
         public static RasterStrokeBatch New (
-            IBatchContainer container, int layer, DefaultMaterialSet materials, RasterBrush brush,
+            IBatchContainer container, int layer, DefaultMaterialSet materials, ref RasterBrush brush,
             RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null
         ) {
             if (container == null)
