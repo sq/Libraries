@@ -28,7 +28,7 @@ namespace Squared.Util.Containers {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
                 while (++Index < Length) {
-                    ref var slot = ref FindBit(ref A, Index, out var mask);
+                    ref var slot = ref FindBit(ref A, ref B, Index, out var mask);
                     if ((slot & mask) != 0)
                         return true;
                 }
@@ -65,25 +65,28 @@ namespace Squared.Util.Containers {
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ref UInt64 FindBit (ref UInt64 a, int index, out UInt64 mask) {
+        internal static ref UInt64 FindBit (ref UInt64 a, ref UInt64 b, int index, out UInt64 mask) {
             if ((index < 0) || (index >= Length))
                 BoundsCheckFailed();
             int slotIndex = index / 64, localIndex = index % 64;
             mask = 1UL << localIndex;
-            return ref Unsafe.Add(ref a, slotIndex);
+            if (slotIndex == 0)
+                return ref a;
+            else
+                return ref b;
         }
 
         public bool this [int index] {
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                ref var slot = ref FindBit(ref A, index, out var mask);
+                ref var slot = ref FindBit(ref A, ref B, index, out var mask);
                 return (slot & mask) != 0;
             }
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                ref var slot = ref FindBit(ref A, index, out var mask);
+                ref var slot = ref FindBit(ref A, ref B, index, out var mask);
                 if (value)
                     slot |= mask;
                 else
@@ -92,7 +95,7 @@ namespace Squared.Util.Containers {
         }
 
         public void Add (int index) {
-            ref var slot = ref FindBit(ref A, index, out var mask);
+            ref var slot = ref FindBit(ref A, ref B, index, out var mask);
             slot |= mask;
         }
 
@@ -106,7 +109,7 @@ namespace Squared.Util.Containers {
         /// </summary>
         /// <returns>true if the new value is different from the old value</returns>
         public bool Change (int index, bool value) {
-            ref var slot = ref FindBit(ref A, index, out var mask);
+            ref var slot = ref FindBit(ref A, ref B, index, out var mask);
             if (value) {
                 if ((slot & mask) != 0)
                     return false;

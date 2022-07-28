@@ -346,9 +346,9 @@ namespace Squared.Render.RasterShape {
     }
 
     public enum RasterShapeColorSpace : byte {
-        LinearRGB = 0,
-        sRGB = 1,
-        OKLAB = 2
+        sRGB = 0,
+        LinearRGB = 1,
+        OkLab = 2
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -542,7 +542,7 @@ namespace Squared.Render.RasterShape {
     internal struct RasterShader {
         public Material Material;
         public EffectParameter BlendInLinearSpace,
-            BlendInOKLAB,
+            BlendInOkLab,
             OutputInLinearSpace,
             RasterTexture,
             RampTexture,
@@ -559,7 +559,7 @@ namespace Squared.Render.RasterShape {
             Material = material;
             var p = material.Effect.Parameters;
             BlendInLinearSpace = p["BlendInLinearSpace"];
-            BlendInOKLAB = p["BlendInOKLAB"];
+            BlendInOkLab = p["BlendInOkLab"];
             OutputInLinearSpace = p["OutputInLinearSpace"];
             RasterTexture = p["RasterTexture"];
             RampTexture = p["RampTexture"];
@@ -615,7 +615,7 @@ namespace Squared.Render.RasterShape {
                     InstanceOffset = offset,
                     InstanceCount = count,
                     BlendInLinearSpace = drawCall.BlendIn != RasterShapeColorSpace.sRGB,
-                    BlendInOKLAB = drawCall.BlendIn == RasterShapeColorSpace.OKLAB,
+                    BlendInOkLab = drawCall.BlendIn == RasterShapeColorSpace.OkLab,
                     Type = drawCall.Type,
                     Shadow = drawCall.Shadow,
                     Shadowed = ShouldBeShadowed(in drawCall.Shadow),
@@ -628,7 +628,7 @@ namespace Squared.Render.RasterShape {
         private struct SubBatch {
             public int InstanceOffset, InstanceCount;
             public RasterShapeType Type;
-            public bool BlendInLinearSpace, BlendInOKLAB, Shadowed, Simple;
+            public bool BlendInLinearSpace, BlendInOkLab, Shadowed, Simple;
             public RasterShadowSettings Shadow;
             internal RasterTextureSettings TextureSettings;
         }
@@ -839,7 +839,7 @@ namespace Squared.Render.RasterShape {
                 }
 
                 rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
-                rasterShader.BlendInOKLAB.SetValue(sb.BlendInOKLAB);
+                rasterShader.BlendInOkLab.SetValue(sb.BlendInOkLab);
                 rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
                 rasterShader.RasterTexture?.SetValue(Texture);
                 rasterShader.RampTexture?.SetValue(RampTexture);
@@ -945,7 +945,7 @@ namespace Squared.Render.RasterShape {
             result.Index = _DrawCalls.Count;
             result.IsSimple = (
                 (result.OuterColor4.FastEquals(in result.InnerColor4) || (result.Fill.Mode == RasterFillMode.None)) &&
-                (result.BlendIn != RasterShapeColorSpace.OKLAB)
+                (result.BlendIn != RasterShapeColorSpace.OkLab)
             ) ? 1 : 0;
             result.PackedFlags = (
                 (int)result.Type | (result.IsSimple << 16) | (result.Shadow.IsEnabled << 17) | ((result.BlendInLinearSpace ? 1 : 0) << 18) |

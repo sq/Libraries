@@ -163,6 +163,59 @@ namespace Squared.Render {
             _Color = default(Color);
         }
 
+        // OkLab: https://bottosson.github.io/posts/oklab/
+        // Copyright (c) 2020 Björn Ottosson
+        // Permission is hereby granted, free of charge, to any person obtaining a copy of
+        // this software and associated documentation files (the "Software"), to deal in
+        // the Software without restriction, including without limitation the rights to
+        // use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+        // of the Software, and to permit persons to whom the Software is furnished to do
+        // so, subject to the following conditions:
+        // The above copyright notice and this permission notice shall be included in all
+        // copies or substantial portions of the Software.
+        // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        // SOFTWARE.
+
+        public static pSRGBColor FromOkLab (float L, float a, float b, float opacity = 1.0f) {
+            float l_ = L + 0.3963377774f * a + 0.2158037573f * b;
+            float m_ = L - 0.1055613458f * a - 0.0638541728f * b;
+            float s_ = L - 0.0894841775f * a - 1.2914855480f * b;
+
+            float l = l_*l_*l_;
+            float m = m_*m_*m_;
+            float s = s_*s_*s_;
+
+            return new pSRGBColor(
+		         4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s,
+		        -1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s,
+		        -0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s,
+                opacity
+            );            
+        }
+
+        public void ToOkLab (out float L, out float a, out float b, out float opacity) {
+            var srgb = ToLinear();
+            double l = 0.4122214708 * srgb.X + 0.5363325363 * srgb.Y + 0.0514459929 * srgb.Z;
+	        double m = 0.2119034982 * srgb.X + 0.6806995451 * srgb.Y + 0.1073969566 * srgb.Z;
+	        double s = 0.0883024619 * srgb.X + 0.2817188376 * srgb.Y + 0.6299787005 * srgb.Z;
+
+            double l_ = Math.Pow(l, 1.0 / 3.0);
+            double m_ = Math.Pow(m, 1.0 / 3.0);
+            double s_ = Math.Pow(s, 1.0 / 3.0);
+
+            L = (float)(0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_);
+            a = (float)(1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_);
+            b = (float)(0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_);
+            opacity = srgb.W;
+        }
+
+        // end oklab
+
         public static pSRGBColor Black (float opacity = 1.0f) {
             if (opacity == 1.0f)
                 return _Black;
@@ -249,7 +302,7 @@ namespace Squared.Render {
             return FromPLinear(plinear);
         }
 
-        public Vector4 ToPLinear (float opacity = 1.0f) {
+        private Vector4 ToLinearImpl (float opacity, bool premultiply) {
             var v4 = ToVector4();
             float alpha = v4.W;
             if ((alpha * opacity) <= 0)
@@ -274,9 +327,14 @@ namespace Squared.Render {
                 1
             );
 
-            result *= alpha * opacity;
+            result *= opacity;
+            if (premultiply)
+                result *= alpha;
             return result;
         }
+
+        public Vector4 ToPLinear (float opacity = 1.0f) => ToLinearImpl(opacity, true);
+        public Vector4 ToLinear (float opacity = 1.0f) => ToLinearImpl(opacity, false);
 
         public pSRGBColor AdjustBrightness (float factor, bool clamp = true) {
             var vec = ToVector4();

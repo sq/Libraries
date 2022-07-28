@@ -63,7 +63,7 @@ float cbrtf (float value) {
 	return pow(value, 1/3.0);
 }
 
-// https://bottosson.github.io/posts/oklab/
+// OkLab: https://bottosson.github.io/posts/oklab/
 // Copyright (c) 2020 Björn Ottosson
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -81,7 +81,7 @@ float cbrtf (float value) {
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-float3 LinearSRGBToOKLAB (float3 srgb) {
+float3 LinearSRGBToOkLab (float3 srgb) {
     float l = 0.4122214708f * srgb.r + 0.5363325363f * srgb.g + 0.0514459929f * srgb.b;
 	float m = 0.2119034982f * srgb.r + 0.6806995451f * srgb.g + 0.1073969566f * srgb.b;
 	float s = 0.0883024619f * srgb.r + 0.2817188376f * srgb.g + 0.6299787005f * srgb.b;
@@ -97,7 +97,7 @@ float3 LinearSRGBToOKLAB (float3 srgb) {
     );    
 }
 
-float3 OKLABToLinearSRGB (float3 oklab) {
+float3 OkLabToLinearSRGB (float3 oklab) {
     float l_ = oklab.x + 0.3963377774f * oklab.y + 0.2158037573f * oklab.z;
     float m_ = oklab.x - 0.1055613458f * oklab.y - 0.0638541728f * oklab.z;
     float s_ = oklab.x - 0.0894841775f * oklab.y - 1.2914855480f * oklab.z;
@@ -113,20 +113,25 @@ float3 OKLABToLinearSRGB (float3 oklab) {
     );
 }
 
-float4 pSRGBToPOKLAB (float4 psrgba) {
+// HACK: It's not CORRECT to premultiply an oklab color, but this maintains 
+//  consistency for how we handle alpha values in various parts of our blending
+//  code so that it's always correct to do 'color.xyz *= color.w'
+float4 pSRGBToPOkLab (float4 psrgba) {
     if (psrgba.a <= (1 / 512))
         return 0;
     float3 srgb = psrgba.rgb / psrgba.a;
     float3 rgb = SRGBToLinear(srgb);
-    float3 oklab = LinearSRGBToOKLAB(rgb);
-    return float4(oklab * psrgba.a, psrgba.a);
+    float3 oklab = LinearSRGBToOkLab(rgb);
+    return float4(oklab.rgb * psrgba.a, psrgba.a);
 }
 
-float4 pOKLABToPSRGB (float4 pOklab) {
+float4 pOkLabToPSRGB (float4 pOklab) {
     if (pOklab.a <= (1 / 512))
         return 0;
     float3 oklab = pOklab.rgb / pOklab.a;
-    float3 rgb = OKLABToLinearSRGB(oklab);
+    float3 rgb = OkLabToLinearSRGB(oklab);
     float3 srgb = LinearToSRGB(rgb);
     float4 pSrgb = float4(srgb * pOklab.a, pOklab.a);
 }
+
+// end oklab

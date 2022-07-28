@@ -402,7 +402,7 @@ namespace Squared.Render.Convenience {
         RasterSoftOutlines          = 0b100000000,
         RasterUseUbershader         = 0b1000000000,
         RasterBlendInLinearSpace    = 0b10000000000,
-        RasterBlendInOKLABSpace     = 0b100000000000,
+        RasterBlendInOkLabSpace     = 0b100000000000,
     }
 
     public struct ImperativeRenderer {
@@ -724,22 +724,22 @@ namespace Squared.Render.Convenience {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 SetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace, value);
-                SetFlag(ImperativeRendererFlags.RasterBlendInOKLABSpace, false);
+                SetFlag(ImperativeRendererFlags.RasterBlendInOkLabSpace, false);
             }
         }
 
         /// <summary>
-        /// If true, raster shape colors will be converted from sRGB to OKLAB space before
+        /// If true, raster shape colors will be converted from sRGB to OkLab space before
         ///  blending and then converted back to sRGB for rendering. This is a superset of linear space.
         /// </summary>
-        public bool RasterBlendInOKLABSpace {
+        public bool RasterBlendInOkLabSpace {
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => GetFlag(ImperativeRendererFlags.RasterBlendInOKLABSpace);
+            get => GetFlag(ImperativeRendererFlags.RasterBlendInOkLabSpace);
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                SetFlag(ImperativeRendererFlags.RasterBlendInOKLABSpace, value);
+                SetFlag(ImperativeRendererFlags.RasterBlendInOkLabSpace, value);
                 if (value)
                     SetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace, true);
             }
@@ -1443,8 +1443,8 @@ namespace Squared.Render.Convenience {
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                if (GetFlag(ImperativeRendererFlags.RasterBlendInOKLABSpace))
-                    return RasterShapeColorSpace.OKLAB;
+                if (GetFlag(ImperativeRendererFlags.RasterBlendInOkLabSpace))
+                    return RasterShapeColorSpace.OkLab;
                 else if (GetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace))
                     return RasterShapeColorSpace.LinearRGB;
                 else

@@ -46,7 +46,7 @@ uniform float4 TextureOptions;
     ACCEPTS_VPOS, \
     out float4 result : COLOR0
 
-uniform bool BlendInLinearSpace, OutputInLinearSpace, BlendInOKLAB;
+uniform bool BlendInLinearSpace, OutputInLinearSpace, BlendInOkLab;
 uniform float HalfPixelOffset;
 
 // offsetx, offsety, softness, fillSuppression
@@ -360,12 +360,12 @@ void RasterShapeVertexShader_Core (
     if (
         (OutputInLinearSpace && isSimple) || 
         (BlendInLinearSpace && !isSimple) ||
-        BlendInOKLAB
+        BlendInOkLab
     ) {
-        if (BlendInOKLAB) {
-            centerColor = pSRGBToPOKLAB(centerColor);
-            edgeColor = pSRGBToPOKLAB(edgeColor);
-            outlineColor = pSRGBToPOKLAB(outlineColor);
+        if (BlendInOkLab) {
+            centerColor = pSRGBToPOkLab(centerColor);
+            edgeColor = pSRGBToPOkLab(edgeColor);
+            outlineColor = pSRGBToPOkLab(outlineColor);
         } else {
             centerColor = pSRGBToPLinear_Accurate(centerColor);
             edgeColor = pSRGBToPLinear_Accurate(edgeColor);
@@ -1101,8 +1101,8 @@ float4 compositeSecondStep (float4 pLinear, bool isSimple, float2 vpos) {
     if (isSimple)
         return result;
 
-    if (BlendInOKLAB)
-        result.rgb = OKLABToLinearSRGB(result.rgb);
+    if (BlendInOkLab)
+        result.rgb = OkLabToLinearSRGB(result.rgb);
 
     if (BlendInLinearSpace != OutputInLinearSpace) {
         if (OutputInLinearSpace)
@@ -1187,7 +1187,7 @@ float4 texturedShapeCommon (
     float4 texColor = tex2Dbias(TextureSampler, float4(texCoord, 0, BACKGROUND_MIP_BIAS));
     texColor = ExtractRgba(texColor, TextureTraits);
 
-    // FIXME: OKLAB
+    // FIXME: OkLab
     if (BlendInLinearSpace)
         texColor = pSRGBToPLinear(texColor);
 
