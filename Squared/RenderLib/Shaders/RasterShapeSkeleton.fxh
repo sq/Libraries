@@ -1081,15 +1081,45 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return top + (bottom * (1 - top.a));
 }
 
+// FIXME: This isn't right
+float4 overOklab (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
+    top.a *= topOpacity;
+    bottom.a *= bottomOpacity;
+
+    if (bottom.a <= 0)
+        return top;
+
+    float a = top.a + (bottom.a * (1 - top.a));        
+    return float4(lerp(bottom.rgb, top.rgb, top.a), a);
+}
+
 float4 compositeFirstStep (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool isSimple, bool enableShadow, float2 vpos) {
-    float4 result = fillColor * fillAlpha;
-    if (enableShadow) {
-        // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
-        float4 ca = ShadowInside ? ShadowColorLinear : result, cb = ShadowInside ? result : ShadowColorLinear;
-        float aa = ShadowInside ? shadowAlpha : 1, ab = ShadowInside ? 1 : shadowAlpha;
-        result = over(ca, aa, cb, ab);
+    float4 result = fillColor;
+
+    // HACK: Try to keep this goop out of the common shaders that need to be really fast
+    // Premultiply math (and standard over) don't work for oklab colors
+    [branch]
+    if (isSimple || !BlendInOkLab) {
+        result *= fillAlpha;
+
+        if (enableShadow) {
+            // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
+            float4 ca = ShadowInside ? ShadowColorLinear : result, cb = ShadowInside ? result : ShadowColorLinear;
+            float aa = ShadowInside ? shadowAlpha : 1, ab = ShadowInside ? 1 : shadowAlpha;
+            result = over(ca, aa, cb, ab);
+        }
+        return over(outlineColor, outlineAlpha, result, 1);
+    } else {
+        result.a *= fillAlpha;
+
+        if (enableShadow) {
+            // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
+            float4 ca = ShadowInside ? ShadowColorLinear : result, cb = ShadowInside ? result : ShadowColorLinear;
+            float aa = ShadowInside ? shadowAlpha : 1, ab = ShadowInside ? 1 : shadowAlpha;
+            result = overOklab(ca, aa, cb, ab);
+        }
+        return overOklab(outlineColor, outlineAlpha, result, 1);
     }
-    return over(outlineColor, outlineAlpha, result, 1);
 }
 
 float4 compositeSecondStep (float4 pLinear, bool isSimple, float2 vpos) {
