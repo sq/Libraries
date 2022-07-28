@@ -48,6 +48,11 @@ namespace Squared.PRGUI.Controls {
             set => _CacheContent = value;
         }
 
+        new public bool AcceptsFocus {
+            get => base.AcceptsFocus;
+            set => base.AcceptsFocus = value;
+        }
+
         public bool DisabledDueToException { get; private set; }
 
         private bool _ShouldDisposeBuffer;

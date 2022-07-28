@@ -363,9 +363,10 @@ void RasterShapeVertexShader_Core (
         BlendInOkLab
     ) {
         if (BlendInOkLab) {
-            centerColor = pSRGBToPOkLab(centerColor);
-            edgeColor = pSRGBToPOkLab(edgeColor);
-            outlineColor = pSRGBToPOkLab(outlineColor);
+            // HACK: This isn't premultiplied since it doesn't make sense for it to be!
+            centerColor = pSRGBToOkLab(centerColor);
+            edgeColor = pSRGBToOkLab(edgeColor);
+            outlineColor = pSRGBToOkLab(outlineColor);
         } else {
             centerColor = pSRGBToPLinear_Accurate(centerColor);
             edgeColor = pSRGBToPLinear_Accurate(edgeColor);
@@ -1096,13 +1097,14 @@ float4 compositeSecondStep (float4 pLinear, bool isSimple, float2 vpos) {
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
     //  for alpha gradients because the A we premultiply by does not match the A the GPU selected
     // It's also important to do dithering and sRGB conversion on a result that is not premultiplied
-    result.rgb = float4(result.rgb / max(result.a, 0.0001), result.a);
+    if (BlendInOkLab) {
+        result.rgb = OkLabToLinearSRGB(result.rgb);
+    } else {
+        result.rgb = float4(result.rgb / max(result.a, 0.0001), result.a);
+    }
 
     if (isSimple)
         return result;
-
-    if (BlendInOkLab)
-        result.rgb = OkLabToLinearSRGB(result.rgb);
 
     if (BlendInLinearSpace != OutputInLinearSpace) {
         if (OutputInLinearSpace)

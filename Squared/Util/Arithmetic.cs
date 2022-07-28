@@ -599,6 +599,17 @@ namespace Squared.Util {
             else
                 return true;
         }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsFinite (double d) {
+            if (double.IsInfinity(d))
+                return false;
+            else if (double.IsNaN(d))
+                return false;
+            else
+                return true;
+        }
     
         public static int NextPowerOfTwo (int value) {
             return (int)Math.Pow(2, Math.Ceiling(Math.Log(value, 2)));

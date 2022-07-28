@@ -346,8 +346,9 @@ namespace Squared.Render.RasterShape {
     }
 
     public enum RasterShapeColorSpace : byte {
-        sRGB = 0,
-        LinearRGB = 1,
+        // Note: The old behavior was 'BlendInLinearSpace default == false', now the default is linear!
+        LinearRGB = 0,
+        sRGB = 1,
         OkLab = 2
     }
 

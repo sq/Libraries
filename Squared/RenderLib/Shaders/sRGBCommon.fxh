@@ -113,25 +113,21 @@ float3 OkLabToLinearSRGB (float3 oklab) {
     );
 }
 
-// HACK: It's not CORRECT to premultiply an oklab color, but this maintains 
-//  consistency for how we handle alpha values in various parts of our blending
-//  code so that it's always correct to do 'color.xyz *= color.w'
-float4 pSRGBToPOkLab (float4 psrgba) {
+float4 pSRGBToOkLab (float4 psrgba) {
     if (psrgba.a <= (1 / 512))
         return 0;
     float3 srgb = psrgba.rgb / psrgba.a;
     float3 rgb = SRGBToLinear(srgb);
     float3 oklab = LinearSRGBToOkLab(rgb);
-    return float4(oklab.rgb * psrgba.a, psrgba.a);
+    return float4(oklab.rgb, psrgba.a);
 }
 
-float4 pOkLabToPSRGB (float4 pOklab) {
-    if (pOklab.a <= (1 / 512))
+float4 OkLabToPSRGB (float4 oklab) {
+    if (oklab.a <= (1 / 512))
         return 0;
-    float3 oklab = pOklab.rgb / pOklab.a;
-    float3 rgb = OkLabToLinearSRGB(oklab);
+    float3 rgb = OkLabToLinearSRGB(oklab.rgb);
     float3 srgb = LinearToSRGB(rgb);
-    float4 pSrgb = float4(srgb * pOklab.a, pOklab.a);
+    float4 pSrgb = float4(srgb * oklab.a, oklab.a);
 }
 
 // end oklab
