@@ -69,7 +69,6 @@ namespace Squared.Render.RasterStroke {
         public EffectParameter BlendInLinearSpace,
             OutputInLinearSpace,
             UsesNoise,
-            Textured,
             NozzleParams,
             Constants1,
             Constants2,
@@ -86,8 +85,6 @@ namespace Squared.Render.RasterStroke {
             BlendInLinearSpace = p["BlendInLinearSpace"];
             OutputInLinearSpace = p["OutputInLinearSpace"];
             UsesNoise = p["UsesNoise"];
-            // TODO: Separate technique
-            Textured = p["Textured"];
             NozzleParams = p["NozzleParams"];
             Constants1 = p["Constants1"];
             Constants2 = p["Constants2"];
@@ -438,7 +435,7 @@ namespace Squared.Render.RasterStroke {
 
         public void Initialize (IBatchContainer container, int layer, DefaultMaterialSet materials) {
             // FIXME: Default material
-            base.Initialize(container, layer, materials.RasterStrokeMaterials[(int)RasterStrokeType.LineSegment].Material, true);
+            base.Initialize(container, layer, materials.RasterStrokeMaterials[(int)RasterStrokeType.LineSegment][0].Material, true);
 
             Materials = materials;
 
@@ -608,7 +605,7 @@ namespace Squared.Render.RasterStroke {
 
             for (int i = 0; i < _SubBatches.Count; i++) {
                 ref var sb = ref _SubBatches.Item(i);
-                var material = Materials.RasterStrokeMaterials[(int)sb.Type];
+                var material = Materials.RasterStrokeMaterials[(int)sb.Type][atlas != null ? 1 : 0];
                 material.UsesNoise.SetValue(hasNoise);
                 material.NozzleParams.SetValue(nozzleParams);
                 material.SizeDynamics.SetValue(Brush.Scale.ToVector4());
@@ -621,7 +618,6 @@ namespace Squared.Render.RasterStroke {
                 material.Constants2.SetValue(constants2);
                 material.BlendInLinearSpace.SetValue(BlendInLinearSpace);
                 material.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
-                material.Textured.SetValue(atlas != null);
 
                 // HACK
                 if (sb.Type == RasterStrokeType.Polygon) {

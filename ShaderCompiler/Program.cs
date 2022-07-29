@@ -243,6 +243,9 @@ namespace ShaderCompiler {
             var prologue = "#pragma fxcparams(";
             var conditionalRegex = new Regex("if([ ]*)\\(([ ]*)(?'name'[^ =]+)[ ]*(?'operator'[!=]=)[ ]*(?'value'('[^']*)'|[^ =\\)]+)\\)[ ]*", RegexOptions.ExplicitCapture);
 
+            // TODO: Add a way to define conditional variants like TEXTURED or SHADOWED and have the compiler
+            //  automatically compile separate versions with those defines set
+
             foreach (var line in File.ReadAllLines(path)) {
                 if (!line.StartsWith(prologue))
                     continue;

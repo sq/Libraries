@@ -90,7 +90,6 @@ float IMPL_NAME (
         float g = length(posSplatDerotated), discardDistance = (hardness < 1) ? radius + 1 : radius;
         float4 color;
 
-        REQUIRE_BRANCH
         if (Textured) {
             if (
                 outOfRange ||

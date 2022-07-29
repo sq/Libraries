@@ -375,8 +375,8 @@ namespace Squared.Render {
         public Material RasterShapeUbershader;
         internal readonly Dictionary<RasterShaderKey, RasterShape.RasterShader> RasterShapeMaterials =
             new Dictionary<RasterShaderKey, RasterShape.RasterShader>(new RasterShaderKey.Comparer());
-        internal readonly Dictionary<int, RasterStroke.StrokeShader> RasterStrokeMaterials =
-            new Dictionary<int, RasterStroke.StrokeShader>();
+        internal readonly Dictionary<int, RasterStroke.StrokeShader[]> RasterStrokeMaterials =
+            new Dictionary<int, RasterStroke.StrokeShader[]>();
         /// <summary>
         /// Make sure to resolve your lightmap to sRGB before using it with this, otherwise your lighting
         ///  will have really terrible banding in dark areas.
@@ -836,9 +836,13 @@ namespace Squared.Render {
         }
 
         private void LoadRasterStrokeVariant (
-            Effect shader, string techniqueName, RasterStroke.RasterStrokeType type
+            string name, RasterStroke.RasterStrokeType type
         ) {
-            var material = NewMaterial(shader, techniqueName);
+            var untextured = BuiltInShaders.Load(name);
+            var textured = BuiltInShaders.Load(name + "Textured");
+            var material1 = NewMaterial(untextured, name);
+            var material2 = NewMaterial(textured, name + "Textured");
+
             var shapeHint = new Material.PipelineHint {
                 HasIndices = true,
                 VertexFormats = new Type[] {
@@ -849,19 +853,23 @@ namespace Squared.Render {
             if (
                 PreloadAllRasterStrokeShaders ||
                 PreloadAllShaders
-            )
-                material.HintPipeline = shapeHint;
-            RasterStrokeMaterials[(int)type] = new RasterStroke.StrokeShader(material);
-            Add(material);
+            ) {
+                material1.HintPipeline = shapeHint;
+                material2.HintPipeline = shapeHint;
+            }
+
+            RasterStrokeMaterials[(int)type] = new[] {
+                new RasterStroke.StrokeShader(material1),
+                new RasterStroke.StrokeShader(material2)
+            };
+            Add(material1);
+            Add(material2);
         }
 
         private void LoadRasterStrokeMaterials () {
-            var rasterStrokeLine = BuiltInShaders.Load("RasterStrokeLine");
-            var rasterStrokeRectangle = BuiltInShaders.Load("RasterStrokeRectangle");
-            var rasterStrokePolygon = BuiltInShaders.Load("RasterStrokePolygon");
-            LoadRasterStrokeVariant(rasterStrokeLine, "RasterStrokeLineSegment", RasterStroke.RasterStrokeType.LineSegment);
-            LoadRasterStrokeVariant(rasterStrokeRectangle, "RasterStrokeRectangle", RasterStroke.RasterStrokeType.Rectangle);
-            LoadRasterStrokeVariant(rasterStrokePolygon, "RasterStrokePolygon", RasterStroke.RasterStrokeType.Polygon);
+            LoadRasterStrokeVariant("RasterStrokeLine", RasterStroke.RasterStrokeType.LineSegment);
+            LoadRasterStrokeVariant("RasterStrokeRectangle", RasterStroke.RasterStrokeType.Rectangle);
+            LoadRasterStrokeVariant("RasterStrokePolygon", RasterStroke.RasterStrokeType.Polygon);
         }
 
         private void LoadRasterShapeVariant (

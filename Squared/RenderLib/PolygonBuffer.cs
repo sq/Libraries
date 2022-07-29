@@ -34,7 +34,7 @@ namespace Squared.Render {
             // HACK
             lock (Lock) {
                 int w = PolygonVertexTextureSize,
-                    h = Math.Max(1, VertexBuffer.Length / PolygonVertexTextureSize);
+                    h = Math.Max(4, VertexBuffer.Length / PolygonVertexTextureSize);
 
                 if ((Texture == null) || (Texture.Width < w) || (Texture.Height < h)) {
                     dm.DisposeResource(Texture);
@@ -51,6 +51,9 @@ namespace Squared.Render {
         }
 
         public void AddVertices (ArraySegment<RasterPolygonVertex> vertices, out int offset, out int count) {
+            if ((vertices.Count < 1) || (vertices.Count >= 256))
+                throw new ArgumentOutOfRangeException("Vertex count must be < 256 due to shader limitations");
+
             lock (Lock) {
                 FlushRequired = true;
 
