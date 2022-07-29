@@ -202,9 +202,8 @@ namespace Squared.PRGUI.Controls {
         public Type ValueType => typeof(T);
 
         bool IParameterEditor.TrySetValue (object value, bool forUserInput) {
-            if (value is T tv) {
+            if (value is T tv)
                 return SetValue(tv, forUserInput);
-            }
 
             return false;
         }
@@ -218,7 +217,7 @@ namespace Squared.PRGUI.Controls {
                 return -1;
         }
 
-        public bool SetValue (T value, bool forUserInput) {
+        public virtual bool SetValue (T value, bool forUserInput) {
             if (ReadOnly && forUserInput)
                 return false;
 
@@ -237,10 +236,8 @@ namespace Squared.PRGUI.Controls {
                 _Value = value;
 
                 var newText = ValueEncoder(value);
-                if (Text != newText) {
-                    SetText(newText, true);
-                    SelectNone();
-                }
+                SetText(newText, true);
+                SelectNone();
 
                 if (forUserInput)
                     FireEvent(UIEvents.ValueChangedByUser, true);

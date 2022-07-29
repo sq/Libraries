@@ -33,6 +33,9 @@
     <DebugType>pdbonly</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(SquaredEnableSpan)' != 'true' ">
+    <DefineConstants>NOSPAN;$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib">
       <Private>False</Private>

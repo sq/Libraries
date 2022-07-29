@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 
 namespace Squared.Util {
     public delegate ref readonly T InterpolatorSource<T> (int index) where T : struct;
@@ -468,6 +469,16 @@ namespace Squared.Util {
         private static readonly Dictionary<string, Interpolator<T>> Cache = 
             new Dictionary<string, Interpolator<T>>(StringComparer.OrdinalIgnoreCase);
 
+        public static void RegisterNamed (string name, Interpolator<T> interpolator) {
+            lock (Cache)
+                Cache.Add(name, interpolator);
+        }
+
+        public static void RegisterNamed<U> (string name, BoundInterpolator<T, U> boundInterpolator) {
+            lock (CacheContainer<U>.Cache)
+                CacheContainer<U>.Cache.Add(name, boundInterpolator);
+        }
+
         public static Interpolator<T> GetByName (string name) {
             Interpolator<T> result;
 
@@ -503,6 +514,35 @@ namespace Squared.Util {
             return BoundDefaultCache<U>.Linear;
         }
 
+        private class BoundUnboundAdapter<U> {
+            private class DummySource {
+                public U Obj;
+                public BoundInterpolatorSource<T, U> Data;
+                public readonly InterpolatorSource<T> Get;
+
+                public DummySource () {
+                    Get = _Get;
+                }
+
+                private ref readonly T _Get (int index) => ref Data(in Obj, index);
+            }
+
+            public readonly Interpolator<T> Unbound;
+            private ThreadLocal<DummySource> Sources;
+
+            public BoundUnboundAdapter (Interpolator<T> unbound) {
+                Unbound = unbound;
+                Sources = new ThreadLocal<DummySource>(() => new DummySource());
+            }
+
+            public T Interpolate (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) {
+                var source = Sources.Value;
+                source.Obj = obj;
+                source.Data = data;
+                return Unbound(source.Get, dataOffset, positionInWindow);
+            }
+        }
+
         private static class CacheContainer<U> {
             public static readonly Dictionary<string, BoundInterpolator<T, U>> Cache = 
                 new Dictionary<string, BoundInterpolator<T, U>>(StringComparer.OrdinalIgnoreCase);
@@ -534,7 +574,16 @@ namespace Squared.Util {
                 break;
             }
 
-            if (mi != null) {
+            Interpolator<T> unbound;
+            lock (Cache)
+                Cache.TryGetValue(name, out unbound);
+                    
+            if (unbound != null) {
+                var t = typeof(BoundUnboundAdapter<>).MakeGenericType(typeof(U));
+                var adapter = (BoundUnboundAdapter<U>)Activator.CreateInstance(t, unbound);
+                // FIXME: Not sure if this works
+                result = adapter.Interpolate;
+            } else if (mi != null) {
                 var mii = mi.MakeGenericMethod(typeof(U));
                 result = Delegate.CreateDelegate(resultType, null, mii) as BoundInterpolator<T, U>;
             } else {

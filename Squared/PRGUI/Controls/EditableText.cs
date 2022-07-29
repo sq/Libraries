@@ -753,7 +753,7 @@ namespace Squared.PRGUI.Controls {
             if (args is MouseEventArgs ma)
                 return OnMouseEvent(name, ma);
             else if (name == UIEvents.KeyPress)
-                return OnKeyPress((KeyEventArgs)(object)args);
+                return OnKeyPress(Evil.Coerce<T, KeyEventArgs>(ref args));
             else if (name == UIEvents.LostFocus) {
                 if (args is Menu)
                     return false;

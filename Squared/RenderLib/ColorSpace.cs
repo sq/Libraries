@@ -103,6 +103,22 @@ namespace Squared.Render {
         private readonly Vector4 _Vector4;
         private readonly Color _Color;
 
+
+        static pSRGBColor () {
+            RegisterInterpolator("OkLab", LerpOkLab);
+            RegisterInterpolator("OkLCh", LerpOkLCh);
+            RegisterInterpolator("sRGB", LerpNonLinear);
+            RegisterInterpolator("NonLinear", LerpNonLinear);
+        }
+
+        private static void RegisterInterpolator (string name, Func<pSRGBColor, pSRGBColor, float, pSRGBColor> lerp) {
+            Interpolators<pSRGBColor>.RegisterNamed(
+                name, (data, dataOffset, positionInWindow) => 
+                    lerp(data(dataOffset), data(dataOffset + 1), positionInWindow)
+            );
+            // FIXME: Register a bound one too somehow
+        }
+
         public pSRGBColor (int r, int g, int b, float a = 1f) {
             IsVector4 = true;
             // FIXME: sRGB
@@ -244,9 +260,11 @@ namespace Squared.Render {
             return FromOkLab(L, a, b, opacity);
         }
 
-        public void ToOkLCh (out float L, out double C, out double h, out float opacity) {
+        public void ToOkLCh (out float L, out float C, out float h, out float opacity) {
             ToOkLab(out L, out var a, out var b, out opacity);
-            ColorSpace.OkLabToOkLCh(a, b, out C, out h);
+            ColorSpace.OkLabToOkLCh(a, b, out var dC, out var dh);
+            C = (float)dC;
+            h = (float)dh;
         }
 
         // end oklab
@@ -264,13 +282,29 @@ namespace Squared.Render {
             return new pSRGBColor(g, g, g, opacity, true);
         }
 
-        public static pSRGBColor LinearLerp (pSRGBColor a, pSRGBColor b, float t) {
+        public static pSRGBColor Lerp (pSRGBColor a, pSRGBColor b, float t) {
             Vector4 vA = a.ToPLinear(), vB = b.ToPLinear(), result;
             Vector4.Lerp(ref vA, ref vB, t, out result);
             return FromPLinear(in result);
         }
 
-        public static pSRGBColor Lerp (pSRGBColor a, pSRGBColor b, float t) {
+        public static pSRGBColor LerpOkLab (pSRGBColor a, pSRGBColor b, float t) {
+            Vector4 vA = default, vB = default;
+            a.ToOkLab(out vA.X, out vA.Y, out vA.Z, out vA.W);
+            b.ToOkLab(out vB.X, out vB.Y, out vB.Z, out vB.W);
+            Vector4.Lerp(ref vA, ref vB, t, out var result);
+            return FromOkLab(result.X, result.Y, result.Z, result.W);
+        }
+
+        public static pSRGBColor LerpOkLCh (pSRGBColor a, pSRGBColor b, float t) {
+            Vector4 vA = default, vB = default;
+            a.ToOkLCh(out vA.X, out vA.Y, out vA.Z, out vA.W);
+            b.ToOkLCh(out vB.X, out vB.Y, out vB.Z, out vB.W);
+            Vector4.Lerp(ref vA, ref vB, t, out var result);
+            return FromOkLCh(result.X, result.Y, result.Z, result.W);
+        }
+
+        public static pSRGBColor LerpNonLinear (pSRGBColor a, pSRGBColor b, float t) {
             Vector4 vA = a.ToVector4(), vB = b.ToVector4(), result;
             Vector4.Lerp(ref vA, ref vB, t, out result);
             return new pSRGBColor(result, isPremultiplied: true);

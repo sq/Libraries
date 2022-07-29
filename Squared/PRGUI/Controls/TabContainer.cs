@@ -367,7 +367,7 @@ namespace Squared.PRGUI.Controls {
             if (name == UIEvents.RadioButtonSelected)
                 IdentifySelectedTabFromUIState = true;
             else if (name == UIEvents.KeyPress)
-                return OnTabKeyPress((KeyEventArgs)(object)args);
+                return OnTabKeyPress(Evil.Coerce<T, KeyEventArgs>(ref args));
 
             return false;
         }

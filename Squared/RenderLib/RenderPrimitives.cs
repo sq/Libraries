@@ -59,22 +59,39 @@ namespace Squared.Render.Internal {
             Count = 0;
         }
 
-        public void Write (in T newVertex) {
+        private static void BoundsCheckFailed (bool badIndex) {
+            if (badIndex)
+                throw new ArgumentOutOfRangeException("index");
+            else
+                throw new Exception("Out of vertex space");
+        }
+
+        public ref T NextVertex {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+            get {
+                if (Count >= Storage.Count)
+                    BoundsCheckFailed(false);
+
+                return ref Storage.Array[Storage.Offset + Count++];
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+        public void Write (T newVertex) {
             if (Count >= Storage.Count)
-                throw new InvalidOperationException();
+                BoundsCheckFailed(false);
 
             Storage.Array[Storage.Offset + Count] = newVertex;
             Count += 1;
         }
 
-        public void Write (int index, in T newVertex) {
-            if (index >= Storage.Count)
-                throw new InvalidOperationException();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+        public void Write (ref T newVertex) {
+            if (Count >= Storage.Count)
+                BoundsCheckFailed(false);
 
-            Count = Math.Max(Count, index + 1);
-            index += Storage.Offset;
-
-            Storage.Array[index] = newVertex;
+            Storage.Array[Storage.Offset + Count] = newVertex;
+            Count += 1;
         }
     }
 
@@ -119,33 +136,32 @@ namespace Squared.Render.Internal {
             Count = 0;
         }
 
+        private static void BoundsCheckFailed (bool badIndex) {
+            if (badIndex)
+                throw new ArgumentOutOfRangeException("index");
+            else
+                throw new Exception("Out of vertex space");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
         public void Write (ushort newIndex) {
             if (Count >= Storage.Count)
-                throw new InvalidOperationException();
+                BoundsCheckFailed(false);
 
             Storage.Array[Storage.Offset + Count] = (ushort)(newIndex + IndexOffset);
             Count += 1;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
         public void Write (ushort[] newIndices) {
             int l = newIndices.Length;
             if (Count + l - 1 >= Storage.Count)
-                throw new InvalidOperationException();
+                BoundsCheckFailed(false);
 
             for (int i = 0; i < l; i++)
                 Storage.Array[Storage.Offset + Count + i] = (ushort)(newIndices[i] + IndexOffset);
 
             Count += l;
-        }
-
-        public void Write (int index, ushort newIndex) {
-            if (index >= Storage.Count)
-                throw new InvalidOperationException();
-
-            Count = Math.Max(Count, index + 1);
-            index += Storage.Offset;
-
-            Storage.Array[index] = (ushort)(newIndex + IndexOffset);
         }
     }
 }

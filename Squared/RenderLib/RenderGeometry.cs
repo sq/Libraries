@@ -405,26 +405,26 @@ namespace Squared.Render {
             var vInner = new GeometryVertex(new Vector3(tl.X, tl.Y, dc.Z), dc.Color0);
             var vOuter = new GeometryVertex(new Vector3(tl.X - border, tl.Y - border, dc.Z), dc.Color1);
 
-            vw.Write(in vInner);
-            vw.Write(in vOuter);
+            vw.Write(ref vInner);
+            vw.Write(ref vOuter);
 
             vInner.Position.X = br.X;
             vOuter.Position.X = br.X + border;
 
-            vw.Write(in vInner);
-            vw.Write(in vOuter);
+            vw.Write(ref vInner);
+            vw.Write(ref vOuter);
 
             vInner.Position.Y = br.Y;
             vOuter.Position.Y = br.Y + border;
 
-            vw.Write(in vInner);
-            vw.Write(in vOuter);
+            vw.Write(ref vInner);
+            vw.Write(ref vOuter);
 
             vInner.Position.X = tl.X;
             vOuter.Position.X = tl.X - border;
 
-            vw.Write(in vInner);
-            vw.Write(in vOuter);
+            vw.Write(ref vInner);
+            vw.Write(ref vOuter);
 
             iw.Write(QuadBorderIndices);
         }

@@ -293,12 +293,13 @@ namespace Squared.Render.RasterShape {
         public override int GetHashCode () {
             // HACK: Vector4.GetHashCode is so slow that it's probably not worth using the placement value
             //  as part of the hashcode
-            return (SamplerState?.GetHashCode() ?? 0) |
-                ShadowMode.GetHashCode() /* |
-                Placement.GetHashCode() */;
+            return ((SamplerState != null) ? 0b1000000000 : 0) ^
+                ShadowMode;
         }
 
-        public bool Equals (RasterTextureSettings rhs) {
+        public bool Equals (RasterTextureSettings rhs) => Equals(ref rhs);
+
+        public bool Equals (ref RasterTextureSettings rhs) {
             return (SamplerState == rhs.SamplerState) && 
                 (ModeAndScaleMinusOne == rhs.ModeAndScaleMinusOne) &&
                 (Placement == rhs.Placement) &&
@@ -307,7 +308,7 @@ namespace Squared.Render.RasterShape {
 
         public override bool Equals (object obj) {
             if (obj is RasterTextureSettings rts)
-                return Equals(rts);
+                return Equals(ref rts);
             else
                 return false;
         }
@@ -524,7 +525,9 @@ namespace Squared.Render.RasterShape {
 
         internal int IsEnabled;
 
-        public bool Equals (in RasterShadowSettings rhs) {
+        public bool Equals (RasterShadowSettings rhs) => Equals(ref rhs);
+
+        public bool Equals (ref RasterShadowSettings rhs) {
             return (IsEnabled == rhs.IsEnabled) &&
                 (Offset == rhs.Offset) &&
                 (Softness == rhs.Softness) &&
@@ -536,7 +539,7 @@ namespace Squared.Render.RasterShape {
 
         public override bool Equals (object obj) {
             if (obj is RasterShadowSettings rss)
-                return Equals(rss);
+                return Equals(ref rss);
             else
                 return false;
         }
@@ -612,9 +615,9 @@ namespace Squared.Render.RasterShape {
                     (dc.Type != last.Type) &&
                     (!self.UseUbershader || dc.Type == RasterShapeType.Polygon || last.Type == RasterShapeType.Polygon) ||
                     (dc.BlendInLinearSpace != last.BlendInLinearSpace) ||
-                    !dc.Shadow.Equals(in last.Shadow) ||
+                    !dc.Shadow.Equals(ref last.Shadow) ||
                     (dc.IsSimple != last.IsSimple) ||
-                    !dc.TextureSettings.Equals(last.TextureSettings)
+                    !dc.TextureSettings.Equals(ref last.TextureSettings)
                 );
             }
 
@@ -741,7 +744,7 @@ namespace Squared.Render.RasterShape {
                     var gpower = fill.GradientPowerMinusOne + 1f;
                     if (fill.Repeat)
                         gpower = -gpower;
-                    var vert = new RasterShapeVertex {
+                    vw.NextVertex = new RasterShapeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         // FIXME: Fill this last space with a separate value?
                         PointsCD = new Vector4(dc.C.X, dc.C.Y, dc.Radius.X, dc.Radius.Y),
@@ -754,7 +757,6 @@ namespace Squared.Render.RasterShape {
                         Type = (short)dc.Type,
                         WorldSpace = (short)(dc.WorldSpace ? 1 : 0)
                     };
-                    vw.Write(vert);
                 }
 
                 BatchManager.Instance.Finish(this, ref state, count);
@@ -949,19 +951,20 @@ namespace Squared.Render.RasterShape {
             _SoftwareBuffer = null;
         }
 
-        new public void Add (in RasterShapeDrawCall dc) {
-            var result = dc;
-            // FIXME
-            result.Index = _DrawCalls.Count;
-            result.IsSimple = (
-                (result.OuterColor4.FastEquals(in result.InnerColor4) || (result.Fill.Mode == RasterFillMode.None)) &&
-                (result.BlendIn != RasterShapeColorSpace.OkLab)
+        new public void Add (RasterShapeDrawCall dc) => Add(ref dc);
+
+        new public void Add (ref RasterShapeDrawCall dc) {
+            // HACK: This is permissible since these are internal fields
+            dc.Index = _DrawCalls.Count;
+            dc.IsSimple = (
+                (dc.OuterColor4.FastEquals(in dc.InnerColor4) || (dc.Fill.Mode == RasterFillMode.None)) &&
+                (dc.BlendIn != RasterShapeColorSpace.OkLab)
             ) ? 1 : 0;
-            result.PackedFlags = (
-                (int)result.Type | (result.IsSimple << 16) | (result.Shadow.IsEnabled << 17) | ((result.BlendInLinearSpace ? 1 : 0) << 18) |
-                ((result.Shadow.Inside ? 1 : 0) << 19) | ((result.SoftOutline ? 1 : 0) << 20)
+            dc.PackedFlags = (
+                (int)dc.Type | (dc.IsSimple << 16) | (dc.Shadow.IsEnabled << 17) | ((dc.BlendInLinearSpace ? 1 : 0) << 18) |
+                ((dc.Shadow.Inside ? 1 : 0) << 19) | ((dc.SoftOutline ? 1 : 0) << 20)
             );
-            _DrawCalls.Add(ref result);
+            _DrawCalls.Add(ref dc);
         }
 
         public static RasterShapeBatch New (

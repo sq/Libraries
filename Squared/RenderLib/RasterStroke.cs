@@ -487,7 +487,7 @@ namespace Squared.Render.RasterStroke {
                     BatchManager.Instance.Step(this, ref dc, ref state, i);
 
                     seed.X = dc.Seed / NoiseTextureSize;
-                    var vert = new RasterStrokeVertex {
+                    vw.NextVertex = new RasterStrokeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         Seed = seed,
                         Taper = dc.TaperRanges,
@@ -496,7 +496,6 @@ namespace Squared.Render.RasterStroke {
                         ColorB = dc.ColorB4,
                         WorldSpace = (short)(dc.WorldSpace ? 1 : 0)
                     };
-                    vw.Write(vert);
                 }
 
                 BatchManager.Instance.Finish(this, ref state, count);
