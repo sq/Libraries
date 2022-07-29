@@ -210,14 +210,18 @@ inline float2 rotate2D(
     );
 }
 
-void rasterStrokeLineCommon(
+float rasterStrokeLineCommon(
     in float shuffle, in float2 worldPosition, in float4 ab, 
     in float4 seed, in float4 taperRanges, in float4 biases,
+    in float distanceTraveled, in float totalLength, in float stepOffset,
     in float2 vpos, in float4 colorA, in float4 colorB,
     inout float4 result
 ) {
     float2 a = ab.xy, b = ab.zw, ba = b - a,
         atlasScale = float2(1.0 / NozzleParams.x, 1.0 / NozzleParams.y);
+
+    if (totalLength <= 0)
+        totalLength = length(ba);
 
     const float threshold = (1 / 512.0);
 
@@ -229,7 +233,7 @@ void rasterStrokeLineCommon(
         l = max(length(ba), 0.01), centerT, splatCount = ceil(l / stepPx);
     taperRanges.zw *= l;
 
-    float taperedL = max(l - taperRanges.z - taperRanges.w, 0.01),
+    float taperedL = max(totalLength - taperRanges.z - taperRanges.w, 0.01),
         stepT = 1.0 / splatCount,
         angleRadians = atan2(ba.y, ba.x),
         // FIXME: 360deg -> 1.0
@@ -244,6 +248,7 @@ void rasterStrokeLineCommon(
         brushCount = NozzleParams.x * NozzleParams.y;
 
     for (float i = firstIteration; i <= lastIteration; i += 1.0) {
+        float globalI = i + stepOffset;
         float4 noise1, noise2;
         if (UsesNoise) {
             float4 seedUv = float4(seed.x + (i * 2 * seed.z), seed.y + (i * seed.w), 0, 0);
@@ -256,22 +261,22 @@ void rasterStrokeLineCommon(
         }
 
         float t = i * stepT,
-            d = t * l,
+            d = t * l,            
             // FIXME: Right now if tapering is enabled the taper1 value for the first splat is always 0
             // The ideal would be for it to start at a very low value based on spacing or length
-            taper1 = abs(taperRanges.x) >= 1 ? saturate((d - taperRanges.z) / abs(taperRanges.x)) : 1,
-            taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - (d - taperRanges.z)) / taperRanges.y) : 1,
+            taper1 = abs(taperRanges.x) >= 1 ? saturate((d + distanceTraveled - taperRanges.z) / abs(taperRanges.x)) : 1,
+            taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - (d + distanceTraveled - taperRanges.z)) / taperRanges.y) : 1,
             taper = min(taper1, taper2);
         float sizePx = clamp(evaluateDynamics2((Constants1.x + biases.x) * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor)), 0, maxSize);
         if (sizePx <= 0)
             continue;
 
         // biases are: (Size, Flow, Hardness, Color)
-        float splatAngleFactor = evaluateDynamics(Constants1.y, AngleDynamics, float4(taper, i, noise1.y, angleFactor)),
+        float splatAngleFactor = evaluateDynamics(Constants1.y, AngleDynamics, float4(taper, globalI, noise1.y, angleFactor)),
             splatAngle = splatAngleFactor * PI * 2,
-            flow = clamp(evaluateDynamics(Constants1.z + biases.y, FlowDynamics, float4(taper, i, noise1.z, angleFactor)), 0, 2),
-            brushIndex = evaluateDynamics2(Constants1.w, brushCount, BrushIndexDynamics, float4(taper, i, noise1.w, angleFactor)),
-            hardness = saturate(evaluateDynamics(Constants2.x + biases.z, HardnessDynamics, float4(taper, i, noise2.x, angleFactor))),
+            flow = clamp(evaluateDynamics(Constants1.z + biases.y, FlowDynamics, float4(taper, globalI, noise1.z, angleFactor)), 0, 2),
+            brushIndex = evaluateDynamics2(Constants1.w, brushCount, BrushIndexDynamics, float4(taper, globalI, noise1.w, angleFactor)),
+            hardness = saturate(evaluateDynamics(Constants2.x + biases.z, HardnessDynamics, float4(taper, globalI, noise2.x, angleFactor))),
             // HACK: Increment here is scaled by t instead of i
             colorT = COLOR_PER_SPLAT ? t : centerT,
             colorFactor = saturate(evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(taper, colorT, noise2.y, angleFactor)));
@@ -358,4 +363,6 @@ void rasterStrokeLineCommon(
             result = over(color, flow, result, 1);
         }
     }
+
+    return ceil(l / stepPx);
 }

@@ -858,8 +858,10 @@ namespace Squared.Render {
         private void LoadRasterStrokeMaterials () {
             var rasterStrokeLine = BuiltInShaders.Load("RasterStrokeLine");
             var rasterStrokeRectangle = BuiltInShaders.Load("RasterStrokeRectangle");
+            var rasterStrokePolygon = BuiltInShaders.Load("RasterStrokePolygon");
             LoadRasterStrokeVariant(rasterStrokeLine, "RasterStrokeLineSegment", RasterStroke.RasterStrokeType.LineSegment);
             LoadRasterStrokeVariant(rasterStrokeRectangle, "RasterStrokeRectangle", RasterStroke.RasterStrokeType.Rectangle);
+            LoadRasterStrokeVariant(rasterStrokePolygon, "RasterStrokePolygon", RasterStroke.RasterStrokeType.Polygon);
         }
 
         private void LoadRasterShapeVariant (

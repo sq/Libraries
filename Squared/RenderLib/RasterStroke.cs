@@ -61,7 +61,7 @@ namespace Squared.Render.RasterStroke {
     public enum RasterStrokeType : short {
         LineSegment = 0,
         Rectangle = 1,
-        // Polyline = 2
+        Polygon = 2
     }
 
     internal struct StrokeShader {
@@ -346,6 +346,13 @@ namespace Squared.Render.RasterStroke {
         public RasterShapeColorSpace BlendIn;
 
         internal int Index;
+
+        public int PolygonIndexOffset {
+            set => A.X = value;
+        }
+        public int PolygonVertexCount {
+            set => A.Y = value;
+        }
     }
 
     public class RasterStrokeBatch : ListBatch<RasterStrokeDrawCall> {
@@ -617,6 +624,15 @@ namespace Squared.Render.RasterStroke {
                 material.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
                 material.Textured.SetValue(atlas != null);
 
+                // HACK
+                if (sb.Type == RasterStrokeType.Polygon) {
+                    _PolygonBuffer.Flush(manager);
+                    lock (_PolygonBuffer.Lock)
+                        material.Material.Effect.Parameters["PolygonVertexBufferInvSize"]?.SetValue(
+                            new Vector2(1.0f / _PolygonBuffer.TextureWidth, 1.0f / _PolygonBuffer.TextureHeight)
+                        );
+                }
+
                 manager.ApplyMaterial(material.Material, ref MaterialParameters);
 
                 if (BlendState != null)
@@ -633,6 +649,16 @@ namespace Squared.Render.RasterStroke {
                 device.SamplerStates[0] = Brush.NozzleSamplerState ?? SamplerState.LinearWrap;
                 device.SamplerStates[1] = SamplerState.PointWrap;
 
+                if (sb.Type == RasterStrokeType.Polygon) {
+                    lock (_PolygonBuffer.Lock) {
+                        device.Textures[2] = _PolygonBuffer.Texture;
+                        device.VertexTextures[2] = _PolygonBuffer.Texture;
+                    }
+                } else {
+                    device.VertexTextures[2] = null;
+                    device.Textures[2] = null;
+                }
+
                 scratchBindings[1] = new VertexBufferBinding(
                     vb, _SoftwareBuffer.HardwareVertexOffset + sb.InstanceOffset, 1
                 );
@@ -648,6 +674,8 @@ namespace Squared.Render.RasterStroke {
 
                 device.Textures[0] = null;
                 device.Textures[1] = null;
+                device.Textures[2] = null;
+                device.VertexTextures[2] = null;
             }
 
             NativeBatch.RecordCommands(_SubBatches.Count);

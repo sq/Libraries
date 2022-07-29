@@ -935,6 +935,8 @@ namespace Squared.Render.RasterShape {
                 );
 
                 device.Textures[0] = null;
+                device.Textures[2] = null;
+                device.VertexTextures[2] = null;
                 rasterShader.RasterTexture?.SetValue((Texture2D)null);
                 rasterShader.RampTexture?.SetValue((Texture2D)null);
             }

@@ -2225,6 +2225,41 @@ namespace Squared.Render.Convenience {
                 });
         }
 
+        public void RasterizeStroke (
+            ArraySegment<RasterPolygonVertex> vertices, pSRGBColor colorA, pSRGBColor colorB, RasterBrush brush,
+            float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null,
+            RasterShapeColorSpace? colorSpace = null, BlendState blendState = null, int sortKey = 0
+        ) => RasterizeStroke(
+            vertices, colorA, colorB, ref brush, 
+            seed, taper, biases, layer, worldSpace, 
+            colorSpace, blendState, sortKey
+        );
+
+        public void RasterizeStroke (
+            ArraySegment<RasterPolygonVertex> vertices, pSRGBColor colorA, pSRGBColor colorB, ref RasterBrush brush,
+            float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null, 
+            RasterShapeColorSpace? colorSpace = null, BlendState blendState = null, int sortKey = 0
+        ) {
+            using (var rsb = GetRasterStrokeBatch(
+                layer, worldSpace, blendState, ref brush
+            )) {
+                rsb.AddPolygonVertices(vertices, out int indexOffset, out int count);
+                rsb.Add(new RasterStrokeDrawCall {
+                    Type = RasterStrokeType.Polygon,
+                    PolygonIndexOffset = indexOffset,
+                    PolygonVertexCount = count,
+                    ColorA = colorA,
+                    ColorB = colorB,
+                    Seed = seed ?? rsb.Count,
+                    TaperRanges = taper ?? default,
+                    Biases = biases ?? default,
+                    BlendIn = colorSpace ?? RasterShapeColorSpace.LinearRGB,
+                    SortKey = sortKey,
+                    WorldSpace = worldSpace ?? WorldSpace
+                });
+            }
+        }
+
         public override string ToString () {
             var callCount = 0;
             for (int i = 0; i < Cache.Count; i++) {

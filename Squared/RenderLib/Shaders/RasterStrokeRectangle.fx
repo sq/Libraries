@@ -85,7 +85,7 @@ void RasterStrokeRectangleFragmentShader(
         // FIXME
         float shuffle = 0; // floor(i * 0.7);
         rasterStrokeLineCommon(
-            shuffle, worldPosition, _ab, _seed, taper, biases, GET_VPOS, colorA, colorB, result
+            shuffle, worldPosition, _ab, _seed, taper, biases, 0, 0, 0, GET_VPOS, colorA, colorB, result
         );
     }
 

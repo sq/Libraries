@@ -34,13 +34,13 @@ void computeTLBR_Polygon (
     float maxLocalRadius = 0;
 
     for (int i = 0; i < count; i++) {
-        float4 xytr = get(offset);
+        float4 xytr = getPolyVertex(offset);
         int nodeType = (int)xytr.z;
         float2 pos = xytr.xy;
         maxLocalRadius = max(maxLocalRadius, xytr.w);
         offset++;
         if (nodeType == NODE_BEZIER) {
-            float4 controlPoints = get(offset);
+            float4 controlPoints = getPolyVertex(offset);
             offset++;
             float2 btl, bbr;
             computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
@@ -108,7 +108,7 @@ void evaluatePolygonStep (
     in float radius, in int gradientType, inout float distance, inout float2 gradientWeight, 
     inout float s, inout float gdist, inout float2 tl, inout float2 br
 ) {
-    float4 xytr = get(offset);
+    float4 xytr = getPolyVertex(offset);
     int nodeType = (int)xytr.z;
     float4 current = (i >= (count - 1)) ? first : xytr, controlPoints;
     float2 pos = current.xy;
@@ -117,7 +117,7 @@ void evaluatePolygonStep (
 
     bool isBezier = (nodeType == NODE_BEZIER);
     if (isBezier) {
-        controlPoints = get(offset);
+        controlPoints = getPolyVertex(offset);
         offset++;
     }
 
@@ -216,7 +216,7 @@ void evaluatePolygon (
     if (closed && (gradientType == GRADIENT_TYPE_Natural))
         gradientType = GRADIENT_TYPE_Radial;
 
-    float4 first = get(offset), prev = first;
+    float4 first = getPolyVertex(offset), prev = first;
     if (((int)first.z) == NODE_BEZIER)
         // FIXME: Record control points?
         offset += 2;
