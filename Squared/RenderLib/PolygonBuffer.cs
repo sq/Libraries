@@ -51,8 +51,8 @@ namespace Squared.Render {
         }
 
         public void AddVertices (ArraySegment<RasterPolygonVertex> vertices, out int offset, out int count) {
-            if ((vertices.Count < 1) || (vertices.Count >= 256))
-                throw new ArgumentOutOfRangeException("Vertex count must be < 256 due to shader limitations");
+            if ((vertices.Count < 1) || (vertices.Count > 4096))
+                throw new ArgumentOutOfRangeException("vertices.Count");
 
             lock (Lock) {
                 FlushRequired = true;

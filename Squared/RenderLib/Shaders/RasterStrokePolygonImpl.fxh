@@ -34,38 +34,40 @@ void computeTLBR_Polygon(
     estimatedLengthPx = 0;
 
     float baseRadius = (Constants2.w * 0.66) + 1;
-    int offset = (int)vertexOffset;
-    int count = (int)vertexCount;
     float2 prev = 0;
     float maxLocalRadius = 0;
+    int offset = (int)vertexOffset, count = (int)vertexCount, first = 1;
 
-    for (int i = 0; i < count; i++) {
-        float4 xytr = getPolyVertex(offset);
-        int nodeType = (int)xytr.z;
-        float2 pos = xytr.xy;
-        maxLocalRadius = max(maxLocalRadius, xytr.w);
-        offset++;
-
-        REQUIRE_BRANCH
-        if (nodeType == NODE_BEZIER) {
-            float4 controlPoints = getPolyVertex(offset);
+    while (count > 0) {
+        while (count-- > 0) {
+            float4 xytr = getPolyVertex(offset);
+            int nodeType = (int)xytr.z;
+            float2 pos = xytr.xy;
+            maxLocalRadius = max(maxLocalRadius, xytr.w);
             offset++;
-            if (i > 0) {
-                float2 btl, bbr;
-                computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
-                tl = min(btl, tl);
-                br = max(bbr, br);
-                estimatedLengthPx += lengthOfBezier(prev, controlPoints.xy, pos);
-            }
-        } else {
-            // FIXME: Is this right? Not doing it seems to break our bounding boxes
-            tl = min(pos, tl);
-            br = max(pos, br);
 
-            if ((i > 0) && (nodeType != NODE_SKIP))
-                estimatedLengthPx += length(pos - prev);
+            REQUIRE_BRANCH
+            if (nodeType == NODE_BEZIER) {
+                float4 controlPoints = getPolyVertex(offset);
+                offset++;
+                if (first == 0) {
+                    float2 btl, bbr;
+                    computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
+                    tl = min(btl, tl);
+                    br = max(bbr, br);
+                    estimatedLengthPx += lengthOfBezier(prev, controlPoints.xy, pos);
+                }
+            } else {
+                // FIXME: Is this right? Not doing it seems to break our bounding boxes
+                tl = min(pos, tl);
+                br = max(pos, br);
+
+                if ((first == 0) && (nodeType != NODE_SKIP))
+                    estimatedLengthPx += length(pos - prev);
+            }
+            first = 0;
+            prev = pos;
         }
-        prev = pos;
     }
 
     if (br.x < tl.x)
@@ -126,7 +128,7 @@ void RasterStrokePolygonFragmentShader(
 ) {
     result = 0;
 
-    int offset = (int)ab.x, count = (int)ab.y, overdraw = 0;
+    int offset = (int)ab.x, count = (int)ab.y, first = 1, overdraw = 0;
     float estimatedLengthPx = ab.z, distanceTraveled = 0, totalSteps = 0,
         stepPx = max(Constants2.w * Constants2.z, 0.05),
         // HACK: We want to search in a larger area for beziers since the math
@@ -134,68 +136,72 @@ void RasterStrokePolygonFragmentShader(
         searchRadius = Constants2.w + 1, searchRadius2 = searchRadius * searchRadius;
     float2 prev = 0;
 
-    for (int i = 0; i < count; i++) {
-        float4 xytr = getPolyVertex(offset);
-        int nodeType = (int)xytr.z;
-        float2 pos = xytr.xy;
-        float4 localBiases = biases;
-        float steps = 0;
-        localBiases.x += xytr.w;
+    while (count > 0) {
+        while (count-- > 0) {
+            float4 xytr = getPolyVertex(offset);
+            int nodeType = (int)xytr.z;
+            float2 pos = xytr.xy;
+            float4 localBiases = biases;
+            float steps = 0;
+            localBiases.x += xytr.w;
 
-        offset++;
-        REQUIRE_BRANCH
-        if (nodeType == NODE_BEZIER) {
-            float4 controlPoints = getPolyVertex(offset);
             offset++;
-            // FIXME
-            if (i > 0) {
-                float bezierLength = lengthOfBezier(prev, controlPoints.xy, pos);
+            REQUIRE_BRANCH
+            if (nodeType == NODE_BEZIER) {
+                float4 controlPoints = getPolyVertex(offset);
+                offset++;
+                // FIXME
+                if (first == 0) {
+                    float bezierLength = lengthOfBezier(prev, controlPoints.xy, pos);
 
-                // HACK: Try to locate the closest point on the bezier. If even it is far enough away
-                //  that it can't overlap the current pixel, skip processing the entire bezier.
+                    // HACK: Try to locate the closest point on the bezier. If even it is far enough away
+                    //  that it can't overlap the current pixel, skip processing the entire bezier.
 
-                float2 a = prev - worldPosition, b = controlPoints.xy - worldPosition,
-                    c = pos - worldPosition;
-                // First check the middle and endpoints
-                float ct = 0, cd2 = distanceSquaredToBezierAtT(a, b, c, ct);
-                float td = distanceSquaredToBezierAtT(a, b, c, 1);
-                pickClosestT(cd2, ct, td, 1);
-                td = distanceSquaredToBezierAtT(a, b, c, 0.5);
-                pickClosestT(cd2, ct, td, 0.5);
+                    float2 a = prev - worldPosition, b = controlPoints.xy - worldPosition,
+                        c = pos - worldPosition;
+                    // First check the middle and endpoints
+                    float ct = 0, cd2 = distanceSquaredToBezierAtT(a, b, c, ct);
+                    float td = distanceSquaredToBezierAtT(a, b, c, 1);
+                    pickClosestT(cd2, ct, td, 1);
+                    td = distanceSquaredToBezierAtT(a, b, c, 0.5);
+                    pickClosestT(cd2, ct, td, 0.5);
 
-                // Then do an analytical check (we can't rely entirely on this, the math breaks down at some spots)
-                pickClosestTOnBezierForAxis(a, b, c, float2(1, 0), cd2, ct);
-                pickClosestTOnBezierForAxis(a, b, c, float2(0, 1), cd2, ct);
+                    // Then do an analytical check (we can't rely entirely on this, the math breaks down at some spots)
+                    pickClosestTOnBezierForAxis(a, b, c, float2(1, 0), cd2, ct);
+                    pickClosestTOnBezierForAxis(a, b, c, float2(0, 1), cd2, ct);
 
-                REQUIRE_BRANCH
-                if (cd2 > searchRadius2) {
-                    steps = bezierLength / stepPx;
-                } else {
-                    overdraw++;
-                    steps = rasterStrokeBezierCommon(
-                        0, worldPosition, float4(prev, pos), controlPoints.xy, bezierLength, seed, taper, localBiases,
+                    REQUIRE_BRANCH
+                    if (cd2 > searchRadius2) {
+                        steps = bezierLength / stepPx;
+                    } else {
+                        overdraw++;
+                        steps = rasterStrokeBezierCommon(
+                            0, worldPosition, float4(prev, pos), controlPoints.xy, bezierLength, seed, taper, localBiases,
+                            distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
+                        );
+                    }
+                    distanceTraveled += bezierLength;
+                }
+            } else if (nodeType == NODE_LINE) {
+                if (first == 0) {
+                    steps = rasterStrokeLineCommon(
+                        0, worldPosition, float4(prev, pos), seed, taper, localBiases,
                         distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
                     );
+                    distanceTraveled += length(pos - prev);
                 }
-                distanceTraveled += bezierLength;
+            } else {
+                first = 0;
+                prev = pos;
+                continue;
             }
-        } else if (nodeType == NODE_LINE) {
-            if (i > 0) {
-                steps = rasterStrokeLineCommon(
-                    0, worldPosition, float4(prev, pos), seed, taper, localBiases,
-                    distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
-                );
-                distanceTraveled += length(pos - prev);
-            }
-        } else {
-            prev = pos;
-            continue;
-        }
 
-        if (i > 0) {
-            totalSteps += steps;
+            if (first == 0) {
+                totalSteps += steps;
+            }
+            first = 0;
+            prev = pos;
         }
-        prev = pos;
     }
 
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
