@@ -230,12 +230,14 @@ float rasterStrokeLineCommon(
     float maxSize = Constants2.w,
         // FIXME: A spacing of 1.0 still produces overlap
         stepPx = max(maxSize * Constants2.z, 0.05), maxRadius = maxSize * 0.5,
-        l = max(length(ba), 0.01), centerT, splatCount = ceil(l / stepPx);
+        l = max(length(ba), 0.01), centerT, splatCount = ceil(l / stepPx),
+        globalSplatCount = ceil(totalLength / stepPx);
 
+    // new Vector4(TaperIn.Value, TaperOut.Value, StartOffset.Value, EndOffset.Value);
     taperRanges.zw *= totalLength;
 
     float taperedL = max(totalLength - taperRanges.z - taperRanges.w, 0.01),
-        stepT = 1.0 / splatCount,
+        stepT = 1.0 / splatCount, globalStepT = 1.0 / globalSplatCount,
         angleRadians = atan2(ba.y, ba.x),
         // FIXME: 360deg -> 1.0
         angleFactor = angleRadians;
@@ -252,7 +254,7 @@ float rasterStrokeLineCommon(
         float globalI = i + stepOffset;
         float4 noise1, noise2;
         if (UsesNoise) {
-            float4 seedUv = float4(seed.x + (i * 2 * seed.z), seed.y + (i * seed.w), 0, 0);
+            float4 seedUv = float4(seed.x + (globalI * 2 * seed.z), seed.y + (globalI * seed.w), 0, 0);
             noise1 = tex2Dlod(NoiseSampler, seedUv);
             seedUv.x += seed.z;
             noise2 = tex2Dlod(NoiseSampler, seedUv);
@@ -267,7 +269,7 @@ float rasterStrokeLineCommon(
             // FIXME: Right now if tapering is enabled the taper1 value for the first splat is always 0
             // The ideal would be for it to start at a very low value based on spacing or length
             taper1 = abs(taperRanges.x) >= 1 ? saturate((globalD - taperRanges.z) / abs(taperRanges.x)) : 1,
-            taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - globalD - taperRanges.z) / taperRanges.y) : 1,
+            taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - globalD + taperRanges.z) / taperRanges.y) : 1,
             taper = min(taper1, taper2);
         float sizePx = clamp(evaluateDynamics2((Constants1.x + biases.x) * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor)), 0, maxSize);
         if (sizePx <= 0)
@@ -280,7 +282,8 @@ float rasterStrokeLineCommon(
             brushIndex = evaluateDynamics2(Constants1.w, brushCount, BrushIndexDynamics, float4(taper, globalI, noise1.w, angleFactor)),
             hardness = saturate(evaluateDynamics(Constants2.x + biases.z, HardnessDynamics, float4(taper, globalI, noise2.x, angleFactor))),
             // HACK: Increment here is scaled by t instead of i
-            colorT = COLOR_PER_SPLAT ? t : centerT,
+            // FIXME: centerT for polygons
+            colorT = COLOR_PER_SPLAT ? (globalI * globalStepT) : centerT,
             colorFactor = saturate(evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(taper, colorT, noise2.y, angleFactor)));
 
         bool outOfRange = (globalD < taperRanges.z) || (globalD > (totalLength - taperRanges.w));

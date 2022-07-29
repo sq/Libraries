@@ -1,7 +1,8 @@
 // O3 produces literally 1/3 the instructions of OD or O0 so let's just be kind to the driver
 #pragma fxcparams(/O3 /Zi)
 
-#define COLOR_PER_SPLAT false
+// FIXME: false is preferable here
+#define COLOR_PER_SPLAT true
 #include "PolygonCommon.fxh"
 #include "RasterStrokeCommon.fxh"
 
@@ -42,25 +43,24 @@ void computeTLBR_Polygon(
         float2 pos = xytr.xy;
         maxLocalRadius = max(maxLocalRadius, xytr.w);
         offset++;
+
         REQUIRE_BRANCH
         if (nodeType == NODE_BEZIER) {
             float4 controlPoints = getPolyVertex(offset);
             offset++;
-            float2 btl, bbr;
-            computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
-            tl = min(btl, tl);
-            br = max(bbr, br);
-            // FIXME: Not correct
-            if (i > 0)
+            if (i > 0) {
+                float2 btl, bbr;
+                computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
+                tl = min(btl, tl);
+                br = max(bbr, br);
+                // FIXME: Not correct
                 estimatedLengthPx += length(pos - prev);
-        } else if (nodeType == NODE_SKIP) {
+            }
+        } else if (i > 0) {
             // FIXME: Is this right? Not doing it seems to break our bounding boxes
             tl = min(pos, tl);
             br = max(pos, br);
-        } else {
-            tl = min(pos, tl);
-            br = max(pos, br);
-            if (i > 0)
+            if (nodeType != NODE_SKIP)
                 estimatedLengthPx += length(pos - prev);
         }
         prev = pos;
@@ -71,8 +71,8 @@ void computeTLBR_Polygon(
     if (br.y < tl.y)
         tl.y = br.y = -9999;
 
-    tl -= baseRadius + maxLocalRadius;
-    br += baseRadius + maxLocalRadius;
+    tl -= (baseRadius + maxLocalRadius + 2);
+    br += (baseRadius + maxLocalRadius + 2);
 }
 
 void RasterStrokePolygonVertexShader(
@@ -135,9 +135,6 @@ void RasterStrokePolygonFragmentShader(
         float4 localBiases = biases;
         localBiases.x += xytr.w;
 
-        // FIXME: TaperOut and EndOffset
-        // new Vector4(TaperIn.Value, TaperOut.Value, StartOffset.Value, EndOffset.Value);
-
         offset++;
         REQUIRE_BRANCH
         if (nodeType == NODE_BEZIER) {
@@ -158,8 +155,6 @@ void RasterStrokePolygonFragmentShader(
             distanceTraveled += length(pos - prev);
             totalSteps += steps;
         }
-        seed.x += 1.3;
-        seed.y += 3.7;
         prev = pos;
     }
 
