@@ -3,25 +3,27 @@
 
 // FIXME: false is preferable here
 #define COLOR_PER_SPLAT true
+// #define VISUALIZE_TEXCOORDS
 #include "PolygonCommon.fxh"
+
+// HACK: A polygon may contain many line segments, few of which will be close to a given
+//  pixel inside the bounding box. The normal single-line stroke rasterizer doesn't have
+//  to worry about this since the line itself has a tight bounding box, but that's not
+//  true here, so we do a quick distance check at the start before stepping across the
+//  whole stroke and doing hit tests against every splat.
+#define LINE_EARLY_REJECT (length(worldPosition - closestPoint) > (maxSize * 1.33))
+
 #include "RasterStrokeCommon.fxh"
 
-void computeTLBR_Bezier(
-    float2 a, float2 b, float2 c,
-    out float2 tl, out float2 br
-) {
-    tl = min(a, c);
-    br = max(a, c);
+#define SEARCH_DISTANCE 9999
+#define EARLY_REJECT false
+#define GET_CLOSEST_POINT(worldPosition, result) result = 0.5
+#define CALCULATE_LENGTH bezierLength
+#define CALCULATE_CENTER(t) evaluateBezierAtT(a, _actual_b, b, t)
+#define IMPL_INPUTS in float4 ab, in float2 _actual_b, in float bezierLength
+#define IMPL_NAME rasterStrokeBezierCommon
 
-    if (any(b < tl) || any(b > br))
-    {
-        float2 t = clamp((a - b) / (a - 2.0*b + c), 0.0, 1.0);
-        float2 s = 1.0 - t;
-        float2 q = s * s*a + 2.0*s*t*b + t * t*c;
-        tl = min(tl, q);
-        br = max(br, q);
-    }
-}
+#include "RasterStrokeLineCommonImpl.fxh"
 
 void computeTLBR_Polygon(
     in float vertexOffset, in float vertexCount,
@@ -31,7 +33,7 @@ void computeTLBR_Polygon(
     br = -99999;
     estimatedLengthPx = 0;
 
-    float baseRadius = (Constants2.w * 0.55) + 1;
+    float baseRadius = (Constants2.w * 0.66) + 1;
     int offset = (int)vertexOffset;
     int count = (int)vertexCount;
     float2 prev = 0;
@@ -53,14 +55,14 @@ void computeTLBR_Polygon(
                 computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
                 tl = min(btl, tl);
                 br = max(bbr, br);
-                // FIXME: Not correct
-                estimatedLengthPx += length(pos - prev);
+                estimatedLengthPx += lengthOfBezier(prev, controlPoints.xy, pos);
             }
-        } else if (i > 0) {
+        } else {
             // FIXME: Is this right? Not doing it seems to break our bounding boxes
             tl = min(pos, tl);
             br = max(pos, br);
-            if (nodeType != NODE_SKIP)
+
+            if ((i > 0) && (nodeType != NODE_SKIP))
                 estimatedLengthPx += length(pos - prev);
         }
         prev = pos;
@@ -124,8 +126,12 @@ void RasterStrokePolygonFragmentShader(
 ) {
     result = 0;
 
-    int offset = (int)ab.x, count = (int)ab.y;
-    float estimatedLengthPx = ab.z, distanceTraveled = 0, totalSteps = 0;
+    int offset = (int)ab.x, count = (int)ab.y, overdraw = 0;
+    float estimatedLengthPx = ab.z, distanceTraveled = 0, totalSteps = 0,
+        stepPx = max(Constants2.w * Constants2.z, 0.05),
+        // HACK: We want to search in a larger area for beziers since the math
+        //  we use to find the closest bezier is inaccurate.
+        searchRadius = Constants2.w + 1, searchRadius2 = searchRadius * searchRadius;
     float2 prev = 0;
 
     for (int i = 0; i < count; i++) {
@@ -133,6 +139,7 @@ void RasterStrokePolygonFragmentShader(
         int nodeType = (int)xytr.z;
         float2 pos = xytr.xy;
         float4 localBiases = biases;
+        float steps = 0;
         localBiases.x += xytr.w;
 
         offset++;
@@ -141,18 +148,51 @@ void RasterStrokePolygonFragmentShader(
             float4 controlPoints = getPolyVertex(offset);
             offset++;
             // FIXME
+            if (i > 0) {
+                float bezierLength = lengthOfBezier(prev, controlPoints.xy, pos);
+
+                // HACK: Try to locate the closest point on the bezier. If even it is far enough away
+                //  that it can't overlap the current pixel, skip processing the entire bezier.
+
+                float2 a = prev - worldPosition, b = controlPoints.xy - worldPosition,
+                    c = pos - worldPosition;
+                // First check the middle and endpoints
+                float ct = 0, cd2 = distanceSquaredToBezierAtT(a, b, c, ct);
+                float td = distanceSquaredToBezierAtT(a, b, c, 1);
+                pickClosestT(cd2, ct, td, 1);
+                td = distanceSquaredToBezierAtT(a, b, c, 0.5);
+                pickClosestT(cd2, ct, td, 0.5);
+
+                // Then do an analytical check (we can't rely entirely on this, the math breaks down at some spots)
+                pickClosestTOnBezierForAxis(a, b, c, float2(1, 0), cd2, ct);
+                pickClosestTOnBezierForAxis(a, b, c, float2(0, 1), cd2, ct);
+
+                REQUIRE_BRANCH
+                if (cd2 > searchRadius2) {
+                    steps = bezierLength / stepPx;
+                } else {
+                    overdraw++;
+                    steps = rasterStrokeBezierCommon(
+                        0, worldPosition, float4(prev, pos), controlPoints.xy, bezierLength, seed, taper, localBiases,
+                        distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
+                    );
+                }
+                distanceTraveled += bezierLength;
+            }
         } else if (nodeType == NODE_LINE) {
+            if (i > 0) {
+                steps = rasterStrokeLineCommon(
+                    0, worldPosition, float4(prev, pos), seed, taper, localBiases,
+                    distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
+                );
+                distanceTraveled += length(pos - prev);
+            }
         } else {
             prev = pos;
             continue;
         }
 
         if (i > 0) {
-            float steps = rasterStrokeLineCommon(
-                0, worldPosition, float4(prev, pos), seed, taper, localBiases, 
-                distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
-            );
-            distanceTraveled += length(pos - prev);
             totalSteps += steps;
         }
         prev = pos;
@@ -169,6 +209,9 @@ void RasterStrokePolygonFragmentShader(
         else
             result.rgb = LinearToSRGB(result.rgb);
     }
+
+    if (false)
+        result += float4((0.1 * overdraw), 0, 0, saturate(overdraw));
 
     result = ApplyDither4(result, GET_VPOS);
 }

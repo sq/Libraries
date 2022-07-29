@@ -40,7 +40,7 @@ namespace Squared.Render {
 
             public void Initialize () {
                 Array.Clear(CornerBuffers, 0, CornerBuffers.Length);
-                _PolygonBuffer.Clear();
+                _PolygonBuffer?.Clear();
             }
 
             internal PolygonBuffer GetPolygonBuffer (IBatchContainer container) {
