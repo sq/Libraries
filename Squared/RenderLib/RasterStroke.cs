@@ -408,6 +408,7 @@ namespace Squared.Render.RasterStroke {
         private static readonly RasterStrokeDrawCallSorter StrokeDrawCallSorter = new RasterStrokeDrawCallSorter();
         private static Texture2D CachedNoiseTexture;
         private Texture2D NoiseTexture;
+        private PolygonBuffer _PolygonBuffer = null;
 
         const int MaxVertexCount = 65535;
 
@@ -683,7 +684,15 @@ namespace Squared.Render.RasterStroke {
             return result;
         }
 
+        public void AddPolygonVertices (
+            ArraySegment<RasterPolygonVertex> vertices, out int indexOffset, out int vertexCount
+        ) {
+            _PolygonBuffer = Container.Frame.PrepareData.GetPolygonBuffer(Container);
+            _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount);
+        }
+
         protected override void OnReleaseResources () {
+            _SubBatches.Dispose();
             base.OnReleaseResources();
         }
     }

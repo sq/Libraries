@@ -292,8 +292,7 @@ void rasterStrokeLineCommon(
         if (Textured) {
             if (
                 outOfRange ||
-                (abs(posSplatDerotated.x) > radius) ||
-                (abs(posSplatDerotated.y) > radius)
+                any(abs(posSplatDerotated) > radius)
             ) {
                 continue;
             } else {

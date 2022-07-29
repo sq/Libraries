@@ -130,14 +130,14 @@ void evaluatePolygonStep (
         } else if (isBezier) {
             // HACK: Evaluate N imaginary lines between points along beziers.
             // Not accurate, but better than nothing.
-            float2 tprev = prev, tcurrent = pos;
-            float approximateLength = length(controlPoints.xy - prev) + length(current - controlPoints.xy),
+            float2 tprev = prev.xy, tcurrent = pos;
+            float approximateLength = length(controlPoints.xy - tprev) + length(current.xy - controlPoints.xy),
                 tstep = 1.0 / clamp(approximateLength * 0.05, 3, 16),
                 t = 0;
             [loop]
             do {
                 if (isBezier)
-                    tcurrent = evaluateBezierAtT(prev, controlPoints.xy, current, saturate(t));
+                    tcurrent = evaluateBezierAtT(prev.xy, controlPoints.xy, current, saturate(t));
 
                 evaluateClosedPolygonStep_Line(
                     tprev, tcurrent, worldPosition,
@@ -150,7 +150,7 @@ void evaluatePolygonStep (
             } while (true);
         } else {
             evaluateClosedPolygonStep_Line(
-                prev, current, worldPosition,
+                prev.xy, current.xy, worldPosition,
                 distance, s
             );
         }
@@ -158,7 +158,7 @@ void evaluatePolygonStep (
         float temp;
         float2 temp2;
         if (isBezier) {
-            float2 a = prev, b = controlPoints.xy, c = pos; 
+            float2 a = prev.xy, b = controlPoints.xy, c = pos; 
             evaluateBezier(
                 worldPosition, a, b, c,
                 float2(radius, 0), temp, gradientType, temp2
@@ -167,7 +167,7 @@ void evaluatePolygonStep (
             temp = distance;
         } else {
             evaluateLineSegment(
-                worldPosition, prev, pos, float2(0, prev.w),
+                worldPosition, prev.xy, pos, float2(0, prev.w),
                 float2(radius, current.w), temp, gradientType, temp2
             );
         }

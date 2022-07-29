@@ -102,7 +102,7 @@ void computeTLBR_Bezier (
     tl = min(a, c);
     br = max(a, c);
 
-    if (b.x<tl.x || b.x>br.x || b.y<tl.y || b.y>br.y)
+    if (any(b < tl) || any(b > br))
     {
         float2 t = clamp((a - b) / (a - 2.0*b + c), 0.0, 1.0);
         float2 s = 1.0 - t;
@@ -304,7 +304,7 @@ void RasterShapeVertexShader_Core (
     float outlineSize = abs(params.x);
 
     bool isUnshadowed = (ShadowColorLinear.a <= 0) || (ShadowInside <= 0);
-    bool isSimpleRectangle = (centerColor == edgeColor) && 
+    bool isSimpleRectangle = all(centerColor == edgeColor) && 
         (type == TYPE_Rectangle) && 
         (params.y <= 0); /* FIXME: Annular radius */
     bool isHollow = isSimpleRectangle && 
@@ -366,7 +366,9 @@ void RasterShapeVertexShader_Core (
             // HACK: This isn't premultiplied since it doesn't make sense for it to be!
             centerColor = pSRGBToOkLab(centerColor);
             edgeColor = pSRGBToOkLab(edgeColor);
-            outlineColor = pSRGBToOkLab(outlineColor);
+            // HACK: Doing compositing in oklab space is a nightmare, so we won't
+            // outlineColor = pSRGBToOkLab(outlineColor);
+            outlineColor = pSRGBToPLinear_Accurate(outlineColor);
         } else {
             centerColor = pSRGBToPLinear_Accurate(centerColor);
             edgeColor = pSRGBToPLinear_Accurate(edgeColor);
@@ -1007,7 +1009,7 @@ void rasterShapeCommon (
             // Gradient weight rescaled into 0-1
             gradientWeight.x /= gradientSize;
             // Remap the gradient weight so that it ping-pongs A B A
-            gradientWeight.x = gradientWeight % 2;
+            gradientWeight.x = gradientWeight.x % 2;
             gradientWeight.x = 1 - abs(gradientWeight.x - 1);
             float gradientDivisor = clamp(1 - (gradientRange.x * 2), 0.001, 1);
             gradientWeight.x = clamp(gradientWeight.x - gradientRange.x, 0, gradientDivisor) / gradientDivisor;
@@ -1081,45 +1083,23 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return top + (bottom * (1 - top.a));
 }
 
-// FIXME: This isn't right
-float4 overOklab (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
-    top.a *= topOpacity;
-    bottom.a *= bottomOpacity;
-
-    if (bottom.a <= 0)
-        return top;
-
-    float a = top.a + (bottom.a * (1 - top.a));        
-    return float4(lerp(bottom.rgb, top.rgb, top.a), a);
-}
-
 float4 compositeFirstStep (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool isSimple, bool enableShadow, float2 vpos) {
     float4 result = fillColor;
+    REQUIRE_BRANCH
+    if (BlendInOkLab)
+        // Premultiply math (and standard over) don't work for oklab colors
+        result.rgb = OkLabToLinearSRGB(result.rgb) * result.a;
+
+    result *= fillAlpha;
+
+    // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
+    float4 ca = ShadowInside ? ShadowColorLinear : result, cb = ShadowInside ? result : ShadowColorLinear;
+    float aa = ShadowInside ? shadowAlpha : 1, ab = ShadowInside ? 1 : shadowAlpha;
 
     // HACK: Try to keep this goop out of the common shaders that need to be really fast
-    // Premultiply math (and standard over) don't work for oklab colors
-    [branch]
-    if (isSimple || !BlendInOkLab) {
-        result *= fillAlpha;
-
-        if (enableShadow) {
-            // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
-            float4 ca = ShadowInside ? ShadowColorLinear : result, cb = ShadowInside ? result : ShadowColorLinear;
-            float aa = ShadowInside ? shadowAlpha : 1, ab = ShadowInside ? 1 : shadowAlpha;
-            result = over(ca, aa, cb, ab);
-        }
-        return over(outlineColor, outlineAlpha, result, 1);
-    } else {
-        result.a *= fillAlpha;
-
-        if (enableShadow) {
-            // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
-            float4 ca = ShadowInside ? ShadowColorLinear : result, cb = ShadowInside ? result : ShadowColorLinear;
-            float aa = ShadowInside ? shadowAlpha : 1, ab = ShadowInside ? 1 : shadowAlpha;
-            result = overOklab(ca, aa, cb, ab);
-        }
-        return overOklab(outlineColor, outlineAlpha, result, 1);
-    }
+    if (enableShadow)
+        result = over(ca, aa, cb, ab);
+    return over(outlineColor, outlineAlpha, result, 1);
 }
 
 float4 compositeSecondStep (float4 pLinear, bool isSimple, float2 vpos) {
@@ -1127,18 +1107,14 @@ float4 compositeSecondStep (float4 pLinear, bool isSimple, float2 vpos) {
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
     //  for alpha gradients because the A we premultiply by does not match the A the GPU selected
     // It's also important to do dithering and sRGB conversion on a result that is not premultiplied
-    if (BlendInOkLab) {
-        result.rgb = OkLabToLinearSRGB(result.rgb);
-    } else {
-        result.rgb = float4(result.rgb / max(result.a, 0.0001), result.a);
-    }
+    result = float4(result.rgb / max(result.a, 0.0001), result.a);
 
     if (isSimple)
         return result;
 
     if (BlendInLinearSpace != OutputInLinearSpace) {
         if (OutputInLinearSpace)
-            result.rgb = SRGBToLinear(result).rgb;
+            result.rgb = SRGBToLinear(result.rgb);
         else
             result.rgb = LinearToSRGB(result.rgb);
     }

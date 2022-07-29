@@ -33,21 +33,35 @@ namespace Squared.Render {
 
         public int Index;
 
-        public class FramePrepareData {
-            public BufferGenerator<CornerVertex>.SoftwareBuffer[] CornerBuffers =
+        public sealed class FramePrepareData {
+            private BufferGenerator<CornerVertex>.SoftwareBuffer[] CornerBuffers =
                 new BufferGenerator<CornerVertex>.SoftwareBuffer[8];
+            private PolygonBuffer _PolygonBuffer;
 
             public void Initialize () {
                 Array.Clear(CornerBuffers, 0, CornerBuffers.Length);
+                _PolygonBuffer.Clear();
+            }
+
+            internal PolygonBuffer GetPolygonBuffer (IBatchContainer container) {
+                var result = Volatile.Read(ref _PolygonBuffer);
+                if (result == null) {
+                    result = new PolygonBuffer();
+                    var exchanged = Interlocked.CompareExchange(ref _PolygonBuffer, result, null);
+                    if (exchanged != null)
+                        // FIXME: Dispose result?
+                        ;
+                }
+                return result;
             }
 
             public BufferGenerator<CornerVertex>.SoftwareBuffer GetCornerBuffer (IBatchContainer container, int repeatCount = 1) {
-                var result = CornerBuffers[repeatCount];
+                var result = Volatile.Read(ref CornerBuffers[repeatCount]);
                 if (result == null) {
                     result = QuadUtils.CreateCornerBuffer(container, repeatCount);
                     var exchanged = Interlocked.CompareExchange(ref CornerBuffers[repeatCount], result, null);
                     if (exchanged != null)
-                        // Dispose result?
+                        // FIXME: Dispose result?
                         ;
                 }
                 return result;
@@ -163,9 +177,6 @@ namespace Squared.Render {
 
             if (Tracing.RenderTrace.EnableTracing)
                 Tracing.RenderTrace.ImmediateMarker(device, "Frame {0:0000} : End Draw", Index);
-
-            // HACK
-            Coordinator.PolygonBuffer?.Clear();
 
             if (Interlocked.Exchange(ref State, (int)States.Drawn) != (int)States.Drawing)
                 throw new InvalidOperationException();

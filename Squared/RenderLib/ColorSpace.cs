@@ -239,6 +239,16 @@ namespace Squared.Render {
             opacity = srgb.W;
         }
 
+        public static pSRGBColor FromOkLCh (float L, double C, double h, float opacity = 1.0f) {
+            ColorSpace.OkLChToOkLab(C, h, out var a, out var b);
+            return FromOkLab(L, a, b, opacity);
+        }
+
+        public void ToOkLCh (out float L, out double C, out double h, out float opacity) {
+            ToOkLab(out L, out var a, out var b, out opacity);
+            ColorSpace.OkLabToOkLCh(a, b, out C, out h);
+        }
+
         // end oklab
 
         public static pSRGBColor Black (float opacity = 1.0f) {

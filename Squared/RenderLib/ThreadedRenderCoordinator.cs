@@ -1121,17 +1121,6 @@ namespace Squared.Render {
             }
         }
 
-        private volatile PolygonBuffer _PolygonBuffer;
-        internal PolygonBuffer PolygonBuffer {
-            get {
-                if (_PolygonBuffer == null) {
-                    var result = new PolygonBuffer();
-                    return Interlocked.CompareExchange(ref _PolygonBuffer, result, null) ?? result;
-                } else
-                    return _PolygonBuffer;
-            }
-        }
-
         public bool TryGetPreparingFrame (out Frame frame) {
             frame = null;
 

@@ -463,6 +463,13 @@ namespace Squared.Render.RasterShape {
         internal int IsSimple;
         internal int PackedFlags;
         internal int Index;
+
+        public int PolygonIndexOffset {
+            set => A.X = value;
+        }
+        public int PolygonVertexCount {
+            set => A.Y = value;
+        }
     }
 
     public struct RasterShadowSettings {
@@ -840,7 +847,7 @@ namespace Squared.Render.RasterShape {
                 }
 
                 rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
-                rasterShader.BlendInOkLab.SetValue(sb.BlendInOkLab);
+                rasterShader.BlendInOkLab?.SetValue(sb.BlendInOkLab);
                 rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
                 rasterShader.RasterTexture?.SetValue(Texture);
                 rasterShader.RampTexture?.SetValue(RampTexture);
@@ -984,10 +991,10 @@ namespace Squared.Render.RasterShape {
         }
 
         public void AddPolygonVertices (
-            ArraySegment<RasterPolygonVertex> vertices, out int offset, out int count
+            ArraySegment<RasterPolygonVertex> vertices, out int indexOffset, out int vertexCount
         ) {
-            _PolygonBuffer = Container.Coordinator.PolygonBuffer;
-            _PolygonBuffer.AddVertices(vertices, out offset, out count);
+            _PolygonBuffer = Container.Frame.PrepareData.GetPolygonBuffer(Container);
+            _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount);
         }
     }
 }

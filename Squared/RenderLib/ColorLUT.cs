@@ -114,6 +114,23 @@ namespace Squared.Render {
                 );
             }
         }
+
+        public static void OkLabToOkLCh (float a, float b, out double C, out double h) {
+            C = Math.Sqrt((a * a) + (b * b));
+            h = Math.Atan2(b, a) * 180 / Math.PI;
+            if (!Arithmetic.IsFinite(C))
+                C = 0;
+            if (!Arithmetic.IsFinite(h))
+                h = 0;
+            else if (h < 0)
+                h += 360;
+        }
+
+        public static void OkLChToOkLab (double C, double h, out float a, out float b) {
+            h *= Math.PI / 180;
+            a = (float)(C * Math.Cos(h));
+            b = (float)(C * Math.Sin(h));
+        }
     }
 
     public sealed class ColorLUT : IDisposable {
