@@ -51,7 +51,8 @@ void computeTLBR_Polygon(
             tl = min(btl, tl);
             br = max(bbr, br);
             // FIXME: Not correct
-            estimatedLengthPx += length(pos - prev);
+            if (i > 0)
+                estimatedLengthPx += length(pos - prev);
         } else if (nodeType == NODE_SKIP) {
             // FIXME: Is this right? Not doing it seems to break our bounding boxes
             tl = min(pos, tl);
@@ -59,7 +60,8 @@ void computeTLBR_Polygon(
         } else {
             tl = min(pos, tl);
             br = max(pos, br);
-            estimatedLengthPx += length(pos - prev);
+            if (i > 0)
+                estimatedLengthPx += length(pos - prev);
         }
         prev = pos;
     }

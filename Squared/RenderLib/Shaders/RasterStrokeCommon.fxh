@@ -231,7 +231,8 @@ float rasterStrokeLineCommon(
         // FIXME: A spacing of 1.0 still produces overlap
         stepPx = max(maxSize * Constants2.z, 0.05), maxRadius = maxSize * 0.5,
         l = max(length(ba), 0.01), centerT, splatCount = ceil(l / stepPx);
-    taperRanges.zw *= l;
+
+    taperRanges.zw *= totalLength;
 
     float taperedL = max(totalLength - taperRanges.z - taperRanges.w, 0.01),
         stepT = 1.0 / splatCount,
@@ -261,11 +262,12 @@ float rasterStrokeLineCommon(
         }
 
         float t = i * stepT,
-            d = t * l,            
+            d = t * l,
+            globalD = d + distanceTraveled,
             // FIXME: Right now if tapering is enabled the taper1 value for the first splat is always 0
             // The ideal would be for it to start at a very low value based on spacing or length
-            taper1 = abs(taperRanges.x) >= 1 ? saturate((d + distanceTraveled - taperRanges.z) / abs(taperRanges.x)) : 1,
-            taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - (d + distanceTraveled - taperRanges.z)) / taperRanges.y) : 1,
+            taper1 = abs(taperRanges.x) >= 1 ? saturate((globalD - taperRanges.z) / abs(taperRanges.x)) : 1,
+            taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - globalD - taperRanges.z) / taperRanges.y) : 1,
             taper = min(taper1, taper2);
         float sizePx = clamp(evaluateDynamics2((Constants1.x + biases.x) * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor)), 0, maxSize);
         if (sizePx <= 0)
@@ -281,7 +283,7 @@ float rasterStrokeLineCommon(
             colorT = COLOR_PER_SPLAT ? t : centerT,
             colorFactor = saturate(evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(taper, colorT, noise2.y, angleFactor)));
 
-        bool outOfRange = (d < taperRanges.z) || (d > (l - taperRanges.w));
+        bool outOfRange = (globalD < taperRanges.z) || (globalD > (totalLength - taperRanges.w));
 
         float r = i * sizePx, radius = sizePx * 0.5;
         float2 center = a + (ba * t), texCoordScale = atlasScale / sizePx;
