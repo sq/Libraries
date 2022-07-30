@@ -67,27 +67,23 @@ namespace ShaderCompiler {
                 Console.Write(Path.GetFileName(shader));
 
                 var fileList = EnumerateFilenamesForShader(shader).ToList();
-                ParseShaderPragmas(shader, fxcParams, globalDefines, out var fileFxcParams, out var variants, out var flagSets);
+                ParseShaderPragmas(shader, globalDefines, out var fileFxcParams, out var variants, out var flagSets);
 
                 foreach (var variant in variants) {
                     foreach (var flagset in flagSets) {
                         foreach (var flag in flagset) {
-                            Console.WriteLine();
-
                             var localDefines = new Dictionary<string, string>(globalDefines);
                             foreach (var item in variant.Split(',')) {
                                 if (string.IsNullOrWhiteSpace(item))
                                     continue;
                                 var kvp = item.Split('=');
                                 localDefines.Add(kvp[0], kvp.Length > 1 ? kvp[1] : "1");
-                                Console.WriteLine($"variant {item}");
                             }
 
                             foreach (var _flag in flagset) {
                                 if (string.IsNullOrWhiteSpace(_flag))
                                     continue;
                                 localDefines.Add(_flag, _flag == flag ? "1" : "0");
-                                Console.WriteLine($"flag {_flag}={_flag == flag}");
                             }
 
                             var localFxcParams = (localDefines.Count > 0)
@@ -117,14 +113,11 @@ namespace ShaderCompiler {
                             localDefines.Add("__VARIANT_FS_NAME", $"{instanceName}_FRAGMENT_SHADER");
                             localDefines.Add("__VARIANT_TECHNIQUE_NAME", $"{instanceName}");
 
-                            var destPath = Path.Combine(destDir, instanceName + ".bin");
+                            var destPath = Path.Combine(destDir, instanceName + ".fx.bin");
                             var paramsPath = Path.Combine(destDir, instanceName + ".params");
                             var doesNotExist = !File.Exists(destPath);
                             var resultDate = File.GetLastWriteTimeUtc(destPath);
                             var isModified = !doesNotExist && fileList.Any((fn) => File.GetLastWriteTimeUtc(fn) >= resultDate);
-
-                            if (variants.Length > 1)
-                                ;
 
                             CompileOneShader(
                                 switches, buildInParallel, outputDisassembly, 
@@ -132,7 +125,7 @@ namespace ShaderCompiler {
                                 ref totalFileCount, ref updatedFileCount, ref errorCount, 
                                 localDefines, pending, outputs, shader, 
                                 destPath, paramsPath, doesNotExist, 
-                                ref needNewline, fileList, isModified, fileFxcParams,
+                                ref needNewline, fileList, isModified, localFxcParams,
                                 instanceName, hashDigest
                             );
                         }
@@ -207,7 +200,7 @@ namespace ShaderCompiler {
 
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine(
-                    " {0}{2}Compiling with params '{1}'...",
+                    " {0}{2}Compiling w/params '{1}'...",
                     doesNotExist
                         ? "output missing"
                         : (
@@ -215,7 +208,7 @@ namespace ShaderCompiler {
                                 ? "parameters changed"
                                 : "is outdated"
                         ),
-                    localFxcParams,
+                    localFxcParams.Trim(),
                     Environment.NewLine
                 );
                 needNewline = false;
@@ -236,6 +229,14 @@ namespace ShaderCompiler {
 
                 Console.WriteLine();
                 updatedFileCount++;
+            } else {
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.WriteLine(
+                    " {0}Not modified w/params '{1}'.",
+                    Environment.NewLine,
+                    localFxcParams.Trim()
+                );
+                needNewline = false;
             }
 
             outputs.Add(new OutputRecord {
@@ -258,6 +259,7 @@ namespace ShaderCompiler {
         private static void GenerateManifest (List<OutputRecord> outputs, StreamWriter sw) {
             foreach (var output in outputs) {
                 sw.WriteLine($"[{Path.GetFileNameWithoutExtension(output.OutputPath)}]");
+                sw.WriteLine($"Name={Path.GetFileNameWithoutExtension(output.SourcePath)}");
                 sw.WriteLine($"TechniqueName={output.InstanceName}");
                 sw.WriteLine($"HashDigest={output.HashDigest}");
                 sw.WriteLine($"FxcParams={output.FxcParams}");
@@ -353,7 +355,7 @@ namespace ShaderCompiler {
         }
 
         private static void ParseShaderPragmas (
-            string path, string defaultParams, Dictionary<string, string> defines,
+            string path, Dictionary<string, string> defines,
             out string localFxcParams, out string[] variants, out string[][] flagSets
         ) {
             var result = new StringBuilder();
@@ -412,9 +414,6 @@ namespace ShaderCompiler {
                     }
                 }
             }
-
-            if (result.Length == 0)
-                result.Append(defaultParams.Trim());
 
             if (variantList.Count > 0)
                 variants = variantList.ToArray();

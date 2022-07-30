@@ -58,7 +58,8 @@ float tapA(
     in float mipBias
 ) {
     // FIXME: Use extract value so this works with single channel textures
-    float4 texColor = tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, mipBias));
+    // HACK: We can't use tex2dbias here because we're inside a loop and it forces it to unroll
+    float4 texColor = tex2Dlod(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, mipBias));
     return ExtractMask(texColor, BitmapTraits);
 }
 
