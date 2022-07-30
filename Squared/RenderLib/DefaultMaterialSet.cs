@@ -879,9 +879,12 @@ namespace Squared.Render {
             string typeName = $"TYPE_{type}",
                 variantName = "NORMAL";
 
-            if (simple)
-                variantName = "SIMPLE";
-            else if (textured) {
+            if (simple) {
+                if (shadowed)
+                    variantName = "SIMPLE_SHADOWED";
+                else
+                    variantName = "SIMPLE";
+            } else if (textured) {
                 if (shadowed)
                     variantName = "TEXTURED_SHADOWED";
                 else
@@ -907,8 +910,10 @@ namespace Squared.Render {
                     continue;
                 if (int.Parse(variantValue) != 1)
                     continue;
+                if (name != null)
+                    throw new Exception("Found two matching manifest entries for this shader");
+
                 name = entry["TechniqueName"];
-                break;
             }
 
             if (name == null)
