@@ -4,6 +4,10 @@
 #define BACKGROUND_MIP_BIAS -0.5
 #endif
 
+#ifndef VARIANT_SIMPLE
+#define VARIANT_SIMPLE 0
+#endif
+
 #define ENABLE_DITHERING 1
 
 #include "CompilerWorkarounds.fxh"
@@ -378,7 +382,7 @@ void RasterShapeVertexShader (
     out float4 worldPositionTypeAndInteriorFlag : NORMAL0
 ) {
     RasterShapeVertexShader_Core (
-        false,
+        VARIANT_SIMPLE != 0,
         cornerWeights,
         ab_in,
         cd_in,

@@ -56,7 +56,7 @@ void __VARIANT_FS_NAME (
     float  fillAlpha, outlineAlpha, shadowAlpha;
 
     rasterShapeCommon(
-        worldPositionTypeAndWorldSpace, VARIANT_SHADOWED, VARIANT_SIMPLE,
+        worldPositionTypeAndWorldSpace, VARIANT_SHADOWED != 0, VARIANT_SIMPLE != 0,
         ab, cd, params, params2,
         GET_VPOS, tl, br,
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
@@ -73,10 +73,10 @@ void __VARIANT_FS_NAME (
         ab, cd,
         fill, outlineColor,
         fillAlpha, outlineAlpha, shadowAlpha,
-        params, params2, tl, br, VARIANT_SHADOWED, GET_VPOS
+        params, params2, tl, br, VARIANT_SHADOWED != 0, GET_VPOS
     );
 #else
-    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, false, VARIANT_SHADOWED, GET_VPOS);
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, VARIANT_SIMPLE != 0, VARIANT_SHADOWED != 0, GET_VPOS);
 #endif
 
     if (result.a <= 0.5 / 255) {

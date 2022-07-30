@@ -886,13 +886,13 @@ namespace Squared.Render {
                     variantName = "TEXTURED_SHADOWED";
                 else
                     variantName = "TEXTURED";
-            }
-            else if (ramp) {
+            } else if (ramp) {
                 if (shadowed)
                     variantName = "RAMP_SHADOWED";
                 else
                     variantName = "RAMP";
-            }
+            } else if (shadowed)
+                variantName = "SHADOWED";
 
             var materialName = $"{type}_{variantName}";
             variantName = "VARIANT_" + variantName;
@@ -901,11 +901,14 @@ namespace Squared.Render {
             foreach (var entry in BuiltInShaderManifest.Entries) {
                 if (entry["Name"] != "RasterShapeVariants")
                     continue;
+                if (entry["EVALUATE_TYPE"] != typeName)
+                    continue;
                 if (!entry.TryGetValue(variantName, out string variantValue))
                     continue;
                 if (int.Parse(variantValue) != 1)
                     continue;
                 name = entry["TechniqueName"];
+                break;
             }
 
             if (name == null)
