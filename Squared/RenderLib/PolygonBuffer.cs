@@ -34,7 +34,7 @@ namespace Squared.Render {
             // HACK
             lock (Lock) {
                 int w = PolygonVertexTextureSize,
-                    h = Math.Max(4, VertexBuffer.Length / PolygonVertexTextureSize);
+                    h = Math.Max(1, VertexBuffer.Length / PolygonVertexTextureSize);
 
                 if ((Texture == null) || (Texture.Width < w) || (Texture.Height < h)) {
                     dm.DisposeResource(Texture);
