@@ -21,7 +21,7 @@ float3 ReadLUT (sampler2D s, float2 resolutionAndRowCount, float3 value, float2 
     
     float2 size = float2(1.0 / xResolution, 1.0 / resolutionAndRowCount.y);
     // HACK: Rescale input values to account for the fact that a texture's coordinates are [-0.5 - size+0.5] instead of [0 - size]
-    float rescale = float2(resMinus1 / xResolution, (yResolution - 1.0) / yResolution);
+    float2 rescale = float2(resMinus1 / xResolution, (yResolution - 1.0) / yResolution);
     // Half-texel offset
     // FIXME: Is the double multiply here right? I don't remember why it's here
     float2 offset = float2(1.0 / (2.0 * (xResolution * xResolution)), 1.0 / (2.0 * (yResolution * yResolution)));

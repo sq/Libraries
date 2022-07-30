@@ -78,11 +78,11 @@ void RasterStrokeLineSegmentFragmentShader(
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
     //  for alpha gradients because the A we premultiply by does not match the A the GPU selected
     // It's also important to do dithering and sRGB conversion on a result that is not premultiplied
-    result.rgb = float4(result.rgb / max(result.a, 0.0001), result.a);
+    result.rgb /= max(result.a, 0.0001);
 
     if (BlendInLinearSpace != OutputInLinearSpace) {
         if (OutputInLinearSpace)
-            result.rgb = SRGBToLinear(result).rgb;
+            result.rgb = SRGBToLinear(result.rgb);
         else
             result.rgb = LinearToSRGB(result.rgb);
     }

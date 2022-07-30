@@ -17,8 +17,8 @@ namespace ShaderCompiler {
         };
 
         private struct OutputRecord {
-            public string SourcePath, OutputPath, FxcParams;
-            public string[] Dependencies; //, TechniqueNames;
+            public string SourcePath, OutputPath, FxcParams, InstanceName, HashDigest;
+            public string[] Dependencies;
             public Dictionary<string, string> Defines;
         }
 
@@ -67,33 +67,73 @@ namespace ShaderCompiler {
                 Console.Write(Path.GetFileName(shader));
 
                 var fileList = EnumerateFilenamesForShader(shader).ToList();
-                ParseShaderPragmas(shader, fxcParams, globalDefines, out var localFxcParams, out var variants, out var flagSets);
+                ParseShaderPragmas(shader, fxcParams, globalDefines, out var fileFxcParams, out var variants, out var flagSets);
 
                 foreach (var variant in variants) {
                     foreach (var flagset in flagSets) {
                         foreach (var flag in flagset) {
+                            Console.WriteLine();
+
                             var localDefines = new Dictionary<string, string>(globalDefines);
                             foreach (var item in variant.Split(',')) {
+                                if (string.IsNullOrWhiteSpace(item))
+                                    continue;
                                 var kvp = item.Split('=');
-                                localDefines.Add(kvp[0], kvp.Length > 1 ? kvp[1] : "true");
+                                localDefines.Add(kvp[0], kvp.Length > 1 ? kvp[1] : "1");
+                                Console.WriteLine($"variant {item}");
                             }
 
-                            foreach (var _flag in flagset)
+                            foreach (var _flag in flagset) {
+                                if (string.IsNullOrWhiteSpace(_flag))
+                                    continue;
                                 localDefines.Add(_flag, _flag == flag ? "1" : "0");
+                                Console.WriteLine($"flag {_flag}={_flag == flag}");
+                            }
 
-                            var destPath = Path.Combine(destDir, Path.GetFileName(shader) + ".bin");
-                            var paramsPath = Path.Combine(destDir, Path.GetFileName(shader) + ".params");
+                            var localFxcParams = (localDefines.Count > 0)
+                                ? fileFxcParams + " " + GetParamsForDefines(localDefines)
+                                : fileFxcParams;
+
+                            var hashBuilder = new StringBuilder();
+                            string hashDigest;
+                            using (var digest = System.Security.Cryptography.SHA256.Create()) {
+                                foreach (var kvp in localDefines.OrderBy(kvp => kvp.Key))
+                                    hashBuilder.AppendLine($"{kvp.Key}={kvp.Value}");
+                                var bytes = Encoding.UTF8.GetBytes(hashBuilder.ToString());
+                                var hashBytes = digest.ComputeHash(bytes);
+
+                                hashBuilder.Clear();
+                                for (int b = 0; b < 10; b++)
+                                    hashBuilder.Append(hashBytes[b].ToString("X2"));
+                                hashDigest = hashBuilder.ToString();
+                            }
+
+                            var instanceName = (variants.Length == 1) && (flagSets.Length == 1) &&
+                                string.IsNullOrWhiteSpace(variants[0]) && (flagset.Length == 1) && 
+                                string.IsNullOrWhiteSpace(flagset[0])
+                                ? Path.GetFileNameWithoutExtension(shader)
+                                : Path.GetFileNameWithoutExtension(shader) + "_" + hashDigest;
+
+                            localDefines.Add("__VARIANT_FS_NAME", $"{instanceName}_FRAGMENT_SHADER");
+                            localDefines.Add("__VARIANT_TECHNIQUE_NAME", $"{instanceName}");
+
+                            var destPath = Path.Combine(destDir, instanceName + ".bin");
+                            var paramsPath = Path.Combine(destDir, instanceName + ".params");
                             var doesNotExist = !File.Exists(destPath);
                             var resultDate = File.GetLastWriteTimeUtc(destPath);
                             var isModified = !doesNotExist && fileList.Any((fn) => File.GetLastWriteTimeUtc(fn) >= resultDate);
-                            
+
+                            if (variants.Length > 1)
+                                ;
+
                             CompileOneShader(
                                 switches, buildInParallel, outputDisassembly, 
                                 fxcPath, fxcPostParams, testParsePath, 
                                 ref totalFileCount, ref updatedFileCount, ref errorCount, 
                                 localDefines, pending, outputs, shader, 
                                 destPath, paramsPath, doesNotExist, 
-                                ref needNewline, fileList, isModified, localFxcParams
+                                ref needNewline, fileList, isModified, fileFxcParams,
+                                instanceName, hashDigest
                             );
                         }
                     }
@@ -116,12 +156,15 @@ namespace ShaderCompiler {
             var tempPath = zipPath + ".tmp";
             using (var zip = new ZipArchive(File.Open(tempPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None), ZipArchiveMode.Create, false)) {
                 var entry = zip.CreateEntry("manifest.ini", CompressionLevel.NoCompression);
-                using (var sw = new StreamWriter(entry.Open(), Encoding.UTF8)) {
+                using (var sw = new StreamWriter(entry.Open(), Encoding.UTF8))
                     GenerateManifest(outputs, sw);
-                }
 
-                foreach (var output in outputs)
-                    zip.CreateEntryFromFile(output.OutputPath, Path.GetFileName(output.OutputPath), CompressionLevel.Optimal);
+                foreach (var output in outputs) {
+                    if (File.Exists(output.OutputPath))
+                        zip.CreateEntryFromFile(output.OutputPath, Path.GetFileName(output.OutputPath), CompressionLevel.Optimal);
+                    else
+                        Console.Error.WriteLine($"error: {output.OutputPath}: not found");
+                }
             }
             File.Copy(tempPath, zipPath, true);
             File.Delete(tempPath);
@@ -133,10 +176,18 @@ namespace ShaderCompiler {
                 Console.ReadLine();
         }
 
-        private static bool CompileOneShader (string[] switches, bool buildInParallel, bool outputDisassembly, string fxcPath, string fxcPostParams, string testParsePath, ref int totalFileCount, ref int updatedFileCount, ref int errorCount, Dictionary<string, string> globalDefines, List<Task<int>> pending, List<OutputRecord> outputs, string shader, string destPath, string paramsPath, bool doesNotExist, ref bool needNewline, List<string> fileList, bool isModified, string localFxcParams) {
+        private static bool CompileOneShader (
+            string[] switches, bool buildInParallel, bool outputDisassembly, string fxcPath, 
+            string fxcPostParams, string testParsePath, 
+            ref int totalFileCount, ref int updatedFileCount, ref int errorCount, 
+            Dictionary<string, string> defines, List<Task<int>> pending, 
+            List<OutputRecord> outputs, string shader, string destPath, 
+            string paramsPath, bool doesNotExist, ref bool needNewline, 
+            List<string> fileList, bool isModified, string localFxcParams,
+            string instanceName, string hashDigest
+        ) {
             bool shouldRebuild;
             // FIXME
-            var defines = globalDefines;
             var fullFxcParams =
                 string.Format(" /T fx_2_0 {0} {1} ", localFxcParams, fxcPostParams);
 
@@ -190,6 +241,8 @@ namespace ShaderCompiler {
             outputs.Add(new OutputRecord {
                 SourcePath = shader,
                 OutputPath = destPath,
+                InstanceName = instanceName,
+                HashDigest = hashDigest,
                 FxcParams = fullFxcParams,
                 Defines = defines,
                 Dependencies = fileList.ToArray(),
@@ -205,7 +258,12 @@ namespace ShaderCompiler {
         private static void GenerateManifest (List<OutputRecord> outputs, StreamWriter sw) {
             foreach (var output in outputs) {
                 sw.WriteLine($"[{Path.GetFileNameWithoutExtension(output.OutputPath)}]");
-                // TODO: List of techniques, variants, flags etc
+                sw.WriteLine($"TechniqueName={output.InstanceName}");
+                sw.WriteLine($"HashDigest={output.HashDigest}");
+                sw.WriteLine($"FxcParams={output.FxcParams}");
+                sw.WriteLine($"SourcePath={output.SourcePath}");
+                foreach (var kvp in output.Defines)
+                    sw.WriteLine($"{kvp.Key}={kvp.Value}");
             }
         }
 
@@ -301,7 +359,6 @@ namespace ShaderCompiler {
             var result = new StringBuilder();
             var variantList = new List<string>();
             var flagSetList = new List<string[]>();
-            var prologue = "fxcparams(";
             var conditionalRegex = new Regex("if([ ]*)\\(([ ]*)(?'name'[^ =]+)[ ]*(?'operator'[!=]=)[ ]*(?'value'('[^']*)'|[^ =\\)]+)\\)[ ]*", RegexOptions.ExplicitCapture);
 
             // TODO: Add a way to define conditional variants like TEXTURED or SHADOWED and have the compiler
@@ -320,7 +377,7 @@ namespace ShaderCompiler {
                 switch (pragmaName) {
                     case "fxcparams": {
                         var skip = false;
-                        var text = line.Trim().Substring(prologue.Length, line.Length - prologue.Length - 1).Trim();
+                        var text = pragmaValue;
                         var conditionals = conditionalRegex.Matches(text);
                         var filteredText = conditionalRegex.Replace(text, "").Trim();
 
@@ -358,18 +415,16 @@ namespace ShaderCompiler {
 
             if (result.Length == 0)
                 result.Append(defaultParams.Trim());
-            else
-                result.Append(GetParamsForDefines(defines));
 
-            if (variantList.Count > 1)
+            if (variantList.Count > 0)
                 variants = variantList.ToArray();
             else
                 variants = new[] { "" };
 
-            if (flagSetList.Count > 1)
+            if (flagSetList.Count > 0)
                 flagSets = flagSetList.ToArray();
             else
-                flagSets = new[] { new[] { " " } };
+                flagSets = new[] { new[] { "" } };
 
             localFxcParams = result.ToString().Trim();
         }

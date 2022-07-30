@@ -128,7 +128,7 @@ void OutlinedPixelShader(
 
     float shadowAlpha = texColor.a;
     float2 offset = (ShadowOffset * HalfTexel * 2);
-    [flatten]
+    // [unroll]
     for (int i = 0; i < 4; i++) {
         float x = (i % 2) == 0 ? 1 : -1,
             y = (i / 2) == 0 ? 1 : -1;
