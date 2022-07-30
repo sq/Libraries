@@ -988,29 +988,15 @@ namespace Squared.Render {
 
         private void LoadRasterShapeMaterials () {
             var rasterShapeUbershader = BuiltInShaders.Load("RasterShapeUbershader");
-            var rasterShapePolygon = BuiltInShaders.Load("RasterShapePolygon");
 
             LoadRasterShapeVariants(
                 rasterShapeUbershader, "RasterShape", null
             );
-            /*
-            LoadRasterShapeVariants(
-                rasterShapeRectangle, "RasterRectangle", RasterShape.RasterShapeType.Rectangle
-            );
-            LoadRasterShapeVariants(
-                rasterShapeEllipse, "RasterEllipse", RasterShape.RasterShapeType.Ellipse
-            );
-            LoadRasterShapeVariants(
-                rasterShapeLine, "RasterLine", RasterShape.RasterShapeType.LineSegment
-            );
-            */
             LoadRasterShapeVariantsFromManifest(RasterShapeType.Rectangle);
             LoadRasterShapeVariantsFromManifest(RasterShapeType.Ellipse);
             LoadRasterShapeVariantsFromManifest(RasterShapeType.LineSegment);
             LoadRasterShapeVariantsFromManifest(RasterShapeType.Triangle);
-            LoadRasterShapeVariants(
-                rasterShapePolygon, "RasterPolygon", RasterShape.RasterShapeType.Polygon
-            );
+            LoadRasterShapeVariantsFromManifest(RasterShapeType.Polygon);
 
             RasterShapeUbershader = RasterShapeMaterials[new RasterShaderKey { Type = null, Shadowed = false, Textured = false }].Material;
         }

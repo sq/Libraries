@@ -5,6 +5,7 @@
 #pragma fxcvariant(EVALUATE_TYPE=TYPE_LineSegment,INCLUDE_LINE)
 #pragma fxcvariant(EVALUATE_TYPE=TYPE_Rectangle,INCLUDE_RECTANGLE,OPTIMIZE_RECTANGLE_INTERIOR)
 #pragma fxcvariant(EVALUATE_TYPE=TYPE_Triangle,INCLUDE_TRIANGLE)
+#pragma fxcvariant(EVALUATE_TYPE=TYPE_Polygon,INCLUDE_POLYGON)
 
 #pragma fxcflagset(VARIANT_NORMAL,VARIANT_SHADOWED,VARIANT_SIMPLE,VARIANT_SIMPLE_SHADOWED,VARIANT_TEXTURED,VARIANT_TEXTURED_SHADOWED,VARIANT_RAMP,VARIANT_RAMP_SHADOWED)
 
@@ -26,6 +27,10 @@
 
 
 #include "RasterShapeConstants.fxh"
+#if INCLUDE_POLYGON
+#include "PolygonCommon.fxh"
+#include "RasterPolygonImpl.fxh"
+#endif
 #include "RasterShapeSkeleton.fxh"
 
 
