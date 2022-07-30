@@ -44,6 +44,7 @@ float IMPL_NAME (
     for (float i = firstIteration; i <= lastIteration; i += 1.0) {
         float globalI = i + stepOffset;
         float4 noise1, noise2;
+        // TODO: Use variants for this
         if (UsesNoise) {
             float4 seedUv = float4(seed.x + (globalI * 2 * seed.z), seed.y + (globalI * seed.w), 0, 0);
             noise1 = tex2Dlod(NoiseSampler, seedUv);

@@ -628,6 +628,38 @@ namespace Squared.Render.Resources {
                 }
             }
         }
+
+        internal string FindVariant (string name, params string[] pairs) {
+            if ((pairs.Length % 2) == 1)
+                throw new ArgumentOutOfRangeException("pairs", "must provide a sequence of name, value pairs");
+
+            string result = null;
+            foreach (var entry in Entries) {
+                if (entry["Name"] != name)
+                    continue;
+
+                bool pairMismatch = false;
+                for (int i = 0; i < pairs.Length - 1; i+=2) {
+                    string key = pairs[i], value = pairs[i + 1];
+                    if (
+                        !entry.TryGetValue(key, out string actualValue) ||
+                        !actualValue.Trim().Equals(value, StringComparison.OrdinalIgnoreCase)
+                    ) {
+                        pairMismatch = true;
+                        break;
+                    }
+                }
+
+                if (pairMismatch)
+                    continue;
+                if (result != null)
+                    throw new Exception("Found two matching manifest entries for this shader");
+
+                result = entry["TechniqueName"];
+            }
+
+            return result;
+        }
     }
 
     public class EffectProvider : ResourceProvider<Effect> {

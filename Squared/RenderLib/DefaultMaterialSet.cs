@@ -841,10 +841,21 @@ namespace Squared.Render {
         private void LoadRasterStrokeVariant (
             string name, RasterStroke.RasterStrokeType type
         ) {
-            var untextured = BuiltInShaders.Load(name);
-            var textured = BuiltInShaders.Load(name + "Textured");
-            var material1 = NewMaterial(untextured, name);
-            var material2 = NewMaterial(textured, name + "Textured");
+            var untexturedName = BuiltInShaderManifest.FindVariant(
+                name,
+                "Untextured", "1"
+            );
+            var texturedName = BuiltInShaderManifest.FindVariant(
+                name,
+                "Textured", "1"
+            );
+
+            var untextured = BuiltInShaders.Load(untexturedName);
+            var textured = BuiltInShaders.Load(texturedName);
+            var material1 = NewMaterial(untextured, untexturedName);
+            material1.Name = $"{type}_Untextured";
+            var material2 = NewMaterial(textured, texturedName);
+            material2.Name = $"{type}_Textured";
 
             var shapeHint = new Material.PipelineHint {
                 HasIndices = true,
@@ -900,24 +911,11 @@ namespace Squared.Render {
             var materialName = $"{type}_{variantName}";
             variantName = "VARIANT_" + variantName;
 
-            string name = null;
-            foreach (var entry in BuiltInShaderManifest.Entries) {
-                if (entry["Name"] != "RasterShapeVariants")
-                    continue;
-                if (!entry.TryGetValue("EVALUATE_TYPE", out string evaluateType))
-                    continue;
-                if (evaluateType != typeName)
-                    continue;
-                if (!entry.TryGetValue(variantName, out string variantValue))
-                    continue;
-                if (int.Parse(variantValue) != 1)
-                    continue;
-                if (name != null)
-                    throw new Exception("Found two matching manifest entries for this shader");
-
-                name = entry["TechniqueName"];
-            }
-
+            var name = BuiltInShaderManifest.FindVariant(
+                "RasterShapeVariants",
+                "EVALUATE_TYPE", typeName,
+                variantName, "1"
+            );
             if (name == null)
                 return;
 
