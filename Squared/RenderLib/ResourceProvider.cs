@@ -12,6 +12,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Evil;
 using Squared.Threading;
 using Squared.Util;
+using Squared.Util.Ini;
 using Squared.Util.Testing;
 
 namespace Squared.Render.Resources {
@@ -410,7 +411,7 @@ namespace Squared.Render.Resources {
     public interface IResourceProviderStreamSource {
         string FixupName (string name, bool stripExtension);
         string[] GetNames (bool asFullPaths = false);
-        bool TryGetStream (string name, bool optional, out Stream result, out Exception error);
+        bool TryGetStream (string name, bool optional, out Stream result, out Exception error, bool exactName = false);
     }
 
     public class FileStreamProvider : IResourceProviderStreamSource {
@@ -459,14 +460,14 @@ namespace Squared.Render.Resources {
             return name;
         }
 
-        public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception) {
+        public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception, bool exactName = false) {
             var pathsSearched = new DenseList<string>();
 
             result = null;
             exception = null;
             string candidateStreamName;
             foreach (var extension in Extensions) {
-                candidateStreamName = System.IO.Path.Combine(Path, FixupName((Prefix ?? "") + name + extension, false));
+                candidateStreamName = System.IO.Path.Combine(Path, FixupName(exactName ? name : (Prefix ?? "") + name + extension, false));
                 if (File.Exists(candidateStreamName)) {
                     try {
                         result = File.Open(candidateStreamName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -536,8 +537,8 @@ namespace Squared.Render.Resources {
             return name;
         }
 
-        public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception) {
-            var streamName = FixupName((Prefix ?? "") + name + Suffix, false);
+        public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception, bool exactName = false) {
+            var streamName = FixupName(exactName ? name : (Prefix ?? "") + name + Suffix, false);
             exception = null;
             result = Assembly.GetManifestResourceStream(streamName);
             if (result == null) {
@@ -556,7 +557,7 @@ namespace Squared.Render.Resources {
     public class ZipResourceStreamProvider : IResourceProviderStreamSource, IDisposable {
         public readonly ZipArchive Archive;
         public string Prefix { get; set; }
-        public string Suffix { get; protected set; }
+        public string Suffix { get; set; }
 
         public ZipResourceStreamProvider (Stream stream, string prefix = null, string suffix = null)
             : this (new ZipArchive(stream, ZipArchiveMode.Read, false), prefix, suffix) {
@@ -589,8 +590,8 @@ namespace Squared.Render.Resources {
             return name;
         }
 
-        public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception) {
-            var streamName = FixupName((Prefix ?? "") + name + Suffix, false);
+        public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception, bool exactName = false) {
+            var streamName = FixupName(exactName ? name : (Prefix ?? "") + name + Suffix, false);
             exception = null;
             var entry = Archive.GetEntry(streamName);
             result = entry?.Open();
@@ -603,6 +604,28 @@ namespace Squared.Render.Resources {
                 }
             } else {
                 return true;
+            }
+        }
+    }
+
+    public class EffectManifest {
+        public readonly List<Dictionary<string, string>> Entries = 
+            new List<Dictionary<string, string>>();
+
+        public EffectManifest (Stream stream) {
+            using (var reader = new IniReader(stream, false)) {
+                Dictionary<string, string> dict = null;
+                foreach (var line in reader) {
+                    switch (line.Type) {
+                        case IniLineType.Section:
+                            dict = new Dictionary<string, string>(StringComparer.Ordinal);
+                            Entries.Add(dict);
+                            break;
+                        case IniLineType.Value:
+                            dict[line.Key] = line.Value;
+                            break;
+                    }
+                }
             }
         }
     }
@@ -628,6 +651,18 @@ namespace Squared.Render.Resources {
         public EffectProvider (IResourceProviderStreamSource provider, RenderCoordinator coordinator)
             : base(provider, coordinator, enableThreadedCreate: false, enableThreadedPreload: true) 
         {
+        }
+
+        public EffectManifest ReadManifest () {
+            if (!StreamSource.TryGetStream("manifest.ini", true, out var stream, out var error, exactName: true)) {
+                if (error != null)
+                    throw error;
+                else
+                    return null;
+            }
+
+            using (stream)
+                return new EffectManifest(stream);
         }
 
         protected override Future<Effect> CreateInstance (string name, Stream stream, object data, object preloadedData, bool async) {
@@ -660,12 +695,12 @@ namespace Squared.Render.Resources {
             return null;
         }
 
-        public bool TryGetStream (string name, bool optional, out Stream result, out Exception error) {
+        public bool TryGetStream (string name, bool optional, out Stream result, out Exception error, bool exactName = false) {
             result = null;
             var errors = new DenseList<Exception>();
 
             foreach (var source in Sources) {
-                if (source.TryGetStream(name, optional, out result, out Exception temp)) {
+                if (source.TryGetStream(name, optional, out result, out Exception temp, exactName)) {
                     error = null;
                     return true;
                 }

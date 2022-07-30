@@ -86,10 +86,6 @@ namespace ShaderCompiler {
                                 localDefines.Add(_flag, _flag == flag ? "1" : "0");
                             }
 
-                            var localFxcParams = (localDefines.Count > 0)
-                                ? fileFxcParams + " " + GetParamsForDefines(localDefines)
-                                : fileFxcParams;
-
                             var hashBuilder = new StringBuilder();
                             string hashDigest;
                             using (var digest = System.Security.Cryptography.SHA256.Create()) {
@@ -112,6 +108,10 @@ namespace ShaderCompiler {
 
                             localDefines.Add("__VARIANT_FS_NAME", $"{instanceName}_FRAGMENT_SHADER");
                             localDefines.Add("__VARIANT_TECHNIQUE_NAME", $"{instanceName}");
+
+                            var localFxcParams = (localDefines.Count > 0)
+                                ? fileFxcParams + " " + GetParamsForDefines(localDefines)
+                                : fileFxcParams;
 
                             var destPath = Path.Combine(destDir, instanceName + ".fx.bin");
                             var paramsPath = Path.Combine(destDir, instanceName + ".params");

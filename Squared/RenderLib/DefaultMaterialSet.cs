@@ -12,6 +12,7 @@ using Squared.Util;
 using System.Runtime.InteropServices;
 using Squared.Game;
 using Squared.Render.Resources;
+using Squared.Render.RasterShape;
 
 namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential)]
@@ -346,6 +347,7 @@ namespace Squared.Render {
         }
 
         public readonly EffectProvider BuiltInShaders;
+        public readonly EffectManifest BuiltInShaderManifest;
         public readonly ITimeProvider  TimeProvider;
 
         protected readonly MaterialDictionary<MaterialCacheKey> MaterialDictionary = new MaterialDictionary<MaterialCacheKey>(
@@ -477,6 +479,7 @@ namespace Squared.Render {
             TimeProvider = timeProvider ?? new DotNetTimeProvider();
 
             BuiltInShaders = new EffectProvider(Assembly.GetExecutingAssembly(), coordinator);
+            BuiltInShaderManifest = BuiltInShaders.ReadManifest();
 
             Clear = new Material(
                 null, null,
@@ -872,12 +875,59 @@ namespace Squared.Render {
             LoadRasterStrokeVariant("RasterStrokePolygon", RasterStroke.RasterStrokeType.Polygon);
         }
 
+        private void LoadRasterShapeVariantFromManifest (RasterShapeType type, bool shadowed, bool textured, bool simple = false, bool ramp = false) {
+            string typeName = $"TYPE_{type}",
+                variantName = "NORMAL";
+
+            if (simple)
+                variantName = "SIMPLE";
+            else if (textured) {
+                if (shadowed)
+                    variantName = "TEXTURED_SHADOWED";
+                else
+                    variantName = "TEXTURED";
+            }
+            else if (ramp) {
+                if (shadowed)
+                    variantName = "RAMP_SHADOWED";
+                else
+                    variantName = "RAMP";
+            }
+
+            var materialName = $"{type}_{variantName}";
+            variantName = "VARIANT_" + variantName;
+
+            string name = null;
+            foreach (var entry in BuiltInShaderManifest.Entries) {
+                if (entry["Name"] != "RasterShapeVariants")
+                    continue;
+                if (!entry.TryGetValue(variantName, out string variantValue))
+                    continue;
+                if (int.Parse(variantValue) != 1)
+                    continue;
+                name = entry["TechniqueName"];
+            }
+
+            if (name == null)
+                return;
+
+            var shader = BuiltInShaders.Load(name, true, false);
+            var material = NewMaterial(shader, name);
+            material.Name = materialName;
+            FinishLoadingRasterShapeVariant(type, shadowed, textured, simple, ramp, material);
+        }
+
         private void LoadRasterShapeVariant (
             Effect shader, string techniqueName, RasterShape.RasterShapeType? type, bool shadowed, bool textured, bool simple = false, bool ramp = false
         ) {
             if ((simple || ramp) && !shader.Techniques.Any(t => t.Name == techniqueName))
                 return;
 
+            var material = NewMaterial(shader, techniqueName);
+            FinishLoadingRasterShapeVariant(type, shadowed, textured, simple, ramp, material);
+        }
+
+        private void FinishLoadingRasterShapeVariant (RasterShapeType? type, bool shadowed, bool textured, bool simple, bool ramp, Material material) {
             var key = new RasterShaderKey {
                 Type = type,
                 Shadowed = shadowed,
@@ -885,7 +935,6 @@ namespace Squared.Render {
                 Simple = simple,
                 HasRamp = ramp
             };
-            var material = NewMaterial(shader, techniqueName);
             var shapeHint = new Material.PipelineHint {
                 HasIndices = true,
                 VertexFormats = new Type[] {
@@ -903,6 +952,19 @@ namespace Squared.Render {
             Add(material);
         }
 
+        private void LoadRasterShapeVariantsFromManifest (
+            RasterShapeType type
+        ) {
+            LoadRasterShapeVariantFromManifest(type, false, false);
+            LoadRasterShapeVariantFromManifest(type, false, true);
+            LoadRasterShapeVariantFromManifest(type, true, false);
+            LoadRasterShapeVariantFromManifest(type, true, true);
+            LoadRasterShapeVariantFromManifest(type, shadowed: false, textured: false, simple: true);
+            LoadRasterShapeVariantFromManifest(type, shadowed: true, textured: false, simple: true);
+            LoadRasterShapeVariantFromManifest(type, shadowed: false, textured: false, ramp: true);
+            LoadRasterShapeVariantFromManifest(type, shadowed: true, textured: false, ramp: true);
+        }
+
         private void LoadRasterShapeVariants (
             Effect shader, string techniqueSubstring, RasterShape.RasterShapeType? type
         ) {
@@ -918,15 +980,12 @@ namespace Squared.Render {
 
         private void LoadRasterShapeMaterials () {
             var rasterShapeUbershader = BuiltInShaders.Load("RasterShapeUbershader");
-            var rasterShapeEllipse = BuiltInShaders.Load("RasterShapeEllipse");
-            var rasterShapeRectangle = BuiltInShaders.Load("RasterShapeRectangle");
-            var rasterShapeLine = BuiltInShaders.Load("RasterShapeLine");
-            var rasterShapeTriangle = BuiltInShaders.Load("RasterShapeTriangle");
             var rasterShapePolygon = BuiltInShaders.Load("RasterShapePolygon");
 
             LoadRasterShapeVariants(
                 rasterShapeUbershader, "RasterShape", null
             );
+            /*
             LoadRasterShapeVariants(
                 rasterShapeRectangle, "RasterRectangle", RasterShape.RasterShapeType.Rectangle
             );
@@ -936,9 +995,11 @@ namespace Squared.Render {
             LoadRasterShapeVariants(
                 rasterShapeLine, "RasterLine", RasterShape.RasterShapeType.LineSegment
             );
-            LoadRasterShapeVariants(
-                rasterShapeTriangle, "RasterTriangle", RasterShape.RasterShapeType.Triangle
-            );
+            */
+            LoadRasterShapeVariantsFromManifest(RasterShapeType.Rectangle);
+            LoadRasterShapeVariantsFromManifest(RasterShapeType.Ellipse);
+            LoadRasterShapeVariantsFromManifest(RasterShapeType.LineSegment);
+            LoadRasterShapeVariantsFromManifest(RasterShapeType.Triangle);
             LoadRasterShapeVariants(
                 rasterShapePolygon, "RasterPolygon", RasterShape.RasterShapeType.Polygon
             );
