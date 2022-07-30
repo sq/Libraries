@@ -67,6 +67,7 @@
     <Compile Include="Curve.cs" />
     <Compile Include="EventBus.cs" />
     <Compile Include="ExpressionParser.cs" />
+    <Compile Include="IniReader.cs" />
     <Compile Include="Interpolators.cs" />
     <Compile Include="IO.cs" />
     <Compile Include="LRUCache.cs" />

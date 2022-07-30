@@ -16,6 +16,12 @@ namespace ShaderCompiler {
             "--rebuild", "--parallel", "--disassemble"
         };
 
+        private struct OutputRecord {
+            public string SourcePath, OutputPath, FxcParams;
+            public string[] Dependencies; //, TechniqueNames;
+            public Dictionary<string, string> Defines;
+        }
+
         public static void Main (string[] args) {
             var switches = args.Where(a => Switches.Contains(a.ToLower())).ToArray();
             bool shouldRebuild = switches.Contains("--rebuild"),
@@ -40,89 +46,58 @@ namespace ShaderCompiler {
             if (!Directory.Exists(destDir))
                 Directory.CreateDirectory(destDir);
 
-            var defines = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var globalDefines = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var paramsString = fxcParams.Trim();
             if (!string.IsNullOrWhiteSpace(paramsString)) {
                 var defineRegex = new Regex("/D[ ]+(?'name'[a-zA-Z0-9_]+)=(?'value'[a-zA-Z0-9_,;.\\-\\*\\!\\&\\|]*)", RegexOptions.ExplicitCapture);
                 foreach (Match m in defineRegex.Matches(paramsString)) {
                     var name = m.Groups["name"].Value;
                     var value = m.Groups["value"].Value ?? "";
-                    defines.Add(name, value);
+                    globalDefines.Add(name, value);
                 }
             }
 
             var pending = new List<Task<int>>();
-            var outputs = new List<string>();
+            var outputs = new List<OutputRecord>();
 
             Console.WriteLine("Compiling shaders from {0}...", sourceDir);
             foreach (var shader in Directory.GetFiles(sourceDir, "*.fx")) {
-                var destPath = Path.Combine(destDir, Path.GetFileName(shader) + ".bin");
-                outputs.Add(destPath);
-                var paramsPath = Path.Combine(destDir, Path.GetFileName(shader) + ".params");
-                var doesNotExist = !File.Exists(destPath);
-                var resultDate = File.GetLastWriteTimeUtc(destPath);
-
                 var needNewline = true;
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.Write(Path.GetFileName(shader));
 
                 var fileList = EnumerateFilenamesForShader(shader).ToList();
-                var isModified = !doesNotExist && fileList.Any((fn) => File.GetLastWriteTimeUtc(fn) >= resultDate);
-                var localFxcParams = GetFxcParamsForShader(shader, fxcParams, defines);
-                var fullFxcParams = 
-                    string.Format(" /T fx_2_0 {0} {1} ", localFxcParams, fxcPostParams);
+                ParseShaderPragmas(shader, fxcParams, globalDefines, out var localFxcParams, out var variants, out var flagSets);
 
-                string existingParams = null;
-                shouldRebuild = switches.Contains("--rebuild");
-                if (File.Exists(paramsPath)) {
-                    existingParams = File.ReadAllText(paramsPath, Encoding.UTF8).Trim();
-                    if (!existingParams.Equals(fullFxcParams.Trim())) {
-                        shouldRebuild = true;
-                        Console.WriteLine(" params '{0}' -> '{1}'", existingParams, fullFxcParams.Trim());
+                foreach (var variant in variants) {
+                    foreach (var flagset in flagSets) {
+                        foreach (var flag in flagset) {
+                            var localDefines = new Dictionary<string, string>(globalDefines);
+                            foreach (var item in variant.Split(',')) {
+                                var kvp = item.Split('=');
+                                localDefines.Add(kvp[0], kvp.Length > 1 ? kvp[1] : "true");
+                            }
+
+                            foreach (var _flag in flagset)
+                                localDefines.Add(_flag, _flag == flag ? "1" : "0");
+
+                            var destPath = Path.Combine(destDir, Path.GetFileName(shader) + ".bin");
+                            var paramsPath = Path.Combine(destDir, Path.GetFileName(shader) + ".params");
+                            var doesNotExist = !File.Exists(destPath);
+                            var resultDate = File.GetLastWriteTimeUtc(destPath);
+                            var isModified = !doesNotExist && fileList.Any((fn) => File.GetLastWriteTimeUtc(fn) >= resultDate);
+                            
+                            CompileOneShader(
+                                switches, buildInParallel, outputDisassembly, 
+                                fxcPath, fxcPostParams, testParsePath, 
+                                ref totalFileCount, ref updatedFileCount, ref errorCount, 
+                                localDefines, pending, outputs, shader, 
+                                destPath, paramsPath, doesNotExist, 
+                                ref needNewline, fileList, isModified, localFxcParams
+                            );
+                        }
                     }
                 }
-
-                if (doesNotExist || isModified || shouldRebuild) {
-                    if (!doesNotExist)
-                        File.Delete(destPath);
-
-                    Console.ForegroundColor = ConsoleColor.White;
-                    Console.WriteLine(
-                        " {0}{2}Compiling with params '{1}'...",
-                        doesNotExist
-                            ? "output missing"
-                            : (
-                                shouldRebuild
-                                    ? "parameters changed"
-                                    : "is outdated"
-                            ),
-                        localFxcParams,
-                        Environment.NewLine
-                    );
-                    needNewline = false;
-
-                    try {
-                        if (File.Exists(paramsPath))
-                            File.Delete(paramsPath);
-                    } catch {
-                    }
-
-                    if (buildInParallel) {
-                        pending.Add(CompileInParallel(fxcPath, testParsePath, defines, shader, destPath, paramsPath, fullFxcParams, outputDisassembly));
-                    } else {
-                        var exitCode = CompileShader(fxcPath, testParsePath, defines, shader, destPath, paramsPath, fullFxcParams, outputDisassembly);
-                        if (exitCode != 0)
-                            errorCount++;
-                    }
-
-                    Console.WriteLine();
-                    updatedFileCount++;
-                }
-
-                Console.ResetColor();
-                if (needNewline)
-                    Console.WriteLine();
-                totalFileCount++;
             }
 
             if (pending.Count > 0) {
@@ -140,8 +115,13 @@ namespace ShaderCompiler {
             var zipPath = Path.Combine(destDir, "shaders.zip");
             var tempPath = zipPath + ".tmp";
             using (var zip = new ZipArchive(File.Open(tempPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None), ZipArchiveMode.Create, false)) {
+                var entry = zip.CreateEntry("manifest.ini", CompressionLevel.NoCompression);
+                using (var sw = new StreamWriter(entry.Open(), Encoding.UTF8)) {
+                    GenerateManifest(outputs, sw);
+                }
+
                 foreach (var output in outputs)
-                    zip.CreateEntryFromFile(output, Path.GetFileName(output), CompressionLevel.Optimal);
+                    zip.CreateEntryFromFile(output.OutputPath, Path.GetFileName(output.OutputPath), CompressionLevel.Optimal);
             }
             File.Copy(tempPath, zipPath, true);
             File.Delete(tempPath);
@@ -151,6 +131,82 @@ namespace ShaderCompiler {
 
             if (Debugger.IsAttached)
                 Console.ReadLine();
+        }
+
+        private static bool CompileOneShader (string[] switches, bool buildInParallel, bool outputDisassembly, string fxcPath, string fxcPostParams, string testParsePath, ref int totalFileCount, ref int updatedFileCount, ref int errorCount, Dictionary<string, string> globalDefines, List<Task<int>> pending, List<OutputRecord> outputs, string shader, string destPath, string paramsPath, bool doesNotExist, ref bool needNewline, List<string> fileList, bool isModified, string localFxcParams) {
+            bool shouldRebuild;
+            // FIXME
+            var defines = globalDefines;
+            var fullFxcParams =
+                string.Format(" /T fx_2_0 {0} {1} ", localFxcParams, fxcPostParams);
+
+            string existingParams = null;
+            shouldRebuild = switches.Contains("--rebuild");
+            if (File.Exists(paramsPath)) {
+                existingParams = File.ReadAllText(paramsPath, Encoding.UTF8).Trim();
+                if (!existingParams.Equals(fullFxcParams.Trim())) {
+                    shouldRebuild = true;
+                    Console.WriteLine(" params '{0}' -> '{1}'", existingParams, fullFxcParams.Trim());
+                }
+            }
+
+            if (doesNotExist || isModified || shouldRebuild) {
+                if (!doesNotExist)
+                    File.Delete(destPath);
+
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine(
+                    " {0}{2}Compiling with params '{1}'...",
+                    doesNotExist
+                        ? "output missing"
+                        : (
+                            shouldRebuild
+                                ? "parameters changed"
+                                : "is outdated"
+                        ),
+                    localFxcParams,
+                    Environment.NewLine
+                );
+                needNewline = false;
+
+                try {
+                    if (File.Exists(paramsPath))
+                        File.Delete(paramsPath);
+                } catch {
+                }
+
+                if (buildInParallel) {
+                    pending.Add(CompileInParallel(fxcPath, testParsePath, defines, shader, destPath, paramsPath, fullFxcParams, outputDisassembly));
+                } else {
+                    var exitCode = CompileShader(fxcPath, testParsePath, defines, shader, destPath, paramsPath, fullFxcParams, outputDisassembly);
+                    if (exitCode != 0)
+                        errorCount++;
+                }
+
+                Console.WriteLine();
+                updatedFileCount++;
+            }
+
+            outputs.Add(new OutputRecord {
+                SourcePath = shader,
+                OutputPath = destPath,
+                FxcParams = fullFxcParams,
+                Defines = defines,
+                Dependencies = fileList.ToArray(),
+            });
+
+            Console.ResetColor();
+            if (needNewline)
+                Console.WriteLine();
+            totalFileCount++;
+            return shouldRebuild;
+        }
+
+        private static void GenerateManifest (List<OutputRecord> outputs, StreamWriter sw) {
+            foreach (var output in outputs) {
+                sw.WriteLine($"[{Path.GetFileNameWithoutExtension(output.OutputPath)}]");
+                // TODO: List of techniques, variants, flags etc
+            }
         }
 
         private static async Task<int> CompileInParallel (
@@ -233,47 +289,70 @@ namespace ShaderCompiler {
 
         private static string GetParamsForDefines (Dictionary<string, string> defines) {
             var result = new StringBuilder();
-            foreach (var kvp in defines)
+            foreach (var kvp in defines.OrderBy(kvp => kvp.Key))
                 result.AppendFormat(" /D {0}={1}", kvp.Key, kvp.Value);
             return result.ToString();
         }
 
-        private static string GetFxcParamsForShader (string path, string defaultParams, Dictionary<string, string> defines) {
+        private static void ParseShaderPragmas (
+            string path, string defaultParams, Dictionary<string, string> defines,
+            out string localFxcParams, out string[] variants, out string[][] flagSets
+        ) {
             var result = new StringBuilder();
-            var prologue = "#pragma fxcparams(";
+            var variantList = new List<string>();
+            var flagSetList = new List<string[]>();
+            var prologue = "fxcparams(";
             var conditionalRegex = new Regex("if([ ]*)\\(([ ]*)(?'name'[^ =]+)[ ]*(?'operator'[!=]=)[ ]*(?'value'('[^']*)'|[^ =\\)]+)\\)[ ]*", RegexOptions.ExplicitCapture);
 
             // TODO: Add a way to define conditional variants like TEXTURED or SHADOWED and have the compiler
             //  automatically compile separate versions with those defines set
 
             foreach (var line in File.ReadAllLines(path)) {
-                if (!line.StartsWith(prologue))
+                if (!line.StartsWith("#pragma "))
+                    continue;
+                var parenIndex = line.IndexOf("(");
+                if (parenIndex < 0)
                     continue;
 
-                var skip = false;
-                var text = line.Trim().Substring(prologue.Length, line.Length - prologue.Length - 1).Trim();
-                var conditionals = conditionalRegex.Matches(text);
-                var filteredText = conditionalRegex.Replace(text, "").Trim();
+                var pragmaName = line.Substring(7, parenIndex - 7).Trim().ToLowerInvariant();
+                var pragmaValue = line.Substring(parenIndex + 1, line.Length - parenIndex - 2);
 
-                foreach (Match m in conditionals) {
-                    var name = m.Groups["name"].Value;
-                    var op = m.Groups["operator"].Value;
-                    var value = m.Groups["value"].Value;
+                switch (pragmaName) {
+                    case "fxcparams": {
+                        var skip = false;
+                        var text = line.Trim().Substring(prologue.Length, line.Length - prologue.Length - 1).Trim();
+                        var conditionals = conditionalRegex.Matches(text);
+                        var filteredText = conditionalRegex.Replace(text, "").Trim();
 
-                    string definedValue;
-                    defines.TryGetValue(name, out definedValue);
-                    var doesMatch = (definedValue ?? "").Equals(value.Trim(), StringComparison.OrdinalIgnoreCase);
+                        foreach (Match m in conditionals) {
+                            var name = m.Groups["name"].Value;
+                            var op = m.Groups["operator"].Value;
+                            var value = m.Groups["value"].Value;
 
-                    if (op == "!=")
-                        doesMatch = !doesMatch;
+                            string definedValue;
+                            defines.TryGetValue(name, out definedValue);
+                            var doesMatch = (definedValue ?? "").Equals(value.Trim(), StringComparison.OrdinalIgnoreCase);
 
-                    if (!doesMatch)
-                        skip = true;
-                }
+                            if (op == "!=")
+                                doesMatch = !doesMatch;
 
-                if (!skip) {
-                    result.Append(filteredText);
-                    break;
+                            if (!doesMatch)
+                                skip = true;
+                        }
+
+                        if (!skip)
+                            result.Append(filteredText);
+
+                        break;
+                    }
+                    case "fxcvariant": {
+                        variantList.Add(pragmaValue);
+                        break;
+                    }
+                    case "fxcflagset": {
+                        flagSetList.Add(pragmaValue.Split(','));
+                        break;
+                    }
                 }
             }
 
@@ -282,7 +361,17 @@ namespace ShaderCompiler {
             else
                 result.Append(GetParamsForDefines(defines));
 
-            return result.ToString().Trim();
+            if (variantList.Count > 1)
+                variants = variantList.ToArray();
+            else
+                variants = new[] { "" };
+
+            if (flagSetList.Count > 1)
+                flagSets = flagSetList.ToArray();
+            else
+                flagSets = new[] { new[] { " " } };
+
+            localFxcParams = result.ToString().Trim();
         }
         
         private static IEnumerable<string> EnumerateFilenamesForShader (string path) {
