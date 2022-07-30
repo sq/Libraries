@@ -875,8 +875,8 @@ namespace Squared.Render {
             LoadRasterStrokeVariant("RasterStrokePolygon", RasterStroke.RasterStrokeType.Polygon);
         }
 
-        private void LoadRasterShapeVariantFromManifest (RasterShapeType type, bool shadowed, bool textured, bool simple = false, bool ramp = false) {
-            string typeName = $"TYPE_{type}",
+        private void LoadRasterShapeVariantFromManifest (RasterShapeType? type, bool shadowed, bool textured, bool simple = false, bool ramp = false) {
+            string typeName = type == null ? "type" : $"TYPE_{type}",
                 variantName = "NORMAL";
 
             if (simple) {
@@ -904,7 +904,9 @@ namespace Squared.Render {
             foreach (var entry in BuiltInShaderManifest.Entries) {
                 if (entry["Name"] != "RasterShapeVariants")
                     continue;
-                if (entry["EVALUATE_TYPE"] != typeName)
+                if (!entry.TryGetValue("EVALUATE_TYPE", out string evaluateType))
+                    continue;
+                if (evaluateType != typeName)
                     continue;
                 if (!entry.TryGetValue(variantName, out string variantValue))
                     continue;
@@ -961,7 +963,7 @@ namespace Squared.Render {
         }
 
         private void LoadRasterShapeVariantsFromManifest (
-            RasterShapeType type
+            RasterShapeType? type
         ) {
             LoadRasterShapeVariantFromManifest(type, false, false);
             LoadRasterShapeVariantFromManifest(type, false, true);
@@ -973,25 +975,8 @@ namespace Squared.Render {
             LoadRasterShapeVariantFromManifest(type, shadowed: true, textured: false, ramp: true);
         }
 
-        private void LoadRasterShapeVariants (
-            Effect shader, string techniqueSubstring, RasterShape.RasterShapeType? type
-        ) {
-            LoadRasterShapeVariant(shader, techniqueSubstring + "Technique", type, false, false);
-            LoadRasterShapeVariant(shader, "Textured" + techniqueSubstring + "Technique", type, false, true);
-            LoadRasterShapeVariant(shader, "Shadowed" + techniqueSubstring + "Technique", type, true, false);
-            LoadRasterShapeVariant(shader, "ShadowedTextured" + techniqueSubstring + "Technique", type, true, true);
-            LoadRasterShapeVariant(shader, techniqueSubstring + "SimpleTechnique", type, shadowed: false, textured: false, simple: true);
-            LoadRasterShapeVariant(shader, "Shadowed" + techniqueSubstring + "SimpleTechnique", type, shadowed: true, textured: false, simple: true);
-            LoadRasterShapeVariant(shader, techniqueSubstring + "RampTechnique", type, shadowed: false, textured: false, ramp: true);
-            LoadRasterShapeVariant(shader, "Shadowed" + techniqueSubstring + "RampTechnique", type, shadowed: true, textured: false, ramp: true);
-        }
-
         private void LoadRasterShapeMaterials () {
-            var rasterShapeUbershader = BuiltInShaders.Load("RasterShapeUbershader");
-
-            LoadRasterShapeVariants(
-                rasterShapeUbershader, "RasterShape", null
-            );
+            LoadRasterShapeVariantsFromManifest(null);
             LoadRasterShapeVariantsFromManifest(RasterShapeType.Rectangle);
             LoadRasterShapeVariantsFromManifest(RasterShapeType.Ellipse);
             LoadRasterShapeVariantsFromManifest(RasterShapeType.LineSegment);
