@@ -4,6 +4,7 @@
 // FIXME: false is preferable here
 #define COLOR_PER_SPLAT true
 // #define VISUALIZE_TEXCOORDS
+// #define VISUALIZE_OVERDRAW
 #include "PolygonCommon.fxh"
 
 // HACK: A polygon may contain many line segments, few of which will be close to a given
@@ -125,7 +126,7 @@ void RasterStrokePolygonFragmentShader(
 ) {
     result = 0;
 
-    int offset = (int)ab.x, count = (int)ab.y, first = 1, overdraw = 0;
+    int offset = (int)ab.x, count = (int)ab.y, overdraw = 0;
     float estimatedLengthPx = ab.z, distanceTraveled = 0, totalSteps = 0,
         stepPx = max(Constants2.w * Constants2.z, 0.05),
         // HACK: We want to search in a larger area for beziers since the math
@@ -147,56 +148,46 @@ void RasterStrokePolygonFragmentShader(
             if (nodeType == NODE_BEZIER) {
                 float4 controlPoints = getPolyVertex(offset);
                 offset++;
-                // FIXME
-                if (first == 0) {
-                    float bezierLength = controlPoints.z;
 
-                    // HACK: Try to locate the closest point on the bezier. If even it is far enough away
-                    //  that it can't overlap the current pixel, skip processing the entire bezier.
+                // HACK: Try to locate the closest point on the bezier. If even it is far enough away
+                //  that it can't overlap the current pixel, skip processing the entire bezier.
+                float2 a = prev - worldPosition, b = controlPoints.xy - worldPosition,
+                    c = pos - worldPosition;
+                // First check the middle and endpoints
+                float ct = 0, cd2 = distanceSquaredToBezierAtT(a, b, c, ct);
+                float td = distanceSquaredToBezierAtT(a, b, c, 1);
+                pickClosestT(cd2, ct, td, 1);
+                td = distanceSquaredToBezierAtT(a, b, c, 0.5);
+                pickClosestT(cd2, ct, td, 0.5);
 
-                    float2 a = prev - worldPosition, b = controlPoints.xy - worldPosition,
-                        c = pos - worldPosition;
-                    // First check the middle and endpoints
-                    float ct = 0, cd2 = distanceSquaredToBezierAtT(a, b, c, ct);
-                    float td = distanceSquaredToBezierAtT(a, b, c, 1);
-                    pickClosestT(cd2, ct, td, 1);
-                    td = distanceSquaredToBezierAtT(a, b, c, 0.5);
-                    pickClosestT(cd2, ct, td, 0.5);
+                // Then do an analytical check (we can't rely entirely on this, the math breaks down at some spots)
+                pickClosestTOnBezierForAxis(a, b, c, float2(1, 0), cd2, ct);
+                pickClosestTOnBezierForAxis(a, b, c, float2(0, 1), cd2, ct);
 
-                    // Then do an analytical check (we can't rely entirely on this, the math breaks down at some spots)
-                    pickClosestTOnBezierForAxis(a, b, c, float2(1, 0), cd2, ct);
-                    pickClosestTOnBezierForAxis(a, b, c, float2(0, 1), cd2, ct);
+                float bezierLength = controlPoints.z;
 
-                    REQUIRE_BRANCH
-                    if (cd2 > searchRadius2) {
-                        steps = bezierLength / stepPx;
-                    } else {
-                        overdraw++;
-                        steps = rasterStrokeBezierCommon(
-                            0, worldPosition, float4(prev, pos), controlPoints.xy, bezierLength, seed, taper, localBiases,
-                            distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
-                        );
-                    }
-                    distanceTraveled += bezierLength;
-                }
-            } else if (nodeType == NODE_LINE) {
-                if (first == 0) {
-                    steps = rasterStrokeLineCommon(
-                        0, worldPosition, float4(prev, pos), seed, taper, localBiases,
+                REQUIRE_BRANCH
+                if (cd2 > searchRadius2) {
+                    steps = bezierLength / stepPx;
+                } else {
+#ifdef VISUALIZE_OVERDRAW
+                    overdraw++;
+#endif
+                    steps = rasterStrokeBezierCommon(
+                        0, worldPosition, float4(prev, pos), controlPoints.xy, bezierLength, seed, taper, localBiases,
                         distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
                     );
-                    distanceTraveled += length(pos - prev);
                 }
-            } else {
-                first = 0;
-                prev = pos;
-                continue;
-            }
-
-            if (first == 0) {
+                distanceTraveled += bezierLength;
+                totalSteps += steps;
+            } else if (nodeType == NODE_LINE) {
+                steps = rasterStrokeLineCommon(
+                    0, worldPosition, float4(prev, pos), seed, taper, localBiases,
+                    distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
+                );
+                distanceTraveled += length(pos - prev);
                 totalSteps += steps;
             }
-            first = 0;
             prev = pos;
         }
     }
@@ -213,8 +204,9 @@ void RasterStrokePolygonFragmentShader(
             result.rgb = LinearToSRGB(result.rgb);
     }
 
-    if (false)
-        result += float4((0.1 * overdraw), 0, 0, saturate(overdraw));
+#ifdef VISUALIZE_OVERDRAW
+    result += float4((0.1 * overdraw), 0, 0, saturate(overdraw));
+#endif
 
     result = ApplyDither4(result, GET_VPOS);
 }

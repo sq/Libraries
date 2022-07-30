@@ -120,7 +120,7 @@ void evaluatePolygonStep (
         controlPoints = getPolyVertex(offset);
         offset++;
     }
-
+    
     if (closed) {
         if (nodeType == NODE_START) {
             // HACK: A skip creates a break in the polygon, effectively creating
