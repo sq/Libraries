@@ -1821,10 +1821,13 @@ namespace Squared.Render.Convenience {
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
             Vector2? rampUVOffset = null, int sortKey = 0
         ) {
+            if ((vertices.Count < 2) || (vertices.Count > 255))
+                throw new ArgumentOutOfRangeException("vertices.Count", "Vertex count must be greater than 1 and may not exceed 255");
+
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             )) {
-                rsb.AddPolygonVertices(vertices, out int indexOffset, out int count);
+                rsb.AddPolygonVertices(vertices, out int indexOffset, out int count, closed);
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Polygon,
                     SortKey = sortKey,
@@ -2240,6 +2243,9 @@ namespace Squared.Render.Convenience {
             float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null, 
             RasterShapeColorSpace? colorSpace = null, BlendState blendState = null, int sortKey = 0
         ) {
+            if ((vertices.Count < 2) || (vertices.Count > 2048))
+                throw new ArgumentOutOfRangeException("vertices.Count", "Vertex count must be greater than 1 and may not exceed 2048");
+
             using (var rsb = GetRasterStrokeBatch(
                 layer, worldSpace, blendState, ref brush
             )) {

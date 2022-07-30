@@ -110,5 +110,5 @@ float lengthOfBezier (in float2 a, in float2 b, in float2 c) {
         t3 = vv*vv - 4*uu*ww,
         t4 = 2*sqrt(uu*ww);
 
-    return ((t1*t2 - t3*log(t2+t1) -(vv*t4 - t3*log(vv+t4))) / (8*pow(uu, 1.5)));
+    return (t1*t2 - t3*log(t2+t1) -(vv*t4 - t3*log(vv+t4))) / (8*pow(uu, 1.5));
 }

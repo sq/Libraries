@@ -144,7 +144,7 @@ namespace Squared.Render.RasterShape {
         /// Skips the connection between the previous vertex and this vertex, creating
         ///  a gap in the polygon
         /// </summary>
-        Skip = 2,
+        StartNew = 2,
     }
 
     public struct RasterFillSettings {
@@ -322,7 +322,7 @@ namespace Squared.Render.RasterShape {
         public RasterVertexType Type;
 
         public RasterPolygonVertex (Vector2 position, float localRadius = 0, bool skip = false) {
-            Type = skip ? RasterVertexType.Skip : RasterVertexType.Line;
+            Type = skip ? RasterVertexType.StartNew : RasterVertexType.Line;
             Position = position;
             ControlPoint = default;
             LocalRadius = localRadius;
@@ -996,10 +996,10 @@ namespace Squared.Render.RasterShape {
         }
 
         public void AddPolygonVertices (
-            ArraySegment<RasterPolygonVertex> vertices, out int indexOffset, out int vertexCount
+            ArraySegment<RasterPolygonVertex> vertices, out int indexOffset, out int vertexCount, bool closed
         ) {
             _PolygonBuffer = Container.Frame.PrepareData.GetPolygonBuffer(Container);
-            _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount);
+            _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount, closed);
         }
     }
 }

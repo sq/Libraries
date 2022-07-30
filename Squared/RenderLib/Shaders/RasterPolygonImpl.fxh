@@ -46,7 +46,7 @@ void computeTLBR_Polygon (
             computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
             tl = min(btl, tl);
             br = max(bbr, br);
-        } else if (nodeType == NODE_SKIP) {
+        } else if (nodeType == NODE_START) {
             // FIXME: Is this right? Not doing it seems to break our bounding boxes
             tl = min(pos, tl);
             br = max(pos, br);
@@ -122,7 +122,7 @@ void evaluatePolygonStep (
     }
 
     if (closed) {
-        if (nodeType == NODE_SKIP) {
+        if (nodeType == NODE_START) {
             // HACK: A skip creates a break in the polygon, effectively creating
             //  a new closed shape. So we need to replace the 'first' vert with this
             //  point so that the loop at the end of the polygon loops to it instead
@@ -131,7 +131,7 @@ void evaluatePolygonStep (
             // HACK: Evaluate N imaginary lines between points along beziers.
             // Not accurate, but better than nothing.
             float2 tprev = prev.xy, tcurrent = pos;
-            float approximateLength = length(controlPoints.xy - tprev) + length(current.xy - controlPoints.xy),
+            float approximateLength = controlPoints.z,
                 tstep = 1.0 / clamp(approximateLength * 0.05, 3, 16),
                 t = 0;
             [loop]
@@ -163,7 +163,7 @@ void evaluatePolygonStep (
                 worldPosition, a, b, c,
                 float2(radius, 0), temp, gradientType, temp2
             );
-        } else if (nodeType == NODE_SKIP) {
+        } else if (nodeType == NODE_START) {
             temp = distance;
         } else {
             evaluateLineSegment(
@@ -174,7 +174,7 @@ void evaluatePolygonStep (
 
         distance = min(distance, temp);
 
-        if (nodeType == NODE_SKIP)
+        if (nodeType == NODE_START)
             ;
         else if (along) {
             if (((gdist > 0) && (temp < gdist)) || (temp < 0)) {

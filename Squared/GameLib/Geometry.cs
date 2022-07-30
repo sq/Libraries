@@ -1041,5 +1041,28 @@ namespace Squared.Game {
             var u = (((sourcePoint.X - lineStart.X) * lineDelta.X) + ((sourcePoint.Y - lineStart.Y) * lineDelta.Y)) / lineDelta.LengthSquared();
             return lineStart + (lineDelta * Arithmetic.Saturate(u));
         }
+
+        public static float LengthOfBezier (Vector2 a, Vector2 b, Vector2 c) {
+            Vector2 v = 2 * (b - a),
+                w = c - (2*b) + a;
+
+            double uu = 4 * Vector2.Dot(w, w);
+            if (uu < 0.0001) {
+                Vector2 ca = (c - a);
+                return (float)Math.Sqrt(Vector2.Dot(ca, ca));
+            }
+
+            double vv = 4 * Vector2.Dot(v, w),
+                ww = Vector2.Dot(v, v),
+                t1 = 2*Math.Sqrt(uu*(uu + vv + ww)),
+                t2 = 2*uu+vv,
+                t3 = vv*vv - 4*uu*ww,
+                t4 = 2*Math.Sqrt(uu*ww);
+
+            return (float)(
+                (t1 * t2 - t3 * Math.Log(t2+t1) - 
+                (vv * t4 - t3 * Math.Log(vv+t4))) / (8 * Math.Pow(uu, 1.5))
+            );
+        }
     }
 }

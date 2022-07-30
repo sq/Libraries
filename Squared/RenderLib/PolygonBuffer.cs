@@ -50,7 +50,7 @@ namespace Squared.Render {
             }
         }
 
-        public void AddVertices (ArraySegment<RasterPolygonVertex> vertices, out int offset, out int count) {
+        public void AddVertices (ArraySegment<RasterPolygonVertex> vertices, out int offset, out int count, bool closed = false) {
             if ((vertices.Count < 1) || (vertices.Count > 4096))
                 throw new ArgumentOutOfRangeException("vertices.Count");
 
@@ -81,18 +81,23 @@ namespace Squared.Render {
                         Array.Resize(ref VertexBuffer, newBufferSize);
                 }
 
+                var prev = Vector2.Zero;
                 for (int i = 0, j = offset; i < vertices.Count; i++) {
                     var vert = vertices.Array[vertices.Offset + i];
+                    if ((i == 0) && !closed)
+                        vert.Type = RasterVertexType.StartNew;
                     VertexBuffer[j] = new Vector4(vert.Position.X, vert.Position.Y, (int)vert.Type, vert.LocalRadius);
                     j++;
 
                     if (vert.Type == RasterVertexType.Bezier) {
                         VertexBuffer[j] = new Vector4(
                             vert.ControlPoint.X, vert.ControlPoint.Y,
-                            0, 0
+                            Game.Geometry.LengthOfBezier(prev, vert.ControlPoint, vert.Position), 0
                         );
                         j++;
                     }
+
+                    prev = vert.Position;
                 }
             }
         }

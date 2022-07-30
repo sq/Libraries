@@ -36,7 +36,7 @@ void computeTLBR_Polygon(
     float baseRadius = (Constants2.w * 0.66) + 1;
     float2 prev = 0;
     float maxLocalRadius = 0;
-    int offset = (int)vertexOffset, count = (int)vertexCount, first = 1;
+    int offset = (int)vertexOffset, count = (int)vertexCount;
 
     while (count > 0) {
         while (count-- > 0) {
@@ -50,22 +50,19 @@ void computeTLBR_Polygon(
             if (nodeType == NODE_BEZIER) {
                 float4 controlPoints = getPolyVertex(offset);
                 offset++;
-                if (first == 0) {
-                    float2 btl, bbr;
-                    computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
-                    tl = min(btl, tl);
-                    br = max(bbr, br);
-                    estimatedLengthPx += lengthOfBezier(prev, controlPoints.xy, pos);
-                }
+                float2 btl, bbr;
+                computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
+                tl = min(btl, tl);
+                br = max(bbr, br);
+                estimatedLengthPx += controlPoints.z;
             } else {
                 // FIXME: Is this right? Not doing it seems to break our bounding boxes
                 tl = min(pos, tl);
                 br = max(pos, br);
 
-                if ((first == 0) && (nodeType != NODE_SKIP))
+                if (nodeType != NODE_START)
                     estimatedLengthPx += length(pos - prev);
             }
-            first = 0;
             prev = pos;
         }
     }
@@ -152,7 +149,7 @@ void RasterStrokePolygonFragmentShader(
                 offset++;
                 // FIXME
                 if (first == 0) {
-                    float bezierLength = lengthOfBezier(prev, controlPoints.xy, pos);
+                    float bezierLength = controlPoints.z;
 
                     // HACK: Try to locate the closest point on the bezier. If even it is far enough away
                     //  that it can't overlap the current pixel, skip processing the entire bezier.

@@ -711,7 +711,7 @@ namespace Squared.Render.RasterStroke {
             ArraySegment<RasterPolygonVertex> vertices, out int indexOffset, out int vertexCount
         ) {
             _PolygonBuffer = Container.Frame.PrepareData.GetPolygonBuffer(Container);
-            _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount);
+            _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount, false);
         }
 
         protected override void OnReleaseResources () {

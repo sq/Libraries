@@ -14,7 +14,7 @@ sampler VertexDataSampler : register(s2) {
 
 #define NODE_LINE 0
 #define NODE_BEZIER 1
-#define NODE_SKIP 2
+#define NODE_START 2
 
 float4 getPolyVertex (int offset) {
     int y = (int)floor(offset / MAX_VERTEX_BUFFER_WIDTH);
