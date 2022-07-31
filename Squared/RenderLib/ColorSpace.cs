@@ -267,6 +267,8 @@ namespace Squared.Render {
             h = (float)dh;
         }
 
+        public float A => ToVector4().W;
+
         // end oklab
 
         public static pSRGBColor Black (float opacity = 1.0f) {
@@ -278,7 +280,7 @@ namespace Squared.Render {
         public static pSRGBColor White (float opacity = 1.0f) {
             if (opacity == 1.0f)
                 return _White;
-            float g = (float)ColorSpace.LinearTosRGB(opacity);
+            float g = opacity;
             return new pSRGBColor(g, g, g, opacity, true);
         }
 
@@ -660,9 +662,9 @@ namespace Squared.Render {
         }
 
         public static pSRGBColor Over (pSRGBColor top, pSRGBColor bottom) {
-            Vector4 _top = top.ToVector4(), _bottom = bottom.ToVector4();
+            Vector4 _top = top.ToPLinear(), _bottom = bottom.ToPLinear();
             _bottom *= (1 - _top.W);
-            return new pSRGBColor(_top + _bottom, true);
+            return FromPLinear(_top + _bottom);
         }
     }
 }
