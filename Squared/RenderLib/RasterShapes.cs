@@ -321,8 +321,8 @@ namespace Squared.Render.RasterShape {
         public float LocalRadius;
         public RasterVertexType Type;
 
-        public RasterPolygonVertex (Vector2 position, float localRadius = 0, bool skip = false) {
-            Type = skip ? RasterVertexType.StartNew : RasterVertexType.Line;
+        public RasterPolygonVertex (Vector2 position, float localRadius = 0, bool startNew = false) {
+            Type = startNew ? RasterVertexType.StartNew : RasterVertexType.Line;
             Position = position;
             ControlPoint = default;
             LocalRadius = localRadius;
@@ -996,10 +996,11 @@ namespace Squared.Render.RasterShape {
         }
 
         public void AddPolygonVertices (
-            ArraySegment<RasterPolygonVertex> vertices, out int indexOffset, out int vertexCount, bool closed
+            ArraySegment<RasterPolygonVertex> vertices, out int indexOffset, out int vertexCount, bool closed,
+            Matrix? vertexTransform = null, Func<RasterPolygonVertex, RasterPolygonVertex> vertexModifier = null
         ) {
             _PolygonBuffer = Container.Frame.PrepareData.GetPolygonBuffer(Container);
-            _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount, closed);
+            _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount, closed, vertexTransform, vertexModifier);
         }
     }
 }

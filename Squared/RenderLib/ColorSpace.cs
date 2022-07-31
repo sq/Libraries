@@ -300,6 +300,19 @@ namespace Squared.Render {
             Vector4 vA = default, vB = default;
             a.ToOkLCh(out vA.X, out vA.Y, out vA.Z, out vA.W);
             b.ToOkLCh(out vB.X, out vB.Y, out vB.Z, out vB.W);
+
+            // HACK: If one color has very low chromaticity and is low opacity, adopt the hue from the other color.
+            // This scenario usually means that low opacity destroyed the color information.
+            const float chromaThreshold = 0.001f, alphaThreshold = 0.1f, adoptPower = 2.0f;
+            float adoptA = (float)Math.Pow(1 - vB.W, adoptPower), adoptB = (float)Math.Pow(1 - vA.W, adoptPower);
+            if ((vB.W < alphaThreshold) && (vB.Y < chromaThreshold) && (vA.W > alphaThreshold)) {
+                vB.Y = Arithmetic.Lerp(vB.Y, vA.Y, adoptA);
+                vB.Z = Arithmetic.Lerp(vB.Z, vA.Z, adoptA);
+            } else if ((vA.W < alphaThreshold) && (vA.Y < chromaThreshold) && (vB.W > alphaThreshold)) {
+                vA.Y = Arithmetic.Lerp(vA.Y, vB.Y, adoptB);
+                vA.Z = Arithmetic.Lerp(vA.Z, vB.Z, adoptB);
+            }
+
             Vector4.Lerp(ref vA, ref vB, t, out var result);
             return FromOkLCh(result.X, result.Y, result.Z, result.W);
         }

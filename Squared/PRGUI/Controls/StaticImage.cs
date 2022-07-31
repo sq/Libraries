@@ -325,8 +325,8 @@ namespace Squared.PRGUI.Controls {
                 // FIXME: Always use context.Opacity?
                 if (!settings.IsCompositing)
                     color4 *= context.Opacity;
-                pSRGBColor pColor = new pSRGBColor(color4, true),
-                    pAddColor = new pSRGBColor(addColor4, true);
+                pSRGBColor pColor = pSRGBColor.FromPLinear(color4),
+                    pAddColor = pSRGBColor.FromPLinear(addColor4);
                 var rect = new Rectangle(-DrawExpansion, -DrawExpansion, instance.Width + (DrawExpansion * 2), instance.Height + (DrawExpansion * 2));
                 position.X += DrawExpansion * scale;
                 position.Y += DrawExpansion * scale;
@@ -338,6 +338,8 @@ namespace Squared.PRGUI.Controls {
                     UserData = RasterizerUserData,
                     TextureRegion = instance.BoundsFromRectangle(rect)
                 };
+                if (!pAddColor.IsTransparent)
+                    ;
                 Material material = null;
 
                 if ((instance2 != null) && (instance2 != instance)) {

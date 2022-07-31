@@ -1819,7 +1819,8 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            Vector2? rampUVOffset = null, int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0,
+            Matrix? vertexTransform = null, Func<RasterPolygonVertex, RasterPolygonVertex> vertexModifier = null
         ) {
             if ((vertices.Count < 2) || (vertices.Count > 255))
                 throw new ArgumentOutOfRangeException("vertices.Count", "Vertex count must be greater than 1 and may not exceed 255");
@@ -1827,7 +1828,7 @@ namespace Squared.Render.Convenience {
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
             )) {
-                rsb.AddPolygonVertices(vertices, out int indexOffset, out int count, closed);
+                rsb.AddPolygonVertices(vertices, out int indexOffset, out int count, closed, vertexTransform, vertexModifier);
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Polygon,
                     SortKey = sortKey,
@@ -2231,17 +2232,20 @@ namespace Squared.Render.Convenience {
         public void RasterizeStroke (
             ArraySegment<RasterPolygonVertex> vertices, pSRGBColor colorA, pSRGBColor colorB, RasterBrush brush,
             float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null,
-            RasterShapeColorSpace? colorSpace = null, BlendState blendState = null, int sortKey = 0
+            RasterShapeColorSpace? colorSpace = null, BlendState blendState = null, int sortKey = 0,
+            Matrix? vertexTransform = null, Func<RasterPolygonVertex, RasterPolygonVertex> vertexModifier = null
         ) => RasterizeStroke(
             vertices, colorA, colorB, ref brush, 
             seed, taper, biases, layer, worldSpace, 
-            colorSpace, blendState, sortKey
+            colorSpace, blendState, sortKey, 
+            vertexTransform, vertexModifier
         );
 
         public void RasterizeStroke (
             ArraySegment<RasterPolygonVertex> vertices, pSRGBColor colorA, pSRGBColor colorB, ref RasterBrush brush,
             float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null, 
-            RasterShapeColorSpace? colorSpace = null, BlendState blendState = null, int sortKey = 0
+            RasterShapeColorSpace? colorSpace = null, BlendState blendState = null, int sortKey = 0,
+            Matrix? vertexTransform = null, Func<RasterPolygonVertex, RasterPolygonVertex> vertexModifier = null
         ) {
             if ((vertices.Count < 2) || (vertices.Count > 2048))
                 throw new ArgumentOutOfRangeException("vertices.Count", "Vertex count must be greater than 1 and may not exceed 2048");
@@ -2249,7 +2253,7 @@ namespace Squared.Render.Convenience {
             using (var rsb = GetRasterStrokeBatch(
                 layer, worldSpace, blendState, ref brush
             )) {
-                rsb.AddPolygonVertices(vertices, out int indexOffset, out int count);
+                rsb.AddPolygonVertices(vertices, out int indexOffset, out int count, vertexTransform, vertexModifier);
                 rsb.Add(new RasterStrokeDrawCall {
                     Type = RasterStrokeType.Polygon,
                     PolygonIndexOffset = indexOffset,

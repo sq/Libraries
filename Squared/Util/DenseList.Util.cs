@@ -67,6 +67,13 @@ namespace Squared.Util {
             if (InUse)
                 Reset();
         }
+
+        public T[] ToArray () {
+            var result = new List<T>();
+            foreach (var item in this)
+                result.Add(item);
+            return result.ToArray();
+        }
     }
 
     public struct ListSelectEnumerator<To, From> : IEnumerable<To>, IEnumerator<To> {
@@ -113,6 +120,13 @@ namespace Squared.Util {
         public void Reset () {
             if (InUse)
                 Reset();
+        }
+
+        public To[] ToArray () {
+            var result = new List<To>();
+            foreach (var item in this)
+                result.Add(item);
+            return result.ToArray();
         }
     }
 

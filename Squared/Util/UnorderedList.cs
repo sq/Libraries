@@ -620,8 +620,8 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ArraySegment<T> GetBuffer () {
-            return new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
+        public ArraySegment<T> GetBuffer (bool trimmed = false) {
+            return new ArraySegment<T>(_Items, _BufferOffset, trimmed ? _Count : _BufferSize);
         }
 
         public T[] ToArray () {

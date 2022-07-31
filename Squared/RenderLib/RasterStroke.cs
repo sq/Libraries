@@ -477,11 +477,18 @@ namespace Squared.Render.RasterStroke {
                 var seed = new Vector4(0, 0, 1f / NoiseTextureSize, 0.33f / NoiseTextureSize);
 
                 ref var firstDc = ref _DrawCalls.Item(0);
+                // FIXME: If the first draw call is dead this is wrong
                 BatchManager.Instance.Start(this, ref firstDc, out var state);
+                int actualCount = 0;
 
-                for (int i = 0, j = 0; i < count; i++, j+=4) {
+                for (int i = 0, j = 0; i < count; i++) {
                     ref var dc = ref _DrawCalls.Item(i);
-                    BatchManager.Instance.Step(this, ref dc, ref state, i);
+                    // HACK: Right now the shader doesn't handle this correctly and generates a little splat
+                    if ((dc.TaperRanges.Z + dc.TaperRanges.W) >= 1.0f)
+                        continue;
+
+                    BatchManager.Instance.Step(this, ref dc, ref state, j++);
+                    actualCount++;
 
                     seed.X = dc.Seed / NoiseTextureSize;
                     vw.NextVertex = new RasterStrokeVertex {
@@ -495,8 +502,8 @@ namespace Squared.Render.RasterStroke {
                     };
                 }
 
-                BatchManager.Instance.Finish(this, ref state, count);
-                NativeBatch.RecordPrimitives(count * CornerBufferPrimCount);
+                BatchManager.Instance.Finish(this, ref state, actualCount);
+                NativeBatch.RecordPrimitives(actualCount * CornerBufferPrimCount);
             }
         }
 
@@ -708,10 +715,11 @@ namespace Squared.Render.RasterStroke {
         }
 
         public void AddPolygonVertices (
-            ArraySegment<RasterPolygonVertex> vertices, out int indexOffset, out int vertexCount
+            ArraySegment<RasterPolygonVertex> vertices, out int indexOffset, out int vertexCount,
+            Matrix? vertexTransform = null, Func<RasterPolygonVertex, RasterPolygonVertex> vertexModifier = null
         ) {
             _PolygonBuffer = Container.Frame.PrepareData.GetPolygonBuffer(Container);
-            _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount, false);
+            _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount, false, vertexTransform, vertexModifier);
         }
 
         protected override void OnReleaseResources () {

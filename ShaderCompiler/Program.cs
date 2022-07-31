@@ -106,6 +106,9 @@ namespace ShaderCompiler {
                                 ? Path.GetFileNameWithoutExtension(shader)
                                 : Path.GetFileNameWithoutExtension(shader) + "_" + hashDigest;
 
+                            if (outputs.Any(o => o.InstanceName == instanceName))
+                                throw new Exception("Hash collision????");
+
                             localDefines.Add("__VARIANT_FS_NAME", $"{instanceName}_FRAGMENT_SHADER");
                             localDefines.Add("__VARIANT_TECHNIQUE_NAME", $"{instanceName}");
 
@@ -148,7 +151,7 @@ namespace ShaderCompiler {
             var zipPath = Path.Combine(destDir, "shaders.zip");
             var tempPath = zipPath + ".tmp";
             using (var zip = new ZipArchive(File.Open(tempPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None), ZipArchiveMode.Create, false)) {
-                var entry = zip.CreateEntry("manifest.ini", CompressionLevel.NoCompression);
+                var entry = zip.CreateEntry("manifest.ini");
                 using (var sw = new StreamWriter(entry.Open(), Encoding.UTF8))
                     GenerateManifest(outputs, sw);
 

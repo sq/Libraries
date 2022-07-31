@@ -50,7 +50,10 @@ namespace Squared.Render {
             }
         }
 
-        public void AddVertices (ArraySegment<RasterPolygonVertex> vertices, out int offset, out int count, bool closed = false) {
+        public void AddVertices (
+            ArraySegment<RasterPolygonVertex> vertices, out int offset, out int count, bool closed = false,
+            Matrix? vertexTransform = null, Func<RasterPolygonVertex, RasterPolygonVertex> vertexModifier = null
+        ) {
             if ((vertices.Count < 1) || (vertices.Count > 4096))
                 throw new ArgumentOutOfRangeException("vertices.Count");
 
@@ -82,10 +85,26 @@ namespace Squared.Render {
                 }
 
                 var prev = Vector2.Zero;
+                var matrix = vertexTransform ?? Matrix.Identity;
                 for (int i = 0, j = offset; i < vertices.Count; i++) {
                     var vert = vertices.Array[vertices.Offset + i];
                     if ((i == 0) && !closed)
                         vert.Type = RasterVertexType.StartNew;
+
+                    if (vertexTransform.HasValue) {
+                        var temp = new Vector4(vert.Position, 0, 1);
+                        Vector4.Transform(ref temp, ref matrix, out var transformed);
+                        transformed /= transformed.W;
+                        vert.Position = new Vector2(transformed.X, transformed.Y);
+
+                        temp = new Vector4(vert.ControlPoint, 0, 1);
+                        Vector4.Transform(ref temp, ref matrix, out transformed);
+                        transformed /= transformed.W;
+                        vert.ControlPoint = new Vector2(transformed.X, transformed.Y);
+                    }
+                    if (vertexModifier != null)
+                        vert = vertexModifier(vert);
+
                     VertexBuffer[j] = new Vector4(vert.Position.X, vert.Position.Y, (int)vert.Type, vert.LocalRadius);
                     j++;
 
