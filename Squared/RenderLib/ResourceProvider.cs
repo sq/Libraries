@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -16,21 +17,75 @@ using Squared.Util.Ini;
 using Squared.Util.Testing;
 
 namespace Squared.Render.Resources {
-    public delegate void ResourceLoadCompleteHandler (string name, object resource, long waitDuration, long preloadDuration, long createDuration);
+    public delegate void ResourceLoadStartHandler (ResourceLoadInfo info);
+    public delegate void ResourceLoadCompleteHandler (ResourceLoadInfo info, object resource);
+
+    public enum ResourceLoadStatus : int {
+        Queued,
+        OpeningStream,
+        Preloading,
+        Preloaded,
+        Creating,
+        Created,
+        Finished,
+        Failed,
+    }
+
+    public class ResourceLoadInfo {
+        public Type ResourceType;
+        public readonly string Name;
+        public readonly object Data;
+        public readonly long QueuedWhen;
+        public readonly bool Optional;
+        public readonly bool Async;
+
+        public long QueuedDuration, PreloadDuration, CreateDuration;
+
+        public Exception FailureReason { get; internal set; }
+        public long StatusChangedWhen { get; private set; }
+        public ResourceLoadStatus Status { get; private set; }
+
+        internal ResourceLoadInfo (Type resourceType, string name, object data, long now, bool optional, bool async) {
+            ResourceType = resourceType;
+            Name = name;
+            Data = data;
+            Optional = optional;
+            Async = async;
+            SetStatus(ResourceLoadStatus.Queued, now);
+        }
+
+        internal bool SetStatus (ResourceLoadStatus newStatus, long now) {
+            if (Status == newStatus)
+                return false;
+            if (Status == ResourceLoadStatus.Queued)
+                QueuedDuration = now - StatusChangedWhen;
+            else if (Status == ResourceLoadStatus.Preloading)
+                PreloadDuration = now - StatusChangedWhen;
+            else if (Status == ResourceLoadStatus.Creating)
+                CreateDuration = now - StatusChangedWhen;
+
+            Status = newStatus;
+            StatusChangedWhen = now;
+            return true;
+        }
+
+        public string ToString (long now) {
+            var elapsed = now - QueuedWhen;
+            if ((Status != ResourceLoadStatus.Failed) && (Status != ResourceLoadStatus.Finished))
+                return $"{Status} {ResourceType} '{Name}' with data {Data} queued for {elapsed / Time.SecondInTicks} second(s)";
+            else
+                return ToString();
+        }
+
+        public override string ToString () {
+            return $"{Status} {ResourceType} '{Name}' with data {Data}";
+        }
+    }
 
     public abstract class ResourceProvider<T> : IDisposable
         where T : class 
     {
         public FaultInjector FaultInjector;
-
-        private object PendingLoadLock = new object();
-        private int _PendingLoads;
-        public int PendingLoads {
-            get {
-                lock (PendingLoadLock)
-                    return _PendingLoads;
-            }
-        }
 
         protected class CreateWorkItem : IWorkItem {
             public static WorkItemConfiguration Configuration =>
@@ -42,19 +97,16 @@ namespace Squared.Render.Resources {
             public Future<T> Future;
             public ResourceProvider<T> Provider;
             public Stream Stream;
-            public string Name;
-            public object Data, PreloadedData;
-            public bool Optional;
-            public bool Async;
+            public ResourceLoadInfo LoadInfo;
+            public object PreloadedData;
             public bool StreamIsDisposed;
-            public long WaitDuration, PreloadDuration;
 
             void IWorkItem.Execute () {
-                var createStarted = Provider.Now;
                 Future<T> instance = null;
                 try {
                     // Console.WriteLine($"CreateInstance('{Name}') on thread {Thread.CurrentThread.Name}");
-                    instance = Provider.CreateInstance(Name, Stream, Data, PreloadedData, Async);
+                    LoadInfo.SetStatus(ResourceLoadStatus.Creating, Provider.Now);
+                    instance = Provider.CreateInstance(LoadInfo.Name, Stream, LoadInfo.Data, PreloadedData, LoadInfo.Async);
                     if (instance.Completed)
                         OnCompleted(instance);
                     else
@@ -66,23 +118,26 @@ namespace Squared.Render.Resources {
                         Stream?.Dispose();
                     }
                 } finally {
-                    if (!Async && !StreamIsDisposed) {
+                    if (!LoadInfo.Async && !StreamIsDisposed) {
                         StreamIsDisposed = true;
                         Stream?.Dispose();
                     }
-                    lock (Provider.PendingLoadLock)
-                        Provider._PendingLoads--;
                 }
 
                 void OnCompleted (IFuture _) {
-                    var createElapsed = Provider.Now - createStarted;
+                    LoadInfo.SetStatus(ResourceLoadStatus.Created, Provider.Now);
                     instance.GetResult(out T value, out Exception err);
-                    if (err == null)
-                        Provider.FireLoadEvent(Name, value, WaitDuration, PreloadDuration, createElapsed);
-                    Future.SetResult(value, err);
-                    if (!StreamIsDisposed) {
-                        StreamIsDisposed = true;
-                        Stream?.Dispose();
+                    try {
+                        Future.SetResult(value, err);
+                    } finally {
+                        if (err != null)
+                            Provider.NotifyLoadFailed(LoadInfo, err);
+                        else
+                            Provider.NotifyLoadCompleted(LoadInfo, value);
+                        if (!StreamIsDisposed) {
+                            StreamIsDisposed = true;
+                            Stream?.Dispose();
+                        }
                     }
                 }
             }
@@ -97,43 +152,35 @@ namespace Squared.Render.Resources {
 
             public Future<T> Future;
             public ResourceProvider<T> Provider;
-            public string Name;
-            public object Data;
-            public bool Optional;
-            public bool Async;
+            public ResourceLoadInfo LoadInfo;
             public long StartedWhen;
 
             void IWorkItem.Execute () {
                 Stream stream = null;
                 try {
                     Exception exc = null;
-                    if (!Provider.TryGetStream(Name, Data, Optional, out stream, out exc)) {
+                    LoadInfo.SetStatus(ResourceLoadStatus.OpeningStream, Provider.Now);
+                    if (!Provider.TryGetStream(LoadInfo.Name, LoadInfo.Data, LoadInfo.Optional, out stream, out exc)) {
                         Future.SetResult2(
                             default(T), (exc != null) 
                                 ? ExceptionDispatchInfo.Capture(exc) 
                                 : null
                         );
-                        lock (Provider.PendingLoadLock)
-                            Provider._PendingLoads--;
+                        Provider.NotifyLoadFailed(LoadInfo, exc);
                         return;
                     }
 
                     // Console.WriteLine($"PreloadInstance('{Name}') on thread {Thread.CurrentThread.Name}");
-                    var now = Provider.Now;
-                    var waitDuration = now - StartedWhen;
-                    var preloadedData = Provider.PreloadInstance(Name, stream, Data);
-                    var preloadElapsed = Provider.Now - now;
+                    LoadInfo.SetStatus(ResourceLoadStatus.Preloading, Provider.Now);
+                    var preloadedData = Provider.PreloadInstance(LoadInfo.Name, stream, LoadInfo.Data);
+                    LoadInfo.SetStatus(ResourceLoadStatus.Preloaded, Provider.Now);
+
                     var item = new CreateWorkItem {
                         Future = Future,
                         Provider = Provider,
-                        Name = Name,
-                        Data = Data,
-                        Optional = Optional,
+                        LoadInfo = LoadInfo,
                         Stream = stream,
                         PreloadedData = preloadedData,
-                        Async = Async,
-                        WaitDuration = waitDuration,
-                        PreloadDuration = preloadElapsed
                     };
                     Provider.CreateQueue.Enqueue(ref item);
                 } catch (Exception exc) {
@@ -141,6 +188,15 @@ namespace Squared.Render.Resources {
                         stream.Dispose();
                     Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
                 }
+            }
+        }
+
+        private List<ResourceLoadInfo> PendingLoads = new List<ResourceLoadInfo>(),
+            CompletedLoads = new List<ResourceLoadInfo>();
+        public int PendingLoadCount {
+            get {
+                lock (PendingLoads)
+                    return PendingLoads.Count;
             }
         }
 
@@ -167,15 +223,49 @@ namespace Squared.Render.Resources {
         public IResourceProviderStreamSource StreamSource { get; protected set; }
 
         public ITimeProvider TimeProvider = new DotNetTimeProvider();
+        public event ResourceLoadStartHandler OnLoadStart;
         public event ResourceLoadCompleteHandler OnLoad;
 
         internal long Now => TimeProvider.Ticks;
 
-        internal void FireLoadEvent (string name, object resource, long waitDuration, long preloadDuration, long createDuration) {
+        internal void FireStartEvent (ResourceLoadInfo info) {
+            if (OnLoadStart == null)
+                return;
+
+            OnLoadStart(info);
+        }
+
+        internal void FireLoadEvent (ResourceLoadInfo info, object resource) {
             if (OnLoad == null)
                 return;
 
-            OnLoad(name, resource, waitDuration, preloadDuration, createDuration);
+            OnLoad(info, resource);
+        }
+
+        internal void NotifyLoadCompleted (ResourceLoadInfo info, object resource) {
+            lock (PendingLoads)
+                PendingLoads.Remove(info);
+            lock (CompletedLoads)
+                CompletedLoads.Add(info);
+
+            info.FailureReason = null;
+            if (info.SetStatus(ResourceLoadStatus.Finished, Now))
+                FireLoadEvent(info, resource);
+        }
+
+        internal void NotifyLoadFailed (ResourceLoadInfo info, Exception reason) {
+            lock (PendingLoads)
+                PendingLoads.Remove(info);
+
+            info.FailureReason = reason;
+            if (info.SetStatus(ResourceLoadStatus.Failed, Now))
+                FireLoadEvent(info, null);
+        }
+
+        public void ForEachPendingLoad (Action<ResourceLoadInfo> handler) {
+            lock (PendingLoads)
+                foreach (var item in PendingLoads)
+                    handler(item);
         }
 
         protected ResourceProvider (
@@ -241,21 +331,31 @@ namespace Squared.Render.Resources {
         public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) {
             FaultInjector?.Step();
 
-            var filteredData = FilterData(name, data);
-            if (TryGetStream(name, data, optional, out var stream, out exception)) {
-                var started = Now;
-                var preloadedData = PreloadInstance(name, stream, filteredData);
-                var createStarted = Now;
-                var future = CreateInstance(name, stream, data, preloadedData, false);
-                var finished = Now;
-                if (IsDisposed) {
-                    Coordinator.DisposeResource(future.Result as IDisposable);
-                    return default(T);
+            var info = RecordPendingLoad(name, data, optional, false);
+            try {
+                var filteredData = FilterData(name, data);
+                info.SetStatus(ResourceLoadStatus.OpeningStream, Now);
+                if (TryGetStream(name, data, optional, out var stream, out exception)) {
+                    info.SetStatus(ResourceLoadStatus.Preloading, Now);
+                    var preloadedData = PreloadInstance(name, stream, filteredData);
+                    info.SetStatus(ResourceLoadStatus.Preloaded, Now);
+                    info.SetStatus(ResourceLoadStatus.Creating, Now);
+                    var future = CreateInstance(name, stream, data, preloadedData, false);
+                    info.SetStatus(ResourceLoadStatus.Created, Now);
+                    NotifyLoadCompleted(info, future.Result);
+                    if (IsDisposed) {
+                        Coordinator.DisposeResource(future.Result as IDisposable);
+                        return default(T);
+                    } else {
+                        FireLoadEvent(info, future.Result);
+                        return future.Result;
+                    }
                 } else {
-                    FireLoadEvent(name, future.Result, 0, createStarted - started, finished - createStarted);
-                    return future.Result;
+                    return default(T);
                 }
-            } else {
+            } catch (Exception exc) {
+                NotifyLoadFailed(info, exc);
+                exception = exc;
                 return default(T);
             }
         }
@@ -307,14 +407,10 @@ namespace Squared.Render.Resources {
             var future = GetFutureForResource(name, data, cached, out bool performLoad);
 
             if (performLoad) {
-                _PendingLoads++;
                 var workItem = new PreloadWorkItem {
                     Provider = this,
                     Future = future,
-                    Name = name,
-                    Data = data,
-                    Optional = optional,
-                    Async = true
+                    LoadInfo = RecordPendingLoad(name, data, optional, true)
                 };
                 PreloadQueue.Enqueue(workItem);
             }
@@ -322,19 +418,19 @@ namespace Squared.Render.Resources {
             return future;
         }
 
+        private ResourceLoadInfo RecordPendingLoad (string name, object data, bool optional, bool async) {
+            var result = new ResourceLoadInfo(typeof(T), name, data, Now, optional, async);
+            lock (PendingLoads)
+                PendingLoads.Add(result);
+            return result;
+        }
+
         public T LoadSync (string name, object data, bool cached, bool optional) {
             var future = GetFutureForResource(name, data, cached, out bool performLoad);
 
             if (performLoad) {
-                lock (PendingLoadLock)
-                    _PendingLoads++;
-                try {
-                    var instance = LoadSyncUncached(name, data, optional, out Exception exc);
-                    future.SetResult(instance, exc);
-                } finally {
-                    lock (PendingLoadLock)
-                        _PendingLoads--;
-                }
+                T instance = LoadSyncUncached(name, data, optional, out Exception exc);
+                future.SetResult(instance, exc);
             } else if (!future.Completed) {
                 WaitForLoadSync(future, name, data);
             }

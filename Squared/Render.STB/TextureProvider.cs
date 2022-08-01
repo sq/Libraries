@@ -35,6 +35,10 @@ namespace Squared.Render {
         /// The texture already contains sRGB data which should not be converted
         /// </summary>
         public bool sRGB;
+
+        public override string ToString () {
+            return "TextureLoadOptions {{ Premultiply={Premultiply}, GenerateMips={GenerateMips} }}";
+        }
     }
 
     public class Texture2DProvider : ResourceProvider<Texture2D> {
