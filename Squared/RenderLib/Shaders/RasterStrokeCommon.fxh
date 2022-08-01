@@ -76,19 +76,28 @@ float approxPixelCoverage (float2 pixel, float2 center, float radius) {
 }
 
 float evaluateDynamics(
-    float constant, float4 dynamics, float4 data
+    float constant, float4 dynamics, float4 data, float limit
 ) {
-    float result = constant + (data.y * dynamics.y) +
+    bool wrap = constant < 0;
+    float result = abs(constant) + (data.y * dynamics.y) +
         (data.z * dynamics.z) + (data.w * dynamics.w);
+    if (wrap)
+        result = abs(result % 1);
+    else
+        result = clamp(result, 0, limit);
     float taper = (dynamics.x < 0) ? 1 - data.x : data.x;
     return lerp(result, result * taper, abs(dynamics.x));
 }
 
 float evaluateDynamics2(
-    float offset, float maxValue, float4 dynamics, float4 data
+    float offset, float maxValue, float4 dynamics, float4 data, bool wrap, float limit
 ) {
     float result = offset + (data.y * dynamics.y) +
         (maxValue * data.z * dynamics.z) + (maxValue * data.w * dynamics.w);
+    if (wrap)
+        result = abs(result % limit);
+    else
+        result = clamp(result, 0, limit);
     float taper = (dynamics.x < 0) ? 1 - data.x : data.x;
     return lerp(result, result * taper, abs(dynamics.x));
 }

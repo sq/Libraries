@@ -63,20 +63,20 @@ float IMPL_NAME (
             taper1 = abs(taperRanges.x) >= 1 ? saturate((globalD - taperRanges.z) / abs(taperRanges.x)) : 1,
             taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - globalD + taperRanges.z) / taperRanges.y) : 1,
             taper = min(taper1, taper2);
-        float sizePx = clamp(evaluateDynamics2((Constants1.x + biases.x) * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor)), 0, maxSize);
+        float sizePx = evaluateDynamics2((abs(Constants1.x) + biases.x) * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor), Constants1.x < 0, maxSize);
         if (sizePx <= 0)
             continue;
 
         // biases are: (Size, Flow, Hardness, Color)
-        float splatAngleFactor = evaluateDynamics(Constants1.y, AngleDynamics, float4(taper, globalI, noise1.y, angleFactor)),
+        float splatAngleFactor = evaluateDynamics(Constants1.y, AngleDynamics, float4(taper, globalI, noise1.y, angleFactor), 1),
             splatAngle = splatAngleFactor * PI * 2,
-            flow = clamp(evaluateDynamics(Constants1.z + biases.y, FlowDynamics, float4(taper, globalI, noise1.z, angleFactor)), 0, 2),
-            brushIndex = evaluateDynamics2(Constants1.w, brushCount, BrushIndexDynamics, float4(taper, globalI, noise1.w, angleFactor)),
-            hardness = saturate(evaluateDynamics(Constants2.x + biases.z, HardnessDynamics, float4(taper, globalI, noise2.x, angleFactor))),
+            flow = evaluateDynamics(Constants1.z + biases.y, FlowDynamics, float4(taper, globalI, noise1.z, angleFactor), 2),
+            brushIndex = evaluateDynamics2(abs(Constants1.w), brushCount, BrushIndexDynamics, float4(taper, globalI, noise1.w, angleFactor), true, brushCount),
+            hardness = evaluateDynamics(Constants2.x + biases.z, HardnessDynamics, float4(taper, globalI, noise2.x, angleFactor), 1.0),
             // HACK: Increment here is scaled by t instead of i
             // FIXME: centerT for polygons
             colorT = COLOR_PER_SPLAT ? (globalI * globalStepT) : centerT,
-            colorFactor = saturate(evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(taper, colorT, noise2.y, angleFactor)));
+            colorFactor = evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(taper, colorT, noise2.y, angleFactor), 1.0);
 
         bool outOfRange = (globalD < taperRanges.z) || (globalD > (totalLength - taperRanges.w));
 

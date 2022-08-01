@@ -103,17 +103,19 @@ namespace Squared.Render.RasterStroke {
         public float Increment;
         public float NoiseFactor;
         public float AngleFactor;
+        public bool Wrap;
 
-        public BrushDynamics (float constant, float taper = 0, float increment = 0, float noise = 0, float angle = 0) {
+        public BrushDynamics (float constant, float taper = 0, float increment = 0, float noise = 0, float angle = 0, bool wrap = false) {
             Constant = constant;
             TaperFactor = taper;
             Increment = increment;
             NoiseFactor = noise;
             AngleFactor = angle;
+            Wrap = wrap;
         }
 
         public override string ToString () {
-            return $"<dynamics(({Constant} * taper({TaperFactor})) + step({Increment}) + noise({NoiseFactor}) + angle({AngleFactor}))>";
+            return $"<dynamics(({Constant} * taper({TaperFactor})) + step({Increment}) + noise({NoiseFactor}) + angle({AngleFactor}) wrap={Wrap})>";
         }
 
         public override int GetHashCode () {
@@ -128,7 +130,8 @@ namespace Squared.Render.RasterStroke {
                 (TaperFactor == rhs.TaperFactor) &&
                 (Increment == rhs.Increment) &&
                 (NoiseFactor == rhs.NoiseFactor) &&
-                (AngleFactor == rhs.AngleFactor);
+                (AngleFactor == rhs.AngleFactor) &&
+                (Wrap == rhs.Wrap);
         }        
 
         public override bool Equals (object obj) {
@@ -146,9 +149,11 @@ namespace Squared.Render.RasterStroke {
             return lhs.Equals(rhs);
         }
 
-        public Vector4 ToVector4 () {
+        internal Vector4 ToVector4 () {
             return new Vector4(TaperFactor, Increment, NoiseFactor, AngleFactor);
         }
+
+        internal float UploadConstant => Constant * (Wrap ? -1 : 1);
 
         public static implicit operator BrushDynamics (float constant) {
             return new BrushDynamics {
@@ -602,10 +607,10 @@ namespace Squared.Render.RasterStroke {
 
             Vector4 angle = Brush.AngleDegrees.ToVector4(),
                 constants1 = new Vector4(
-                    Brush.Scale.Constant, Brush.AngleDegrees.Constant / 360f, Brush.Flow.Constant, Brush.BrushIndex.Constant
+                    Brush.Scale.UploadConstant, Brush.AngleDegrees.UploadConstant / 360f, Brush.Flow.UploadConstant, Brush.BrushIndex.UploadConstant
                 ),
                 constants2 = new Vector4(
-                    Brush.Hardness.Constant, Brush.Color.Constant, Brush.Spacing, Brush.SizePx
+                    Brush.Hardness.UploadConstant, Brush.Color.UploadConstant, Brush.Spacing, Brush.SizePx
                 ),
                 nozzleParams = new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleBaseSize, 0);
             angle.Y /= 360f;
