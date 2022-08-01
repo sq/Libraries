@@ -720,7 +720,7 @@ namespace Squared.Render {
         
         public bool DoThreadedIssue { 
             get {
-                return _ActualEnableThreading && _EnableThreadedIssue;
+                return _ActualEnableThreading && _EnableThreadedIssue && (GraphicsBackendName != "OpenGL");
             }
             set {
                 _EnableThreadedIssue = value;
