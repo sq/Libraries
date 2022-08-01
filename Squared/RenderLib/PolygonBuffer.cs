@@ -45,7 +45,7 @@ namespace Squared.Render {
                 if (!FlushRequired)
                     return;
 
-                Texture.SetData(VertexBuffer);
+                Texture.SetData(0, new Rectangle(0, 0, w, h), VertexBuffer, 0, VertexBuffer.Length);
                 FlushRequired = false;
             }
         }

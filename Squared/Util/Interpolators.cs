@@ -579,9 +579,8 @@ namespace Squared.Util {
                 Cache.TryGetValue(name, out unbound);
                     
             if (unbound != null) {
-                var t = typeof(BoundUnboundAdapter<>).MakeGenericType(typeof(U));
+                var t = typeof(BoundUnboundAdapter<>).MakeGenericType(typeof(T), typeof(U));
                 var adapter = (BoundUnboundAdapter<U>)Activator.CreateInstance(t, unbound);
-                // FIXME: Not sure if this works
                 result = adapter.Interpolate;
             } else if (mi != null) {
                 var mii = mi.MakeGenericMethod(typeof(U));

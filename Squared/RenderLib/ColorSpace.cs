@@ -36,33 +36,45 @@ namespace Squared.Render {
     public static class NamedColor {
         private static bool _AllIsPopulated;
         private static KeyValuePair<string, Color>[] _All;
+        private static Dictionary<uint, string> _ByValue;
 
         private static readonly Dictionary<string, Color?> SystemNamedColorCache = 
             new Dictionary<string, Color?>(StringComparer.OrdinalIgnoreCase);
 
-        public static KeyValuePair<string, Color>[] All {
-            get {
-                lock (SystemNamedColorCache) {
-                    if (!_AllIsPopulated) {
-                        var result = new List<KeyValuePair<string, Color>>();
-                        foreach (var prop in typeof(Color).GetProperties(BindingFlags.Public | BindingFlags.Static)) {
-                            if (prop.PropertyType != typeof(Color))
-                                continue;
-                            var v = prop.GetValue(null);
-                            if (v == null)
-                                continue;
-                            var c = (Color)v;
-                            SystemNamedColorCache[prop.Name] = c;
-                            result.Add(new KeyValuePair<string, Color>(prop.Name, c));
-                        }
+        private static void EnsureLookupsPopulated () {
+            lock (SystemNamedColorCache) {
+                if (_AllIsPopulated)
+                    return;
 
-                        _All = result.ToArray();
-                        _AllIsPopulated = true;
-                    }
+                var result = new List<KeyValuePair<string, Color>>();
+                _ByValue = new Dictionary<uint, string>();
+                foreach (var prop in typeof(Color).GetProperties(BindingFlags.Public | BindingFlags.Static)) {
+                    if (prop.PropertyType != typeof(Color))
+                        continue;
+                    var v = prop.GetValue(null);
+                    if (v == null)
+                        continue;
+                    var c = (Color)v;
+                    SystemNamedColorCache[prop.Name] = c;
+                    result.Add(new KeyValuePair<string, Color>(prop.Name, c));
+                    _ByValue[c.PackedValue] = prop.Name;
                 }
 
+                _All = result.ToArray();
+                _AllIsPopulated = true;
+            }
+        }
+
+        public static KeyValuePair<string, Color>[] All {
+            get {
+                EnsureLookupsPopulated();
                 return _All;
             }
+        }
+
+        public static bool TryGetName (Color color, out string result) {
+            EnsureLookupsPopulated();
+            return _ByValue.TryGetValue(color.PackedValue, out result);
         }
 
         public static bool TryParse (string text, out Color result) {
