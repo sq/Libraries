@@ -323,7 +323,7 @@ namespace Squared.PRGUI {
                 }
 
                 {
-                    var subRenderer = renderer.MakeSubgroup();
+                    renderer.MakeSubgroup(out var subRenderer);
                     subRenderer.BlendState = BlendState.NonPremultiplied;
                     // HACK
                     context.Pass = RasterizePasses.Below;
@@ -487,9 +487,9 @@ namespace Squared.PRGUI {
         public int StackDepth;
 
         public RasterizePassSet (ref RasterizePassSet parent, Control control, ViewTransformModifier viewTransformModifier) {
-            Below = parent.Below.MakeSubgroup(name: "Below (Nested)", userData: control);
-            Content = parent.Content.MakeSubgroup(name: "Content (Nested)", userData: control);
-            Above = parent.Above.MakeSubgroup(name: "Above (Nested)", userData: control);
+            parent.Below.MakeSubgroup(out Below, name: "Below (Nested)", userData: control);
+            parent.Content.MakeSubgroup(out Content, name: "Content (Nested)", userData: control);
+            parent.Above.MakeSubgroup(out Above, name: "Above (Nested)", userData: control);
             StackDepth = parent.StackDepth + 1;
             OverlayQueue = parent.OverlayQueue;
             ((BatchGroup)Below.Container).SetViewTransform(viewTransformModifier);
@@ -499,17 +499,17 @@ namespace Squared.PRGUI {
 
         public RasterizePassSet (ref ImperativeRenderer container, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue) {
             // FIXME: Order them?
-            Below = container.MakeSubgroup(name: "Below");
-            Content = container.MakeSubgroup(name: "Content");
-            Above = container.MakeSubgroup(name: "Above");
+            container.MakeSubgroup(out Below, name: "Below");
+            container.MakeSubgroup(out Content, name: "Content");
+            container.MakeSubgroup(out Above, name: "Above");
             StackDepth = stackDepth;
             OverlayQueue = overlayQueue;
         }
 
         public RasterizePassSet (ref ImperativeRenderer container, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue, ref int layer) {
-            Below = container.MakeSubgroup(name: "Below", layer: layer);
-            Content = container.MakeSubgroup(name: "Content", layer: layer + 1);
-            Above = container.MakeSubgroup(name: "Above", layer: layer + 2);
+            container.MakeSubgroup(out Below, name: "Below", layer: layer);
+            container.MakeSubgroup(out Content, name: "Content", layer: layer + 1);
+            container.MakeSubgroup(out Above, name: "Above", layer: layer + 2);
             StackDepth = stackDepth;
             OverlayQueue = overlayQueue;
             layer = layer + 3;

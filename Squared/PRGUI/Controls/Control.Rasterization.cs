@@ -160,7 +160,7 @@ namespace Squared.PRGUI {
         ) {
             renderer.Layer += 1;
             passContext.Clone(out contentContext);
-            contentRenderer = renderer.MakeSubgroup();
+            renderer.MakeSubgroup(out contentRenderer);
             if (ShouldClipContent) {
                 newStackDepth = previousStackDepth + 1;
                 contentRenderer.DepthStencilState = context.UIContext.GetStencilTest(newStackDepth);
@@ -567,7 +567,8 @@ namespace Squared.PRGUI {
                 MostRecentCompositeData = new CompositionData();
             MostRecentCompositeData.DrawCall = dc;
             MostRecentCompositeData.Box = compositeBox;
-            var subgroup = passSet.Above.MakeSubgroup(
+            passSet.Above.MakeSubgroup(
+                out var subgroup,
                 before: BeforeComposite,
                 after: AfterComposite,
                 userData: this

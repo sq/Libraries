@@ -181,7 +181,7 @@ namespace Squared.PRGUI.Controls {
 
             if (!_Buffered) {
                 AutoDisposeBuffer(renderer.Container.Coordinator);
-                contentRenderer = renderer.MakeSubgroup();
+                renderer.MakeSubgroup(out contentRenderer);
                 contentRenderer.BlendState = BlendState;
                 Paint(ref contentRenderer, in settings);
             } else {
