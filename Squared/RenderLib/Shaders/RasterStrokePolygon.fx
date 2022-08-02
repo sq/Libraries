@@ -134,16 +134,14 @@ void __VARIANT_FS_NAME (
         // HACK: We want to search in a larger area for beziers since the math
         //  we use to find the closest bezier is inaccurate.
         searchRadius = Constants2.w + 1, searchRadius2 = searchRadius * searchRadius;
-    float2 prev = 0;
+    float4 prev = 0;
 
     while (count > 0) {
         while (count-- > 0) {
             float4 xytr = getPolyVertex(offset);
             int nodeType = (int)xytr.z;
-            float2 pos = xytr.xy;
-            float4 localBiases = biases;
+            float2 pos = xytr.xy, localRadiuses = float2(prev.w, xytr.w);
             float steps = 0;
-            localBiases.x += xytr.w;
 
             offset++;
             REQUIRE_BRANCH
@@ -153,7 +151,7 @@ void __VARIANT_FS_NAME (
 
                 // HACK: Try to locate the closest point on the bezier. If even it is far enough away
                 //  that it can't overlap the current pixel, skip processing the entire bezier.
-                float2 a = prev - worldPosition, b = controlPoints.xy - worldPosition,
+                float2 a = prev.xy - worldPosition, b = controlPoints.xy - worldPosition,
                     c = pos - worldPosition;
                 // First check the middle and endpoints
                 float ct = 0, cd2 = distanceSquaredToBezierAtT(a, b, c, ct);
@@ -176,7 +174,7 @@ void __VARIANT_FS_NAME (
                     overdraw++;
 #endif
                     steps = rasterStrokeBezierCommon(
-                        0, worldPosition, float4(prev, pos), controlPoints.xy, bezierLength, seed, taper, localBiases,
+                        localRadiuses, worldPosition, float4(prev.xy, pos), controlPoints.xy, bezierLength, seed, taper, biases,
                         distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
                     );
                 }
@@ -184,13 +182,13 @@ void __VARIANT_FS_NAME (
                 totalSteps += steps;
             } else if (nodeType == NODE_LINE) {
                 steps = rasterStrokeLineCommon(
-                    0, worldPosition, float4(prev, pos), seed, taper, localBiases,
+                    localRadiuses, worldPosition, float4(prev.xy, pos), seed, taper, biases,
                     distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
                 );
-                distanceTraveled += length(pos - prev);
+                distanceTraveled += length(pos - prev.xy);
                 totalSteps += steps;
             }
-            prev = pos;
+            prev = xytr;
         }
     }
 

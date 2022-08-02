@@ -1,5 +1,5 @@
 float IMPL_NAME (
-    in float shuffle, in float2 worldPosition, IMPL_INPUTS, 
+    in float2 localRadiuses, in float2 worldPosition, IMPL_INPUTS, 
     in float4 seed, in float4 taperRanges, in float4 biases,
     in float distanceTraveled, in float totalLength, in float stepOffset,
     in float2 vpos, in float4 colorA, in float4 colorB,
@@ -63,7 +63,8 @@ float IMPL_NAME (
             taper1 = abs(taperRanges.x) >= 1 ? saturate((globalD - taperRanges.z) / abs(taperRanges.x)) : 1,
             taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - globalD + taperRanges.z) / taperRanges.y) : 1,
             taper = min(taper1, taper2);
-        float sizePx = evaluateDynamics2((abs(Constants1.x) + biases.x) * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor), Constants1.x < 0, maxSize);
+        float localRadius = abs(Constants1.x) * saturate(1 + lerp(localRadiuses.x, localRadiuses.y, t));
+        float sizePx = evaluateDynamics2((localRadius + biases.x) * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor), Constants1.x < 0, maxSize);
         if (sizePx <= 0)
             continue;
 

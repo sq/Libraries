@@ -437,6 +437,7 @@ namespace Squared.Render {
         private struct FrameParams {
             public float Seconds;
             public int? FrameIndex;
+            internal DitheringSettings DitheringSettings;
 
             public override int GetHashCode () {
                 return Seconds.GetHashCode();
@@ -1146,8 +1147,10 @@ namespace Squared.Render {
 
             var @params = new FrameParams {
                 Seconds = (float)TimeProvider.Seconds,
-                FrameIndex = frameIndex
+                FrameIndex = frameIndex,
+                DitheringSettings = DefaultDitheringSettings
             };
+            @params.DitheringSettings.FrameIndex = frameIndex ?? 0;
 
             FlushViewTransformForFrameParamsChange = true;
 
@@ -1258,10 +1261,7 @@ namespace Squared.Render {
 
             m.Parameters?.HalfPixelOffset?.SetValue(!Coordinator.IsOpenGL ? 1f : 0f);
 
-            var ds = DefaultDitheringSettings;
-            ds.FrameIndex = @params.FrameIndex.GetValueOrDefault(0);
-
-            uDithering.TrySet(m, ref ds);
+            uDithering.TrySet(m, ref @params.DitheringSettings);
         }
 
         internal void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
