@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -400,64 +401,73 @@ namespace Squared.Render.STB {
             UploadTimer.Restart();
 
             var f = new Future<Texture2D>();
-            int itemsPending = 1;
+            try {
+                int itemsPending = 0;
+                bool doneQueueing = false;
 
-            var mainThread = (coordinator.GraphicsBackendName == "OpenGL");
-            var queue = coordinator.ThreadGroup.GetQueueForType<UploadMipWorkItem>(mainThread);
-            for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
-                if (IsDisposed)
-                    throw new ObjectDisposedException("Image");
+                var mainThread = (coordinator.GraphicsBackendName == "OpenGL");
+                var queue = coordinator.ThreadGroup.GetQueueForType<UploadMipWorkItem>(mainThread);
+                for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
+                    if (IsDisposed)
+                        throw new ObjectDisposedException("Image");
+                    Interlocked.Increment(ref itemsPending);
 
-                byte[] mip;
-                uint mipPitch;
-                if (level > 0) {
-                    mip = MipChain[level - 1];
-                    mipPitch = (uint)(levelWidth * SizeofPixel);
-                } else {
-                    mip = null;
-                    mipPitch = (uint)(Width * SizeofPixel);
+                    byte[] mip;
+                    uint mipPitch;
+                    if (level > 0) {
+                        mip = MipChain[level - 1];
+                        mipPitch = (uint)(levelWidth * SizeofPixel);
+                    } else {
+                        mip = null;
+                        mipPitch = (uint)(Width * SizeofPixel);
+                    }
+
+                    var workItem = new UploadMipWorkItem {
+                        Coordinator = coordinator,
+                        Image = this,
+                        Mip = mip,
+                        MipPitch = mipPitch,
+                        Texture = result,
+                        Level = level,
+                        LevelWidth = levelWidth,
+                        LevelHeight = levelHeight
+                    };
+                    if (async) {
+                        // FIXME
+                        queue.Enqueue(workItem, OnItemComplete);
+                    } else
+                        workItem.Execute();
+
+                    previousLevelWidth = levelWidth;
+                    previousLevelHeight = levelHeight;
+                    var newWidth = levelWidth / 2;
+                    var newHeight = levelHeight / 2;
+                    levelWidth = newWidth;
+                    levelHeight = newHeight;
                 }
 
-                var workItem = new UploadMipWorkItem {
-                    Coordinator = coordinator,
-                    Image = this,
-                    Mip = mip,
-                    MipPitch = mipPitch,
-                    Texture = result,
-                    Level = level,
-                    LevelWidth = levelWidth,
-                    LevelHeight = levelHeight
-                };
-                if (async) {
-                    // FIXME
-                    Interlocked.Increment(ref itemsPending);
-                    queue.Enqueue(workItem, OnItemComplete);
-                } else
-                    workItem.Execute();
+                doneQueueing = true;
+                if (!async || (Volatile.Read(ref itemsPending) <= 0)) {
+                    // HACK
+                    var temp = default(UploadMipWorkItem);
+                    OnItemComplete(ref temp);
+                }
 
-                previousLevelWidth = levelWidth;
-                previousLevelHeight = levelHeight;
-                var newWidth = levelWidth / 2;
-                var newHeight = levelHeight / 2;
-                levelWidth = newWidth;
-                levelHeight = newHeight;
+                if (!async && (UploadTimer.Elapsed.TotalMilliseconds > 2))
+                    Debug.Print($"Uploading mipped texture took {UploadTimer.Elapsed.TotalMilliseconds}ms");
+
+                void OnItemComplete (ref UploadMipWorkItem wi) {
+                    if (Interlocked.Decrement(ref itemsPending) > 0)
+                        return;
+                    if (doneQueueing && !f.Completed)
+                        f.SetResult(result, null);
+                }
+            } catch (Exception exc) {
+                f.SetResult2(null, ExceptionDispatchInfo.Capture(exc));
             }
-
-            Interlocked.Decrement(ref itemsPending);
-            if (!async)
-                f.SetResult(result, null);
-
-            if (UploadTimer.Elapsed.TotalMilliseconds > 2)
-                Debug.Print($"Uploading mipped texture took {UploadTimer.Elapsed.TotalMilliseconds}ms");
 
             // FIXME: Ensure this is finished before the next issue
             return f;
-
-            void OnItemComplete (ref UploadMipWorkItem wi) {
-                if (Interlocked.Decrement(ref itemsPending) != 0)
-                    return;
-                f.SetResult(result, null);
-            }
         }
 
         public void AddRef () {

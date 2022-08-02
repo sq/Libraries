@@ -784,14 +784,8 @@ namespace Squared.Util {
         }
 
         public T[] ToArray () {
-            if (Count == 0) {
-                var result = EmptyArray;
-                if (result == null) {
-                    result = new T[0];
-                    Interlocked.CompareExchange(ref EmptyArray, result, null);
-                }
-                return result;
-            }
+            if (Count == 0)
+                return EmptyArray.Value;
 
             else if (HasList)
                 return _Items.ToArray();

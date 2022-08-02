@@ -44,6 +44,7 @@ namespace Squared.Render.Resources {
         public Exception FailureReason { get; internal set; }
         public long StatusChangedWhen { get; private set; }
         public ResourceLoadStatus Status { get; private set; }
+        public bool AsyncOperationQueued { get; internal set; }
 
         internal ResourceLoadInfo (Type resourceType, string name, object data, long now, bool optional, bool async) {
             ResourceType = resourceType;
@@ -104,14 +105,18 @@ namespace Squared.Render.Resources {
             void IWorkItem.Execute () {
                 Future<T> instance = null;
                 try {
+                    LoadInfo.AsyncOperationQueued = false;
                     // Console.WriteLine($"CreateInstance('{Name}') on thread {Thread.CurrentThread.Name}");
                     LoadInfo.SetStatus(ResourceLoadStatus.Creating, Provider.Now);
                     instance = Provider.CreateInstance(LoadInfo.Name, Stream, LoadInfo.Data, PreloadedData, LoadInfo.Async);
                     if (instance.Completed)
                         OnCompleted(instance);
-                    else
+                    else {
+                        LoadInfo.AsyncOperationQueued = true;
                         instance.RegisterOnComplete(OnCompleted);
+                    }
                 } catch (Exception exc) {
+                    Provider.NotifyLoadFailed(LoadInfo, exc);
                     Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
                     if (!StreamIsDisposed) {
                         StreamIsDisposed = true;
@@ -125,8 +130,10 @@ namespace Squared.Render.Resources {
                 }
 
                 void OnCompleted (IFuture _) {
-                    LoadInfo.SetStatus(ResourceLoadStatus.Created, Provider.Now);
+                    LoadInfo.AsyncOperationQueued = false;
                     instance.GetResult(out T value, out Exception err);
+                    if (err == null)
+                        LoadInfo.SetStatus(ResourceLoadStatus.Created, Provider.Now);
                     try {
                         Future.SetResult(value, err);
                     } finally {
@@ -158,6 +165,7 @@ namespace Squared.Render.Resources {
             void IWorkItem.Execute () {
                 Stream stream = null;
                 try {
+                    LoadInfo.AsyncOperationQueued = false;
                     Exception exc = null;
                     LoadInfo.SetStatus(ResourceLoadStatus.OpeningStream, Provider.Now);
                     if (!Provider.TryGetStream(LoadInfo.Name, LoadInfo.Data, LoadInfo.Optional, out stream, out exc)) {
@@ -182,6 +190,7 @@ namespace Squared.Render.Resources {
                         Stream = stream,
                         PreloadedData = preloadedData,
                     };
+                    LoadInfo.AsyncOperationQueued = true;
                     Provider.CreateQueue.Enqueue(ref item);
                 } catch (Exception exc) {
                     if (stream != null)

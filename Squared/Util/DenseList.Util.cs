@@ -258,7 +258,8 @@ namespace Squared.Util {
         public delegate bool Predicate<TUserData> (in T item, in TUserData userData);
         public delegate bool Predicate (in T item);
 
-        private static T[] EmptyArray;
+        private static Lazy<T[]> EmptyArray = 
+            new Lazy<T[]>(() => new T[0], LazyThreadSafetyMode.PublicationOnly);
 
         internal static readonly Func<T, T> NullSelector = _NullSelector;
         private static T _NullSelector (T value) => value;

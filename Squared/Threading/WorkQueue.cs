@@ -665,5 +665,13 @@ namespace Squared.Threading {
 
             return false;
         }
+
+        public override string ToString () {
+            var result = $"WorkQueue<{typeof(T).Name}> {ItemsQueued} queued {ItemsProcessed} processed {ItemsInFlight} in-flight";
+#if INSTRUMENT_FAST_PATH
+            result += $"early out x{EarlyOutCount / (double)(EarlyOutCount + SlowOutCount)}";
+#endif
+            return result;
+        }
     }
 }

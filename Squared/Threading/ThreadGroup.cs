@@ -395,12 +395,26 @@ namespace Squared.Threading {
         ~ThreadGroup () {
             Dispose(true);
         }
+
+        public void LogQueueStatus (Action<string> logPrint) {
+            logPrint("Main thread queues:");
+            foreach (var kvp in MainThreadQueues)
+                logPrint($"{kvp.Key} {kvp.Value.ToString()}");
+            logPrint("Parallel queues:");
+            foreach (var kvp in Queues)
+                logPrint($"{kvp.Key} {kvp.Value.ToString()}");
+        }
     }
 
     public static class ThreadGroupExtensions {
-        private struct ActionWorkItem : IWorkItem {
-            public Action Action;
-            public SignalFuture Future;
+        private readonly struct ActionWorkItem : IWorkItem {
+            public readonly Action Action;
+            public readonly SignalFuture Future;
+
+            public ActionWorkItem (Action action, SignalFuture future) {
+                Action = action;
+                Future = future;
+            }
 
             public void Execute () {
                 try {
@@ -415,46 +429,59 @@ namespace Squared.Threading {
             }
         }
 
-        private struct FuncWorkItem<T> : IWorkItem {
-            public Func<T> Func;
-            public Future<T> Future;
+        private interface IFuncWorkItemDispatcher {
+            void Execute (Delegate func, IFuture future);
+        }
 
-            public void Execute () {
+        private sealed class FuncWorkItemDispatcher<T> : IFuncWorkItemDispatcher {
+            public static readonly FuncWorkItemDispatcher<T> Instance = new FuncWorkItemDispatcher<T>();
+
+            public void Execute (Delegate func, IFuture future) {
                 try {
-                    var result = Func();
-                    Future.SetResult(result, null);
+                    var _func = (Func<T>)func;
+                    var _future = (Future<T>)future;
+                    _future.SetResult(_func(), null);
                 } catch (Exception exc) {
-                    Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
+                    future.SetResult2(null, ExceptionDispatchInfo.Capture(exc));
                 }
             }
         }
 
+        private readonly struct FuncWorkItem : IWorkItem {
+            public readonly IFuncWorkItemDispatcher Dispatcher;
+            public readonly Delegate Func;
+            public readonly IFuture Future;
+
+            public FuncWorkItem (Delegate func, IFuture future, IFuncWorkItemDispatcher dispatcher) {
+                Func = func;
+                Future = future;
+                Dispatcher = dispatcher;
+            }
+
+            public void Execute () {
+                Dispatcher.Execute(Func, Future);
+            }
+        }
+
         public static void InvokeAndForget (this ThreadGroup group, Action action, bool forMainThread = false) {
-            var workItem = new ActionWorkItem {
-                Action = action
-            };
+            var workItem = new ActionWorkItem(action, null);
             var queue = group.GetQueueForType<ActionWorkItem>(forMainThread);
             queue.Enqueue(ref workItem);
         }
 
         public static SignalFuture Invoke (this ThreadGroup group, Action action, bool forMainThread = false) {
-            var workItem = new ActionWorkItem {
-                Action = action,
-                Future = new SignalFuture()
-            };
+            var workItem = new ActionWorkItem(action, new SignalFuture());
             var queue = group.GetQueueForType<ActionWorkItem>(forMainThread);
             queue.Enqueue(ref workItem);
             return workItem.Future;
         }
 
         public static Future<T> Invoke<T> (this ThreadGroup group, Func<T> func, bool forMainThread = false) {
-            var workItem = new FuncWorkItem<T> {
-                Func = func,
-                Future = new Future<T>()
-            };
-            var queue = group.GetQueueForType<FuncWorkItem<T>>(forMainThread);
+            var future = new Future<T>();
+            var workItem = new FuncWorkItem(func, future, FuncWorkItemDispatcher<T>.Instance);
+            var queue = group.GetQueueForType<FuncWorkItem>(forMainThread);
             queue.Enqueue(ref workItem);
-            return workItem.Future;
+            return future;
         }
     }
 }

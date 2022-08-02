@@ -36,23 +36,16 @@ namespace Squared.Render {
         public sealed class FramePrepareData {
             private BufferGenerator<CornerVertex>.SoftwareBuffer[] CornerBuffers =
                 new BufferGenerator<CornerVertex>.SoftwareBuffer[8];
-            private PolygonBuffer _PolygonBuffer;
+            private Lazy<PolygonBuffer> _PolygonBuffer = 
+                new Lazy<PolygonBuffer>(() => new PolygonBuffer(), LazyThreadSafetyMode.ExecutionAndPublication);
 
             public void Initialize () {
+                _PolygonBuffer.Value.Clear();
                 Array.Clear(CornerBuffers, 0, CornerBuffers.Length);
-                _PolygonBuffer?.Clear();
             }
 
             internal PolygonBuffer GetPolygonBuffer (IBatchContainer container) {
-                var result = Volatile.Read(ref _PolygonBuffer);
-                if (result == null) {
-                    result = new PolygonBuffer();
-                    var exchanged = Interlocked.CompareExchange(ref _PolygonBuffer, result, null);
-                    if (exchanged != null)
-                        // FIXME: Dispose result?
-                        ;
-                }
-                return result;
+                return _PolygonBuffer.Value;
             }
 
             public BufferGenerator<CornerVertex>.SoftwareBuffer GetCornerBuffer (IBatchContainer container, int repeatCount = 1) {
