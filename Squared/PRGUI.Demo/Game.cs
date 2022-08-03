@@ -1361,11 +1361,23 @@ namespace PRGUI.Demo {
                     Mouse.CurrentState = Microsoft.Xna.Framework.Input.Mouse.GetState();
 
                     if (Context.Engine.HitTest(
-                        new Vector2(Mouse.CurrentState.X, Mouse.CurrentState.Y), out var record, out _
+                        new Vector2(Mouse.CurrentState.X, Mouse.CurrentState.Y), out var record, out _, Keyboard.CurrentState.IsKeyDown(Keys.E)
                     ) && !record.Parent.IsInvalid)
                         HighlightRecord = record.Key;
                     else
                         HighlightRecord = null;
+
+                    if (HighlightRecord.HasValue) {
+                        if ((Mouse.PreviousState.LeftButton == ButtonState.Released) && (Mouse.CurrentState.LeftButton == ButtonState.Pressed)) {
+                            ref var item = ref Context.Engine[HighlightRecord.Value];
+                            item.Width.Maximum = item.Width.Maximum.HasValue ? (float?)null : 200;
+                            item.Height.Maximum = item.Height.Maximum.HasValue ? (float?)null : 200;
+                        } else if ((Mouse.PreviousState.RightButton == ButtonState.Released) && (Mouse.CurrentState.RightButton == ButtonState.Pressed)) {
+                            Console.WriteLine($"Deleting {HighlightRecord}");
+                            Context.Engine.Remove(HighlightRecord.Value);
+                            Context.Engine.Update();
+                        }
+                    }
                 } else {
                     Context.Update();
                     Context.UpdateInput(IsActive);

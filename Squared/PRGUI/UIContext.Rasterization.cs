@@ -392,6 +392,8 @@ namespace Squared.PRGUI {
                     BlendState = BlendState.AlphaBlend,
                     DepthStencilState = DepthStencilState.None
                 };
+                renderer.Clear(color: Color.Black);
+                renderer.Layer += 1;
                 RasterizeLayoutTree(ref renderer, font, ref Engine.Root(), focusChain);
             }
         }

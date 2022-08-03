@@ -203,6 +203,29 @@ namespace Squared.PRGUI.NewEngine {
 
         #region Child manipulation
 
+        public void Remove (ControlKey key) {
+            Assert(!key.IsInvalid);
+            AssertNotRoot(key);
+
+            var deadItem = this[key];
+            if (!deadItem.PreviousSibling.IsInvalid) {
+                ref var prev = ref this[deadItem.PreviousSibling];
+                prev.NextSibling = deadItem.NextSibling;
+            }
+            if (!deadItem.NextSibling.IsInvalid) {
+                ref var next = ref this[deadItem.NextSibling];
+                next.PreviousSibling = deadItem.PreviousSibling;
+            }
+
+            if (!deadItem.Parent.IsInvalid) {
+                ref var parent = ref this[deadItem.Parent];
+                if (parent.FirstChild == key)
+                    parent.FirstChild = deadItem.NextSibling;
+                if (parent.LastChild == key)
+                    parent.LastChild = deadItem.PreviousSibling;
+            }
+        }
+
         public void InsertBefore (ControlKey newSibling, ControlKey later) {
             AssertNotRoot(newSibling);
             Assert(!later.IsInvalid);
@@ -337,25 +360,29 @@ namespace Squared.PRGUI.NewEngine {
 #endif
         }
     
-        public bool HitTest (Vector2 position, out ControlRecord record, out ControlLayoutResult result) {
+        public bool HitTest (Vector2 position, out ControlRecord record, out ControlLayoutResult result, bool exhaustive) {
             record = default;
             result = default;
-            return HitTest(in Root(), position, ref record, ref result);
+            return HitTest(in Root(), position, ref record, ref result, exhaustive);
         }
 
-        private bool HitTest (in ControlRecord control, Vector2 position, ref ControlRecord record, ref ControlLayoutResult result) {
+        private bool HitTest (in ControlRecord control, Vector2 position, ref ControlRecord record, ref ControlLayoutResult result, bool exhaustive) {
             ref var testResult = ref UnsafeResult(control.Key);
-            if (!testResult.Rect.Contains(position))
-                return false;
+            var inside = testResult.Rect.Contains(position);
 
-            foreach (var ckey in Children(control.Key)) {
-                if (HitTest(in this[ckey], position, ref record, ref result))
-                    return true;
+            if (inside || exhaustive) {
+                foreach (var ckey in Children(control.Key)) {
+                    if (HitTest(in this[ckey], position, ref record, ref result, exhaustive))
+                        return true;
+                }
             }
 
-            record = control;
-            result = testResult;
-            return true;
+            if (inside) {
+                record = control;
+                result = testResult;
+                return true;
+            } else
+                return false;
         }
     }
 }
