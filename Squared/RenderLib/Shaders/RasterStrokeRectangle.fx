@@ -12,10 +12,10 @@ void computePosition(
 ) {
     // HACK: Slightly increase the radius and pad it to account for
     //  pixel overhang and antialiasing
-    float totalRadius = (Constants2.w * 0.55) + 1;
+    float totalRadius = (Constants2.w * 0.55) + 1 + max(0, ShadowSettings.w);
 
     // FIXME: Tighten box based on start and end offset
-    xy = lerp(a - totalRadius, b + totalRadius, cornerWeights.xy);
+    xy = lerp(a - totalRadius + min(0, ShadowSettings.xy), b + totalRadius + max(0, ShadowSettings.xy), cornerWeights.xy);
 }
 
 void RasterStrokeRectangleVertexShader (
@@ -33,9 +33,8 @@ void RasterStrokeRectangleVertexShader (
 ) {
     ab = ab_in;
     float4 position = float4(ab_in.x, ab_in.y, 0, 1);
-    float2 a = ab.xy, b = ab.zw;
-    if (b.y < a.y)
-        ab = float4(b.x, b.y, a.x, a.y);
+    float2 a = min(ab.xy, ab.zw), b = max(ab.xy, ab.zw);
+    ab = float4(a.x, a.y, b.x, b.y);
 
     computePosition(a, b, cornerWeights, position.xy);
 
@@ -76,20 +75,26 @@ void __VARIANT_FS_NAME (
         endY = min(centerY + (stepPx + maxSize), ab.w),
         firstIteration = floor((startY - ab.y) / stepPx),
         lastIteration = ceil((endY - ab.y) / stepPx);
+    int iterationCount = (int)(lastIteration - firstIteration);
+    float3 localRadiuses = 0;
 
-    for (float i = firstIteration; i <= lastIteration; i += 1.0) {
-        float y = ab.y + (stepPx * i);
-        if ((y < ab.y) || (y > ab.w))
-            continue;
+    SHADOW_LOOP_HEADER
+        float4 _seed = seed, localBiases = biases;
+        float y = ab.y;
+        while (iterationCount--) {
+            y += stepPx;
+            if ((y < ab.y) || (y > ab.w))
+                continue;
 
-        float4 _ab = float4(ab.x, y, ab.z, y);
-        float4 _seed = float4(seed.x + (i * seed.w * 1.276), seed.y + (i * seed.z * 0.912), seed.z, seed.w);
-        // FIXME
-        float shuffle = 0; // floor(i * 0.7);
-        rasterStrokeLineCommon(
-            shuffle, worldPosition, _ab, _seed, taper, biases, 0, 0, 0, GET_VPOS, colorA, colorB, result
-        );
-    }
+            float4 _ab = float4(ab.x, y, ab.z, y);
+            rasterStrokeLineCommon(
+                localRadiuses, worldPosition, _ab, _seed, taper, localBiases, 0, 0, 0, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
+            );
+            _seed.x += seed.w * 1.276;
+            _seed.y += seed.z * 0.912;
+        }
+    SHADOW_LOOP_FOOTER
+    SHADOW_MERGE
 
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
     //  for alpha gradients because the A we premultiply by does not match the A the GPU selected

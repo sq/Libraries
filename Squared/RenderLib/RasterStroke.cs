@@ -77,7 +77,9 @@ namespace Squared.Render.RasterStroke {
             FlowDynamics,
             BrushIndexDynamics,
             HardnessDynamics,
-            ColorDynamics;
+            ColorDynamics,
+            ShadowColor,
+            ShadowSettings;
 
         public StrokeShader (Material material) {
             Material = material;
@@ -94,6 +96,8 @@ namespace Squared.Render.RasterStroke {
             BrushIndexDynamics = p["BrushIndexDynamics"];
             HardnessDynamics = p["HardnessDynamics"];
             ColorDynamics = p["ColorDynamics"];
+            ShadowColor = p["ShadowColor"];
+            ShadowSettings = p["ShadowSettings"];
         }
     }
 
@@ -198,6 +202,24 @@ namespace Squared.Render.RasterStroke {
         private BrushDynamics _Scale, _BrushIndex, _Hardness, _Color, _Flow;
         private float _Spacing;
 
+        internal Vector4 _ShadowSettings;
+        public Vector2 ShadowOffset {
+            get => new Vector2(_ShadowSettings.X, _ShadowSettings.Y);
+            set {
+                _ShadowSettings.X = value.X;
+                _ShadowSettings.Y = value.Y;
+            }
+        }
+        public float ShadowHardness {
+            get => _ShadowSettings.Z + 1;
+            set => _ShadowSettings.Z = value - 1;
+        }
+        public float ShadowExpansion {
+            get => _ShadowSettings.W;
+            set => _ShadowSettings.W = value;
+        }
+        public pSRGBColor ShadowColor;
+
         public BrushDynamics AngleDegrees;
         public float SizePx;
 
@@ -283,7 +305,9 @@ namespace Squared.Render.RasterStroke {
                 (Flow == rhs.Flow) &&
                 (BrushIndex == rhs.BrushIndex) &&
                 (Hardness == rhs.Hardness) &&
-                (Color == rhs.Color);
+                (Color == rhs.Color) &&
+                (_ShadowSettings == rhs._ShadowSettings) &&
+                (ShadowColor == rhs.ShadowColor);
         }
     }
     
@@ -630,6 +654,9 @@ namespace Squared.Render.RasterStroke {
                 material.Constants2.SetValue(constants2);
                 material.BlendInLinearSpace.SetValue(BlendInLinearSpace);
                 material.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
+                // FIXME: BlendInLinearSpace
+                material.ShadowColor.SetValue(BlendInLinearSpace ? Brush.ShadowColor.ToPLinear() : Brush.ShadowColor.ToVector4());
+                material.ShadowSettings.SetValue(Brush.ShadowColor.IsTransparent ? Vector4.Zero : Brush._ShadowSettings);
 
                 // HACK
                 if (sb.Type == RasterStrokeType.Polygon) {

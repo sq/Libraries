@@ -8,17 +8,23 @@
 
 void computePosition(
     float2 a, float2 b,
-    float4 cornerWeights, out float2 xy
+    float4 cornerWeights, out float2 xy,
+    float4 taper
 ) {
     xy = 0;
 
     // HACK: Slightly increase the radius and pad it to account for
     //  pixel overhang and antialiasing
-    float totalRadius = (Constants2.w * 0.55) + 1;
+    float totalRadius = (Constants2.w * 0.55) + 1,
+        shadowRadius = max(abs(ShadowSettings.x), abs(ShadowSettings.y)) * 0.55;
+
+    float2 along = b - a;
+    a += along * taper.z;
+    b -= along * taper.w;
+    along = b - a;
 
     // Oriented bounding box around the line segment
-    float2 along = b - a,
-        alongNorm = normalize(along) * (totalRadius + 1),
+    float2 alongNorm = normalize(along) * (totalRadius + 1) + shadowRadius + max(ShadowSettings.w, 0),
         left = alongNorm.yx * float2(-1, 1),
         right = alongNorm.yx * float2(1, -1);
 
@@ -43,7 +49,7 @@ void RasterStrokeLineSegmentVertexShader (
     float4 position = float4(ab_in.x, ab_in.y, 0, 1);
     float2 a = ab.xy, b = ab.zw;
 
-    computePosition(a, b, cornerWeights, position.xy);
+    computePosition(a, b, cornerWeights, position.xy, taper);
 
     float2 adjustedPosition = position.xy;
     worldPosition = adjustedPosition.xy;
@@ -73,9 +79,14 @@ void __VARIANT_FS_NAME (
     RASTERSTROKE_FS_ARGS
 ) {
     result = 0;
-    rasterStrokeLineCommon(
-        0, worldPosition, ab, seed, taper, biases, 0, 0, 0, GET_VPOS, colorA, colorB, result
-    );
+    float3 localRadiuses = 0;
+    float4 localBiases = biases;
+    SHADOW_LOOP_HEADER
+        rasterStrokeLineCommon(
+            localRadiuses, worldPosition, ab, seed, taper, localBiases, 0, 0, 0, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
+        );
+    SHADOW_LOOP_FOOTER
+    SHADOW_MERGE
 
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
     //  for alpha gradients because the A we premultiply by does not match the A the GPU selected

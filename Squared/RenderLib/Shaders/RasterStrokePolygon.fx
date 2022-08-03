@@ -36,6 +36,7 @@ void computeTLBR_Polygon(
     br = -99999;
     estimatedLengthPx = 0;
 
+    // FIXME: shadow expansion
     float baseRadius = (Constants2.w * 0.66) + 1;
     float2 prev = 0;
     float maxLocalRadius = 0;
@@ -140,7 +141,8 @@ void __VARIANT_FS_NAME (
         while (count-- > 0) {
             float4 xytr = getPolyVertex(offset);
             int nodeType = (int)xytr.z;
-            float2 pos = xytr.xy, localRadiuses = float2(prev.w, xytr.w);
+            float2 pos = xytr.xy;
+            float3 localRadiuses = float3(prev.w, xytr.w, 0);
             float steps = 0;
 
             offset++;

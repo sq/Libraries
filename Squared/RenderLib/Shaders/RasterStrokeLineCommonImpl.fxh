@@ -1,5 +1,5 @@
 float IMPL_NAME (
-    in float2 localRadiuses, in float2 worldPosition, IMPL_INPUTS, 
+    in float3 localRadiuses, in float2 worldPosition, IMPL_INPUTS, 
     in float4 seed, in float4 taperRanges, in float4 biases,
     in float distanceTraveled, in float totalLength, in float stepOffset,
     in float2 vpos, in float4 colorA, in float4 colorB,
@@ -17,9 +17,12 @@ float IMPL_NAME (
     // We search outwards from the center in both directions to find splats that may overlap us
     float maxSize = Constants2.w,
         // FIXME: A spacing of 1.0 still produces overlap
-        stepPx = max(maxSize * Constants2.z, 0.05), maxRadius = maxSize * 0.5,
+        stepPx = max(maxSize * Constants2.z, 0.05),
         l = max(CALCULATE_LENGTH, 0.01), centerT, splatCount = ceil(l / stepPx),
         globalSplatCount = ceil(totalLength / stepPx);
+
+    // Expand brush maximum size for shadow but only after computing step
+    maxSize += localRadiuses.z;
 
     // new Vector4(TaperIn.Value, TaperOut.Value, StartOffset.Value, EndOffset.Value);
     taperRanges.zw *= totalLength;
@@ -85,8 +88,9 @@ float IMPL_NAME (
         float2 center = CALCULATE_CENTER(t), texCoordScale = atlasScale / sizePx;
         float distance = length(center - worldPosition);
 
+        float2x2 rotationMatrix = make2DRotation(-splatAngle);
         float2 posSplatRotated = (worldPosition - center),
-            posSplatDerotated = rotate2D(posSplatRotated, -splatAngle),
+            posSplatDerotated = mul(posSplatRotated, rotationMatrix),
             posSplatDecentered = (posSplatDerotated + radius);
 
         float g = length(posSplatDerotated), discardDistance = (hardness < 1) ? radius + 1 : radius;
