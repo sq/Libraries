@@ -842,21 +842,26 @@ namespace Squared.Render {
         private void LoadRasterStrokeVariant (
             string name, RasterStroke.RasterStrokeType type
         ) {
-            var untexturedName = BuiltInShaderManifest.FindVariant(
-                name,
-                "Untextured", "1"
-            );
-            var texturedName = BuiltInShaderManifest.FindVariant(
-                name,
-                "Textured", "1"
-            );
+            string untexturedName = BuiltInShaderManifest.FindVariant(name, "Untextured", "1"),
+                texturedName = BuiltInShaderManifest.FindVariant(name, "Textured", "1"),
+                untexturedShadowedName = BuiltInShaderManifest.FindVariant(name, "UntexturedShadowed", "1"),
+                texturedShadowedName = BuiltInShaderManifest.FindVariant(name, "TexturedShadowed", "1");
 
-            var untextured = BuiltInShaders.Load(untexturedName);
-            var textured = BuiltInShaders.Load(texturedName);
-            var material1 = NewMaterial(untextured, untexturedName);
+            Effect untextured = BuiltInShaders.Load(untexturedName),
+                textured = BuiltInShaders.Load(texturedName),
+                untexturedShadowed = untexturedShadowedName == null ? null : BuiltInShaders.Load(untexturedShadowedName, true, true),
+                texturedShadowed = texturedShadowedName == null ? null : BuiltInShaders.Load(texturedShadowedName, true, true);
+            Material material1 = NewMaterial(untextured, untexturedName),
+                material2 = NewMaterial(textured, texturedName),
+                material3 = untexturedShadowed == null ? null : NewMaterial(untexturedShadowed, untexturedShadowedName),
+                material4 = texturedShadowed == null ? null : NewMaterial(texturedShadowed, texturedShadowedName);
+
             material1.Name = $"{type}_Untextured";
-            var material2 = NewMaterial(textured, texturedName);
             material2.Name = $"{type}_Textured";
+            if (material3 != null)
+                material3.Name = $"{type}_UntexturedShadowed";
+            if (material4 != null)
+                material4.Name = $"{type}_TexturedShadowed";
 
             var shapeHint = new Material.PipelineHint {
                 HasIndices = true,
@@ -871,14 +876,24 @@ namespace Squared.Render {
             ) {
                 material1.HintPipeline = shapeHint;
                 material2.HintPipeline = shapeHint;
+                if (material3 != null)
+                    material3.HintPipeline = shapeHint;
+                if (material4 != null)
+                    material4.HintPipeline = shapeHint;
             }
 
             RasterStrokeMaterials[(int)type] = new[] {
                 new RasterStroke.StrokeShader(material1),
-                new RasterStroke.StrokeShader(material2)
+                new RasterStroke.StrokeShader(material2),
+                untexturedShadowed == null ? null : new RasterStroke.StrokeShader(material3),
+                texturedShadowed == null ? null : new RasterStroke.StrokeShader(material4)
             };
             Add(material1);
             Add(material2);
+            if (material4 != null)
+                Add(material3);
+            if (material4 != null)
+                Add(material4);
         }
 
         private void LoadRasterStrokeMaterials () {

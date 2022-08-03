@@ -3,7 +3,7 @@
 
 #pragma fxcflagset(Untextured,Textured)
 
-uniform bool ShadowPerSegment;
+// uniform bool ShadowPerSegment;
 
 // FIXME: false is preferable here
 #define COLOR_PER_SPLAT true
@@ -134,14 +134,21 @@ void __VARIANT_FS_NAME (
 ) {
     result = 0;
 
-    int offset = (int)ab.x, count, overdraw = 0;
+    int offset, count, overdraw = 0;
     float estimatedLengthPx = ab.z, 
         stepPx = max(Constants2.w * Constants2.z, 0.05),
         // HACK: We want to search in a larger area for beziers since the math
         //  we use to find the closest bezier is inaccurate.
         searchRadius = Constants2.w + 1, searchRadius2 = searchRadius * searchRadius;
 
+    float3 localRadiuses = 0;
+    float4 localBiases = biases;
+
+    // SHADOW_LOOP_HEADER
+#define SHADOW_OUTPUT result
+
     float distanceTraveled = 0, totalSteps = 0;
+    offset = (int)ab.x;
     count = (int)ab.y;
     float4 prev = 0;
     while (count > 0) {
@@ -149,7 +156,7 @@ void __VARIANT_FS_NAME (
             float4 xytr = getPolyVertex(offset);
             int nodeType = (int)xytr.z;
             float2 pos = xytr.xy;
-            float3 localRadiuses = float3(prev.w, xytr.w, 0);
+            float3 localRadiuses2 = float3(prev.w, xytr.w, localRadiuses.z);
             float steps = 0;
 
             offset++;
@@ -183,23 +190,34 @@ void __VARIANT_FS_NAME (
                     overdraw++;
 #endif
                     steps = rasterStrokeBezierCommon(
-                        localRadiuses, worldPosition, float4(prev.xy, pos), controlPoints.xy, bezierLength, seed, taper, biases,
-                        distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
+                        localRadiuses2, worldPosition, float4(prev.xy, pos), controlPoints.xy, bezierLength, seed, taper, localBiases,
+                        distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
                     );
                 }
                 distanceTraveled += bezierLength;
                 totalSteps += steps;
             } else if (nodeType == NODE_LINE) {
                 steps = rasterStrokeLineCommon(
-                    localRadiuses, worldPosition, float4(prev.xy, pos), seed, taper, biases,
-                    distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, result
+                    localRadiuses2, worldPosition, float4(prev.xy, pos), seed, taper, localBiases,
+                    distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
                 );
                 distanceTraveled += length(pos - prev.xy);
                 totalSteps += steps;
             }
+
+            /*
+            if ((nodeType != NODE_START) && ShadowPerSegment)
+                SHADOW_MERGE
+            */
+
             prev = xytr;
         }
     }
+    /*
+    SHADOW_LOOP_FOOTER
+    if (!ShadowPerSegment)
+        SHADOW_MERGE
+    */
 
     // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
     //  for alpha gradients because the A we premultiply by does not match the A the GPU selected

@@ -1,5 +1,17 @@
 #pragma warning ( disable: 3571 )
 
+#if UntexturedShadowed
+#define Shadowed 1
+#define Untextured 1
+#define Textured 0
+#endif
+
+#if TexturedShadowed
+#define Shadowed 1
+#define Untextured 0
+#define Textured 1
+#endif
+
 #define PI 3.14159265358979323846
 // If we use 0.0 - 1.0 range values, denormals cause artifacts at small sizes :(
 #define PIXEL_COVERAGE_BIAS 500.0
@@ -36,10 +48,19 @@ uniform float HalfPixelOffset;
 // Count x, count y, base size for lod calculation, unused
 uniform float4 NozzleParams;
 
+#if Shadowed
+
 // offset x, offset y, unused, unused
 uniform float4 ShadowSettings, 
     // pSRGB or linear depending on blend parameter
     ShadowColor;
+
+#else
+
+#define ShadowSettings float4(0, 0, 0, 0)
+#define ShadowColor float4(0, 0, 0, 0)
+
+#endif
 
 // size, angle, flow, brushIndex
 uniform float4 Constants1;
@@ -166,26 +187,34 @@ inline float2 rotate2D(
 #define IMPL_INPUTS in float4 ab
 #define IMPL_NAME rasterStrokeLineCommon
 
-#define SHADOW_LOOP_HEADER \
-    float4 temp1 = 0, temp2 = 0; \
-    int shadowIterations = ShadowColor.a > 0 ? 2 : 1; \
-    for (int si = 0; si < shadowIterations; si++) { \
-        float4 shadowTemp = (si == 0) ? temp1 : temp2;
+#if Shadowed
+    #define SHADOW_LOOP_HEADER \
+        float4 temp1 = 0, temp2 = 0; \
+        int shadowIterations = ShadowColor.a > 0 ? 2 : 1; \
+        for (int si = 0; si < shadowIterations; si++) { \
+            float4 shadowTemp = (si == 0) ? temp1 : temp2;
 
-#define SHADOW_OUTPUT shadowTemp
+    #define SHADOW_OUTPUT shadowTemp
 
-#define SHADOW_LOOP_FOOTER \
-        if (si == 0) \
-            temp1 = shadowTemp; \
-        else \
-            temp2 = shadowTemp; \
-        worldPosition -= ShadowSettings.xy; \
-        localBiases.z += (ShadowSettings.z - Constants2.x + 1); \
-        localRadiuses.z += ShadowSettings.w; \
-    } \
+    #define SHADOW_LOOP_FOOTER \
+            if (si == 0) \
+                temp1 = shadowTemp; \
+            else \
+                temp2 = shadowTemp; \
+            worldPosition -= ShadowSettings.xy; \
+            localBiases.z += (ShadowSettings.z - Constants2.x + 1); \
+            localRadiuses.z += ShadowSettings.w; \
+        } \
 
-#define SHADOW_MERGE \
-    result = over(over(temp1, 1, ShadowColor, temp2.a + 0.1), 1, result, 1); \
-    temp1 = temp2 = 0;
+    #define SHADOW_MERGE { \
+        result = over(over(temp1, 1, ShadowColor, temp2.a), 1, result, 1); \
+        temp1 = temp2 = 0; \
+        }
+#else
+    #define SHADOW_LOOP_HEADER { ; }
+    #define SHADOW_LOOP_FOOTER { ; }
+    #define SHADOW_OUTPUT result
+    #define SHADOW_MERGE { ; }
+#endif
 
 #include "RasterStrokeLineCommonImpl.fxh"

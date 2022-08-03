@@ -57,6 +57,7 @@
     <Compile Include="Convenience.cs" />
     <Compile Include="DefaultMaterialSet.cs" />
     <Compile Include="DynamicAtlas.cs" />
+    <Compile Include="EffectProvider.cs" />
     <Compile Include="Mips.cs" />
     <Compile Include="PolygonBuffer.cs" />
     <Compile Include="RasterStroke.cs" />

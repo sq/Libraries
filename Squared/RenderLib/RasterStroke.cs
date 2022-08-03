@@ -64,7 +64,7 @@ namespace Squared.Render.RasterStroke {
         Polygon = 2
     }
 
-    internal struct StrokeShader {
+    internal class StrokeShader {
         public Material Material;
         public EffectParameter BlendInLinearSpace,
             OutputInLinearSpace,
@@ -79,8 +79,7 @@ namespace Squared.Render.RasterStroke {
             HardnessDynamics,
             ColorDynamics,
             ShadowColor,
-            ShadowSettings,
-            ShadowPerSegment;
+            ShadowSettings;
 
         public StrokeShader (Material material) {
             Material = material;
@@ -99,7 +98,6 @@ namespace Squared.Render.RasterStroke {
             ColorDynamics = p["ColorDynamics"];
             ShadowColor = p["ShadowColor"];
             ShadowSettings = p["ShadowSettings"];
-            ShadowPerSegment = p["ShadowPerSegment"];
         }
     }
 
@@ -221,7 +219,6 @@ namespace Squared.Render.RasterStroke {
             set => _ShadowSettings.W = value;
         }
         public pSRGBColor ShadowColor;
-        public bool ShadowPerSegment;
 
         public BrushDynamics AngleDegrees;
         public float SizePx;
@@ -428,6 +425,7 @@ namespace Squared.Render.RasterStroke {
             public RasterStrokeType Type;
         }
 
+        private static bool HasGeneratedShadowWarning;
         private DenseList<SubBatch> _SubBatches;
 
         private BufferGenerator<RasterStrokeVertex> _BufferGenerator = null;
@@ -644,7 +642,22 @@ namespace Squared.Render.RasterStroke {
 
             for (int i = 0; i < _SubBatches.Count; i++) {
                 ref var sb = ref _SubBatches.Item(i);
-                var material = Materials.RasterStrokeMaterials[(int)sb.Type][atlas != null ? 1 : 0];
+                var type = (int)sb.Type;
+                var idx = (atlas != null) ? 1 : 0;
+                if (!Brush.ShadowColor.IsTransparent)
+                    idx += 2;
+
+                var material = Materials.RasterStrokeMaterials[type][idx];
+                if (material == null) {
+                    idx = idx = (atlas != null) ? 1 : 0;
+                    material = Materials.RasterStrokeMaterials[type][idx];
+                    if (material == null)
+                        throw new Exception($"Failed to locate shader for stroke of type {sb.Type}");
+                    else if (!HasGeneratedShadowWarning) {
+                        HasGeneratedShadowWarning = true;
+                        System.Diagnostics.Debug.WriteLine($"WARNING: No shadowed shader is available for stroke of type {sb.Type}");
+                    }
+                }
                 material.UsesNoise.SetValue(hasNoise);
                 material.NozzleParams.SetValue(nozzleParams);
                 material.SizeDynamics.SetValue(Brush.Scale.ToVector4());
@@ -658,9 +671,8 @@ namespace Squared.Render.RasterStroke {
                 material.BlendInLinearSpace.SetValue(BlendInLinearSpace);
                 material.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
                 // FIXME: BlendInLinearSpace
-                material.ShadowColor.SetValue(BlendInLinearSpace ? Brush.ShadowColor.ToPLinear() : Brush.ShadowColor.ToVector4());
-                material.ShadowSettings.SetValue(Brush.ShadowColor.IsTransparent ? Vector4.Zero : Brush._ShadowSettings);
-                material.ShadowPerSegment?.SetValue(Brush.ShadowPerSegment);
+                material.ShadowColor?.SetValue(BlendInLinearSpace ? Brush.ShadowColor.ToPLinear() : Brush.ShadowColor.ToVector4());
+                material.ShadowSettings?.SetValue(Brush.ShadowColor.IsTransparent ? Vector4.Zero : Brush._ShadowSettings);
 
                 // HACK
                 if (sb.Type == RasterStrokeType.Polygon) {
