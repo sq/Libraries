@@ -79,7 +79,8 @@ namespace Squared.Render.RasterStroke {
             HardnessDynamics,
             ColorDynamics,
             ShadowColor,
-            ShadowSettings;
+            ShadowSettings,
+            ShadowPerSegment;
 
         public StrokeShader (Material material) {
             Material = material;
@@ -98,6 +99,7 @@ namespace Squared.Render.RasterStroke {
             ColorDynamics = p["ColorDynamics"];
             ShadowColor = p["ShadowColor"];
             ShadowSettings = p["ShadowSettings"];
+            ShadowPerSegment = p["ShadowPerSegment"];
         }
     }
 
@@ -219,6 +221,7 @@ namespace Squared.Render.RasterStroke {
             set => _ShadowSettings.W = value;
         }
         public pSRGBColor ShadowColor;
+        public bool ShadowPerSegment;
 
         public BrushDynamics AngleDegrees;
         public float SizePx;
@@ -657,6 +660,7 @@ namespace Squared.Render.RasterStroke {
                 // FIXME: BlendInLinearSpace
                 material.ShadowColor.SetValue(BlendInLinearSpace ? Brush.ShadowColor.ToPLinear() : Brush.ShadowColor.ToVector4());
                 material.ShadowSettings.SetValue(Brush.ShadowColor.IsTransparent ? Vector4.Zero : Brush._ShadowSettings);
+                material.ShadowPerSegment?.SetValue(Brush.ShadowPerSegment);
 
                 // HACK
                 if (sb.Type == RasterStrokeType.Polygon) {

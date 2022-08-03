@@ -3,6 +3,8 @@
 
 #pragma fxcflagset(Untextured,Textured)
 
+uniform bool ShadowPerSegment;
+
 // FIXME: false is preferable here
 #define COLOR_PER_SPLAT true
 // #define VISUALIZE_TEXCOORDS
@@ -78,6 +80,9 @@ void computeTLBR_Polygon(
 
     tl -= (baseRadius + maxLocalRadius + 2);
     br += (baseRadius + maxLocalRadius + 2);
+
+    tl += min(0, ShadowSettings.xy) - max(0, ShadowSettings.w);
+    br += max(0, ShadowSettings.xy) + max(0, ShadowSettings.w);
 }
 
 void RasterStrokePolygonVertexShader(
@@ -129,14 +134,16 @@ void __VARIANT_FS_NAME (
 ) {
     result = 0;
 
-    int offset = (int)ab.x, count = (int)ab.y, overdraw = 0;
-    float estimatedLengthPx = ab.z, distanceTraveled = 0, totalSteps = 0,
+    int offset = (int)ab.x, count, overdraw = 0;
+    float estimatedLengthPx = ab.z, 
         stepPx = max(Constants2.w * Constants2.z, 0.05),
         // HACK: We want to search in a larger area for beziers since the math
         //  we use to find the closest bezier is inaccurate.
         searchRadius = Constants2.w + 1, searchRadius2 = searchRadius * searchRadius;
-    float4 prev = 0;
 
+    float distanceTraveled = 0, totalSteps = 0;
+    count = (int)ab.y;
+    float4 prev = 0;
     while (count > 0) {
         while (count-- > 0) {
             float4 xytr = getPolyVertex(offset);

@@ -24,7 +24,7 @@ void computePosition(
     along = b - a;
 
     // Oriented bounding box around the line segment
-    float2 alongNorm = normalize(along) * (totalRadius + 1) + shadowRadius + max(ShadowSettings.w, 0),
+    float2 alongNorm = normalize(along) * (totalRadius + 1) + shadowRadius + max(ShadowSettings.w * 0.55, 0),
         left = alongNorm.yx * float2(-1, 1),
         right = alongNorm.yx * float2(1, -1);
 

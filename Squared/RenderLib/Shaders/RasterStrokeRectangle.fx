@@ -12,7 +12,7 @@ void computePosition(
 ) {
     // HACK: Slightly increase the radius and pad it to account for
     //  pixel overhang and antialiasing
-    float totalRadius = (Constants2.w * 0.55) + 1 + max(0, ShadowSettings.w);
+    float totalRadius = (Constants2.w * 0.55) + 1 + max(0, ShadowSettings.w * 0.55);
 
     // FIXME: Tighten box based on start and end offset
     xy = lerp(a - totalRadius + min(0, ShadowSettings.xy), b + totalRadius + max(0, ShadowSettings.xy), cornerWeights.xy);
@@ -77,10 +77,11 @@ void __VARIANT_FS_NAME (
         lastIteration = ceil((endY - ab.y) / stepPx);
     int iterationCount = (int)(lastIteration - firstIteration);
     float3 localRadiuses = 0;
+    float4 localBiases = biases;
 
     SHADOW_LOOP_HEADER
-        float4 _seed = seed, localBiases = biases;
-        float y = ab.y;
+        float4 _seed = seed;
+        float y = ab.y + (firstIteration * stepPx);
         while (iterationCount--) {
             y += stepPx;
             if ((y < ab.y) || (y > ab.w))
