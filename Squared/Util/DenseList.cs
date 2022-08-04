@@ -1,4 +1,4 @@
-﻿#define NOSPAN
+﻿// #define NOSPAN
 
 using System;
 using System.Collections;
@@ -18,7 +18,8 @@ namespace Squared.Util {
         void Release (ref UnorderedList<T> items);
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    // Pack=1 is absolutely necessary for the Unsafe version to work
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
         // NOTE: It is important for the items to be at the front of the list,
         //  so that if it is boxed and pinned the pin pointer is aimed directly
@@ -26,6 +27,15 @@ namespace Squared.Util {
         internal T Item1, Item2, Item3, Item4;
         internal int _Count;
         internal UnorderedList<T> _Items;
+
+#if !NOSPAN
+        public static readonly int ElementByteOffset;
+
+        static unsafe DenseList () {
+            var temp = new DenseList<T>();
+            ElementByteOffset = (int)((byte*)Unsafe.AsPointer(ref temp.Item2) - (byte*)Unsafe.AsPointer(ref temp.Item1));
+        }
+#endif
 
         private object _ListPoolOrAllocator;
         public object ListPoolOrAllocator {
@@ -50,7 +60,7 @@ namespace Squared.Util {
             // FIXME: This is a bit slower than the switch version for some reason?
             if ((index < 0) || (index >= _Count))
                 EnumerableExtensions.BoundsCheckFailed();
-            result = Unsafe.Add(ref Item1, index);
+            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementByteOffset));
 #else
             switch (index) {
                 case 0:
@@ -75,7 +85,7 @@ namespace Squared.Util {
             // FIXME: This is a bit slower than the switch version for some reason?
             if ((index < 0) || (index >= _Count))
                 EnumerableExtensions.BoundsCheckFailed();
-            Unsafe.Add(ref Item1, index) = value;
+            Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementByteOffset)) = value;
 #else
             switch (index) {
                 case 0:
@@ -327,7 +337,7 @@ namespace Squared.Util {
                 EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-            result = Unsafe.Add(ref Item1, index);
+            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementByteOffset));
 #else
             switch (index) {
                 default:
@@ -354,7 +364,7 @@ namespace Squared.Util {
             if (items != null)
                 return items.DangerousTryGetItem(index, out result);
 
-            if (index >= _Count) {
+            if ((index < 0) || (index >= _Count)) {
                 result = default(T);
                 return false;
             }
@@ -449,7 +459,7 @@ namespace Squared.Util {
                     EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-                return Unsafe.Add(ref Item1, index);
+                return Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementByteOffset));
 #else
                 switch (index) {
                     default:
@@ -488,7 +498,7 @@ namespace Squared.Util {
                 EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-            Unsafe.Add(ref Item1, index) = value;
+            Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementByteOffset)) = value;
 #else
             switch (index) {
                 default:

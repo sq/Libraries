@@ -1,4 +1,4 @@
-﻿#define NOSPAN
+﻿// #define NOSPAN
 
 using System;
 using System.Collections;
@@ -177,7 +177,7 @@ namespace Squared.Util {
 
             if ((index < 0) || (index >= list._Count))
                 BoundsCheckFailed();
-            return ref Unsafe.Add(ref Unsafe.AsRef(in list.Item1), index);
+            return ref Unsafe.AddByteOffset(ref Unsafe.AsRef(in list.Item1), (IntPtr)(index * DenseList<T>.ElementByteOffset));
         }
 
         [TargetedPatchingOptOut("")]
@@ -189,7 +189,7 @@ namespace Squared.Util {
 
             if ((index < 0) || (index >= list._Count))
                 BoundsCheckFailed();
-            return ref Unsafe.Add(ref list.Item1, index);
+            return ref Unsafe.AddByteOffset(ref list.Item1, (IntPtr)(index * DenseList<T>.ElementByteOffset));
         }
 #else
         [TargetedPatchingOptOut("")]
