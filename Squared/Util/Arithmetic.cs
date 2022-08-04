@@ -323,6 +323,33 @@ namespace Squared.Util {
             return result;
         }
 
+        public static int Clamp (int value, int min, int max) {
+            if (value < min)
+                return min;
+            else if (value > max)
+                return max;
+            else
+                return value;
+        }
+
+        public static float Clamp (float value, float min, float max) {
+            if (value < min)
+                return min;
+            else if (value > max)
+                return max;
+            else
+                return value;
+        }
+
+        public static double Clamp (double value, double min, double max) {
+            if (value < min)
+                return min;
+            else if (value > max)
+                return max;
+            else
+                return value;
+        }
+
         /// <summary>
         /// Clamps a value to the range (min, max)
         /// </summary>
@@ -450,22 +477,47 @@ namespace Squared.Util {
         }
 
         /// <summary>
+        /// Wraps a value into the range (min, max].
+        /// Will never return max.
+        /// </summary>
+        public static double WrapExclusive (double value, double min, double max) {
+            double d = max - min;
+
+            if (max <= min)
+                return min;
+
+            if (value < min) {
+                return min + ((d - Math.Abs(min - value)) % d);
+            } else if (value >= max) {
+                return min + (Math.Abs(value - min) % d);
+            } else {
+                return value;
+            }
+        }
+
+        public static float WrapInclusive (float value, float min, float max) =>
+            (float)WrapInclusive((double)value, (double)min, (double)max);
+
+        /// <summary>
         /// Wraps a value into the range (min, max).
         /// After the first wrap, will never return max, i.e:
         /// WrapInclusive(1, 0, 1) == 1, WrapInclusive(2, 0, 1) == 0
         /// </summary>
-        public static float WrapInclusive (float value, float min, float max) {
+        public static double WrapInclusive (double value, double min, double max) {
             if (max <= min)
                 return min;
 
             bool isBefore = value < min;
-            double relativeValue = isBefore ? min - value : value - min;
-            double windowSize = max - min;
-            double repeatCount = Math.Abs(Math.Truncate(relativeValue / windowSize));
-            double repeatBase = repeatCount * windowSize, previousRepeatBase = (repeatCount - 1) * windowSize;
-            double relativeToRepeatBase = Math.Abs(relativeValue) - repeatBase;
-            double finalWindowedValue;
-            double windowStart = double.Epsilon, windowEnd = windowSize - double.Epsilon;
+            double relativeValue = isBefore ? min - value : value - min,
+                windowSize = max - min,
+                repeatCount = Math.Abs(Math.Truncate(relativeValue / windowSize)),
+                repeatBase = repeatCount * windowSize, 
+                previousRepeatBase = (repeatCount - 1) * windowSize,
+                relativeToRepeatBase = Math.Abs(relativeValue) - repeatBase,
+                finalWindowedValue,
+                windowStart = double.Epsilon, 
+                windowEnd = windowSize - double.Epsilon;
+
             if (relativeToRepeatBase >= windowStart)
                 finalWindowedValue = relativeToRepeatBase;
             else if (repeatCount <= 0)
@@ -475,9 +527,9 @@ namespace Squared.Util {
 
             if (isBefore) {
                 var reversed = finalWindowedValue;
-                return (float)(min - reversed);
+                return (min - reversed);
             } else
-                return (float)(min + finalWindowedValue);
+                return (min + finalWindowedValue);
         }
 
         public static float Pulse (float value) {
@@ -523,6 +575,56 @@ namespace Squared.Util {
                     valueCentered = (0.5f - (valueCentered - 0.5f)) * -2f;
                 } else {
                     valueCentered = valueCentered * -2f;
+                }
+            }
+
+            var valueExp = (valueCentered * valueCentered) * Math.Sign(valueCentered) * max;
+            return valueExp;
+        }
+
+        public static double Pulse (double value) {
+            value = Math.Abs(value % 1.0f);
+
+            if (value > 0.5f)
+                return (value - 0.5f) / 0.5f;
+            else
+                return 1f - (value / 0.5f);
+        }
+
+        public static double Pulse (double value, double min, double max) {
+            double a = Pulse(value);
+            return Lerp(min, max, a);
+        }
+
+        public static double PulseExp (double value, double min, double max) {
+            double a = Pulse(value);
+            return Lerp(min, max, a * a);
+        }
+
+        public static double PulseSine (double value, double min, double max) {
+            double a = Pulse(value);
+            const double multiplier = Math.PI / 2;
+            return Lerp(min, max, Math.Sin(a * multiplier));
+        }
+
+        /// <summary>
+        /// Input range: (0, 2)
+        /// Output range: (-max, max)
+        /// </summary>
+        public static double PulseCyclicExp (double value, double max) {
+            var valueCentered = WrapInclusive(value, 0, 2);
+            if (valueCentered <= 1) {
+                if (valueCentered >= 0.5) {
+                    valueCentered = (0.5 - (valueCentered - 0.5)) * 2;
+                } else {
+                    valueCentered = valueCentered * 2;
+                }
+            } else {
+                valueCentered -= 1;
+                if (valueCentered >= 0.5) {
+                    valueCentered = (0.5 - (valueCentered - 0.5)) * -2;
+                } else {
+                    valueCentered = valueCentered * -2;
                 }
             }
 

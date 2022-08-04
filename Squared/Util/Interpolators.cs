@@ -171,7 +171,9 @@ namespace Squared.Util {
         }
 
         public static T Null (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
-            return data(dataOffset);
+            return (positionInWindow >= 1)
+                ? data(dataOffset + 1)
+                : data(dataOffset);
         }
 
         public static T Linear (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {

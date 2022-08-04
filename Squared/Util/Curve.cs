@@ -19,6 +19,7 @@ namespace Squared.Util.Containers {
         bool CreateNewPointAtPosition (float position, float epsilon);
         bool TryGetPositionAtIndex (int index, out float result);
         bool GetValueAtPosition (float position, out object result);
+        object GetValueAtIndex (int index);
         bool RemoveAtIndex (int index);
         bool RemoveAtPosition (float position, float epsilon);
         void SetValueAtPosition (float position, object value);
@@ -63,10 +64,10 @@ namespace Squared.Util.Containers {
 
             public TValue this[float position] {
                 get {
-                    if (position <= Start)
-                        return Curve.GetValueAtIndex(FirstIndex);
-                    else if (position >= End)
-                        return Curve.GetValueAtIndex(LastIndex);
+                    if (position < Start)
+                        position = Start;
+                    else if (position > End)
+                        position = End;
 
                     Curve.GetValueAtPosition(position, FirstIndex, LastIndex, out var result);
                     return result;
@@ -321,6 +322,8 @@ namespace Squared.Util.Containers {
             ref var item = ref _Items.DangerousItem(index);
             return ref item.Data;
         }
+
+        object ICurve.GetValueAtIndex (int index) => GetValueAtIndex(index);
 
         public ref readonly TValue GetValueAtIndex (int index) {
             var max = _Items.Count - 1;
@@ -592,7 +595,6 @@ namespace Squared.Util.Containers {
             }
 
             int index = GetLowerIndexForPosition(position, firstIndex, lastIndex);
-
             ref var lowerItem = ref _Items.DangerousItem(index);
             ref var upperItem = ref _Items.DangerousItem((index == lastIndex) ? lastIndex : index + 1);
 
@@ -608,7 +610,14 @@ namespace Squared.Util.Containers {
                 var interpolator = lowerItem.Data.Interpolator ?? DefaultInterpolator;
                 result = interpolator(_InterpolatorSource, index, offset);
             } else {
-                result = lowerItem.Value;
+                if ((index == lastIndex) && (firstIndex != lastIndex) && (index > 0)) {
+                    var interpolator = lowerItem.Data.Interpolator ?? DefaultInterpolator;
+                    // HACK: Try to avoid harsh 'snapping' when arriving at the end if the interpolator has a
+                    //  weird behavior where t=1 does not produce the end value. (Interpolators shouldn't do
+                    //  this, but they can - pSRGBColor.LerpOkLCh for example)
+                    result = interpolator(_InterpolatorSource, index - 1, 1f);
+                } else 
+                    result = lowerItem.Value;
             }
 
             return true;
