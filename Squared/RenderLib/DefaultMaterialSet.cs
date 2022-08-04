@@ -252,6 +252,10 @@ namespace Squared.Render {
         /// </summary>
         public static bool PreloadAllRasterStrokeShaders = false;
         /// <summary>
+        /// Enables preloading for common raster stroke shaders.
+        /// </summary>
+        public static bool PreloadCommonRasterStrokeShaders = false;
+        /// <summary>
         /// Enables preloading for filter shaders (blurs, dithering, etc.)
         /// </summary>
         public static bool PreloadFilterShaders = false;
@@ -870,16 +874,21 @@ namespace Squared.Render {
                     typeof(RasterStroke.RasterStrokeVertex)
                 }
             };
+
             if (
+                PreloadCommonRasterStrokeShaders ||
                 PreloadAllRasterStrokeShaders ||
                 PreloadAllShaders
             ) {
                 material1.HintPipeline = shapeHint;
                 material2.HintPipeline = shapeHint;
-                if (material3 != null)
-                    material3.HintPipeline = shapeHint;
-                if (material4 != null)
-                    material4.HintPipeline = shapeHint;
+
+                if (PreloadAllRasterStrokeShaders || PreloadAllShaders) {
+                    if (material3 != null)
+                        material3.HintPipeline = shapeHint;
+                    if (material4 != null)
+                        material4.HintPipeline = shapeHint;
+                }
             }
 
             RasterStrokeMaterials[(int)type] = new[] {

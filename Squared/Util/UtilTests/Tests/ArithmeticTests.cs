@@ -342,10 +342,10 @@ namespace Squared.Util {
 #endif
 
         private static void CompareToPass (float[] allTestValues, ref long totalAccumulator) {
-            int accumulator = 0;
-            foreach (var a in allTestValues) {
-                foreach (var b in allTestValues) {
-                    var temp = a.CompareTo(b);
+            int accumulator = 0, c = allTestValues.Length;
+            for (int i = 0; i < c; i++) {
+                for (int j = 0; j < c; j++) {
+                    var temp = allTestValues[i].CompareTo(allTestValues[j]);
                     accumulator += (temp > 0) ? 1 : 0;
                 }
             }

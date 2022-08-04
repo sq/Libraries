@@ -402,32 +402,37 @@ namespace Squared.Render {
             Debug.WriteLine($"Shader preload took {elapsed:000.00}ms for {count} material(s)");
         }
 
-        public IFuture PreloadShadersAsync (RenderCoordinator coordinator, Task.TaskScheduler scheduler, Action<float> onProgress = null, int speed = 1) {
+        public Future<string> PreloadShadersAsync (RenderCoordinator coordinator, Task.TaskScheduler scheduler, Action<float> onProgress = null, int speed = 1) {
             if (IsDisposed)
                 throw new ObjectDisposedException("MaterialSetBase");
 
             var dm = coordinator.Manager.DeviceManager;
             var materials = GetShadersToPreload().ToList();
             var tempIb = new IndexBuffer(dm.Device, IndexElementSize.SixteenBits, 128, BufferUsage.WriteOnly);
-            var f = scheduler.Start(PreloadShadersAsyncImpl(coordinator, dm, tempIb, materials, onProgress, speed), Task.TaskExecutionPolicy.RunAsBackgroundTask);
+            var f = new Future<string>();
+            var thunk = new Task.SchedulableGeneratorThunk(PreloadShadersAsyncImpl(coordinator, dm, tempIb, materials, onProgress, speed));
+            scheduler.Start(f, thunk, Task.TaskExecutionPolicy.RunAsBackgroundTask);
             return f;
         }
 
         private IEnumerator<object> PreloadShadersAsyncImpl (RenderCoordinator coordinator, DeviceManager dm, IndexBuffer tempIb, List<Material> materials, Action<float> onProgress, int speed) {
             var sw = Stopwatch.StartNew();
             var wfns = new Task.WaitForNextStep();
-            int remaining = 0;
+            int remaining = 0, totalPreloaded = 0;
+            Action decRemaining = () => {
+                Interlocked.Decrement(ref remaining);
+            };
 
             for (int i = 0; i < materials.Count; i++) {
                 var m = materials[i];
                 if (onProgress != null)
                     onProgress(i / (float)materials.Count);
-                Interlocked.Increment(ref remaining);
-                coordinator.BeforeIssue(() => {
-                    lock (coordinator.UseResourceLock)
-                        m.Preload(coordinator, dm, tempIb);
-                    Interlocked.Decrement(ref remaining);
-                });
+
+                if (m.PreloadAsync(coordinator, dm, tempIb, decRemaining)) {
+                    Interlocked.Increment(ref remaining);
+                    totalPreloaded += 1;
+                }
+                
                 if ((i % speed) == 0)
                     yield return wfns;
             }
@@ -440,7 +445,10 @@ namespace Squared.Render {
             coordinator.DisposeResource(tempIb);
 
             var elapsed = sw.Elapsed.TotalMilliseconds;
-            Debug.WriteLine($"Async shader preload took {elapsed:000.00}ms");
+            var msg = $"Async shader preload took {elapsed:000.00}ms for {totalPreloaded} material(s)";
+            Debug.WriteLine(msg);
+
+            yield return new Task.Result(msg);
         }
     }
 }

@@ -279,15 +279,9 @@ namespace Squared.Render {
             }
         }
 
-        public void Preload (RenderCoordinator coordinator, DeviceManager deviceManager, IndexBuffer tempIb) {
+        private PipelineHint GetPreloadHint () {
             if (Effect == null)
-                return;
-
-            // FIXME: I think this limitation was just due to the async preload one-frame-early bug
-            /*
-            if (Thread.CurrentThread != coordinator.Manager.MainThread)
-                // throw new ThreadStateException("Material.Preload must only be called from the main thread.");
-            */
+                return null;
 
             PipelineHint hint;
             if (DelegatedHintPipeline != null)
@@ -295,8 +289,13 @@ namespace Squared.Render {
             else
                 hint = HintPipeline;
 
+            return hint;
+        }
+
+        public bool Preload (RenderCoordinator coordinator, DeviceManager deviceManager, IndexBuffer tempIb) {
+            var hint = GetPreloadHint();
             if (hint == null)
-                return;
+                return false;
 
             var bindings = new VertexBufferBinding[hint.VertexFormats.Length];
             var sw = Stopwatch.StartNew();
@@ -350,6 +349,23 @@ namespace Squared.Render {
 
             if (sw.ElapsedMilliseconds > 10)
                 Debug.WriteLine($"Preloading shader {Effect.CurrentTechnique.Name} took {sw.ElapsedMilliseconds}ms");
+
+            return true;
+        }
+
+        public bool PreloadAsync (RenderCoordinator coordinator, DeviceManager dm, IndexBuffer tempIb, Action onComplete) {
+            var hint = GetPreloadHint();
+            if (hint == null)
+                return false;
+
+            coordinator.BeforeIssue(() => {
+                lock (coordinator.UseResourceLock)
+                    Preload(coordinator, dm, tempIb);
+                if (onComplete != null)
+                    onComplete();
+            });
+
+            return true;
         }
     }
     

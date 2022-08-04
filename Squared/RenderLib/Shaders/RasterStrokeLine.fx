@@ -16,7 +16,7 @@ void computePosition(
     // HACK: Slightly increase the radius and pad it to account for
     //  pixel overhang and antialiasing
     float totalRadius = (Constants2.w * 0.55) + 1,
-        shadowRadius = max(abs(ShadowSettings.x), abs(ShadowSettings.y)) * 0.55;
+        shadowRadius = length(ShadowSettings.xy);
 
     float2 along = b - a;
     a += along * taper.z;
@@ -24,7 +24,7 @@ void computePosition(
     along = b - a;
 
     // Oriented bounding box around the line segment
-    float2 alongNorm = normalize(along) * (totalRadius + 1) + shadowRadius + max(ShadowSettings.w * 0.55, 0),
+    float2 alongNorm = normalize(along) * ((totalRadius + 1) + shadowRadius + max(ShadowSettings.w * 0.55, 0)),
         left = alongNorm.yx * float2(-1, 1),
         right = alongNorm.yx * float2(1, -1);
 

@@ -495,6 +495,11 @@ void evaluateLineSegment (
     float localRadius = radius.x + lerp(c.y, radius.y, t);
     distance = length(worldPosition - closestPoint) - localRadius;
 
+    if (VARIANT_SIMPLE) {
+        gradientWeight = 0;
+        return;
+    }
+
     float fakeY = 0; // FIXME
     PREFER_FLATTEN
     if (gradientType == GRADIENT_TYPE_Along) {
@@ -510,6 +515,11 @@ void evaluateBezier (
     inout int gradientType, out float2 gradientWeight
 ) {
     distance = sdBezier(worldPosition, a, b, c) - radius.x;
+
+    if (VARIANT_SIMPLE) {
+        gradientWeight = 0;
+        return;
+    }
     
     REQUIRE_BRANCH
     float fakeY = 0; // FIXME
@@ -603,6 +613,11 @@ void evaluateTriangle (
 
     tl = min(min(a, b), c);
     br = max(max(a, b), c);
+
+    if (VARIANT_SIMPLE) {
+        gradientWeight = 0;
+        return;
+    }
 
     // FIXME: Recenter non-natural gradients around our incenter instead of the
     //  center of our bounding box
@@ -777,12 +792,14 @@ void evaluateRasterShape (
             hardDistance = -hardDistance;
         distance = lerp(distance, max(distance, hardDistance), c.y);
         float fakeY = 0; // FIXME
-        if (gradientType == GRADIENT_TYPE_Natural) {
-            gradientWeight = float2(1 - saturate(-distance / radius.y), fakeY);
-        } else if (gradientType == GRADIENT_TYPE_Along) {
-            gradientType = GRADIENT_TYPE_Conical;
-            // FIXME: Size scaling
-            gradientAngle = c.x;
+        if (!simple) {
+            if (gradientType == GRADIENT_TYPE_Natural) {
+                gradientWeight = float2(1 - saturate(-distance / radius.y), fakeY);
+            } else if (gradientType == GRADIENT_TYPE_Along) {
+                gradientType = GRADIENT_TYPE_Conical;
+                // FIXME: Size scaling
+                gradientAngle = c.x;
+            }
         }
 
         needTLBR = true;
@@ -876,23 +893,27 @@ void rasterShapeCommon (
 
     float2 invRadius = 1.0 / max(radius, 0.0001);
 
-    float gradientOffset = params2.w, gradientPower = params2.x, gradientAngle;
-    float2 gradientRange = params2.yz;
-    bool repeatGradient = (gradientPower <= 0);
-    gradientPower = max(abs(gradientPower), 0.0001);
-    int gradientType;
+    int gradientType = GRADIENT_TYPE_Other;
+    float gradientOffset = 0, gradientPower = 0, gradientAngle = 0;
+    float2 gradientRange = 0;
+    bool repeatGradient = false;
+    if (!simple) {
+        gradientRange = params2.yz;
+        gradientOffset = params2.w;
+        gradientPower = params2.x;
+        repeatGradient = (gradientPower <= 0);
+        gradientPower = max(abs(gradientPower), 0.0001);
 
-    if (simple) {
-        gradientType = GRADIENT_TYPE_Other;
-    } else if (params.z >= GRADIENT_TYPE_Conical) {
-        gradientType = GRADIENT_TYPE_Conical;
-        gradientAngle = min((params.z - gradientType) * DEG_TO_RAD, 2 * PI);
-    } else if (params.z >= GRADIENT_TYPE_Angular) {
-        gradientType = GRADIENT_TYPE_Angular;
-        gradientAngle = (params.z - gradientType) * DEG_TO_RAD;
-    } else {
-        gradientType = abs(trunc(params.z));
-        gradientAngle = 0;
+        if (params.z >= GRADIENT_TYPE_Conical) {
+            gradientType = GRADIENT_TYPE_Conical;
+            gradientAngle = min((params.z - gradientType) * DEG_TO_RAD, 2 * PI);
+        } else if (params.z >= GRADIENT_TYPE_Angular) {
+            gradientType = GRADIENT_TYPE_Angular;
+            gradientAngle = (params.z - gradientType) * DEG_TO_RAD;
+        } else {
+            gradientType = abs(trunc(params.z));
+            gradientAngle = 0;
+        }
     }
 
     evaluateRasterShape(
@@ -996,7 +1017,7 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
 float4 compositeFirstStep (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool isSimple, bool enableShadow, float2 vpos) {
     float4 result = fillColor;
     REQUIRE_BRANCH
-    if (BlendInOkLab)
+    if (!isSimple && BlendInOkLab)
         // Premultiply math (and standard over) don't work for oklab colors
         result.rgb = OkLabToLinearSRGB(result.rgb) * result.a;
 
