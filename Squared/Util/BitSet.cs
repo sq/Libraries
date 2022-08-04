@@ -11,13 +11,15 @@ namespace Squared.Util.Containers {
     public struct BitSet : IEnumerable<int> {
         public struct IndicesEnumerator : IEnumerable<int>, IEnumerator<int> {
             internal int Index;
-            internal UInt64 A, B;
+            internal UInt64 A, B, C, D;
 
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal IndicesEnumerator (UInt64 a, UInt64 b) {
+            internal IndicesEnumerator (UInt64 a, UInt64 b, UInt64 c, UInt64 d) {
                 A = a;
                 B = b;
+                C = c;
+                D = d;
                 Index = -1;
             }
 
@@ -28,7 +30,11 @@ namespace Squared.Util.Containers {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
                 while (++Index < Length) {
-                    ref var slot = ref FindBit(ref A, ref B, Index, out var mask);
+#if !NOSPAN
+                    ref var slot = ref FindBit(ref A, Index, out var mask);
+#else
+                    ref var slot = ref FindBit(ref A, ref B, ref C, ref D, Index, out var mask);
+#endif
                     if ((slot & mask) != 0)
                         return true;
                 }
@@ -41,7 +47,7 @@ namespace Squared.Util.Containers {
             }
 
             public IndicesEnumerator GetEnumerator () {
-                return new IndicesEnumerator(A, B);
+                return new IndicesEnumerator(A, B, C, D);
             }
 
             public int Current {
@@ -55,9 +61,9 @@ namespace Squared.Util.Containers {
             IEnumerator IEnumerable.GetEnumerator () => GetEnumerator();
         }
 
-        public const int Length = 128;
+        public const int Length = 256;
 
-        internal UInt64 A, B;
+        internal UInt64 A, B, C, D;
 
         internal static void BoundsCheckFailed () {
             throw new ArgumentOutOfRangeException("index");
@@ -65,28 +71,50 @@ namespace Squared.Util.Containers {
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ref UInt64 FindBit (ref UInt64 a, ref UInt64 b, int index, out UInt64 mask) {
+#if !NOSPAN
+        internal static ref UInt64 FindBit (ref UInt64 a, int index, out UInt64 mask) {
+#else
+        internal static ref UInt64 FindBit (ref UInt64 a, ref UInt64 b, ref UInt64 c, ref UInt64 d, int index, out UInt64 mask) {
+#endif
             if ((index < 0) || (index >= Length))
                 BoundsCheckFailed();
             int slotIndex = index / 64, localIndex = index % 64;
             mask = 1UL << localIndex;
-            if (slotIndex == 0)
-                return ref a;
-            else
-                return ref b;
+#if !NOSPAN
+            return ref Unsafe.Add(ref a, slotIndex);
+#else
+            switch (slotIndex) {
+                case 0:
+                    return ref a;
+                case 1:
+                    return ref b;
+                case 2:
+                    return ref c;
+                default:
+                    return ref d;
+            }
+#endif
         }
 
         public bool this [int index] {
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                ref var slot = ref FindBit(ref A, ref B, index, out var mask);
+#if !NOSPAN
+                ref var slot = ref FindBit(ref A, index, out var mask);
+#else
+                ref var slot = ref FindBit(ref A, ref B, ref C, ref D, index, out var mask);
+#endif
                 return (slot & mask) != 0;
             }
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                ref var slot = ref FindBit(ref A, ref B, index, out var mask);
+#if !NOSPAN
+                ref var slot = ref FindBit(ref A, index, out var mask);
+#else
+                ref var slot = ref FindBit(ref A, ref B, ref C, ref D, index, out var mask);
+#endif
                 if (value)
                     slot |= mask;
                 else
@@ -95,11 +123,15 @@ namespace Squared.Util.Containers {
         }
 
         public void Add (int index) {
-            ref var slot = ref FindBit(ref A, ref B, index, out var mask);
+#if !NOSPAN
+            ref var slot = ref FindBit(ref A, index, out var mask);
+#else
+            ref var slot = ref FindBit(ref A, ref B, ref C, ref D, index, out var mask);
+#endif
             slot |= mask;
         }
 
-        public IndicesEnumerator Indices => new IndicesEnumerator(A, B);
+        public IndicesEnumerator Indices => new IndicesEnumerator(A, B, C, D);
 
         IEnumerator<int> IEnumerable<int>.GetEnumerator () => Indices.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator () => Indices.GetEnumerator();
@@ -109,7 +141,11 @@ namespace Squared.Util.Containers {
         /// </summary>
         /// <returns>true if the new value is different from the old value</returns>
         public bool Change (int index, bool value) {
-            ref var slot = ref FindBit(ref A, ref B, index, out var mask);
+#if !NOSPAN
+            ref var slot = ref FindBit(ref A, index, out var mask);
+#else
+            ref var slot = ref FindBit(ref A, ref B, ref C, ref D, index, out var mask);
+#endif
             if (value) {
                 if ((slot & mask) != 0)
                     return false;
@@ -124,11 +160,11 @@ namespace Squared.Util.Containers {
         }
 
         public void SetAll () {
-            A = B = ~0UL;
+            A = B = C = D = ~0UL;
         }
 
         public void Clear () {
-            A = B = default;
+            A = B = C = D = default;
         }
     }
 }
