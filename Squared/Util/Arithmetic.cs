@@ -1166,7 +1166,11 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe bool EqualsF (float lhs, float rhs) {
             unchecked {
+#if !NOSPAN
+                return Unsafe.As<float, UInt32>(ref lhs) == Unsafe.As<float, UInt32>(ref rhs);
+#else
                 return *((UInt32*)&lhs) == *((UInt32*)&rhs);
+#endif
             }
         }
 
@@ -1176,7 +1180,6 @@ namespace Squared.Util {
             U32F32 u = default;
             u.F1 = lhs;
             u.F2 = rhs;
-
             return CompareF(ref u);
         }
     }

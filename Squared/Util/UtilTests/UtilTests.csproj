@@ -74,6 +74,13 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
+  <PropertyGroup>
+    <SquaredPropertiesOverridePath>$(SolutionDir)Squared.Override.props</SquaredPropertiesOverridePath>
+  </PropertyGroup>
+  <Import Project="$(SquaredPropertiesOverridePath)" Condition="Exists('$(SquaredPropertiesOverridePath)')" />
+  <PropertyGroup Condition=" '$(SquaredEnableSpan)' != 'true' ">
+    <DefineConstants>NOSPAN;$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="nunit.framework, Version=3.12.0.0, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
       <HintPath>..\..\packages\NUnit.3.12.0\lib\net45\nunit.framework.dll</HintPath>

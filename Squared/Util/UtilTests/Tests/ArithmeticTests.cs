@@ -371,11 +371,11 @@ namespace Squared.Util {
 
         private static void CompareFPass (float[] allTestValues, ref long totalAccumulator) {
             var buf = default(FastMath.U32F32);
-            int accumulator = 0;
-            foreach (var a in allTestValues) {
-                buf.F1 = a;
-                foreach (var b in allTestValues) {
-                    buf.F2 = b;
+            int accumulator = 0, c = allTestValues.Length;
+            for (int i = 0; i < c; i++) {
+                buf.F1 = allTestValues[i];
+                for (int j = 0; j < c; j++) {
+                    buf.F2 = allTestValues[j];
                     var temp = FastMath.CompareF(ref buf);
                     accumulator += (temp > 0) ? 1 : 0;
                 }
