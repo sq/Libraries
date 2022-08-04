@@ -29,11 +29,15 @@ namespace Squared.Util {
         internal UnorderedList<T> _Items;
 
 #if !NOSPAN
-        public static readonly int ElementByteOffset;
+        // FIXME: Using a cctor or initializer causes a conditional call any time a DenseList is used. Not great.
+        // The alternative of manually doing it only in access methods seems to generate worse code somehow though.
+        // The good news is the branch will predict correctly 100% of the time!
+        internal static int ElementByteOffset = ComputeByteOffset();
 
-        static unsafe DenseList () {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static unsafe int ComputeByteOffset () {
             var temp = new DenseList<T>();
-            ElementByteOffset = (int)((byte*)Unsafe.AsPointer(ref temp.Item2) - (byte*)Unsafe.AsPointer(ref temp.Item1));
+            return (int)((byte*)Unsafe.AsPointer(ref temp.Item2) - (byte*)Unsafe.AsPointer(ref temp.Item1));
         }
 #endif
 
