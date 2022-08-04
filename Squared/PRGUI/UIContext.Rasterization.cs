@@ -37,6 +37,8 @@ namespace Squared.PRGUI {
 
         private List<ScratchRenderTarget> TopoSortTable = new List<ScratchRenderTarget>();
 
+        public ImperativeRenderer OverlayRenderer;
+
         internal sealed class ScratchRenderTarget : IDisposable {
             public readonly UIContext Context;
             public readonly AutoRenderTarget Instance;
@@ -258,17 +260,23 @@ namespace Squared.PRGUI {
                     DepthStencilState = DepthStencilState.None
                 };
                 renderer.Clear(color: clearColor, stencil: 0, layer: -999);
+                // FIXME: Modals that don't have background fade will be overlapped by these overlays
+                // The ideal is for those to instead float over the current overlay plane on a new one
+                renderer.MakeSubgroup(out OverlayRenderer, layer: 999);
 
                 var topLevelFocusIndex = seq.IndexOf(TopLevelFocused);
                 for (int i = 0; i < seq.Count; i++) {
                     var control = seq[i];
                     if (i == fadeBackgroundAtIndex) {
                         var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity * maxFadeLevel;
+                        // HACK: Push the post-fade controls and their its overlay plane above the previous one
+                        renderer.Layer = 1000;
                         renderer.FillRectangle(
                             Game.Bounds.FromPositionAndSize(Vector2.One * -9999, Vector2.One * 99999), 
                             new Color(opacity, opacity, opacity, 0), blendState: RenderStates.SubtractiveBlend
                         );
                         renderer.Layer += 1;
+                        renderer.MakeSubgroup(out OverlayRenderer, layer: 9999);
                     }
 
                     var m = control as IModal;
@@ -366,6 +374,7 @@ namespace Squared.PRGUI {
                 }
             } finally {
                 context.Shared.InUse = false;
+                OverlayRenderer = default;
             }
         }
 

@@ -496,12 +496,18 @@ namespace Squared.PRGUI.Controls {
                 context.Pass = RasterizePasses.Content;
                 var selectionSettings = new DecorationSettings {
                     Box = selectionBox,
-                    ContentBox = selectionBox
+                    ContentBox = selectionBox,
+                    UniqueId = SelectedItem.ControlIndex
                 };
                 if (settings.State.IsFlagged(ControlStates.ContainsFocus))
                     selectionSettings.State = ControlStates.Hovering | ControlStates.Focused;
                 else
                     selectionSettings.State = ControlStates.Hovering;
+
+                var selectionDecorator = context.DecorationProvider.MenuSelection;
+                RasterizeSelectionDecorator(
+                    ref context, ref passSet, ref selectionSettings, selectionDecorator
+                );
                 context.DecorationProvider.MenuSelection?.Rasterize(ref context, ref passSet.Below, ref selectionSettings);
                 context.Pass = oldPass;
 
@@ -509,6 +515,30 @@ namespace Squared.PRGUI.Controls {
             }
 
             base.OnRasterizeChildren(ref context, ref passSet, settings);
+        }
+
+        internal static void RasterizeSelectionDecorator (
+            ref UIOperationContext context, ref RasterizePassSet passSet, 
+            ref DecorationSettings selectionSettings, IDecorator decorator
+        ) {
+            if (decorator == null)
+                return;
+
+            if (!decorator.IsPassDisabled(RasterizePasses.Below)) {
+                context.Pass = RasterizePasses.Below;
+                decorator.Rasterize(ref context, ref passSet.Below, ref selectionSettings);
+            }
+
+            if (!decorator.IsPassDisabled(RasterizePasses.Content)) {
+                context.Pass = RasterizePasses.Content;
+                decorator.Rasterize(ref context, ref passSet.Content, ref selectionSettings);
+            }
+
+            if (decorator.IsPassDisabled(RasterizePasses.Above))
+                return;
+
+            context.Pass = RasterizePasses.Above;
+            decorator.Rasterize(ref context, ref passSet.Above, ref selectionSettings);
         }
 
         private int lastOffset1 = -1,

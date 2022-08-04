@@ -2199,6 +2199,7 @@ namespace Squared.Render.Convenience {
             return (RasterStrokeBatch)cacheEntry.Batch;
         }
 
+        /// <param name="biases">(Size, Flow, Hardness, Color)</param>
         public void RasterizeStroke (
             RasterStrokeType type, Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, RasterBrush brush,
             float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null,
@@ -2209,6 +2210,7 @@ namespace Squared.Render.Convenience {
             colorSpace, blendState, sortKey
         );
 
+        /// <param name="biases">(Size, Flow, Hardness, Color)</param>
         public void RasterizeStroke (
             RasterStrokeType type, Vector2 a, Vector2 b, pSRGBColor colorA, pSRGBColor colorB, ref RasterBrush brush,
             float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null, 
@@ -2232,6 +2234,7 @@ namespace Squared.Render.Convenience {
                 });
         }
 
+        /// <param name="biases">(Size, Flow, Hardness, Color)</param>
         public void RasterizeStroke (
             ArraySegment<RasterPolygonVertex> vertices, pSRGBColor colorA, pSRGBColor colorB, RasterBrush brush,
             float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null,
@@ -2244,6 +2247,7 @@ namespace Squared.Render.Convenience {
             vertexTransform, vertexModifier
         );
 
+        /// <param name="biases">(Size, Flow, Hardness, Color)</param>
         public bool RasterizeStroke (
             ArraySegment<RasterPolygonVertex> vertices, pSRGBColor colorA, pSRGBColor colorB, ref RasterBrush brush,
             float? seed = null, Vector4? taper = null, Vector4? biases = null, int? layer = null, bool? worldSpace = null, 

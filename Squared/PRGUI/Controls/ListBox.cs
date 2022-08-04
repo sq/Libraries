@@ -160,6 +160,8 @@ namespace Squared.PRGUI.Controls {
 
         protected int PageSize { get; private set; }
 
+        public bool AutoSize = true;
+
         new public int ColumnCount {
             get => base.ColumnCount;
             set {
@@ -179,7 +181,6 @@ namespace Squared.PRGUI.Controls {
             AllowDynamicContent = false;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
-            ContainerFlags = ControlFlags.Container_Column | ControlFlags.Container_Align_Start;
             ClipChildren = true;
             ShowHorizontalScrollbar = false;
             // HACK: Most lists will contain enough items to need scrolling, so just always show the bar
@@ -278,6 +279,8 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             bool scrollOffsetChanged = false;
+            ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start |
+                (AutoSize ? default : ControlFlags.Container_No_Expansion_Y);
 
             // HACK: Ensure the scroll region is updated immediately if our column count changes,
             //  because otherwise the scroll offset can end up beyond the bottom of our view
@@ -378,6 +381,12 @@ namespace Squared.PRGUI.Controls {
 
             context.Layout.SetTag(result, LayoutTags.ListBox);
 
+            if (!existingKey.HasValue && (ContainerFlags &= ControlFlags.Container_Row) == ControlFlags.Container_Row) {
+                var expandSpacer = context.Layout.CreateItem(LayoutTags.Spacer);
+                context.Layout.SetLayoutFlags(expandSpacer, ControlFlags.Layout_ForceBreak | ControlFlags.Layout_Fill);
+                context.Layout.Append(result, expandSpacer);
+            }
+
             var hasPushedDecorator = false;
             var children = Children;
             // FIXME: This is really slow
@@ -392,6 +401,8 @@ namespace Squared.PRGUI.Controls {
                 m.Top = child.Margins.Top;
                 m.Bottom = child.Margins.Bottom + ItemSpacing;
                 context.Layout.SetMargins(lk, m);
+                // HACK: Yay row mode
+                context.Layout.SetItemForceBreak(lk, true);
             }
 
             if (hasPushedDecorator)
@@ -782,10 +793,11 @@ namespace Squared.PRGUI.Controls {
                     var selectionSettings = new DecorationSettings {
                         Box = selectionBox,
                         ContentBox = selectionBox,
-                        State = settings.State
+                        State = settings.State,
+                        UniqueId = selectedControl.ControlIndex
                     };
-                    // FIXME
-                    selectionDecorator.Rasterize(ref context, ref passSet.Below, ref selectionSettings);
+
+                    Menu.RasterizeSelectionDecorator(ref context, ref passSet, ref selectionSettings, selectionDecorator);
                 }
                 context.Pass = oldPass;
                 passSet.Below.Layer += 1;

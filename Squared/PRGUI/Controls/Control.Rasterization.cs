@@ -65,7 +65,8 @@ namespace Squared.PRGUI {
                 TextColor = fast ? null : GetTextColor(Context.NowL),
                 BackgroundImage = fast ? null : Appearance.BackgroundImage,
                 Traits = Appearance.DecorationTraits,
-                IsCompositing = compositing
+                IsCompositing = compositing,
+                UniqueId = ControlIndex
             };
         }
 

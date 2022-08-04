@@ -50,6 +50,7 @@ namespace Squared.PRGUI.Decorations {
         public pSRGBColor? BackgroundColor, TextColor;
         public BackgroundImageSettings BackgroundImage;
         public Vector4 UserData;
+        public int UniqueId;
         public bool IsCompositing;
 
         public bool HasTrait (string trait) {
@@ -98,6 +99,7 @@ namespace Squared.PRGUI.Decorations {
     public interface IDecorator : IMetricsProvider {
         bool IsPassDisabled (RasterizePasses pass);
         void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings);
+        T Clone<T> () where T : class, IDecorator;
     }
 
     public interface IAnimationProvider {
@@ -231,6 +233,8 @@ namespace Squared.PRGUI.Decorations {
 
     public sealed class DelegateDecorator : DelegateBaseDecorator, IDecorator {
         public DecoratorDelegate Below, Content, Above, ContentClip;
+
+        T IDecorator.Clone<T> () => Clone() as T;
 
         public DelegateDecorator Clone () {
             return new DelegateDecorator {

@@ -54,7 +54,7 @@ namespace Squared.PRGUI {
         public static readonly Controls.NullControl None = new Controls.NullControl();
 
         public string DebugLabel = null;
-        protected int ControlIndex { get; private set; }
+        public int ControlIndex { get; private set; }
         internal int TypeID;
 
         public Accessibility.IReadingTarget DelegatedReadingTarget;

@@ -1359,11 +1359,13 @@ namespace Squared.PRGUI.Controls {
                     TextColor = settings.TextColor,
                     State = settings.State,
                     Box = selBox,
-                    ContentBox = selBox
+                    ContentBox = selBox,
+                    UniqueId = ControlIndex
                 };
 
-                selectionDecorator.Rasterize(ref context, ref renderer, ref selSettings);
-                renderer.Layer += 1;
+                var oldPass = context.Pass;
+                RasterizeSelectionDecorator(ref context, ref renderer, ref selSettings, selectionDecorator);
+                context.Pass = oldPass;
 
                 // HACK to ensure that we don't provide a null rect for the cursor if there's no selection
                 if (selBox.Width <= 0) {
@@ -1393,6 +1395,27 @@ namespace Squared.PRGUI.Controls {
                 var lb = new Vector2(cb.X, ca.Y + h);
                 renderer.RasterizeLineSegment(la, lb, 1f, Color.Green, layer: 2);
             }
+        }
+
+        private void RasterizeSelectionDecorator (
+            ref UIOperationContext context, ref ImperativeRenderer renderer, 
+            ref DecorationSettings selectionSettings, IDecorator decorator
+        ) {
+            if (!decorator.IsPassDisabled(RasterizePasses.Below)) {
+                context.Pass = RasterizePasses.Below;
+                decorator.Rasterize(ref context, ref renderer, ref selectionSettings);
+            }
+
+            if (!decorator.IsPassDisabled(RasterizePasses.Content)) {
+                context.Pass = RasterizePasses.Content;
+                decorator.Rasterize(ref context, ref renderer, ref selectionSettings);
+            }
+
+            if (decorator.IsPassDisabled(RasterizePasses.Above))
+                return;
+
+            context.Pass = RasterizePasses.Above;
+            decorator.Rasterize(ref context, ref renderer, ref selectionSettings);
         }
 
         string IValueControl<string>.Value {

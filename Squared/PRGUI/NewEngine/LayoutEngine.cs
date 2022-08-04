@@ -210,19 +210,19 @@ namespace Squared.PRGUI.NewEngine {
             var deadItem = this[key];
             if (!deadItem.PreviousSibling.IsInvalid) {
                 ref var prev = ref this[deadItem.PreviousSibling];
-                prev.NextSibling = deadItem.NextSibling;
+                prev._NextSibling = deadItem.NextSibling;
             }
             if (!deadItem.NextSibling.IsInvalid) {
                 ref var next = ref this[deadItem.NextSibling];
-                next.PreviousSibling = deadItem.PreviousSibling;
+                next._PreviousSibling = deadItem.PreviousSibling;
             }
 
             if (!deadItem.Parent.IsInvalid) {
                 ref var parent = ref this[deadItem.Parent];
                 if (parent.FirstChild == key)
-                    parent.FirstChild = deadItem.NextSibling;
+                    parent._FirstChild = deadItem.NextSibling;
                 if (parent.LastChild == key)
-                    parent.LastChild = deadItem.PreviousSibling;
+                    parent._LastChild = deadItem.PreviousSibling;
             }
         }
 
