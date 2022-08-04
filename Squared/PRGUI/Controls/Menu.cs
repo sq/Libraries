@@ -508,7 +508,6 @@ namespace Squared.PRGUI.Controls {
                 RasterizeSelectionDecorator(
                     ref context, ref passSet, ref selectionSettings, selectionDecorator
                 );
-                context.DecorationProvider.MenuSelection?.Rasterize(ref context, ref passSet.Below, ref selectionSettings);
                 context.Pass = oldPass;
 
                 passSet.Below.Layer += 1;
