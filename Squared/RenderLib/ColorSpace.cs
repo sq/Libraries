@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -620,8 +621,8 @@ namespace Squared.Render {
             return false;
         }
 
-        public static bool TryParse (string text, out pSRGBColor result) {
-            if (TryParseNumeric(text, out result))
+        public static bool TryParse (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
+            if (TryParseNumeric(text, out result, formatProvider))
                 return true;
             if (NamedColor.TryParse(text, out Color namedColor)) {
                 result = new pSRGBColor(namedColor, true);
@@ -631,7 +632,7 @@ namespace Squared.Render {
             return false;
         }
 
-        private static bool TryParseNumeric (string text, out pSRGBColor result) {
+        private static bool TryParseNumeric (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
             result = default;
             if (string.IsNullOrWhiteSpace(text))
                 return false;
@@ -647,11 +648,11 @@ namespace Squared.Render {
             var values = text.Split(',');
             if ((values.Length < 3) || (values.Length > 4))
                 return false;
-            if (!float.TryParse(values[0], out float r))
+            if (!float.TryParse(values[0], NumberStyles.Float, formatProvider ?? CultureInfo.InvariantCulture, out float r))
                 return false;
-            if (!float.TryParse(values[1], out float g))
+            if (!float.TryParse(values[1], NumberStyles.Float, formatProvider ?? CultureInfo.InvariantCulture, out float g))
                 return false;
-            if (!float.TryParse(values[2], out float b))
+            if (!float.TryParse(values[2], NumberStyles.Float, formatProvider ?? CultureInfo.InvariantCulture, out float b))
                 return false;
 
             float a = 1;
@@ -662,7 +663,7 @@ namespace Squared.Render {
                     isPremultiplied = false;
                     v3 = v3.Substring(1);
                 }
-                if (!float.TryParse(v3, out a))
+                if (!float.TryParse(v3, NumberStyles.Float, formatProvider ?? CultureInfo.InvariantCulture, out a))
                     return false;
             }
 

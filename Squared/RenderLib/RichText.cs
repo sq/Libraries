@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -516,14 +517,14 @@ namespace Squared.Render.Text {
                                     break;
                                 case "scale":
                                 case "sc":
-                                    if (!float.TryParse(value.ToString(), out float newScale))
+                                    if (!float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out float newScale))
                                         layoutEngine.scale = state.InitialScale;
                                     else
                                         layoutEngine.scale = state.InitialScale * newScale;
                                     break;
                                 case "spacing":
                                 case "sp":
-                                    if (!float.TryParse(value.ToString(), out float newSpacing))
+                                    if (!float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out float newSpacing))
                                         layoutEngine.spacing = state.InitialSpacing;
                                     else
                                         layoutEngine.spacing = state.InitialSpacing * newSpacing;
