@@ -93,7 +93,7 @@ namespace PRGUI.Demo {
 
             IsFixedTimeStep = false;
             if (IsFixedTimeStep) {
-                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 2f);
+                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 4f);
                 GamePad.FixedTimeStep = 1.0f / 60f;
             }
 

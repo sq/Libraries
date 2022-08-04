@@ -17,6 +17,7 @@ namespace Squared.PRGUI.Controls {
             DefaultControlAlignmentPoint = new Vector2(0.5f, 0f);
 
         protected ControlAlignmentHelper<Tooltip> Aligner;
+        protected int FramesWaitingForAlignmentUpdate = 0;
 
         public Tooltip ()
             : base() {
@@ -44,6 +45,7 @@ namespace Squared.PRGUI.Controls {
 
         new public void Invalidate () {
             base.Invalidate();
+            Aligner.AlignmentPending = true;
             // FIXME: Do something else here? Invalidate the alignment?
         }
 
@@ -54,7 +56,6 @@ namespace Squared.PRGUI.Controls {
             context.Layout.SetTag(result, LayoutTags.Tooltip);
             return result;
         }
-
 
         RichTextConfiguration _RichTextConfiguration;
 
@@ -70,6 +71,10 @@ namespace Squared.PRGUI.Controls {
         /// <param name="anchorPoint">Configures what point on the anchor [0 - 1] is used as the center for alignment</param>
         /// <param name="controlAlignmentPoint">Configures what point on the control [0 - 1] is aligned onto the anchor point</param>
         public void Move (Control anchor, Vector2? anchorPoint, Vector2? controlAlignmentPoint) {
+            // HACK: Prevent a single-frame glitch when the tooltip moves to a new control
+            if (Aligner.Anchor != anchor)
+                FramesWaitingForAlignmentUpdate = 1;
+
             Aligner.Enabled = true;
             Aligner.Anchor = anchor;
             Aligner.AnchorPoint = anchorPoint ?? DefaultAnchorPoint;
@@ -77,6 +82,25 @@ namespace Squared.PRGUI.Controls {
             // FIXME
             Aligner.ComputeNewAlignment = true;
             Aligner.AlignmentPending = true;
+        }
+
+        protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
+            // HACK
+            if (pass == RasterizePasses.Above)
+                return false;
+            else
+                return base.IsPassDisabled(pass, decorations);
+        }
+
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            // HACK
+            if (FramesWaitingForAlignmentUpdate > 0) {
+                if (context.Pass == RasterizePasses.Above)
+                    FramesWaitingForAlignmentUpdate--;
+                return;
+            }
+
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
         }
 
         void IPostLayoutListener.OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
