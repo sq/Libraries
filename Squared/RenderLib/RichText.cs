@@ -304,7 +304,7 @@ namespace Squared.Render.Text {
         public readonly Color? InitialColor;
         public readonly float InitialScale;
         public readonly float InitialSpacing;
-        public DenseList<string> MarkedStrings;
+        public DenseList<ImmutableAbstractString> MarkedStrings;
 
         public RichTextLayoutState (ref StringLayoutEngine engine, IGlyphSource defaultGlyphSource) {
             InitialColor = engine.overrideColor;
@@ -312,7 +312,7 @@ namespace Squared.Render.Text {
             InitialSpacing = engine.spacing;
             DefaultGlyphSource = defaultGlyphSource;
             GlyphSource = null;
-            MarkedStrings = default(DenseList<string>);
+            MarkedStrings = default;
         }
 
         public void Reset (ref StringLayoutEngine engine) {
@@ -389,7 +389,7 @@ namespace Squared.Render.Text {
 
             if (
                 text.StartsWith("#") && 
-                uint.TryParse(text.Substring(1), System.Globalization.NumberStyles.HexNumber, null, out uint decoded)
+                uint.TryParse(text.Substring(1), NumberStyles.HexNumber, null, out uint decoded)
             ) {
                 var result = new Color { PackedValue = decoded };
                 var temp = result.R;
@@ -423,6 +423,29 @@ namespace Squared.Render.Text {
             CommandTerminators = new HashSet<char> { '\"', '\'', '$', '[' },
             StringTerminators = new HashSet<char> { '$', '(' };
 
+        private enum RichRuleId : int {
+            Unknown,
+            Color,
+            Scale,
+            Spacing,
+            Font
+        }
+
+        private static readonly Dictionary<ImmutableAbstractString, RichRuleId> RuleNameTable =
+            new Dictionary<ImmutableAbstractString, RichRuleId>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase) {
+                { "color", RichRuleId.Color },
+                { "c", RichRuleId.Color },
+                { "scale", RichRuleId.Scale },
+                { "sc", RichRuleId.Scale },
+                { "spacing", RichRuleId.Spacing },
+                { "sp", RichRuleId.Spacing },
+                { "font", RichRuleId.Font },
+                { "f", RichRuleId.Font },
+                { "glyphsource", RichRuleId.Font },
+                { "gs", RichRuleId.Font },
+                { "glyph-source", RichRuleId.Font },
+            };
+
         private void AppendRichRange (
             ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
             bool? overrideSuppress, ref DenseList<AsyncRichImage> referencedImages, ref DenseList<RichParseError> parseErrors
@@ -449,7 +472,7 @@ namespace Squared.Render.Text {
                     } else if (
                         commandMode && (Styles != null) && 
                         bracketed.Value.StartsWith(".") && 
-                        Styles.TryGetValue(bracketed.Value.Substring(1), out style)
+                        Styles.TryGetValue(new AbstractString(bracketed.Value, 1), out style)
                     ) {
                         ApplyStyle(ref layoutEngine, ref state, in style);
                     } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
@@ -510,30 +533,24 @@ namespace Squared.Render.Text {
                     } else if (commandMode && bracketed.Value.Contains(":")) {
                         foreach (var rule in RichText.ParseRules(bracketed.Value, ref parseErrors)) {
                             var value = rule.Value;
-                            switch (rule.Key.ToString()) {
-                                case "color":
-                                case "c":
+                            RuleNameTable.TryGetValue(rule.Key, out var ruleId);
+                            switch (ruleId) {
+                                case RichRuleId.Color:
                                     layoutEngine.overrideColor = ParseColor(value) ?? state.InitialColor;
                                     break;
-                                case "scale":
-                                case "sc":
+                                case RichRuleId.Scale:
                                     if (!float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out float newScale))
                                         layoutEngine.scale = state.InitialScale;
                                     else
                                         layoutEngine.scale = state.InitialScale * newScale;
                                     break;
-                                case "spacing":
-                                case "sp":
+                                case RichRuleId.Spacing:
                                     if (!float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out float newSpacing))
                                         layoutEngine.spacing = state.InitialSpacing;
                                     else
                                         layoutEngine.spacing = state.InitialSpacing * newSpacing;
                                     break;
-                                case "font":
-                                case "glyph-source":
-                                case "glyphSource":
-                                case "gs":
-                                case "f":
+                                case RichRuleId.Font:
                                     if (GlyphSources != null)
                                         GlyphSources.TryGetValue(value, out state.GlyphSource);
                                     else
@@ -554,7 +571,7 @@ namespace Squared.Render.Text {
                         int pipeIndex = astr.IndexOf('|');
                         if (pipeIndex >= 0) {
                             id = astr.Substring(0, pipeIndex);
-                            bracketed = astr.Substring(pipeIndex + 1);
+                            bracketed = new AbstractString(astr, pipeIndex + 1);
                             astr = bracketed.Value;
                         }
 
@@ -577,7 +594,7 @@ namespace Squared.Render.Text {
                             var l = astr.Length;
                             // FIXME: Omit this too?
                             // TODO: Store an AbstractString instead?
-                            state.MarkedStrings.Add(bracketed.ToString());
+                            state.MarkedStrings.Add(bracketed);
                             if (action == MarkedStringAction.RichText)
                                 AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref referencedImages, ref parseErrors);
                             else if (action != MarkedStringAction.PlainText) {

@@ -187,30 +187,24 @@ namespace FontTest {
             int i;
             float x;
             float? y;
-            switch (arg.ToString()) {
-                case "img:left":
-                    x = 0f;
-                    y = null;
-                    i = 0;
-                    break;
-                case "img:bottomleft":
-                    x = 0f;
-                    y = 1f;
-                    i = 3;
-                    break;
-                case "img:bottomright":
-                    x = 1f;
-                    y = 1f;
-                    i = 1;
-                    break;
-                case "img:topright":
-                    x = 1f;
-                    y = 0f;
-                    i = 2;
-                    break;
-                default:
-                    return default(AsyncRichImage);
-            }
+            if (arg == "img:left") {
+                x = 0f;
+                y = null;
+                i = 0;
+            } else if (arg == "img:bottomleft") {
+                x = 0f;
+                y = 1f;
+                i = 3;
+            } else if (arg == "img:bottomright") {
+                x = 1f;
+                y = 1f;
+                i = 1;
+            } else if (arg == "img:topright") {
+                x = 1f;
+                y = 0f;
+                i = 2;
+            } else
+                return default;
             var tex = Images[i];
             var ri = new RichImage {
                 Texture = tex,

@@ -258,6 +258,7 @@ namespace Squared.Render.Text {
         // Maybe create a single 'DynamicStringLayoutRichState' class that holds dense lists
         //  for all of these and allocate it on demand? Then in the ideal case it's one
         //  allocation instead of dozens
+        // Unfortunately also enumerating over ReadOnlyList and ReadOnlyDictionary boxes their enumerators :(
         public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Markers ?? EmptyMarkers;
         public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _HitTests ?? EmptyHitTests;
         public IReadOnlyList<LayoutMarker> RichMarkers => _RichMarkers ?? EmptyRichMarkers;
@@ -1036,7 +1037,7 @@ namespace Squared.Render.Text {
                     if (le.Markers.Count > 0) {
                         var m = GetMarkers();
                         foreach (var kvp in le.Markers) {
-                            if ((rls.MarkedStrings.Count > 0) && (kvp.MarkedString != default(AbstractString))) {
+                            if ((rls.MarkedStrings.Count > 0) && (kvp.MarkedString != default)) {
                                 if (_RichMarkers == null)
                                     _RichMarkers = new List<LayoutMarker>();
                                 _RichMarkers.Add(kvp);

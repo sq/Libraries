@@ -434,6 +434,16 @@ namespace Squared.Util.Text {
             ArraySegment = array;
         }
 
+        public AbstractString (in AbstractString text, int start) {
+            this = text;
+            SubstringOffset += start;
+            if (SubstringLength > 0) {
+                SubstringLength -= start;
+                if (SubstringLength < 0)
+                    throw new ArgumentOutOfRangeException(nameof(start));
+            }
+        }
+
         public AbstractString (in AbstractString text, int start, int length) {
             if (length == 0) {
                 this = default;
