@@ -709,7 +709,7 @@ namespace Squared.Task {
 
         public bool HasPendingTasks {
             get {
-                return (_JobQueue.Count > 0) || (_JobQueue.NextStepCount > 0);
+                return !_JobQueue.IsEmpty || !_JobQueue.NextStepIsEmpty;
             }
         }
 

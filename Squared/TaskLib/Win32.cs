@@ -186,20 +186,11 @@ namespace Squared.Task {
         }
 
         public bool WaitForWorkItems (double timeout) {
-            return (Count > 0);
+            return !IsEmpty;
         }
 
-        public int Count {
-            get {
-                return _Queue.Count;
-            }
-        }
-
-        public int NextStepCount {
-            get {
-                return _NextStepQueue.Count;
-            }
-        }
+        public bool IsEmpty => _Queue.IsEmpty;
+        public bool NextStepIsEmpty => _NextStepQueue.IsEmpty;
 
         public void Dispose () {
             DestroyHandle();

@@ -30,8 +30,8 @@ namespace Squared.Task {
         /// <returns>True if a work item was added to the queue before the timeout, false otherwise.</returns>
         bool WaitForWorkItems (double timeout);
 
-        int Count { get; }
-        int NextStepCount { get; }
+        bool IsEmpty { get; }
+        bool NextStepIsEmpty { get; }
 
         /// <summary>
         /// If true, it is safe to call Step, WaitForFuture and WaitForWorkItems on the current thread.
@@ -156,17 +156,8 @@ namespace Squared.Task {
             return true;
         }
 
-        public int Count {
-            get {
-                return _Queue.Count;
-            }
-        }
-
-        public int NextStepCount {
-            get {
-                return _NextStepQueue.Count;
-            }
-        }
+        public bool IsEmpty => _Queue.IsEmpty;
+        public bool NextStepIsEmpty => _NextStepQueue.IsEmpty;
 
         public bool IsDisposed {
             get {
