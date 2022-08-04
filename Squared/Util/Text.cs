@@ -246,7 +246,7 @@ namespace Squared.Util.Text {
         }
     }
 
-    public readonly struct ImmutableAbstractString : IEquatable<ImmutableAbstractString> {
+    public struct ImmutableAbstractString : IEquatable<ImmutableAbstractString> {
         public sealed class Comparer : EqualityComparer<ImmutableAbstractString> {
             public readonly StringComparison Comparison;
 
@@ -266,14 +266,18 @@ namespace Squared.Util.Text {
             }
 
             public override int GetHashCode (ImmutableAbstractString obj) {
+                if (Comparison == StringComparison.OrdinalIgnoreCase)
+                    return obj.GetHashCode(true);
                 if (Comparison == StringComparison.Ordinal)
-                    return obj.Value.GetHashCodeUnsafe();
+                    return obj.GetHashCode(false);
                 else // FIXME
                     return 0;
             }
         }
 
         public readonly AbstractString Value;
+        private bool _HasHashCode;
+        private int _HashCode;
 
         /// <summary>
         /// Creates an immutable copy of the provided AbstractString. If it is not immutable, it will be copied.
@@ -287,14 +291,26 @@ namespace Squared.Util.Text {
         /// </summary>
         /// <param name="iPromiseItsImmutable">Suppresses copying of the value. You shouldn't do this.</param>
         public ImmutableAbstractString (AbstractString s, bool iPromiseItsImmutable) {
+            _HasHashCode = false;
+            _HashCode = 0;
             if (!iPromiseItsImmutable && !s.IsImmutable)
                 Value = s.ToString();
             else
                 Value = s;
         }
 
-        public override int GetHashCode () {
-            return Value.GetHashCodeUnsafe();
+        public override int GetHashCode () =>
+            GetHashCode(false);
+
+        // FIXME: This is expensive
+        public int GetHashCode (bool ignoreCase) {
+            if (!_HasHashCode) {
+                unchecked {
+                    _HashCode = (int)Value.ComputeTextHash(ignoreCase);
+                }
+                _HasHashCode = true;
+            }
+            return _HashCode;
         }
 
         public bool IsNull => Value.IsNull;
@@ -305,19 +321,19 @@ namespace Squared.Util.Text {
         public char this[int index] => Value[index];
 
         public bool Equals (ImmutableAbstractString rhs) {
-            return Value.Equals(rhs.Value);
+            return Value.TextEquals(rhs.Value, StringComparison.Ordinal);
         }
 
         public bool Equals (ref ImmutableAbstractString rhs) {
-            return Value.Equals(rhs.Value);
+            return Value.TextEquals(rhs.Value, StringComparison.Ordinal);
         }
 
         public bool Equals (AbstractString rhs) {
-            return Value.Equals(rhs);
+            return Value.TextEquals(rhs, StringComparison.Ordinal);
         }
 
         public bool Equals (ref AbstractString rhs) {
-            return Value.Equals(rhs);
+            return Value.TextEquals(rhs, StringComparison.Ordinal);
         }
 
         public bool Equals (string text) {
@@ -328,9 +344,9 @@ namespace Squared.Util.Text {
             if (obj is ImmutableAbstractString ias)
                 return Equals(ref ias);
             else if (obj is AbstractString astr)
-                return Value.Equals(ref astr);
+                return Equals(ref astr);
             else if (obj is string s)
-                return Value.TextEquals(s);
+                return Equals(s);
             else
                 return false;
         }
@@ -432,7 +448,7 @@ namespace Squared.Util.Text {
             SubstringLength = length;
         }
 
-        public unsafe uint ComputeTextHash () {
+        public unsafe uint ComputeTextHash (bool ignoreCase = false) {
             var hasher = HashProvider.Value;
             var hashBuffer = HashBuffer.Value;
 
@@ -443,7 +459,7 @@ namespace Squared.Util.Text {
                 while (i < l) {
                     int c = Math.Min(bufferSize, l - i);
                     for (int j = 0; j < c; j++)
-                        pBufferChars[j] = this[i + j];
+                        pBufferChars[j] = ignoreCase ? char.ToLowerInvariant(this[i + j]) : this[i + j];
                     i += c;
 
                     hasher.FeedInput(hashBuffer, 0, c);

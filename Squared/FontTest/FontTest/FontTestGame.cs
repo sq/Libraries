@@ -163,11 +163,11 @@ namespace FontTest {
                 HideOverflow = true,
                 RichTextConfiguration = new RichTextConfiguration {
                     MarkedStringProcessor = ProcessMarkedString,
-                    Styles = new Dictionary<string, RichStyle> {
+                    Styles = new Dictionary<ImmutableAbstractString, RichStyle> {
                         {"quick", new RichStyle { Color = Color.Yellow } },
                         {"brown", new RichStyle { Color = Color.Brown, Scale = 2 } }
                     },
-                    GlyphSources = new Dictionary<string, IGlyphSource> {
+                    GlyphSources = new Dictionary<ImmutableAbstractString, IGlyphSource> {
                         {"large", LatinFont },
                         {"small", SmallLatinFont}
                     },
@@ -183,11 +183,11 @@ namespace FontTest {
                     Images[i] = Texture2D.FromStream(Graphics.GraphicsDevice, s);
         }
 
-        private AsyncRichImage Text_ImageProvider (string arg) {
+        private AsyncRichImage Text_ImageProvider (AbstractString arg) {
             int i;
             float x;
             float? y;
-            switch (arg) {
+            switch (arg.ToString()) {
                 case "img:left":
                     x = 0f;
                     y = null;
