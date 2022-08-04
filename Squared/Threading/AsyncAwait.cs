@@ -17,6 +17,8 @@ using Squared.Threading.AsyncAwait;
 using System.Runtime.ExceptionServices;
 
 namespace Squared.Threading {
+    // FIXME: We should implement ICriticalNotifyCompletion and do ExecutionContext flowing for the normal variant.
+
     public static class FutureAwaitExtensionMethods {
         public struct IFutureWithDisposedValue {
             public IFuture Future;

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
 using Squared.Util;
+using Squared.Util.Text;
 
 namespace Squared.Render {
     public sealed class GammaRamp {
@@ -38,8 +39,8 @@ namespace Squared.Render {
         private static KeyValuePair<string, Color>[] _All;
         private static Dictionary<uint, string> _ByValue;
 
-        private static readonly Dictionary<string, Color?> SystemNamedColorCache = 
-            new Dictionary<string, Color?>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<ImmutableAbstractString, Color?> SystemNamedColorCache = 
+            new Dictionary<ImmutableAbstractString, Color?>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
 
         private static void EnsureLookupsPopulated () {
             lock (SystemNamedColorCache) {
@@ -77,8 +78,8 @@ namespace Squared.Render {
             return _ByValue.TryGetValue(color.PackedValue, out result);
         }
 
-        public static bool TryParse (string text, out Color result) {
-            if (string.IsNullOrWhiteSpace(text)) {
+        public static bool TryParse (AbstractString text, out Color result) {
+            if (text.IsNullOrWhiteSpace) {
                 result = default;
                 return false;
             }
@@ -91,7 +92,7 @@ namespace Squared.Render {
             }
 
             var tColor = typeof(Color);
-            var prop = tColor.GetProperty(text, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
+            var prop = tColor.GetProperty(text.ToString(), BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
             if (prop != null) {
                 result = (Color)prop.GetValue(null);
                 lock (SystemNamedColorCache)

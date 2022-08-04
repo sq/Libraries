@@ -246,6 +246,105 @@ namespace Squared.Util.Text {
         }
     }
 
+    public readonly struct ImmutableAbstractString : IEquatable<ImmutableAbstractString> {
+        public sealed class Comparer : EqualityComparer<ImmutableAbstractString> {
+            public readonly StringComparison Comparison;
+
+            public static readonly Comparer Ordinal = new Comparer(StringComparison.Ordinal),
+                OrdinalIgnoreCase = new Comparer(StringComparison.OrdinalIgnoreCase);
+
+            public Comparer ()
+                : this (StringComparison.Ordinal) {
+            }
+
+            public Comparer (StringComparison c) {
+                Comparison = c;
+            }
+
+            public override bool Equals (ImmutableAbstractString x, ImmutableAbstractString y) {
+                return x.Value.TextEquals(y.Value, Comparison);
+            }
+
+            public override int GetHashCode (ImmutableAbstractString obj) {
+                if (Comparison == StringComparison.Ordinal)
+                    return obj.Value.GetHashCodeUnsafe();
+                else // FIXME
+                    return 0;
+            }
+        }
+
+        public readonly AbstractString Value;
+
+        /// <summary>
+        /// Creates an immutable copy of the provided AbstractString. If it is not immutable, it will be copied.
+        /// </summary>
+        public ImmutableAbstractString (AbstractString s)
+            : this (s, false) {
+        }
+
+        /// <summary>
+        /// Creates an immutable copy of the provided AbstractString. If it is not immutable, it will be copied.
+        /// </summary>
+        /// <param name="iPromiseItsImmutable">Suppresses copying of the value. You shouldn't do this.</param>
+        public ImmutableAbstractString (AbstractString s, bool iPromiseItsImmutable) {
+            if (!iPromiseItsImmutable && !s.IsImmutable)
+                Value = s.ToString();
+            else
+                Value = s;
+        }
+
+        public override int GetHashCode () {
+            return Value.GetHashCodeUnsafe();
+        }
+
+        public bool IsNull => Value.IsNull;
+        public bool IsNullOrWhiteSpace => Value.IsNullOrWhiteSpace;
+        public int Length => Value.Length;
+        public int Offset => Value.Offset;
+
+        public char this[int index] => Value[index];
+
+        public bool Equals (ImmutableAbstractString rhs) {
+            return Value.Equals(rhs.Value);
+        }
+
+        public bool Equals (ref ImmutableAbstractString rhs) {
+            return Value.Equals(rhs.Value);
+        }
+
+        public bool Equals (AbstractString rhs) {
+            return Value.Equals(rhs);
+        }
+
+        public bool Equals (ref AbstractString rhs) {
+            return Value.Equals(rhs);
+        }
+
+        public bool Equals (string text) {
+            return Value.TextEquals(text);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is ImmutableAbstractString ias)
+                return Equals(ref ias);
+            else if (obj is AbstractString astr)
+                return Value.Equals(ref astr);
+            else if (obj is string s)
+                return Value.TextEquals(s);
+            else
+                return false;
+        }
+
+        bool IEquatable<ImmutableAbstractString>.Equals (ImmutableAbstractString other) {
+            return Equals(ref other);
+        }
+
+        public override string ToString () => Value.ToString(); 
+
+        public static implicit operator ImmutableAbstractString (string s) => new ImmutableAbstractString(s);
+        public static implicit operator ImmutableAbstractString (AbstractString astr) => new ImmutableAbstractString(astr);
+    }
+
     public readonly struct AbstractString : IEquatable<AbstractString> {
         public static readonly AbstractString Empty;
 
@@ -262,7 +361,7 @@ namespace Squared.Util.Text {
 
         public bool IsImmutable {
             get {
-                return String != null;
+                return (String != null) || ((Length == 0) && (StringBuilder == null));
             }
         }
 
@@ -370,6 +469,16 @@ namespace Squared.Util.Text {
             return new AbstractString(array);
         }
 
+        public bool Equals (ref AbstractString other) {
+            return (
+                object.ReferenceEquals(String, other.String) &&
+                object.ReferenceEquals(StringBuilder, other.StringBuilder) &&
+                (SubstringOffset == other.SubstringOffset) &&
+                (SubstringLength == other.SubstringLength) &&
+                (ArraySegment == other.ArraySegment)
+            );
+        }
+
         public bool Equals (AbstractString other) {
             return (
                 object.ReferenceEquals(String, other.String) &&
@@ -418,6 +527,14 @@ namespace Squared.Util.Text {
                 return string.Compare(String, SubstringOffset, other.String, other.SubstringOffset, Length, comparison) == 0;
 
             return AllCodepointsEqual(other, comparison);
+        }
+
+        /// <summary>
+        /// This is only valid if you're sure the data won't change!
+        /// </summary>
+        internal int GetHashCodeUnsafe () {
+            return String?.GetHashCode()
+                ?? 0;
         }
 
         public override int GetHashCode () {

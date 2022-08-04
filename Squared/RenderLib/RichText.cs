@@ -359,11 +359,11 @@ namespace Squared.Render.Text {
         public event Action<RichTextConfiguration, RichParseError> OnParseError;
 
         private int Version;
-        public Dictionary<string, Color> NamedColors;
-        public Dictionary<string, IGlyphSource> GlyphSources;
-        public Dictionary<string, RichStyle> Styles;
-        public Dictionary<string, RichImage> Images;
-        public Func<string, AsyncRichImage> ImageProvider;
+        public Dictionary<ImmutableAbstractString, Color> NamedColors;
+        public Dictionary<ImmutableAbstractString, IGlyphSource> GlyphSources;
+        public Dictionary<ImmutableAbstractString, RichStyle> Styles;
+        public Dictionary<ImmutableAbstractString, RichImage> Images;
+        public Func<AbstractString, AsyncRichImage> ImageProvider;
         public Dictionary<char, KerningAdjustment> KerningAdjustments;
         public MarkedStringProcessor MarkedStringProcessor;
         public ColorConversionMode ColorMode;
@@ -382,8 +382,8 @@ namespace Squared.Render.Text {
             return ColorSpace.ConvertColor(color, ColorMode);
         }
 
-        private Color? ParseColor (string text) {
-            if (string.IsNullOrWhiteSpace(text))
+        private Color? ParseColor (AbstractString text) {
+            if (text.IsNullOrWhiteSpace)
                 return null;
 
             if (
@@ -443,27 +443,28 @@ namespace Squared.Render.Text {
                         commandMode ? CommandTerminators : StringTerminators, 
                         commandMode ? ']' : ')'
                     );
-                    if (bracketed == null) {
-                        // FIXME: Can this cause an infinite loop?
-                        continue;
-                    } else if (commandMode && bracketed.IsNullOrWhiteSpace) {
+                    if (commandMode && bracketed.Value.IsNullOrWhiteSpace) {
                         state.Reset(ref layoutEngine);
-                    } else if (commandMode && (Styles != null) && bracketed.StartsWith(".") && Styles.TryGetValue(bracketed.Substring(1), out style)) {
+                    } else if (
+                        commandMode && (Styles != null) && 
+                        bracketed.Value.StartsWith(".") && 
+                        Styles.TryGetValue(bracketed.Value.Substring(1), out style)
+                    ) {
                         ApplyStyle(ref layoutEngine, ref state, in style);
-                    } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed.ToString(), out image)) {
+                    } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
                         if (!DisableImages)
                             AppendImage(ref layoutEngine, image);
                         else
                             parseErrors.Add(new RichParseError {
                                 Offset = bracketed.Offset,
                                 Message = "Images are disabled",
-                                Text = bracketed
+                                Text = bracketed.Value
                             });
                         ai = new AsyncRichImage(ref image);
                         referencedImages.Add(ref ai);
                     } else if (
                         commandMode && (ImageProvider != null) && 
-                        (ai = ImageProvider(bracketed.ToString())).IsInitialized
+                        (ai = ImageProvider(bracketed.Value)).IsInitialized
                     ) {
                         var currentX1 = 0f;
                         var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
@@ -472,7 +473,7 @@ namespace Squared.Render.Text {
                             parseErrors.Add(new RichParseError {
                                 Offset = bracketed.Offset,
                                 Message = "Images are disabled",
-                                Text = bracketed
+                                Text = bracketed.Value
                             });
                         } else if (ai.TryGetValue(out RichImage ri)) {
                             AppendImage(ref layoutEngine, ri);
@@ -505,9 +506,9 @@ namespace Squared.Render.Text {
                         } else {
                             referencedImages.Add(ref ai);
                         }
-                    } else if (commandMode && bracketed.Contains(":")) {
-                        foreach (var rule in RichText.ParseRules(bracketed, ref parseErrors)) {
-                            var value = rule.Value.ToString();
+                    } else if (commandMode && bracketed.Value.Contains(":")) {
+                        foreach (var rule in RichText.ParseRules(bracketed.Value, ref parseErrors)) {
+                            var value = rule.Value;
                             switch (rule.Key.ToString()) {
                                 case "color":
                                 case "c":
@@ -515,14 +516,14 @@ namespace Squared.Render.Text {
                                     break;
                                 case "scale":
                                 case "sc":
-                                    if (!float.TryParse(value, out float newScale))
+                                    if (!float.TryParse(value.ToString(), out float newScale))
                                         layoutEngine.scale = state.InitialScale;
                                     else
                                         layoutEngine.scale = state.InitialScale * newScale;
                                     break;
                                 case "spacing":
                                 case "sp":
-                                    if (!float.TryParse(value, out float newSpacing))
+                                    if (!float.TryParse(value.ToString(), out float newSpacing))
                                         layoutEngine.spacing = state.InitialSpacing;
                                     else
                                         layoutEngine.spacing = state.InitialSpacing * newSpacing;
@@ -547,13 +548,13 @@ namespace Squared.Render.Text {
                             }
                         }
                     } else if (!commandMode) {
-                        AbstractString astr = bracketed;
+                        AbstractString astr = bracketed.Value;
                         string id = null;
-                        int pipeIndex = bracketed.IndexOf('|');
+                        int pipeIndex = astr.IndexOf('|');
                         if (pipeIndex >= 0) {
-                            id = bracketed.Substring(0, pipeIndex);
-                            bracketed = bracketed.Substring(pipeIndex + 1);
-                            astr = bracketed;
+                            id = astr.Substring(0, pipeIndex);
+                            bracketed = astr.Substring(pipeIndex + 1);
+                            astr = bracketed.Value;
                         }
 
                         var action = MarkedStringAction.Default;
@@ -568,7 +569,7 @@ namespace Squared.Render.Text {
                             parseErrors.Add(new RichParseError {
                                 Message = "Processing failed",
                                 Offset = bracketed.Offset,
-                                Text = bracketed,
+                                Text = bracketed.Value,
                             });
 
                         if (action != MarkedStringAction.Omit) {
@@ -581,7 +582,7 @@ namespace Squared.Render.Text {
                             else if (action != MarkedStringAction.PlainText) {
                                 var initialIndex = layoutEngine.currentCharacterIndex;
                                 var m = new LayoutMarker(initialIndex, initialIndex + l - 1) {
-                                    MarkedString = bracketed,
+                                    MarkedString = bracketed.Value,
                                     MarkedID = id,
                                     MarkedStringActualText = astr
                                 };
@@ -662,7 +663,7 @@ namespace Squared.Render.Text {
             layoutEngine.AppendText(glyphSource, text, KerningAdjustments, start: rangeStart, end: rangeEnd, overrideSuppress: overrideSuppress);
         }
 
-        private AbstractString ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart, HashSet<char> terminators, char close) {
+        private ImmutableAbstractString ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart, HashSet<char> terminators, char close) {
             var count = text.Length;
             var start = i + 2;
             i = start;
