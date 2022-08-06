@@ -649,14 +649,20 @@ namespace Squared.PRGUI {
             }
 
             if (displayRect) {
-                if (contentRect)
-                    throw new ArgumentException("Cannot set both contentRect and exteriorRect");
+                // FIXME: Is applying the margins correct to begin with?                
                 var margins = MostRecentComputedMargins;
                 result.Left -= margins.Left;
                 result.Top -= margins.Top;
                 result.Width += margins.X;
                 result.Height += margins.Y;
                 ApplyCompleteTransform(ref result);
+                // FIXME: This is extremely inaccurate!!!
+                if (contentRect) {
+                    result.Left += margins.Left;
+                    result.Top += margins.Top;
+                    result.Width -= margins.X;
+                    result.Height -= margins.Y;
+                }
             }
 
             if (applyOffset) {

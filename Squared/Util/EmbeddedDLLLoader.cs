@@ -97,8 +97,8 @@ namespace Squared.Util {
 
             CreatedFiles.Add(path);
             var hLibrary = LoadLibrary(path);
-            if (hLibrary == null)
-                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), "Failed to load " + name);
+            if (hLibrary == IntPtr.Zero)
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), "Failed to load " + path);
             LoadedHandles.Add(hLibrary);
         }
 
