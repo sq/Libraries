@@ -597,7 +597,7 @@ namespace PRGUI.Demo {
                 Height = { Minimum = 200 },
                 Buffered = true,
                 CacheContent = true,
-                BlendState = BlendState.Additive
+                CompositingBlendState = BlendState.Additive
             };
             canvas.OnPaint += Canvas_OnPaint;
 

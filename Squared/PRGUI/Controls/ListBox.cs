@@ -186,6 +186,7 @@ namespace Squared.PRGUI.Controls {
             // HACK: Most lists will contain enough items to need scrolling, so just always show the bar
             ShowVerticalScrollbar = true;
             Scrollable = true;
+            AutoBreakColumnItems = true;
             // FIXME
             Manager = new ItemListManager<T>(comparer ?? EqualityComparer<T>.Default);
             DefaultCreateControlForValue = _DefaultCreateControlForValue;
@@ -279,6 +280,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             bool scrollOffsetChanged = false;
+            // FIXME: Column mode no longer works anymore and I don't know how I broke it
             ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start |
                 (AutoSize ? default : ControlFlags.Container_No_Expansion_Y);
 
@@ -381,7 +383,8 @@ namespace Squared.PRGUI.Controls {
 
             context.Layout.SetTag(result, LayoutTags.ListBox);
 
-            if (!existingKey.HasValue && (ContainerFlags &= ControlFlags.Container_Row) == ControlFlags.Container_Row) {
+            var rowMode = (ContainerFlags & ControlFlags.Container_Column) != ControlFlags.Container_Column;
+            if (!existingKey.HasValue && rowMode) {
                 var expandSpacer = context.Layout.CreateItem(LayoutTags.Spacer);
                 context.Layout.SetLayoutFlags(expandSpacer, ControlFlags.Layout_ForceBreak | ControlFlags.Layout_Fill);
                 context.Layout.Append(result, expandSpacer);
@@ -401,8 +404,8 @@ namespace Squared.PRGUI.Controls {
                 m.Top = child.Margins.Top;
                 m.Bottom = child.Margins.Bottom + ItemSpacing;
                 context.Layout.SetMargins(lk, m);
-                // HACK: Yay row mode
-                context.Layout.SetItemForceBreak(lk, true);
+                if (ColumnCount == 1)
+                    context.Layout.SetItemForceBreak(lk, true);
             }
 
             if (hasPushedDecorator)
