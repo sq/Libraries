@@ -25,6 +25,7 @@ namespace Squared.PRGUI.Imperative {
 
         public ControlFlags? OverrideLayoutFlags;
         public ControlFlags ExtraLayoutFlags;
+        public Func<IGlyphSource> DefaultGlyphSourceProvider;
 
         internal DenseList<Control> PreviousRemovedControls, CurrentRemovedControls;
         private int NextIndex;
@@ -48,6 +49,7 @@ namespace Squared.PRGUI.Imperative {
             OverrideLayoutFlags = null;
             WaitingForFocusBeneficiary = null;
             IsNewInstance = isNewInstance;
+            DefaultGlyphSourceProvider = null;
         }
 
         public ContainerBuilder (Control container, bool isNewInstance = true)
@@ -140,6 +142,7 @@ namespace Squared.PRGUI.Imperative {
                     instance = new TControl();
 
                 instance.Data.Set<TData>(key, data);
+                ApplyAppearance(instance);
                 ApplyLayoutFlags(instance, null);
                 AddInternal(instance);
             }
@@ -184,6 +187,15 @@ namespace Squared.PRGUI.Imperative {
             return result;
         }
 
+        private void ApplyAppearance (Control control) {
+            if (
+                (DefaultGlyphSourceProvider != null) && 
+                (control.Appearance.GlyphSource == null) &&
+                (control.Appearance.GlyphSourceProvider == null)
+            )
+                control.Appearance.GlyphSourceProvider = DefaultGlyphSourceProvider;
+        }
+
         private void ApplyLayoutFlags (Control control, ControlFlags? customFlags) {
             if (OverrideLayoutFlags.HasValue)
                 control.LayoutFlags = OverrideLayoutFlags.Value;
@@ -205,7 +217,7 @@ namespace Squared.PRGUI.Imperative {
                 throw new InvalidOperationException("This control does not accept container flags");
         }
 
-        public ControlBuilder<TControl> New<TControl> (ControlFlags? layoutFlags = null)
+        public ControlBuilder<TControl> New<TControl> (ControlFlags? layoutFlags = null, AbstractTooltipContent tooltip = default)
             where TControl : Control, new() {
             TControl instance = null;
             if (NextIndex < Children.Count)
@@ -217,10 +229,14 @@ namespace Squared.PRGUI.Imperative {
             if (instance == null)
                 instance = new TControl();
 
+            ApplyAppearance(instance);
             ApplyLayoutFlags(instance, layoutFlags);
             AddInternal(instance);
 
-            return new ControlBuilder<TControl>(instance);
+            var result = new ControlBuilder<TControl>(instance);
+            if (tooltip != default)
+                result.SetTooltip(tooltip);
+            return result;
         }
 
         public ContainerBuilder NewContainer (ControlFlags? layoutFlags = null, ControlFlags? containerFlags = null) {
@@ -255,6 +271,8 @@ namespace Squared.PRGUI.Imperative {
                 result = new ContainerBuilder(instance, false);
             }
 
+            result.DefaultGlyphSourceProvider = DefaultGlyphSourceProvider;
+            ApplyAppearance(instance);
             ApplyLayoutFlags(instance, layoutFlags);
             ApplyContainerFlags(instance, containerFlags);
             AddInternal(instance);
@@ -699,12 +717,30 @@ namespace Squared.PRGUI.Imperative {
             }
             return this;
         }
-        public ControlBuilder<TControl> SetRange<TValue> (TValue? min = null, TValue? max = null)
+        public ControlBuilder<TControl> SetClampToRange (bool value)
+        {
+            if (Control is IParameterEditor cast1) {
+                cast1.ClampToMinimum = value;
+                cast1.ClampToMaximum = value;
+            }
+            return this;
+        }
+        public ControlBuilder<TControl> SetClampToRange (bool min = true, bool max = true)
+        {
+            if (Control is IParameterEditor cast1) {
+                cast1.ClampToMinimum = min;
+                cast1.ClampToMaximum = max;
+            }
+            return this;
+        }
+        public ControlBuilder<TControl> SetRange<TValue> (TValue? min = null, TValue? max = null, bool? clamp = null)
             where TValue : struct, IComparable<TValue>
         {
             if (Control is ParameterEditor<TValue> cast1) {
                 cast1.Minimum = min;
                 cast1.Maximum = max;
+                if (clamp.HasValue)
+                    cast1.ClampToRange = clamp.Value;
             }
 
             if (Control is Slider cast2) {

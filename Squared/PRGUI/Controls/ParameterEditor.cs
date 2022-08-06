@@ -79,6 +79,11 @@ namespace Squared.PRGUI.Controls {
         public bool ClampToMinimum { get; set; } = true;
         public bool ClampToMaximum { get; set; } = true;
 
+        public bool ClampToRange {
+            get => ClampToMaximum && ClampToMinimum;
+            set => ClampToMinimum = ClampToMaximum = value;
+        }
+
         private double LastRepeatTimestamp;
 
         // FIXME: If for some reason your FastIncrementRate is very large, pgup/pgdn will be slow

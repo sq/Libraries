@@ -213,10 +213,19 @@ namespace Squared.Render.Convenience {
             ColorWriteChannels = ColorWriteChannels.None
         };
 
+        public static readonly BlendState MultiplyColor = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.Zero,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.SourceColor,
+            ColorSourceBlend = Blend.Zero
+        };
+
         public static readonly BlendState MultiplyColor2x = new BlendState {
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
-            AlphaSourceBlend = Blend.One,
+            AlphaSourceBlend = Blend.Zero,
             ColorBlendFunction = BlendFunction.Add,
             ColorDestinationBlend = Blend.SourceColor,
             ColorSourceBlend = Blend.DestinationColor

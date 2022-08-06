@@ -7,6 +7,9 @@ using System.Reflection;
 using System.Linq.Expressions;
 
 namespace Squared.Util.Containers {
+    public delegate void ExtentEstimator (object value, ref object min, ref object max);
+    public delegate void ExtentEstimator<T> (ref T value, ref T min, ref T max);
+
     public interface ICurve {
         Type ValueType { get; }
         Type DataType { get; }
@@ -24,7 +27,7 @@ namespace Squared.Util.Containers {
         bool RemoveAtPosition (float position, float epsilon);
         void SetValueAtPosition (float position, object value);
         IEnumerable<CurvePoint<object>> Points { get; }
-        bool EstimateExtents (IComparer comparer, out object minimum, out object maximum, int detail);
+        bool EstimateExtents (IComparer comparer, out object minimum, out object maximum, int detail, ExtentEstimator estimator = null);
     }
 
     public interface ICurve<TValue> : ICurve
@@ -37,7 +40,7 @@ namespace Squared.Util.Containers {
         new IEnumerable<CurvePoint<TValue>> Points {
             get;
         }
-        bool EstimateExtents<TComparer> (TComparer comparer, out TValue minimum, out TValue maximum, int detail = 10)
+        bool EstimateExtents<TComparer> (TComparer comparer, out TValue minimum, out TValue maximum, int detail = 10, Delegate estimator = null)
             where TComparer : IComparer<TValue>;
     }
 
@@ -347,8 +350,8 @@ namespace Squared.Util.Containers {
             return GetValueAtPosition(position, 0, _Items.Count - 1, out result);
         }
 
-        bool ICurve.EstimateExtents(IComparer comparer, out object minimum, out object maximum, int detail) {
-            if (EstimateExtents((IComparer<TValue>)comparer ?? Comparer<TValue>.Default, out var min, out var max, detail)) {
+        bool ICurve.EstimateExtents(IComparer comparer, out object minimum, out object maximum, int detail, ExtentEstimator estimator) {
+            if (EstimateExtents((IComparer<TValue>)comparer ?? Comparer<TValue>.Default, out var min, out var max, detail, estimator)) {
                 minimum = min;
                 maximum = max;
                 return true;
@@ -363,9 +366,14 @@ namespace Squared.Util.Containers {
         /// </summary>
         /// <param name="comparer">The comparer used to determine which of two values is larger.</param>
         /// <param name="detail">The number of steps between each control point to evaluate (to account for non-linear interpolation)</param>
-        public bool EstimateExtents<TComparer> (TComparer comparer, out TValue minimum, out TValue maximum, int detail = 10)
+        public bool EstimateExtents<TComparer> (TComparer comparer, out TValue minimum, out TValue maximum, int detail = 10, Delegate extentEstimator = null)
             where TComparer : IComparer<TValue>
         {
+            var eeo = extentEstimator as ExtentEstimator;
+            var eet = extentEstimator as ExtentEstimator<TValue>;
+            if ((eeo == null) && (eet == null) && (extentEstimator != null))
+                throw new ArgumentOutOfRangeException(nameof(extentEstimator), $"Must be of type ExtentEstimator or ExtentEstimator<{typeof(TValue).Name}>");
+
             if (!typeof(TComparer).IsValueType) {
                 if (comparer == null)
                     throw new ArgumentNullException(nameof(comparer));
@@ -375,6 +383,7 @@ namespace Squared.Util.Containers {
 
             bool result = false;
             minimum = maximum = default;
+            object boxedMinimum = null, boxedMaximum = null;
 
             if (Count < 1)
                 return false;
@@ -389,18 +398,30 @@ namespace Squared.Util.Containers {
                     float p = Arithmetic.Lerp(p0, p1, j * fDetail);
                     if (GetValueAtPosition(p, out var current)) {
                         if (result) {
-                            if (comparer.Compare(current, minimum) < 0)
-                                minimum = current;
-                            if (comparer.Compare(current, maximum) > 0)
-                                maximum = current;
+                            if (eet != null)
+                                eet(ref current, ref minimum, ref maximum);
+                            else if (eeo != null)
+                                eeo(current, ref boxedMinimum, ref boxedMaximum);
+                            else {
+                                if (comparer.Compare(current, minimum) < 0)
+                                    minimum = current;
+                                if (comparer.Compare(current, maximum) > 0)
+                                    maximum = current;
+                            }
                         } else {
                             result = true;
                             minimum = maximum = current;
+                            if (eeo != null)
+                                boxedMinimum = boxedMaximum = maximum;
                         }
                     }
                 }
             }
 
+            if (result && (eeo != null)) {
+                minimum = (TValue)boxedMinimum;
+                maximum = (TValue)boxedMaximum;
+            }
             return result;
         }
 

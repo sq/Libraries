@@ -58,7 +58,7 @@ namespace Squared.PRGUI.Controls {
         private bool _ShouldDisposeBuffer;
         public AutoRenderTarget Buffer { get; private set; }
 
-        public BlendState BlendState = BlendState.NonPremultiplied;
+        public BlendState CompositingBlendState = BlendState.Opaque;
 
         private SurfaceFormat _SurfaceFormat = SurfaceFormat.Color;
         public SurfaceFormat SurfaceFormat {
@@ -182,14 +182,13 @@ namespace Squared.PRGUI.Controls {
             if (!_Buffered) {
                 AutoDisposeBuffer(renderer.Container.Coordinator);
                 renderer.MakeSubgroup(out contentRenderer);
-                contentRenderer.BlendState = BlendState;
                 Paint(ref contentRenderer, in settings);
             } else {
                 var buffer = Buffer.Get();
                 if (buffer == null)
                     return;
                 renderer.Draw(
-                    Buffer.Get(), (int)a.X, (int)a.Y, blendState: BlendState, 
+                    Buffer.Get(), (int)a.X, (int)a.Y, blendState: CompositingBlendState, 
                     scaleX: 1.0f / InternalResolution, scaleY: 1.0f / InternalResolution
                 );
             }
