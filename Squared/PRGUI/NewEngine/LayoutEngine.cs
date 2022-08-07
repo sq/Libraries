@@ -15,7 +15,7 @@ using System.IO;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private ControlRecord Invalid = new ControlRecord {
+        private BoxRecord Invalid = new BoxRecord {
         };
 
         private int Version, _Count, _RunCount;
@@ -26,11 +26,11 @@ namespace Squared.PRGUI.NewEngine {
         //  into a new array, otherwise a reference to the old array could be persistent on the stack.
         // The obvious solution is a huge buffer, but another option is a chain of smaller buffers so we grow by
         //  allocating a new buffer, which won't invalidate old references.
-        private ControlRecord[] Records = new ControlRecord[Capacity];
-        private ControlLayoutResult[] Results = new ControlLayoutResult[Capacity];
+        private BoxRecord[] Records = new BoxRecord[Capacity];
+        private BoxLayoutResult[] Results = new BoxLayoutResult[Capacity];
         // The worst case size is one run per control, but in practice we will usually have a much smaller number
         //  of runs, which means it might be beneficial to grow this buffer separately
-        private ControlLayoutRun[] RunBuffer = new ControlLayoutRun[Capacity];
+        private LayoutRun[] RunBuffer = new LayoutRun[Capacity];
 
 #if DEBUG
         internal Control[] Controls = new Control[Capacity];
@@ -61,14 +61,14 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref ControlRecord Root () {
+        public ref BoxRecord Root () {
             return ref Records[0];
         }
 
         /// <summary>
         /// Returns a reference to the control's configuration. Throws if key is invalid.
         /// </summary>
-        public ref ControlRecord this [ControlKey key] {
+        public ref BoxRecord this [ControlKey key] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 // FIXME: Because we are sharing IDs
@@ -84,13 +84,13 @@ namespace Squared.PRGUI.NewEngine {
         /// Returns a reference to the item (or an invalid dummy item)
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref ControlRecord UnsafeItem (ControlKey key) => ref UnsafeItem(key.ID);
+        private ref BoxRecord UnsafeItem (ControlKey key) => ref UnsafeItem(key.ID);
 
         /// <summary>
         /// Returns a reference to the item (or an invalid dummy item)
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref ControlRecord UnsafeItem (int index) {
+        private ref BoxRecord UnsafeItem (int index) {
             // FIXME: Because we are sharing IDs
             // if ((index < 0) || (index >= _Count))
             if ((index < 0) || (index >= Records.Length))
@@ -103,13 +103,13 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-        public ref ControlRecord Create (out ControlKey result, Layout.LayoutTags tag = default, ControlFlags flags = default) {
-            ref ControlRecord record = ref Create(tag, flags);
+        public ref BoxRecord Create (out ControlKey result, Layout.LayoutTags tag = default, ControlFlags flags = default) {
+            ref BoxRecord record = ref Create(tag, flags);
             result = record.Key;
             return ref record;
         }
 
-        public ref ControlRecord Create (Layout.LayoutTags tag = default, ControlFlags flags = default) {
+        public ref BoxRecord Create (Layout.LayoutTags tag = default, ControlFlags flags = default) {
             var index = _Count++;
             ref var result = ref Records[index];
             result._Key = new ControlKey(index);
@@ -118,7 +118,7 @@ namespace Squared.PRGUI.NewEngine {
             return ref result;
         }
 
-        public ref ControlRecord GetOrCreate (ControlKey? existingKey, Layout.LayoutTags tag = default, ControlFlags flags = default) {
+        public ref BoxRecord GetOrCreate (ControlKey? existingKey, Layout.LayoutTags tag = default, ControlFlags flags = default) {
             var index = existingKey?.ID ?? -1;
             // FIXME
             // if ((index < 0) || (index >= _Count))
@@ -147,12 +147,12 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ref ControlLayoutResult UnsafeResult (ControlKey key) {
+        internal ref BoxLayoutResult UnsafeResult (ControlKey key) {
             return ref Results[key.ID];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref ControlLayoutResult Result (ControlKey key) {
+        public ref BoxLayoutResult Result (ControlKey key) {
             if ((key.ID < 0) || (key.ID >= Results.Length))
                 throw new ArgumentOutOfRangeException(nameof(key));
             ref var result = ref Results[key.ID];
@@ -336,9 +336,9 @@ namespace Squared.PRGUI.NewEngine {
 
         public void LoadRecords (string filename) {
 #if DEBUG
-            var serializer = new XmlSerializer(typeof(ControlRecord[]));
+            var serializer = new XmlSerializer(typeof(BoxRecord[]));
             using (var stream = File.OpenRead(filename)) {
-                var temp = (ControlRecord[])serializer.Deserialize(stream);
+                var temp = (BoxRecord[])serializer.Deserialize(stream);
                 Array.Clear(Records, 0, Records.Length);
                 Array.Copy(temp, Records, temp.Length);
                 _Count = temp.Length;
@@ -350,8 +350,8 @@ namespace Squared.PRGUI.NewEngine {
 
         public void SaveRecords (string filename) {
 #if DEBUG
-            var serializer = new XmlSerializer(typeof(ControlRecord[]));
-            var temp = new ControlRecord[_Count];
+            var serializer = new XmlSerializer(typeof(BoxRecord[]));
+            var temp = new BoxRecord[_Count];
             Array.Copy(Records, temp, _Count);
             using (var stream = File.Open(filename, FileMode.Create))
                 serializer.Serialize(stream, temp);
@@ -360,13 +360,13 @@ namespace Squared.PRGUI.NewEngine {
 #endif
         }
     
-        public bool HitTest (Vector2 position, out ControlRecord record, out ControlLayoutResult result, bool exhaustive) {
+        public bool HitTest (Vector2 position, out BoxRecord record, out BoxLayoutResult result, bool exhaustive) {
             record = default;
             result = default;
             return HitTest(in Root(), position, ref record, ref result, exhaustive);
         }
 
-        private bool HitTest (in ControlRecord control, Vector2 position, ref ControlRecord record, ref ControlLayoutResult result, bool exhaustive) {
+        private bool HitTest (in BoxRecord control, Vector2 position, ref BoxRecord record, ref BoxLayoutResult result, bool exhaustive) {
             ref var testResult = ref UnsafeResult(control.Key);
             var inside = testResult.Rect.Contains(position);
 

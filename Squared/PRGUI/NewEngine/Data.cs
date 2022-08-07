@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using ControlKey = Squared.PRGUI.Layout.ControlKey;
 using ControlFlags = Squared.PRGUI.Layout.ControlFlags;
@@ -23,7 +21,7 @@ namespace Squared.PRGUI.NewEngine {
     }
 
     public static class DataExtensions {
-        public static ref ControlDimension Size (this ref ControlRecord record, LayoutDimensions dimension) {
+        public static ref ControlDimension Size (this ref BoxRecord record, LayoutDimensions dimension) {
             if (dimension == LayoutDimensions.X)
                 return ref record.Width;
             else
@@ -44,29 +42,43 @@ namespace Squared.PRGUI.NewEngine {
     }
 
     internal struct ControlKeyDefaultInvalid {
-        public int IndexPlusOne;
+        internal int IndexPlusOne;
 
         public ControlKey Key {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => new ControlKey(IndexPlusOne - 1);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => IndexPlusOne = value.ID + 1;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static explicit operator int (ControlKeyDefaultInvalid key) {
+            return key.IndexPlusOne - 1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator ControlKeyDefaultInvalid (int index) {
             return new ControlKeyDefaultInvalid {
                 IndexPlusOne = index + 1
             };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator ControlKeyDefaultInvalid (ControlKey value) {
             return new ControlKeyDefaultInvalid {
                 IndexPlusOne = value.ID + 1
             };
         }
 
-        public bool IsInvalid => (IndexPlusOne <= 0);
+        public bool IsInvalid {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (IndexPlusOne <= 0);
+        }
 
         public override string ToString () {
-            return (IndexPlusOne - 1).ToString();
+            return IndexPlusOne <= 0
+                ? "<invalid>"
+                : (IndexPlusOne - 1).ToString();
         }
     }
 
@@ -132,13 +144,21 @@ namespace Squared.PRGUI.NewEngine {
             set => _BoxFlags = (BoxFlag)
                 (((BoxFlags)_BoxFlags & ~BoxFlags.MASK) | value);
         }
+
+        // TODO: Consider making these public and add setters
+        internal bool ForceBreak => (_BoxFlags & BoxFlag.Break) != default;
+        internal bool ConstrainChildren => (_ContainerFlags & ContainerFlag.Boxes_Overflow) == default;
+        internal bool IsVertical => (_ContainerFlags & ContainerFlag.Layout_Column) != default;
+        internal bool IsStackedOrFloating => (_BoxFlags & BoxFlag.Stacked) != default;
+        internal bool FillRow => (_BoxFlags & BoxFlag.Fill_Row) == BoxFlag.Fill_Row;
+        internal bool FillColumn => (_BoxFlags & BoxFlag.Fill_Column) == BoxFlag.Fill_Column;
     }
 
     /// <summary>
     /// Represents a box being laid out by the layout engine
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    public struct ControlRecord {
+    public struct BoxRecord {
         // Managed by the layout engine
         // TODO: Use a custom dense backing store and no setters
         internal ControlKeyDefaultInvalid _Key, _Parent, _FirstChild, 
@@ -210,8 +230,11 @@ namespace Squared.PRGUI.NewEngine {
         }
     }
 
+    /// <summary>
+    /// Represents the state of the layout engine for a given box
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    public struct ControlLayoutResult {
+    public struct BoxLayoutResult {
         public Layout.LayoutTags Tag;
 
         // TODO: Optimize this out
@@ -224,6 +247,7 @@ namespace Squared.PRGUI.NewEngine {
         internal int Depth;
         internal bool Break;
 #endif
+        internal bool Pass1Complete;
 
         /// <summary>
         /// The display/layout rectangle of the control.
@@ -256,8 +280,11 @@ namespace Squared.PRGUI.NewEngine {
         }
     }
 
+    /// <summary>
+    /// Represents the state of the layout engine for a given run
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct ControlLayoutRun {
+    internal struct LayoutRun {
         public ControlKeyDefaultInvalid First, Last;
         public int FlowCount, ExpandCountX, ExpandCountY, NextRunIndex;
         public float TotalWidth, TotalHeight, MaxOuterWidth, MaxOuterHeight;

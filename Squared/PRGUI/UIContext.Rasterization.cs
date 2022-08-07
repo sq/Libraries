@@ -149,7 +149,7 @@ namespace Squared.PRGUI {
         private StringBuilder LayoutTreeBuilder = new StringBuilder();
 
         private void RasterizeLayoutTree (
-            ref ImperativeRenderer renderer, Render.Text.IGlyphSource font, ref NewEngine.ControlRecord record, 
+            ref ImperativeRenderer renderer, Render.Text.IGlyphSource font, ref NewEngine.BoxRecord record, 
             HashSet<Layout.ControlKey> focusChain
         ) {
 #if DEBUG
