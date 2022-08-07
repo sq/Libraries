@@ -10,9 +10,15 @@ using LayoutDimensions = Squared.PRGUI.Layout.LayoutDimensions;
 using Squared.PRGUI.Layout;
 #if DEBUG
 using System.Xml.Serialization;
+using Unserialized = System.Xml.Serialization.XmlIgnoreAttribute;
+#else
+using Unserialized = Squared.PRGUI.NewEngine.DummyAttribute;
 #endif
 
 namespace Squared.PRGUI.NewEngine {
+    internal class DummyAttribute : Attribute {
+    }
+
     public static class DataExtensions {
         public static ref ControlDimension Size (this ref ControlRecord record, LayoutDimensions dimension) {
             if (dimension == LayoutDimensions.X)
@@ -102,9 +108,7 @@ namespace Squared.PRGUI.NewEngine {
         public Vector2 FloatingPosition;
         public Layout.LayoutTags Tag;
 
-#if DEBUG
-        [XmlIgnore]
-#endif
+        [Unserialized]
         public Layout.ControlFlags LayoutFlags {
             get => Flags & Layout.ControlFlagMask.Layout;
             set {
@@ -112,9 +116,7 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-#if DEBUG
-        [XmlIgnore]
-#endif
+        [Unserialized]
         public Layout.ControlFlags ContainerFlags {
             get => Flags & Layout.ControlFlagMask.Container;
             set {
@@ -140,15 +142,30 @@ namespace Squared.PRGUI.NewEngine {
         // TODO: Optimize this out
         internal int Version;
 
-        public RectF Rect, ContentRect;
-        // public Vector2 ContentSize;
+        /// <summary>
+        /// The display/layout rectangle of the control.
+        /// </summary>
+        public RectF Rect;
+        /// <summary>
+        /// The location of the control's content area or actual content.
+        /// This will be larger than Rect in scenarios where the control was clipped by its parent,
+        ///  in which case you want to constrain it to the parent rect. This will prevent
+        ///  clipping from making margins move in too far.
+        /// </summary>
+        public RectF ContentRect;
         public Layout.LayoutTags Tag;
+        /// <summary>
+        /// The control's position within the current run (X for row layout, Y for column layout)
+        /// </summary>
         internal float PositionInRun;
+        /// <summary>
+        /// The index of the first run contained by this control, if any.
+        /// </summary>
+        internal int FirstRunIndex;
 #if DEBUG
         internal bool Break;
         internal int Depth;
 #endif
-        internal int FirstRunIndex;
 
         public override string ToString () {
 #if DEBUG
@@ -164,9 +181,8 @@ namespace Squared.PRGUI.NewEngine {
 
     internal struct ControlLayoutRun {
         public ControlKeyDefaultInvalid First, Last;
-        public int FlowCount, ExpandCountX, ExpandCountY;
+        public int FlowCount, ExpandCountX, ExpandCountY, NextRunIndex;
         public float TotalWidth, TotalHeight, MaxOuterWidth, MaxOuterHeight;
-        public int NextRunIndex;
         public ControlFlags? XAnchor, YAnchor;
 
         public override string ToString () {
