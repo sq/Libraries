@@ -243,7 +243,8 @@ namespace Squared.PRGUI {
             if (UseNewEngine) {
                 ref var root = ref Engine.Root();
                 Engine.CanvasSize = CanvasSize;
-                root.ContainerFlags = ControlFlags.Container_Row;
+                // FIXME
+                // root._ContainerFlags = ControlFlags.Container_Row;
                 root.Tag = LayoutTags.Root;
             }
 

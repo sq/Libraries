@@ -573,10 +573,10 @@ namespace Squared.PRGUI {
         public float DisabledTextAlpha = 0.5f;
 
         public float GetHoveringAlpha (ref UIOperationContext context, ControlStates state, out bool isHovering, float? fadeLength = null) {
-            isHovering = state.IsFlagged(ControlStates.Hovering);
+            isHovering = PRGUIExtensions.HasFlag(state, ControlStates.Hovering);
 
             float previousAlpha = 0f, newAlpha = 0f;
-            if (state.IsFlagged(ControlStates.PreviouslyHovering))
+            if (PRGUIExtensions.HasFlag(state, ControlStates.PreviouslyHovering))
                 previousAlpha = 1f - Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverLoss).TotalSeconds / (fadeLength ?? HoverFadeLength));
             if (isHovering)
                 newAlpha = Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverGain).TotalSeconds / (fadeLength ?? HoverFadeLength));
@@ -587,10 +587,10 @@ namespace Squared.PRGUI {
         }
 
         public float GetFocusedAlpha (ref UIOperationContext context, ControlStates state, out bool isFocused, bool includeContains = true, float? fadeLength = null) {
-            var previouslyFocused = state.IsFlagged(ControlStates.PreviouslyFocused);
-            isFocused = state.IsFlagged(ControlStates.Focused);
+            var previouslyFocused = PRGUIExtensions.HasFlag(state, ControlStates.PreviouslyFocused);
+            isFocused = PRGUIExtensions.HasFlag(state, ControlStates.Focused);
             var fadeFlag = isFocused;
-            if (includeContains && state.IsFlagged(ControlStates.ContainsFocus)) {
+            if (includeContains && PRGUIExtensions.HasFlag(state, ControlStates.ContainsFocus)) {
                 isFocused = true;
                 // We aren't focused but are in the focus chain (a child or modal inherited focus from us), so it's not possible
                 //  to trivially get this animation right. So just suppress it
@@ -600,12 +600,12 @@ namespace Squared.PRGUI {
 
             // HACK because we want mouseover to feel really responsive
             // FIXME: Link this to the hovering alpha transition
-            if (state.IsFlagged(ControlStates.Hovering) && isFocused)
+            if (PRGUIExtensions.HasFlag(state, ControlStates.Hovering) && isFocused)
                 return 1;
 
             var result = (float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastFocusChange).TotalSeconds / (fadeLength ?? FocusFadeLength);
             if (!isFocused)
-                return state.IsFlagged(ControlStates.PreviouslyFocused)
+                return PRGUIExtensions.HasFlag(state, ControlStates.PreviouslyFocused)
                     ? 1 - Arithmetic.Saturate(result)
                     : 0;
             else
@@ -633,9 +633,9 @@ namespace Squared.PRGUI {
 
             pulse = 0;
             if (
-                state.IsFlagged(ControlStates.Pressed) ||
+                PRGUIExtensions.HasFlag(state, ControlStates.Pressed) ||
                 // HACK
-                state.IsFlagged(ControlStates.Checked)
+                PRGUIExtensions.HasFlag(state, ControlStates.Checked)
             ) {
                 alpha = hasColor ? 0.95f : 0.8f;
                 thickness = PressedOutlineThickness;
@@ -645,7 +645,7 @@ namespace Squared.PRGUI {
                 } else
                     baseColor = ColorScheme.Active;
                 outlineColor = (outlineBaseColor ?? baseColor) + (hasColor ? 0.4f : 0.05f);
-            } else if (state.IsFlagged(ControlStates.Hovering)) {
+            } else if (PRGUIExtensions.HasFlag(state, ControlStates.Hovering)) {
                 // FIXME: Animate this
                 alpha = hasColor 
                     ? 0.95f 
@@ -674,7 +674,7 @@ namespace Squared.PRGUI {
             texture = settings.GetTexture();
             textureRegion = settings.GetTextureRegion();
             textureSettings = settings.GetTextureSettings();
-            if (settings.State.IsFlagged(ControlStates.Disabled))
+            if (PRGUIExtensions.HasFlag(settings.State, ControlStates.Disabled))
                 textureSettings.Saturation *= 0.5f;
         }
 
@@ -862,7 +862,7 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void DropdownArrow_Above (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            var isPressed = settings.State.IsFlagged(ControlStates.Pressed);
+            var isPressed = PRGUIExtensions.HasFlag(settings.State, ControlStates.Pressed);
             GetContentAdjustment_Button(ref context, settings.State, out Vector2 offset, out Vector2 scale);
             settings.ContentBox.SnapAndInset(out Vector2 tl, out Vector2 br);
 
@@ -1170,7 +1170,7 @@ namespace Squared.PRGUI {
 
             var ha = GetHoveringAlpha(ref context, settings.State, out bool isHovering);
             var fa = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
-            var isChecked = settings.State.IsFlagged(ControlStates.Checked);
+            var isChecked = PRGUIExtensions.HasFlag(settings.State, ControlStates.Checked);
             if (isHovering || isChecked || isFocused) {
                 var a = isChecked
                     ? 1f
@@ -1224,7 +1224,7 @@ namespace Squared.PRGUI {
 
             var ha = GetHoveringAlpha(ref context, settings.State, out bool isHovering);
             var fa = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
-            var isChecked = settings.State.IsFlagged(ControlStates.Checked);
+            var isChecked = PRGUIExtensions.HasFlag(settings.State, ControlStates.Checked);
             if (isHovering || isChecked || isFocused) {
                 pSRGBColor 
                     f = pSRGBColor.White(
@@ -1631,7 +1631,7 @@ namespace Squared.PRGUI {
 
         protected virtual void ContainerTitle_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             float cornerRadius = ContainerCornerRadius,
-                cornerRadius2 = settings.State.IsFlagged(ControlStates.Pressed) // HACK: When collapsed, round all corners
+                cornerRadius2 = PRGUIExtensions.HasFlag(settings.State, ControlStates.Pressed) // HACK: When collapsed, round all corners
                     ? cornerRadius
                     : 0;
             TitleCommon_Below(ref renderer, settings, cornerRadius, cornerRadius2);
@@ -1639,14 +1639,14 @@ namespace Squared.PRGUI {
 
         protected virtual void WindowTitle_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             float cornerRadius = FloatingContainerCornerRadius ?? ContainerCornerRadius,
-                cornerRadius2 = settings.State.IsFlagged(ControlStates.Pressed) // HACK: When collapsed, round all corners
+                cornerRadius2 = PRGUIExtensions.HasFlag(settings.State, ControlStates.Pressed) // HACK: When collapsed, round all corners
                     ? cornerRadius
                     : 0;
             TitleCommon_Below(ref renderer, settings, cornerRadius, cornerRadius2);
         }
 
         protected virtual void TitleCommon_Below (ref ImperativeRenderer renderer, DecorationSettings settings, float cornerRadius, float cornerRadius2) {
-            var containsFocus = settings.State.IsFlagged(ControlStates.ContainsFocus);
+            var containsFocus = PRGUIExtensions.HasFlag(settings.State, ControlStates.ContainsFocus);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
             var color1 = (pSRGBColor)(containsFocus ? ColorScheme.TitleFill : ColorScheme.TitleFill.ToGrayscale(0.85f));
@@ -1672,7 +1672,7 @@ namespace Squared.PRGUI {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isCaret = (settings.Box.Width <= 0.5f);
             var focusedAlpha = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
-            if (settings.State.IsFlagged(ControlStates.ContainsFocus))
+            if (PRGUIExtensions.HasFlag(settings.State, ControlStates.ContainsFocus))
                 isFocused = true;
             var fillColor = ColorScheme.SelectionFill *
                 Arithmetic.Lerp(0.45f, Arithmetic.Pulse(context.Now / 2f, 0.7f, 0.8f), focusedAlpha) *
@@ -1699,8 +1699,8 @@ namespace Squared.PRGUI {
 
         protected virtual void MenuSelection_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
-            var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
-                settings.State.IsFlagged(ControlStates.ContainsFocus);
+            var isFocused = PRGUIExtensions.HasFlag(settings.State, ControlStates.Focused) ||
+                PRGUIExtensions.HasFlag(settings.State, ControlStates.ContainsFocus);
 
             ConfigureTexture("MenuSelection", ref settings, out var texture, out var textureRegion, out var textureSettings);
 
@@ -1730,8 +1730,8 @@ namespace Squared.PRGUI {
 
         protected virtual void ListSelection_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
-            var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
-                settings.State.IsFlagged(ControlStates.ContainsFocus);
+            var isFocused = PRGUIExtensions.HasFlag(settings.State, ControlStates.Focused) ||
+                PRGUIExtensions.HasFlag(settings.State, ControlStates.ContainsFocus);
             ConfigureTexture("ListSelection", ref settings, out var texture, out var textureRegion, out var textureSettings);
 
             var fillColor = (
@@ -1824,8 +1824,8 @@ namespace Squared.PRGUI {
 
         protected virtual void ParameterGauge_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             var radius = new Vector4(InertCornerRadius, InertCornerRadius, InertCornerRadius, InertCornerRadius);
-            bool isFocused = settings.State.IsFlagged(ControlStates.Focused),
-                isHovering = settings.State.IsFlagged(ControlStates.Hovering);
+            bool isFocused = PRGUIExtensions.HasFlag(settings.State, ControlStates.Focused),
+                isHovering = PRGUIExtensions.HasFlag(settings.State, ControlStates.Hovering);
             var outlineRadius = isFocused ? 1f : 0f;
             var outlineColor = pSRGBColor.Black(0.8f);
             settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
@@ -1855,8 +1855,8 @@ namespace Squared.PRGUI {
         protected virtual void VirtualCursor_Above (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             var center = settings.Box.Center + WeirdVirtualCursorOffset;
             var radius = (settings.Box.Size / 2f).X; // HACK
-            var showCenter = !settings.State.IsFlagged(ControlStates.Disabled);
-            var alpha = settings.State.IsFlagged(ControlStates.Disabled) ? VirtualCursorLockedAlpha : VirtualCursorUnlockedAlpha;
+            var showCenter = !PRGUIExtensions.HasFlag(settings.State, ControlStates.Disabled);
+            var alpha = PRGUIExtensions.HasFlag(settings.State, ControlStates.Disabled) ? VirtualCursorLockedAlpha : VirtualCursorUnlockedAlpha;
             var thickness = (showCenter ? 1.2f : 1.0f) * VirtualCursorThickness;
             float fillAlpha = (alpha * 0.85f) + 0.05f, fillAlpha2 = (alpha * 0.85f) - 0.35f,
                 fillOffset = (float)Time.Seconds * 0.4f;
@@ -1875,7 +1875,7 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void VirtualCursorAnchor_Above (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            if (settings.State.IsFlagged(ControlStates.Disabled))
+            if (PRGUIExtensions.HasFlag(settings.State, ControlStates.Disabled))
                 return;
 
             var unsnapped = settings.Box.Position + WeirdVirtualCursorOffset;
@@ -1915,7 +1915,7 @@ namespace Squared.PRGUI {
             if (!color.HasValue)
                 color = ColorScheme.Text;
 
-            if (state.IsFlagged(ControlStates.Disabled))
+            if (PRGUIExtensions.HasFlag(state, ControlStates.Disabled))
                 color = color?.ToGrayscale(DisabledTextAlpha);
 
             switch (style) {
@@ -1967,7 +1967,7 @@ namespace Squared.PRGUI {
 
         protected virtual void GetContentAdjustment_Button (ref UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale) {
             scale = Vector2.One;
-            if (state.IsFlagged(ControlStates.Pressed)) {
+            if (PRGUIExtensions.HasFlag(state, ControlStates.Pressed)) {
                 offset = new Vector2(0, 2);
             } else {
                 offset = new Vector2(0, 0);

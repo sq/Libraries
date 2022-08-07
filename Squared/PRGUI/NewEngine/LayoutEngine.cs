@@ -113,7 +113,7 @@ namespace Squared.PRGUI.NewEngine {
             var index = _Count++;
             ref var result = ref Records[index];
             result._Key = new ControlKey(index);
-            result.Flags = flags;
+            result.OldFlags = flags;
             result.Tag = tag;
             return ref result;
         }
@@ -126,7 +126,7 @@ namespace Squared.PRGUI.NewEngine {
                 return ref Create(tag, flags);
 
             ref var result = ref Records[index];
-            result.Flags = flags;
+            result.OldFlags = flags;
             result.Tag = tag;
             return ref result;
         }

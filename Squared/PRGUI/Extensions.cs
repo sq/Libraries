@@ -30,29 +30,29 @@ namespace Squared.PRGUI {
         }
 
         public static void GetAlignmentF (this ControlFlags flags, out float x, out float y) {
-            if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
+            if (HasFlag(flags, ControlFlags.Layout_Fill_Row))
                 x = DefaultXAlignment;
-            else if (flags.IsFlagged(ControlFlags.Layout_Anchor_Right))
+            else if (HasFlag(flags, ControlFlags.Layout_Anchor_Right))
                 x = 1.0f;
-            else if (flags.IsFlagged(ControlFlags.Layout_Anchor_Left))
+            else if (HasFlag(flags, ControlFlags.Layout_Anchor_Left))
                 x = 0f;
             else
                 x = DefaultXAlignment;
 
-            if (flags.IsFlagged(ControlFlags.Layout_Fill_Column))
+            if (HasFlag(flags, ControlFlags.Layout_Fill_Column))
                 y = DefaultYAlignment;
-            else if (flags.IsFlagged(ControlFlags.Layout_Anchor_Bottom))
+            else if (HasFlag(flags, ControlFlags.Layout_Anchor_Bottom))
                 y = 1.0f;
-            else if (flags.IsFlagged(ControlFlags.Layout_Anchor_Top))
+            else if (HasFlag(flags, ControlFlags.Layout_Anchor_Top))
                 y = 0f;
             else
                 y = DefaultYAlignment;
         }
 
         public static float GetContainerAlignmentF (this ControlFlags flags) {
-            if (flags.IsFlagged(ControlFlags.Container_Align_End))
+            if (HasFlag(flags, ControlFlags.Container_Align_End))
                 return 1f;
-            else if (flags.IsFlagged(ControlFlags.Container_Align_Start))
+            else if (HasFlag(flags, ControlFlags.Container_Align_Start))
                 return 0f;
             // FIXME: justify
             else // Middle
@@ -60,31 +60,31 @@ namespace Squared.PRGUI {
         }
 
         public static bool IsBreak (this ControlFlags flags) {
-            return IsFlagged(flags, ControlFlags.Internal_Break) ||
-                IsFlagged(flags, ControlFlags.Layout_ForceBreak);
+            return HasFlag(flags, ControlFlags.Internal_Break) ||
+                HasFlag(flags, ControlFlags.Layout_ForceBreak);
         }
 
         public static bool IsStackedOrFloating (this ControlFlags flags) {
-            return IsFlagged(flags, ControlFlags.Layout_Stacked) || IsFlagged(flags, ControlFlags.Layout_Floating);
+            return HasFlag(flags, ControlFlags.Layout_Stacked) || HasFlag(flags, ControlFlags.Layout_Floating);
         }
 
         public static bool IsBreakDimension (this ControlFlags containerFlags, LayoutDimensions dim) {
             if (dim == LayoutDimensions.X)
-                return containerFlags.IsFlagged(ControlFlags.Container_Row);
+                return HasFlag(containerFlags, ControlFlags.Container_Row);
             else if (dim == LayoutDimensions.Y)
-                return containerFlags.IsFlagged(ControlFlags.Container_Column);
+                return HasFlag(containerFlags, ControlFlags.Container_Column);
             else
                 throw new ArgumentOutOfRangeException(nameof(dim));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsFlagged (this ControlFlags flags, ControlFlags flag) {
+        public static bool HasFlag (this ControlFlags flags, ControlFlags flag) {
             var masked = (uint)(flags & flag);
             return masked == (int)flag;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsFlagged (this ControlStates flags, ControlStates flag) {
+        public static bool HasFlag (this ControlStates flags, ControlStates flag) {
             var masked = (int)(flags & flag);
             return masked == (int)flag;
         }

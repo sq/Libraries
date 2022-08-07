@@ -190,8 +190,8 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe void ApplyFloatingPosition (LayoutItem *pItem, in RectF parentRect, int idim, int wdim) {
-            bool stacked = pItem->Flags.IsFlagged(ControlFlags.Layout_Stacked),
-                floating = pItem->Flags.IsFlagged(ControlFlags.Layout_Floating);
+            bool stacked = PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Layout_Stacked),
+                floating = PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Layout_Floating);
             if (!floating && !stacked)
                 return;
             var pRect = RectPtr(pItem->Key);
@@ -202,7 +202,7 @@ namespace Squared.PRGUI.Layout {
 
             var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
             var margins = pItem->Margins[idim] + pItem->Margins[wdim];
-            var fill = bFlags.IsFlagged(ControlFlags.Layout_Fill_Row);
+            var fill = PRGUIExtensions.HasFlag(bFlags, ControlFlags.Layout_Fill_Row);
             if (fill && (fs < 0))
                 size = Math.Max(size, parentRect[wdim] - margins);
 
@@ -215,7 +215,7 @@ namespace Squared.PRGUI.Layout {
                 (*pRect)[idim] = parentRect[idim] + (parentRect[wdim] - size) / 2f;
             } else {
                 (*pRect)[idim] = 
-                    (!fill && bFlags.IsFlagged(ControlFlags.Layout_Anchor_Right))
+                    (!fill && PRGUIExtensions.HasFlag(bFlags, ControlFlags.Layout_Anchor_Right))
                         ? (parentRect[idim] + parentRect[wdim]) - size - margins
                         // FIXME: Should we be applying the margins to the offset here? It's kind of gross but seems expected
                         : parentRect[idim] + pItem->Margins[idim] + pItem->FloatingPosition.GetElement(idim);
@@ -228,7 +228,7 @@ namespace Squared.PRGUI.Layout {
                 return false;
 
             var pItem = LayoutPtr(key);
-            var constrainSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
+            var constrainSize = PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Container_Constrain_Size);
             CalcSize(pItem, LayoutDimensions.X, constrainSize);
             Arrange (pItem, LayoutDimensions.X, constrainSize);
             CalcSize(pItem, LayoutDimensions.Y, constrainSize);
@@ -460,9 +460,9 @@ namespace Squared.PRGUI.Layout {
 
                 // HACK: The arrange algorithms will clip an element to its containing box, which
                 //  hinders attempts to measure all of the content inside a container for scrolling
-                if (pChild->Flags.IsFlagged(ControlFlags.Internal_FixedWidth))
+                if (PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Internal_FixedWidth))
                     childRect.Width = pChild->FixedSize.X;
-                if (pChild->Flags.IsFlagged(ControlFlags.Internal_FixedHeight))
+                if (PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Internal_FixedHeight))
                     childRect.Height = pChild->FixedSize.Y;
 
                 minX = Math.Min(minX, childRect.Left - pChild->Margins.Left);
@@ -555,7 +555,7 @@ namespace Squared.PRGUI.Layout {
                 pItem->FixedSize.GetElement(idim)
             );
             var preventCrush = (uint)ControlFlags.Container_Prevent_Crush_X << idim;
-            if (pItem->Flags.IsFlagged((ControlFlags)preventCrush))
+            if (PRGUIExtensions.HasFlag(pItem->Flags, (ControlFlags)preventCrush))
                 result = Math.Max(result, pItem->ComputedContentSize.GetElement(idim));
             return result;
         }
@@ -579,8 +579,8 @@ namespace Squared.PRGUI.Layout {
             RectF childRect;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
-                var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
-                var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
+                var isFloating = PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Floating);
+                var isStacked = PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Stacked);
 
                 TryGetRect(child, out childRect);
                 var childRightMargin = pChild->Margins[wdim];
@@ -611,14 +611,14 @@ namespace Squared.PRGUI.Layout {
             RectF childRect;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
-                var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
-                var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
+                var isFloating = PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Floating);
+                var isStacked = PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Stacked);
 
                 TryGetRect(child, out childRect);
                 var childRightMargin = pChild->Margins[wdim];
                 var childMargin = pChild->Margins[idim] + childRightMargin;
                 var childMinimum = CalcMinimumSize(pChild, idim) + childMargin;
-                if (pItem->Flags.IsFlagged(rowFlag) && !isFloating)
+                if (PRGUIExtensions.HasFlag(pItem->Flags, rowFlag) && !isFloating)
                     minimum += childMinimum;
                 else
                     minimum = Math.Max(childMinimum, minimum);
@@ -641,13 +641,13 @@ namespace Squared.PRGUI.Layout {
             LayoutItem * pItem, LayoutDimensions dim, bool overlaid, bool forcedBreakOnly
         ) {
             int idim = (int)dim, wdim = idim + 2;
-            var noExpand = pItem->Flags.IsFlagged((ControlFlags)((uint)ControlFlags.Container_No_Expansion_X << idim));
+            var noExpand = PRGUIExtensions.HasFlag(pItem->Flags, (ControlFlags)((uint)ControlFlags.Container_No_Expansion_X << idim));
             float needSizeThisBlock = 0, needSizeTotal = 0;
             RectF childRect;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
-                var isFloating = pChild->Flags.IsFlagged(ControlFlags.Layout_Floating);
-                var isStacked = pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked);
+                var isFloating = PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Floating);
+                var isStacked = PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Stacked);
                 if (isFloating)
                     continue;
 
@@ -657,7 +657,7 @@ namespace Squared.PRGUI.Layout {
 
                 if (
                     (!forcedBreakOnly && pChild->Flags.IsBreak()) ||
-                    pChild->Flags.IsFlagged(ControlFlags.Layout_ForceBreak)
+                    PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_ForceBreak)
                 ) {
                     if (overlaid)
                         needSizeTotal += needSizeThisBlock;
@@ -700,11 +700,11 @@ namespace Squared.PRGUI.Layout {
             if (result.Y < 0)
                 result.Y = pItem->MinimumSize.Y;
 
-            if (pItem->Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X))
+            if (PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Container_Prevent_Crush_X))
                 if (pItem->ComputedContentSize.X > 0)
                     result.X = Math.Max(result.X, pItem->ComputedContentSize.X);
 
-            if (pItem->Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y))
+            if (PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Container_Prevent_Crush_Y))
                 if (pItem->ComputedContentSize.Y > 0)
                     result.Y = Math.Max(result.Y, pItem->ComputedContentSize.Y);
         }
@@ -755,7 +755,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe void CalcSize (LayoutItem * pItem, LayoutDimensions dim, bool constrainSize) {
-            var constrainChildSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
+            var constrainChildSize = PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Container_Constrain_Size);
             foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);
@@ -767,7 +767,7 @@ namespace Squared.PRGUI.Layout {
 
             SetComputedContentSize(pItem, idim, 0);
 
-            if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating))
+            if (PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Layout_Floating))
                 // For floating controls we need to ensure that we don't accidentally trample the floating position
                 // FIXME: This shouldn't be necessary
                 (*pRect)[idim] = pItem->Margins[idim] + pItem->FloatingPosition.GetElement(idim);
@@ -809,7 +809,7 @@ namespace Squared.PRGUI.Layout {
                     break;
             }
 
-            var isFloating = pItem->Flags.IsFlagged(ControlFlags.Layout_Floating);
+            var isFloating = PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Layout_Floating);
             var parentRect = isFloating
                 ? GetContentRect(pItem->Parent)
                 : default;
@@ -817,12 +817,12 @@ namespace Squared.PRGUI.Layout {
             if (isFloating) {
                 // HACK: If we are maximized, enforce our full layout instead of just size
                 if (dim == LayoutDimensions.X && (parentRect.Width > 0)) {
-                    if (pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Row)) {
+                    if (PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Layout_Fill_Row)) {
                         // pRect->Left = parentRect.Left;
                         result = parentRect.Width - pItem->Margins.X;
                     }
                 } else if (parentRect.Height > 0) {
-                    if (pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Column)) {
+                    if (PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Layout_Fill_Column)) {
                         // pRect->Top = parentRect.Top;
                         result = parentRect.Height - pItem->Margins.Y;
                     }
@@ -934,7 +934,7 @@ namespace Squared.PRGUI.Layout {
                     // FIXME: Duplication
                     var pChild = LayoutPtr(child);
                     var childFlags = pChild->Flags;
-                    if (childFlags.IsFlagged(ControlFlags.Layout_Floating) || childFlags.IsFlagged(ControlFlags.Layout_Stacked)) {
+                    if (PRGUIExtensions.HasFlag(childFlags, ControlFlags.Layout_Floating) || PRGUIExtensions.HasFlag(childFlags, ControlFlags.Layout_Stacked)) {
                         // ApplyFloatingPosition(pChild, ref parentRect, idim, wdim);
                         child = pChild->NextSibling;
                         continue;
@@ -944,14 +944,14 @@ namespace Squared.PRGUI.Layout {
                     var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
                     var childMargins = pChild->Margins;
                     TryGetRect(child, out childRect);
-                    var isFixedSize = fFlags.IsFlagged(ControlFlags.Internal_FixedWidth);
+                    var isFixedSize = PRGUIExtensions.HasFlag(fFlags, ControlFlags.Internal_FixedWidth);
 
                     x += childRect[idim] + extraMargin;
 
                     float computedSize;
                     if (isFixedSize)
                         computedSize = childRect[wdim];
-                    else if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
+                    else if (PRGUIExtensions.HasFlag(flags, ControlFlags.Layout_Fill_Row))
                         computedSize = filler;
                     else
                         computedSize = Math.Max(0f, childRect[wdim] + eater);
@@ -979,7 +979,7 @@ namespace Squared.PRGUI.Layout {
                     ix1 = x + constrainedSize;
 
                     if (
-                        pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size) && 
+                        PRGUIExtensions.HasFlag(pParent->Flags, ControlFlags.Container_Constrain_Size) && 
                         (pChild->FixedSize.GetElement(idim) < 0)
                     ) {
                         float parentExtent = Math.Max((parentRect[idim] + parentRect[wdim]), 0);
@@ -1071,7 +1071,7 @@ namespace Squared.PRGUI.Layout {
             while (!child.IsInvalid) {
                 var pChild = LayoutPtr(child);
                 var childFlags = pChild->Flags;
-                if (childFlags.IsFlagged(ControlFlags.Layout_Floating) || childFlags.IsFlagged(ControlFlags.Layout_Stacked)) {
+                if (PRGUIExtensions.HasFlag(childFlags, ControlFlags.Layout_Floating) || PRGUIExtensions.HasFlag(childFlags, ControlFlags.Layout_Stacked)) {
                     // FIXME: Should we need to do this?
                     // ApplyFloatingPosition(pChild, ref parentRect, idim, wdim);
                     child = pChild->NextSibling;
@@ -1083,14 +1083,14 @@ namespace Squared.PRGUI.Layout {
                 var childMargins = pChild->Margins;
                 TryGetRect(child, out childRect);
                 var extend = used;
-                var isFillRow = flags.IsFlagged(ControlFlags.Layout_Fill_Row);
-                var isFixedSize = fFlags.IsFlagged(ControlFlags.Internal_FixedWidth);
+                var isFillRow = PRGUIExtensions.HasFlag(flags, ControlFlags.Layout_Fill_Row);
+                var isFixedSize = PRGUIExtensions.HasFlag(fFlags, ControlFlags.Internal_FixedWidth);
 
                 var computedExtend = childRect[idim] + childMargins[wdim];
                 var computedSize = computedExtend + childRect[wdim];
 
                 if (
-                    childFlags.IsFlagged(ControlFlags.Layout_ForceBreak) &&
+                    PRGUIExtensions.HasFlag(childFlags, ControlFlags.Layout_ForceBreak) &&
                     (child != startChild)
                 ) {
                     endChild = child;
@@ -1142,7 +1142,7 @@ namespace Squared.PRGUI.Layout {
 
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
-                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating) || pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked))
+                if (PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Floating) || PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Stacked))
                     continue;
 
                 var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
@@ -1180,7 +1180,7 @@ namespace Squared.PRGUI.Layout {
             var item = startItem;
             while (item != endItem) {
                 var pItem = LayoutPtr(item);
-                if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating) || pItem->Flags.IsFlagged(ControlFlags.Layout_Stacked)) {
+                if (PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Layout_Floating) || PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Layout_Stacked)) {
                     // ApplyFloatingPosition(pItem, ref parentRect, idim, wdim);
                     item = pItem->NextSibling;
                     continue;
@@ -1213,7 +1213,7 @@ namespace Squared.PRGUI.Layout {
                 // FIXME: Redistribute remaining space?
 
                 Vector2? parentConstraint = null;
-                if (pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size)) {
+                if (PRGUIExtensions.HasFlag(pParent->Flags, ControlFlags.Container_Constrain_Size)) {
                     // rect[idim] = Constrain(rect[idim], parentRect[idim], parentRect[wdim]);
                     var temp = parentRect.Extent - rect.Position;
                     var spacing = pParent->Padding;
@@ -1247,13 +1247,13 @@ namespace Squared.PRGUI.Layout {
             RectF childRect;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
-                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating) || pChild->Flags.IsFlagged(ControlFlags.Layout_Stacked))
+                if (PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Floating) || PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Stacked))
                     continue;
 
                 lastChild = pChild;
-                if ((dim == LayoutDimensions.X) && pChild->Flags.IsFlagged(ControlFlags.Layout_Fill_Row))
+                if ((dim == LayoutDimensions.X) && PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Fill_Row))
                     childToExpand = pChild;
-                else if ((dim == LayoutDimensions.Y) && pChild->Flags.IsFlagged(ControlFlags.Layout_Fill_Column))
+                else if ((dim == LayoutDimensions.Y) && PRGUIExtensions.HasFlag(pChild->Flags, ControlFlags.Layout_Fill_Column))
                     childToExpand = pChild;
 
                 if (
@@ -1317,7 +1317,7 @@ namespace Squared.PRGUI.Layout {
                     }
                     break;
                 case ControlFlags.Container_Row | ControlFlags.Container_Wrap:
-                    if (!pItem->FirstChild.IsInvalid && pItem->Flags.IsFlagged(ControlFlags.Layout_Floating))
+                    if (!pItem->FirstChild.IsInvalid && PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Layout_Floating))
                         ;
 
                     if (dim == LayoutDimensions.X)
@@ -1337,7 +1337,7 @@ namespace Squared.PRGUI.Layout {
                     break;
             }
 
-            var constrainChildSize = pItem->Flags.IsFlagged(ControlFlags.Container_Constrain_Size);
+            var constrainChildSize = PRGUIExtensions.HasFlag(pItem->Flags, ControlFlags.Container_Constrain_Size);
             foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);

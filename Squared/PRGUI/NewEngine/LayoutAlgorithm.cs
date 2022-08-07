@@ -51,19 +51,19 @@ namespace Squared.PRGUI.NewEngine {
                 inX, inY, fillX, fillY;
 
             public ControlTraits (in ControlRecord control) {
-                vertical = control.Flags.IsFlagged(ControlFlags.Container_Column);
-                wrap = control.Flags.IsFlagged(ControlFlags.Container_Break_Auto);
-                constrain = control.Flags.IsFlagged(ControlFlags.Container_Constrain_Growth);
-                clip = control.Flags.IsFlagged(ControlFlags.Container_Clip_Children);
-                clipX = clip && !control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_X);
-                clipY = clip && !control.Flags.IsFlagged(ControlFlags.Container_Prevent_Crush_Y);
-                noExpandX = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_X);
-                noExpandY = control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_Y);
+                vertical = PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_Column);
+                wrap = PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_Break_Auto);
+                constrain = PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_Constrain_Growth);
+                clip = PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_Clip_Children);
+                clipX = clip && !PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_Prevent_Crush_X);
+                clipY = clip && !PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_Prevent_Crush_Y);
+                noExpandX = PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_No_Expansion_X);
+                noExpandY = PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_No_Expansion_Y);
                 // Size on this axis is determined by our parent
                 inX = wrap && !vertical;
                 inY = wrap && vertical;
-                fillX = (control.Flags.IsFlagged(ControlFlags.Layout_Fill_Row) || inX) && !control.Width.Fixed.HasValue;
-                fillY = (control.Flags.IsFlagged(ControlFlags.Layout_Fill_Column) || inY) && !control.Height.Fixed.HasValue;
+                fillX = (PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Layout_Fill_Row) || inX) && !control.Width.Fixed.HasValue;
+                fillY = (PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Layout_Fill_Column) || inY) && !control.Height.Fixed.HasValue;
             }
         }
 
@@ -72,7 +72,7 @@ namespace Squared.PRGUI.NewEngine {
             result.Rect = result.ContentRect = default;
             result.FirstRunIndex = -1;
 #if DEBUG
-            result.Break = control.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
+            result.Break = PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Layout_ForceBreak);
             result.Depth = depth;
 #endif
             result.Version = Version;
@@ -162,7 +162,7 @@ namespace Squared.PRGUI.NewEngine {
             //  to account for the size of the current run
             ref var completedRun = ref Run(runIndex);
 
-            if (control.Flags.IsFlagged(ControlFlags.Container_Column))
+            if (PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_Column))
                 result.ContentRect.Width += completedRun.MaxOuterWidth;
             else
                 result.ContentRect.Height += completedRun.MaxOuterHeight;
@@ -180,11 +180,11 @@ namespace Squared.PRGUI.NewEngine {
                 run.First = child.Key;
             run.Last = child.Key;
 
-            if (child.Flags.IsStackedOrFloating())
+            if (child.OldFlags.IsStackedOrFloating())
                 return;
 
-            var xAnchor = child.Flags & ControlFlags.Layout_Fill_Row;
-            var yAnchor = child.Flags & ControlFlags.Layout_Fill_Column;
+            var xAnchor = child.OldFlags & ControlFlags.Layout_Fill_Row;
+            var yAnchor = child.OldFlags & ControlFlags.Layout_Fill_Column;
             if ((xAnchor != ControlFlags.Layout_Fill_Row) && (xAnchor != default)) {
                 if (run.XAnchor == null)
                     run.XAnchor = xAnchor;
@@ -259,7 +259,7 @@ namespace Squared.PRGUI.NewEngine {
             in ControlRecord child, ref ControlLayoutResult childResult, 
             in ControlTraits ct, ref int currentRunIndex
         ) {
-            bool isBreak = !child.Flags.IsStackedOrFloating() && child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak);
+            bool isBreak = !child.OldFlags.IsStackedOrFloating() && PRGUIExtensions.HasFlag(child.OldFlags, ControlFlags.Layout_ForceBreak);
             var previousRunIndex = currentRunIndex;
 
             // We still generate runs even if a control is stacked/floating
@@ -286,7 +286,7 @@ namespace Squared.PRGUI.NewEngine {
         ) {
             if (control.FirstChild.IsInvalid)
                 return default;
-            if (!control.Flags.IsFlagged(ControlFlags.Container_Break_Auto))
+            if (!PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_Break_Auto))
                 return default;
 
             var t = new ControlTraits(control);
@@ -316,7 +316,7 @@ namespace Squared.PRGUI.NewEngine {
 
                 var previousRunIndex = currentRunIndex;
 
-                bool isBreak = child.Flags.IsFlagged(ControlFlags.Layout_ForceBreak) || forceBreak;
+                bool isBreak = PRGUIExtensions.HasFlag(child.OldFlags, ControlFlags.Layout_ForceBreak) || forceBreak;
                 // We still generate runs even if a control is stacked/floating
                 // This ensures that you can enumerate all of a control's children by enumerating its runs
                 // We will then skip stacked/floating controls when enumerating runs (as appropriate)
@@ -418,8 +418,8 @@ namespace Squared.PRGUI.NewEngine {
                             expandY = ct.fillY && !child.Height.Fixed.HasValue;
                         float amountX = countX > 0 ? xSpace / countX : 0, amountY = countY > 0 ? ySpace / countY : 0;
 
-                        if (child.Flags.IsFlagged(ControlFlags.Layout_Floating)) {
-                        } else if (child.Flags.IsFlagged(ControlFlags.Layout_Stacked)) {
+                        if (PRGUIExtensions.HasFlag(child.OldFlags, ControlFlags.Layout_Floating)) {
+                        } else if (PRGUIExtensions.HasFlag(child.OldFlags, ControlFlags.Layout_Stacked)) {
                             if (expandX)
                                 childResult.Rect.Width = child.Width.Constrain(w - child.Margins.X, true);
                             if (expandY)
@@ -523,12 +523,12 @@ namespace Squared.PRGUI.NewEngine {
                 }
 
                 // TODO: Figure out whether these should actually be enabled, they seem right but they also don't seem to fix anything?
-                if (false && control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_X))
+                if (false && PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_No_Expansion_X))
                     result.Rect.Width = oldSize.X;
                 else
                     control.Width.Constrain(ref result.Rect.Width, true);
 
-                if (false && control.Flags.IsFlagged(ControlFlags.Container_No_Expansion_Y))
+                if (false && PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_No_Expansion_Y))
                     result.Rect.Height = oldSize.Y;
                 else
                     control.Height.Constrain(ref result.Rect.Height, true);
@@ -565,7 +565,7 @@ namespace Squared.PRGUI.NewEngine {
                         ? (isLastRun ? result.ContentRect.Size.X - x : run.MaxOuterWidth)
                         : (isLastRun ? result.ContentRect.Size.Y - y : run.MaxOuterHeight);
 
-                run.GetAlignmentF(control.Flags, out float xAlign, out float yAlign);
+                run.GetAlignmentF(control.OldFlags, out float xAlign, out float yAlign);
 
                 if (t.vertical)
                     y = space * yAlign;
@@ -581,10 +581,10 @@ namespace Squared.PRGUI.NewEngine {
                     var childMargins = child.Margins;
                     var childOuterSize = childResult.Rect.Size + childMargins.Size;
 
-                    child.Flags.GetAlignmentF(out float xChildAlign, out float yChildAlign);
+                    child.OldFlags.GetAlignmentF(out float xChildAlign, out float yChildAlign);
 
-                    if (child.Flags.IsStackedOrFloating()) {
-                        if (child.Flags.IsFlagged(ControlFlags.Layout_Floating)) {
+                    if (child.OldFlags.IsStackedOrFloating()) {
+                        if (PRGUIExtensions.HasFlag(child.OldFlags, ControlFlags.Layout_Floating)) {
                             // TODO: Margins?
                             childResult.Rect.Position = result.ContentRect.Position + child.FloatingPosition;
                         } else {

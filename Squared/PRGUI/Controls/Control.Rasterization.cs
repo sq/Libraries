@@ -352,7 +352,7 @@ namespace Squared.PRGUI {
                         : new Vector2(rect.Position.X, rect.Extent.Y);
 
                 pSRGBColor arrowColor =
-                    flags.IsFlagged(ControlFlags.Layout_ForceBreak)
+                    PRGUIExtensions.HasFlag(flags, ControlFlags.Layout_ForceBreak)
                         ? Color.White
                         : Color.Yellow;
 

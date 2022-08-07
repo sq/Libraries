@@ -8,6 +8,8 @@ using ControlKey = Squared.PRGUI.Layout.ControlKey;
 using ControlFlags = Squared.PRGUI.Layout.ControlFlags;
 using LayoutDimensions = Squared.PRGUI.Layout.LayoutDimensions;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine.Enums;
+using System.Runtime.CompilerServices;
 #if DEBUG
 using System.Xml.Serialization;
 using Unserialized = System.Xml.Serialization.XmlIgnoreAttribute;
@@ -25,6 +27,18 @@ namespace Squared.PRGUI.NewEngine {
                 return ref record.Width;
             else
                 return ref record.Height;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool HasFlag (this ContainerFlag flags, ContainerFlag flag) {
+            var masked = (uint)(flags & flag);
+            return masked == (int)flag;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool HasFlag (this BoxFlag flags, BoxFlag flag) {
+            var masked = (uint)(flags & flag);
+            return masked == (int)flag;
         }
     }
 
@@ -52,6 +66,68 @@ namespace Squared.PRGUI.NewEngine {
 
         public override string ToString () {
             return (IndexPlusOne - 1).ToString();
+        }
+    }
+
+    public struct ControlConfiguration {
+        public static readonly ControlConfiguration Default = new ControlConfiguration {
+            _ContainerFlags = ContainerFlag.DEFAULT,
+            _BoxFlags = BoxFlag.DEFAULT,
+        };
+
+        [Unserialized]
+        internal ContainerFlag _ContainerFlags;
+        [Unserialized]
+        internal BoxFlag _BoxFlags;
+
+        [Unserialized]
+        public uint AllFlags {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ((uint)_ContainerFlags << 0) | ((uint)_BoxFlags << 16);
+            set {
+                _ContainerFlags = (ContainerFlag)(value & 0xFFFFu);
+                _BoxFlags = (BoxFlag)((value >> 16) & 0xFFFFu);
+            }
+        }
+
+        public ChildLayoutMode ChildLayout {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (ChildLayoutMode)_ContainerFlags & ChildLayoutMode.MASK;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _ContainerFlags = (ContainerFlag)
+                (((ChildLayoutMode)_ContainerFlags & ~ChildLayoutMode.MASK) | value);
+        }
+
+        public ChildAlignment ChildAlignment {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (ChildAlignment)_ContainerFlags & ChildAlignment.MASK;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _ContainerFlags = (ContainerFlag)
+                (((ChildAlignment)_ContainerFlags & ~ChildAlignment.MASK) | value);
+        }
+
+        public ContainerFlags ChildFlags {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (ContainerFlags)_ContainerFlags & ContainerFlags.MASK;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _ContainerFlags = (ContainerFlag)
+                (((ContainerFlags)_ContainerFlags & ~ContainerFlags.MASK) | value);
+        }
+
+        public BoxAnchorMode Anchor {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (BoxAnchorMode)_BoxFlags & BoxAnchorMode.Fill;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _BoxFlags = (BoxFlag)
+                (((BoxAnchorMode)_BoxFlags & ~BoxAnchorMode.Fill) | value);
+        }
+
+        public BoxFlags Flags {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (BoxFlags)_BoxFlags & BoxFlags.MASK;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _BoxFlags = (BoxFlag)
+                (((BoxFlags)_BoxFlags & ~BoxFlags.MASK) | value);
         }
     }
 
@@ -101,28 +177,20 @@ namespace Squared.PRGUI.NewEngine {
 #endif
         }
 
-        public Layout.ControlFlags Flags;
+        public ControlConfiguration Config;
+
         public Margins Margins, Padding;
         public ControlDimension Width, Height;
         // TODO: Add a scroll offset value so that Control doesn't need a display offset anymore
         public Vector2 FloatingPosition;
         public Layout.LayoutTags Tag;
 
-        [Unserialized]
-        public Layout.ControlFlags LayoutFlags {
-            get => Flags & Layout.ControlFlagMask.Layout;
-            set {
-                Flags = (Flags & ~Layout.ControlFlagMask.Layout) | value;
-            }
-        }
+        internal ControlFlags OldFlags;
 
-        [Unserialized]
-        public Layout.ControlFlags ContainerFlags {
-            get => Flags & Layout.ControlFlagMask.Container;
-            set {
-                Flags = (Flags & ~Layout.ControlFlagMask.Container) | value;
-            }
-        }
+        // TODO: When controls are overflowing/being clipped, we want to clip the lowest priority
+        //  controls first in order to spare the high priority ones. This mostly is relevant for
+        //  toolbars and I haven't needed it yet
+        // int Priority;
 
         public Vector2 FixedSize {
             set {
@@ -134,7 +202,7 @@ namespace Squared.PRGUI.NewEngine {
         public bool IsValid => !Key.IsInvalid;
 
         public override string ToString () {
-            return $"#{Key.ID} {Tag} {Flags}";
+            return $"#{Key.ID} {Tag} {OldFlags}";
         }
     }
 
@@ -154,6 +222,9 @@ namespace Squared.PRGUI.NewEngine {
         /// </summary>
         public RectF ContentRect;
         public Layout.LayoutTags Tag;
+        // TODO: Store the amount of space we were offered by our parent before constraints took
+        //  effect. This will be useful for StaticText autosize/wrap implementations
+        // public Vector2 MaximumSize;
         /// <summary>
         /// The control's position within the current run (X for row layout, Y for column layout)
         /// </summary>
@@ -200,12 +271,12 @@ namespace Squared.PRGUI.NewEngine {
 
             if ((XAnchor ?? default) != default) {
                 XAnchor.Value.GetAlignmentF(out x, out _);
-            } else if (containerFlags.IsFlagged(ControlFlags.Container_Row))
+            } else if (PRGUIExtensions.HasFlag(containerFlags, ControlFlags.Container_Row))
                 x = containerFlags.GetContainerAlignmentF();
 
             if ((YAnchor ?? default) != default) {
                 YAnchor.Value.GetAlignmentF(out x, out y);
-            } else if (containerFlags.IsFlagged(ControlFlags.Container_Column))
+            } else if (PRGUIExtensions.HasFlag(containerFlags, ControlFlags.Container_Column))
                 y = containerFlags.GetContainerAlignmentF();
         }
     }

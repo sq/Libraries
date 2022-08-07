@@ -69,6 +69,8 @@ namespace Squared.PRGUI {
         public LayoutFlags Layout;
         public ControlDimension Width, Height;
 
+        public NewEngine.ControlConfiguration Config = NewEngine.ControlConfiguration.Default;
+
         public Controls.ControlDataCollection Data;
 
         // Accumulates scroll offset(s) from parent controls
@@ -516,7 +518,7 @@ namespace Squared.PRGUI {
                     if (UIContext.UseNewEngine) {
                         ref var rec = ref context.Engine[LayoutKey];
                         if (context.Layout.TryGetFlags(LayoutKey, out ControlFlags cf))
-                            rec.Flags = cf;
+                            rec.OldFlags = cf;
 
 #if DEBUG
                         context.Engine.Controls[LayoutKey.ID] = this;

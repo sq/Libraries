@@ -222,7 +222,7 @@ namespace Squared.PRGUI.Controls {
             }
 
             context.Layout.SetTag(result, LayoutTags.TabContainer);
-            var constrainSize = (Container.ConstrainSize || ContainerFlags.IsFlagged(ControlFlags.Container_Constrain_Size));
+            var constrainSize = (Container.ConstrainSize || PRGUIExtensions.HasFlag(ContainerFlags, ControlFlags.Container_Constrain_Size));
             var containerFlags = ContainerFlags | ExtraContainerFlags;
             if (constrainSize)
                 containerFlags |= ControlFlags.Container_Constrain_Size;

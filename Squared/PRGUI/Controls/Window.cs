@@ -165,7 +165,7 @@ namespace Squared.PRGUI.Controls {
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             // HACK: We don't want collapsing to be enabled the first time a window is clicked
             if (!context.MouseButtonHeld)
-                CollapsingEnabled = settings.State.IsFlagged(ControlStates.ContainsFocus);
+                CollapsingEnabled = PRGUIExtensions.HasFlag(settings.State, ControlStates.ContainsFocus);
 
             base.OnRasterize(ref context, ref renderer, settings, decorations);
         }

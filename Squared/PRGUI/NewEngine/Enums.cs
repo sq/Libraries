@@ -121,4 +121,79 @@ namespace Squared.PRGUI.NewEngine.Enums {
         // No anchor = centered
         DEFAULT       = Fill_Row 
     }
+
+    public enum ChildLayoutMode : ushort {
+        Row = ContainerFlag.Layout_Row,
+        Column = ContainerFlag.Layout_Column,
+
+        MASK = Row | Column,
+    }
+
+    public enum ChildAlignment : ushort {
+        Start = 0,
+        Center = ContainerFlag.Align_Center,
+        End = ContainerFlag.Align_End,
+        Justify = ContainerFlag.Align_Justify,
+
+        MASK = Start | Center | End | Justify,
+    }
+
+    [Flags]
+    public enum ContainerFlags : ushort {
+        /// <summary>
+        /// If a child will not fit in available space, wrap it to a new run
+        /// </summary>
+        Wrap = ContainerFlag.Arrange_Wrap,
+
+        /// <summary>
+        /// Child rects will be clipped to our content box
+        /// </summary>
+        OverflowHidden = ContainerFlag.Boxes_Clip,
+        /// <summary>
+        /// Child boxes will not be constrained by us at all, for scrolling viewports
+        /// If Clip is set, the children will have their outer rect clipped but not their content rect,
+        /// and our content rect will also contain the full size of all our children
+        /// </summary>
+        OverflowShown = ContainerFlag.Boxes_Overflow,
+
+        /// <summary>
+        /// Will expand automatically beyond default size to hold content
+        /// </summary>
+        ExpandForContent_X = ContainerFlag.Size_ExpandForContent_X,
+        /// <summary>
+        /// Will expand automatically beyond default size to hold content
+        /// </summary>
+        ExpandForContent_Y = ContainerFlag.Size_ExpandForContent_Y,
+        ExpandForContent = ExpandForContent_X | ExpandForContent_Y,
+        /// <summary>
+        /// Will expand to hold content and will not shrink even if container lacks space
+        /// </summary>
+        PreventCrush_X = ContainerFlag.Size_PreventCrush_X,
+        /// <summary>
+        /// Will expand to hold content and will not shrink even if container lacks space
+        /// </summary>
+        PreventCrush_Y = ContainerFlag.Size_PreventCrush_Y,
+        PreventCrush = PreventCrush_X | PreventCrush_Y,
+
+        MASK = Wrap | OverflowHidden | OverflowShown | ExpandForContent | PreventCrush,
+    }
+
+    public enum BoxAnchorMode : ushort {
+        Left = BoxFlag.Anchor_Left,
+        Top = BoxFlag.Anchor_Top,
+        Right = BoxFlag.Anchor_Right,
+        Bottom = BoxFlag.Anchor_Bottom,
+        FillRow = BoxFlag.Fill_Row,
+        FillColumn = BoxFlag.Fill_Column,
+        Fill = BoxFlag.Fill,
+    }
+
+    [Flags]
+    public enum BoxFlags : ushort {
+        Break = BoxFlag.Break,
+        Stacked = BoxFlag.Stacked,
+        Floating = BoxFlag.Floating,
+
+        MASK = Break | Stacked | Floating,
+    }
 }

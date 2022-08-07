@@ -499,7 +499,7 @@ namespace Squared.PRGUI.Controls {
                     ContentBox = selectionBox,
                     UniqueId = SelectedItem.ControlIndex
                 };
-                if (settings.State.IsFlagged(ControlStates.ContainsFocus))
+                if (PRGUIExtensions.HasFlag(settings.State, ControlStates.ContainsFocus))
                     selectionSettings.State = ControlStates.Hovering | ControlStates.Focused;
                 else
                     selectionSettings.State = ControlStates.Hovering;
