@@ -1094,15 +1094,19 @@ namespace Squared.Util {
         /// <param name="indices">The element indices to use for sorting.</param>
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SortNonRef (IComparer<T> comparer, int[] indices = null) {
-            var wrapped = new RefComparerAdapter<IComparer<T>, T>(comparer);
+        public void SortNonRef<TComparer> (TComparer comparer, int[] indices = null)
+            where TComparer : IComparer<T>
+        {
+            var wrapped = new RefComparerAdapter<TComparer, T>(comparer);
             Sort(wrapped, indices);
         }
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SortNonRef (int offset, int count, IComparer<T> comparer) {
-            var wrapped = new RefComparerAdapter<IComparer<T>, T>(comparer);
+        public void SortNonRef<TComparer> (int offset, int count, TComparer comparer)
+            where TComparer : IComparer<T>
+        {
+            var wrapped = new RefComparerAdapter<TComparer, T>(comparer);
             Sort(offset, count, wrapped);
         }
 

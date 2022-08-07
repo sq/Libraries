@@ -77,7 +77,7 @@ namespace Squared.Util {
         {
             int actualOffset = offset.GetValueOrDefault(0),
                 actualCount = count.GetValueOrDefault(data.Count - actualOffset);
-            var sorter = new FastCLRSorter<TElement, IComparer<TElement>>(data, comparer);
+            var sorter = new FastCLRSorter<TElement, TComparer>(data, comparer);
             sorter.Sort(actualOffset, actualCount);
         }
 

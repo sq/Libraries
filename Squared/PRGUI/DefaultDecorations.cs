@@ -349,18 +349,18 @@ namespace Squared.PRGUI {
 
             Selection = new DelegateDecorator {
                 GetTextSettings = GetTextSettings_Selection,
-                Content = Selection_Content,
+                Below = Selection_Below,
             };
 
             MenuSelection = new DelegateDecorator {
                 GetTextSettings = GetTextSettings_Selection,
-                Content = MenuSelection_Content,
+                Below = MenuSelection_Below,
             };
 
             ListSelection = new DelegateDecorator {
                 GetTextSettings = GetTextSettings_Selection,
                 Margins = new Margins(1),
-                Content = ListSelection_Content,
+                Below = ListSelection_Below,
             };
 
             CompositionPreview = new DelegateDecorator {
@@ -1668,7 +1668,7 @@ namespace Squared.PRGUI {
             );
         }
 
-        protected virtual void Selection_Content (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
+        protected virtual void Selection_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isCaret = (settings.Box.Width <= 0.5f);
             var focusedAlpha = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
@@ -1697,7 +1697,7 @@ namespace Squared.PRGUI {
             );
         }
 
-        protected virtual void MenuSelection_Content (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
+        protected virtual void MenuSelection_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
                 settings.State.IsFlagged(ControlStates.ContainsFocus);
@@ -1728,7 +1728,7 @@ namespace Squared.PRGUI {
             );
         }
 
-        protected virtual void ListSelection_Content (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
+        protected virtual void ListSelection_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isFocused = settings.State.IsFlagged(ControlStates.Focused) ||
                 settings.State.IsFlagged(ControlStates.ContainsFocus);
