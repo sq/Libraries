@@ -10,6 +10,7 @@ using LayoutDimensions = Squared.PRGUI.Layout.LayoutDimensions;
 using Squared.PRGUI.Layout;
 using Squared.PRGUI.NewEngine.Enums;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 #if DEBUG
 using System.Xml.Serialization;
 using Unserialized = System.Xml.Serialization.XmlIgnoreAttribute;
@@ -69,6 +70,7 @@ namespace Squared.PRGUI.NewEngine {
         }
     }
 
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ControlConfiguration {
         public static readonly ControlConfiguration Default = new ControlConfiguration {
             _ContainerFlags = ContainerFlag.DEFAULT,
@@ -84,21 +86,22 @@ namespace Squared.PRGUI.NewEngine {
         public uint AllFlags {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => ((uint)_ContainerFlags << 0) | ((uint)_BoxFlags << 16);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 _ContainerFlags = (ContainerFlag)(value & 0xFFFFu);
                 _BoxFlags = (BoxFlag)((value >> 16) & 0xFFFFu);
             }
         }
 
-        public ChildLayoutMode ChildLayout {
+        public ChildDirection ChildDirection {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (ChildLayoutMode)_ContainerFlags & ChildLayoutMode.MASK;
+            get => (ChildDirection)_ContainerFlags & ChildDirection.MASK;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => _ContainerFlags = (ContainerFlag)
-                (((ChildLayoutMode)_ContainerFlags & ~ChildLayoutMode.MASK) | value);
+                (((ChildDirection)_ContainerFlags & ~ChildDirection.MASK) | value);
         }
 
-        public ChildAlignment ChildAlignment {
+        public ChildAlignment ChildAlign {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (ChildAlignment)_ContainerFlags & ChildAlignment.MASK;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -134,6 +137,7 @@ namespace Squared.PRGUI.NewEngine {
     /// <summary>
     /// Represents a box being laid out by the layout engine
     /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
     public struct ControlRecord {
         // Managed by the layout engine
         // TODO: Use a custom dense backing store and no setters
@@ -206,9 +210,20 @@ namespace Squared.PRGUI.NewEngine {
         }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
     public struct ControlLayoutResult {
+        public Layout.LayoutTags Tag;
+
         // TODO: Optimize this out
         internal int Version;
+        /// <summary>
+        /// The index of the first run contained by this control, if any.
+        /// </summary>
+        internal int FirstRunIndex;
+#if DEBUG
+        internal int Depth;
+        internal bool Break;
+#endif
 
         /// <summary>
         /// The display/layout rectangle of the control.
@@ -221,7 +236,6 @@ namespace Squared.PRGUI.NewEngine {
         ///  clipping from making margins move in too far.
         /// </summary>
         public RectF ContentRect;
-        public Layout.LayoutTags Tag;
         // TODO: Store the amount of space we were offered by our parent before constraints took
         //  effect. This will be useful for StaticText autosize/wrap implementations
         // public Vector2 MaximumSize;
@@ -229,14 +243,6 @@ namespace Squared.PRGUI.NewEngine {
         /// The control's position within the current run (X for row layout, Y for column layout)
         /// </summary>
         internal float PositionInRun;
-        /// <summary>
-        /// The index of the first run contained by this control, if any.
-        /// </summary>
-        internal int FirstRunIndex;
-#if DEBUG
-        internal bool Break;
-        internal int Depth;
-#endif
 
         public override string ToString () {
 #if DEBUG
@@ -250,6 +256,7 @@ namespace Squared.PRGUI.NewEngine {
         }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
     internal struct ControlLayoutRun {
         public ControlKeyDefaultInvalid First, Last;
         public int FlowCount, ExpandCountX, ExpandCountY, NextRunIndex;

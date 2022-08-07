@@ -18,53 +18,57 @@ namespace Squared.PRGUI.NewEngine.Enums {
         /// Arrange child elements top-to-bottom
         /// </summary>
         Layout_Column           = 0b10,
+        /// <summary>
+        /// Arrange child elements right-to-left/bottom-to-top
+        /// </summary>
+        Layout_Reverse          = 0b100,
 
         /// <summary>
         /// Align each run to the bottom/right of container
         /// </summary>
-        Align_End               = 0b100,
+        Align_End               = 0b1000,
         /// <summary>
         /// Align each run to the center of the container
         /// </summary>
-        Align_Center            = 0b1000,
+        Align_Center            = 0b10000,
         /// <summary>
         /// Spread the child elements across each run by distributing whitespace
         /// </summary>
-        Align_Justify           = 0b10000,
+        Align_Justify           = 0b100000,
 
         /// <summary>
         /// If a child will not fit in available space, wrap it to a new run
         /// </summary>
-        Arrange_Wrap            = 0b100000,
+        Arrange_Wrap            = 0b1000000,
 
         /// <summary>
         /// Child rects will be clipped to our content box
         /// </summary>
-        Boxes_Clip              = 0b1000000,
+        Boxes_Clip              = 0b10000000,
         /// <summary>
         /// Child boxes will not be constrained by us at all, for scrolling viewports
         /// If Clip is set, the children will have their outer rect clipped but not their content rect,
         /// and our content rect will also contain the full size of all our children
         /// </summary>
-        Boxes_Overflow          = 0b10000000,
+        Boxes_Overflow          = 0b100000000,
 
         /// <summary>
         /// Will expand automatically beyond default size to hold content
         /// </summary>
-        Size_ExpandForContent_X = 0b100000000,
+        Size_ExpandForContent_X = 0b1000000000,
         /// <summary>
         /// Will expand automatically beyond default size to hold content
         /// </summary>
-        Size_ExpandForContent_Y = 0b1000000000,
+        Size_ExpandForContent_Y = 0b10000000000,
         Size_ExpandForContent   = Size_ExpandForContent_X | Size_ExpandForContent_Y,
         /// <summary>
         /// Will expand to hold content and will not shrink even if container lacks space
         /// </summary>
-        Size_PreventCrush_X     = 0b10000000000 | Size_ExpandForContent_X,
+        Size_PreventCrush_X     = 0b100000000000 | Size_ExpandForContent_X,
         /// <summary>
         /// Will expand to hold content and will not shrink even if container lacks space
         /// </summary>
-        Size_PreventCrush_Y     = 0b100000000000 | Size_ExpandForContent_Y,
+        Size_PreventCrush_Y     = 0b1000000000000 | Size_ExpandForContent_Y,
         Size_PreventCrush       = Size_PreventCrush_X | Size_PreventCrush_Y,
 
         DEFAULT                 = Layout_Row | Arrange_Wrap | Boxes_Clip | Size_ExpandForContent,
@@ -122,11 +126,13 @@ namespace Squared.PRGUI.NewEngine.Enums {
         DEFAULT       = Fill_Row 
     }
 
-    public enum ChildLayoutMode : ushort {
+    public enum ChildDirection : ushort {
         Row = ContainerFlag.Layout_Row,
         Column = ContainerFlag.Layout_Column,
+        RTL = ContainerFlag.Layout_Row | ContainerFlag.Layout_Reverse,
+        Upward = ContainerFlag.Layout_Column | ContainerFlag.Layout_Reverse,
 
-        MASK = Row | Column,
+        MASK = Row | Column | ContainerFlag.Layout_Reverse,
     }
 
     public enum ChildAlignment : ushort {
