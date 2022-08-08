@@ -284,6 +284,23 @@ namespace PRGUI.Demo {
             cb.Text("Text 3 should expand")
                 .Control.AutoSizeIsMaximum = false;
             cb.Text("Text 4");
+
+            var colBox = cb.NewGroup(
+                layoutFlags: ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                containerFlags: ControlFlags.Container_Column | ControlFlags.Container_Align_Start
+            );
+            colBox.Text("Text 5");
+            colBox.Text("Text 6")
+                .Control.AutoSizeIsMaximum = false;
+
+            var dd = new Dropdown<string> {
+                Label = "Dropdown: {0}",
+            };
+            for (int i = 0; i < 100; i++)
+                dd.Items.Add(i.ToString());
+
+            colBox.Add(dd);
+
             Context.Controls.Add(topLevel);
         }
 

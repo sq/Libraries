@@ -117,14 +117,13 @@ namespace Squared.PRGUI.NewEngine {
             in BoxRecord child, ref BoxLayoutResult childResult, 
             ref int currentRunIndex
         ) {
-            bool isBreak = (child.Config.Flags & BoxFlags.Break) != default;
             var previousRunIndex = currentRunIndex;
 
             // We still generate runs even if a control is stacked/floating
             // This ensures that you can enumerate all of a control's children by enumerating its runs
             // We will then skip stacked/floating controls when enumerating runs (as appropriate)
             // TODO: Generate a single special run for all stacked/floating controls instead?
-            ref var run = ref SelectRunForBuildingPass(ref currentRunIndex, isBreak);
+            ref var run = ref SelectRunForBuildingPass(ref currentRunIndex, child.Config.ForceBreak);
             if (currentRunIndex != previousRunIndex)
                 Pass1b_IncreaseContentSizeForCompletedRun(in control, ref result, previousRunIndex);
 

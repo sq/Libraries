@@ -54,7 +54,7 @@ namespace Squared.PRGUI.NewEngine {
                     endMargin = config.IsVertical ? child.Margins.Bottom : child.Margins.Right,
                     size = config.IsVertical ? childResult.Rect.Height : childResult.Rect.Width,
                     totalSize = startMargin + size + endMargin;
-                var forceBreak = (offset + startMargin + size) > capacity;
+                var forceBreak = config.IsWrap && ((offset + startMargin + size) > capacity);
                 if (forceBreak)
                     numForcedBreaks++;
 

@@ -187,6 +187,7 @@ namespace Squared.PRGUI.Controls {
             Scrollable = true;
             ShowHorizontalScrollbar = false;
             ShowVerticalScrollbar = null;
+            AutoBreakColumnItems = true;
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {

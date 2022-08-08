@@ -149,6 +149,9 @@ namespace Squared.PRGUI.NewEngine {
                     _ContainerFlags |= ContainerFlag.Size_PreventCrush_Y;
             }
 
+            if (value.HasFlag(ControlFlags.Container_Column))
+                _ContainerFlags |= ContainerFlag.Layout_Column;
+
             if (value.HasFlag(ControlFlags.Layout_Floating))
                 _BoxFlags |= BoxFlag.Floating;
             if (value.HasFlag(ControlFlags.Layout_Stacked))
