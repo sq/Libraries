@@ -48,9 +48,11 @@ namespace Squared.PRGUI.NewEngine {
             result.Rect = result.ContentRect = default;
             result.FirstRunIndex = -1;
 #if DEBUG
-            result.Break = PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Layout_ForceBreak);
+            result.Break = PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Layout_ForceBreak) ||
+                control.Config.ForceBreak;
             result.Depth = depth;
 #endif
+            result.Pass1Complete = result.Pass2Complete = false;
             result.Version = Version;
             _Count = Math.Max(control.Key.ID + 1, _Count);
         }

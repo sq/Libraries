@@ -8,15 +8,15 @@ using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private Vector2 Pass2a_ForceWrapAndRebuildRuns (
-            ref BoxRecord control, ref BoxLayoutResult result
+        private Vector2 Pass2_ExpandAndProcessMesses (
+            ref BoxRecord control, ref BoxLayoutResult result, int depth, bool processWrap
         ) {
             if (control.FirstChild.IsInvalid)
                 return default;
 
             ref readonly var config = ref control.Config;
 
-            if ((config._ContainerFlags & Enums.ContainerFlag.Arrange_Wrap) == default)
+            if (config.IsWrap && !processWrap)
                 return default;
 
             float contentWidth = result.Rect.Width - control.Padding.X,
@@ -30,11 +30,24 @@ namespace Squared.PRGUI.NewEngine {
             int oldFirstRun = result.FirstRunIndex, firstRunIndex = -1, currentRunIndex = -1, numForcedBreaks = 0;
             // HACK
             result.FirstRunIndex = -1;
+            bool encounteredWrapChild = false;
 
+            // Scan through all our children and wrap them if necessary now that we know our size
+            // For wrap boxes this happens in a second pass over the subtree, otherwise it happens in the first pass
+            //  since in the first pass we know everything that needs to be wrapped (it has Break set)
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref Result(ckey);
                 ref readonly var childConfig = ref child.Config;
+                if (childConfig.IsWrap) {
+                    encounteredWrapChild = true;
+                    continue;
+                }
+
+                // If we already processed this control in the initial non-wrap pass, skip it
+                if (childResult.Pass2Complete)
+                    continue;
+
                 float startMargin = config.IsVertical ? child.Margins.Top : child.Margins.Left,
                     endMargin = config.IsVertical ? child.Margins.Bottom : child.Margins.Right,
                     size = config.IsVertical ? childResult.Rect.Height : childResult.Rect.Width,
@@ -65,6 +78,22 @@ namespace Squared.PRGUI.NewEngine {
                 } else {
                     offset += totalSize;
                 }
+
+                Pass2_ExpandAndProcessMesses(ref child, ref childResult, depth + 1, false);
+                childResult.Pass2Complete = true;
+            }
+
+            // Now that we computed our new runs with wrapping applied we can expand all our children appropriately
+            Pass2b_ExpandChildren(ref control, ref result);
+
+            // And once they're expanded any children with wrapping enabled know their size and can wrap their own children
+            if (encounteredWrapChild) {
+                foreach (var ckey in Children(control.Key)) {
+                    ref var child = ref this[ckey];
+                    ref var childResult = ref Result(ckey);
+                    Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1, true);
+                    Pass2_ExpandAndProcessMesses(ref child, ref childResult, depth + 1, true);
+                }
             }
 
             if (currentRunIndex >= 0) {
@@ -86,7 +115,7 @@ namespace Squared.PRGUI.NewEngine {
             return result.Rect.Size - oldSize;
         }
 
-        private Vector2 Pass2b_WrapAndAdjustSizes (ref BoxRecord control, ref BoxLayoutResult result) {
+        private Vector2 Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result) {
             if (control.FirstChild.IsInvalid)
                 return default;
 
@@ -205,6 +234,8 @@ namespace Squared.PRGUI.NewEngine {
                     ySpace = newYSpace;
                 }
 
+                // I think the outer recursion in Pass2 handles this now
+                /*
                 // HACK: It would be ideal if we could do this in the previous loop
                 foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                     ref var child = ref this[ckey];
@@ -212,11 +243,7 @@ namespace Squared.PRGUI.NewEngine {
 
                     // FIXME
                     // ApplyClip(in control, ref result, in child, ref childResult, in run);
-
-                    // Process wrapping (if necessary) and then if wrapping changed the size of the child,
-                    //  update the run that contains it
-                    var growth = Pass2a_ForceWrapAndRebuildRuns(ref child, ref childResult) + 
-                        Pass2b_WrapAndAdjustSizes(ref child, ref childResult);
+                    // var growth = Pass2_ExpandChildren(ref child, ref childResult, depth);
 
                     if (growth.X != 0) {
                         run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childResult.Rect.Width + child.Margins.X);
@@ -230,6 +257,7 @@ namespace Squared.PRGUI.NewEngine {
                         needRecalcY = true;
                     }
                 }
+                */
 
                 if (config.IsVertical)
                     w -= run.MaxOuterWidth;

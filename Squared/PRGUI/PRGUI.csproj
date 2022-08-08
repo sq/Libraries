@@ -96,6 +96,10 @@
     <Compile Include="NewEngine\Enums.cs" />
     <Compile Include="NewEngine\LayoutAlgorithm.cs" />
     <Compile Include="NewEngine\LayoutEngine.cs" />
+    <Compile Include="NewEngine\Pass1.cs" />
+    <Compile Include="NewEngine\Pass2.cs" />
+    <Compile Include="NewEngine\Pass3.cs" />
+    <Compile Include="NewEngine\StateManagement.cs" />
     <Compile Include="UIContext.Traversal.cs" />
     <Compile Include="UIContext.State.cs" />
     <Compile Include="UIContext.Data.cs" />

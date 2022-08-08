@@ -94,6 +94,69 @@ namespace Squared.PRGUI.NewEngine {
         [Unserialized]
         internal BoxFlag _BoxFlags;
 
+        public ControlConfiguration (ControlFlags value) {
+            this = default;
+
+            {
+                bool aend = value.HasFlag(ControlFlags.Container_Align_End),
+                    astart = value.HasFlag(ControlFlags.Container_Align_Start),
+                    ajustify = value.HasFlag(ControlFlags.Container_Align_Justify),
+                    acenter = !aend && !astart && !ajustify;
+
+                if ((aend && astart) || (aend && ajustify) || (astart && ajustify))
+                    throw new ArgumentException("Invalid child alignment mode");
+
+                if (aend)
+                    _ContainerFlags |= ContainerFlag.Align_End;
+                else if (acenter)
+                    _ContainerFlags |= ContainerFlag.Align_Center;
+                else if (ajustify)
+                    _ContainerFlags |= ContainerFlag.Align_Justify;
+                else if (astart)
+                    ; // Default
+            }
+
+            {
+                bool aleft = value.HasFlag(ControlFlags.Layout_Anchor_Left),
+                    atop = value.HasFlag(ControlFlags.Layout_Anchor_Top),
+                    aright = value.HasFlag(ControlFlags.Layout_Anchor_Right),
+                    abottom = value.HasFlag(ControlFlags.Layout_Anchor_Bottom);
+                if (aleft)
+                    _BoxFlags |= BoxFlag.Anchor_Left;
+                if (aright)
+                    _BoxFlags |= BoxFlag.Anchor_Right;
+                if (atop)
+                    _BoxFlags |= BoxFlag.Anchor_Top;
+                if (abottom)
+                    _BoxFlags |= BoxFlag.Anchor_Bottom;
+            }
+
+            {
+                if (value.HasFlag(ControlFlags.Container_Break_Auto))
+                    _ContainerFlags |= ContainerFlag.Arrange_Wrap;
+                if (value.HasFlag(ControlFlags.Container_Clip_Children))
+                    _ContainerFlags |= ContainerFlag.Boxes_Clip;
+                if (!value.HasFlag(ControlFlags.Container_Constrain_Growth) &&
+                    !value.HasFlag(ControlFlags.Container_Constrain_Size))
+                    _ContainerFlags |= ContainerFlag.Boxes_Overflow;
+                if (!value.HasFlag(ControlFlags.Container_No_Expansion_X))
+                    _ContainerFlags |= ContainerFlag.Size_ExpandForContent_X;
+                if (!value.HasFlag(ControlFlags.Container_No_Expansion_Y))
+                    _ContainerFlags |= ContainerFlag.Size_ExpandForContent_Y;
+                if (value.HasFlag(ControlFlags.Container_Prevent_Crush_X))
+                    _ContainerFlags |= ContainerFlag.Size_PreventCrush_X;
+                if (value.HasFlag(ControlFlags.Container_Prevent_Crush_Y))
+                    _ContainerFlags |= ContainerFlag.Size_PreventCrush_Y;
+            }
+
+            if (value.HasFlag(ControlFlags.Layout_Floating))
+                _BoxFlags |= BoxFlag.Floating;
+            if (value.HasFlag(ControlFlags.Layout_Stacked))
+                _BoxFlags |= BoxFlag.Stacked;
+            if (value.HasFlag(ControlFlags.Layout_ForceBreak))
+                _BoxFlags |= BoxFlag.Break;
+        }
+
         [Unserialized]
         public uint AllFlags {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -150,8 +213,46 @@ namespace Squared.PRGUI.NewEngine {
         internal bool ConstrainChildren => (_ContainerFlags & ContainerFlag.Boxes_Overflow) == default;
         internal bool IsVertical => (_ContainerFlags & ContainerFlag.Layout_Column) != default;
         internal bool IsStackedOrFloating => (_BoxFlags & BoxFlag.Stacked) != default;
+        internal bool IsWrap => (_ContainerFlags & ContainerFlag.Arrange_Wrap) != default;
         internal bool FillRow => (_BoxFlags & BoxFlag.Fill_Row) == BoxFlag.Fill_Row;
         internal bool FillColumn => (_BoxFlags & BoxFlag.Fill_Column) == BoxFlag.Fill_Column;
+
+        public bool Equals (ControlConfiguration rhs) =>
+            (_BoxFlags == rhs._BoxFlags) &&
+            (_ContainerFlags == rhs._ContainerFlags);
+
+        public override bool Equals (object obj) {
+            if (obj is ControlConfiguration cc)
+                return Equals(cc);
+            else
+                return false;
+        }
+
+        public override string ToString () {
+            return $"{_BoxFlags} {_ContainerFlags}";
+        }
+
+        internal void GetRunAlignmentF (out float xAlign, out float yAlign) {
+            // FIXME: Default for secondary axis should be null instead of 0 i think? Or 0.5?
+            switch (ChildAlign) {
+                default:
+                case ChildAlignment.Start:
+                    xAlign = 0;
+                    yAlign = 0;
+                    return;
+                case ChildAlignment.End:
+                    xAlign = IsVertical ? 0 : 1;
+                    yAlign = IsVertical ? 1 : 0;
+                    return;
+                case ChildAlignment.Center:
+                    xAlign = IsVertical ? 0 : 0.5f;
+                    yAlign = IsVertical ? 0.5f : 0;
+                    return;
+                case ChildAlignment.Justify:
+                    throw new NotImplementedException();
+                    return;
+            }
+        }
     }
 
     /// <summary>
@@ -209,7 +310,14 @@ namespace Squared.PRGUI.NewEngine {
         public Vector2 FloatingPosition;
         public Layout.LayoutTags Tag;
 
-        internal ControlFlags OldFlags;
+        internal ControlFlags _OldFlags;
+        internal ControlFlags OldFlags {
+            get => _OldFlags;
+            set {
+                _OldFlags = value;
+                Config = new ControlConfiguration(value);
+            }
+        }
 
         // TODO: When controls are overflowing/being clipped, we want to clip the lowest priority
         //  controls first in order to spare the high priority ones. This mostly is relevant for
@@ -226,7 +334,7 @@ namespace Squared.PRGUI.NewEngine {
         public bool IsValid => !Key.IsInvalid;
 
         public override string ToString () {
-            return $"#{Key.ID} {Tag} {OldFlags}";
+            return $"#{Key.ID} {Tag} {Config}";
         }
     }
 
@@ -247,7 +355,7 @@ namespace Squared.PRGUI.NewEngine {
         internal int Depth;
         internal bool Break;
 #endif
-        internal bool Pass1Complete;
+        internal bool Pass1Complete, Pass2Complete;
 
         /// <summary>
         /// The display/layout rectangle of the control.

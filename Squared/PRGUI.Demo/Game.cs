@@ -246,7 +246,11 @@ namespace PRGUI.Demo {
             if (!isReloading) {
                 if (UseSavedTree) {
                     if (File.Exists(SavedTreePath))
-                        Context.Engine?.LoadRecords(SavedTreePath);
+                        try {
+                            Context.Engine?.LoadRecords(SavedTreePath);
+                        } catch (Exception exc) {
+                            UseSavedTree = false;
+                        }
                     else
                         UseSavedTree = false;
                 }
