@@ -256,7 +256,7 @@ namespace PRGUI.Demo {
                 }
             }
 
-            if (false)
+            if (true)
                 BuildUI();
             else
                 BuildSimpleUI();
@@ -275,7 +275,7 @@ namespace PRGUI.Demo {
                 Container = {
                     Row = true,
                     Wrap = true,
-                }
+                },
             };
             var cb = new ContainerBuilder(topLevel, true);
             cb.Text("Text 1 should expand")

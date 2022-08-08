@@ -8,7 +8,6 @@ using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-
         private void Pass3_Arrange (ref BoxRecord control, ref BoxLayoutResult result) {
             result.ContentRect = result.Rect;
             result.ContentRect.Left += control.Padding.Left;

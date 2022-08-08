@@ -33,9 +33,9 @@ namespace Squared.PRGUI.NewEngine {
             // ApplyClip(in control, ref result, in child, ref childResult, in run);
 
             run.FlowCount++;
-            if ((childConfig.Anchor & Enums.BoxAnchorMode.FillRow) == Enums.BoxAnchorMode.FillRow)
+            if (childConfig.FillRow && !child.Width.Fixed.HasValue)
                 run.ExpandCountX++;
-            if ((childConfig.Anchor & Enums.BoxAnchorMode.FillColumn) == Enums.BoxAnchorMode.FillColumn)
+            if (childConfig.FillColumn && !child.Height.Fixed.HasValue)
                 run.ExpandCountY++;
             run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childOuterWidth);
             run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childOuterHeight);

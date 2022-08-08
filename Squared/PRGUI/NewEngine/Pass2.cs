@@ -32,7 +32,7 @@ namespace Squared.PRGUI.NewEngine {
             int oldFirstRun = result.FirstRunIndex, firstRunIndex = -1, currentRunIndex = -1, numForcedBreaks = 0;
             // HACK
             result.FirstRunIndex = -1;
-            bool encounteredWrapChild = false;
+            bool encounteredWrapChild = false, first = true;
 
             // Scan through all our children and wrap them if necessary now that we know our size
             // For wrap boxes this happens in a second pass over the subtree, otherwise it happens in the first pass
@@ -54,9 +54,11 @@ namespace Squared.PRGUI.NewEngine {
                     endMargin = config.IsVertical ? child.Margins.Bottom : child.Margins.Right,
                     size = config.IsVertical ? childResult.Rect.Height : childResult.Rect.Width,
                     totalSize = startMargin + size + endMargin;
-                var forceBreak = config.IsWrap && ((offset + startMargin + size) > capacity);
+                var forceBreak = first || (config.IsWrap && ((offset + startMargin + size) > capacity));
                 if (forceBreak)
                     numForcedBreaks++;
+                // FIXME: Without a forceBreak on the first control we get a stack overflow in pass 3, presumably due to corrupt run data?
+                first = false;
 
                 var previousRunIndex = currentRunIndex;
 
@@ -169,6 +171,8 @@ namespace Squared.PRGUI.NewEngine {
                     minOuterWidth = config.IsVertical ? effectiveRunMaxWidth : 0,
                     minOuterHeight = config.IsVertical ? 0 : effectiveRunMaxHeight;
 
+                ;
+
                 for (int pass = 0; pass < 3; pass++) {
                     if (countX < 1)
                         xSpace = 0;
@@ -239,17 +243,17 @@ namespace Squared.PRGUI.NewEngine {
                         }
                     }
 
-                    // FIXME: Find a way to do this without doing another pass over the run
-                    foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
-                        ref var child = ref this[ckey];
-                        ref var childResult = ref Result(ckey);
-                        Pass2_ExpandAndProcessMesses(ref child, ref childResult, depth + 1, false);
-                    }
-
                     countX = newCountX;
                     countY = newCountY;
                     xSpace = newXSpace;
                     ySpace = newYSpace;
+                }
+
+                // FIXME: Find a way to do this without doing another pass over the run
+                foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
+                    ref var child = ref this[ckey];
+                    ref var childResult = ref Result(ckey);
+                    Pass2_ExpandAndProcessMesses(ref child, ref childResult, depth + 1, false);
                 }
 
                 // I think the outer recursion in Pass2 handles this now
