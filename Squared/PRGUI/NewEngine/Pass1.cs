@@ -12,7 +12,8 @@ namespace Squared.PRGUI.NewEngine {
         private void Pass1_ComputeSizesAndBuildRuns (
             ref BoxRecord control, ref BoxLayoutResult result, int depth, bool processWrap
         ) {
-            InitializeResult(ref control, ref result, depth);
+            if (!processWrap)
+                InitializeResult(ref control, ref result, depth);
 
             ref readonly var config = ref control.Config;
 
@@ -73,7 +74,7 @@ namespace Squared.PRGUI.NewEngine {
                 }
             }
 
-            Pass1_IncreaseContentSizeForCompletedRun(in control, ref result, currentRunIndex);
+            Pass1b_IncreaseContentSizeForCompletedRun(in control, ref result, currentRunIndex);
 
             // We have our minimum size in result.Rect and the size of all our content in result.ContentRect
             // Now we add padding to the contentrect and pick the biggest of the two
@@ -85,6 +86,7 @@ namespace Squared.PRGUI.NewEngine {
 
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
+            result.Pass1Complete = true;
         }
 
         private ref LayoutRun SelectRunForBuildingPass (ref int currentRunIndex, bool isBreak) {
@@ -94,7 +96,7 @@ namespace Squared.PRGUI.NewEngine {
                 return ref GetOrPushRun(ref currentRunIndex);
         }
 
-        private void Pass1_IncreaseContentSizeForCompletedRun (
+        private void Pass1b_IncreaseContentSizeForCompletedRun (
             in BoxRecord control, ref BoxLayoutResult result, int runIndex
         ) {
             if (runIndex < 0)
@@ -124,7 +126,7 @@ namespace Squared.PRGUI.NewEngine {
             // TODO: Generate a single special run for all stacked/floating controls instead?
             ref var run = ref SelectRunForBuildingPass(ref currentRunIndex, isBreak);
             if (currentRunIndex != previousRunIndex)
-                Pass1_IncreaseContentSizeForCompletedRun(in control, ref result, previousRunIndex);
+                Pass1b_IncreaseContentSizeForCompletedRun(in control, ref result, previousRunIndex);
 
             UpdateRunCommon(
                 ref run, in control, ref result,

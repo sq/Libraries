@@ -47,11 +47,13 @@ namespace Squared.PRGUI.NewEngine {
             PerformLayout(ref this[control]);
         }
 
-        internal void PerformLayout (ref BoxRecord control) {
-            ref var result = ref UnsafeResult(control.Key);
-            Pass1_ComputeSizesAndBuildRuns(ref control, ref result, 0, false);
-            Pass2_ExpandAndProcessMesses(ref control, ref result, 0, false);
-            Pass3_Arrange(ref control, ref result);
+        internal void PerformLayout (ref BoxRecord root) {
+            ref var result = ref UnsafeResult(root.Key);
+            Pass1_ComputeSizesAndBuildRuns(ref root, ref result, 0, false);
+            Pass2_ExpandAndProcessMesses(ref root, ref result, 0, false);
+            Pass1_ComputeSizesAndBuildRuns(ref root, ref result, 0, true);
+            Pass2_ExpandAndProcessMesses(ref root, ref result, 0, true);
+            Pass3_Arrange(ref root, ref result);
             ;
         }
     }

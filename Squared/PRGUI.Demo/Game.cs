@@ -256,12 +256,33 @@ namespace PRGUI.Demo {
                 }
             }
 
-            BuildUI();
+            if (true)
+                BuildUI();
+            else
+                BuildSimpleUI();
         }
 
         private MarkedStringAction ProcessMarkedString (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
             layoutEngine.overrideColor = Color.Teal;
             return default;
+        }
+
+        private void BuildSimpleUI () {
+            var topLevel = new Container {
+                Layout = {
+                    Fill = true,
+                },
+                Container = {
+                    Row = true,
+                    Wrap = true,
+                }
+            };
+            var cb = new ContainerBuilder(topLevel, true);
+            cb.Text("Text 1");
+            cb.Text("Text 2");
+            cb.Text("Text 3");
+            cb.Text("Text 4");
+            Context.Controls.Add(topLevel);
         }
 
         private void BuildUI () {
@@ -1352,7 +1373,8 @@ namespace PRGUI.Demo {
             var temp = new DenseList<int> { 1, 2 };
             DenseListTest(ref temp);
 
-            DynamicStaticText.Text = DynamicStaticStrings[(DynamicStringIndex++ / 16) % DynamicStaticStrings.Length];
+            if (DynamicStaticText != null)
+                DynamicStaticText.Text = DynamicStaticStrings[(DynamicStringIndex++ / 16) % DynamicStaticStrings.Length];
 
             if (IsFirstUpdate || (UpdatesToSkip <= 0)) {
                 IsFirstUpdate = false;
@@ -1410,8 +1432,10 @@ namespace PRGUI.Demo {
                 var t = Time.Seconds;
                 var angle = MathHelper.ToRadians((float)t * 90f);
                 var matrix = Matrix.CreateRotationZ(angle);
-                SpinningText.Appearance.Transform = matrix;
-                SpinningImage.Appearance.Transform = matrix;
+                if (SpinningText != null) {
+                    SpinningText.Appearance.Transform = matrix;
+                    SpinningImage.Appearance.Transform = matrix;
+                }
 
                 var alt = ks.IsKeyDown(Keys.LeftAlt) || ks.IsKeyDown(Keys.RightAlt);
                 var wasAlt = pks.IsKeyDown(Keys.LeftAlt) || pks.IsKeyDown(Keys.RightAlt);
@@ -1529,10 +1553,12 @@ namespace PRGUI.Demo {
 
             ir.Draw(UIRenderTarget, Vector2.Zero, multiplyColor: Color.White * uiOpacity);
 
-            var dr = SpinTest.GetRect(displayRect: true);
-            ir.RasterizeRectangle(dr.Position, dr.Extent, 1f, 2f, Color.Blue * 0.1f, Color.Blue * 0.1f, outlineColor: Color.Blue);
-            dr = SomeText.GetRect(displayRect: true);
-            ir.RasterizeRectangle(dr.Position, dr.Extent, 1f, 1.5f, Color.Green * 0.1f, Color.Green * 0.1f, outlineColor: Color.Green);
+            if (SpinTest != null) {
+                var dr = SpinTest.GetRect(displayRect: true);
+                ir.RasterizeRectangle(dr.Position, dr.Extent, 1f, 2f, Color.Blue * 0.1f, Color.Blue * 0.1f, outlineColor: Color.Blue);
+                dr = SomeText.GetRect(displayRect: true);
+                ir.RasterizeRectangle(dr.Position, dr.Extent, 1f, 1.5f, Color.Green * 0.1f, Color.Green * 0.1f, outlineColor: Color.Green);
+            }
 
             DrawPerformanceStats(ref ir);
 

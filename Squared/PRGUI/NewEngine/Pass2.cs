@@ -18,6 +18,8 @@ namespace Squared.PRGUI.NewEngine {
 
             if (config.IsWrap && !processWrap)
                 return default;
+            if (result.Pass2Complete)
+                return default;
 
             float contentWidth = result.Rect.Width - control.Padding.X,
                 contentHeight = result.Rect.Height - control.Padding.Y,
@@ -83,6 +85,16 @@ namespace Squared.PRGUI.NewEngine {
                 childResult.Pass2Complete = true;
             }
 
+            if (currentRunIndex >= 0) {
+                ref var currentRun = ref Run(currentRunIndex);
+                extent += config.IsVertical ? currentRun.MaxOuterWidth : currentRun.MaxOuterHeight;
+            }
+
+            if (numForcedBreaks <= 0)
+                result.FirstRunIndex = oldFirstRun;
+            else
+                result.FirstRunIndex = firstRunIndex;
+
             // Now that we computed our new runs with wrapping applied we can expand all our children appropriately
             Pass2b_ExpandChildren(ref control, ref result);
 
@@ -96,15 +108,7 @@ namespace Squared.PRGUI.NewEngine {
                 }
             }
 
-            if (currentRunIndex >= 0) {
-                ref var currentRun = ref Run(currentRunIndex);
-                extent += config.IsVertical ? currentRun.MaxOuterWidth : currentRun.MaxOuterHeight;
-            }
-
-            if (numForcedBreaks <= 0)
-                result.FirstRunIndex = oldFirstRun;
-            else
-                result.FirstRunIndex = firstRunIndex;
+            result.Pass2Complete = true;
 
             var oldSize = result.Rect.Size;
             if (config.IsVertical)
