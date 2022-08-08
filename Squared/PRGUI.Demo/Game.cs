@@ -256,7 +256,7 @@ namespace PRGUI.Demo {
                 }
             }
 
-            if (true)
+            if (false)
                 BuildUI();
             else
                 BuildSimpleUI();
@@ -278,9 +278,11 @@ namespace PRGUI.Demo {
                 }
             };
             var cb = new ContainerBuilder(topLevel, true);
-            cb.Text("Text 1");
+            cb.Text("Text 1 should expand")
+                .Control.AutoSizeIsMaximum = false;
             cb.Text("Text 2");
-            cb.Text("Text 3");
+            cb.Text("Text 3 should expand")
+                .Control.AutoSizeIsMaximum = false;
             cb.Text("Text 4");
             Context.Controls.Add(topLevel);
         }

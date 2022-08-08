@@ -47,7 +47,7 @@ namespace Squared.PRGUI.NewEngine {
                 }
 
                 // If we already processed this control in the initial non-wrap pass, skip it
-                if (childResult.Pass2Complete)
+                if (childResult.Pass2ParentComplete)
                     continue;
 
                 float startMargin = config.IsVertical ? child.Margins.Top : child.Margins.Left,
@@ -81,8 +81,7 @@ namespace Squared.PRGUI.NewEngine {
                     offset += totalSize;
                 }
 
-                Pass2_ExpandAndProcessMesses(ref child, ref childResult, depth + 1, false);
-                childResult.Pass2Complete = true;
+                childResult.Pass2ParentComplete = true;
             }
 
             if (currentRunIndex >= 0) {
@@ -96,7 +95,7 @@ namespace Squared.PRGUI.NewEngine {
                 result.FirstRunIndex = firstRunIndex;
 
             // Now that we computed our new runs with wrapping applied we can expand all our children appropriately
-            Pass2b_ExpandChildren(ref control, ref result);
+            Pass2b_ExpandChildren(ref control, ref result, depth, processWrap);
 
             // And once they're expanded any children with wrapping enabled know their size and can wrap their own children
             if (encounteredWrapChild) {
@@ -119,11 +118,19 @@ namespace Squared.PRGUI.NewEngine {
             return result.Rect.Size - oldSize;
         }
 
-        private Vector2 Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result) {
+        private Vector2 Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result, int depth, bool processWrap) {
             if (control.FirstChild.IsInvalid)
                 return default;
 
             ref readonly var config = ref control.Config;
+
+            if (config.IsWrap && !processWrap)
+                return default;
+
+            if (result.Pass2bComplete)
+                return default;
+
+            result.Pass2bComplete = true;
 
             var oldSize = result.Rect.Size;
             bool needRecalcX = false, needRecalcY = false;
@@ -230,6 +237,13 @@ namespace Squared.PRGUI.NewEngine {
                                 run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, newChildH);
                             }
                         }
+                    }
+
+                    // FIXME: Find a way to do this without doing another pass over the run
+                    foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
+                        ref var child = ref this[ckey];
+                        ref var childResult = ref Result(ckey);
+                        Pass2_ExpandAndProcessMesses(ref child, ref childResult, depth + 1, false);
                     }
 
                     countX = newCountX;
