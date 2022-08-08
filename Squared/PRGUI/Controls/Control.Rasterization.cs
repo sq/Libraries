@@ -31,9 +31,9 @@ namespace Squared.PRGUI {
             public BitmapDrawCall DrawCall;
         }
 
-        public static bool ShowDebugBoxes = true,
+        public static bool ShowDebugBoxes = false,
             ShowDebugBoxesForLeavesOnly = false,
-            ShowDebugBreakMarkers = true,
+            ShowDebugBreakMarkers = false,
             ShowDebugMargins = false,
             ShowDebugPadding = false;
 
