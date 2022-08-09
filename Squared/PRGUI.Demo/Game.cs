@@ -262,7 +262,7 @@ namespace PRGUI.Demo {
                 BuildSimpleUI();
         }
 
-        private MarkedStringAction ProcessMarkedString (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
+        private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
             layoutEngine.overrideColor = Color.Teal;
             return default;
         }

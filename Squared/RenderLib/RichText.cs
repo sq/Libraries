@@ -354,7 +354,7 @@ namespace Squared.Render.Text {
     /// <param name="state">A state snapshot that can be used to examine or restore the current state of the layout engine.</param>
     /// <param name="layoutEngine">The layout engine that will be used to append the text (after this method returns).</param>
     /// <returns>true if the string should be laid out, false if it should be omitted from the output entirely.</returns>
-    public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
+    public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, ref string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
 
     public sealed class RichTextConfiguration : IEquatable<RichTextConfiguration> {
         public event Action<RichTextConfiguration, RichParseError> OnParseError;
@@ -581,7 +581,7 @@ namespace Squared.Render.Text {
                             GlyphSource = state.GlyphSource
                         };
                         if (MarkedStringProcessor != null)
-                            action = MarkedStringProcessor(ref astr, id, ref markedState, ref layoutEngine);
+                            action = MarkedStringProcessor(ref astr, ref id, ref markedState, ref layoutEngine);
 
                         if (action == MarkedStringAction.Error)
                             parseErrors.Add(new RichParseError {

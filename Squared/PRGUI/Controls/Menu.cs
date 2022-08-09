@@ -730,6 +730,8 @@ namespace Squared.PRGUI.Controls {
             return ShowInternalEpilogue(context, selectedItem);
         }
 
+        /// <param name="anchorPoint">Configures what point on the anchor [0 - 1] is used as the center for alignment</param>
+        /// <param name="controlAlignmentPoint">Configures what point on the control [0 - 1] is aligned onto the anchor point</param>
         public Future<Control> Show (
             UIContext context, Control anchor, 
             Vector2? anchorPoint = null, 

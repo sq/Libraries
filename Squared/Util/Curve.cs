@@ -579,8 +579,8 @@ namespace Squared.Util.Containers {
     }
 
     public class Curve<T> : CurveBase<T, Curve<T>.PointData>
-        where T : struct {
-
+        where T : struct 
+    {
         public struct PointData {
             public Interpolator<T> Interpolator; 
         }
