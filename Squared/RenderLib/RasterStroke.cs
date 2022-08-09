@@ -457,6 +457,7 @@ namespace Squared.Render.RasterStroke {
         public BlendState BlendState;
         public RasterizerState RasterizerState;
         public RasterBrush Brush;
+        public DitheringSettings? DitheringSettings;
 
         static RasterStrokeBatch () {
             AdjustPoolCapacities(1024, null, 512, 16);
@@ -658,6 +659,10 @@ namespace Squared.Render.RasterStroke {
                         System.Diagnostics.Debug.WriteLine($"WARNING: No shadowed shader is available for stroke of type {sb.Type}");
                     }
                 }
+
+                var ds = DitheringSettings ?? Materials.DefaultDitheringSettings;
+                Materials.uDithering.Set(material.Material, ref ds);
+
                 material.UsesNoise.SetValue(hasNoise);
                 material.NozzleParams.SetValue(nozzleParams);
                 material.SizeDynamics.SetValue(Brush.Scale.ToVector4());

@@ -161,6 +161,11 @@ namespace Squared.Render {
 
     [StructLayout(LayoutKind.Sequential)]
     public struct DitheringSettings {
+        public static readonly DitheringSettings Disable = new DitheringSettings {
+            Strength = 0f,
+            Power = 16
+        };
+
         private Vector4 StrengthUnitAndIndex;
         private Vector4 BandSizeAndRange;
 

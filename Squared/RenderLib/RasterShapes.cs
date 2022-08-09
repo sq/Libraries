@@ -677,6 +677,7 @@ namespace Squared.Render.RasterShape {
         public RasterizerState RasterizerState;
         public SamplerState SamplerState;
         public RasterShadowSettings ShadowSettings;
+        public DitheringSettings? DitheringSettings;
 
         static RasterShapeBatch () {
             AdjustPoolCapacities(1024, null, 512, 16);
@@ -848,6 +849,8 @@ namespace Squared.Render.RasterShape {
                         );
                 }
 
+                var ds = DitheringSettings ?? Materials.DefaultDitheringSettings;
+                Materials.uDithering.Set(rasterShader.Material, ref ds);
                 rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
                 rasterShader.BlendInOkLab?.SetValue(sb.BlendInOkLab);
                 rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget);

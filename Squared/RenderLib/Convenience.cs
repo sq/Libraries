@@ -412,6 +412,7 @@ namespace Squared.Render.Convenience {
         RasterUseUbershader         = 0b1000000000,
         RasterBlendInLinearSpace    = 0b10000000000,
         RasterBlendInOkLabSpace     = 0b100000000000,
+        DisableDithering            = 0b1000000000000,
     }
 
     public struct ImperativeRenderer {
@@ -751,6 +752,22 @@ namespace Squared.Render.Convenience {
                 SetFlag(ImperativeRendererFlags.RasterBlendInOkLabSpace, value);
                 if (value)
                     SetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace, true);
+            }
+        }
+
+        /// <summary>
+        /// If true, default dithering behavior will be suppressed for raster shaders.
+        /// </summary>
+        public bool DisableDithering {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetFlag(ImperativeRendererFlags.DisableDithering);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set {
+                SetFlag(ImperativeRendererFlags.DisableDithering, value);
+                if (value)
+                    SetFlag(ImperativeRendererFlags.DisableDithering, true);
             }
         }
 
@@ -2133,6 +2150,7 @@ namespace Squared.Render.Convenience {
                 extraData: texture
             ) || (((RasterShapeBatch)cacheEntry.Batch).RampTexture != rampTexture)
               || (((RasterShapeBatch)cacheEntry.Batch).RampUVOffset != (rampUVOffset ?? Vector2.Zero))
+              || (((RasterShapeBatch)cacheEntry.Batch).DitheringSettings.HasValue != DisableDithering)
             ) {
                 // FIXME: The way this works will cause churn when mixing textured and untextured shape batches
                 //  oh well
@@ -2141,6 +2159,8 @@ namespace Squared.Render.Convenience {
                     RasterizerState, DepthStencilState, desiredBlendState, rampTexture,
                     rampUVOffset
                 );
+                if (DisableDithering)
+                    batch.DitheringSettings = DitheringSettings.Disable;
                 batch.MaterialParameters = Parameters;
                 // FIXME: why the hell
                 batch.UseUbershader = RasterUseUbershader;
@@ -2191,11 +2211,14 @@ namespace Squared.Render.Convenience {
                 samplerState2: null,
                 extraData: brush.NozzleAtlas
             ) || !((RasterStrokeBatch)cacheEntry.Batch).Brush.Equals(ref brush)
+              || !((RasterStrokeBatch)cacheEntry.Batch).DitheringSettings.HasValue != DisableDithering
             ) {
                 var batch = RasterStrokeBatch.New(
                     Container, actualLayer, Materials, ref brush,
                     RasterizerState, DepthStencilState, desiredBlendState
                 );
+                if (DisableDithering)
+                    batch.DitheringSettings = DitheringSettings.Disable;
                 batch.BlendInLinearSpace = RasterBlendInLinearSpace;
                 batch.MaterialParameters = Parameters;
                 cacheEntry.Batch = batch;
