@@ -159,6 +159,13 @@ void computeTLBR (
     }
 #endif
 
+#ifdef INCLUDE_STAR
+    else if (type == TYPE_Star) {
+        tl = a - outlineSize - radius.x;
+        br = a + outlineSize + radius.x;
+    }
+#endif
+
 #ifdef INCLUDE_POLYGON
     else if (type == TYPE_Polygon) {
         computeTLBR_Polygon(
@@ -800,6 +807,23 @@ void evaluateRasterShape (
                 // FIXME: Size scaling
                 gradientAngle = c.x;
             }
+        }
+
+        needTLBR = true;
+    }
+#endif
+
+#ifdef INCLUDE_STAR
+    else if (type == TYPE_Star) {
+        float2 starPosition = rotate2D(worldPosition - a, c.x);
+        distance = sdStar(starPosition, radius.x, (int)b.x, b.y);
+        // HACK: it doesn't evaluate properly at 0,0
+        float targetDistance = sdStar(float2(0, -0.5), radius.x, (int)b.x, b.y),
+            fakeY = 0; // FIXME
+
+        if (!simple) {
+            if (gradientType == GRADIENT_TYPE_Natural)
+                gradientWeight = float2(1 - saturate(distance / targetDistance), fakeY);
         }
 
         needTLBR = true;

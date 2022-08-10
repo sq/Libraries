@@ -68,7 +68,8 @@ namespace Squared.Render.RasterShape {
         Triangle = 3,
         QuadraticBezier = 4,
         Arc = 5,
-        Polygon = 6
+        Polygon = 6,
+        Star = 7
     }
 
     public enum RasterFillMode : int {

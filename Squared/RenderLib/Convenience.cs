@@ -1987,6 +1987,48 @@ namespace Squared.Render.Convenience {
                 });
         }
 
+        /// <param name="center">The center point of the shape.</param>
+        /// <param name="radius">Radius of the tips of the star.</param>
+        /// <param name="count">The number of tips the star has.</param>
+        /// <param name="rotationDegrees">The rotation of the star, in degrees. At 0, the star's first tip points up.</param>
+        public void RasterizeStar (
+            Vector2 center, float radius, int count, float m, float outlineRadius,
+            pSRGBColor innerColor, pSRGBColor? outerColor = null, pSRGBColor? outlineColor = null, 
+            float rotationDegrees = 0f, RasterFillSettings fill = default,
+            float? annularRadius = null, RasterShadowSettings? shadow = null,
+            int? layer = null, bool? worldSpace = null, RasterShapeColorSpace? colorSpace = null,
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null,
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
+            Vector2? rampUVOffset = null, int sortKey = 0
+        ) {
+            m = Arithmetic.Clamp(m, 2, count);
+
+            using (var rsb = GetRasterShapeBatch(
+                layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
+            ))
+                rsb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.Star,
+                    SortKey = sortKey,
+                    WorldSpace = worldSpace ?? WorldSpace,
+                    A = center, B = new Vector2(count, m),
+                    C = new Vector2(MathHelper.ToRadians(rotationDegrees), 0f),
+                    Radius = new Vector2(radius, 0),
+                    OutlineSize = outlineRadius,
+                    InnerColor = innerColor,
+                    OuterColor = outerColor.GetValueOrDefault(innerColor),
+                    OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendIn = colorSpace ?? RasterColorSpace,
+                    Fill = fill,
+                    AnnularRadius = annularRadius ?? 0,
+                    Shadow = shadow.GetValueOrDefault(),
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                    SoftOutline = RasterSoftOutlines
+                });
+        }
+
         public IBitmapBatch GetBitmapBatch (
             int? layer, bool? worldSpace, BlendState blendState, 
             SamplerState samplerState, DepthStencilState depthStencilState = null, 

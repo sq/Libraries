@@ -2,6 +2,22 @@
 // http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
 // http://iquilezles.org/www/articles/distfunctions/distfunctions.htm
 
+inline float2x2 make2DRotation (in float radians) {
+    float2 sinCos;
+    sincos(radians, sinCos.x, sinCos.y);
+    return float2x2(
+        sinCos.y, -sinCos.x,
+        sinCos.x, sinCos.y
+    );
+}
+
+inline float2 rotate2D(
+    in float2 corner, in float radians
+) {
+    float2x2 rotationMatrix = make2DRotation(radians);
+    return mul(corner, rotationMatrix);
+}
+
 float sdBox(in float2 p, in float2 b) {
     float2 d = abs(p) - b;
     return length(max(d, 0.0001)) + min(max(d.x, d.y), 0.0001);
@@ -117,4 +133,21 @@ float sdArc (in float2 p, in float2 sca, in float2 scb, in float ra, float rb) {
     p.x = abs(p.x);
     float k = (scb.y*p.x>scb.x*p.y) ? dot(p.xy, scb) : length(p.xy);
     return sqrt(dot(p, p) + ra*ra - 2.0*ra*k) - rb;
+}
+
+float sdStar (in float2 p, in float r, in int n, in float m) {
+    // these 4 lines can be precomputed for a given shape
+    float  an = 3.141593/float(n);
+    float  en = 3.141593/m;
+    float2 acs = float2(cos(an),sin(an));
+    float2 ecs = float2(cos(en),sin(en)); // ecs=float2(0,1) and simplify, for regular polygon,
+
+    // reduce to first sector
+    float at = atan2(p.x,-p.y), bn = (at % (2.0*an)) * sign(at) - an;
+    p = length(p)*float2(cos(bn),abs(sin(bn)));
+
+    // line sdf
+    p -= r*acs;
+    p += ecs*clamp( -dot(p,ecs), 0.0, r*acs.y/ecs.y);
+    return length(p)*sign(p.x);
 }
