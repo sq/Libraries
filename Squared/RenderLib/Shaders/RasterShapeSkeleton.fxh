@@ -459,10 +459,13 @@ void evaluateEllipse (
     inout int gradientType, out float2 gradientWeight
 ) {
     // FIXME: sdEllipse is massively broken. What is wrong with it?
-    // distance = sdEllipse(worldPosition - a, b);
+    distance = sdEllipse(worldPosition - a, b);
+    float distanceF = distance / b;
+    /*
     float2 distanceXy = worldPosition - a;
     float distanceF = length(distanceXy / b);
     distance = (distanceF - 1) * length(b);
+    */
     tl = a - b;
     br = a + b;
 
