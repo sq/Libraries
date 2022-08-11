@@ -257,7 +257,8 @@ namespace Squared.PRGUI {
                 context.Prepass = prepassContainer;
                 var renderer = new ImperativeRenderer(container, Materials) {
                     BlendState = BlendState.AlphaBlend,
-                    DepthStencilState = DepthStencilState.None
+                    DepthStencilState = DepthStencilState.None,
+                    RasterizerState = RenderStates.ScissorOnly,
                 };
                 renderer.Clear(color: clearColor, stencil: 0, layer: -999);
                 // FIXME: Modals that don't have background fade will be overlapped by these overlays

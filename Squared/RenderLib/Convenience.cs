@@ -2203,6 +2203,8 @@ namespace Squared.Render.Convenience {
                 );
                 if (DisableDithering)
                     batch.DitheringSettings = DitheringSettings.Disable;
+                else
+                    batch.DitheringSettings = null;
                 batch.MaterialParameters = Parameters;
                 // FIXME: why the hell
                 batch.UseUbershader = RasterUseUbershader;
@@ -2261,6 +2263,8 @@ namespace Squared.Render.Convenience {
                 );
                 if (DisableDithering)
                     batch.DitheringSettings = DitheringSettings.Disable;
+                else
+                    batch.DitheringSettings = null;
                 batch.BlendInLinearSpace = RasterBlendInLinearSpace;
                 batch.MaterialParameters = Parameters;
                 cacheEntry.Batch = batch;

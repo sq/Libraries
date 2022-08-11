@@ -45,7 +45,7 @@ namespace Squared.PRGUI {
         private static readonly Action<DeviceManager, object> BeforeComposite = _BeforeIssueComposite,
             AfterComposite = _AfterIssueComposite;
 
-        protected virtual void OnPreRasterize (ref UIOperationContext context, ref DecorationSettings settings, IDecorator decorations) {
+        protected virtual void OnPreRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings, IDecorator decorations) {
             UpdateAnimation(context.NowL);
         }
 
@@ -86,7 +86,7 @@ namespace Squared.PRGUI {
             ref DecorationSettings settings, ref RasterizePassSet passSet, IDecorator decorations
         ) {
             if (HasPreRasterizeHandler && isContentPass)
-                OnPreRasterize(ref context, ref settings, decorations);
+                OnPreRasterize(ref context, ref renderer, ref settings, decorations);
 
             OnRasterize(ref context, ref renderer, settings, decorations);
 
@@ -456,7 +456,8 @@ namespace Squared.PRGUI {
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             var state = GetCurrentState(ref context) | ControlStates.Invisible;
             MakeDecorationSettings(ref box, ref box, state, false, false, out var settings);
-            OnPreRasterize(ref context, ref settings, decorations);
+            var tempRenderer = default(ImperativeRenderer);
+            OnPreRasterize(ref context, ref tempRenderer, ref settings, decorations);
         }
 
         private void RasterizeComposited (ref UIOperationContext context, ref RectF box, ref RasterizePassSet passSet, float opacity, bool enableCompositor) {
@@ -473,11 +474,14 @@ namespace Squared.PRGUI {
             if (context.RenderTargetStack.Count > 0)
                 context.RenderTargetStack[context.RenderTargetStack.Count - 1].Dependencies.Add(srt);
             context.RenderTargetStack.Add(srt);
+            var oldTarget = context.CompositingTarget;
             try {
+                context.CompositingTarget = srt.Instance;
                 // passSet.Above.RasterizeRectangle(box.Position, box.Extent, 1f, Color.Red * 0.1f);
                 RasterizeIntoPrepass(ref context, passSet, opacity, ref box, ref compositeBox, srt, enableCompositor);
                 // passSet.Above.RasterizeEllipse(box.Center, Vector2.One * 3f, Color.White);
             } finally {
+                context.CompositingTarget = oldTarget;
                 context.RenderTargetStack.RemoveTail(1);
                 context.UIContext.ReleaseScratchRenderTarget(srt.Instance);
             }

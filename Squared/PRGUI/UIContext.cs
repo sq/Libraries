@@ -1138,6 +1138,7 @@ namespace Squared.PRGUI {
         internal UIOperationContextShared Shared;
 
         public UIContext UIContext => Shared?.Context;
+        public RenderCoordinator RenderCoordinator => Prepass.Coordinator;
         public DefaultMaterialSet Materials => UIContext?.Materials;
         public LayoutContext Layout => UIContext?.Layout;
         public NewEngine.LayoutEngine Engine => UIContext?.Engine;
@@ -1154,6 +1155,7 @@ namespace Squared.PRGUI {
         public float Opacity { get; internal set; }
         public RectF VisibleRegion { get; internal set; }
         public BatchGroup Prepass;
+        public AutoRenderTarget CompositingTarget { get; internal set; }
         private DenseList<IDecorator> DecoratorStack, TextDecoratorStack;
         private DenseList<IDecorationProvider> DecorationProviderStack;
         internal DenseList<UIContext.ScratchRenderTarget> RenderTargetStack;

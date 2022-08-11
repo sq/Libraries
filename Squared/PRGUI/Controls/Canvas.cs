@@ -136,23 +136,32 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnPreRasterize (ref UIOperationContext context, ref DecorationSettings _settings, IDecorator decorations) {
-            var settings = _settings;
-            base.OnPreRasterize(ref context, ref settings, decorations);
-            AutoDisposeBuffer(context.Prepass.Container.Coordinator);
-            var bufferSize = (settings.ContentBox.Size * InternalResolution).Ceiling();
+        protected bool EnsureValidBuffer (RenderCoordinator coordinator, ref RectF contentBox) {
+            AutoDisposeBuffer(coordinator);
+            var bufferSize = (contentBox.Size * InternalResolution).Ceiling();
             int w = (int)bufferSize.X, h = (int)bufferSize.Y;
-            if ((w <= 0) || (h <= 0))
-                return;
-            settings.ContentBox.Position = settings.Box.Position = Vector2.Zero;
-            settings.IsCompositing = true;
+            if ((w <= 0) || (h <= 0)) {
+                _ContentIsValid = false;
+                return false;
+            }
+
             if (Buffer == null) {
                 _ContentIsValid = false;
-                Buffer = new AutoRenderTarget(context.Prepass.Container.Coordinator, w, h, false, SurfaceFormat, DepthFormat);
+                Buffer = new AutoRenderTarget(coordinator, w, h, false, SurfaceFormat, DepthFormat);
             } else {
                 _ContentIsValid = !Buffer.Resize(w, h);
             }
 
+            return true;
+        }
+
+        protected override void OnPreRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings _settings, IDecorator decorations) {
+            var settings = _settings;
+            base.OnPreRasterize(ref context, ref renderer, ref settings, decorations);
+            if (!EnsureValidBuffer(context.RenderCoordinator, ref _settings.ContentBox))
+                return;
+            settings.ContentBox.Position = settings.Box.Position = Vector2.Zero;
+            settings.IsCompositing = true;
             // FIXME
             var layer = 0;
             using (var container = BatchGroup.ForRenderTarget(
