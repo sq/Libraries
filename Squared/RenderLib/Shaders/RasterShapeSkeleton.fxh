@@ -461,11 +461,6 @@ void evaluateEllipse (
     // FIXME: sdEllipse is massively broken. What is wrong with it?
     distance = sdEllipse(worldPosition - a, b);
     float distanceF = distance / b;
-    /*
-    float2 distanceXy = worldPosition - a;
-    float distanceF = length(distanceXy / b);
-    distance = (distanceF - 1) * length(b);
-    */
     tl = a - b;
     br = a + b;
 
@@ -475,7 +470,9 @@ void evaluateEllipse (
     }
 
     float fakeY = worldPosition.x + worldPosition.y; // FIXME
-    gradientWeight = float2(saturate(distanceF), fakeY);
+    // HACK: Sadly the distance-derived gradient looks kind of strange,
+    //  so it's still best to force our custom Radial
+    gradientWeight = float2(1 - saturate(-distanceF), fakeY);
     if (gradientType == GRADIENT_TYPE_Natural)
         gradientType = GRADIENT_TYPE_Radial;
     else if (

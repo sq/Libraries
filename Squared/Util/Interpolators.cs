@@ -24,11 +24,11 @@ namespace Squared.Util {
         public delegate T CubicRFn (T a, T b, T c, T d, T p, float x, float x2, float x3);
         public delegate T HermiteFn (T a, T u, T d, T v, float t, float t2, float tSquared, float s, float s2, float sSquared);
 
-        private static LinearFn _Linear = null;
-        private static CosineFn _Cosine = null;
-        private static CubicPFn _CubicP = null;
-        private static CubicRFn _CubicR = null;
-        private static HermiteFn _Hermite = null;
+        internal static LinearFn _Linear = null;
+        internal static CosineFn _Cosine = null;
+        internal static CubicPFn _CubicP = null;
+        internal static CubicRFn _CubicR = null;
+        internal static HermiteFn _Hermite = null;
 
         static Interpolators () {
             FindPrecompiledExpressions(typeof(T));
@@ -191,6 +191,24 @@ namespace Squared.Util {
                 positionInWindow
             );
         }
+
+        // FIXME: This doesn't work but seems like it should
+        /*
+        public static T Quadratic (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
+            if (positionInWindow < 0) {
+                var n = Math.Ceiling(Math.Abs(positionInWindow));
+                positionInWindow += (float)n;
+                dataOffset -= (int)n;
+            }
+
+            T a = data(dataOffset),
+                b = data(dataOffset + 1),
+                c = data(dataOffset + 2),
+                ab = _Linear(a, b, positionInWindow),
+                bc = _Linear(b, c, positionInWindow);
+            return _Linear(ab, bc, positionInWindow);
+        }
+        */
 
         public static T Cubic (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
             if (positionInWindow < 0) {
@@ -394,7 +412,27 @@ namespace Squared.Util {
             }
         }
 
+        // FIXME: This doesn't work but seems like it should
+        /*
+        public static T Quadratic<U> (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) {
+            // FIXME: Should we always do this? Should it be configurable?
+            if (positionInWindow < 0) {
+                var n = Math.Ceiling(Math.Abs(positionInWindow));
+                positionInWindow += (float)n;
+                dataOffset -= (int)n;
+            }
+
+            T a = data(in obj, dataOffset - 1),
+                b = data(in obj, dataOffset),
+                c = data(in obj, dataOffset + 1),
+                ab = _Linear(a, b, positionInWindow),
+                bc = _Linear(b, c, positionInWindow);
+            return _Linear(ab, bc, positionInWindow);
+        }
+        */
+
         public static T Cubic<U> (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) {
+            // FIXME: Should we always do this? Should it be configurable?
             if (positionInWindow < 0) {
                 var n = Math.Ceiling(Math.Abs(positionInWindow));
                 positionInWindow += (float)n;

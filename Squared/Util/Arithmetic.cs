@@ -691,6 +691,26 @@ namespace Squared.Util {
             );
         }
 
+        public static T Quadratic<T> (in T a, in T b, in T c, float x) 
+            where T : struct 
+        {
+            T ab = Lerp(a, b, x),
+                bc = Lerp(b, c, x);
+            return Lerp(ab, bc, x);
+        }
+
+        public static T Cubic<T> (in T a, in T b, in T c, in T d, float x) 
+            where T : struct 
+        {
+            var cubicP = Interpolators<T>._CubicP;
+            var cubicR = Interpolators<T>._CubicR;
+            if ((cubicP == null) || (cubicR == null))
+                throw new Exception($"Cubic interpolator not available for type {typeof(T).FullName}");
+            T p = cubicP(a, b, c, d);
+            float x2 = x * x, x3 = x * x2;
+            return cubicR(a, b, c, d, p, x, x2, x3);
+        }
+
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsFinite (float f) {
