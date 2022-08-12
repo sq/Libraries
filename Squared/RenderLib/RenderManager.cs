@@ -1087,16 +1087,6 @@ namespace Squared.Render {
             if (manager.IsDisposed)
                 return;
 
-#if DEBUG
-            if (batch.TimesIssued > 0)
-                throw new InvalidOperationException("Batch was issued multiple times");
-
-            if (Debugger.IsAttached) {
-                batch.Issue(manager);
-                batch.TimesIssued++;
-            } else {
-#endif
-
             batch.GetState(out bool isInitialized, out bool isCombined, out bool isPrepareQueued, out bool isPrepared, out bool temp1);
             if (!isInitialized)
                 throw new BatchIssueFailedException(batch, new Exception("Batch not initialized"));
@@ -1108,37 +1098,49 @@ namespace Squared.Render {
             else if (!isPrepared)
                 throw new BatchIssueFailedException(batch, new Exception("Batch not prepared"));
 
-            var bg = batch as BatchGroup;
-            var targetTracingLevel = (bg != null) ? Tracing.RenderTraceDetailLevel.Concise : Tracing.RenderTraceDetailLevel.Verbose;
-            var tracing = (Tracing.RenderTrace.DetailLevel >= targetTracingLevel) && ((bg?.Count ?? 1) > 0);
-            string markerName = tracing ? batch.ToString() : null;
+            if ((batch.GetEnabled != null) && !batch.GetEnabled())
+                return;
 
-            if (tracing) {
-                IssueBuilder.Clear();
-                for (int i = 0; i < IssueDepth; i++)
-                    IssueBuilder.Append(". ");
-                IssueBuilder.Append("+ ");
-                IssueBuilder.Append(markerName);
-                manager.Device.SetStringMarkerEXT(IssueBuilder.ToString());
-                IssueDepth++;
-            }
+#if DEBUG
+            if (batch.TimesIssued > 0)
+                throw new InvalidOperationException("Batch was issued multiple times");
 
-            try {
+            if (Debugger.IsAttached) {
                 batch.Issue(manager);
-            } catch (Exception exc) {                
-                throw new BatchIssueFailedException(batch, exc);
-            } finally {
+                batch.TimesIssued++;
+            } else {
+#endif
+                var bg = batch as BatchGroup;
+                var targetTracingLevel = (bg != null) ? Tracing.RenderTraceDetailLevel.Concise : Tracing.RenderTraceDetailLevel.Verbose;
+                var tracing = (Tracing.RenderTrace.DetailLevel >= targetTracingLevel) && ((bg?.Count ?? 1) > 0);
+                string markerName = tracing ? batch.ToString() : null;
+
                 if (tracing) {
-                    IssueDepth--;
                     IssueBuilder.Clear();
                     for (int i = 0; i < IssueDepth; i++)
                         IssueBuilder.Append(". ");
-                    IssueBuilder.Append("- ");
+                    IssueBuilder.Append("+ ");
                     IssueBuilder.Append(markerName);
                     manager.Device.SetStringMarkerEXT(IssueBuilder.ToString());
+                    IssueDepth++;
                 }
-                batch.TimesIssued++;
-            }
+
+                try {
+                    batch.Issue(manager);
+                } catch (Exception exc) {                
+                    throw new BatchIssueFailedException(batch, exc);
+                } finally {
+                    if (tracing) {
+                        IssueDepth--;
+                        IssueBuilder.Clear();
+                        for (int i = 0; i < IssueDepth; i++)
+                            IssueBuilder.Append(". ");
+                        IssueBuilder.Append("- ");
+                        IssueBuilder.Append(markerName);
+                        manager.Device.SetStringMarkerEXT(IssueBuilder.ToString());
+                    }
+                    batch.TimesIssued++;
+                }
 #if DEBUG
             }
 #endif

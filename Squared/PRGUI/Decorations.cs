@@ -72,6 +72,8 @@ namespace Squared.PRGUI.Decorations {
         public RasterTextureSettings GetTextureSettings () {
             return BackgroundImage?.Settings ?? default(RasterTextureSettings);
         }
+
+        public bool HasStateFlag (ControlStates flag) => State.IsFlagged(flag);
     }
 
     public interface IControlAnimation {

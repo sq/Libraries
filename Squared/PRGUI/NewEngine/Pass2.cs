@@ -304,12 +304,12 @@ namespace Squared.PRGUI.NewEngine {
                 }
 
                 // TODO: Figure out whether these should actually be enabled, they seem right but they also don't seem to fix anything?
-                if (false) //if (PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_No_Expansion_X))
+                if (false) //if (control.OldFlags.IsFlagged(ControlFlags.Container_No_Expansion_X))
                     result.Rect.Width = oldSize.X;
                 else
                     control.Width.Constrain(ref result.Rect.Width, true);
 
-                if (false) // if (PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Container_No_Expansion_Y))
+                if (false) // if (control.OldFlags.IsFlagged(ControlFlags.Container_No_Expansion_Y))
                     result.Rect.Height = oldSize.Y;
                 else
                     control.Height.Constrain(ref result.Rect.Height, true);

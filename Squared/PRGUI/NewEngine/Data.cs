@@ -417,12 +417,12 @@ namespace Squared.PRGUI.NewEngine {
 
             if ((XAnchor ?? default) != default) {
                 XAnchor.Value.GetAlignmentF(out x, out _);
-            } else if (PRGUIExtensions.HasFlag(containerFlags, ControlFlags.Container_Row))
+            } else if (containerFlags.IsFlagged(ControlFlags.Container_Row))
                 x = containerFlags.GetContainerAlignmentF();
 
             if ((YAnchor ?? default) != default) {
                 YAnchor.Value.GetAlignmentF(out x, out y);
-            } else if (PRGUIExtensions.HasFlag(containerFlags, ControlFlags.Container_Column))
+            } else if (containerFlags.IsFlagged(ControlFlags.Container_Column))
                 y = containerFlags.GetContainerAlignmentF();
         }
     }

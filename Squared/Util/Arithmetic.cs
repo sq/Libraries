@@ -191,7 +191,7 @@ namespace Squared.Util {
             }
 
             public int GetHashCode (OperatorKey obj) {
-                return obj.GetHashCode();
+                return ((int)obj.Operator).GetHashCode() ^ obj.T.GetHashCode() ^ obj.U.GetHashCode();
             }
         }
 

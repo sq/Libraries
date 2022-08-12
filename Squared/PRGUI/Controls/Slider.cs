@@ -353,7 +353,7 @@ namespace Squared.PRGUI.Controls {
             _LastThumbBox = thumbSettings.Box = ComputeThumbBox(settings.ContentBox, Value);
             thumbSettings.ContentBox = thumbSettings.Box;
             var hoveringThumb = 
-                (PRGUIExtensions.HasFlag(settings.State, ControlStates.Hovering))
+                (settings.HasStateFlag(ControlStates.Hovering))
                     ? thumbSettings.Box.Contains(context.UIContext.CalculateRelativeGlobalPosition(this, context.MousePosition))
                     : false;
             _WasMouseOverThumb = hoveringThumb;

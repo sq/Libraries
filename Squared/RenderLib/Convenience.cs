@@ -421,7 +421,7 @@ namespace Squared.Render.Convenience {
     }
 
     internal static class ImperativeRendererUtil {
-        public static readonly ConcurrentBag<MatrixBox> MatrixBoxes = new ConcurrentBag<MatrixBox>();
+        public static readonly UnorderedList<MatrixBox> MatrixBoxes = new UnorderedList<MatrixBox>();
         public static ViewTransformModifier ChangeMatrixModifier = _ChangeMatrixModifier;
 
         private static void _ChangeMatrixModifier (ref ViewTransform vt, object userData) {
@@ -431,8 +431,9 @@ namespace Squared.Render.Convenience {
             else
                 Matrix.Multiply(ref vt.ModelView, ref mb.Matrix, out vt.ModelView);
 
-            if (MatrixBoxes.Count < 256)
-                MatrixBoxes.Add(mb);
+            lock (MatrixBoxes)
+                if (MatrixBoxes.Count < 256)
+                    MatrixBoxes.Add(mb);
         }
     }
 
@@ -970,8 +971,11 @@ namespace Squared.Render.Convenience {
             string name = null, int? layer = null
         ) {
             ImperativeRenderer result;
-            if (!ImperativeRendererUtil.MatrixBoxes.TryTake(out var mb))
-                mb = new MatrixBox();
+            MatrixBox mb;
+            lock (ImperativeRendererUtil.MatrixBoxes) {
+                if (!ImperativeRendererUtil.MatrixBoxes.TryPopFront(out mb))
+                    mb = new MatrixBox();
+            }
             mb.Matrix = matrix;
             mb.Replace = replace;
             MakeSubgroup(out result, nextLayer, before, after, mb, name, layer, viewTransformModifier: ImperativeRendererUtil.ChangeMatrixModifier);
@@ -1094,8 +1098,10 @@ namespace Squared.Render.Convenience {
         public void ChangeModelViewMatrix (Matrix m, bool replace = false, int? layer = null) => ChangeModelViewMatrix(ref m, replace, layer);
 
         public void ChangeModelViewMatrix (ref Matrix m, bool replace = false, int? layer = null) {
-            if (!ImperativeRendererUtil.MatrixBoxes.TryTake(out MatrixBox mb))
-                mb = new MatrixBox();
+            MatrixBox mb;
+            lock (ImperativeRendererUtil.MatrixBoxes)
+                if (!ImperativeRendererUtil.MatrixBoxes.TryPopFront(out mb))
+                    mb = new MatrixBox();
             mb.Matrix = m;
             mb.Replace = replace;
             ModifyViewTransformBatch.AddNew(Container, layer ?? Layer, Materials, ImperativeRendererUtil.ChangeMatrixModifier, mb);

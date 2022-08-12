@@ -297,7 +297,7 @@ namespace Squared.PRGUI.Controls {
             var cf = ComputeContainerFlags();
             var resultFlags = cf | ControlFlags.Container_Prevent_Crush_Y;
             // FIXME
-            if (PRGUIExtensions.HasFlag(cf, ControlFlags.Container_No_Expansion))
+            if (cf.IsFlagged(ControlFlags.Container_No_Expansion))
                 resultFlags |= ControlFlags.Container_No_Expansion;
 
             ControlFlags layoutFlags;

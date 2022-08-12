@@ -352,7 +352,7 @@ namespace Squared.PRGUI {
                         : new Vector2(rect.Position.X, rect.Extent.Y);
 
                 pSRGBColor arrowColor =
-                    PRGUIExtensions.HasFlag(flags, ControlFlags.Layout_ForceBreak)
+                    flags.IsFlagged(ControlFlags.Layout_ForceBreak)
                         ? Color.White
                         : Color.Yellow;
 
@@ -490,7 +490,7 @@ namespace Squared.PRGUI {
                         srt.Instance.Get(), ref srt.Renderer, enableCompositor
                     );
                 else {
-                    var vt = ViewTransform.CreateOrthographic(rt.Width, rt.Height);
+                    var vt = ViewTransform.CreateOrthographic((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y);
                     var scratchRenderer =
                         new ImperativeRenderer(context.Prepass, context.Materials).ForRenderTarget(
                             rt, viewTransform: vt

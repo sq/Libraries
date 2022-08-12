@@ -48,7 +48,7 @@ namespace Squared.PRGUI.NewEngine {
             result.Rect = result.ContentRect = default;
             result.FirstRunIndex = -1;
 #if DEBUG
-            result.Break = PRGUIExtensions.HasFlag(control.OldFlags, ControlFlags.Layout_ForceBreak) ||
+            result.Break = control.OldFlags.IsFlagged(ControlFlags.Layout_ForceBreak) ||
                 control.Config.ForceBreak;
             result.Depth = depth;
 #endif

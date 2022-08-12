@@ -207,7 +207,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
-            if (PRGUIExtensions.HasFlag(LayoutFlags, ControlFlags.Layout_Floating))
+            if (LayoutFlags.IsFlagged(ControlFlags.Layout_Floating))
                 return provider?.FloatingContainer ?? provider?.Container;
             else
                 return provider?.Container;
