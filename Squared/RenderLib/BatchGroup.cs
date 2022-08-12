@@ -285,6 +285,13 @@ namespace Squared.Render {
 
         new public bool IsReleased { get; private set; }
 
+        public void Remove (Batch batch) {
+            if (batch == null)
+                return;
+
+            _DrawCalls.Remove(batch);
+        }
+
         new public void Add (Batch batch) {
             if (batch == null)
                 throw new ArgumentNullException("batch");
