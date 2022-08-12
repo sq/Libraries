@@ -98,9 +98,9 @@ namespace Squared.PRGUI.NewEngine {
             this = default;
 
             {
-                bool aend = value.HasFlag(ControlFlags.Container_Align_End),
-                    astart = value.HasFlag(ControlFlags.Container_Align_Start),
-                    ajustify = value.HasFlag(ControlFlags.Container_Align_Justify),
+                bool aend = value.IsFlagged(ControlFlags.Container_Align_End),
+                    astart = value.IsFlagged(ControlFlags.Container_Align_Start),
+                    ajustify = value.IsFlagged(ControlFlags.Container_Align_Justify),
                     acenter = !aend && !astart && !ajustify;
 
                 if ((aend && astart) || (aend && ajustify) || (astart && ajustify))
@@ -117,10 +117,10 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             {
-                bool aleft = value.HasFlag(ControlFlags.Layout_Anchor_Left),
-                    atop = value.HasFlag(ControlFlags.Layout_Anchor_Top),
-                    aright = value.HasFlag(ControlFlags.Layout_Anchor_Right),
-                    abottom = value.HasFlag(ControlFlags.Layout_Anchor_Bottom);
+                bool aleft = value.IsFlagged(ControlFlags.Layout_Anchor_Left),
+                    atop = value.IsFlagged(ControlFlags.Layout_Anchor_Top),
+                    aright = value.IsFlagged(ControlFlags.Layout_Anchor_Right),
+                    abottom = value.IsFlagged(ControlFlags.Layout_Anchor_Bottom);
                 if (aleft)
                     _BoxFlags |= BoxFlag.Anchor_Left;
                 if (aright)
@@ -132,31 +132,31 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             {
-                if (value.HasFlag(ControlFlags.Container_Break_Auto))
+                if (value.IsFlagged(ControlFlags.Container_Break_Auto))
                     _ContainerFlags |= ContainerFlag.Arrange_Wrap;
-                if (value.HasFlag(ControlFlags.Container_Clip_Children))
+                if (value.IsFlagged(ControlFlags.Container_Clip_Children))
                     _ContainerFlags |= ContainerFlag.Boxes_Clip;
-                if (!value.HasFlag(ControlFlags.Container_Constrain_Growth) &&
-                    !value.HasFlag(ControlFlags.Container_Constrain_Size))
+                if (!value.IsFlagged(ControlFlags.Container_Constrain_Growth) &&
+                    !value.IsFlagged(ControlFlags.Container_Constrain_Size))
                     _ContainerFlags |= ContainerFlag.Boxes_Overflow;
-                if (!value.HasFlag(ControlFlags.Container_No_Expansion_X))
+                if (!value.IsFlagged(ControlFlags.Container_No_Expansion_X))
                     _ContainerFlags |= ContainerFlag.Size_ExpandForContent_X;
-                if (!value.HasFlag(ControlFlags.Container_No_Expansion_Y))
+                if (!value.IsFlagged(ControlFlags.Container_No_Expansion_Y))
                     _ContainerFlags |= ContainerFlag.Size_ExpandForContent_Y;
-                if (value.HasFlag(ControlFlags.Container_Prevent_Crush_X))
+                if (value.IsFlagged(ControlFlags.Container_Prevent_Crush_X))
                     _ContainerFlags |= ContainerFlag.Size_PreventCrush_X;
-                if (value.HasFlag(ControlFlags.Container_Prevent_Crush_Y))
+                if (value.IsFlagged(ControlFlags.Container_Prevent_Crush_Y))
                     _ContainerFlags |= ContainerFlag.Size_PreventCrush_Y;
             }
 
-            if (value.HasFlag(ControlFlags.Container_Column))
+            if (value.IsFlagged(ControlFlags.Container_Column))
                 _ContainerFlags |= ContainerFlag.Layout_Column;
 
-            if (value.HasFlag(ControlFlags.Layout_Floating))
+            if (value.IsFlagged(ControlFlags.Layout_Floating))
                 _BoxFlags |= BoxFlag.Floating;
-            if (value.HasFlag(ControlFlags.Layout_Stacked))
+            if (value.IsFlagged(ControlFlags.Layout_Stacked))
                 _BoxFlags |= BoxFlag.Stacked;
-            if (value.HasFlag(ControlFlags.Layout_ForceBreak))
+            if (value.IsFlagged(ControlFlags.Layout_ForceBreak))
                 _BoxFlags |= BoxFlag.Break;
         }
 
