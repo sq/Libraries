@@ -629,7 +629,7 @@ namespace Squared.PRGUI.Input {
                 //  of the new snap target
                 var sb = effectiveSnapTarget as ISelectionBearer;
                 var sc = sb?.SelectionRect;
-                var targetRect = effectiveSnapTarget.GetRect(contentRect: true);
+                var targetRect = effectiveSnapTarget.GetRect(contentRect: true, displayRect: true);
                 if (sc.HasValue && sc.Value.Intersection(in targetRect, out RectF union)) {
                     newPosition = union.Center;
                 } else

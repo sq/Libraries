@@ -52,7 +52,7 @@ namespace Squared.Render.Text {
             LastCharacterBounds = lastCharacter;
             DrawCalls = drawCalls;
             WasLineLimited = wasLineLimited;
-            Boxes = default(DenseList<Bounds>);
+            Boxes = default;
             UsedTextures = null;
             WordCount = wordCount;
             LineCount = lineCount;
@@ -151,16 +151,9 @@ namespace Squared.Render.Text {
         internal int CurrentSplitGlyphCount;
         public DenseList<Bounds> Bounds;
 
-        public LayoutMarker (int firstIndex, int lastIndex) {
+        public LayoutMarker (int firstIndex, int lastIndex) : this() {
             FirstCharacterIndex = firstIndex;
             LastCharacterIndex = lastIndex;
-            MarkedString = default;
-            MarkedStringActualText = default;
-            MarkedID = null;
-            FirstDrawCallIndex = LastDrawCallIndex = null;
-            FirstLineIndex = LastLineIndex = null;
-            GlyphCount = CurrentSplitGlyphCount = 0;
-            Bounds = default(DenseList<Bounds>);
         }
 
         public Bounds UnionBounds {

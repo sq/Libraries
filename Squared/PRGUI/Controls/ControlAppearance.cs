@@ -437,7 +437,7 @@ namespace Squared.PRGUI {
 
         public bool GetInverseTransform (in RectF box, out Matrix matrix, long now) {
             if (!HasTransformMatrix) {
-                matrix = default(Matrix);
+                matrix = default;
                 return false;
             }
 

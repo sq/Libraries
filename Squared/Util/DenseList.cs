@@ -37,6 +37,7 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static unsafe int ComputeByteOffset () {
             var temp = new DenseList<T>();
+            
             return (int)((byte*)Unsafe.AsPointer(ref temp.Item2) - (byte*)Unsafe.AsPointer(ref temp.Item1));
         }
 #endif
@@ -112,13 +113,11 @@ namespace Squared.Util {
             : this (items, 0, items.Length) {
         }
 
-        public DenseList (T[] items, int offset, int count) {
-            this = default(DenseList<T>);
+        public DenseList (T[] items, int offset, int count) : this() {
             AddRange(items, offset, count);
         }
 
-        public DenseList (IEnumerable<T> items) {
-            this = default(DenseList<T>);
+        public DenseList (IEnumerable<T> items) : this() {
             AddRange(items);
         }
 

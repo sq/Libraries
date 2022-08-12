@@ -277,11 +277,7 @@ namespace Squared.Render {
             private set;
         }
 
-        bool IBatchContainer.IsEmpty {
-            get {
-                return Count == 0;
-            }
-        }
+        public bool IsEmpty => Count == 0;
 
         new public bool IsReleased { get; private set; }
 

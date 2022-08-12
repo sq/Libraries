@@ -313,7 +313,7 @@ namespace Squared.PRGUI {
         public void Update () {
             FrameIndex++;
 
-            var context = MakeOperationContext(ref _UpdateFree, ref _UpdateInUse);
+            MakeOperationContext(ref _UpdateFree, ref _UpdateInUse, out var context);
             var pll = Interlocked.Exchange(ref _PostLayoutListeners, null);
             if (pll == null)
                 pll = new UnorderedList<IPostLayoutListener>();
@@ -904,7 +904,7 @@ namespace Squared.PRGUI {
         /// The results of this are not necessarily accurate, but can be used to infer its ideal size for positioning.
         /// </summary>
         public void UpdateSubtreeLayout (Control subtreeRoot) {
-            var tempCtx = MakeOperationContext();
+            MakeOperationContext(out var tempCtx);
 
             var pll = Interlocked.Exchange(ref _PostLayoutListeners, null);
             if (pll == null)
@@ -1066,7 +1066,7 @@ namespace Squared.PRGUI {
 
         private volatile UIOperationContextShared _RasterizeFree, _RasterizeInUse, _UpdateFree, _UpdateInUse;
 
-        internal UIOperationContext MakeOperationContext (ref UIOperationContextShared _free, ref UIOperationContextShared _inUse) {
+        internal void MakeOperationContext (ref UIOperationContextShared _free, ref UIOperationContextShared _inUse, out UIOperationContext result) {
             var free = Interlocked.Exchange(ref _free, null);
             if (free?.InUse != false)
                 free = new UIOperationContextShared();
@@ -1078,7 +1078,7 @@ namespace Squared.PRGUI {
             Interlocked.CompareExchange(ref _inUse, free, null);
 
             InitializeOperationContextShared(free);
-            return MakeOperationContextFromInitializedShared(free);
+            MakeOperationContextFromInitializedShared(free, out result);
         }
 
         private void InitializeOperationContextShared (UIOperationContextShared shared) {
@@ -1093,17 +1093,17 @@ namespace Squared.PRGUI {
             shared.PostLayoutListeners = null;
         }
 
-        internal UIOperationContext MakeOperationContext () {
+        internal void MakeOperationContext (out UIOperationContext result) {
             var shared = new UIOperationContextShared();
             InitializeOperationContextShared(shared);
-            return MakeOperationContextFromInitializedShared(shared);
+            MakeOperationContextFromInitializedShared(shared, out result);
         }
 
-        private UIOperationContext MakeOperationContextFromInitializedShared (UIOperationContextShared shared) {
+        private void MakeOperationContextFromInitializedShared (UIOperationContextShared shared, out UIOperationContext result) {
             if (!shared.InUse)
                 throw new Exception("Not initialized");
 
-            return new UIOperationContext {
+            result = new UIOperationContext {
                 Shared = shared,
                 Opacity = 1,
                 VisibleRegion = new RectF(-VisibilityPadding, -VisibilityPadding, CanvasSize.X + (VisibilityPadding * 2), CanvasSize.Y + (VisibilityPadding * 2))

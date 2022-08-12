@@ -174,7 +174,7 @@ namespace Squared.PRGUI {
                 var result = new Result {
                     Depth = depth,
                     Control = control,
-                    Rect = control.GetRect(context: Context)
+                    Rect = control.GetRect(context: Context, displayRect: true)
                 };
 
                 if (!result.Rect.Intersection(in clip, out result.ClippedRect))

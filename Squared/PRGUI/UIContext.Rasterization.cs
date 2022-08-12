@@ -207,7 +207,7 @@ namespace Squared.PRGUI {
             Now = (float)TimeProvider.Seconds;
             NowL = TimeProvider.Ticks;
 
-            var context = MakeOperationContext(ref _RasterizeFree, ref _RasterizeInUse);
+            MakeOperationContext(ref _RasterizeFree, ref _RasterizeInUse, out var context);
 
             try {
                 ScratchRenderTargetsUsedThisFrame = 0;

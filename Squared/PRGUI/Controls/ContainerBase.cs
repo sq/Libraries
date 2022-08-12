@@ -409,7 +409,12 @@ namespace Squared.PRGUI.Controls {
                 maxC = layerC,
                 maxA = layerA;
 
+#if !NOSPAN
+            var currentLayerContext = System.Runtime.CompilerServices.Unsafe.SkipInit<RasterizePassSet>();
+#else
             var currentLayerContext = default(RasterizePassSet);
+#endif
+            
             var currentContextOrder = range.Min;
             var hasSplitPlane = false;
             var isUsingPerLayerContext = (range.Min != range.Max);

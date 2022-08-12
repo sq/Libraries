@@ -895,7 +895,7 @@ namespace Squared.Render.Convenience {
             ImperativeRendererFlags flags = default,
             Sorter<BitmapDrawCall> declarativeSorter = null,
             Tags tags = default(Tags)
-        ) {
+        ) : this() {
             if (container == null)
                 throw new ArgumentNullException("container");
             if (materials == null)
@@ -910,12 +910,10 @@ namespace Squared.Render.Convenience {
             SamplerState = samplerState;
             SamplerState2 = samplerState2;
             NextSortKey = new DrawCallSortKey(tags, 0);
-            Cache = default;
             DeclarativeSorter = declarativeSorter;
             RasterOutlineGammaMinusOne = 0;
             DefaultBitmapMaterial = null;
             BitmapBatchInitialCapacity = null;
-            Parameters = default;
             if (worldSpace)
                 flags |= ImperativeRendererFlags.WorldSpace;
             if (autoIncrementSortKey)

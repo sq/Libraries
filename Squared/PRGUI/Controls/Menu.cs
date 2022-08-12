@@ -666,7 +666,7 @@ namespace Squared.PRGUI.Controls {
             var decorator = GetDecorator(decorationProvider, null);
 
             // HACK city: Need an operation context to compute margins
-            var tempContext = context.MakeOperationContext();
+            context.MakeOperationContext(out var tempContext);
             ComputeEffectiveSpacing(ref tempContext, decorationProvider, decorator, out Margins computedPadding, out Margins computedMargins);
             // Shift ourself up/left to compensate for our decoration margins and align perfectly
             //  with any anchor point
