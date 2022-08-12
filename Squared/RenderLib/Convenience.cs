@@ -3,6 +3,7 @@
 #endif
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime;
 using System.Runtime.CompilerServices;
@@ -417,6 +418,27 @@ namespace Squared.Render.Convenience {
         RasterBlendInLinearSpace    = 0b10000000000,
         RasterBlendInOkLabSpace     = 0b100000000000,
         DisableDithering            = 0b1000000000000,
+    }
+
+    internal static class ImperativeRendererUtil {
+        public static readonly ConcurrentBag<MatrixBox> MatrixBoxes = new ConcurrentBag<MatrixBox>();
+        public static ViewTransformModifier ChangeMatrixModifier = _ChangeMatrixModifier;
+
+        private static void _ChangeMatrixModifier (ref ViewTransform vt, object userData) {
+            var mb = (MatrixBox)userData;
+            if (mb.Replace)
+                vt.ModelView = mb.Matrix;
+            else
+                Matrix.Multiply(ref vt.ModelView, ref mb.Matrix, out vt.ModelView);
+
+            if (MatrixBoxes.Count < 256)
+                MatrixBoxes.Add(mb);
+        }
+    }
+
+    internal class MatrixBox {
+        public Matrix Matrix;
+        public bool Replace;
     }
 
     public struct ImperativeRenderer {
@@ -944,6 +966,20 @@ namespace Squared.Render.Convenience {
             return result;
         }
 
+        public ImperativeRenderer MakeSubgroup (
+            Matrix matrix, bool replace = false, bool nextLayer = true, 
+            Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null,
+            string name = null, int? layer = null
+        ) {
+            ImperativeRenderer result;
+            if (!ImperativeRendererUtil.MatrixBoxes.TryTake(out var mb))
+                mb = new MatrixBox();
+            mb.Matrix = matrix;
+            mb.Replace = replace;
+            MakeSubgroup(out result, nextLayer, before, after, mb, name, layer, viewTransformModifier: ImperativeRendererUtil.ChangeMatrixModifier);
+            return result;
+        }
+
         public void MakeSubgroup (
             out ImperativeRenderer result, bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
             string name = null, int? layer = null, ViewTransformModifier viewTransformModifier = null
@@ -1055,6 +1091,18 @@ namespace Squared.Render.Convenience {
                 blendState, samplerState, samplerState2,
                 depthStencilState, rasterizerState, material
             );
+        }
+
+        public void ChangeModelViewMatrix (Matrix m, bool replace = false, int? layer = null) => ChangeModelViewMatrix(ref m, replace, layer);
+
+        public void ChangeModelViewMatrix (ref Matrix m, bool replace = false, int? layer = null) {
+            if (!ImperativeRendererUtil.MatrixBoxes.TryTake(out MatrixBox mb))
+                mb = new MatrixBox();
+            mb.Matrix = m;
+            mb.Replace = replace;
+            ModifyViewTransformBatch.AddNew(Container, layer ?? Layer, Materials, ImperativeRendererUtil.ChangeMatrixModifier, mb);
+            if (!layer.HasValue)
+                Layer++;
         }
 
         private BlendState PickBlendStateForTextures (ref TextureSet textures) {

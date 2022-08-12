@@ -631,6 +631,40 @@ namespace Squared.Render {
         }
     }
 
+    public sealed class ModifyViewTransformBatch : Batch {
+        public DefaultMaterialSet Materials;
+        public ViewTransformModifier Modifier;
+        public object UserData;
+
+        public void Initialize (IBatchContainer container, int layer, Material material, DefaultMaterialSet materialSet, ViewTransformModifier modifier, object userData) {
+            base.Initialize(container, layer, material, true);
+            Materials = materialSet;
+            Modifier = modifier;
+            UserData = userData;
+        }
+
+        protected override void Prepare (PrepareManager manager) {
+        }
+
+        public override void Issue (DeviceManager manager) {
+            base.Issue(manager);
+
+            var vt = Materials.ViewTransform;
+            Modifier(ref vt, UserData);
+            Materials.SetViewTransform(ref vt);
+        }
+
+        public static void AddNew (IBatchContainer container, int layer, DefaultMaterialSet materialSet, ViewTransformModifier modifier, object userData = null) {
+            if (container == null)
+                throw new ArgumentNullException("container");
+
+            var result = container.RenderManager.AllocateBatch<ModifyViewTransformBatch>();
+            result.Initialize(container, layer, null, materialSet, modifier, userData);
+            result.CaptureStack(0);
+            result.Dispose();
+        }
+    }
+
     public sealed class SetScissorBatch : Batch {
         public Rectangle? Scissor;
         public bool Intersect;

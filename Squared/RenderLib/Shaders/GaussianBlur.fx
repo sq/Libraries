@@ -211,7 +211,7 @@ void GaussianOutlinedPixelShader(
 
     texCoord -= ShadowOffset * HalfTexel * 2;
 
-    float centerTap = ExtractMask(texColor, traits);
+    float centerTap = (length(ShadowOffset) <= 0.001) ? ExtractMask(texColor, traits) : tap(texCoord, texRgn);
     texColor = ExtractRgba(texColor, traits);
     float centerValue = gaussianBlurA(centerTap, innerStepSize, texCoord, texRgn, ShadowMipBias);
 

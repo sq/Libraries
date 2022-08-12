@@ -470,22 +470,47 @@ namespace Squared.PRGUI {
             canvasRect.Clamp(ref br);
 
             var compositeBox = new RectF(tl, br - tl);
-            var srt = context.UIContext.GetScratchRenderTarget(context.Prepass, ref compositeBox);
-            if (context.RenderTargetStack.Count > 0)
-                context.RenderTargetStack[context.RenderTargetStack.Count - 1].Dependencies.Add(srt);
-            context.RenderTargetStack.Add(srt);
+            AutoRenderTarget rt = GetCustomCompositingSurface(ref compositeBox);
+            UIContext.ScratchRenderTarget srt = null;
+            if (rt == null) {
+                srt = context.UIContext.GetScratchRenderTarget(context.Prepass, ref compositeBox);
+                if (context.RenderTargetStack.Count > 0)
+                    context.RenderTargetStack[context.RenderTargetStack.Count - 1].Dependencies.Add(srt);
+                context.RenderTargetStack.Add(srt);
+                rt = srt.Instance;
+            }
+
             var oldTarget = context.CompositingTarget;
             try {
-                context.CompositingTarget = srt.Instance;
+                context.CompositingTarget = rt;
                 // passSet.Above.RasterizeRectangle(box.Position, box.Extent, 1f, Color.Red * 0.1f);
-                RasterizeIntoPrepass(ref context, passSet, opacity, ref box, ref compositeBox, srt, enableCompositor);
+                if (srt != null)
+                    RasterizeIntoPrepass(
+                        ref context, passSet, opacity, ref box, ref compositeBox,
+                        srt.Instance.Get(), ref srt.Renderer, enableCompositor
+                    );
+                else {
+                    var vt = ViewTransform.CreateOrthographic(rt.Width, rt.Height);
+                    var scratchRenderer =
+                        new ImperativeRenderer(context.Prepass, context.Materials).ForRenderTarget(
+                            rt, viewTransform: vt
+                        );
+                    RasterizeIntoPrepass(
+                        ref context, passSet, opacity, ref box, ref compositeBox,
+                        rt.Get(), ref scratchRenderer, enableCompositor
+                    );
+                }
                 // passSet.Above.RasterizeEllipse(box.Center, Vector2.One * 3f, Color.White);
             } finally {
                 context.CompositingTarget = oldTarget;
-                context.RenderTargetStack.RemoveTail(1);
-                context.UIContext.ReleaseScratchRenderTarget(srt.Instance);
+                if (srt != null) {
+                    context.RenderTargetStack.RemoveTail(1);
+                    context.UIContext.ReleaseScratchRenderTarget(srt.Instance);
+                }
             }
         }
+
+        protected virtual AutoRenderTarget GetCustomCompositingSurface (ref RectF compositeBox) => null;
 
         private static void _BeforeIssueComposite (DeviceManager dm, object _control) {
             var control = (Control)_control;
@@ -525,17 +550,18 @@ namespace Squared.PRGUI {
         private void RasterizeIntoPrepass (
             ref UIOperationContext context, RasterizePassSet passSet, float opacity, 
             ref RectF box, ref RectF compositeBox, 
-            UIContext.ScratchRenderTarget rt, bool enableCompositor
+            Texture2D compositingSurface, ref ImperativeRenderer compositingRenderer, 
+            bool enableCompositor
         ) {
             UIOperationContext compositionContext;
             context.Clone(out compositionContext);
             compositionContext.Opacity = 1.0f;
             UpdateVisibleRegion(ref compositionContext, ref box);
 
-            var newPassSet = new RasterizePassSet(ref rt.Renderer, 0, passSet.OverlayQueue);
+            var newPassSet = new RasterizePassSet(ref compositingRenderer, 0, passSet.OverlayQueue);
             // newPassSet.Above.RasterizeEllipse(box.Center, Vector2.One * 6f, Color.White * 0.7f);
             RasterizeAllPasses(ref compositionContext, ref box, ref newPassSet, true);
-            rt.Renderer.Layer += 1;
+            compositingRenderer.Layer += 1;
             var pos = Appearance.HasTransformMatrix ? Vector2.Zero : compositeBox.Position.Floor();
             // FIXME: Is this the right layer?
             var sourceRect = new Rectangle(
@@ -545,7 +571,7 @@ namespace Squared.PRGUI {
             var effectiveOpacity = context.Opacity * opacity;
             var dc = new BitmapDrawCall(
                 // FIXME
-                rt.Instance.Get(), pos,
+                compositingSurface, pos,
                 GameExtensionMethods.BoundsFromRectangle((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y, in sourceRect),
                 new Color(effectiveOpacity, effectiveOpacity, effectiveOpacity, effectiveOpacity), scale: 1.0f / Context.ScratchScaleFactor
             );
