@@ -53,7 +53,8 @@ float ExtractAlpha (float4 input, float4 formatTraits) {
 void ExtractLuminanceAlpha (float4 input, float4 formatTraits, out float luminance, out float alpha) {
     const float3 toGray = float3(0.299, 0.587, 0.144);
 
-    switch (abs((int)formatTraits.x)) {
+    int valueChannel = abs((int)formatTraits.x);
+    switch (valueChannel) {
         case VALUE_CHANNEL_R:
             luminance = input.r;
             break;
@@ -87,7 +88,7 @@ void ExtractLuminanceAlpha (float4 input, float4 formatTraits, out float luminan
         alpha *= 254.0 / 255.0;
 
     // Premultiply
-    if (formatTraits.z >= 1)
+    if ((valueChannel != VALUE_CHANNEL_A) && (formatTraits.z >= 1))
         luminance *= alpha;
 }
 

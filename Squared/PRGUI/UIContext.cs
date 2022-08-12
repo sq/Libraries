@@ -1218,7 +1218,8 @@ namespace Squared.PRGUI {
                 HiddenCount = HiddenCount,
                 Opacity = Opacity,
                 Prepass = Prepass,
-                RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange
+                RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange,
+                CompositingTarget = CompositingTarget
             };
             RenderTargetStack.Clone(ref result.RenderTargetStack, true);
             DecoratorStack.Clone(ref result.DecoratorStack, true);

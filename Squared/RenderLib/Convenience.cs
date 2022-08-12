@@ -1021,7 +1021,6 @@ namespace Squared.Render.Convenience {
             return result;
         }
 
-
         /// <summary>
         /// Adds a clear batch. Note that this will *always* advance the layer unless you specify a layer index explicitly.
         /// </summary>
@@ -1029,11 +1028,12 @@ namespace Squared.Render.Convenience {
             int? layer = null,
             Color? color = null,
             float? z = null,
-            int? stencil = null
+            int? stencil = null,
+            Vector4? value = null
         ) {
             int _layer = layer.GetValueOrDefault(Layer);
 
-            ClearBatch.AddNew(Container, _layer, Materials.Clear, color, z, stencil);
+            ClearBatch.AddNew(Container, _layer, Materials.Clear, color, z, stencil, value);
 
             if (!layer.HasValue)
                 Layer += 1;

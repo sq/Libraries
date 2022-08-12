@@ -572,16 +572,23 @@ namespace Squared.Render {
 
     public sealed class ClearBatch : Batch {
         public Color? ClearColor;
+        public Vector4? ClearValue;
         public float? ClearZ;
         public int? ClearStencil;
 
-        public void Initialize (IBatchContainer container, int layer, Material material, Color? clearColor, float? clearZ, int? clearStencil) {
+        public void Initialize (
+            IBatchContainer container, int layer, Material material, 
+            Color? clearColor, float? clearZ, int? clearStencil, Vector4? clearValue
+        ) {
             base.Initialize(container, layer, material, true);
             ClearColor = clearColor;
+            ClearValue = clearValue;
             ClearZ = clearZ;
             ClearStencil = clearStencil;
+            if (ClearColor.HasValue && clearValue.HasValue)
+                throw new ArgumentException("Cannot specify both clear color and clear value");
 
-            if (!(clearColor.HasValue || clearZ.HasValue || clearStencil.HasValue))
+            if (!(clearColor.HasValue || clearValue.HasValue || clearZ.HasValue || clearStencil.HasValue))
                 throw new ArgumentException("You must specify at least one of clearColor, clearZ and clearStencil.");
         }
 
@@ -594,25 +601,31 @@ namespace Squared.Render {
 
             var clearOptions = default(ClearOptions);
 
-            if (ClearColor.HasValue)
+            if (ClearColor.HasValue || ClearValue.HasValue)
                 clearOptions |= ClearOptions.Target;
             if (ClearZ.HasValue)
                 clearOptions |= ClearOptions.DepthBuffer;
             if (ClearStencil.HasValue)
                 clearOptions |= ClearOptions.Stencil;
 
-            manager.Device.Clear(
-                clearOptions,
-                ClearColor.GetValueOrDefault(Color.Black), ClearZ.GetValueOrDefault(0), ClearStencil.GetValueOrDefault(0)
-            );
+            if (ClearValue.HasValue)
+                manager.Device.Clear(
+                    clearOptions,
+                    ClearValue.GetValueOrDefault(new Vector4(0, 0, 0, 1)), ClearZ.GetValueOrDefault(0), ClearStencil.GetValueOrDefault(0)
+                );
+            else
+                manager.Device.Clear(
+                    clearOptions,
+                    ClearColor.GetValueOrDefault(Color.Black), ClearZ.GetValueOrDefault(0), ClearStencil.GetValueOrDefault(0)
+                );
         }
 
-        public static void AddNew (IBatchContainer container, int layer, Material material, Color? clearColor = null, float? clearZ = null, int? clearStencil = null) {
+        public static void AddNew (IBatchContainer container, int layer, Material material, Color? clearColor = null, float? clearZ = null, int? clearStencil = null, Vector4? clearValue = null) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<ClearBatch>();
-            result.Initialize(container, layer, material, clearColor, clearZ, clearStencil);
+            result.Initialize(container, layer, material, clearColor, clearZ, clearStencil, clearValue);
             result.CaptureStack(0);
             result.Dispose();
         }
