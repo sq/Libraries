@@ -318,11 +318,15 @@ namespace Squared.Render.Convenience {
         public static void ClearTextures (this EffectParameterCollection p, params string[] parameterNames) {
             if (p == null)
                 return;
-            foreach (var name in parameterNames) {
-                var param = p[name];
-                if (param == null)
-                    continue;
-                param.SetValue((Texture2D)null);
+
+            // Right now FNA's EffectParameterCollection just loops over all the items, so we might as well do that ourselves once
+            foreach (var param in p) {
+                foreach (var name in parameterNames) {
+                    if (param.Name == name) {
+                        param.SetValue((Texture2D)null);
+                        break;
+                    }
+                }
             }
         }
 
