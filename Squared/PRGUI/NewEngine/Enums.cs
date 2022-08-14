@@ -66,24 +66,45 @@ namespace Squared.PRGUI.NewEngine.Enums {
         /// and our content rect will also contain the full size of all our children
         /// </summary>
         Boxes_Overflow          = 0b100000000,
+        /// <summary>
+        /// If child boxes would overflow our content box, all of our children will be scaled down
+        ///  horizontally in order to fit into available space
+        /// </summary>
+        Boxes_Squish_X          = 0b1000000000,
+        /// <summary>
+        /// If child boxes would overflow our content box, all of our children will be scaled down
+        ///  vertically in order to fit into available space
+        /// </summary>
+        Boxes_Squish_Y          = 0b10000000000,
+        /// <summary>
+        /// If child boxes would overflow our content box, all of our children will be scaled down
+        ///  in order to fit into available space
+        /// </summary>
+        Boxes_Squish            = Boxes_Squish_X | Boxes_Squish_Y,
 
         /// <summary>
-        /// Will expand automatically beyond default size to hold content
+        /// Will expand automatically beyond default width to hold content
         /// </summary>
-        Size_ExpandForContent_X = 0b1000000000,
+        Size_ExpandForContent_X = 0b100000000000,
+        /// <summary>
+        /// Will expand automatically beyond default height to hold content
+        /// </summary>
+        Size_ExpandForContent_Y = 0b1000000000000,
         /// <summary>
         /// Will expand automatically beyond default size to hold content
         /// </summary>
-        Size_ExpandForContent_Y = 0b10000000000,
         Size_ExpandForContent   = Size_ExpandForContent_X | Size_ExpandForContent_Y,
         /// <summary>
-        /// Will expand to hold content and will not shrink even if container lacks space
+        /// Will expand horizontally to hold content and will not shrink even if container lacks space
         /// </summary>
-        Size_PreventCrush_X     = 0b100000000000 | Size_ExpandForContent_X,
+        Size_PreventCrush_X     = 0b10000000000000 | Size_ExpandForContent_X,
+        /// <summary>
+        /// Will expand vertically to hold content and will not shrink even if container lacks space
+        /// </summary>
+        Size_PreventCrush_Y     = 0b100000000000000 | Size_ExpandForContent_Y,
         /// <summary>
         /// Will expand to hold content and will not shrink even if container lacks space
         /// </summary>
-        Size_PreventCrush_Y     = 0b1000000000000 | Size_ExpandForContent_Y,
         Size_PreventCrush       = Size_PreventCrush_X | Size_PreventCrush_Y,
 
         DEFAULT                 = Layout_Row | Arrange_Wrap | Boxes_Clip | Size_ExpandForContent,
@@ -183,25 +204,48 @@ namespace Squared.PRGUI.NewEngine.Enums {
         OverflowShown = ContainerFlag.Boxes_Overflow,
 
         /// <summary>
-        /// Will expand automatically beyond default size to hold content
+        /// If child boxes would overflow our content box, all of our children will be scaled down
+        ///  horizontally in order to fit into available space
+        /// </summary>
+        Squish_X = ContainerFlag.Boxes_Squish_X,
+        /// <summary>
+        /// If child boxes would overflow our content box, all of our children will be scaled down
+        ///  vertically in order to fit into available space
+        /// </summary>
+        Squish_Y = ContainerFlag.Boxes_Squish_Y,
+        /// <summary>
+        /// If child boxes would overflow our content box, all of our children will be scaled down
+        ///  in order to fit into available space
+        /// </summary>
+        Squish = ContainerFlag.Boxes_Squish,
+
+        /// <summary>
+        /// Will expand automatically beyond default width to hold content
         /// </summary>
         ExpandForContent_X = ContainerFlag.Size_ExpandForContent_X,
         /// <summary>
-        /// Will expand automatically beyond default size to hold content
+        /// Will expand automatically beyond default height to hold content
         /// </summary>
         ExpandForContent_Y = ContainerFlag.Size_ExpandForContent_Y,
-        ExpandForContent = ExpandForContent_X | ExpandForContent_Y,
         /// <summary>
-        /// Will expand to hold content and will not shrink even if container lacks space
+        /// Will expand automatically beyond default size to hold content
+        /// </summary>
+        ExpandForContent = ExpandForContent_X | ExpandForContent_Y,
+
+        /// <summary>
+        /// Will expand horizontally to hold content and will not shrink even if container lacks space
         /// </summary>
         PreventCrush_X = ContainerFlag.Size_PreventCrush_X,
         /// <summary>
-        /// Will expand to hold content and will not shrink even if container lacks space
+        /// Will expand vertically to hold content and will not shrink even if container lacks space
         /// </summary>
         PreventCrush_Y = ContainerFlag.Size_PreventCrush_Y,
+        /// <summary>
+        /// Will expand to hold content and will not shrink even if container lacks space
+        /// </summary>
         PreventCrush = PreventCrush_X | PreventCrush_Y,
 
-        MASK = Wrap | OverflowHidden | OverflowShown | ExpandForContent | PreventCrush,
+        MASK = Wrap | OverflowHidden | OverflowShown | ExpandForContent | PreventCrush | Squish,
     }
 
     public enum BoxAnchorMode : ushort {

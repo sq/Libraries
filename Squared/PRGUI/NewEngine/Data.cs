@@ -373,9 +373,11 @@ namespace Squared.PRGUI.NewEngine {
         ///  clipping from making margins move in too far.
         /// </summary>
         public RectF ContentRect;
-        // TODO: Store the amount of space we were offered by our parent before constraints took
-        //  effect. This will be useful for StaticText autosize/wrap implementations
-        // public Vector2 MaximumSize;
+        /// <summary>
+        /// Records the size that this control's parent attempted to set before constraints took
+        ///  effect. You can use this to influence control auto-size behavior.
+        /// </summary>
+        public Vector2 AvailableSpace;
         /// <summary>
         /// The control's position within the current run (X for row layout, Y for column layout)
         /// </summary>

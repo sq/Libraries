@@ -843,8 +843,15 @@ namespace Squared.PRGUI {
     }
 
     public struct ControlDimension {
-        // TODO: Pack flags into a byte? Would save at least 6 bytes per control, probably
-        public float? Minimum, Maximum, Fixed;
+        [Flags]
+        private enum Flag : byte {
+            Minimum = 0b1,
+            Maximum = 0b10,
+            Fixed   = 0b100
+        }
+
+        private Flag Flags;
+        private float _Minimum, _Maximum, _Fixed;
 
         public static ControlDimension operator * (float lhs, ControlDimension rhs) {
             Scale(ref rhs, lhs, out rhs);
@@ -854,6 +861,45 @@ namespace Squared.PRGUI {
         public static ControlDimension operator * (ControlDimension lhs, float rhs) {
             Scale(ref lhs, rhs, out lhs);
             return lhs;
+        }
+
+        public float? Minimum {
+            get => (Flags & Flag.Minimum) == Flag.Minimum ? _Minimum : (float?)null;
+            set {
+                if (value == null) {
+                    Flags = Flags & ~Flag.Minimum;
+                    Minimum = float.MinValue;
+                } else {
+                    Flags |= Flag.Minimum;
+                    Minimum = value;
+                }
+            }
+        }
+
+        public float? Maximum {
+            get => (Flags & Flag.Maximum) == Flag.Maximum ? _Maximum : (float?)null;
+            set {
+                if (value == null) {
+                    Flags = Flags & ~Flag.Maximum;
+                    Maximum = float.MaxValue;
+                } else {
+                    Flags |= Flag.Maximum;
+                    Maximum = value;
+                }
+            }
+        }
+
+        public float? Fixed {
+            get => (Flags & Flag.Fixed) == Flag.Fixed ? _Fixed : (float?)null;
+            set {
+                if (value == null) {
+                    Flags = Flags & ~Flag.Fixed;
+                    Fixed = float.NaN;
+                } else {
+                    Flags |= Flag.Fixed;
+                    Fixed = value;
+                }
+            }
         }
 
         internal float EffectiveMinimum => Math.Min(Maximum ?? float.MaxValue, Fixed ?? Minimum ?? 0);
@@ -870,6 +916,7 @@ namespace Squared.PRGUI {
         }
 
         public static void Scale (ref ControlDimension value, float scale, out ControlDimension result) {
+            result = default;
             result.Minimum = value.Minimum * scale;
             result.Maximum = value.Maximum * scale;
             result.Fixed = value.Fixed * scale;
