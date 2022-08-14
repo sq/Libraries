@@ -140,6 +140,11 @@ namespace Squared.Render {
         /// </summary>
         /// <returns>Whether the render target was actually resized</returns>
         public bool Resize (int width, int height) {
+            if (width < 1)
+                width = 1;
+            if (height < 1)
+                height = 1;
+
             lock (Lock) {
                 if (IsDisposed)
                     throw new ObjectDisposedException("AutoRenderTarget");

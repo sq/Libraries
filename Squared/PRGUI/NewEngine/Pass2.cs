@@ -40,7 +40,7 @@ namespace Squared.PRGUI.NewEngine {
                 recalcY = true;
         }
 
-        private void Pass2a_PerformWrapping (
+        private bool Pass2a_PerformWrapping (
             ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
             ref readonly var config = ref control.Config;
@@ -59,9 +59,11 @@ namespace Squared.PRGUI.NewEngine {
             // HACK: Unfortunately, we have to build new runs entirely from scratch because modifying the existing ones
             //  in-place would be far too difficult
             // FIXME: Reclaim the existing runs
-            int oldFirstRun = result.FirstRunIndex, firstRunIndex = -1, currentRunIndex = -1, numForcedWraps = 0;
+            int oldFirstRun = result.FirstRunIndex, firstRunIndex = -1, currentRunIndex = -1, numForcedWraps = 0,
+                oldFloatingRun = result.FloatingRunIndex;
             // HACK
             result.FirstRunIndex = -1;
+            result.FloatingRunIndex = -1;
 
             // Scan through all our children and wrap them if necessary now that we know our size
             foreach (var ckey in Children(control.Key)) {
@@ -86,7 +88,7 @@ namespace Squared.PRGUI.NewEngine {
                         ? size
                         : totalSize;
 
-                var forcedWrap = config.IsWrap && ((offset + wrappingExtent) > capacity);
+                var forcedWrap = (offset + wrappingExtent) > capacity;
                 if (forcedWrap)
                     numForcedWraps++;
 
@@ -125,10 +127,12 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             // Reuse the original run if we didn't make any changes. Is this even necessary?
-            if (numForcedWraps <= 0)
+            if (numForcedWraps <= 0) {
                 result.FirstRunIndex = oldFirstRun;
-            else
+                result.FloatingRunIndex = oldFloatingRun;
+            } else {
                 result.FirstRunIndex = firstRunIndex;
+            }
 
             // Now that we computed our new runs with wrapping applied we can expand all our children appropriately
             Pass2b_ExpandChildren(ref control, ref result, depth);
@@ -138,6 +142,8 @@ namespace Squared.PRGUI.NewEngine {
                 result.Rect.Width = control.Width.Constrain(Math.Max(result.Rect.Width, extent + control.Padding.X), true);
             else
                 result.Rect.Height = control.Height.Constrain(Math.Max(result.Rect.Height, extent + control.Padding.Y), true);
+
+            return numForcedWraps > 0;
         }
 
         private void Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result, int depth) {

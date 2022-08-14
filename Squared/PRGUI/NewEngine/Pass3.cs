@@ -11,8 +11,6 @@ namespace Squared.PRGUI.NewEngine {
         private void Pass3_Arrange (ref BoxRecord control, ref BoxLayoutResult result) {
             ref readonly var config = ref control.Config;
 
-            if (config.IsFloating)
-                result.Rect.Position = control.FloatingPosition;
             var contentPosition = result.Rect.Position + new Vector2(control.Padding.Left, control.Padding.Top);
 
             ControlKey firstProcessed = ControlKey.Invalid,
@@ -54,7 +52,7 @@ namespace Squared.PRGUI.NewEngine {
 
                     if (childConfig.IsStackedOrFloating) {
                         if (childConfig.IsFloating) {
-                            childResult.Rect.Position = child.FloatingPosition;
+                            childResult.Rect.Position = contentPosition + child.FloatingPosition;
                             childResult.AvailableSpace = result.Rect.Extent - childResult.Rect.Position - new Vector2(childMargins.Right, childMargins.Bottom);
                         } else {
                             var stackSpace = result.ContentSize - childOuterSize;
