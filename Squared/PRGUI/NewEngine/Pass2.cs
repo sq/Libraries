@@ -67,6 +67,7 @@ namespace Squared.PRGUI.NewEngine {
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
+                childResult.ParentRunIndex = -1;
                 ref readonly var childConfig = ref child.Config;
 
                 float startMargin = config.IsVertical ? child.Margins.Top : child.Margins.Left,
@@ -190,6 +191,13 @@ namespace Squared.PRGUI.NewEngine {
                     foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                         ref var child = ref this[ckey];
                         ref var childResult = ref Result(ckey);
+                        // HACK: The floating run and non-floating run potentially walk us through the same controls,
+                        //  so skip anything we shouldn't be processing in this run. Yuck.
+                        if (child.Config.IsStackedOrFloating != run.IsFloating)
+                            continue;
+
+                        if (childResult.ParentRunIndex != runIndex)
+                            throw new Exception();
                         var margins = child.Margins;
                         ref readonly var childConfig = ref child.Config;
                         bool expandChildX = childConfig.FillRow && !child.Width.HasFixed,

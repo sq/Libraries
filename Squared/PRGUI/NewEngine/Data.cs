@@ -422,17 +422,18 @@ namespace Squared.PRGUI.NewEngine {
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal struct LayoutRun {
+        public int Index;
         public ControlKeyDefaultInvalid First, Last;
         public int FlowCount, ExpandCountX, ExpandCountY, NextRunIndex;
         public float TotalWidth, TotalHeight, MaxOuterWidth, MaxOuterHeight;
-        public bool IsVertical;
+        public bool IsVertical, IsFloating;
 
         public override string ToString () {
             if (First.IsInvalid || Last.IsInvalid)
                 return "<invalid>";
 
             var tail = (NextRunIndex < 0) ? " end" : " ...";
-            return $"{First}..{Last} flow={FlowCount} expandX={ExpandCountX} expandY={ExpandCountY}{tail}";
+            return $"#{Index} {First}..{Last} flow={FlowCount} expandX={ExpandCountX} expandY={ExpandCountY}{tail}";
         }
     }
 }

@@ -97,11 +97,11 @@ namespace Squared.PRGUI.NewEngine {
 
         private ref LayoutRun SelectRunForBuildingPass (ref int floatingRun, ref int currentRunIndex, bool isStackedOrFloating, bool isBreak) {
             if (isStackedOrFloating)
-                return ref GetOrPushRun(ref floatingRun);
+                return ref GetOrPushRun(ref floatingRun, true);
             else if (isBreak)
-                return ref InsertRun(out currentRunIndex, currentRunIndex);
+                return ref InsertRun(out currentRunIndex, currentRunIndex, false);
             else
-                return ref GetOrPushRun(ref currentRunIndex);
+                return ref GetOrPushRun(ref currentRunIndex, false);
         }
 
         private void IncreaseContentSizeForCompletedRun (

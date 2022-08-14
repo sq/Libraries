@@ -26,13 +26,9 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             run.Last = child.Key;
-            childResult.ParentRunIndex = currentRunIndex;
+            childResult.ParentRunIndex = run.Index;
 
             ref readonly var childConfig = ref child.Config;
-            // It is important that floating controls do not update the size of the floating run.
-            // Stacked controls should, though.
-            if (childConfig.IsFloating)
-                return;
 
             float childOuterWidth = childResult.Rect.Width + child.Margins.X,
                 childOuterHeight = childResult.Rect.Height + child.Margins.Y;
@@ -46,9 +42,13 @@ namespace Squared.PRGUI.NewEngine {
                 run.ExpandCountX++;
             if (childConfig.FillColumn && !child.Height.HasFixed)
                 run.ExpandCountY++;
-            run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childOuterWidth);
-            run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childOuterHeight);
-            if (!childConfig.IsStacked) {
+            // It is important that floating controls do not update the size of the floating run.
+            // Stacked controls should, though.
+            if (!childConfig.IsFloating) {
+                run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childOuterWidth);
+                run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childOuterHeight);
+            }
+            if (!childConfig.IsStackedOrFloating) {
                 run.TotalWidth += childOuterWidth;
                 run.TotalHeight += childOuterHeight;
             }

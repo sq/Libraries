@@ -26,15 +26,17 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref LayoutRun PushRun (out int index) {
-            return ref InsertRun(out index, -1);
+        private ref LayoutRun PushRun (out int index, bool floating) {
+            return ref InsertRun(out index, -1, floating);
         }
 
-        private ref LayoutRun InsertRun (out int index, int afterIndex) {
+        private ref LayoutRun InsertRun (out int index, int afterIndex, bool floating) {
             index = _RunCount++;
             if (index >= RunBuffer.Length)
                 throw new Exception("Run buffer full");
             ref var result = ref RunBuffer[index];
+            result.IsFloating = floating;
+            result.Index = index;
             if (afterIndex >= 0) {
                 ref var after = ref Run(afterIndex);
                 var beforeIndex = after.NextRunIndex;
@@ -46,9 +48,9 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref LayoutRun GetOrPushRun (ref int index) {
+        private ref LayoutRun GetOrPushRun (ref int index, bool floating) {
             if (index < 0)
-                return ref PushRun(out index);
+                return ref PushRun(out index, floating);
             else
                 return ref Run(index);
         }

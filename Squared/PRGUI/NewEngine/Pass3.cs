@@ -55,8 +55,6 @@ namespace Squared.PRGUI.NewEngine {
                     var childOuterSize = childResult.Rect.Size + childMargins.Size;
 
                     childConfig.GetRunAlignmentF(out float xChildAlign, out float yChildAlign);
-                    if (child.Key.ID == 3)
-                        ;
 
                     if (childConfig.IsStackedOrFloating) {
                         if (childConfig.IsFloating) {
