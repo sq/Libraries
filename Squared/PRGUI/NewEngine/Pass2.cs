@@ -12,9 +12,11 @@ namespace Squared.PRGUI.NewEngine {
         private void Pass2_ExpandAndProcessMesses (
             ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
+            /*
             if (result.Pass2Processed)
                 throw new Exception("Already processed phase 2");
             result.Pass2Processed = true;
+            */
 
             if (control.FirstChild.IsInvalid)
                 return;
@@ -114,10 +116,12 @@ namespace Squared.PRGUI.NewEngine {
         private void Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
             ref readonly var config = ref control.Config;
 
+            /*
             if (result.Pass2bProcessed)
                 throw new Exception("Pass 2b already ran");
 
             result.Pass2bProcessed = true;
+            */
 
             var oldSize = result.Rect.Size;
             bool needRecalcX = false, needRecalcY = false;

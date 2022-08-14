@@ -11,6 +11,8 @@ using Squared.PRGUI.NewEngine.Enums;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
+        public bool EnablePass2 = true, EnablePass3 = true;
+
         private void UpdateRunCommon (
             ref LayoutRun run, 
             in BoxRecord control, ref BoxLayoutResult result,
@@ -53,30 +55,41 @@ namespace Squared.PRGUI.NewEngine {
             DeepestFirst.Clear();
             Pass0_BuildTables(ref root, ref UnsafeResult(root.Key), 0);
             DeepestFirst.Sort(DeepestFirstSorter);
+            TopDown.Sort(TopDownSorter);
+
+            ;
 
             foreach (var tup in DeepestFirst)
                 Pass1_ComputeSizesAndBuildRuns(ref UnsafeItem(tup.Item1), ref UnsafeResult(tup.Item1), tup.Item2);
-            foreach (var tup in TopDown)
-                Pass2_ExpandAndProcessMesses(ref UnsafeItem(tup.Item1), ref UnsafeResult(tup.Item1), tup.Item2);
-            foreach (var tup in TopDown)
-                Pass3_Arrange(ref UnsafeItem(tup.Item1), ref UnsafeResult(tup.Item1));
-
+            if (EnablePass2) {
+                foreach (var tup in TopDown)
+                    Pass2_ExpandAndProcessMesses(ref UnsafeItem(tup.Item1), ref UnsafeResult(tup.Item1), tup.Item2);
+            }
+            if (EnablePass3) {
+                foreach (var tup in TopDown)
+                    Pass3_Arrange(ref UnsafeItem(tup.Item1), ref UnsafeResult(tup.Item1));
+            }
             ;
         }
 
-        int DeepestFirstSorter ((ControlKey, int) lhs, (ControlKey, int) rhs) {
+        int TopDownSorter ((ControlKey, int, bool) lhs, (ControlKey, int, bool) rhs) {
+            int bL = lhs.Item3 ? 1 : 0, bR = rhs.Item3 ? 1 : 0;
+            return bL.CompareTo(bR);
+        }
+
+        int DeepestFirstSorter ((ControlKey, int, bool) lhs, (ControlKey, int, bool) rhs) {
             return rhs.Item2.CompareTo(lhs.Item2);
         }
 
         private void Pass0_BuildTables (ref BoxRecord item, ref BoxLayoutResult result, int depth) {
             InitializeResult(ref item, ref result, depth);
 
-            TopDown.Add((item.Key, depth));
+            TopDown.Add((item.Key, depth, item.Config.IsWrap));
 
             foreach (var ckey in Children(item.Key))
                 Pass0_BuildTables(ref UnsafeItem(ckey), ref UnsafeResult(ckey), depth + 1);
 
-            DeepestFirst.Add((item.Key, depth));
+            DeepestFirst.Add((item.Key, depth, item.Config.IsWrap));
         }
     }
 }

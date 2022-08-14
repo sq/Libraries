@@ -308,7 +308,6 @@ namespace PRGUI.Demo {
 
             colBox.Add(dd);
 
-            /*
             var subBox = colBox.NewGroup(
                 layoutFlags: ControlFlags.Layout_Fill,
                 containerFlags: ControlFlags.Container_Row | ControlFlags.Container_Break_Auto | 
@@ -326,7 +325,6 @@ namespace PRGUI.Demo {
                 .SetAutoSize(false, true);
             subBox.Text("Text 11")
                 .SetAutoSize(false, true);
-            */
 
             var floatingBox = new Window {
                 Title = "Floating box"
@@ -1509,6 +1507,13 @@ namespace PRGUI.Demo {
                 } else if (ks.IsKeyDown(Keys.F10) && !pks.IsKeyDown(Keys.F10)) {
                     Context.Engine?.SaveRecords(SavedTreePath);
                     UseSavedTree = Context.Engine != null;
+                }
+
+                if (UIContext.UseNewEngine) {
+                    if (ks.IsKeyDown(Keys.D2) && !pks.IsKeyDown(Keys.D2))
+                        Context.Engine.EnablePass2 = !Context.Engine.EnablePass2;
+                    else if (ks.IsKeyDown(Keys.D3) && !pks.IsKeyDown(Keys.D3))
+                        Context.Engine.EnablePass3 = !Context.Engine.EnablePass3;
                 }
             }
 
