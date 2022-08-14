@@ -256,7 +256,7 @@ namespace PRGUI.Demo {
                 }
             }
 
-            LoadTestScene(2);
+            LoadTestScene(0);
         }
 
         void LoadTestScene (int index) {
@@ -279,12 +279,32 @@ namespace PRGUI.Demo {
                         }
                     });
                     break;
+                case 3:
+                    BuildMenuTest();
+                    break;
             }
         }
 
         private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
             layoutEngine.overrideColor = Color.Teal;
             return default;
+        }
+
+        private void BuildMenuTest () {
+            var testMenu = new Menu {
+                new StaticText { Text = "Item 1" },
+                "Long Item 2",
+                "Item 3",
+                "Long Item 4",
+                "Even longer item 5",
+                new StaticText { Text = "Item 6" },
+                "Item 7",
+            };
+            testMenu.CloseOnClickOutside = false;
+            testMenu.CloseOnEscapePress = false;
+            testMenu.CloseWhenFocusLost = false;
+            testMenu.CloseWhenItemChosen = false;
+            testMenu.Show(Context);
         }
 
         private void BuildSimpleUI () {

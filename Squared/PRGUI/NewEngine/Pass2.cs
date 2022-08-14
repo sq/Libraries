@@ -222,6 +222,7 @@ namespace Squared.PRGUI.NewEngine {
                             if (expandChildX) {
                                 run.TotalWidth -= childOuterW;
                                 var newChildW = Math.Max(childOuterW + amountX, minOuterWidth);
+                                childResult.AvailableSpace.X = Math.Max(childResult.AvailableSpace.X, newChildW);
                                 newChildW = child.Width.Constrain(newChildW - margins.X, true) + margins.X;
                                 float expanded = newChildW - childOuterW;
                                 if (expanded < amountX)
@@ -235,6 +236,7 @@ namespace Squared.PRGUI.NewEngine {
                             if (expandChildY) {
                                 run.TotalHeight -= childOuterH;
                                 var newChildH = Math.Max(childOuterH + amountY, minOuterHeight);
+                                childResult.AvailableSpace.Y = Math.Max(childResult.AvailableSpace.Y, newChildH);
                                 newChildH = child.Height.Constrain(newChildH - margins.Y, true) + margins.Y;
                                 float expanded = childOuterH - childResult.Rect.Height;
                                 if (expanded < amountY)

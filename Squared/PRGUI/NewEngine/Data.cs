@@ -252,7 +252,9 @@ namespace Squared.PRGUI.NewEngine {
                     yAlign = IsVertical ? 1 : 0;
                     return;
                 case ChildAlignment.Center:
-                    xAlign = IsVertical ? 0 : 0.5f;
+                    // HACK: Seems instinctively wrong, but matches layout.h
+                    // This ensures that menu items are flush left
+                    xAlign = IsVertical ? 0 : 0f;
                     yAlign = IsVertical ? 0.5f : 0;
                     return;
                 case ChildAlignment.Justify:
