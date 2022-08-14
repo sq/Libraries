@@ -267,6 +267,29 @@ namespace PRGUI.Demo {
             return default;
         }
 
+        void LoadTestScene (int index) {
+            Context.Controls.Clear();
+            switch (index) {
+                case 0:
+                    BuildUI();
+                    break;
+                case 1:
+                    BuildSimpleUI();
+                    break;
+                case 2:
+                    MakeScrollingTest(out _, out _, out var container);
+                    Context.Controls.Add(new Container {
+                        Appearance = {
+                            BackgroundColor = Color.Red * 0.5f,
+                        },
+                        Children = {
+                            container
+                        }
+                    });
+                    break;
+            }
+        }
+
         private void BuildSimpleUI () {
             var topLevel = new Container {
                 Layout = {
@@ -474,11 +497,11 @@ namespace PRGUI.Demo {
                 textfield,
                 numberField,
                 volumeSlider,
-                // FIXME: If we don't group these into a container, the last two get vertically centered.
-                // Is that right? It might be
-                /*
-                new ControlGroup (forceBreak: true) {
-                */
+                    // FIXME: If we don't group these into a container, the last two get vertically centered.
+                    // Is that right? It might be
+                    /*
+                    new ControlGroup (forceBreak: true) {
+                    */
                     hideButton,
                     toppleButton,
                     LoginButton,
@@ -559,103 +582,10 @@ namespace PRGUI.Demo {
             for (var i = 0; i < itemCount; i++)
                 listBox.Items.Add($"# {i}");
 
-            var supernestedGroup = new ControlGroup {
-                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Break_Auto,
-                DynamicContents = BuildSupernestedGroup,
-                DebugLabel = "supernestedGroup"
-            };
-
-            var increaseGaugeButton = new Button {
-                Text = "Increase Gauge Value",
-                Layout = {
-                    Fill = { Row = true },
-                    Anchor = { Top = true },
-                    ForceBreak = true
-                },
-                Width = { Fixed = 450 },
-                AutoSizeWidth = false,
-                EnableRepeat = true
-            };
-
-            var gauge = new Gauge {
-                Description = "Test Gauge",
-                Layout = {
-                    ForceBreak = true
-                },
-                Width = { Fixed = 450 },
-                MarkedRanges = {
-                    new Gauge.MarkedRange {
-                        Start = 0.1f,
-                        End = 0.7f,
-                        Color = Color.Red,
-                        Fill = {
-                            Thickness = 0.3f,
-                        },
-                    },
-                },
-                /*
-                Padding = new Margins(2, 2),
-                Direction = GaugeDirection.Clockwise
-                */
-            };
-
-            var scrollableClipTest = new Container {
-                Layout = {
-                    Anchor = { Left = true, Top = true },
-                },
-                Container = {
-                    Row = true,
-                    Wrap = true,
-                    Start = true,
-                },
-                Children = {
-                    new Container {
-                        ClipChildren = true,
-                        Layout = {
-                            Fill = { Row = true },
-                            Anchor = { Top = true },
-                        },
-                        Container = {
-                            AutoBreak = true,
-                        },
-                        Height = { Maximum = 500 },
-                        Width = { Fixed = 450 },
-                        Scrollable = true,
-                        Children = {
-                            new StaticText { Text = "Testing nested clips" },
-                            new StaticText {
-                                Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
-                                Wrap = true, AutoSizeWidth = false,
-                                Layout = {
-                                    Fill = { Row = true },
-                                    ForceBreak = true
-                                }
-                            },
-                            new Checkbox {
-                                Text = "Checkbox 1",
-                                Layout = {
-                                    Fill = { Row = true },
-                                    ForceBreak = true
-                                }
-                            },
-                            new Checkbox { Text = "Checkbox 2", Checked = true },
-                            new RadioButton {
-                                Text = "Radio 1", GroupId = "radio", Checked = true,
-                                Layout = {
-                                    Fill = { Row = true },
-                                    ForceBreak = true
-                                }
-                            },
-                            new RadioButton { Text = "Radio 2", GroupId = "radio" },
-                            new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
-                            supernestedGroup
-                        }
-                    },
-                    increaseGaugeButton,
-                    gauge
-                }
-            };
+            Button increaseGaugeButton;
+            Gauge gauge;
+            Container scrollableClipTest;
+            MakeScrollingTest(out increaseGaugeButton, out gauge, out scrollableClipTest);
 
             var listboxContainer = new ControlGroup {
                 Layout = {
@@ -705,7 +635,7 @@ namespace PRGUI.Demo {
                         ScaleToFit = false,
                         Text = "Dynamic text"
                     }),
-                    new StaticText { 
+                    new StaticText {
                         Layout = lfb,
                         Appearance = la,
                         AutoSizeWidth = false,
@@ -715,7 +645,7 @@ namespace PRGUI.Demo {
                         MinScale = 0f,
                         Text = "StaticText 1: AutoSizeX = false, AutoSizeY = true, Wrap = true, ScaleToFit = false, MinScale = 0f",
                     },
-                    new StaticText { 
+                    new StaticText {
                         Layout = lfb,
                         Appearance = la,
                         AutoSize = true,
@@ -724,7 +654,7 @@ namespace PRGUI.Demo {
                         MinScale = 0f,
                         Text = "StaticText 2: AutoSize = true, Wrap = true, ScaleToFit = false, MinScale = 0f",
                     },
-                    new StaticText { 
+                    new StaticText {
                         Layout = lfb,
                         Appearance = la,
                         AutoSizeWidth = false,
@@ -734,7 +664,7 @@ namespace PRGUI.Demo {
                         MinScale = 0f,
                         Text = "StaticText 3: AutoSize = true, Wrap = true, ScaleToFit = true, MinScale = 0f",
                     },
-                    new StaticText { 
+                    new StaticText {
                         Layout = lfb,
                         Appearance = la,
                         AutoSizeWidth = false,
@@ -744,7 +674,7 @@ namespace PRGUI.Demo {
                         MinScale = 0f,
                         Text = "StaticText 4: AutoSize = true, Wrap = false, ScaleToFit = true, MinScale = 0f",
                     },
-                    new StaticText { 
+                    new StaticText {
                         Layout = lfb,
                         Appearance = la,
                         AutoSizeWidth = false,
@@ -754,7 +684,7 @@ namespace PRGUI.Demo {
                         MinScale = 0.7f,
                         Text = "StaticText 5: AutoSize = true, Wrap = false, ScaleToFit = true, MinScale = 0.7f",
                     },
-                    new StaticText { 
+                    new StaticText {
                         Layout = lfb,
                         Appearance = la,
                         AutoSizeWidth = false,
@@ -764,7 +694,7 @@ namespace PRGUI.Demo {
                         MinScale = 0.7f,
                         Text = "StaticText 6: AutoSize = true, Wrap = true, ScaleToFit = true, MinScale = 0.7f",
                     },
-                    new StaticText { 
+                    new StaticText {
                         Layout = lfb,
                         Appearance = la,
                         AutoSizeWidth = false,
@@ -775,7 +705,7 @@ namespace PRGUI.Demo {
                         Width = { Maximum = 450 },
                         Text = "StaticText 7: AutoSize = true, Wrap = false, ScaleToFit = true, MinScale = 0.6f, MaxWidth = 450",
                     },
-                    new StaticText { 
+                    new StaticText {
                         Layout = lfb,
                         Appearance = la,
                         AutoSizeWidth = false,
@@ -1253,6 +1183,104 @@ namespace PRGUI.Demo {
             Control.ShowDebugPadding = false;
         }
 
+        private void MakeScrollingTest (out Button increaseGaugeButton, out Gauge gauge, out Container scrollableClipTest) {
+            var supernestedGroup = new ControlGroup {
+                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Break_Auto,
+                DynamicContents = BuildSupernestedGroup,
+                DebugLabel = "supernestedGroup"
+            };
+
+            increaseGaugeButton = new Button {
+                Text = "Increase Gauge Value",
+                Layout = {
+                    Fill = { Row = true },
+                    Anchor = { Top = true },
+                    ForceBreak = true
+                },
+                Width = { Fixed = 450 },
+                AutoSizeWidth = false,
+                EnableRepeat = true
+            };
+            gauge = new Gauge {
+                Description = "Test Gauge",
+                Layout = {
+                    ForceBreak = true
+                },
+                Width = { Fixed = 450 },
+                MarkedRanges = {
+                    new Gauge.MarkedRange {
+                        Start = 0.1f,
+                        End = 0.7f,
+                        Color = Color.Red,
+                        Fill = {
+                            Thickness = 0.3f,
+                        },
+                    },
+                },
+                /*
+                Padding = new Margins(2, 2),
+                Direction = GaugeDirection.Clockwise
+                */
+            };
+            scrollableClipTest = new Container {
+                Layout = {
+                    Anchor = { Left = true, Top = true },
+                },
+                Container = {
+                    Row = true,
+                    Wrap = true,
+                    Start = true,
+                },
+                Children = {
+                    new Container {
+                        ClipChildren = true,
+                        Layout = {
+                            Fill = { Row = true },
+                            Anchor = { Top = true },
+                        },
+                        Container = {
+                            AutoBreak = true,
+                        },
+                        Height = { Maximum = 500 },
+                        Width = { Fixed = 450 },
+                        Scrollable = true,
+                        Children = {
+                            new StaticText { Text = "Testing nested clips" },
+                            new StaticText {
+                                Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
+                                Wrap = true, AutoSizeWidth = false,
+                                Layout = {
+                                    Fill = { Row = true },
+                                    ForceBreak = true
+                                }
+                            },
+                            new Checkbox {
+                                Text = "Checkbox 1",
+                                Layout = {
+                                    Fill = { Row = true },
+                                    ForceBreak = true
+                                }
+                            },
+                            new Checkbox { Text = "Checkbox 2", Checked = true },
+                            new RadioButton {
+                                Text = "Radio 1", GroupId = "radio", Checked = true,
+                                Layout = {
+                                    Fill = { Row = true },
+                                    ForceBreak = true
+                                }
+                            },
+                            new RadioButton { Text = "Radio 2", GroupId = "radio" },
+                            new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
+                            supernestedGroup
+                        }
+                    },
+                    increaseGaugeButton,
+                    gauge
+                }
+            };
+        }
+
         private void FloatingWindowWithText_Content (ref ContainerBuilder builder) {
             builder.Text("Test text")
                 .SetAutoSize(true, true);
@@ -1426,11 +1454,18 @@ namespace PRGUI.Demo {
                 throw new Exception();
         }
 
+        int? SceneToLoad;
+
         protected override void Update (GameTime gameTime) {
             var started = Time.Ticks;
 
             var temp = new DenseList<int> { 1, 2 };
             DenseListTest(ref temp);
+
+            if (SceneToLoad.HasValue) {
+                LoadTestScene(SceneToLoad.Value);
+                SceneToLoad = null;
+            }
 
             if (DynamicStaticText != null)
                 DynamicStaticText.Text = DynamicStaticStrings[(DynamicStringIndex++ / 16) % DynamicStaticStrings.Length];
@@ -1516,10 +1551,11 @@ namespace PRGUI.Demo {
                 }
 
                 if (UIContext.UseNewEngine) {
-                    if (ks.IsKeyDown(Keys.D2) && !pks.IsKeyDown(Keys.D2))
-                        Context.Engine.EnablePass2 = !Context.Engine.EnablePass2;
-                    else if (ks.IsKeyDown(Keys.D3) && !pks.IsKeyDown(Keys.D3))
-                        Context.Engine.EnablePass3 = !Context.Engine.EnablePass3;
+                    for (int i = 0; i < 9; i++) {
+                        var k = Keys.D0 + i;
+                        if (ks.IsKeyDown(k) && !pks.IsKeyDown(k))
+                            SceneToLoad = i;
+                    }
                 }
             }
 

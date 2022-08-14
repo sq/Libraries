@@ -8,8 +8,14 @@ using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private void Pass3_Arrange (ref BoxRecord control, ref BoxLayoutResult result) {
+        private void Pass3_Arrange (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
             ref readonly var config = ref control.Config;
+
+            // HACK to fix layout starting with a floating control as the root
+            // Without this, tooltips will glitch
+            // Ideally we would query the parent's position, but the parent may not be laid out yet
+            if ((depth == 0) && config.IsFloating)
+                result.Rect.Position = control.FloatingPosition;
 
             var contentPosition = result.Rect.Position + new Vector2(control.Padding.Left, control.Padding.Top);
 
@@ -92,7 +98,7 @@ namespace Squared.PRGUI.NewEngine {
                         }
                     }
 
-                    Pass3_Arrange(ref child, ref childResult);
+                    Pass3_Arrange(ref child, ref childResult, depth + 1);
                 }
 
                 if (config.IsVertical) {

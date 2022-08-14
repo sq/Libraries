@@ -11,8 +11,6 @@ using Squared.PRGUI.NewEngine.Enums;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        public bool EnablePass2 = true, EnablePass3 = true;
-
         private void UpdateRunCommon (
             ref LayoutRun run, 
             in BoxRecord control, ref BoxLayoutResult result,
@@ -56,7 +54,7 @@ namespace Squared.PRGUI.NewEngine {
             Pass1_ComputeSizesAndBuildRuns(ref root, ref result, 0);
             bool temp = false;
             Pass2(ref root, ref result, 0, ref temp, ref temp);
-            Pass3_Arrange(ref root, ref result);
+            Pass3_Arrange(ref root, ref result, 0);
         }
     }
 }
