@@ -259,6 +259,9 @@ namespace Squared.Util {
             if (RepeatCount > 0)
                 throw new InvalidOperationException("Changing direction is not possible for a repeating tween");
 
+            if (((seconds ?? 0) <= 0) && ((delaySeconds ?? 0) <= 0))
+                return new Tween<T>(to, to, now, now, interpolator ?? Interpolator);
+
             var startWhen =
                 delaySeconds.HasValue
                     ? now + (long)(delaySeconds.Value * Time.SecondInTicks)

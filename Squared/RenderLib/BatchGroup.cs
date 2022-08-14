@@ -100,6 +100,13 @@ namespace Squared.Render {
             }
         }
 
+        protected override string FormatName () {
+            if (_UserData == null)
+                return Name;
+
+            return Name?.Replace("{userData}", _UserData.ToString());
+        }
+
         public static RenderTargetBatchGroup ForRenderTarget (
             IBatchContainer container, int layer, AutoRenderTarget renderTarget, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
@@ -315,9 +322,9 @@ namespace Squared.Render {
 
         public override string ToString () {
             if (Name != null)
-                return string.Format("{4} '{0}' #{1} {2} layer={5} material={3}", Name, InstanceId, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
+                return string.Format("{4} '{0}' #{1} {2} layer={5} material={3}", FormatName(), InstanceId, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
             else
-                return string.Format("{4} #{1} {2} layer={5} material={3}", Name, InstanceId, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
+                return string.Format("{4} #{1} {2} layer={5} material={3}", FormatName(), InstanceId, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
         }
     }
 

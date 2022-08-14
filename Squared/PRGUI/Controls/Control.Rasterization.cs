@@ -165,13 +165,13 @@ namespace Squared.PRGUI {
             if (ShouldClipContent) {
                 newStackDepth = previousStackDepth + 1;
                 contentRenderer.DepthStencilState = context.UIContext.GetStencilTest(newStackDepth);
-                childrenPassSet = new RasterizePassSet(ref contentRenderer, newStackDepth, passSet.OverlayQueue);
+                childrenPassSet = new RasterizePassSet(ref contentRenderer, this, newStackDepth, passSet.OverlayQueue);
             } else {
                 contentRenderer.DepthStencilState =
                     (previousStackDepth <= 0)
                     ? DepthStencilState.None
                     : context.UIContext.GetStencilTest(previousStackDepth);
-                childrenPassSet = new RasterizePassSet(ref contentRenderer, newStackDepth, passSet.OverlayQueue);
+                childrenPassSet = new RasterizePassSet(ref contentRenderer, this, newStackDepth, passSet.OverlayQueue);
             }
             renderer.Layer += 1;
         }
@@ -558,7 +558,7 @@ namespace Squared.PRGUI {
             compositionContext.Opacity = 1.0f;
             UpdateVisibleRegion(ref compositionContext, ref box);
 
-            var newPassSet = new RasterizePassSet(ref compositingRenderer, 0, passSet.OverlayQueue);
+            var newPassSet = new RasterizePassSet(ref compositingRenderer, this, 0, passSet.OverlayQueue);
             // newPassSet.Above.RasterizeEllipse(box.Center, Vector2.One * 6f, Color.White * 0.7f);
             RasterizeAllPasses(ref compositionContext, ref box, ref newPassSet, true);
             compositingRenderer.Layer += 1;

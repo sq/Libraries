@@ -315,7 +315,7 @@ namespace Squared.PRGUI {
                         : 1.0f;
                     // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
                     //  overlap each other, at the cost of more draw calls.
-                    var passSet = new RasterizePassSet(ref renderer, 0, OverlayQueue);
+                    var passSet = new RasterizePassSet(ref renderer, control, 0, OverlayQueue);
                     passSet.Below.DepthStencilState =
                         passSet.Content.DepthStencilState =
                         passSet.Above.DepthStencilState = DepthStencilState.None;
@@ -499,9 +499,9 @@ namespace Squared.PRGUI {
         public int StackDepth;
 
         public RasterizePassSet (ref RasterizePassSet parent, Control control, ViewTransformModifier viewTransformModifier) {
-            parent.Below.MakeSubgroup(out Below, name: "Below (Nested)", userData: control);
-            parent.Content.MakeSubgroup(out Content, name: "Content (Nested)", userData: control);
-            parent.Above.MakeSubgroup(out Above, name: "Above (Nested)", userData: control);
+            parent.Below.MakeSubgroup(out Below, name: "Below {userData} (Nested)", userData: control);
+            parent.Content.MakeSubgroup(out Content, name: "Content {userData} (Nested)", userData: control);
+            parent.Above.MakeSubgroup(out Above, name: "Above {userData} (Nested)", userData: control);
             StackDepth = parent.StackDepth + 1;
             OverlayQueue = parent.OverlayQueue;
             ((BatchGroup)Below.Container).SetViewTransform(viewTransformModifier);
@@ -509,19 +509,19 @@ namespace Squared.PRGUI {
             ((BatchGroup)Above.Container).SetViewTransform(viewTransformModifier);
         }
 
-        public RasterizePassSet (ref ImperativeRenderer container, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue) {
+        public RasterizePassSet (ref ImperativeRenderer container, Control control, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue) {
             // FIXME: Order them?
-            container.MakeSubgroup(out Below, name: "Below");
-            container.MakeSubgroup(out Content, name: "Content");
-            container.MakeSubgroup(out Above, name: "Above");
+            container.MakeSubgroup(out Below, name: "Below {userData}", userData: control);
+            container.MakeSubgroup(out Content, name: "Content {userData}", userData: control);
+            container.MakeSubgroup(out Above, name: "Above {userData}", userData: control);
             StackDepth = stackDepth;
             OverlayQueue = overlayQueue;
         }
 
-        public RasterizePassSet (ref ImperativeRenderer container, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue, ref int layer) {
-            container.MakeSubgroup(out Below, name: "Below", layer: layer);
-            container.MakeSubgroup(out Content, name: "Content", layer: layer + 1);
-            container.MakeSubgroup(out Above, name: "Above", layer: layer + 2);
+        public RasterizePassSet (ref ImperativeRenderer container, Control control, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue, ref int layer) {
+            container.MakeSubgroup(out Below, name: "Below {userData}", layer: layer, userData: control);
+            container.MakeSubgroup(out Content, name: "Content {userData}", layer: layer + 1, userData: control);
+            container.MakeSubgroup(out Above, name: "Above {userData}", layer: layer + 2, userData: control);
             StackDepth = stackDepth;
             OverlayQueue = overlayQueue;
             layer = layer + 3;

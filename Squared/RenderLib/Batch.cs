@@ -478,9 +478,11 @@ namespace Squared.Render {
             }
         }
 
+        protected virtual string FormatName () => Name;
+
         public override string ToString () {
             if (Name != null)
-                return string.Format("{0} '{5}' #{1} {2} layer={4} material={3}", GetType().Name, InstanceId, StateString, Material, Layer, Name);
+                return string.Format("{0} '{5}' #{1} {2} layer={4} material={3}", GetType().Name, InstanceId, StateString, Material, Layer, FormatName());
             else
                 return string.Format("{0} #{1} {2} layer={4} material={3}", GetType().Name, InstanceId, StateString, Material, Layer);
         }

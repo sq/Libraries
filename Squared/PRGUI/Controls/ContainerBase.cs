@@ -432,7 +432,7 @@ namespace Squared.PRGUI.Controls {
                     (currentContextOrder != item.DisplayOrder)
                 ) {
                     var newBaseLayer = ++maxC;
-                    currentLayerContext = new RasterizePassSet(ref passSet.Content, passSet.StackDepth, passSet.OverlayQueue, ref newBaseLayer);
+                    currentLayerContext = new RasterizePassSet(ref passSet.Content, this, passSet.StackDepth, passSet.OverlayQueue, ref newBaseLayer);
                     maxC = newBaseLayer;
                     // FIXME: Update .Content layer?
                     currentContextOrder = item.DisplayOrder;
