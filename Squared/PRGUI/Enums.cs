@@ -166,7 +166,7 @@ namespace Squared.PRGUI.Layout {
 
     public static class ControlFlagMask {
         public const ControlFlags 
-            BoxModel = ControlFlags.Container_Column | ControlFlags.Container_Row | ControlFlags.Container_Break_Allow | ControlFlags.Container_Break_Auto,
+            BoxModel = ControlFlags.Container_Column | ControlFlags.Container_Row | ControlFlags.Container_Break_Allow,
             Container = ControlFlags.Container_Row |
                 ControlFlags.Container_Column |
                 ControlFlags.Container_Break_Allow |
