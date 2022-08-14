@@ -52,8 +52,18 @@ namespace Squared.PRGUI.NewEngine {
         internal void PerformLayout (ref BoxRecord root) {
             ref var result = ref UnsafeResult(root.Key);
             Pass1_ComputeSizesAndBuildRuns(ref root, ref result, 0);
-            bool temp = false;
-            Pass2(ref root, ref result, 0, ref temp, ref temp);
+            Pass2(ref root, ref result, 0);
+
+            // During passes 2a/2b we built a bottom-up list of controls that need their
+            //  size and content size recalculated due to wrapping. We start with the control
+            //  that had children wrapped, then walk up and recalculate all of its ancestors
+            //  since their sizes also changed.
+            // FIXME: We probably need to rebuild their runs too, right?
+            foreach (var key in RecalcSizeQueue)
+                Pass2c_Recalculate(ref UnsafeItem(key), ref UnsafeResult(key));
+
+            RecalcSizeQueue.Clear();
+
             Pass3_Arrange(ref root, ref result, 0);
         }
     }

@@ -256,15 +256,7 @@ namespace PRGUI.Demo {
                 }
             }
 
-            if (true)
-                BuildUI();
-            else
-                BuildSimpleUI();
-        }
-
-        private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
-            layoutEngine.overrideColor = Color.Teal;
-            return default;
+            LoadTestScene(2);
         }
 
         void LoadTestScene (int index) {
@@ -288,6 +280,11 @@ namespace PRGUI.Demo {
                     });
                     break;
             }
+        }
+
+        private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
+            layoutEngine.overrideColor = Color.Teal;
+            return default;
         }
 
         private void BuildSimpleUI () {
@@ -1404,6 +1401,7 @@ namespace PRGUI.Demo {
                 // .SetFixedSize(null, 432)
                 .SetContainer(autoBreak: true)
                 .SetCollapsible(true);
+            tc2.Control.DebugLabel = "Titled container with no title";
             tc2.Text<Button>("Button C");
             tc2.Text<Button>("Button D");
             tc2.Text<Button>("Button E");

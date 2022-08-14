@@ -9,9 +9,10 @@ using Squared.PRGUI.NewEngine.Enums;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private void Pass2 (
-            ref BoxRecord control, ref BoxLayoutResult result, int depth,
-            ref bool recalcX, ref bool recalcY
+        private Queue<ControlKey> RecalcSizeQueue = new Queue<ControlKey>(Capacity);
+
+        private bool Pass2 (
+            ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
             if (result.Pass2Processed)
                 throw new Exception("Already processed phase 2");
@@ -21,23 +22,22 @@ namespace Squared.PRGUI.NewEngine {
 
             var oldSize = result.Rect.Size;
 
+            var needRecalc = false;
             if (config.IsWrap)
-                Pass2a_PerformWrapping(ref control, ref result, depth);
+                needRecalc = Pass2a_PerformWrapping(ref control, ref result, depth);
 
             Pass2b_ExpandChildren(ref control, ref result, depth);
 
-            bool recalcMyX = false, recalcMyY = false;
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
-                Pass2(ref child, ref childResult, depth + 1, ref recalcMyX, ref recalcMyY);
+                if (Pass2(ref child, ref childResult, depth + 1))
+                    needRecalc = true;
             }
 
-            Pass2c_Finalize(ref control, ref result, depth, recalcMyX, recalcMyY);
-            if (result.Rect.Width != oldSize.X)
-                recalcX = true;
-            if (result.Rect.Height != oldSize.Y)
-                recalcY = true;
+            if (needRecalc)
+                RecalcSizeQueue.Enqueue(control.Key);
+            return needRecalc;
         }
 
         private bool Pass2a_PerformWrapping (
@@ -150,7 +150,7 @@ namespace Squared.PRGUI.NewEngine {
             ref readonly var config = ref control.Config;
 
             var oldSize = result.Rect.Size;
-            float w = result.Rect.Width - control.Padding.X, 
+            float w = result.Rect.Width - control.Padding.X,
                 h = result.Rect.Height - control.Padding.Y;
 
             foreach (var runIndex in Runs(control.Key)) {
@@ -263,46 +263,47 @@ namespace Squared.PRGUI.NewEngine {
                     ySpace = newYSpace;
                 }
 
-                if (config.IsVertical)
+                if (config.IsVertical) {
                     w -= run.MaxOuterWidth;
-                else
+                } else {
                     h -= run.MaxOuterHeight;
+                }
             }
         }
 
-        private void Pass2c_Finalize (ref BoxRecord control, ref BoxLayoutResult result, int depth, bool needRecalcX, bool needRecalcY) {
+        private void Pass2c_Recalculate (ref BoxRecord control, ref BoxLayoutResult result) {
             ref readonly var config = ref control.Config;
+            if (control.FirstChild.IsInvalid)
+                return;
 
-            /*
-            if ((config.ChildFlags & ContainerFlags.ExpandForContent_X) == default)
-                needRecalcX = false;
-            if ((config.ChildFlags & ContainerFlags.ExpandForContent_Y) == default)
-                needRecalcY = false;
-            */
+            float cw = 0, ch = 0;
 
-            if (needRecalcX || needRecalcY) {
-                // HACK: We do another pass to recalculate our size if any of our children's sizes 
-                //  changed during the wrap/expand pass, since that probably also changed our size
-                float width = control.Padding.X, height = control.Padding.Y;
-                foreach (var runIndex in Runs(control.Key)) {
-                    ref var run = ref Run(runIndex);
-                    // FIXME: Collapse margins
-                    if (config.IsVertical) {
-                        width += run.MaxOuterWidth;
-                        height = Math.Max(height, run.TotalHeight + control.Padding.Y);
-                    } else {
-                        width = Math.Max(width, run.TotalWidth + control.Padding.X);
-                        height += run.MaxOuterHeight;
-                    }
+            // HACK: We do another pass to recalculate our size if any of our children's sizes 
+            //  changed during the wrap/expand pass, since that probably also changed our size
+            foreach (var runIndex in Runs(control.Key)) {
+                ref var run = ref Run(runIndex);
+
+                // FIXME: Collapse margins
+                if (runIndex == result.FloatingRunIndex) {
+                    cw = Math.Max(cw, run.MaxOuterWidth);
+                    ch = Math.Max(ch, run.MaxOuterHeight);
+                } else if (config.IsVertical) {
+                    cw += run.MaxOuterWidth;
+                    ch = Math.Max(ch, run.TotalHeight);
+                } else {
+                    ch += run.MaxOuterHeight;
+                    cw = Math.Max(cw, run.TotalWidth);
                 }
-
-                // TODO: Figure out whether these should actually be enabled, they seem right but they also don't seem to fix anything?
-                control.Width.Constrain(ref width, true);
-                control.Height.Constrain(ref height, true);
-                // HACK: Never shrink after recalculation (is this correct?)
-                result.Rect.Width = Math.Max(width, result.Rect.Width);
-                result.Rect.Height = Math.Max(height, result.Rect.Height);
             }
+
+            float width = cw + control.Padding.X, height = ch + control.Padding.Y;
+            // TODO: Figure out whether these should actually be enabled, they seem right but they also don't seem to fix anything?
+            control.Width.Constrain(ref width, true);
+            control.Height.Constrain(ref height, true);
+            // HACK: Never shrink after recalculation (is this correct?)
+            result.Rect.Width = Math.Max(width, result.Rect.Width);
+            result.Rect.Height = Math.Max(height, result.Rect.Height);
+            result.ContentSize = new Vector2(cw, ch);
         }
     }
 }
