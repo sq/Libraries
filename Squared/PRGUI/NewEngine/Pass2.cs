@@ -102,6 +102,8 @@ namespace Squared.PRGUI.NewEngine {
                 } else {
                     offset += totalSize;
                 }
+
+                childResult.SizeSetByParent = true;
             }
 
             if (currentRunIndex >= 0) {
@@ -127,13 +129,6 @@ namespace Squared.PRGUI.NewEngine {
 
         private void Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
             ref readonly var config = ref control.Config;
-
-            /*
-            if (result.Pass2bProcessed)
-                throw new Exception("Pass 2b already ran");
-
-            result.Pass2bProcessed = true;
-            */
 
             var oldSize = result.Rect.Size;
             bool needRecalcX = false, needRecalcY = false;
@@ -189,17 +184,17 @@ namespace Squared.PRGUI.NewEngine {
                         ref var childResult = ref Result(ckey);
                         var margins = child.Margins;
                         ref readonly var childConfig = ref child.Config;
-                        bool expandX = childConfig.FillRow && !child.Width.Fixed.HasValue,
-                            expandY = childConfig.FillColumn && !child.Height.Fixed.HasValue;
+                        bool expandChildX = childConfig.FillRow && !child.Width.Fixed.HasValue,
+                            expandChildY = childConfig.FillColumn && !child.Height.Fixed.HasValue;
                         float amountX = countX > 0 ? xSpace / countX : 0, amountY = countY > 0 ? ySpace / countY : 0;
 
                         if (childConfig.IsStackedOrFloating) {
                             // Floating = Stacked, but don't expand to fill parent
                             // Maybe I should rethink this :)
                             // if ((childConfig._BoxFlags & BoxFlag.Floating) != BoxFlag.Floating) {
-                                if (expandX)
+                                if (expandChildX)
                                     childResult.Rect.Width = child.Width.Constrain(w - child.Margins.X, true);
-                                if (expandY)
+                                if (expandChildY)
                                     childResult.Rect.Height = child.Height.Constrain(h - child.Margins.Y, true);
                             // }
                         } else {
@@ -216,7 +211,7 @@ namespace Squared.PRGUI.NewEngine {
                             //  from the minimum, since each control has different margins (the size of a
                             //  run includes the margins of the controls)
 
-                            if (expandX) {
+                            if (expandChildX) {
                                 run.TotalWidth -= childOuterW;
                                 var newChildW = Math.Max(childOuterW + amountX, minOuterWidth);
                                 newChildW = child.Width.Constrain(newChildW - margins.X, true) + margins.X;
@@ -229,7 +224,7 @@ namespace Squared.PRGUI.NewEngine {
                                 run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, newChildW);
                             }
 
-                            if (expandY) {
+                            if (expandChildY) {
                                 run.TotalHeight -= childOuterH;
                                 var newChildH = Math.Max(childOuterH + amountY, minOuterHeight);
                                 newChildH = child.Height.Constrain(newChildH - margins.Y, true) + margins.Y;
@@ -242,9 +237,9 @@ namespace Squared.PRGUI.NewEngine {
                                 run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, newChildH);
                             }
 
-                            if (expandX)
+                            if (expandChildX)
                                 needRecalcX = true;
-                            if (expandY)
+                            if (expandChildY)
                                 needRecalcY = true;
                         }
                     }
@@ -260,6 +255,11 @@ namespace Squared.PRGUI.NewEngine {
                 else
                     h -= run.MaxOuterHeight;
             }
+
+            if ((config.ChildFlags & ContainerFlags.ExpandForContent_X) == default)
+                needRecalcX = false;
+            if ((config.ChildFlags & ContainerFlags.ExpandForContent_Y) == default)
+                needRecalcY = false;
 
             if (needRecalcX || needRecalcY) {
                 // HACK: We do another pass to recalculate our size if any of our children's sizes 

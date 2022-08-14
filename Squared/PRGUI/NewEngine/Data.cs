@@ -365,7 +365,7 @@ namespace Squared.PRGUI.NewEngine {
         /// </summary>
         internal bool SizeSetByParent;
         // FIXME: Remove all these
-        internal bool Pass1Ready, Pass1Processed, Pass2Processed, Pass2bProcessed;
+        internal bool Pass1Ready, Pass1Processed, Pass2Processed;
 
         /// <summary>
         /// The display/layout rectangle of the control.

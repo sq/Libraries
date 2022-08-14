@@ -83,27 +83,27 @@ namespace Squared.PRGUI.NewEngine.Enums {
         Boxes_Squish            = Boxes_Squish_X | Boxes_Squish_Y,
 
         /// <summary>
-        /// Will expand automatically beyond default width to hold content
+        /// Will expand automatically beyond default width to hold children
         /// </summary>
         Size_ExpandForContent_X = 0b100000000000,
         /// <summary>
-        /// Will expand automatically beyond default height to hold content
+        /// Will expand automatically beyond default height to hold children
         /// </summary>
         Size_ExpandForContent_Y = 0b1000000000000,
         /// <summary>
-        /// Will expand automatically beyond default size to hold content
+        /// Will expand automatically beyond default size to hold children
         /// </summary>
         Size_ExpandForContent   = Size_ExpandForContent_X | Size_ExpandForContent_Y,
         /// <summary>
-        /// Will expand horizontally to hold content and will not shrink even if container lacks space
+        /// Will expand horizontally to hold children and will not shrink even if container lacks space
         /// </summary>
         Size_PreventCrush_X     = 0b10000000000000 | Size_ExpandForContent_X,
         /// <summary>
-        /// Will expand vertically to hold content and will not shrink even if container lacks space
+        /// Will expand vertically to hold children and will not shrink even if container lacks space
         /// </summary>
         Size_PreventCrush_Y     = 0b100000000000000 | Size_ExpandForContent_Y,
         /// <summary>
-        /// Will expand to hold content and will not shrink even if container lacks space
+        /// Will expand to hold children and will not shrink even if container lacks space
         /// </summary>
         Size_PreventCrush       = Size_PreventCrush_X | Size_PreventCrush_Y,
 
@@ -220,28 +220,28 @@ namespace Squared.PRGUI.NewEngine.Enums {
         Squish = ContainerFlag.Boxes_Squish,
 
         /// <summary>
-        /// Will expand automatically beyond default width to hold content
+        /// Will expand automatically beyond default width to hold children
         /// </summary>
         ExpandForContent_X = ContainerFlag.Size_ExpandForContent_X,
         /// <summary>
-        /// Will expand automatically beyond default height to hold content
+        /// Will expand automatically beyond default height to hold children
         /// </summary>
         ExpandForContent_Y = ContainerFlag.Size_ExpandForContent_Y,
         /// <summary>
-        /// Will expand automatically beyond default size to hold content
+        /// Will expand automatically beyond default size to hold children
         /// </summary>
         ExpandForContent = ExpandForContent_X | ExpandForContent_Y,
 
         /// <summary>
-        /// Will expand horizontally to hold content and will not shrink even if container lacks space
+        /// Will expand horizontally to hold children and will not shrink even if container lacks space
         /// </summary>
         PreventCrush_X = ContainerFlag.Size_PreventCrush_X,
         /// <summary>
-        /// Will expand vertically to hold content and will not shrink even if container lacks space
+        /// Will expand vertically to hold children and will not shrink even if container lacks space
         /// </summary>
         PreventCrush_Y = ContainerFlag.Size_PreventCrush_Y,
         /// <summary>
-        /// Will expand to hold content and will not shrink even if container lacks space
+        /// Will expand to hold children and will not shrink even if container lacks space
         /// </summary>
         PreventCrush = PreventCrush_X | PreventCrush_Y,
 
