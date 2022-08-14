@@ -355,7 +355,7 @@ namespace Squared.PRGUI.NewEngine {
         /// <summary>
         /// The index of the first run contained by this control, if any.
         /// </summary>
-        internal int FirstRunIndex;
+        internal int FirstRunIndex, FloatingRunIndex;
 #if DEBUG
         internal int Depth;
         internal bool Break;

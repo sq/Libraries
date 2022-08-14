@@ -280,7 +280,8 @@ namespace PRGUI.Demo {
                     Undecorated = true,
                     BackgroundColor = Color.Green * 0.33f,
                 },
-                Padding = new Margins(8)
+                Padding = new Margins(8),
+                DebugLabel = "topLevel (green fill row wrap)"
             };
             var cb = new ContainerBuilder(topLevel, true);
             cb.Text("Text 1 should expand")
@@ -294,6 +295,7 @@ namespace PRGUI.Demo {
                 layoutFlags: ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                 containerFlags: ControlFlags.Container_Column | ControlFlags.Container_Align_Start | ControlFlags.Container_No_Expansion
             );
+            colBox.Control.DebugLabel = "colBox (blue fill column no_expansion)";
             colBox.Control.Padding = new Margins(8);
             colBox.Control.Appearance.BackgroundColor = Color.Blue * 0.33f;
             colBox.Text("Text 5");
@@ -313,6 +315,7 @@ namespace PRGUI.Demo {
                 containerFlags: ControlFlags.Container_Row | ControlFlags.Container_Break_Auto | 
                 ControlFlags.Container_Align_Start | ControlFlags.Container_No_Expansion
             );
+            subBox.Control.DebugLabel = "subBox (red fill row wrap no_expansion)";
             subBox.Control.Appearance.BackgroundColor = Color.Red * 0.4f;
             subBox.Text("Text 7");
             subBox.Text("Text 8")

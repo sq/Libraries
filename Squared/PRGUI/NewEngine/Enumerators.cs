@@ -132,15 +132,22 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         public unsafe struct RunEnumerator : IEnumerator<int> {
+            private const int State_Disposed = -4,
+                State_NotStarted = -3,
+                State_FloatingRun = -2;
+
             public readonly LayoutEngine Engine;
             public readonly ControlKey Parent;
+            private int _Current;
+            private int _FloatingRun;
             private int Version;
 
             public RunEnumerator (LayoutEngine engine, ControlKey parent) {
                 Engine = engine;
                 Version = engine.Version;
                 Parent = parent;
-                _Current = -2;
+                _FloatingRun = -1;
+                _Current = State_NotStarted;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -151,28 +158,30 @@ namespace Squared.PRGUI.NewEngine {
                 Engine.AssertionFailed("Context was modified");
             }
 
-            private int _Current;
             public int Current {
                 [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => _Current;
+                get => (_Current == State_FloatingRun) ? _FloatingRun : _Current;
             }
             object IEnumerator.Current => Current;
 
             public void Dispose () {
-                _Current = -3;
+                _Current = State_Disposed;
                 Version = -1;
             }
 
             public bool MoveNext () {
                 CheckVersion();
 
-                if (Current >= 0) {
-                    ref var run = ref Engine.Run(Current);
+                if (_Current >= 0) {
+                    ref var run = ref Engine.Run(_Current);
                     _Current = run.NextRunIndex;
                     // TODO: Loop detection
                     return (Current >= 0);
-                } else if (Current != -2) {
+                } else if (
+                    (_Current != State_NotStarted) &&
+                    (_Current != State_FloatingRun)
+                ) {
                     return false;
                 }
 
@@ -180,13 +189,19 @@ namespace Squared.PRGUI.NewEngine {
                     return false;
 
                 ref var rec = ref Engine.UnsafeResult(Parent);
-                _Current = rec.FirstRunIndex;
-                return Current >= 0;
+                _FloatingRun = rec.FloatingRunIndex;
+                if ((_FloatingRun >= 0) && (_Current == State_NotStarted)) {
+                    _Current = State_FloatingRun;
+                    return true;
+                } else {
+                    _Current = rec.FirstRunIndex;
+                    return Current >= 0;
+                }
             }
 
             void IEnumerator.Reset () {
                 CheckVersion();
-                _Current = -2;
+                _Current = State_NotStarted;
             }
         }
 

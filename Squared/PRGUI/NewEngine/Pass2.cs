@@ -10,7 +10,8 @@ using Squared.PRGUI.NewEngine.Enums;
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
         private void Pass2 (
-            ref BoxRecord control, ref BoxLayoutResult result, int depth
+            ref BoxRecord control, ref BoxLayoutResult result, int depth,
+            ref bool recalcX, ref bool recalcY
         ) {
             if (result.Pass2Processed)
                 throw new Exception("Already processed phase 2");
@@ -18,16 +19,25 @@ namespace Squared.PRGUI.NewEngine {
 
             ref readonly var config = ref control.Config;
 
+            var oldSize = result.Rect.Size;
+
             if (config.IsWrap)
                 Pass2a_PerformWrapping(ref control, ref result, depth);
 
             Pass2b_ExpandChildren(ref control, ref result, depth);
 
+            bool recalcMyX = false, recalcMyY = false;
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
-                Pass2(ref child, ref childResult, depth + 1);
+                Pass2(ref child, ref childResult, depth + 1, ref recalcMyX, ref recalcMyY);
             }
+
+            Pass2c_Finalize(ref control, ref result, depth, recalcMyX, recalcMyY);
+            if (result.Rect.Width != oldSize.X)
+                recalcX = true;
+            if (result.Rect.Height != oldSize.Y)
+                recalcY = true;
         }
 
         private void Pass2a_PerformWrapping (
@@ -86,7 +96,10 @@ namespace Squared.PRGUI.NewEngine {
                 // We still generate runs even if a control is stacked/floating
                 // This ensures that you can enumerate all of a control's children by enumerating its runs
                 // We will then skip stacked/floating controls when enumerating runs (as appropriate)
-                ref var run = ref SelectRunForBuildingPass(ref currentRunIndex, isBreak);
+                ref var run = ref SelectRunForBuildingPass(
+                    ref result.FloatingRunIndex, ref currentRunIndex, 
+                    childConfig.IsStackedOrFloating, isBreak
+                );
                 UpdateRunCommon(
                     ref run, in control, ref result,
                     in child, ref childResult,
@@ -131,13 +144,12 @@ namespace Squared.PRGUI.NewEngine {
             ref readonly var config = ref control.Config;
 
             var oldSize = result.Rect.Size;
-            bool needRecalcX = false, needRecalcY = false;
             float w = result.Rect.Width - control.Padding.X, 
                 h = result.Rect.Height - control.Padding.Y;
 
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
-                var isLastRun = run.NextRunIndex < 0;
+                var isLastRun = (run.NextRunIndex < 0) || (runIndex == result.FloatingRunIndex);
 
                 // We track our own count here so that when expansion hits a constraint, we
                 //  can reduce the count to evenly distribute the leftovers to non-constrained controls
@@ -236,11 +248,6 @@ namespace Squared.PRGUI.NewEngine {
                                 run.TotalHeight += newChildH;
                                 run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, newChildH);
                             }
-
-                            if (expandChildX)
-                                needRecalcX = true;
-                            if (expandChildY)
-                                needRecalcY = true;
                         }
                     }
 
@@ -255,31 +262,40 @@ namespace Squared.PRGUI.NewEngine {
                 else
                     h -= run.MaxOuterHeight;
             }
+        }
 
+        private void Pass2c_Finalize (ref BoxRecord control, ref BoxLayoutResult result, int depth, bool needRecalcX, bool needRecalcY) {
+            ref readonly var config = ref control.Config;
+
+            /*
             if ((config.ChildFlags & ContainerFlags.ExpandForContent_X) == default)
                 needRecalcX = false;
             if ((config.ChildFlags & ContainerFlags.ExpandForContent_Y) == default)
                 needRecalcY = false;
+            */
 
             if (needRecalcX || needRecalcY) {
                 // HACK: We do another pass to recalculate our size if any of our children's sizes 
-                //  changed during this wrap/expand pass, since that probably also changed our size
-                // FIXME: I hate this duplication
-                result.Rect.Size = new Vector2(control.Padding.X, control.Padding.Y);
+                //  changed during the wrap/expand pass, since that probably also changed our size
+                float width = control.Padding.X, height = control.Padding.Y;
                 foreach (var runIndex in Runs(control.Key)) {
                     ref var run = ref Run(runIndex);
+                    // FIXME: Collapse margins
                     if (config.IsVertical) {
-                        result.Rect.Width += run.MaxOuterWidth;
-                        result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + control.Padding.Y);
+                        width += run.MaxOuterWidth;
+                        height = Math.Max(height, run.TotalHeight + control.Padding.Y);
                     } else {
-                        result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + control.Padding.X);
-                        result.Rect.Height += run.MaxOuterHeight;
+                        width = Math.Max(width, run.TotalWidth + control.Padding.X);
+                        height += run.MaxOuterHeight;
                     }
                 }
 
                 // TODO: Figure out whether these should actually be enabled, they seem right but they also don't seem to fix anything?
-                control.Width.Constrain(ref result.Rect.Width, true);
-                control.Height.Constrain(ref result.Rect.Height, true);
+                control.Width.Constrain(ref width, true);
+                control.Height.Constrain(ref height, true);
+                // HACK: Never shrink after recalculation (is this correct?)
+                result.Rect.Width = Math.Max(width, result.Rect.Width);
+                result.Rect.Height = Math.Max(height, result.Rect.Height);
             }
         }
     }

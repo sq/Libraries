@@ -96,8 +96,10 @@ namespace Squared.PRGUI.NewEngine {
             result.Pass1Ready = true;
         }
 
-        private ref LayoutRun SelectRunForBuildingPass (ref int currentRunIndex, bool isBreak) {
-            if (isBreak)
+        private ref LayoutRun SelectRunForBuildingPass (ref int floatingRun, ref int currentRunIndex, bool isStackedOrFloating, bool isBreak) {
+            if (isStackedOrFloating)
+                return ref GetOrPushRun(ref floatingRun);
+            else if (isBreak)
                 return ref InsertRun(out currentRunIndex, currentRunIndex);
             else
                 return ref GetOrPushRun(ref currentRunIndex);
@@ -130,7 +132,10 @@ namespace Squared.PRGUI.NewEngine {
             // This ensures that you can enumerate all of a control's children by enumerating its runs
             // We will then skip stacked/floating controls when enumerating runs (as appropriate)
             // TODO: Generate a single special run for all stacked/floating controls instead?
-            ref var run = ref SelectRunForBuildingPass(ref currentRunIndex, child.Config.ForceBreak);
+            ref var run = ref SelectRunForBuildingPass(
+                ref result.FloatingRunIndex, ref currentRunIndex, 
+                child.Config.IsStackedOrFloating, child.Config.ForceBreak
+            );
             if (currentRunIndex != previousRunIndex)
                 IncreaseContentSizeForCompletedRun(in control, ref result, previousRunIndex);
 

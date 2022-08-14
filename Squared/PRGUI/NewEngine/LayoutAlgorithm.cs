@@ -57,7 +57,8 @@ namespace Squared.PRGUI.NewEngine {
             result.Rect = result.ContentRect = new RectF(Vector2.Zero, CanvasSize);
             result.AvailableSpace = CanvasSize;
             Pass1_ComputeSizesAndBuildRuns(ref root, ref result, 0);
-            Pass2(ref root, ref result, 0);
+            bool temp = false;
+            Pass2(ref root, ref result, 0, ref temp, ref temp);
             Pass3_Arrange(ref root, ref result);
         }
     }
