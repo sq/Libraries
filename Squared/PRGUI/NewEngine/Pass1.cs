@@ -51,7 +51,7 @@ namespace Squared.PRGUI.NewEngine {
                 p += config.IsVertical ? outerW : outerH;
 
                 // At a minimum we should be able to hold all our children if they were stacked on each other
-                if (!expandX)
+                if (expandX)
                     result.Rect.Width = Math.Max(
                         result.Rect.Width, 
                         (child.Config.Flags & BoxFlags.CollapseMargins) != default 
@@ -59,7 +59,7 @@ namespace Squared.PRGUI.NewEngine {
                             : outerW + padX
                     );
 
-                if (!expandY)
+                if (expandY)
                     result.Rect.Height = Math.Max(
                         result.Rect.Height, 
                         (child.Config.Flags & BoxFlags.CollapseMargins) != default 
@@ -69,14 +69,12 @@ namespace Squared.PRGUI.NewEngine {
 
                 // If we're not in wrapped mode, we will try to expand to hold our largest run
                 // FIXME: Collapse margins
-                if (!config.IsWrap) {
-                    if (config.IsVertical) {
-                        if (expandY)
-                            result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
-                    } else {
-                        if (expandX)
-                            result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
-                    }
+                if (!config.IsWrap || child.Config.IsStacked) {
+                    if (child.Config.IsStacked || (config.IsVertical && expandY))
+                        result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
+
+                    if (child.Config.IsStacked || (!config.IsVertical && expandX))
+                        result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
                 }
             }
 
@@ -87,14 +85,9 @@ namespace Squared.PRGUI.NewEngine {
             // This gives us proper autosize for non-forced-wrap
             // FIXME: Collapse margins
             if (expandX != default)
-                result.Rect.Width = Math.Max(result.Rect.Width, result.ContentRect.Width + padX);
+                result.Rect.Width = Math.Max(result.Rect.Width, result.ContentSize.X + padX);
             if (expandY != default)
-                result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
-
-            if (control.FirstChild.IsInvalid) {
-                // HACK
-                result.ContentRect = result.Rect;
-            }
+                result.Rect.Height = Math.Max(result.Rect.Height, result.ContentSize.Y + padY);
 
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
@@ -120,10 +113,13 @@ namespace Squared.PRGUI.NewEngine {
             //  to account for the size of the current run
             ref var completedRun = ref Run(runIndex);
 
-            if (control.Config.IsVertical)
-                result.ContentRect.Width += completedRun.MaxOuterWidth;
-            else
-                result.ContentRect.Height += completedRun.MaxOuterHeight;
+            if (control.Config.IsVertical) {
+                result.ContentSize.X += completedRun.MaxOuterWidth;
+                result.ContentSize.Y = Math.Max(result.ContentSize.Y, completedRun.MaxOuterHeight);
+            } else {
+                result.ContentSize.X = Math.Max(result.ContentSize.X, completedRun.MaxOuterWidth);
+                result.ContentSize.Y += completedRun.MaxOuterHeight;
+            }
         }
 
         private ref LayoutRun Pass1_UpdateRun (

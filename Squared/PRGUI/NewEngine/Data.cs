@@ -217,6 +217,7 @@ namespace Squared.PRGUI.NewEngine {
         internal bool ForceBreak => (_BoxFlags & BoxFlag.Break) != default;
         internal bool ConstrainChildren => (_ContainerFlags & ContainerFlag.Boxes_Overflow) == default;
         internal bool IsVertical => (_ContainerFlags & ContainerFlag.Layout_Column) != default;
+        internal bool IsStacked => (_BoxFlags & BoxFlag.Stacked) == BoxFlag.Stacked;
         internal bool IsStackedOrFloating => (_BoxFlags & BoxFlag.Stacked) != default;
         internal bool IsFloating => (_BoxFlags & BoxFlag.Floating) == BoxFlag.Floating;
         internal bool IsWrap => (_ContainerFlags & ContainerFlag.Arrange_Wrap) != default;
@@ -373,12 +374,16 @@ namespace Squared.PRGUI.NewEngine {
         /// </summary>
         public RectF Rect;
         /// <summary>
-        /// The location of the control's content area or actual content.
+        /// The display/layout rectangle for the control's content (taking into account padding.)
+        /// </summary>
+        public RectF ContentRect;
+        /// <summary>
+        /// The size of the control's children.
         /// This will be larger than Rect in scenarios where the control was clipped by its parent,
         ///  in which case you want to constrain it to the parent rect. This will prevent
         ///  clipping from making margins move in too far.
         /// </summary>
-        public RectF ContentRect;
+        public Vector2 ContentSize;
         /// <summary>
         /// Records the size that this control's parent attempted to set before constraints took
         ///  effect. You can use this to influence control auto-size behavior.

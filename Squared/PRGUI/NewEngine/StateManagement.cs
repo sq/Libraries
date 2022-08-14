@@ -46,6 +46,7 @@ namespace Squared.PRGUI.NewEngine {
         private void InitializeResult (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
             result.Tag = control.Tag;
             result.Rect = result.ContentRect = default;
+            result.AvailableSpace = result.ContentSize = default;
             result.FirstRunIndex = -1;
             result.FloatingRunIndex = -1;
 #if DEBUG
