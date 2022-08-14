@@ -9,17 +9,16 @@ using Squared.PRGUI.Layout;
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
         private Vector2 Pass2_ExpandAndProcessMesses (
-            ref BoxRecord control, ref BoxLayoutResult result, int depth, bool processWrap
+            ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
             if (control.FirstChild.IsInvalid)
                 return default;
 
             ref readonly var config = ref control.Config;
 
-            if (config.IsWrap && !processWrap)
-                return default;
-            if (result.Pass2Complete)
-                return default;
+            if (result.Pass2Processed)
+                throw new Exception("Already processed phase 2");
+            result.Pass2Processed = true;
 
             float contentWidth = result.Rect.Width - control.Padding.X,
                 contentHeight = result.Rect.Height - control.Padding.Y,
@@ -32,24 +31,76 @@ namespace Squared.PRGUI.NewEngine {
             int oldFirstRun = result.FirstRunIndex, firstRunIndex = -1, currentRunIndex = -1, numForcedBreaks = 0;
             // HACK
             result.FirstRunIndex = -1;
-            bool encounteredWrapChild = false, first = true;
+            bool first = true;
+
+            Queue<ControlKey> unwrapChildQueue = (WrapChildQueues.Count > 0)
+                    ? WrapChildQueues.Dequeue()
+                    : new Queue<ControlKey>(),
+                wrapChildQueue = (WrapChildQueues.Count > 0)
+                    ? WrapChildQueues.Dequeue()
+                    : new Queue<ControlKey>();
 
             // Scan through all our children and wrap them if necessary now that we know our size
             // For wrap boxes this happens in a second pass over the subtree, otherwise it happens in the first pass
             //  since in the first pass we know everything that needs to be wrapped (it has Break set)
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
-                ref var childResult = ref Result(ckey);
                 ref readonly var childConfig = ref child.Config;
-                if (childConfig.IsWrap) {
-                    encounteredWrapChild = true;
-                    continue;
-                }
+                if (childConfig.IsWrap)
+                    wrapChildQueue.Enqueue(ckey);
+                else
+                    unwrapChildQueue.Enqueue(ckey);
+            }
 
-                // If we already processed this control in the initial non-wrap pass, skip it
-                if (childResult.Pass2ParentComplete)
-                    continue;
+            Pass2_ProcessChildQueue(
+                ref control, ref result, in config, capacity, 
+                ref offset, ref extent, ref firstRunIndex, ref currentRunIndex, 
+                ref numForcedBreaks, ref first, unwrapChildQueue
+            );
 
+            Pass2_ProcessChildQueue(
+                ref control, ref result, in config, capacity, 
+                ref offset, ref extent, ref firstRunIndex, ref currentRunIndex, 
+                ref numForcedBreaks, ref first, wrapChildQueue
+            );
+
+            if (currentRunIndex >= 0) {
+                ref var currentRun = ref Run(currentRunIndex);
+                extent += config.IsVertical ? currentRun.MaxOuterWidth : currentRun.MaxOuterHeight;
+            }
+
+            if (numForcedBreaks <= 0)
+                result.FirstRunIndex = oldFirstRun;
+            else
+                result.FirstRunIndex = firstRunIndex;
+
+            // Now that we computed our new runs with wrapping applied we can expand all our children appropriately
+            Pass2b_ExpandChildren(ref control, ref result, depth);
+
+            unwrapChildQueue.Clear();
+            wrapChildQueue.Clear();
+            WrapChildQueues.Enqueue(unwrapChildQueue);
+            WrapChildQueues.Enqueue(wrapChildQueue);
+
+            var oldSize = result.Rect.Size;
+            if (config.IsVertical)
+                result.Rect.Width = control.Width.Constrain(Math.Max(result.Rect.Width, extent + control.Padding.X), true);
+            else
+                result.Rect.Height = control.Height.Constrain(Math.Max(result.Rect.Height, extent + control.Padding.Y), true);
+            // Return the amount our size changed so that our caller can update the run we're in
+            return result.Rect.Size - oldSize;
+        }
+
+        private void Pass2_ProcessChildQueue (
+            ref BoxRecord control, ref BoxLayoutResult result, in ControlConfiguration config, 
+            float capacity, ref float offset, ref float extent, 
+            ref int firstRunIndex, ref int currentRunIndex, 
+            ref int numForcedBreaks, ref bool first, Queue<ControlKey> queue
+        ) {
+            foreach (var ckey in queue) {
+                ref var child = ref this[ckey];
+                ref var childResult = ref UnsafeResult(ckey);
+                ref readonly var childConfig = ref child.Config;
                 float startMargin = config.IsVertical ? child.Margins.Top : child.Margins.Left,
                     endMargin = config.IsVertical ? child.Margins.Bottom : child.Margins.Right,
                     size = config.IsVertical ? childResult.Rect.Height : childResult.Rect.Width,
@@ -82,57 +133,19 @@ namespace Squared.PRGUI.NewEngine {
                 } else {
                     offset += totalSize;
                 }
-
-                childResult.Pass2ParentComplete = true;
             }
-
-            if (currentRunIndex >= 0) {
-                ref var currentRun = ref Run(currentRunIndex);
-                extent += config.IsVertical ? currentRun.MaxOuterWidth : currentRun.MaxOuterHeight;
-            }
-
-            if (numForcedBreaks <= 0)
-                result.FirstRunIndex = oldFirstRun;
-            else
-                result.FirstRunIndex = firstRunIndex;
-
-            // Now that we computed our new runs with wrapping applied we can expand all our children appropriately
-            Pass2b_ExpandChildren(ref control, ref result, depth, processWrap);
-
-            // And once they're expanded any children with wrapping enabled know their size and can wrap their own children
-            if (encounteredWrapChild) {
-                foreach (var ckey in Children(control.Key)) {
-                    ref var child = ref this[ckey];
-                    ref var childResult = ref Result(ckey);
-                    Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1, true);
-                    Pass2_ExpandAndProcessMesses(ref child, ref childResult, depth + 1, true);
-                }
-            }
-
-            result.Pass2Complete = true;
-
-            var oldSize = result.Rect.Size;
-            if (config.IsVertical)
-                result.Rect.Width = control.Width.Constrain(Math.Max(result.Rect.Width, extent + control.Padding.X), true);
-            else
-                result.Rect.Height = control.Height.Constrain(Math.Max(result.Rect.Height, extent + control.Padding.Y), true);
-            // Return the amount our size changed so that our caller can update the run we're in
-            return result.Rect.Size - oldSize;
         }
 
-        private Vector2 Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result, int depth, bool processWrap) {
+        private Vector2 Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
             if (control.FirstChild.IsInvalid)
                 return default;
 
             ref readonly var config = ref control.Config;
 
-            if (config.IsWrap && !processWrap)
-                return default;
+            if (result.Pass2bProcessed)
+                throw new Exception("Pass 2b already ran");
 
-            if (result.Pass2bComplete)
-                return default;
-
-            result.Pass2bComplete = true;
+            result.Pass2bProcessed = true;
 
             var oldSize = result.Rect.Size;
             bool needRecalcX = false, needRecalcY = false;
@@ -173,7 +186,7 @@ namespace Squared.PRGUI.NewEngine {
 
                 ;
 
-                for (int pass = 0; pass < 3; pass++) {
+                for (int pass = 0; pass < 10; pass++) {
                     if (countX < 1)
                         xSpace = 0;
                     if (countY < 1)
@@ -249,15 +262,9 @@ namespace Squared.PRGUI.NewEngine {
                     ySpace = newYSpace;
                 }
 
-                // FIXME: Find a way to do this without doing another pass over the run
-                foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
-                    ref var child = ref this[ckey];
-                    ref var childResult = ref Result(ckey);
-                    Pass2_ExpandAndProcessMesses(ref child, ref childResult, depth + 1, false);
-                }
+                /*
 
                 // I think the outer recursion in Pass2 handles this now
-                /*
                 // HACK: It would be ideal if we could do this in the previous loop
                 foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                     ref var child = ref this[ckey];

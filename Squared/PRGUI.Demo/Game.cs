@@ -256,7 +256,7 @@ namespace PRGUI.Demo {
                 }
             }
 
-            if (true)
+            if (false)
                 BuildUI();
             else
                 BuildSimpleUI();
@@ -287,8 +287,9 @@ namespace PRGUI.Demo {
 
             var colBox = cb.NewGroup(
                 layoutFlags: ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
-                containerFlags: ControlFlags.Container_Column | ControlFlags.Container_Align_Start
+                containerFlags: ControlFlags.Container_Column | ControlFlags.Container_Align_Start | ControlFlags.Container_No_Expansion
             );
+            colBox.Control.Appearance.BackgroundColor = Color.Blue * 0.33f;
             colBox.Text("Text 5");
             colBox.Text("Text 6")
                 .Control.AutoSizeIsMaximum = false;
@@ -300,6 +301,23 @@ namespace PRGUI.Demo {
                 dd.Items.Add(i.ToString());
 
             colBox.Add(dd);
+
+            var subBox = colBox.NewGroup(
+                layoutFlags: ControlFlags.Layout_Fill,
+                containerFlags: ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start | ControlFlags.Container_No_Expansion
+            );
+            subBox.Control.Appearance.BackgroundColor = Color.Red * 0.4f;
+            subBox.Text("Text 7");
+            subBox.Text("Text 8")
+                .SetAutoSize(false, true);
+            subBox.Text("Text 9")
+                .SetFixedSize(1024, null)
+                .SetAutoSize(false, true);
+            subBox.Text("Text 10 should wrap")
+                .SetFixedSize(1024, null)
+                .SetAutoSize(false, true);
+            subBox.Text("Text 11")
+                .SetAutoSize(false, true);
 
             Context.Controls.Add(topLevel);
         }

@@ -5,6 +5,13 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Squared.PRGUI.NewEngine.Enums {
+    internal enum LayoutPhase { 
+        Pass1_NoWrap,
+        Pass1b_Wrap,
+        Pass2,
+        Pass3
+    }
+
     /// <summary>
     /// NOTE: While this is a flags enum most flags in a category are mutually exclusive
     /// </summary>

@@ -15,7 +15,7 @@ using System.IO;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private BoxRecord Invalid = new BoxRecord {
+        private static BoxRecord Invalid = new BoxRecord {
         };
 
         private int Version, _Count, _RunCount;
@@ -31,6 +31,46 @@ namespace Squared.PRGUI.NewEngine {
         // The worst case size is one run per control, but in practice we will usually have a much smaller number
         //  of runs, which means it might be beneficial to grow this buffer separately
         private LayoutRun[] RunBuffer = new LayoutRun[Capacity];
+
+        // FIXME: Improve this
+        private Queue<ControlKey> WrapQueue = new Queue<ControlKey>(Capacity),
+            Pass2Queue = new Queue<ControlKey>();
+
+        private Queue<Queue<ControlKey>> WrapChildQueues = new Queue<Queue<ControlKey>>(32);
+
+        /*
+        private int ProcessingQueueEnd = 0, ProcessingQueueCursor = 0;
+        private ControlKeyDefaultInvalid[] ProcessingQueue = new ControlKeyDefaultInvalid[Capacity];
+
+        private void QueueFrontUnordered (ControlKeyDefaultInvalid key) {
+            if (ProcessingQueue[ProcessingQueueCursor].IndexPlusOne == 0) {
+                ProcessingQueue[ProcessingQueueCursor].IndexPlusOne = key.IndexPlusOne;
+                return;
+            }
+
+            var newCursor = ProcessingQueueCursor--;
+            if (newCursor < 0)
+                newCursor = ProcessingQueue.Length - 1;
+            // FIXME: Detect lapping
+
+            if (ProcessingQueue[newCursor].IndexPlusOne > 0)
+                throw new Exception($"Data already stored in queue at offset {newCursor}: {ProcessingQueue[newCursor]}");
+            ProcessingQueue[newCursor].IndexPlusOne = key.IndexPlusOne;
+        }
+
+        private void QueueBack (ControlKeyDefaultInvalid key) {
+            var newEnd = ProcessingQueueEnd + 1;
+            if (newEnd >= ProcessingQueue.Length)
+                newEnd = 0;
+
+            if (newEnd >= ProcessingQueueCursor)
+                throw new Exception($"Processing queue end lapped the cursor ({newEnd} >= {ProcessingQueueCursor})");
+
+            if (ProcessingQueue[newEnd].IndexPlusOne > 0)
+                throw new Exception($"Data already stored in queue at offset {newEnd}: {ProcessingQueue[newEnd]}");
+            ProcessingQueue[newEnd].IndexPlusOne = key.IndexPlusOne;
+        }
+        */
 
 #if DEBUG
         internal Control[] Controls = new Control[Capacity];

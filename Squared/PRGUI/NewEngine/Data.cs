@@ -359,7 +359,7 @@ namespace Squared.PRGUI.NewEngine {
         internal bool Break;
 #endif
         // FIXME: Remove all these
-        internal bool Pass1Complete, Pass2ParentComplete, Pass2Complete, Pass2bComplete;
+        internal bool Pass1Processed, Pass2Processed, Pass2bProcessed;
 
         /// <summary>
         /// The display/layout rectangle of the control.

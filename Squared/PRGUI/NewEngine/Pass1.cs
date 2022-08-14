@@ -27,8 +27,15 @@ namespace Squared.PRGUI.NewEngine {
 
             // Wrapped box subtrees are processed after all normal boxes
             var isWrapped = ((config.ChildFlags & ContainerFlags.Wrap) != default);
-            if (isWrapped && !processWrap)
+            if (isWrapped && !processWrap) {
+                WrapQueue.Enqueue(control.Key);
                 return;
+            }
+
+            if (result.Pass1Processed)
+                throw new Exception("Visited twice");
+
+            Pass2Queue.Enqueue(control.Key);
 
             float padX = control.Padding.X, padY = control.Padding.Y, p = 0;
             var currentRunIndex = -1;
@@ -36,14 +43,7 @@ namespace Squared.PRGUI.NewEngine {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
 
-                // If we already processed this control in the initial non-wrap pass, skip it
-                if (childResult.Pass1Complete)
-                    continue;
-
-                // Make sure we flag it as done otherwise
-                childResult.Pass1Complete = true;
-
-                Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1, processWrap);
+                Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1, false);
 
                 float outerW = childResult.Rect.Width + child.Margins.X,
                     outerH = childResult.Rect.Height + child.Margins.Y;
@@ -86,7 +86,7 @@ namespace Squared.PRGUI.NewEngine {
 
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
-            result.Pass1Complete = true;
+            result.Pass1Processed = true;
         }
 
         private ref LayoutRun SelectRunForBuildingPass (ref int currentRunIndex, bool isBreak) {

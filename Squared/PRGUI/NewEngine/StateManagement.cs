@@ -52,7 +52,7 @@ namespace Squared.PRGUI.NewEngine {
                 control.Config.ForceBreak;
             result.Depth = depth;
 #endif
-            result.Pass1Complete = result.Pass2ParentComplete = result.Pass2Complete = result.Pass2bComplete = false;
+            result.Pass1Processed = result.Pass2bProcessed = result.Pass2Processed = false;
             result.Version = Version;
             _Count = Math.Max(control.Key.ID + 1, _Count);
         }

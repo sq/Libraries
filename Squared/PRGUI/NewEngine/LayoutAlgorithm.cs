@@ -50,9 +50,16 @@ namespace Squared.PRGUI.NewEngine {
         internal void PerformLayout (ref BoxRecord root) {
             ref var result = ref UnsafeResult(root.Key);
             Pass1_ComputeSizesAndBuildRuns(ref root, ref result, 0, false);
-            Pass2_ExpandAndProcessMesses(ref root, ref result, 0, false);
-            Pass1_ComputeSizesAndBuildRuns(ref root, ref result, 0, true);
-            Pass2_ExpandAndProcessMesses(ref root, ref result, 0, true);
+            while (WrapQueue.Count > 0) {
+                var wrapKey = WrapQueue.Dequeue();
+                // FIXME: Depth
+                Pass1_ComputeSizesAndBuildRuns(ref UnsafeItem(wrapKey), ref UnsafeResult(wrapKey), 1, true);
+            }
+            while (Pass2Queue.Count > 0) {
+                var key2 = Pass2Queue.Dequeue();
+                // FIXME: Depth
+                Pass2_ExpandAndProcessMesses(ref UnsafeItem(key2), ref UnsafeResult(key2), 1);
+            }
             Pass3_Arrange(ref root, ref result);
             ;
         }
