@@ -357,7 +357,12 @@ namespace Squared.PRGUI.NewEngine {
         /// <summary>
         /// The index of the first run contained by this control, if any.
         /// </summary>
-        internal int FirstRunIndex, FloatingRunIndex;
+        internal int FirstRunIndex;
+        /// <summary>
+        /// The index of the run that contains all this control's floating/stacked children.
+        /// </summary>
+        internal int FloatingRunIndex;
+        internal int ParentRunIndex;
 #if DEBUG
         internal int Depth;
         internal bool Break;
@@ -389,10 +394,6 @@ namespace Squared.PRGUI.NewEngine {
         ///  effect. You can use this to influence control auto-size behavior.
         /// </summary>
         public Vector2 AvailableSpace;
-        /// <summary>
-        /// The control's position within the current run (X for row layout, Y for column layout)
-        /// </summary>
-        internal float PositionInRun;
 
         public override string ToString () {
 #if DEBUG
@@ -414,6 +415,7 @@ namespace Squared.PRGUI.NewEngine {
         public ControlKeyDefaultInvalid First, Last;
         public int FlowCount, ExpandCountX, ExpandCountY, NextRunIndex;
         public float TotalWidth, TotalHeight, MaxOuterWidth, MaxOuterHeight;
+        public bool IsVertical;
 
         public override string ToString () {
             if (First.IsInvalid || Last.IsInvalid)

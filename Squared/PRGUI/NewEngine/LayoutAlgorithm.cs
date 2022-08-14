@@ -19,14 +19,16 @@ namespace Squared.PRGUI.NewEngine {
         ) {
             if (firstRunIndex < 0)
                 firstRunIndex = currentRunIndex;
-            if (run.First.IsInvalid)
+
+            if (run.First.IsInvalid) {
                 run.First = child.Key;
+                run.IsVertical = control.Config.IsVertical;
+            }
+
             run.Last = child.Key;
+            childResult.ParentRunIndex = currentRunIndex;
 
             ref readonly var childConfig = ref child.Config;
-            if (childConfig.IsStackedOrFloating)
-                return;
-
             float childOuterWidth = childResult.Rect.Width + child.Margins.X,
                 childOuterHeight = childResult.Rect.Height + child.Margins.Y;
 

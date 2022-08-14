@@ -59,9 +59,7 @@ namespace Squared.PRGUI.NewEngine {
             // HACK: Unfortunately, we have to build new runs entirely from scratch because modifying the existing ones
             //  in-place would be far too difficult
             // FIXME: Reclaim the existing runs
-            int oldFirstRun = result.FirstRunIndex, firstRunIndex = -1, currentRunIndex = -1, numForcedWraps = 0,
-                oldFloatingRun = result.FloatingRunIndex;
-            // HACK
+            int currentRunIndex = -1, numForcedWraps = 0;
             result.FirstRunIndex = -1;
             result.FloatingRunIndex = -1;
 
@@ -105,7 +103,7 @@ namespace Squared.PRGUI.NewEngine {
                 UpdateRunCommon(
                     ref run, in control, ref result,
                     in child, ref childResult,
-                    ref firstRunIndex, currentRunIndex
+                    ref result.FirstRunIndex, currentRunIndex
                 );
 
                 if (previousRunIndex != currentRunIndex) {
@@ -124,14 +122,6 @@ namespace Squared.PRGUI.NewEngine {
             if (currentRunIndex >= 0) {
                 ref var currentRun = ref Run(currentRunIndex);
                 extent += config.IsVertical ? currentRun.MaxOuterWidth : currentRun.MaxOuterHeight;
-            }
-
-            // Reuse the original run if we didn't make any changes. Is this even necessary?
-            if (numForcedWraps <= 0) {
-                result.FirstRunIndex = oldFirstRun;
-                result.FloatingRunIndex = oldFloatingRun;
-            } else {
-                result.FirstRunIndex = firstRunIndex;
             }
 
             // Now that we computed our new runs with wrapping applied we can expand all our children appropriately
@@ -301,9 +291,24 @@ namespace Squared.PRGUI.NewEngine {
             control.Width.Constrain(ref width, true);
             control.Height.Constrain(ref height, true);
             // HACK: Never shrink after recalculation (is this correct?)
+            var oldSize = result.Rect.Size;
             result.Rect.Width = Math.Max(width, result.Rect.Width);
             result.Rect.Height = Math.Max(height, result.Rect.Height);
             result.ContentSize = new Vector2(cw, ch);
+
+            // If we have a parent, resize the run that contains us. This is essential for the parent's size calculations
+            //  to end up being correct.
+            if (result.ParentRunIndex >= 0) {
+                ref var parentRun = ref Run(result.ParentRunIndex);
+                var sizeDelta = result.Rect.Size - oldSize;
+                if (parentRun.IsVertical) {
+                    parentRun.TotalWidth += sizeDelta.X;
+                } else {
+                    parentRun.TotalHeight += sizeDelta.Y;
+                }
+                parentRun.MaxOuterWidth = Math.Max(parentRun.MaxOuterWidth, result.Rect.Width + control.Margins.X);
+                parentRun.MaxOuterHeight = Math.Max(parentRun.MaxOuterHeight, result.Rect.Height + control.Margins.Y);
+            }
         }
     }
 }

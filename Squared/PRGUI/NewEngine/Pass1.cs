@@ -47,7 +47,6 @@ namespace Squared.PRGUI.NewEngine {
                     ref currentRunIndex
                 );
 
-                childResult.PositionInRun = p;
                 p += config.IsVertical ? outerW : outerH;
 
                 // At a minimum we should be able to hold all our children if they were stacked on each other
