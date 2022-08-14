@@ -237,6 +237,14 @@ namespace Squared.Render.Convenience {
             ScissorTestEnable = true
         };
 
+        public static readonly DepthStencilState StencilErase = new DepthStencilState {
+            StencilEnable = true,
+            StencilFunction = CompareFunction.Always,
+            StencilPass = StencilOperation.Replace,
+            ReferenceStencil = 0,
+            DepthBufferEnable = false
+        };
+
         public static readonly DepthStencilState StencilWrite = new DepthStencilState {
             StencilEnable = true,
             StencilFunction = CompareFunction.Always,
