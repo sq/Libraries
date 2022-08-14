@@ -5,21 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Squared.PRGUI.NewEngine.Enums {
-    internal enum LayoutPhase { 
-        /// <summary>
-        /// Bottom-up: compute required size
-        /// </summary>
-        Pass1,
-        /// <summary>
-        /// Top-down: break and expand children
-        /// </summary>
-        Pass2,
-        /// <summary>
-        /// Top-down: arrange children
-        /// </summary>
-        Pass3
-    }
-
     /// <summary>
     /// NOTE: While this is a flags enum most flags in a category are mutually exclusive
     /// </summary>
@@ -173,6 +158,7 @@ namespace Squared.PRGUI.NewEngine.Enums {
         RTL = ContainerFlag.Layout_Row | ContainerFlag.Layout_Reverse,
         Upward = ContainerFlag.Layout_Column | ContainerFlag.Layout_Reverse,
 
+        [Obsolete]
         MASK = Row | Column | ContainerFlag.Layout_Reverse,
     }
 
@@ -182,6 +168,7 @@ namespace Squared.PRGUI.NewEngine.Enums {
         End = ContainerFlag.Align_End,
         Justify = ContainerFlag.Align_Justify,
 
+        [Obsolete]
         MASK = Start | Center | End | Justify,
     }
 
@@ -245,6 +232,7 @@ namespace Squared.PRGUI.NewEngine.Enums {
         /// </summary>
         PreventCrush = PreventCrush_X | PreventCrush_Y,
 
+        [Obsolete]
         MASK = Wrap | OverflowHidden | OverflowShown | ExpandForContent | PreventCrush | Squish,
     }
 

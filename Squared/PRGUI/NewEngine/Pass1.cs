@@ -47,33 +47,35 @@ namespace Squared.PRGUI.NewEngine {
                     ref currentRunIndex
                 );
 
-                p += config.IsVertical ? outerW : outerH;
+                if (!child.Config.IsFloating) {
+                    p += config.IsVertical ? outerW : outerH;
 
-                // At a minimum we should be able to hold all our children if they were stacked on each other
-                if (expandX)
-                    result.Rect.Width = Math.Max(
-                        result.Rect.Width, 
-                        (child.Config.Flags & BoxFlags.CollapseMargins) != default 
-                            ? Math.Max(outerW, childResult.Rect.Width + padX)
-                            : outerW + padX
-                    );
+                    // At a minimum we should be able to hold all our children if they were stacked on each other
+                    if (expandX)
+                        result.Rect.Width = Math.Max(
+                            result.Rect.Width, 
+                            (child.Config.Flags & BoxFlags.CollapseMargins) != default 
+                                ? Math.Max(outerW, childResult.Rect.Width + padX)
+                                : outerW + padX
+                        );
 
-                if (expandY)
-                    result.Rect.Height = Math.Max(
-                        result.Rect.Height, 
-                        (child.Config.Flags & BoxFlags.CollapseMargins) != default 
-                            ? Math.Max(outerH, childResult.Rect.Height + padY)
-                            : outerH + padY
-                    );
+                    if (expandY)
+                        result.Rect.Height = Math.Max(
+                            result.Rect.Height, 
+                            (child.Config.Flags & BoxFlags.CollapseMargins) != default 
+                                ? Math.Max(outerH, childResult.Rect.Height + padY)
+                                : outerH + padY
+                        );
 
-                // If we're not in wrapped mode, we will try to expand to hold our largest run
-                // FIXME: Collapse margins
-                if (!config.IsWrap || child.Config.IsStacked) {
-                    if (child.Config.IsStacked || (config.IsVertical && expandY))
-                        result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
+                    // If we're not in wrapped mode, we will try to expand to hold our largest run
+                    // FIXME: Collapse margins
+                    if (!config.IsWrap || child.Config.IsStacked) {
+                        if (child.Config.IsStacked || (config.IsVertical && expandY))
+                            result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
 
-                    if (child.Config.IsStacked || (!config.IsVertical && expandX))
-                        result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
+                        if (child.Config.IsStacked || (!config.IsVertical && expandX))
+                            result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
+                    }
                 }
             }
 

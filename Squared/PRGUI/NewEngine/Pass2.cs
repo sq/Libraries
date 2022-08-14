@@ -86,7 +86,7 @@ namespace Squared.PRGUI.NewEngine {
                         ? size
                         : totalSize;
 
-                var forcedWrap = (offset + wrappingExtent) > capacity;
+                var forcedWrap = !childConfig.IsStackedOrFloating && ((offset + wrappingExtent) > capacity);
                 if (forcedWrap)
                     numForcedWraps++;
 

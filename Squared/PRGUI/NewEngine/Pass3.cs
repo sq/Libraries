@@ -55,6 +55,8 @@ namespace Squared.PRGUI.NewEngine {
                     var childOuterSize = childResult.Rect.Size + childMargins.Size;
 
                     childConfig.GetRunAlignmentF(out float xChildAlign, out float yChildAlign);
+                    if (child.Key.ID == 3)
+                        ;
 
                     if (childConfig.IsStackedOrFloating) {
                         if (childConfig.IsFloating) {
@@ -101,7 +103,10 @@ namespace Squared.PRGUI.NewEngine {
                     Pass3_Arrange(ref child, ref childResult, depth + 1);
                 }
 
-                if (config.IsVertical) {
+                // HACK: The floating run's contents should not change the position of other controls
+                if (runIndex == result.FloatingRunIndex)
+                    ;
+                else if (config.IsVertical) {
                     x += run.MaxOuterWidth;
                     y = 0;
                 } else {

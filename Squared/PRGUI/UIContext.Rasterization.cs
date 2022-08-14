@@ -176,7 +176,12 @@ namespace Squared.PRGUI {
                 var obscureText = obscuredByFocus && !focusChain.Contains(record.Parent);
                 if (!obscureText && (font != null)) {
                     LayoutTreeBuilder.Clear();
-                    LayoutTreeBuilder.AppendFormat("{0} {1} {2},{3}", record.Key.ID, record.Tag, Math.Floor(result.Rect.Width), Math.Floor(result.Rect.Height));
+#if DEBUG
+                    var tagText = record.DebugLabel ?? record.Tag.ToString();
+#else
+                    var tagText = record.Tag;
+#endif
+                    LayoutTreeBuilder.AppendFormat("{0} {1} {2},{3}", record.Key.ID, tagText, Math.Floor(result.Rect.Width), Math.Floor(result.Rect.Height));
                     var layout = font.LayoutString(LayoutTreeBuilder, color: textColor.ToColor());
                     var textScale = (obscuredByFocus ? 0.6f : 1f);
                     var scale = Arithmetic.Clamp(
@@ -199,7 +204,7 @@ namespace Squared.PRGUI {
                 RasterizeLayoutTree(ref renderer, font, ref child, focusChain);
             }
 #endif
-        }
+                }
 
         public void Rasterize (BatchGroup container, int layer, BatchGroup prepassContainer, int prepassLayer, Color? clearColor = null) {
             FrameIndex++;

@@ -64,6 +64,8 @@ namespace Squared.PRGUI.NewEngine {
             result.Break = control.OldFlags.IsFlagged(ControlFlags.Layout_ForceBreak) ||
                 control.Config.ForceBreak;
             result.Depth = depth;
+            var dl = Controls[control.Key.ID]?.DebugLabel;
+            control.DebugLabel = dl ?? control.DebugLabel;
 #endif
             result.Pass1Ready = result.Pass1Processed = result.Pass2Processed = false;
             result.SizeSetByParent = false;

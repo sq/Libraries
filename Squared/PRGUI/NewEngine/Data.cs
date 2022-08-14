@@ -162,7 +162,6 @@ namespace Squared.PRGUI.NewEngine {
                 _BoxFlags |= BoxFlag.Break;
         }
 
-        [Unserialized]
         public uint AllFlags {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => ((uint)_ContainerFlags << 0) | ((uint)_BoxFlags << 16);
@@ -173,6 +172,7 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
+        [Unserialized]
         public ChildDirection ChildDirection {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (ChildDirection)_ContainerFlags & ChildDirection.MASK;
@@ -181,6 +181,7 @@ namespace Squared.PRGUI.NewEngine {
                 (((ChildDirection)_ContainerFlags & ~ChildDirection.MASK) | value);
         }
 
+        [Unserialized]
         public ChildAlignment ChildAlign {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (ChildAlignment)_ContainerFlags & ChildAlignment.MASK;
@@ -189,6 +190,7 @@ namespace Squared.PRGUI.NewEngine {
                 (((ChildAlignment)_ContainerFlags & ~ChildAlignment.MASK) | value);
         }
 
+        [Unserialized]
         public ContainerFlags ChildFlags {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (ContainerFlags)_ContainerFlags & ContainerFlags.MASK;
@@ -197,6 +199,7 @@ namespace Squared.PRGUI.NewEngine {
                 (((ContainerFlags)_ContainerFlags & ~ContainerFlags.MASK) | value);
         }
 
+        [Unserialized]
         public BoxAnchorMode Anchor {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (BoxAnchorMode)_BoxFlags & BoxAnchorMode.Fill;
@@ -205,6 +208,7 @@ namespace Squared.PRGUI.NewEngine {
                 (((BoxAnchorMode)_BoxFlags & ~BoxAnchorMode.Fill) | value);
         }
 
+        [Unserialized]
         public BoxFlags Flags {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (BoxFlags)_BoxFlags & BoxFlags.MASK;
@@ -318,6 +322,10 @@ namespace Squared.PRGUI.NewEngine {
         // TODO: Add a scroll offset value so that Control doesn't need a display offset anymore
         public Vector2 FloatingPosition;
         public Layout.LayoutTags Tag;
+
+#if DEBUG
+        public string DebugLabel;
+#endif
 
         internal ControlFlags _OldFlags;
         internal ControlFlags OldFlags {
