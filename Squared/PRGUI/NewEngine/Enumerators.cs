@@ -10,6 +10,7 @@ using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
+        // TODO: Combine all of these into single hybrid enumerable/enumerator types to reduce the overhead of constructing them
         public unsafe struct SiblingEnumerator : IEnumerator<ControlKey> {
             public readonly LayoutEngine Engine;
             public readonly ControlKey FirstItem;
@@ -79,17 +80,19 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-        public struct SiblingsEnumerable : IEnumerable<ControlKey> {
+        public readonly struct SiblingsEnumerable : IEnumerable<ControlKey> {
             public readonly LayoutEngine Engine;
             public readonly ControlKey FirstItem;
             public readonly ControlKey? LastItem;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal SiblingsEnumerable (LayoutEngine engine, ControlKey firstItem, ControlKey? lastItem) {
                 Engine = engine;
                 FirstItem = firstItem;
                 LastItem = lastItem;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public SiblingEnumerator GetEnumerator () {
                 return new SiblingEnumerator(Engine, FirstItem, LastItem);
             }
@@ -103,17 +106,19 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-        public struct ChildrenEnumerable : IEnumerable<ControlKey> {
+        public readonly struct ChildrenEnumerable : IEnumerable<ControlKey> {
             public readonly LayoutEngine Engine;
             public readonly ControlKey Parent;
             public readonly bool Reverse;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal ChildrenEnumerable (LayoutEngine engine, ControlKey parent, bool reverse) {
                 Engine = engine;
                 Parent = parent;
                 Reverse = reverse;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public SiblingEnumerator GetEnumerator () {
                 ref var rec = ref Engine[Parent];
                 return new SiblingEnumerator(
@@ -142,6 +147,7 @@ namespace Squared.PRGUI.NewEngine {
             private int _FloatingRun;
             private int Version;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public RunEnumerator (LayoutEngine engine, ControlKey parent) {
                 Engine = engine;
                 Version = engine.Version;
@@ -205,15 +211,17 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-        public struct RunEnumerable : IEnumerable<int> {
+        public readonly struct RunEnumerable : IEnumerable<int> {
             public readonly LayoutEngine Engine;
             public readonly ControlKey Parent;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal RunEnumerable (LayoutEngine engine, ControlKey parent) {
                 Engine = engine;
                 Parent = parent;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public RunEnumerator GetEnumerator () {
                 return new RunEnumerator(Engine, Parent);
             }

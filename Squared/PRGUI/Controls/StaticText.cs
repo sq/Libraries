@@ -273,12 +273,12 @@ namespace Squared.PRGUI.Controls {
 
             if (AutoSizeWidth) {
                 // FIXME: This is how it previously worked, but it might make sense for autosize to override Fixed
-                if (AutoSizeIsMaximum && !width.Maximum.HasValue && !width.Fixed.HasValue)
+                if (AutoSizeIsMaximum && !width.HasMaximum && !width.HasFixed)
                     width.Fixed = AutoSizeComputedWidth ?? width.Maximum;
                 width.Minimum = ControlDimension.Max(width.Minimum, AutoSizeComputedWidth);
             }
             if (AutoSizeHeight) {
-                if (AutoSizeIsMaximum && !height.Fixed.HasValue)
+                if (AutoSizeIsMaximum && !height.HasFixed)
                     height.Maximum = AutoSizeComputedHeight ?? height.Maximum;
                 height.Minimum = ControlDimension.Max(height.Minimum, AutoSizeComputedHeight);
             }
@@ -686,7 +686,7 @@ namespace Squared.PRGUI.Controls {
                 // If the control's height is being set by a size constraint even though autosize is enabled (ugh, 
                 //  don't do this), then we don't want to do vertical centering based on the autosize value since
                 //  that will look completely wrong
-                heightGovernedByAutoSize = !height.Fixed.HasValue && ((height.Maximum ?? 0) > AutoSizeComputedHeight);
+                heightGovernedByAutoSize = !height.HasFixed && ((height.Maximum ?? 0) > AutoSizeComputedHeight);
             }
 
             if (heightGovernedByAutoSize) {

@@ -192,8 +192,8 @@ namespace Squared.PRGUI.NewEngine {
                         ref var childResult = ref Result(ckey);
                         var margins = child.Margins;
                         ref readonly var childConfig = ref child.Config;
-                        bool expandChildX = childConfig.FillRow && !child.Width.Fixed.HasValue,
-                            expandChildY = childConfig.FillColumn && !child.Height.Fixed.HasValue;
+                        bool expandChildX = childConfig.FillRow && !child.Width.HasFixed,
+                            expandChildY = childConfig.FillColumn && !child.Height.HasFixed;
                         float amountX = countX > 0 ? xSpace / countX : 0, amountY = countY > 0 ? ySpace / countY : 0;
 
                         if (childConfig.IsStackedOrFloating) {

@@ -1508,8 +1508,8 @@ namespace PRGUI.Demo {
                     if (HighlightRecord.HasValue) {
                         if ((Mouse.PreviousState.LeftButton == ButtonState.Released) && (Mouse.CurrentState.LeftButton == ButtonState.Pressed)) {
                             ref var item = ref Context.Engine[HighlightRecord.Value];
-                            item.Width.Maximum = item.Width.Maximum.HasValue ? (float?)null : 200;
-                            item.Height.Maximum = item.Height.Maximum.HasValue ? (float?)null : 200;
+                            item.Width.Maximum = item.Width.HasMaximum ? (float?)null : 200;
+                            item.Height.Maximum = item.Height.HasMaximum ? (float?)null : 200;
                         } else if ((Mouse.PreviousState.RightButton == ButtonState.Released) && (Mouse.CurrentState.RightButton == ButtonState.Pressed)) {
                             Console.WriteLine($"Deleting {HighlightRecord}");
                             Context.Engine.Remove(HighlightRecord.Value);

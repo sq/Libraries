@@ -298,7 +298,7 @@ namespace Squared.PRGUI.Controls {
             //  inside us to make us taller.
             if (SuppressChildLayout && MostRecentFullSize.HasValue) {
                 if (LockWidthWhileCollapsed) {
-                    if (width.Minimum.HasValue)
+                    if (width.HasMinimum)
                         width.Minimum = Math.Max(width.Minimum.Value, MostRecentFullSize.Value.Width);
                     else
                         width.Minimum = MostRecentFullSize?.Width;

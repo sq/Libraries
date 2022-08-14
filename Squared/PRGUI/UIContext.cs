@@ -277,6 +277,7 @@ namespace Squared.PRGUI {
             return relayoutRequested;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private float? NegativeToNull (float value) => (value <= -1) ? (float?)null : value;
 
         private unsafe void SyncEngines () {

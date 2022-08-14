@@ -259,11 +259,11 @@ namespace Squared.PRGUI.Controls {
 
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
-            if (width.Minimum.HasValue)
+            if (width.HasMinimum)
                 width.Minimum = Math.Max(width.Minimum.Value, ControlMinimumWidth * sizeScale.X);
             else
                 width.Minimum = ControlMinimumWidth * sizeScale.X;
-            if (height.Minimum.HasValue)
+            if (height.HasMinimum)
                 height.Minimum = Math.Max(height.Minimum.Value, ControlMinimumHeight * sizeScale.Y);
             else
                 height.Minimum = ControlMinimumHeight * sizeScale.Y;
@@ -851,7 +851,7 @@ namespace Squared.PRGUI.Controls {
         private void CalculateScrollable (UIContext context) {
             context.UpdateSubtreeLayout(this);
             if (GetContentBounds(context, out Vector2 contentBounds))
-                Scrollable = (contentBounds.Y >= Height.Maximum) || (Height.Maximum == null);
+                Scrollable = (contentBounds.Y >= Height.Maximum) || !Height.HasMaximum;
         }
 
         StringBuilder TextBuilder = new StringBuilder();

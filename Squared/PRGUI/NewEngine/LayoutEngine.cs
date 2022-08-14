@@ -112,7 +112,7 @@ namespace Squared.PRGUI.NewEngine {
                 // FIXME: Because we are sharing IDs
                 // if (key.ID < 0 || key.ID >= _Count)
                 if ((key.ID < 0) || (key.ID >= Records.Length))
-                    throw new ArgumentOutOfRangeException("key");
+                    ThrowKeyOutOfRange();
                 // return ref Records[key.ID];
                 return ref UnsafeItem(key.ID);
             }
@@ -169,16 +169,19 @@ namespace Squared.PRGUI.NewEngine {
             return ref result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private RunEnumerable Runs (ControlKey parent) {
             Assert(!parent.IsInvalid);
             return new RunEnumerable(this, parent);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ChildrenEnumerable Children (ControlKey parent, bool reverse = false) {
             Assert(!parent.IsInvalid);
             return new ChildrenEnumerable(this, parent, reverse);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public SiblingsEnumerable Enumerate (ControlKey first, ControlKey? last = null) {
             Assert(!first.IsInvalid);
             return new SiblingsEnumerable(this, first, last);
@@ -192,7 +195,7 @@ namespace Squared.PRGUI.NewEngine {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref BoxLayoutResult Result (ControlKey key) {
             if ((key.ID < 0) || (key.ID >= Results.Length))
-                throw new ArgumentOutOfRangeException(nameof(key));
+                ThrowKeyOutOfRange();
             ref var result = ref Results[key.ID];
             // FIXME
             /*
@@ -204,10 +207,12 @@ namespace Squared.PRGUI.NewEngine {
 
         #region Diagnostic internals
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private void InvalidState () {
             throw new Exception("Invalid internal state");
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private void AssertionFailed (string message) {
             throw new Exception(
                 message != null
@@ -224,15 +229,18 @@ namespace Squared.PRGUI.NewEngine {
             AssertionFailed(message);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AssertNotRoot (ControlKey key) {
             Assert(!key.IsInvalid, "Invalid key");
             Assert(key.ID != 0, "Key must not be the root");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AssertNotEqual (ControlKey lhs, ControlKey rhs) {
             Assert(lhs != rhs, "Keys must not be equal");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AssertMasked (ControlFlags flags, ControlFlags mask) {
             Assert((flags & mask) == flags, "Flags must be compatible with mask");
         }

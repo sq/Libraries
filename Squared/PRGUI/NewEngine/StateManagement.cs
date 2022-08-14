@@ -8,10 +8,20 @@ using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void ThrowKeyOutOfRange () {
+            throw new ArgumentOutOfRangeException("key");
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void ThrowIndexOutOfRange () {
+            throw new ArgumentOutOfRangeException("index");
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref LayoutRun Run (int index) {
             if ((index < 0) || (index >= _RunCount))
-                throw new ArgumentOutOfRangeException(nameof(index));
+                ThrowIndexOutOfRange();
             return ref RunBuffer[index];
         }
 

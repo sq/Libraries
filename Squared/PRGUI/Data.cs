@@ -863,8 +863,14 @@ namespace Squared.PRGUI {
             return lhs;
         }
 
+        public bool HasMinimum {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (Flags & Flag.Minimum) == Flag.Minimum;
+        }
+
         public float? Minimum {
-            get => (Flags & Flag.Minimum) == Flag.Minimum ? _Minimum : (float?)null;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => HasMinimum ? _Minimum : (float?)null;
             set {
                 if (value == null) {
                     Flags &= ~Flag.Minimum;
@@ -876,8 +882,14 @@ namespace Squared.PRGUI {
             }
         }
 
+        public bool HasMaximum {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (Flags & Flag.Maximum) == Flag.Maximum;
+        }
+
         public float? Maximum {
-            get => (Flags & Flag.Maximum) == Flag.Maximum ? _Maximum : (float?)null;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => HasMaximum ? _Maximum : (float?)null;
             set {
                 if (value == null) {
                     Flags &= ~Flag.Maximum;
@@ -889,8 +901,14 @@ namespace Squared.PRGUI {
             }
         }
 
+        public bool HasFixed {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (Flags & Flag.Fixed) == Flag.Fixed;
+        }
+
         public float? Fixed {
-            get => (Flags & Flag.Fixed) == Flag.Fixed ? _Fixed : (float?)null;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => HasFixed ? _Fixed : (float?)null;
             set {
                 if (value == null) {
                     Flags &= ~Flag.Fixed;
@@ -902,19 +920,33 @@ namespace Squared.PRGUI {
             }
         }
 
-        internal float EffectiveMinimum => Math.Min(Maximum ?? float.MaxValue, Fixed ?? Minimum ?? 0);
+        internal float EffectiveMinimum {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                float a = (Flags & Flag.Maximum) != default ? _Maximum : float.MaxValue,
+                    b = (Flags & Flag.Fixed) != default ? _Fixed : (
+                        (Flags & Flag.Minimum) != default ? _Minimum : 0
+                    );
+                return Math.Min(a, b);
+            }
+        }
 
         public ControlDimension AutoComputeFixed () {
-            if ((Maximum == Minimum) && Maximum.HasValue)
+            if (
+                (_Maximum == _Minimum) && 
+                ((Flags & Flag.Maximum) != default) &&
+                ((Flags & Flag.Minimum) != default)
+            )
                 return new ControlDimension {
-                    Minimum = Minimum,
-                    Maximum = Maximum,
-                    Fixed = Fixed ?? Maximum
+                    Minimum = _Minimum,
+                    Maximum = _Maximum,
+                    Fixed = Fixed ?? _Maximum
                 };
 
             return this;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Scale (ref ControlDimension value, float scale) {
             value._Minimum *= scale;
             value._Maximum *= scale;
@@ -975,13 +1007,13 @@ namespace Squared.PRGUI {
         public void Constrain (ref float? size, bool applyFixed, out float delta) {
             var previous = size;
             if (size.HasValue) {
-                if (Minimum.HasValue)
-                    size = Math.Max(Minimum.Value, size.Value);
-                if (Maximum.HasValue)
-                    size = Math.Min(Maximum.Value, size.Value);
+                if ((Flags & Flag.Minimum) != default)
+                    size = Math.Max(_Minimum, size.Value);
+                if ((Flags & Flag.Maximum) != default)
+                    size = Math.Min(_Maximum, size.Value);
             }
-            if (applyFixed && Fixed.HasValue)
-                size = Fixed;
+            if (applyFixed && (Flags & Flag.Fixed) != default)
+                size = _Fixed;
 
             if (previous.HasValue)
                 delta = size.Value - previous.Value;
@@ -1025,8 +1057,12 @@ namespace Squared.PRGUI {
             return temp.Value;
         }
 
-        public bool HasValue => (Flags != default);
+        public bool HasValue {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (Flags != default);
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator ControlDimension (float fixedSize) {
             return new ControlDimension { Fixed = fixedSize };
         }

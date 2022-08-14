@@ -808,7 +808,7 @@ namespace Squared.PRGUI {
 
             GetSizeConstraints(this, ref context, out var width, out var height);
 
-            var actualLayoutFlags = ComputeLayoutFlags(width.Fixed.HasValue, height.Fixed.HasValue);
+            var actualLayoutFlags = ComputeLayoutFlags(width.HasFixed, height.HasFixed);
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetLayoutData(result, ref Layout.FloatingPosition, ref computedMargins, ref computedPadding);

@@ -42,9 +42,9 @@ namespace Squared.PRGUI.NewEngine {
 
             // FIXME: Collapse margins    
             run.FlowCount++;
-            if (childConfig.FillRow && !child.Width.Fixed.HasValue)
+            if (childConfig.FillRow && !child.Width.HasFixed)
                 run.ExpandCountX++;
-            if (childConfig.FillColumn && !child.Height.Fixed.HasValue)
+            if (childConfig.FillColumn && !child.Height.HasFixed)
                 run.ExpandCountY++;
             run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childOuterWidth);
             run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childOuterHeight);
