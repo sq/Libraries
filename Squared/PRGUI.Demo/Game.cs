@@ -276,6 +276,11 @@ namespace PRGUI.Demo {
                     Row = true,
                     Wrap = true,
                 },
+                Appearance = {
+                    Undecorated = true,
+                    BackgroundColor = Color.Green * 0.33f,
+                },
+                Padding = new Margins(8)
             };
             var cb = new ContainerBuilder(topLevel, true);
             cb.Text("Text 1 should expand")
@@ -289,6 +294,7 @@ namespace PRGUI.Demo {
                 layoutFlags: ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                 containerFlags: ControlFlags.Container_Column | ControlFlags.Container_Align_Start | ControlFlags.Container_No_Expansion
             );
+            colBox.Control.Padding = new Margins(8);
             colBox.Control.Appearance.BackgroundColor = Color.Blue * 0.33f;
             colBox.Text("Text 5");
             colBox.Text("Text 6")
@@ -302,6 +308,7 @@ namespace PRGUI.Demo {
 
             colBox.Add(dd);
 
+            /*
             var subBox = colBox.NewGroup(
                 layoutFlags: ControlFlags.Layout_Fill,
                 containerFlags: ControlFlags.Container_Row | ControlFlags.Container_Break_Auto | 
@@ -319,8 +326,18 @@ namespace PRGUI.Demo {
                 .SetAutoSize(false, true);
             subBox.Text("Text 11")
                 .SetAutoSize(false, true);
+            */
+
+            var floatingBox = new Window {
+                Title = "Floating box"
+            };
+            var fb = new ContainerBuilder(floatingBox, true);
+            fb.Text("Line 1");
+            fb.Text("Line 2").SetForceBreak(true);
+            fb.Text("Line 2 text 2");
 
             Context.Controls.Add(topLevel);
+            Context.Controls.Add(floatingBox);
         }
 
         private void BuildUI () {

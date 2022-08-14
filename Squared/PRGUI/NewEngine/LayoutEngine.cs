@@ -33,8 +33,8 @@ namespace Squared.PRGUI.NewEngine {
         //  of runs, which means it might be beneficial to grow this buffer separately
         private LayoutRun[] RunBuffer = new LayoutRun[Capacity];
 
-        // FIXME: Improve this
-        private List<(ControlKey, int, LayoutPhase)> WorkQueue = new List<(ControlKey, int, LayoutPhase)>(Capacity);
+        private List<(ControlKey, int)> DeepestFirst = new List<(ControlKey, int)>(Capacity);
+        private List<(ControlKey, int)> TopDown = new List<(ControlKey, int)>(Capacity);
 
         /*
         private int ProcessingQueueEnd = 0, ProcessingQueueCursor = 0;

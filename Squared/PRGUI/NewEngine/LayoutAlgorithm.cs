@@ -49,47 +49,34 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         internal void PerformLayout (ref BoxRecord root) {
-            WorkQueue.Clear();
-            Pass0_BuildQueue(ref root, ref UnsafeResult(root.Key), 0);
+            TopDown.Clear();
+            DeepestFirst.Clear();
+            Pass0_BuildTables(ref root, ref UnsafeResult(root.Key), 0);
+            DeepestFirst.Sort(DeepestFirstSorter);
 
-            while (WorkQueue.Count > 0) {
-                WorkQueue.Sort(WorkQueueSorter);
-                int count = WorkQueue.Count;
-                for (int i = 0; i < count; i++) {
-                    var tup = WorkQueue[i];
-                    ref var item = ref UnsafeItem(tup.Item1);
-                    ref var result = ref UnsafeResult(tup.Item1);
-                    switch (tup.Item3) {
-                        case LayoutPhase.Pass1:
-                            Pass1_ComputeSizesAndBuildRuns(ref item, ref result, tup.Item2);
-                            break;
-                        case LayoutPhase.Pass2:
-                            Pass2_ExpandAndProcessMesses(ref item, ref result, tup.Item2);
-                            break;
-                        case LayoutPhase.Pass3:
-                            Pass3_Arrange(ref item, ref result);
-                            break;
-                    }
-                }
-                WorkQueue.RemoveRange(0, count);
-            }
+            foreach (var tup in DeepestFirst)
+                Pass1_ComputeSizesAndBuildRuns(ref UnsafeItem(tup.Item1), ref UnsafeResult(tup.Item1), tup.Item2);
+            foreach (var tup in TopDown)
+                Pass2_ExpandAndProcessMesses(ref UnsafeItem(tup.Item1), ref UnsafeResult(tup.Item1), tup.Item2);
+            foreach (var tup in TopDown)
+                Pass3_Arrange(ref UnsafeItem(tup.Item1), ref UnsafeResult(tup.Item1));
+
+            ;
         }
 
-        int WorkQueueSorter ((ControlKey, int, LayoutPhase) lhs, (ControlKey, int, LayoutPhase) rhs) {
-            if (lhs.Item3 != rhs.Item3)
-                return lhs.Item3.CompareTo(rhs.Item3);
-
-            return lhs.Item3 == LayoutPhase.Pass1 ? rhs.Item2.CompareTo(lhs.Item2) : lhs.Item2.CompareTo(rhs.Item2);
+        int DeepestFirstSorter ((ControlKey, int) lhs, (ControlKey, int) rhs) {
+            return rhs.Item2.CompareTo(lhs.Item2);
         }
 
-        private void Pass0_BuildQueue (ref BoxRecord item, ref BoxLayoutResult result, int depth) {
+        private void Pass0_BuildTables (ref BoxRecord item, ref BoxLayoutResult result, int depth) {
             InitializeResult(ref item, ref result, depth);
 
-            // FIXME: Do the wrap/unwrapped split here too?
-            foreach (var ckey in Children(item.Key))
-                Pass0_BuildQueue(ref UnsafeItem(ckey), ref UnsafeResult(ckey), depth + 1);
+            TopDown.Add((item.Key, depth));
 
-            WorkQueue.Add((item.Key, depth, LayoutPhase.Pass1));
+            foreach (var ckey in Children(item.Key))
+                Pass0_BuildTables(ref UnsafeItem(ckey), ref UnsafeResult(ckey), depth + 1);
+
+            DeepestFirst.Add((item.Key, depth));
         }
     }
 }

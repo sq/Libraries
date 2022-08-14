@@ -23,11 +23,6 @@ namespace Squared.PRGUI.NewEngine {
             // result.ContentRect will contain the total size of *all* of our children, ignoring forced wrapping
             result.Rect.Width = control.Size(LayoutDimensions.X).EffectiveMinimum;
             result.Rect.Height = control.Size(LayoutDimensions.Y).EffectiveMinimum;
-            WorkQueue.Add((control.Key, depth, LayoutPhase.Pass2));
-            if (control.FirstChild.IsInvalid) {
-                result.Pass1Ready = true;
-                return;
-            }
 
             float padX = control.Padding.X, padY = control.Padding.Y, p = 0;
             var currentRunIndex = -1;
@@ -49,6 +44,7 @@ namespace Squared.PRGUI.NewEngine {
                 childResult.PositionInRun = p;
                 p += config.IsVertical ? outerW : outerH;
 
+                // FIXME: Collapse margins
                 // At a minimum we should be able to hold all our children if they were stacked on each other
                 if ((config.ChildFlags & ContainerFlags.ExpandForContent_X) == default)
                     result.Rect.Width = Math.Max(result.Rect.Width, outerW + padX);
@@ -76,6 +72,13 @@ namespace Squared.PRGUI.NewEngine {
                 result.Rect.Width = Math.Max(result.Rect.Width, result.ContentRect.Width + padX);
             if ((config.ChildFlags & ContainerFlags.ExpandForContent_Y) != default)
                 result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
+
+            if (control.Parent.IsInvalid) {
+                if (config.FillRow)
+                    result.Rect.Width = control.Width.Constrain(Math.Max(result.Rect.Width, CanvasSize.X - control.Margins.X), true);
+                if (config.FillColumn)
+                    result.Rect.Height = control.Height.Constrain(Math.Max(result.Rect.Width, CanvasSize.Y - control.Margins.Y), true);
+            }
 
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);

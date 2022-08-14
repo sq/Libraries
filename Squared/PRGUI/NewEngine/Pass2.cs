@@ -9,22 +9,25 @@ using Squared.PRGUI.NewEngine.Enums;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private Vector2 Pass2_ExpandAndProcessMesses (
+        private void Pass2_ExpandAndProcessMesses (
             ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
             if (result.Pass2Processed)
                 throw new Exception("Already processed phase 2");
             result.Pass2Processed = true;
-            WorkQueue.Add((control.Key, depth, LayoutPhase.Pass3));
 
             if (control.FirstChild.IsInvalid)
-                return default;
+                return;
 
             ref readonly var config = ref control.Config;
 
             float contentWidth = result.Rect.Width - control.Padding.X,
-                contentHeight = result.Rect.Height - control.Padding.Y,
-                capacity = config.IsVertical ? contentHeight : contentWidth,
+                contentHeight = result.Rect.Height - control.Padding.Y;
+            if (contentWidth <= 0)
+                contentWidth = control.Width.Constrain(999999f, true);
+            if (contentHeight <= 0)
+                contentHeight = control.Height.Constrain(999999f, true);
+            float capacity = config.IsVertical ? contentHeight : contentWidth,
                 offset = 0, extent = 0;
 
             // HACK: Unfortunately, we have to build new runs entirely from scratch because modifying the existing ones
@@ -55,7 +58,7 @@ namespace Squared.PRGUI.NewEngine {
                         size = child.Width.Constrain(0, true);
                 }
                 float totalSize = startMargin + size + endMargin,
-                    wrappingExtent = (childConfig._BoxFlags & Enums.BoxFlag.CollapseMargins) == Enums.BoxFlag.CollapseMargins
+                    wrappingExtent = (childConfig._BoxFlags & BoxFlag.CollapseMargins) == BoxFlag.CollapseMargins
                         ? size
                         : totalSize;
 
@@ -106,14 +109,9 @@ namespace Squared.PRGUI.NewEngine {
                 result.Rect.Width = control.Width.Constrain(Math.Max(result.Rect.Width, extent + control.Padding.X), true);
             else
                 result.Rect.Height = control.Height.Constrain(Math.Max(result.Rect.Height, extent + control.Padding.Y), true);
-            // Return the amount our size changed so that our caller can update the run we're in
-            return result.Rect.Size - oldSize;
         }
 
-        private Vector2 Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
-            if (control.FirstChild.IsInvalid)
-                return default;
-
+        private void Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
             ref readonly var config = ref control.Config;
 
             if (result.Pass2bProcessed)
@@ -182,12 +180,12 @@ namespace Squared.PRGUI.NewEngine {
                         if (childConfig.IsStackedOrFloating) {
                             // Floating = Stacked, but don't expand to fill parent
                             // Maybe I should rethink this :)
-                            if ((childConfig._BoxFlags & Enums.BoxFlag.Floating) != Enums.BoxFlag.Floating) {
+                            // if ((childConfig._BoxFlags & BoxFlag.Floating) != BoxFlag.Floating) {
                                 if (expandX)
                                     childResult.Rect.Width = child.Width.Constrain(w - child.Margins.X, true);
                                 if (expandY)
                                     childResult.Rect.Height = child.Height.Constrain(h - child.Margins.Y, true);
-                            }
+                            // }
                         } else {
                             float childOuterW = childResult.Rect.Width + margins.X,
                                 childOuterH = childResult.Rect.Height + margins.Y;
@@ -227,6 +225,11 @@ namespace Squared.PRGUI.NewEngine {
                                 run.TotalHeight += newChildH;
                                 run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, newChildH);
                             }
+
+                            if (expandX)
+                                needRecalcX = true;
+                            if (expandY)
+                                needRecalcY = true;
                         }
                     }
 
@@ -235,32 +238,6 @@ namespace Squared.PRGUI.NewEngine {
                     xSpace = newXSpace;
                     ySpace = newYSpace;
                 }
-
-                /*
-
-                // I think the outer recursion in Pass2 handles this now
-                // HACK: It would be ideal if we could do this in the previous loop
-                foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
-                    ref var child = ref this[ckey];
-                    ref var childResult = ref Result(ckey);
-
-                    // FIXME
-                    // ApplyClip(in control, ref result, in child, ref childResult, in run);
-                    // var growth = Pass2_ExpandChildren(ref child, ref childResult, depth);
-
-                    if (growth.X != 0) {
-                        run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childResult.Rect.Width + child.Margins.X);
-                        run.TotalWidth += growth.X;
-                        needRecalcX = true;
-                    }
-
-                    if (growth.Y != 0) {
-                        run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childResult.Rect.Height + child.Margins.Y);
-                        run.TotalHeight += growth.Y;
-                        needRecalcY = true;
-                    }
-                }
-                */
 
                 if (config.IsVertical)
                     w -= run.MaxOuterWidth;
@@ -272,31 +249,22 @@ namespace Squared.PRGUI.NewEngine {
                 // HACK: We do another pass to recalculate our size if any of our children's sizes 
                 //  changed during this wrap/expand pass, since that probably also changed our size
                 // FIXME: I hate this duplication
-                result.Rect.Size = default;
+                result.Rect.Size = new Vector2(control.Padding.X, control.Padding.Y);
                 foreach (var runIndex in Runs(control.Key)) {
                     ref var run = ref Run(runIndex);
                     if (config.IsVertical) {
                         result.Rect.Width += run.MaxOuterWidth;
-                        result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight);
+                        result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + control.Padding.Y);
                     } else {
-                        result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth);
+                        result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + control.Padding.X);
                         result.Rect.Height += run.MaxOuterHeight;
                     }
                 }
 
                 // TODO: Figure out whether these should actually be enabled, they seem right but they also don't seem to fix anything?
-                if (false) //if (control.OldFlags.IsFlagged(ControlFlags.Container_No_Expansion_X))
-                    result.Rect.Width = oldSize.X;
-                else
-                    control.Width.Constrain(ref result.Rect.Width, true);
-
-                if (false) // if (control.OldFlags.IsFlagged(ControlFlags.Container_No_Expansion_Y))
-                    result.Rect.Height = oldSize.Y;
-                else
-                    control.Height.Constrain(ref result.Rect.Height, true);
+                control.Width.Constrain(ref result.Rect.Width, true);
+                control.Height.Constrain(ref result.Rect.Height, true);
             }
-
-            return result.Rect.Size - oldSize;
         }
     }
 }

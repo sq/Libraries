@@ -389,10 +389,11 @@ namespace Squared.PRGUI {
                     vext = context.VisibleRegion.Extent;
                 // HACK: There might be corner cases where you want to rasterize a zero-sized control...
                 isZeroSized = (box.Width <= 0) || (box.Height <= 0);
-                isOutOfView = (ext.X < context.VisibleRegion.Left) ||
+                isOutOfView = ((ext.X < context.VisibleRegion.Left) ||
                     (ext.Y < context.VisibleRegion.Top) ||
                     (box.Left > vext.X) ||
-                    (box.Top > vext.Y);
+                    // FIXME: Should this floating check be here?
+                    (box.Top > vext.Y)) && !Config.IsStackedOrFloating;
 
                 RasterizeDebugOverlays(ref context, ref passSet, box);
             }
