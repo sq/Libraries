@@ -9,13 +9,16 @@ using Squared.PRGUI.Layout;
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
         private void Pass3_Arrange (ref BoxRecord control, ref BoxLayoutResult result) {
+            ref readonly var config = ref control.Config;
+
+            if (config.IsFloating)
+                result.Rect.Position = control.FloatingPosition;
+
             result.ContentRect = result.Rect;
             result.ContentRect.Left += control.Padding.Left;
             result.ContentRect.Top += control.Padding.Top;
             result.ContentRect.Width = Math.Max(0, result.ContentRect.Width - control.Padding.X);
             result.ContentRect.Height = Math.Max(0, result.ContentRect.Height - control.Padding.Y);
-
-            ref readonly var config = ref control.Config;
 
             ControlKey firstProcessed = ControlKey.Invalid,
                 lastProcessed = ControlKey.Invalid;
@@ -54,9 +57,9 @@ namespace Squared.PRGUI.NewEngine {
                     childConfig.GetRunAlignmentF(out float xChildAlign, out float yChildAlign);
 
                     if (childConfig.IsStackedOrFloating) {
-                        if ((childConfig.Flags & Enums.BoxFlags.Floating) == Enums.BoxFlags.Floating) {
-                            // TODO: Margins?
-                            childResult.Rect.Position = result.ContentRect.Position + child.FloatingPosition;
+                        if (childConfig.IsFloating) {
+                            childResult.Rect.Position = child.FloatingPosition;
+                            childResult.AvailableSpace = result.ContentRect.Extent - childResult.Rect.Position - new Vector2(childMargins.Right, childMargins.Bottom);
                         } else {
                             var stackSpace = result.ContentRect.Size - childOuterSize;
                             // If the control is stacked and aligned but did not fill the container (size constraints, etc)
@@ -81,15 +84,15 @@ namespace Squared.PRGUI.NewEngine {
                                 childResult.Rect.Top += alignment;
                             x += childOuterSize.X;
                         }
-                    }
 
-                    // TODO: Clip left/top edges as well?
-                    // TODO: Separate x/y
-                    if ((config._ContainerFlags & Enums.ContainerFlag.Boxes_Clip) != default) {
-                        var rightEdge = result.ContentRect.Right - childMargins.Right;
-                        childResult.Rect.Width = Math.Max(0, Math.Min(childResult.Rect.Width, rightEdge - childResult.Rect.Left));
-                        var bottomEdge = result.ContentRect.Bottom - childMargins.Bottom;
-                        childResult.Rect.Height = Math.Max(0, Math.Min(childResult.Rect.Height, bottomEdge - childResult.Rect.Top));
+                        // TODO: Clip left/top edges as well?
+                        // TODO: Separate x/y
+                        if ((config._ContainerFlags & Enums.ContainerFlag.Boxes_Clip) != default) {
+                            var rightEdge = result.ContentRect.Right - childMargins.Right;
+                            childResult.Rect.Width = Math.Max(0, Math.Min(childResult.Rect.Width, rightEdge - childResult.Rect.Left));
+                            var bottomEdge = result.ContentRect.Bottom - childMargins.Bottom;
+                            childResult.Rect.Height = Math.Max(0, Math.Min(childResult.Rect.Height, bottomEdge - childResult.Rect.Top));
+                        }
                     }
 
                     Pass3_Arrange(ref child, ref childResult);
@@ -103,6 +106,14 @@ namespace Squared.PRGUI.NewEngine {
                     y += run.MaxOuterHeight;
                 }
             }
+
+            if (
+                ((control.Config.Flags & Enums.BoxFlags.Floating) == Enums.BoxFlags.Floating) && 
+                (result.Rect.Position != control.FloatingPosition)
+            )
+                throw new Exception();
+
+            result.ContentRect.Position = result.Rect.Position + new Vector2(control.Padding.Left, control.Padding.Top);
 
             // FIXME
             if (false) {

@@ -52,10 +52,7 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         internal void PerformLayout (ref BoxRecord root) {
-            root.FixedSize = CanvasSize;
             ref var result = ref UnsafeResult(root.Key);
-            result.Rect = result.ContentRect = new RectF(Vector2.Zero, CanvasSize);
-            result.AvailableSpace = CanvasSize;
             Pass1_ComputeSizesAndBuildRuns(ref root, ref result, 0);
             bool temp = false;
             Pass2(ref root, ref result, 0, ref temp, ref temp);

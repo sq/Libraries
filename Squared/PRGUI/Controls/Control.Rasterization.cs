@@ -31,9 +31,9 @@ namespace Squared.PRGUI {
             public BitmapDrawCall DrawCall;
         }
 
-        public static bool ShowDebugBoxes = true,
+        public static bool ShowDebugBoxes = false,
             ShowDebugBoxesForLeavesOnly = false,
-            ShowDebugBreakMarkers = true,
+            ShowDebugBreakMarkers = false,
             ShowDebugMargins = false,
             ShowDebugPadding = false;
 
@@ -389,11 +389,10 @@ namespace Squared.PRGUI {
                     vext = context.VisibleRegion.Extent;
                 // HACK: There might be corner cases where you want to rasterize a zero-sized control...
                 isZeroSized = (box.Width <= 0) || (box.Height <= 0);
-                isOutOfView = ((ext.X < context.VisibleRegion.Left) ||
+                isOutOfView = (ext.X < context.VisibleRegion.Left) ||
                     (ext.Y < context.VisibleRegion.Top) ||
                     (box.Left > vext.X) ||
-                    // FIXME: Should this floating check be here?
-                    (box.Top > vext.Y)) && !Config.IsStackedOrFloating;
+                    (box.Top > vext.Y);
 
                 RasterizeDebugOverlays(ref context, ref passSet, box);
             }

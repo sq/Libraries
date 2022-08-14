@@ -91,6 +91,11 @@ namespace Squared.PRGUI.NewEngine {
             if (expandY != default)
                 result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
 
+            if (control.FirstChild.IsInvalid) {
+                // HACK
+                result.ContentRect = result.Rect;
+            }
+
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
             result.Pass1Ready = true;

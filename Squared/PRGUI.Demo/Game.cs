@@ -256,7 +256,7 @@ namespace PRGUI.Demo {
                 }
             }
 
-            if (false)
+            if (true)
                 BuildUI();
             else
                 BuildSimpleUI();
@@ -304,6 +304,7 @@ namespace PRGUI.Demo {
 
             var dd = new Dropdown<string> {
                 Label = "Dropdown: {0}",
+                TooltipContent = "Dropdown tooltip"
             };
             for (int i = 0; i < 100; i++)
                 dd.Items.Add(i.ToString());
@@ -333,12 +334,12 @@ namespace PRGUI.Demo {
                 Title = "Floating box"
             };
             var fb = new ContainerBuilder(floatingBox, true);
-            fb.Text("Line 1");
+            fb.Text("I have a tooltip", "This tooltip should not be enormous");
             fb.Text("Line 2").SetForceBreak(true);
             fb.Text("Line 2 text 2");
 
             Context.Controls.Add(topLevel);
-            // Context.Controls.Add(floatingBox);
+            Context.Controls.Add(floatingBox);
         }
 
         private void BuildUI () {
@@ -1104,6 +1105,8 @@ namespace PRGUI.Demo {
                 },
             };
 
+            tabs.SelectedIndex = 0;
+
             Context.Controls.Add(topLevelContainer);
             Context.Controls.Add(window.Control);
             Context.Controls.Add(SpinTest);
@@ -1317,7 +1320,7 @@ namespace PRGUI.Demo {
                     )
                 },
                 DynamicContents = BuildLoginWindow,
-                ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Break_Allow | ControlFlags.Container_Row,
+                ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap | ControlFlags.Container_Row,
             };
             var fUsername = (dialog).Show(Context, LoginButton);
             LoginButton.Appearance.Overlay = true;
