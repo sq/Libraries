@@ -113,7 +113,7 @@ namespace Squared.PRGUI.Controls {
             : base () {
             GroupId = $"TabContainer#{NextGroupId++}";
             ClipChildren = false;
-            ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap;
+            ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Break_Allow;
             TabStrip = new ControlGroup();
             Children.Add(TabStrip);
             GenerateTabs();

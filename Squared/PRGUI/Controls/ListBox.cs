@@ -281,7 +281,7 @@ namespace Squared.PRGUI.Controls {
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             bool scrollOffsetChanged = false;
             // FIXME: Column mode no longer works anymore and I don't know how I broke it
-            ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start |
+            ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Break_Allow | ControlFlags.Container_Align_Start |
                 (AutoSize ? default : ControlFlags.Container_No_Expansion_Y);
 
             // HACK: Ensure the scroll region is updated immediately if our column count changes,

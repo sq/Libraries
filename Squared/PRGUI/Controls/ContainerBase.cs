@@ -56,7 +56,7 @@ namespace Squared.PRGUI.Controls {
 
         public ControlFlags ContainerFlags { get; set; } =
             ControlFlags.Container_Align_Start | ControlFlags.Container_Row |
-            ControlFlags.Container_Wrap;
+            ControlFlags.Container_Break_Allow;
         // If we set Break_Auto here more things in the new engine act like the old engine,
         //  but it's a very bad default
         // ControlFlags.Container_Break_Auto;
@@ -338,7 +338,7 @@ namespace Squared.PRGUI.Controls {
             if (multiColumn) {
                 containerFlags = ComputeContainerFlags()
                     & ~ControlFlags.Container_Column
-                    & ~ControlFlags.Container_Wrap;
+                    & ~ControlFlags.Container_Break_Allow;
                 containerFlags |= ControlFlags.Container_Row;
                 ;
             }

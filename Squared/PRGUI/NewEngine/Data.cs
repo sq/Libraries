@@ -133,7 +133,8 @@ namespace Squared.PRGUI.NewEngine {
 
             {
                 // Break_Auto already sets this
-                if (value.IsFlagged(ControlFlags.Container_Wrap))
+                // if (value.IsFlagged(ControlFlags.Container_Break_Allow))
+                if (value.IsFlagged(ControlFlags.Container_Break_Auto))
                     _ContainerFlags |= ContainerFlag.Arrange_Wrap;
                 if (value.IsFlagged(ControlFlags.Container_Clip_Children))
                     _ContainerFlags |= ContainerFlag.Boxes_Clip;
@@ -359,6 +360,10 @@ namespace Squared.PRGUI.NewEngine {
         internal int Depth;
         internal bool Break;
 #endif
+        /// <summary>
+        /// Must be true before wrapping can occur
+        /// </summary>
+        internal bool SizeSetByParent;
         // FIXME: Remove all these
         internal bool Pass1Ready, Pass1Processed, Pass2Processed, Pass2bProcessed;
 
@@ -403,7 +408,6 @@ namespace Squared.PRGUI.NewEngine {
         public ControlKeyDefaultInvalid First, Last;
         public int FlowCount, ExpandCountX, ExpandCountY, NextRunIndex;
         public float TotalWidth, TotalHeight, MaxOuterWidth, MaxOuterHeight;
-        public ControlFlags? XAnchor, YAnchor;
 
         public override string ToString () {
             if (First.IsInvalid || Last.IsInvalid)
@@ -411,22 +415,6 @@ namespace Squared.PRGUI.NewEngine {
 
             var tail = (NextRunIndex < 0) ? " end" : " ...";
             return $"{First}..{Last} flow={FlowCount} expandX={ExpandCountX} expandY={ExpandCountY}{tail}";
-        }
-
-        public void GetAlignmentF (ControlFlags containerFlags, out float x, out float y) {
-            x = y = 0;
-
-            // FIXME: Not sure this is working
-
-            if ((XAnchor ?? default) != default) {
-                XAnchor.Value.GetAlignmentF(out x, out _);
-            } else if (containerFlags.IsFlagged(ControlFlags.Container_Row))
-                x = containerFlags.GetContainerAlignmentF();
-
-            if ((YAnchor ?? default) != default) {
-                YAnchor.Value.GetAlignmentF(out x, out y);
-            } else if (containerFlags.IsFlagged(ControlFlags.Container_Column))
-                y = containerFlags.GetContainerAlignmentF();
         }
     }
 }

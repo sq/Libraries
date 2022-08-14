@@ -13,10 +13,14 @@ namespace Squared.PRGUI.NewEngine {
             ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
             ref readonly var config = ref control.Config;
+            InitializeResult(ref control, ref result, depth);
 
             if (result.Pass1Processed)
                 throw new Exception("Visited twice");
             result.Pass1Processed = true;
+
+            bool expandX = (config.ChildFlags & ContainerFlags.ExpandForContent_X) != default,
+                expandY = (config.ChildFlags & ContainerFlags.ExpandForContent_Y) != default;
 
             // During this pass, result.Rect contains our minimum size:
             // Size constraints, largest of all our children, etc
@@ -29,6 +33,8 @@ namespace Squared.PRGUI.NewEngine {
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
+
+                Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1);
 
                 if (!childResult.Pass1Ready)
                     throw new Exception("Not ready to process control");
@@ -44,41 +50,46 @@ namespace Squared.PRGUI.NewEngine {
                 childResult.PositionInRun = p;
                 p += config.IsVertical ? outerW : outerH;
 
-                // FIXME: Collapse margins
                 // At a minimum we should be able to hold all our children if they were stacked on each other
-                if ((config.ChildFlags & ContainerFlags.ExpandForContent_X) == default)
-                    result.Rect.Width = Math.Max(result.Rect.Width, outerW + padX);
-                if ((config.ChildFlags & ContainerFlags.ExpandForContent_Y) == default)
-                    result.Rect.Height = Math.Max(result.Rect.Height, outerH + padY);
+                if (!expandX)
+                    result.Rect.Width = Math.Max(
+                        result.Rect.Width, 
+                        (child.Config.Flags & BoxFlags.CollapseMargins) != default 
+                            ? Math.Max(outerW, childResult.Rect.Width + padX)
+                            : outerW + padX
+                    );
+
+                if (!expandY)
+                    result.Rect.Height = Math.Max(
+                        result.Rect.Height, 
+                        (child.Config.Flags & BoxFlags.CollapseMargins) != default 
+                            ? Math.Max(outerH, childResult.Rect.Height + padY)
+                            : outerH + padY
+                    );
 
                 // If we're not in wrapped mode, we will try to expand to hold our largest run
+                // FIXME: Collapse margins
                 if (!config.IsWrap) {
                     if (config.IsVertical) {
-                        if ((config.ChildFlags & ContainerFlags.ExpandForContent_Y) != default)
+                        if (expandY)
                             result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
                     } else {
-                        if ((config.ChildFlags & ContainerFlags.ExpandForContent_X) != default)
+                        if (expandX)
                             result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
                     }
                 }
             }
 
-            Pass1b_IncreaseContentSizeForCompletedRun(in control, ref result, currentRunIndex);
+            IncreaseContentSizeForCompletedRun(in control, ref result, currentRunIndex);
 
             // We have our minimum size in result.Rect and the size of all our content in result.ContentRect
             // Now we add padding to the contentrect and pick the biggest of the two
             // This gives us proper autosize for non-forced-wrap
-            if ((config.ChildFlags & ContainerFlags.ExpandForContent_X) != default)
+            // FIXME: Collapse margins
+            if (expandX != default)
                 result.Rect.Width = Math.Max(result.Rect.Width, result.ContentRect.Width + padX);
-            if ((config.ChildFlags & ContainerFlags.ExpandForContent_Y) != default)
+            if (expandY != default)
                 result.Rect.Height = Math.Max(result.Rect.Height, result.ContentRect.Height + padY);
-
-            if (control.Parent.IsInvalid) {
-                if (config.FillRow)
-                    result.Rect.Width = control.Width.Constrain(Math.Max(result.Rect.Width, CanvasSize.X - control.Margins.X), true);
-                if (config.FillColumn)
-                    result.Rect.Height = control.Height.Constrain(Math.Max(result.Rect.Width, CanvasSize.Y - control.Margins.Y), true);
-            }
 
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
@@ -92,7 +103,7 @@ namespace Squared.PRGUI.NewEngine {
                 return ref GetOrPushRun(ref currentRunIndex);
         }
 
-        private void Pass1b_IncreaseContentSizeForCompletedRun (
+        private void IncreaseContentSizeForCompletedRun (
             in BoxRecord control, ref BoxLayoutResult result, int runIndex
         ) {
             if (runIndex < 0)
@@ -121,7 +132,7 @@ namespace Squared.PRGUI.NewEngine {
             // TODO: Generate a single special run for all stacked/floating controls instead?
             ref var run = ref SelectRunForBuildingPass(ref currentRunIndex, child.Config.ForceBreak);
             if (currentRunIndex != previousRunIndex)
-                Pass1b_IncreaseContentSizeForCompletedRun(in control, ref result, previousRunIndex);
+                IncreaseContentSizeForCompletedRun(in control, ref result, previousRunIndex);
 
             UpdateRunCommon(
                 ref run, in control, ref result,

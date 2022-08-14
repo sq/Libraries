@@ -9,27 +9,41 @@ using Squared.PRGUI.NewEngine.Enums;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private void Pass2_ExpandAndProcessMesses (
+        private void Pass2 (
             ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
-            /*
             if (result.Pass2Processed)
                 throw new Exception("Already processed phase 2");
             result.Pass2Processed = true;
-            */
-
-            if (control.FirstChild.IsInvalid)
-                return;
 
             ref readonly var config = ref control.Config;
 
-            float contentWidth = result.Rect.Width - control.Padding.X,
-                contentHeight = result.Rect.Height - control.Padding.Y;
-            if (contentWidth <= 0)
-                contentWidth = control.Width.Constrain(999999f, true);
-            if (contentHeight <= 0)
-                contentHeight = control.Height.Constrain(999999f, true);
-            float capacity = config.IsVertical ? contentHeight : contentWidth,
+            if (config.IsWrap)
+                Pass2a_PerformWrapping(ref control, ref result, depth);
+
+            Pass2b_ExpandChildren(ref control, ref result, depth);
+
+            foreach (var ckey in Children(control.Key)) {
+                ref var child = ref this[ckey];
+                ref var childResult = ref UnsafeResult(ckey);
+                Pass2(ref child, ref childResult, depth + 1);
+            }
+        }
+
+        private void Pass2a_PerformWrapping (
+            ref BoxRecord control, ref BoxLayoutResult result, int depth
+        ) {
+            ref readonly var config = ref control.Config;
+            if (!config.IsWrap)
+                throw new Exception("Wrapping not enabled");
+
+            float contentSpaceX = result.Rect.Width - control.Padding.X,
+                contentSpaceY = result.Rect.Height - control.Padding.Y;
+            if (contentSpaceX <= 0)
+                contentSpaceX = control.Width.Constrain(999999f, true);
+            if (contentSpaceY <= 0)
+                contentSpaceY = control.Height.Constrain(999999f, true);
+            float capacity = config.IsVertical ? contentSpaceY : contentSpaceX,
                 offset = 0, extent = 0;
 
             // HACK: Unfortunately, we have to build new runs entirely from scratch because modifying the existing ones
@@ -40,8 +54,6 @@ namespace Squared.PRGUI.NewEngine {
             result.FirstRunIndex = -1;
 
             // Scan through all our children and wrap them if necessary now that we know our size
-            // For wrap boxes this happens in a second pass over the subtree, otherwise it happens in the first pass
-            //  since in the first pass we know everything that needs to be wrapped (it has Break set)
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);

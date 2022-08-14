@@ -35,6 +35,7 @@ namespace Squared.PRGUI.NewEngine {
             // FIXME
             // ApplyClip(in control, ref result, in child, ref childResult, in run);
 
+            // FIXME: Collapse margins    
             run.FlowCount++;
             if (childConfig.FillRow && !child.Width.Fixed.HasValue)
                 run.ExpandCountX++;
@@ -51,59 +52,11 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         internal void PerformLayout (ref BoxRecord root) {
-            OtherPassesTable.Clear();
-            Pass1Table.Clear();
-            Pass0_BuildTables(ref root, ref UnsafeResult(root.Key), 0, 0);
-            Pass1Table.Sort(DeepestFirstSorter);
-            TopDown.Sort(TopDownSorter);
-
-            ;
-
-            foreach (var tup in Pass1Table)
-                Pass1_ComputeSizesAndBuildRuns(ref UnsafeItem(tup.Item1), ref UnsafeResult(tup.Item1), tup.Item2);
-            if (EnablePass2) {
-                foreach (var tup in TopDown)
-                    Pass2_ExpandAndProcessMesses(ref UnsafeItem(tup.Item1), ref UnsafeResult(tup.Item1), tup.Item2);
-            }
-            if (EnablePass3) {
-                foreach (var tup in TopDown)
-                    Pass3_Arrange(ref UnsafeItem(tup.Item1), ref UnsafeResult(tup.Item1));
-            }
-
-            Everything.Clear();
-            for (int i = 1; i < Capacity; i++) {
-                if (Controls[i] == null)
-                    break;
-                Everything.Add((Controls[i], UnsafeItem(Controls[i].LayoutKey), UnsafeResult(Controls[i].LayoutKey)));
-            }
-
-            ;
-        }
-
-        List<(Control, BoxRecord, BoxLayoutResult)> Everything = new List<(Control, BoxRecord, BoxLayoutResult)>();
-
-        int TopDownSorter ((ControlKey key, int depth, int wrapCounter) lhs, (ControlKey key, int depth, int wrapCounter) rhs) {
-            var result = lhs.wrapCounter.CompareTo(rhs.wrapCounter);
-            if (result == 0)
-                result = lhs.depth.CompareTo(rhs.depth);
-            return result;
-        }
-
-        int DeepestFirstSorter ((ControlKey key, int depth) lhs, (ControlKey key, int depth) rhs) {
-            return rhs.Item2.CompareTo(lhs.Item2);
-        }
-
-        private void Pass0_BuildTables (ref BoxRecord item, ref BoxLayoutResult result, int depth, int wrapCounter) {
-            InitializeResult(ref item, ref result, depth);
-
-            if (item.Config.IsWrap)
-                wrapCounter++;
-            TopDown.Add((item.Key, depth, wrapCounter));
-
-            foreach (var ckey in Children(item.Key))
-                Pass0_BuildTables(ref UnsafeItem(ckey), ref UnsafeResult(ckey), depth + 1, wrapCounter);
-
-            Pass1Table.Add((item.Key, depth, wrapCounter));
+            root.FixedSize = CanvasSize;
+            ref var result = ref UnsafeResult(root.Key);
+            result.Rect = result.ContentRect = new RectF(Vector2.Zero, CanvasSize);
+            result.AvailableSpace = CanvasSize;
+            Pass1_ComputeSizesAndBuildRuns(ref root, ref result, 0);
         }
     }
 }

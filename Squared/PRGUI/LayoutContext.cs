@@ -783,13 +783,13 @@ namespace Squared.PRGUI.Layout {
 
             float result = 0;
             switch (pItem->Flags & ControlFlagMask.BoxModel) {
-                case ControlFlags.Container_Column | ControlFlags.Container_Wrap:
+                case ControlFlags.Container_Column | ControlFlags.Container_Break_Allow:
                     if (dim == LayoutDimensions.Y)
                         result = CalcStackedSize(pItem, dim);
                     else
                         result = CalcOverlaySize(pItem, dim);
                     break;
-                case ControlFlags.Container_Row | ControlFlags.Container_Wrap:
+                case ControlFlags.Container_Row | ControlFlags.Container_Break_Allow:
                     if (dim == LayoutDimensions.X)
                         result = CalcWrappedStackedSize(pItem, dim);
                     else
@@ -1305,7 +1305,7 @@ namespace Squared.PRGUI.Layout {
             }
 
             switch (flags & ControlFlagMask.BoxModel) {
-                case ControlFlags.Container_Column | ControlFlags.Container_Wrap:
+                case ControlFlags.Container_Column | ControlFlags.Container_Break_Allow:
                     if (dim == LayoutDimensions.Y) {
                         ArrangeStacked(pItem, LayoutDimensions.Y, true);
                         var offset = ArrangeWrappedOverlaySqueezed(pItem, LayoutDimensions.X);
@@ -1316,7 +1316,7 @@ namespace Squared.PRGUI.Layout {
                         // FIXME: Should we do something here?
                     }
                     break;
-                case ControlFlags.Container_Row | ControlFlags.Container_Wrap:
+                case ControlFlags.Container_Row | ControlFlags.Container_Break_Allow:
                     if (!pItem->FirstChild.IsInvalid && pItem->Flags.IsFlagged(ControlFlags.Layout_Floating))
                         ;
 

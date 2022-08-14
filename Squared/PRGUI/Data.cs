@@ -868,10 +868,10 @@ namespace Squared.PRGUI {
             set {
                 if (value == null) {
                     Flags = Flags & ~Flag.Minimum;
-                    Minimum = float.MinValue;
+                    _Minimum = float.MinValue;
                 } else {
                     Flags |= Flag.Minimum;
-                    Minimum = value;
+                    _Minimum = value.Value;
                 }
             }
         }
@@ -881,10 +881,10 @@ namespace Squared.PRGUI {
             set {
                 if (value == null) {
                     Flags = Flags & ~Flag.Maximum;
-                    Maximum = float.MaxValue;
+                    _Maximum = float.MaxValue;
                 } else {
                     Flags |= Flag.Maximum;
-                    Maximum = value;
+                    _Maximum = value.Value;
                 }
             }
         }
@@ -894,10 +894,10 @@ namespace Squared.PRGUI {
             set {
                 if (value == null) {
                     Flags = Flags & ~Flag.Fixed;
-                    Fixed = float.NaN;
+                    _Fixed = float.NaN;
                 } else {
                     Flags |= Flag.Fixed;
-                    Fixed = value;
+                    _Fixed = value.Value;
                 }
             }
         }

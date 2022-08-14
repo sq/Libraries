@@ -188,7 +188,7 @@ namespace Squared.PRGUI.Flags {
             return
                 (ControlFlags)(uint)cf.Arrangement |
                 (ControlFlags)(uint)cf.Alignment |
-                (cf.Wrap ? ControlFlags.Container_Wrap : none) |
+                (cf.Wrap ? ControlFlags.Container_Break_Allow : none) |
                 (cf.AutoBreak ? ControlFlags.Container_Break_Auto : none) |
                 (cf.ConstrainSize ? ControlFlags.Container_Constrain_Size : none) |
                 (cf.NoExpansionX ? ControlFlags.Container_No_Expansion_X : none) |

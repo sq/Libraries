@@ -47,7 +47,13 @@ namespace Squared.PRGUI.Layout {
         /// This also enables Layout_ForceBreak on child elements to work in the old engine.
         /// Meaningless in the new engine.
         /// </summary>
+        [Obsolete("Use Break_Auto if you actually want to automatically wrap, or Break_Allow otherwise", false)]
         Container_Wrap   = 0b100,
+
+        /// <summary>
+        /// Enables Layout_ForceBreak to work on child elements.
+        /// </summary>
+        Container_Break_Allow   = 0b100,
 
         /// <summary>
         /// Place child elements against the start of the row/column
@@ -152,18 +158,18 @@ namespace Squared.PRGUI.Layout {
         Container_Constrain_Size  = Container_Constrain_Growth | Container_Clip_Children,
         /// <summary>
         /// Additional breaks will automatically be inserted if content cannot fit in the container.
-        /// Only meaningful in the new engine (but implies Container_Wrap for the old engine).
+        /// Only meaningful in the new engine (but implies Container_Break_Allow for the old engine).
         /// In the new engine this will force the container's size to be set by its parent.
         /// </summary>
-        Container_Break_Auto      = 0b1000000000000000000000 | Container_Wrap,
+        Container_Break_Auto      = 0b1000000000000000000000 | 0b100,
     }
 
     public static class ControlFlagMask {
         public const ControlFlags 
-            BoxModel = ControlFlags.Container_Column | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
+            BoxModel = ControlFlags.Container_Column | ControlFlags.Container_Row | ControlFlags.Container_Break_Allow | ControlFlags.Container_Break_Auto,
             Container = ControlFlags.Container_Row |
                 ControlFlags.Container_Column |
-                ControlFlags.Container_Wrap |
+                ControlFlags.Container_Break_Allow |
                 ControlFlags.Container_Align_Start |
                 ControlFlags.Container_Align_Middle |
                 ControlFlags.Container_Align_End |

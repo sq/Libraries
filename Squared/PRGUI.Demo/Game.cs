@@ -932,7 +932,7 @@ namespace PRGUI.Demo {
                             Fill = { Row = true },
                             ForceBreak = true
                         },
-                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start,
+                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Break_Allow | ControlFlags.Container_Align_Start,
                         Children = {
                             new Button {
                                 Text = "Clipped huge button\r\nSecond line\r\n" + ButtonChars,
@@ -994,7 +994,7 @@ namespace PRGUI.Demo {
                 },
                 // FIXME: We shouldn't need to set Wrap here since we're setting explicit breaks
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End
-                    | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
+                    | ControlFlags.Container_Break_Allow | ControlFlags.Container_Constrain_Size,
                 Children = {
                     hoveringCtl,
                     lastClickedCtl,
@@ -1314,7 +1314,7 @@ namespace PRGUI.Demo {
                     )
                 },
                 DynamicContents = BuildLoginWindow,
-                ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap | ControlFlags.Container_Row,
+                ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Break_Allow | ControlFlags.Container_Row,
             };
             var fUsername = (dialog).Show(Context, LoginButton);
             LoginButton.Appearance.Overlay = true;
