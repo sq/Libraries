@@ -132,7 +132,8 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             {
-                if (value.IsFlagged(ControlFlags.Container_Break_Auto))
+                // Break_Auto already sets this
+                if (value.IsFlagged(ControlFlags.Container_Wrap))
                     _ContainerFlags |= ContainerFlag.Arrange_Wrap;
                 if (value.IsFlagged(ControlFlags.Container_Clip_Children))
                     _ContainerFlags |= ContainerFlag.Boxes_Clip;
@@ -359,7 +360,7 @@ namespace Squared.PRGUI.NewEngine {
         internal bool Break;
 #endif
         // FIXME: Remove all these
-        internal bool Pass1Processed, Pass2Processed, Pass2bProcessed;
+        internal bool Pass1Ready, Pass1Processed, Pass2Processed, Pass2bProcessed;
 
         /// <summary>
         /// The display/layout rectangle of the control.

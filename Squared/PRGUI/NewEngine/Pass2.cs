@@ -5,20 +5,22 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine.Enums;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
         private Vector2 Pass2_ExpandAndProcessMesses (
             ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
+            if (result.Pass2Processed)
+                throw new Exception("Already processed phase 2");
+            result.Pass2Processed = true;
+            WorkQueue.Add((control.Key, depth, LayoutPhase.Pass3));
+
             if (control.FirstChild.IsInvalid)
                 return default;
 
             ref readonly var config = ref control.Config;
-
-            if (result.Pass2Processed)
-                throw new Exception("Already processed phase 2");
-            result.Pass2Processed = true;
 
             float contentWidth = result.Rect.Width - control.Padding.X,
                 contentHeight = result.Rect.Height - control.Padding.Y,
@@ -28,92 +30,42 @@ namespace Squared.PRGUI.NewEngine {
             // HACK: Unfortunately, we have to build new runs entirely from scratch because modifying the existing ones
             //  in-place would be far too difficult
             // FIXME: Reclaim the existing runs
-            int oldFirstRun = result.FirstRunIndex, firstRunIndex = -1, currentRunIndex = -1, numForcedBreaks = 0;
+            int oldFirstRun = result.FirstRunIndex, firstRunIndex = -1, currentRunIndex = -1, numForcedWraps = 0;
             // HACK
             result.FirstRunIndex = -1;
-            bool first = true;
-
-            Queue<ControlKey> unwrapChildQueue = (WrapChildQueues.Count > 0)
-                    ? WrapChildQueues.Dequeue()
-                    : new Queue<ControlKey>(),
-                wrapChildQueue = (WrapChildQueues.Count > 0)
-                    ? WrapChildQueues.Dequeue()
-                    : new Queue<ControlKey>();
 
             // Scan through all our children and wrap them if necessary now that we know our size
             // For wrap boxes this happens in a second pass over the subtree, otherwise it happens in the first pass
             //  since in the first pass we know everything that needs to be wrapped (it has Break set)
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
-                ref readonly var childConfig = ref child.Config;
-                if (childConfig.IsWrap)
-                    wrapChildQueue.Enqueue(ckey);
-                else
-                    unwrapChildQueue.Enqueue(ckey);
-            }
-
-            Pass2_ProcessChildQueue(
-                ref control, ref result, in config, capacity, 
-                ref offset, ref extent, ref firstRunIndex, ref currentRunIndex, 
-                ref numForcedBreaks, ref first, unwrapChildQueue
-            );
-
-            Pass2_ProcessChildQueue(
-                ref control, ref result, in config, capacity, 
-                ref offset, ref extent, ref firstRunIndex, ref currentRunIndex, 
-                ref numForcedBreaks, ref first, wrapChildQueue
-            );
-
-            if (currentRunIndex >= 0) {
-                ref var currentRun = ref Run(currentRunIndex);
-                extent += config.IsVertical ? currentRun.MaxOuterWidth : currentRun.MaxOuterHeight;
-            }
-
-            if (numForcedBreaks <= 0)
-                result.FirstRunIndex = oldFirstRun;
-            else
-                result.FirstRunIndex = firstRunIndex;
-
-            // Now that we computed our new runs with wrapping applied we can expand all our children appropriately
-            Pass2b_ExpandChildren(ref control, ref result, depth);
-
-            unwrapChildQueue.Clear();
-            wrapChildQueue.Clear();
-            WrapChildQueues.Enqueue(unwrapChildQueue);
-            WrapChildQueues.Enqueue(wrapChildQueue);
-
-            var oldSize = result.Rect.Size;
-            if (config.IsVertical)
-                result.Rect.Width = control.Width.Constrain(Math.Max(result.Rect.Width, extent + control.Padding.X), true);
-            else
-                result.Rect.Height = control.Height.Constrain(Math.Max(result.Rect.Height, extent + control.Padding.Y), true);
-            // Return the amount our size changed so that our caller can update the run we're in
-            return result.Rect.Size - oldSize;
-        }
-
-        private void Pass2_ProcessChildQueue (
-            ref BoxRecord control, ref BoxLayoutResult result, in ControlConfiguration config, 
-            float capacity, ref float offset, ref float extent, 
-            ref int firstRunIndex, ref int currentRunIndex, 
-            ref int numForcedBreaks, ref bool first, Queue<ControlKey> queue
-        ) {
-            foreach (var ckey in queue) {
-                ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
                 ref readonly var childConfig = ref child.Config;
+
                 float startMargin = config.IsVertical ? child.Margins.Top : child.Margins.Left,
                     endMargin = config.IsVertical ? child.Margins.Bottom : child.Margins.Right,
-                    size = config.IsVertical ? childResult.Rect.Height : childResult.Rect.Width,
-                    totalSize = startMargin + size + endMargin;
-                var forceBreak = first || (config.IsWrap && ((offset + startMargin + size) > capacity));
-                if (forceBreak)
-                    numForcedBreaks++;
-                // FIXME: Without a forceBreak on the first control we get a stack overflow in pass 3, presumably due to corrupt run data?
-                first = false;
+                    size = config.IsVertical ? childResult.Rect.Height : childResult.Rect.Width;
+                
+                // Containers that wrap will auto-expand to available space so we don't count the size of their content
+                if (config.IsVertical) {
+                    if (childConfig.IsVertical && childConfig.IsWrap)
+                        size = child.Height.Constrain(0, true);
+                } else {
+                    if (!childConfig.IsVertical && childConfig.IsWrap)
+                        size = child.Width.Constrain(0, true);
+                }
+                float totalSize = startMargin + size + endMargin,
+                    wrappingExtent = (childConfig._BoxFlags & Enums.BoxFlag.CollapseMargins) == Enums.BoxFlag.CollapseMargins
+                        ? size
+                        : totalSize;
+
+                var forcedWrap = config.IsWrap && ((offset + wrappingExtent) > capacity);
+                if (forcedWrap)
+                    numForcedWraps++;
 
                 var previousRunIndex = currentRunIndex;
 
-                bool isBreak = childConfig.ForceBreak || forceBreak;
+                bool isBreak = childConfig.ForceBreak || forcedWrap;
                 // We still generate runs even if a control is stacked/floating
                 // This ensures that you can enumerate all of a control's children by enumerating its runs
                 // We will then skip stacked/floating controls when enumerating runs (as appropriate)
@@ -134,6 +86,28 @@ namespace Squared.PRGUI.NewEngine {
                     offset += totalSize;
                 }
             }
+
+            if (currentRunIndex >= 0) {
+                ref var currentRun = ref Run(currentRunIndex);
+                extent += config.IsVertical ? currentRun.MaxOuterWidth : currentRun.MaxOuterHeight;
+            }
+
+            // Reuse the original run if we didn't make any changes. Is this even necessary?
+            if (numForcedWraps <= 0)
+                result.FirstRunIndex = oldFirstRun;
+            else
+                result.FirstRunIndex = firstRunIndex;
+
+            // Now that we computed our new runs with wrapping applied we can expand all our children appropriately
+            Pass2b_ExpandChildren(ref control, ref result, depth);
+
+            var oldSize = result.Rect.Size;
+            if (config.IsVertical)
+                result.Rect.Width = control.Width.Constrain(Math.Max(result.Rect.Width, extent + control.Padding.X), true);
+            else
+                result.Rect.Height = control.Height.Constrain(Math.Max(result.Rect.Height, extent + control.Padding.Y), true);
+            // Return the amount our size changed so that our caller can update the run we're in
+            return result.Rect.Size - oldSize;
         }
 
         private Vector2 Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result, int depth) {

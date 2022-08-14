@@ -6,9 +6,17 @@ using System.Threading.Tasks;
 
 namespace Squared.PRGUI.NewEngine.Enums {
     internal enum LayoutPhase { 
-        Pass1_NoWrap,
-        Pass1b_Wrap,
+        /// <summary>
+        /// Bottom-up: compute required size
+        /// </summary>
+        Pass1,
+        /// <summary>
+        /// Top-down: break and expand children
+        /// </summary>
         Pass2,
+        /// <summary>
+        /// Top-down: arrange children
+        /// </summary>
         Pass3
     }
 
@@ -89,45 +97,50 @@ namespace Squared.PRGUI.NewEngine.Enums {
         /// <summary>
         /// Instead of expanding to fill horizontal space, the box will be aligned to the left
         /// </summary>
-        Anchor_Left   = 0b1,
+        Anchor_Left     = 0b1,
         /// <summary>
         /// Instead of expanding to fill horizontal space, the box will be aligned to the right
         /// </summary>
-        Anchor_Right  = 0b10,
+        Anchor_Right    = 0b10,
         /// <summary>
         /// Instead of expanding to fill vertical space, the box will be aligned to the top
         /// </summary>
-        Anchor_Top    = 0b100,
+        Anchor_Top      = 0b100,
         /// <summary>
         /// Instead of expanding to fill vertical space, the box will be aligned to the bottom
         /// </summary>
-        Anchor_Bottom = 0b1000,
+        Anchor_Bottom   = 0b1000,
 
         /// <summary>
         /// The box will expand to fill available horizontal space
         /// </summary>
-        Fill_Row      = Anchor_Left | Anchor_Right,
+        Fill_Row        = Anchor_Left | Anchor_Right,
         /// <summary>
         /// The box will expand to fill available vertical space
         /// </summary>
-        Fill_Column   = Anchor_Top | Anchor_Bottom,
+        Fill_Column     = Anchor_Top | Anchor_Bottom,
         /// <summary>
         /// The box will expand to fill all available space
         /// </summary>
-        Fill          = Fill_Row | Fill_Column,
+        Fill            = Fill_Row | Fill_Column,
 
         /// <summary>
         /// Forces the box to occupy a new run
         /// </summary>
-        Break         = 0b10000,
+        Break           = 0b10000,
         /// <summary>
         /// The box will be laid out inside the entire container instead of occupying a run
         /// </summary>
-        Stacked       = 0b100000,
+        Stacked         = 0b100000,
         /// <summary>
         /// The box will be laid out inside the entire container and will also not influence the container's content size
         /// </summary>
-        Floating      = 0b1000000 | Stacked,
+        Floating        = 0b1000000 | Stacked,
+
+        /// <summary>
+        /// The box's margins will be allowed to overlap with its container's padding.
+        /// </summary>
+        CollapseMargins = 0b10000000,
 
         // No anchor = centered
         DEFAULT       = Fill_Row 
@@ -206,7 +219,8 @@ namespace Squared.PRGUI.NewEngine.Enums {
         Break = BoxFlag.Break,
         Stacked = BoxFlag.Stacked,
         Floating = BoxFlag.Floating,
+        CollapseMargins = BoxFlag.CollapseMargins,
 
-        MASK = Break | Stacked | Floating,
+        MASK = Break | Stacked | Floating | CollapseMargins,
     }
 }

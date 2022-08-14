@@ -10,32 +10,24 @@ using Squared.PRGUI.NewEngine.Enums;
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
         private void Pass1_ComputeSizesAndBuildRuns (
-            ref BoxRecord control, ref BoxLayoutResult result, int depth, bool processWrap
+            ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
-            if (!processWrap)
-                InitializeResult(ref control, ref result, depth);
-
             ref readonly var config = ref control.Config;
+
+            if (result.Pass1Processed)
+                throw new Exception("Visited twice");
+            result.Pass1Processed = true;
 
             // During this pass, result.Rect contains our minimum size:
             // Size constraints, largest of all our children, etc
             // result.ContentRect will contain the total size of *all* of our children, ignoring forced wrapping
             result.Rect.Width = control.Size(LayoutDimensions.X).EffectiveMinimum;
             result.Rect.Height = control.Size(LayoutDimensions.Y).EffectiveMinimum;
-            if (control.FirstChild.IsInvalid)
-                return;
-
-            // Wrapped box subtrees are processed after all normal boxes
-            var isWrapped = ((config.ChildFlags & ContainerFlags.Wrap) != default);
-            if (isWrapped && !processWrap) {
-                WrapQueue.Enqueue(control.Key);
+            WorkQueue.Add((control.Key, depth, LayoutPhase.Pass2));
+            if (control.FirstChild.IsInvalid) {
+                result.Pass1Ready = true;
                 return;
             }
-
-            if (result.Pass1Processed)
-                throw new Exception("Visited twice");
-
-            Pass2Queue.Enqueue(control.Key);
 
             float padX = control.Padding.X, padY = control.Padding.Y, p = 0;
             var currentRunIndex = -1;
@@ -43,7 +35,8 @@ namespace Squared.PRGUI.NewEngine {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
 
-                Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1, false);
+                if (!childResult.Pass1Ready)
+                    throw new Exception("Not ready to process control");
 
                 float outerW = childResult.Rect.Width + child.Margins.X,
                     outerH = childResult.Rect.Height + child.Margins.Y;
@@ -63,7 +56,7 @@ namespace Squared.PRGUI.NewEngine {
                     result.Rect.Height = Math.Max(result.Rect.Height, outerH + padY);
 
                 // If we're not in wrapped mode, we will try to expand to hold our largest run
-                if (!isWrapped) {
+                if (!config.IsWrap) {
                     if (config.IsVertical) {
                         if ((config.ChildFlags & ContainerFlags.ExpandForContent_Y) != default)
                             result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
@@ -86,7 +79,7 @@ namespace Squared.PRGUI.NewEngine {
 
             control.Width.Constrain(ref result.Rect.Width, true);
             control.Height.Constrain(ref result.Rect.Height, true);
-            result.Pass1Processed = true;
+            result.Pass1Ready = true;
         }
 
         private ref LayoutRun SelectRunForBuildingPass (ref int currentRunIndex, bool isBreak) {

@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework;
 using System.Runtime.CompilerServices;
 using Squared.PRGUI.Layout;
 using Squared.Util;
+using Squared.PRGUI.NewEngine.Enums;
 #if DEBUG
 using System.Xml.Serialization;
 using System.IO;
@@ -33,10 +34,7 @@ namespace Squared.PRGUI.NewEngine {
         private LayoutRun[] RunBuffer = new LayoutRun[Capacity];
 
         // FIXME: Improve this
-        private Queue<ControlKey> WrapQueue = new Queue<ControlKey>(Capacity),
-            Pass2Queue = new Queue<ControlKey>();
-
-        private Queue<Queue<ControlKey>> WrapChildQueues = new Queue<Queue<ControlKey>>(32);
+        private List<(ControlKey, int, LayoutPhase)> WorkQueue = new List<(ControlKey, int, LayoutPhase)>(Capacity);
 
         /*
         private int ProcessingQueueEnd = 0, ProcessingQueueCursor = 0;

@@ -304,7 +304,8 @@ namespace PRGUI.Demo {
 
             var subBox = colBox.NewGroup(
                 layoutFlags: ControlFlags.Layout_Fill,
-                containerFlags: ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start | ControlFlags.Container_No_Expansion
+                containerFlags: ControlFlags.Container_Row | ControlFlags.Container_Break_Auto | 
+                ControlFlags.Container_Align_Start | ControlFlags.Container_No_Expansion
             );
             subBox.Control.Appearance.BackgroundColor = Color.Red * 0.4f;
             subBox.Text("Text 7");
