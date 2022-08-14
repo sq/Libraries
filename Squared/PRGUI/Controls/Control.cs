@@ -780,8 +780,8 @@ namespace Squared.PRGUI {
         protected virtual void ComputeSizeConstraints (
             ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale
         ) {
-            ControlDimension.Scale(ref width, sizeScale.X, out width);
-            ControlDimension.Scale(ref height, sizeScale.Y, out height);
+            ControlDimension.Scale(ref width, sizeScale.X);
+            ControlDimension.Scale(ref height, sizeScale.Y);
         }
 
 #if DETECT_DOUBLE_RASTERIZE

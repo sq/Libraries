@@ -844,7 +844,7 @@ namespace Squared.PRGUI {
 
     public struct ControlDimension {
         [Flags]
-        private enum Flag : byte {
+        private enum Flag : uint {
             Minimum = 0b1,
             Maximum = 0b10,
             Fixed   = 0b100
@@ -854,12 +854,12 @@ namespace Squared.PRGUI {
         private float _Minimum, _Maximum, _Fixed;
 
         public static ControlDimension operator * (float lhs, ControlDimension rhs) {
-            Scale(ref rhs, lhs, out rhs);
+            Scale(ref rhs, lhs);
             return rhs;
         }
 
         public static ControlDimension operator * (ControlDimension lhs, float rhs) {
-            Scale(ref lhs, rhs, out lhs);
+            Scale(ref lhs, rhs);
             return lhs;
         }
 
@@ -867,7 +867,7 @@ namespace Squared.PRGUI {
             get => (Flags & Flag.Minimum) == Flag.Minimum ? _Minimum : (float?)null;
             set {
                 if (value == null) {
-                    Flags = Flags & ~Flag.Minimum;
+                    Flags &= ~Flag.Minimum;
                     _Minimum = float.MinValue;
                 } else {
                     Flags |= Flag.Minimum;
@@ -880,7 +880,7 @@ namespace Squared.PRGUI {
             get => (Flags & Flag.Maximum) == Flag.Maximum ? _Maximum : (float?)null;
             set {
                 if (value == null) {
-                    Flags = Flags & ~Flag.Maximum;
+                    Flags &= ~Flag.Maximum;
                     _Maximum = float.MaxValue;
                 } else {
                     Flags |= Flag.Maximum;
@@ -893,7 +893,7 @@ namespace Squared.PRGUI {
             get => (Flags & Flag.Fixed) == Flag.Fixed ? _Fixed : (float?)null;
             set {
                 if (value == null) {
-                    Flags = Flags & ~Flag.Fixed;
+                    Flags &= ~Flag.Fixed;
                     _Fixed = float.NaN;
                 } else {
                     Flags |= Flag.Fixed;
@@ -915,11 +915,10 @@ namespace Squared.PRGUI {
             return this;
         }
 
-        public static void Scale (ref ControlDimension value, float scale, out ControlDimension result) {
-            result = default;
-            result.Minimum = value.Minimum * scale;
-            result.Maximum = value.Maximum * scale;
-            result.Fixed = value.Fixed * scale;
+        public static void Scale (ref ControlDimension value, float scale) {
+            value._Minimum *= scale;
+            value._Maximum *= scale;
+            value._Fixed *= scale;
         }
 
         public ControlDimension Scale (float scale) {
@@ -1026,12 +1025,17 @@ namespace Squared.PRGUI {
             return temp.Value;
         }
 
+        public bool HasValue => (Flags != default);
+
         public static implicit operator ControlDimension (float fixedSize) {
             return new ControlDimension { Fixed = fixedSize };
         }
 
         public override string ToString () {
-            return $"Clamp({Fixed?.ToString() ?? "<null>"}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
+            if (!HasValue)
+                return "<unconstrained>";
+            else
+                return $"Clamp({Fixed?.ToString() ?? "<null>"}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
         }
     }
 }

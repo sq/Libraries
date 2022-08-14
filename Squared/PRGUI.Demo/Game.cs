@@ -313,7 +313,7 @@ namespace PRGUI.Demo {
             var subBox = colBox.NewGroup(
                 layoutFlags: ControlFlags.Layout_Fill,
                 containerFlags: ControlFlags.Container_Row | ControlFlags.Container_Break_Auto | 
-                ControlFlags.Container_Align_Start | ControlFlags.Container_No_Expansion
+                    ControlFlags.Container_Align_Start | ControlFlags.Container_No_Expansion
             );
             subBox.Control.DebugLabel = "subBox (red fill row wrap no_expansion)";
             subBox.Control.Appearance.BackgroundColor = Color.Red * 0.4f;
@@ -338,7 +338,7 @@ namespace PRGUI.Demo {
             fb.Text("Line 2 text 2");
 
             Context.Controls.Add(topLevel);
-            Context.Controls.Add(floatingBox);
+            // Context.Controls.Add(floatingBox);
         }
 
         private void BuildUI () {
