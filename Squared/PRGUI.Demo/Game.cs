@@ -256,10 +256,12 @@ namespace PRGUI.Demo {
                 }
             }
 
-            LoadTestScene(0);
+            if (!UseSavedTree)
+                LoadTestScene(0);
         }
 
         void LoadTestScene (int index) {
+            Context.HideTooltip();
             Context.Controls.Clear();
             switch (index) {
                 case 0:
@@ -283,6 +285,7 @@ namespace PRGUI.Demo {
                     BuildMenuTest();
                     break;
             }
+            UseSavedTree = false;
         }
 
         private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {

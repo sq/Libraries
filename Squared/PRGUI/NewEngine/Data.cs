@@ -242,23 +242,59 @@ namespace Squared.PRGUI.NewEngine {
         public override string ToString () {
             return $"{_BoxFlags} {_ContainerFlags}";
         }
+        
+        internal void GetAlignmentF (
+            float runXAlign, float runYAlign, 
+            out float xAlign, out float yAlign
+        ) {
+            switch (_BoxFlags & BoxFlag.Fill_Row) {
+                case BoxFlag.Anchor_Left:
+                    xAlign = 0f;
+                    break;
+                case BoxFlag.Anchor_Right:
+                    xAlign = 1f;
+                    break;
+                case BoxFlag.Fill_Row:
+                    // HACK: Flush menu items left
+                    xAlign = runXAlign;
+                    break;
+                default:
+                    xAlign = 0.5f;
+                    break;
+            }
+
+            switch (_BoxFlags & BoxFlag.Fill_Column) {
+                case BoxFlag.Anchor_Top:
+                    yAlign = 0f;
+                    break;
+                case BoxFlag.Anchor_Bottom:
+                    yAlign = 1f;
+                    break;
+                case BoxFlag.Fill_Column:
+                    yAlign = runYAlign;
+                    break;
+                default:
+                    yAlign = 0.5f;
+                    break;
+            }
+        }
 
         internal void GetRunAlignmentF (out float xAlign, out float yAlign) {
             // FIXME: Default for secondary axis should be null instead of 0 i think? Or 0.5?
             switch (ChildAlign) {
                 default:
                 case ChildAlignment.Start:
-                    xAlign = 0;
-                    yAlign = 0;
+                    xAlign = 0f;
+                    yAlign = IsVertical ? 0 : 0.5f;
                     return;
                 case ChildAlignment.End:
                     xAlign = IsVertical ? 0 : 1;
-                    yAlign = IsVertical ? 1 : 0;
+                    yAlign = IsVertical ? 1 : 0.5f;
                     return;
                 case ChildAlignment.Center:
                     // HACK: Seems instinctively wrong, but matches layout.h
                     // This ensures that menu items are flush left
-                    xAlign = IsVertical ? 0 : 0f;
+                    xAlign = IsVertical ? 0 : 0.5f;
                     yAlign = IsVertical ? 0.5f : 0;
                     return;
                 case ChildAlignment.Justify:

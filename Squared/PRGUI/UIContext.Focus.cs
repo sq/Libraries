@@ -137,6 +137,11 @@ namespace Squared.PRGUI {
         // Clean up when a control is removed in case it has focus or mouse capture,
         //  and attempt to return focus to the most recent place it occupied (for modals)
         public void NotifyControlBecomingInvalidFocusTarget (Control control, bool removed) {
+            if (control == CachedTooltip) {
+                // HACK: Handle Controls.Clear();
+                CachedTooltip = null;
+            }
+
             RemoveFromFocusMemory(control);
 
             if (PreviousFocused == control)
