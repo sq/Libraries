@@ -134,7 +134,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public Vector2 Position {
-            get => base.Layout.FloatingPosition;
+            get => base.Layout.FloatingPosition.Value;
             set {
                 Aligner.SetPosition(value, true);
             }
@@ -173,6 +173,7 @@ namespace Squared.PRGUI.Controls {
             Aligner = new ControlAlignmentHelper<Menu>(this) {
                 UpdatePosition = UpdatePosition
             };
+            Layout.FloatingPosition = Vector2.Zero;
             Appearance.Opacity = 0f;
             // HACK: If we don't do this, alignment will be broken when a global scale is set
             Appearance.AutoScaleMetrics = false;

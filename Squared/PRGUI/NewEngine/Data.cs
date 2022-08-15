@@ -357,7 +357,7 @@ namespace Squared.PRGUI.NewEngine {
         public Margins Margins, Padding;
         public ControlDimension Width, Height;
         // TODO: Add a scroll offset value so that Control doesn't need a display offset anymore
-        public Vector2 FloatingPosition;
+        public Vector2? FloatingPosition;
         public Layout.LayoutTags Tag;
 
 #if DEBUG

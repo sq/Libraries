@@ -15,23 +15,17 @@ namespace Squared.PRGUI.NewEngine {
             // Without this, tooltips will glitch
             // Ideally we would query the parent's position, but the parent may not be laid out yet
             if ((depth == 0) && config.IsFloating)
-                result.Rect.Position = control.FloatingPosition;
+                result.Rect.Position = control.FloatingPosition ?? Vector2.Zero;
 
             Vector2 contentPosition = result.Rect.Position + new Vector2(control.Padding.Left, control.Padding.Top),
-                contentSpace = result.Rect.Size - control.Padding.Size;
+                contentSpace = result.Rect.Size - control.Padding.Size,
+                contentExtent = result.Rect.Extent - control.Padding.BottomRight;
 
             ControlKey firstProcessed = ControlKey.Invalid,
                 lastProcessed = ControlKey.Invalid;
             float w = Math.Max(0, result.Rect.Width - control.Padding.X), 
                 h = Math.Max(0, result.Rect.Height - control.Padding.Y),
                 x = 0, y = 0;
-
-            if (control.Key.ID == 18)
-                ;
-            else if (control.Key.ID == 19)
-                ;
-            else if (control.Key.ID == 20)
-                ;
 
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
@@ -66,12 +60,17 @@ namespace Squared.PRGUI.NewEngine {
                     var childMargins = child.Margins;
                     var childOuterSize = childResult.Rect.Size + childMargins.Size;
 
+                    if (child.Key.ID == 224)
+                        ;
+
                     childConfig.GetAlignmentF(xAlign, yAlign, out float xChildAlign, out float yChildAlign);
 
                     if (childConfig.IsStackedOrFloating) {
                         if (childConfig.IsFloating) {
-                            childResult.Rect.Position = contentPosition + child.FloatingPosition;
-                            childResult.AvailableSpace = result.Rect.Extent - childResult.Rect.Position - new Vector2(childMargins.Right, childMargins.Bottom);
+                            childResult.Rect.Position = contentPosition + (child.FloatingPosition ?? Vector2.Zero);
+                            childResult.AvailableSpace = contentExtent - childResult.Rect.Position - new Vector2(childMargins.Right, childMargins.Bottom);
+                            if (!child.FloatingPosition.HasValue)
+                                childResult.Rect.Position += (childResult.AvailableSpace - childResult.Rect.Size) * new Vector2(xChildAlign, yChildAlign);
                         } else {
                             var stackSpace = result.ContentSize - childOuterSize;
                             // If the control is stacked and aligned but did not fill the container (size constraints, etc)

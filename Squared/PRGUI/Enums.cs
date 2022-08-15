@@ -162,6 +162,11 @@ namespace Squared.PRGUI.Layout {
         /// In the new engine this will force the container's size to be set by its parent.
         /// </summary>
         Container_Break_Auto      = 0b1000000000000000000000 | 0b100,
+
+        /// <summary>
+        /// Indicates that FloatingPosition has a user-provided value and alignment should be suppressed.
+        /// </summary>
+        Internal_Has_Position     = 0b10000000000000000000000,
     }
 
     public static class ControlFlagMask {

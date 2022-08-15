@@ -811,9 +811,26 @@ namespace Squared.PRGUI {
             };
         }
 
-        public float X => Left + Right;
-        public float Y => Top + Bottom;
-        public Vector2 Size => new Vector2(Left + Right, Top + Bottom);
+        public float X {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Left + Right;
+        }
+        public float Y {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Top + Bottom;
+        }
+        public Vector2 TopLeft {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => new Vector2(Left, Top);
+        }
+        public Vector2 BottomRight {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => new Vector2(Right, Bottom);
+        }
+        public Vector2 Size {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => new Vector2(Left + Right, Top + Bottom);
+        }
 
         public static implicit operator Vector4 (Margins margins) {
             return new Vector4(margins.Left, margins.Top, margins.Right, margins.Bottom);

@@ -50,7 +50,7 @@ namespace Squared.PRGUI.Flags {
     }
 
     public struct LayoutFlags {
-        public Vector2 FloatingPosition;
+        public Vector2? FloatingPosition;
 
         public AnchorFlags Anchor;
         /// <summary>

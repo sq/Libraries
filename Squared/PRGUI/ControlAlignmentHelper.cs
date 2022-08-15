@@ -270,12 +270,12 @@ namespace Squared.PRGUI {
             if (WasPositionSetByUser) {
                 MostRecentAlignedPosition = null;
 
-                if (DoUpdatePosition(DesiredPosition ?? Control.Layout.FloatingPosition, in parentRect, in rect, false))
+                if (DoUpdatePosition(DesiredPosition ?? Control.Layout.FloatingPosition ?? Vector2.Zero, in parentRect, in rect, false))
                     relayoutRequested = true;
 
                 var availableSpace = (parentRect.Size - rect.Size);
                 if (ComputeNewAlignment)
-                    ControlAlignmentPoint = (Control.Layout.FloatingPosition - parentRect.Position) / availableSpace;
+                    ControlAlignmentPoint = ((Control.Layout.FloatingPosition ?? Vector2.Zero) - parentRect.Position) / availableSpace;
             } else if (((IsAnimating == null) || !IsAnimating()) && (!relayoutRequested || (Anchor != null))) {
                 relayoutRequested |= Align(ref context, parentRect, rect, true);
             } else if ((IsLocked == null) || !IsLocked()) {

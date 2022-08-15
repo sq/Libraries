@@ -144,13 +144,6 @@ namespace Squared.PRGUI.NewEngine {
             float cw = result.Rect.Width - control.Padding.X,
                 ch = result.Rect.Height - control.Padding.Y;
 
-            if (control.Key.ID == 18)
-                ;
-            else if (control.Key.ID == 19)
-                ;
-            else if (control.Key.ID == 20)
-                ;
-
             float pMinor = 0;
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);

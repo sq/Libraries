@@ -104,7 +104,7 @@ namespace Squared.PRGUI.Controls {
                             hs.Enabled = true;
                             hs.Appearance = HotspotAppearance;
                             var b = m.UnionBounds;
-                            hs.Layout.FloatingPosition = b.TopLeft + _LastDrawOffset - new Vector2(padding.Left, padding.Top);
+                            hs.Layout.FloatingPosition = b.TopLeft + _LastDrawOffset - padding.TopLeft;
                             hs.RectBase = b.TopLeft;
                             hs.Width.Fixed = b.Size.X + padding.X;
                             hs.Height.Fixed = b.Size.Y + padding.Y;
@@ -262,7 +262,7 @@ namespace Squared.PRGUI.Controls {
             foreach (var b in Rects) {
                 var r = new RectF(b.TopLeft - RectBase + outerBox.Position, b.Size);
                 settings.ContentBox = r;
-                r.Position = r.Position - new Vector2(decorations.Margins.Left, decorations.Margins.Top);
+                r.Position = r.Position - decorations.Margins.TopLeft;
                 r.Size = r.Size + decorations.Margins.Size;
                 settings.Box = r;
                 decorations?.Rasterize(ref context, ref renderer, ref settings);

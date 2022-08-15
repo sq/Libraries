@@ -514,9 +514,12 @@ namespace Squared.PRGUI.Layout {
             pItem->Flags = (pItem->Flags & ~ControlFlagMask.Layout) | flags;
         }
 
-        public unsafe void SetLayoutData (ControlKey key, ref Vector2 floatingPosition, ref Margins margins, ref Margins padding) {
+        public unsafe void SetLayoutData (ControlKey key, ref Vector2? floatingPosition, ref Margins margins, ref Margins padding) {
             var pItem = LayoutPtr(key);
-            pItem->FloatingPosition = floatingPosition;
+            pItem->FloatingPosition = floatingPosition ?? Vector2.Zero;
+            pItem->Flags = (pItem->Flags & ~ControlFlags.Internal_Has_Position);
+            if (floatingPosition.HasValue)
+                pItem->Flags |= ControlFlags.Internal_Has_Position;
             pItem->Margins = margins;
             pItem->Padding = padding;
         }

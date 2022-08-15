@@ -726,8 +726,8 @@ namespace Squared.PRGUI.Input {
 
         private void MakeSettingsForPosition (Vector2 position, Margins total, Margins padding, out DecorationSettings settings) {
             settings = new DecorationSettings {
-                Box = new RectF(position - new Vector2(total.Left, total.Top), new Vector2(total.X, total.Y)),
-                ContentBox = new RectF(position - new Vector2(padding.Left, padding.Top), new Vector2(padding.X, padding.Y)),
+                Box = new RectF(position - total.TopLeft, total.Size),
+                ContentBox = new RectF(position - padding.TopLeft, padding.Size),
                 State = GenerateKeyPressForActivation ? ControlStates.Disabled : default(ControlStates)
             };
         }

@@ -42,7 +42,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public Vector2 Position {
-            get => base.Layout.FloatingPosition;
+            get => base.Layout.FloatingPosition.Value;
             set {
                 Aligner.SetPosition(value, true);
             }
@@ -86,6 +86,7 @@ namespace Squared.PRGUI.Controls {
 
         public Window ()
             : base () {
+            Layout.FloatingPosition = Vector2.Zero;
             Aligner = new ControlAlignmentHelper<Window>(this) {
                 UpdatePosition = UpdatePosition,
                 IsAnimating = () => CollapsePending,
