@@ -17,7 +17,8 @@ namespace Squared.PRGUI.NewEngine {
             if ((depth == 0) && config.IsFloating)
                 result.Rect.Position = control.FloatingPosition;
 
-            var contentPosition = result.Rect.Position + new Vector2(control.Padding.Left, control.Padding.Top);
+            Vector2 contentPosition = result.Rect.Position + new Vector2(control.Padding.Left, control.Padding.Top),
+                contentSpace = result.Rect.Size - control.Padding.Size;
 
             ControlKey firstProcessed = ControlKey.Invalid,
                 lastProcessed = ControlKey.Invalid;
@@ -25,17 +26,28 @@ namespace Squared.PRGUI.NewEngine {
                 h = Math.Max(0, result.Rect.Height - control.Padding.Y),
                 x = 0, y = 0;
 
+            if (control.Key.ID == 18)
+                ;
+            else if (control.Key.ID == 19)
+                ;
+            else if (control.Key.ID == 20)
+                ;
+
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
                 bool isLastRun = run.NextRunIndex < 0;
                 float rw = config.IsVertical ? run.MaxOuterWidth : run.TotalWidth,
-                    rh = config.IsVertical ? run.TotalHeight : run.MaxOuterHeight,
-                    space = Math.Max(config.IsVertical ? h - rh : w - rw, 0),
+                    rh = config.IsVertical ? run.TotalHeight : run.MaxOuterHeight;
+                if (config.Clip) {
+                    rw = Math.Min(rw, contentSpace.X);
+                    rh = Math.Min(rh, contentSpace.Y);
+                }
+                float space = Math.Max(config.IsVertical ? h - rh : w - rw, 0),
                     baseline = config.IsVertical
                         // HACK: The last run needs to have its baseline expanded to our outer edge
                         //  so that anchor bottom/right will hit the edges of our content rect
-                        ? (isLastRun ? result.ContentSize.X - x : run.MaxOuterWidth)
-                        : (isLastRun ? result.ContentSize.Y - y : run.MaxOuterHeight);
+                        ? (isLastRun ? contentSpace.X - x : run.MaxOuterWidth)
+                        : (isLastRun ? contentSpace.Y - y : run.MaxOuterHeight);
 
                 config.GetRunAlignmentF(out float xAlign, out float yAlign);
 

@@ -144,6 +144,13 @@ namespace Squared.PRGUI.NewEngine {
             float w = result.Rect.Width - control.Padding.X,
                 h = result.Rect.Height - control.Padding.Y;
 
+            if (control.Key.ID == 18)
+                ;
+            else if (control.Key.ID == 19)
+                ;
+            else if (control.Key.ID == 20)
+                ;
+
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
                 var isLastRun = (run.NextRunIndex < 0) || (runIndex == result.FloatingRunIndex);
@@ -156,8 +163,8 @@ namespace Squared.PRGUI.NewEngine {
                 //  to ALSO be 2000px wide. This ensures that if Constrain_Size is set we will only expand other items
                 //  to the size of the menu itself
                 // In the demo this is necessary to ensure that the 'item a ... item b' menu item is laid out correctly
-                float runMaxOuterWidth = config.ConstrainChildren && config.IsVertical ? Math.Min(w, run.MaxOuterWidth) : run.MaxOuterWidth,
-                    runMaxOuterHeight = config.ConstrainChildren && !config.IsVertical ? Math.Min(h, run.MaxOuterHeight) : run.MaxOuterHeight,
+                float runMaxOuterWidth = config.Clip && config.IsVertical ? Math.Min(w, run.MaxOuterWidth) : run.MaxOuterWidth,
+                    runMaxOuterHeight = config.Clip && !config.IsVertical ? Math.Min(h, run.MaxOuterHeight) : run.MaxOuterHeight,
                     // HACK: For the last run in a box we want to expand the run to fill the entire available space
                     //  otherwise listbox items will have a width of 0 :(
                     effectiveRunMaxWidth = isLastRun && config.IsVertical ? Math.Max(w, runMaxOuterWidth) : runMaxOuterWidth,

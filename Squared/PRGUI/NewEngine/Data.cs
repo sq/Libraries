@@ -219,7 +219,8 @@ namespace Squared.PRGUI.NewEngine {
 
         // TODO: Consider making these public and add setters
         internal bool ForceBreak => (_BoxFlags & BoxFlag.Break) != default;
-        internal bool ConstrainChildren => (_ContainerFlags & ContainerFlag.Boxes_Overflow) == default;
+        internal bool Clip => (_ContainerFlags & ContainerFlag.Boxes_Clip) == ContainerFlag.Boxes_Clip;
+        internal bool Overflow => (_ContainerFlags & ContainerFlag.Boxes_Overflow) == ContainerFlag.Boxes_Overflow;
         internal bool IsVertical => (_ContainerFlags & ContainerFlag.Layout_Column) != default;
         internal bool IsStacked => (_BoxFlags & BoxFlag.Stacked) == BoxFlag.Stacked;
         internal bool IsStackedOrFloating => (_BoxFlags & BoxFlag.Stacked) != default;
