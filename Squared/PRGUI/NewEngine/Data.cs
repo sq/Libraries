@@ -138,9 +138,8 @@ namespace Squared.PRGUI.NewEngine {
                     _ContainerFlags |= ContainerFlag.Arrange_Wrap;
                 if (value.IsFlagged(ControlFlags.Container_Clip_Children))
                     _ContainerFlags |= ContainerFlag.Boxes_Clip;
-                if (!value.IsFlagged(ControlFlags.Container_Constrain_Growth) &&
-                    !value.IsFlagged(ControlFlags.Container_Constrain_Size))
-                    _ContainerFlags |= ContainerFlag.Boxes_Overflow;
+                if (value.IsFlagged(ControlFlags.Container_Constrain_Growth))
+                    _ContainerFlags |= ContainerFlag.Boxes_Constrain_Growth;
                 if (!value.IsFlagged(ControlFlags.Container_No_Expansion_X))
                     _ContainerFlags |= ContainerFlag.Size_ExpandForContent_X;
                 if (!value.IsFlagged(ControlFlags.Container_No_Expansion_Y))
@@ -220,7 +219,7 @@ namespace Squared.PRGUI.NewEngine {
         // TODO: Consider making these public and add setters
         internal bool ForceBreak => (_BoxFlags & BoxFlag.Break) != default;
         internal bool Clip => (_ContainerFlags & ContainerFlag.Boxes_Clip) == ContainerFlag.Boxes_Clip;
-        internal bool Overflow => (_ContainerFlags & ContainerFlag.Boxes_Overflow) == ContainerFlag.Boxes_Overflow;
+        internal bool ConstrainGrowth => (_ContainerFlags & ContainerFlag.Boxes_Constrain_Growth) == ContainerFlag.Boxes_Constrain_Growth;
         internal bool IsVertical => (_ContainerFlags & ContainerFlag.Layout_Column) != default;
         internal bool IsStacked => (_BoxFlags & BoxFlag.Stacked) == BoxFlag.Stacked;
         internal bool IsStackedOrFloating => (_BoxFlags & BoxFlag.Stacked) != default;

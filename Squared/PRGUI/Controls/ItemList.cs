@@ -704,6 +704,11 @@ namespace Squared.PRGUI.Controls {
             int offset = 0, int count = int.MaxValue, 
             int skipLeadingControls = 0, int skipTrailingControls = 0
         ) {
+            if (skipLeadingControls > output.Count)
+                throw new ArgumentOutOfRangeException(nameof(skipLeadingControls));
+            if ((skipLeadingControls + skipTrailingControls) > output.Count)
+                throw new ArgumentOutOfRangeException(nameof(skipTrailingControls));
+
             CreateControlForValueDelegate<T> ccfvd = null;
             CreateControlForValueDelegate<T, TUserData> ccfvdud = null;
             if (typeof(TUserData) == typeof(NoneType))
@@ -772,9 +777,9 @@ namespace Squared.PRGUI.Controls {
 
                 Control newItem;
                 if (ccfvdud != null)
-                    newItem = CreateControlForValue(ref value, ResultBuffer[j], ref userData, ccfvdud);
+                    newItem = CreateControlForValue(ref value, j < ResultBuffer.Count ? ResultBuffer[j] : null, ref userData, ccfvdud);
                 else
-                    newItem = CreateControlForValue(ref value, ResultBuffer[j], ccfvd);
+                    newItem = CreateControlForValue(ref value, j < ResultBuffer.Count ? ResultBuffer[j] : null, ccfvd);
 
                 // Why is this here
                 if (j < ResultBuffer.Count)

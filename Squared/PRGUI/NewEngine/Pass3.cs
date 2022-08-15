@@ -60,17 +60,20 @@ namespace Squared.PRGUI.NewEngine {
                     var childMargins = child.Margins;
                     var childOuterSize = childResult.Rect.Size + childMargins.Size;
 
-                    if (child.Key.ID == 224)
-                        ;
-
                     childConfig.GetAlignmentF(xAlign, yAlign, out float xChildAlign, out float yChildAlign);
 
                     if (childConfig.IsStackedOrFloating) {
                         if (childConfig.IsFloating) {
                             childResult.Rect.Position = contentPosition + (child.FloatingPosition ?? Vector2.Zero);
                             childResult.AvailableSpace = contentExtent - childResult.Rect.Position - new Vector2(childMargins.Right, childMargins.Bottom);
-                            if (!child.FloatingPosition.HasValue)
-                                childResult.Rect.Position += (childResult.AvailableSpace - childResult.Rect.Size) * new Vector2(xChildAlign, yChildAlign);
+
+                            // Unless the floating child has an explicit position, we want to align it within the available space we just calculated
+                            if (!child.FloatingPosition.HasValue) {
+                                var alignment = (childResult.AvailableSpace - childResult.Rect.Size) * new Vector2(xChildAlign, yChildAlign);
+                                alignment.X = Math.Max(alignment.X, 0);
+                                alignment.Y = Math.Max(alignment.Y, 0);
+                                childResult.Rect.Position += alignment;
+                            }
                         } else {
                             var stackSpace = result.ContentSize - childOuterSize;
                             // If the control is stacked and aligned but did not fill the container (size constraints, etc)

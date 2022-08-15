@@ -46,11 +46,10 @@ namespace Squared.PRGUI.NewEngine.Enums {
         /// </summary>
         Boxes_Clip              = 0b10000000,
         /// <summary>
-        /// Child boxes will not be constrained by us at all, for scrolling viewports
-        /// If Clip is set, the children will have their outer rect clipped but not their content rect,
-        /// and our content rect will also contain the full size of all our children
+        /// Child boxes will not automatically grow beyond our content box even if they have huge
+        ///  siblings, but they will not be clipped
         /// </summary>
-        Boxes_Overflow          = 0b100000000,
+        Boxes_Constrain_Growth  = 0b100000000,
         /// <summary>
         /// If child boxes would overflow our content box, all of our children will be scaled down
         ///  horizontally in order to fit into available space
@@ -184,11 +183,10 @@ namespace Squared.PRGUI.NewEngine.Enums {
         /// </summary>
         OverflowHidden = ContainerFlag.Boxes_Clip,
         /// <summary>
-        /// Child boxes will not be constrained by us at all, for scrolling viewports
-        /// If Clip is set, the children will have their outer rect clipped but not their content rect,
-        /// and our content rect will also contain the full size of all our children
+        /// Child boxes will not automatically grow beyond our content box even if they have large
+        ///  siblings, but they will not be clipped unless OverflowHidden is set
         /// </summary>
-        OverflowShown = ContainerFlag.Boxes_Overflow,
+        ConstrainGrowth = ContainerFlag.Boxes_Constrain_Growth,
 
         /// <summary>
         /// If child boxes would overflow our content box, all of our children will be scaled down
@@ -233,7 +231,7 @@ namespace Squared.PRGUI.NewEngine.Enums {
         PreventCrush = PreventCrush_X | PreventCrush_Y,
 
         [Obsolete]
-        MASK = Wrap | OverflowHidden | OverflowShown | ExpandForContent | PreventCrush | Squish,
+        MASK = Wrap | OverflowHidden | ConstrainGrowth | ExpandForContent | PreventCrush | Squish,
     }
 
     public enum BoxAnchorMode : ushort {

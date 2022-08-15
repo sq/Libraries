@@ -235,7 +235,9 @@ namespace Squared.PRGUI {
         private static int NextControlIndex = 1;
 
         public Control () {
-            ControlIndex = System.Threading.Interlocked.Increment(ref NextControlIndex);
+            ControlIndex = Interlocked.Increment(ref NextControlIndex);
+            // HACK: Match default behavior of old engine. Set it to null to override
+            Layout.FloatingPosition = Vector2.Zero; // sigh
             TypeID = GetType().GetHashCode();
         }
 

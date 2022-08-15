@@ -330,11 +330,24 @@ namespace Squared.PRGUI {
             if (!context.Layout.TryGetFlags(LayoutKey, out ControlFlags flags))
                 return;
 
+            Margins margins = default, padding = default;
+            if (UIContext.UseNewEngine) {
+                if (ShowDebugMargins || ShowDebugPadding) {
+                    ComputeAppearanceSpacing(this, ref context, out margins, out var padding1, out var padding2);
+                    padding = padding1 + padding2;
+                }
+            } else {
+                if (ShowDebugMargins)
+                    margins = context.Layout.GetMargins(LayoutKey);
+                if (ShowDebugPadding)
+                    margins = context.Layout.GetPadding(LayoutKey);
+            }
+
             if (ShowDebugMargins)
-                RasterizeDebugMargins(ref context, ref passSet, ref rect, context.Layout.GetMargins(LayoutKey), 1f, Color.Green, layer);
+                RasterizeDebugMargins(ref context, ref passSet, ref rect, margins, 1f, Color.Green, layer);
 
             if (ShowDebugPadding)
-                RasterizeDebugMargins(ref context, ref passSet, ref rect, context.Layout.GetPadding(LayoutKey), -1f, Color.Yellow, layer);
+                RasterizeDebugMargins(ref context, ref passSet, ref rect, padding, -1f, Color.Yellow, layer);
 
             if (ShowDebugBreakMarkers && mouseIsOver && flags.IsBreak()) {
                 rect = new RectF(

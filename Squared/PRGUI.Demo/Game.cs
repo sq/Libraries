@@ -299,10 +299,19 @@ namespace PRGUI.Demo {
                 "Long Item 2",
                 "Item 3",
                 "Long Item 4",
-                "Even longer item 5",
+                "Even longer item 5. This item is so long it will hit the size constraint and may push Item 4B too far (but shouldn't)",
                 new StaticText { Text = "Item 6" },
                 "Item 7",
+                new ControlGroup {
+                    DebugLabel = "Menu item with two child items",
+                    Children = {
+                        new StaticText { Text = "Item 4A" },
+                        new Spacer(),
+                        new StaticText { Text = "Item 4B" },
+                    },
+                },
             };
+            testMenu.Width.Maximum = 300f;
             testMenu.CloseOnClickOutside = false;
             testMenu.CloseOnEscapePress = false;
             testMenu.CloseWhenFocusLost = false;
@@ -1198,9 +1207,6 @@ namespace PRGUI.Demo {
                 DisplayOrder = 10,
             };
             // Context.Controls.Add(floatingWindowWithText);
-
-            // Control.ShowDebugBoxes = true;
-            Control.ShowDebugPadding = false;
         }
 
         private void MakeScrollingTest (out Button increaseGaugeButton, out Gauge gauge, out Container scrollableClipTest) {

@@ -290,7 +290,7 @@ namespace Squared.PRGUI {
                 ref var rec = ref Engine.GetOrCreate(key, pItem->Tag, pItem->Flags);
                 rec.Margins = pItem->Margins;
                 rec.Padding = pItem->Padding;
-                rec.FloatingPosition = pItem->FloatingPosition;
+                rec.FloatingPosition = (pItem->Flags & ControlFlags.Internal_Has_Position) != default ? pItem->FloatingPosition : (Vector2?)null;
                 rec.Width = new ControlDimension {
                     Minimum = NegativeToNull(pItem->MinimumSize.X),
                     Maximum = NegativeToNull(pItem->MaximumSize.X),

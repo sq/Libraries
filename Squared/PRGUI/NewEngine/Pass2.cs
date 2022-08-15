@@ -144,7 +144,6 @@ namespace Squared.PRGUI.NewEngine {
             float cw = result.Rect.Width - control.Padding.X,
                 ch = result.Rect.Height - control.Padding.Y;
 
-            float pMinor = 0;
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
                 var isLastRun = (run.NextRunIndex < 0) || (runIndex == result.FloatingRunIndex);
@@ -234,8 +233,8 @@ namespace Squared.PRGUI.NewEngine {
                                 var newChildW = Math.Max(childOuterW + amountX, minOuterWidth);
                                 childResult.AvailableSpace.X = Math.Max(childResult.AvailableSpace.X, newChildW);
                                 newChildW = child.Width.Constrain(newChildW - margins.X, true) + margins.X;
-                                if (config.Clip)
-                                    newChildW = Math.Min(newChildW, config.IsVertical ? cw : cw - p); 
+                                if (config.Clip || (config.ConstrainGrowth && (newChildW > childOuterW)))
+                                    newChildW = Math.Min(newChildW, config.IsVertical ? cw : cw - p);
                                 float expanded = newChildW - childOuterW;
                                 if (expanded < amountX)
                                     newCountX--;
@@ -248,7 +247,7 @@ namespace Squared.PRGUI.NewEngine {
                             if (expandChildY) {
                                 run.TotalHeight -= childOuterH;
                                 var newChildH = Math.Max(childOuterH + amountY, minOuterHeight);
-                                if (config.Clip)
+                                if (config.Clip || (config.ConstrainGrowth && (newChildH > childOuterH)))
                                     newChildH = Math.Min(newChildH, config.IsVertical ? ch - p : ch); 
                                 childResult.AvailableSpace.Y = Math.Max(childResult.AvailableSpace.Y, newChildH);
                                 newChildH = child.Height.Constrain(newChildH - margins.Y, true) + margins.Y;

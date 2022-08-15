@@ -485,7 +485,7 @@ namespace Squared.PRGUI.Imperative {
                 Control.Layout.Floating = true;
             else
                 Control.Layout.Floating = floating ?? Control.Layout.Floating;
-            Control.Layout.FloatingPosition = floatingPosition ?? default;
+            Control.Layout.FloatingPosition = floatingPosition;
             Control.Layout.Stacked = stacked ?? Control.Layout.Stacked;
             Control.Layout.ForceBreak = forceBreak ?? Control.Layout.ForceBreak;
             return this;
