@@ -282,8 +282,9 @@ namespace Squared.PRGUI {
                 return;
             if (now < ActiveAnimationEndWhen)
                 return;
-            ActiveAnimation.End(this, false);
+            var aa = ActiveAnimation;
             ActiveAnimation = null;
+            aa.End(this, false);
             if ((ActiveAnimationFuture != null) && !ActiveAnimationFuture.Completed)
                 ActiveAnimationFuture.Complete(false);
             ActiveAnimationFuture = null;
@@ -294,10 +295,11 @@ namespace Squared.PRGUI {
                 return;
             if (ActiveAnimation == null)
                 return;
+            var aa = ActiveAnimation;
             var _now = now ?? Context.NowL;
             UpdateAnimation(_now);
-            ActiveAnimation?.End(this, true);
             ActiveAnimation = null;
+            aa?.End(this, true);
             if ((ActiveAnimationFuture != null) && !ActiveAnimationFuture.Completed)
                 ActiveAnimationFuture.Complete(true);
         }

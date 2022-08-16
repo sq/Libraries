@@ -45,7 +45,7 @@ namespace Squared.PRGUI.Controls {
 
     public class StaticImage : Control, IPostLayoutListener {
         public Vector2 Alignment = new Vector2(0.5f, 0.5f);
-        public Vector2 Scale = Vector2.One;
+        public float Scale = 1.0f;
         public RasterizePasses Pass = RasterizePasses.Content;
         /// <summary>
         /// The auto-selected scale ratio will never be below this value.
@@ -158,7 +158,7 @@ namespace Squared.PRGUI.Controls {
         private float ComputeDisplayScaleRatio (Texture2D instance, float availableWidth, float availableHeight) {
             // HACK
             if (instance == null)
-                return 1;
+                return Scale;
 
             var widthScale = ScaleToFitX
                 ? availableWidth / instance.Width
@@ -169,7 +169,7 @@ namespace Squared.PRGUI.Controls {
 
             return Arithmetic.Clamp(
                 // FIXME: Move this
-                ControlDimension.Min(widthScale, heightScale) ?? 1,
+                (ControlDimension.Min(widthScale, heightScale) ?? Scale),
                 MinimumScale,
                 MaximumScale
             );

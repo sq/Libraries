@@ -885,7 +885,7 @@ namespace Squared.PRGUI.Imperative {
             if (Control is StaticTextBase stb)
                 stb.Scale = value;
             else if (Control is StaticImage si)
-                si.Scale = new Vector2(value);
+                si.Scale = value;
             return this;
         }
         public ControlBuilder<TControl> SetWrap (bool value) {

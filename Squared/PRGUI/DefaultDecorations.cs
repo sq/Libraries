@@ -2018,8 +2018,15 @@ namespace Squared.PRGUI {
         public float DefaultDuration { get; set; }
         public float? From;
         public float To;
+        public bool RemoveAtEnd;
 
         void IControlAnimation.End (Control control, bool cancelled) {
+            if (RemoveAtEnd && !cancelled) {
+                if (control.TryGetParent(out var parent) && parent is IControlContainer icc)
+                    icc.Children.Remove(control);
+                else
+                    control.Context.Controls.Remove(control);
+            }
         }
 
         void IControlAnimation.Start (Control control, long now, float duration) {

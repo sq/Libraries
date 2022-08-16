@@ -133,10 +133,13 @@ namespace Squared.Render {
             // FIXME: Register a bound one too somehow
         }
 
-        public pSRGBColor (int r, int g, int b, float a = 1f) {
+        public pSRGBColor (int r, int g, int b, float a = 1f, bool isPremultiplied = false) {
             IsVector4 = true;
             // FIXME: sRGB
-            _Vector4 = new Vector4(r * a / 255f, g * a / 255f, b * a / 255f, a);
+            if (isPremultiplied)
+                _Vector4 = new Vector4(r, g, b, a);
+            else
+                _Vector4 = new Vector4(r * a / 255f, g * a / 255f, b * a / 255f, a);
             _Color = default(Color);
         }
 

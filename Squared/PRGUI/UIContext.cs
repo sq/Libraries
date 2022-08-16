@@ -767,11 +767,8 @@ namespace Squared.PRGUI {
             HideTooltip(true);
         }
 
-        private AbstractString GetTooltipTextForControl (Control target, bool leftButtonPressed, out AbstractTooltipContent content) {
+        public AbstractString GetTooltipTextForControl (Control target, out AbstractTooltipContent content) {
             content = default;
-            if (!IsTooltipAllowedToAppear(target, leftButtonPressed))
-                return default;
-
             var cttt = target as ICustomTooltipTarget;
             var tts = cttt?.TooltipSettings;
 
@@ -782,6 +779,14 @@ namespace Squared.PRGUI {
                     content = target.TooltipContent;
             }
             return content.Get(target);
+        }
+
+        private AbstractString GetTooltipTextForControl (Control target, bool leftButtonPressed, out AbstractTooltipContent content) {
+            content = default;
+            if (!IsTooltipAllowedToAppear(target, leftButtonPressed))
+                return default;
+
+            return GetTooltipTextForControl(target, out content);
         }
 
         private void UpdateTooltip (bool leftButtonPressed) {
@@ -955,6 +960,25 @@ namespace Squared.PRGUI {
                 Layout.UpdateSubtree(subtreeRoot.LayoutKey);
         }
 
+        public Vector2 PlaceTooltipContentIntoTooltip (
+            Tooltip instance, Control target, ICustomTooltipTarget cttt, AbstractString text, 
+            AbstractTooltipContent content
+        ) {
+            var tts = cttt?.TooltipSettings;
+            var anchor = cttt?.Anchor ?? target;
+            // HACK: Copy the target's decoration provider so the tooltip matches
+            instance.Appearance.DecorationProvider = (
+                anchor.Appearance.DecorationProvider ?? 
+                target.Appearance.DecorationProvider ?? 
+                Decorations
+            );
+
+            var idealMaxSize = CanvasSize * (content.Settings.MaxSize ?? tts?.MaxSize ?? MaxTooltipSize);
+            instance.Text = text;
+            instance.ApplySettings(content.Settings);
+            return idealMaxSize;
+        }
+
         private void ShowTooltip (
             Control target, ICustomTooltipTarget cttt, AbstractString text, 
             AbstractTooltipContent content, bool textIsInvalidated
@@ -966,12 +990,6 @@ namespace Squared.PRGUI {
 
             var tts = cttt?.TooltipSettings;
             var anchor = cttt?.Anchor ?? target;
-            // HACK: Copy the target's decoration provider so the tooltip matches
-            instance.Appearance.DecorationProvider = (
-                anchor.Appearance.DecorationProvider ?? 
-                target.Appearance.DecorationProvider ?? 
-                Decorations
-            );
             var fireEvent = (anchor != PreviousTooltipAnchor) || !IsTooltipVisible;
 
             // FIXME: For menus and perhaps list boxes, keyboard navigation sets the tooltip target
@@ -994,10 +1012,8 @@ namespace Squared.PRGUI {
                     System.Diagnostics.Debug.WriteLine($"TextLayoutIsIncomplete {FrameIndex}");
                 */
 
-                var idealMaxSize = CanvasSize * (content.Settings.MaxSize ?? tts?.MaxSize ?? MaxTooltipSize);
+                var idealMaxSize = PlaceTooltipContentIntoTooltip(instance, target, cttt, text, content);
 
-                instance.Text = text;
-                instance.ApplySettings(content.Settings);
                 // FIXME: Shift it around if it's already too close to the right side
                 instance.Width.Maximum = idealMaxSize.X;
                 instance.Height.Maximum = idealMaxSize.Y;

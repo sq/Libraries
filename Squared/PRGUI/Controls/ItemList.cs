@@ -57,9 +57,9 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public ItemListManager (IEqualityComparer<T> comparer) {
-            Comparer = comparer;
-            Items = new ItemList<T>(comparer);
+        public ItemListManager (IEqualityComparer<T> comparer = null) {
+            Comparer = comparer ?? EqualityComparer<T>.Default;
+            Items = new ItemList<T>(Comparer);
             _SelectedIndices.EnsureList();
         }
 
