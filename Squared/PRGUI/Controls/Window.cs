@@ -60,6 +60,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public bool AllowClose = false;
+        public bool ElevateOnFocus = false;
 
         public bool ChildrenAcceptFocus { get; set; } = true;
 
@@ -209,6 +210,22 @@ namespace Squared.PRGUI.Controls {
                 innerColor: color, outerColor: color,
                 outlineColor: outlineColor
             );
+        }
+
+        protected override bool OnEvent<T> (string name, T args) {
+            if (name == UIEvents.GotTopLevelFocus) {
+                if (ElevateOnFocus)
+                    Elevate();
+            }
+
+            return base.OnEvent(name, args);
+        }
+
+        public void Elevate () {
+            TryGetParent(out var parent);
+            var parentCollection = (parent as IControlContainer)?.Children ?? Context.Controls;
+            var newOrder = parentCollection.PickNewHighestDisplayOrder(this, false);
+            DisplayOrder = newOrder;
         }
 
         protected bool CloseButtonHitTest (Vector2 localPosition) {

@@ -409,6 +409,8 @@ namespace Squared.PRGUI {
 
             if ((previous != null) && (previous != newFocusTarget))
                 FireEvent(UIEvents.LostFocus, previous, newFocusTarget);
+            if ((PreviousTopLevelFocused != null) && (PreviousTopLevelFocused != TopLevelFocused))
+                FireEvent(UIEvents.LostTopLevelFocus, PreviousTopLevelFocused, TopLevelFocused);
 
             // HACK: Handle cases where focus changes re-entrantly so we don't go completely bonkers
             if (_Focused == newFocusTarget)
@@ -417,6 +419,8 @@ namespace Squared.PRGUI {
                     previous, newFocusTarget, isUserInitiated
                 );
 
+            if ((TopLevelFocused != null) && (PreviousTopLevelFocused != TopLevelFocused))
+                FireEvent(UIEvents.GotTopLevelFocus, TopLevelFocused, PreviousTopLevelFocused);
             if ((_Focused != null) && (previous != newFocusTarget) && (_Focused == newFocusTarget))
                 FireEvent(UIEvents.GotFocus, newFocusTarget, previous);
 

@@ -34,7 +34,6 @@ namespace Squared.PRGUI.Controls {
 
         protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) => false;
         protected override bool OnEvent<T> (string name, T args) => false;
-        protected override bool OnEvent (string name) => false;
 
         protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
             return true;
@@ -66,7 +65,6 @@ namespace Squared.PRGUI.Controls {
 
         protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) => false;
         protected override bool OnEvent<T> (string name, T args) => false;
-        protected override bool OnEvent (string name) => false;
 
         protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
             return true;
@@ -364,10 +362,6 @@ namespace Squared.PRGUI.Controls {
         internal NullControl () {
             AcceptsMouseInput = AcceptsTextInput = AcceptsFocus = false;
             Intangible = true; Enabled = false;
-        }
-
-        protected override bool OnEvent (string name) {
-            return false;
         }
 
         protected override bool OnEvent<T> (string name, T args) {

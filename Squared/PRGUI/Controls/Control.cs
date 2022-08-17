@@ -488,15 +488,11 @@ namespace Squared.PRGUI {
         }
 
         internal bool HandleEvent (string name) {
-            return (EventFilter?.OnEvent(this, name) ?? false) || OnEvent(name);
+            return (EventFilter?.OnEvent(this, name) ?? false) || OnEvent<NoneType>(name, NoneType.None);
         }
 
         internal bool HandleEvent<T> (string name, T args) {
             return (EventFilter?.OnEvent(this, name, args) ?? false) || OnEvent(name, args);
-        }
-
-        protected virtual bool OnEvent (string name) {
-            return false;
         }
 
         protected virtual bool OnEvent<T> (string name, T args) {

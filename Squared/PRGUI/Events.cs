@@ -10,7 +10,9 @@ using Squared.PRGUI.Input;
 namespace Squared.PRGUI {
     public static class UIEvents {
         public const string LostFocus = "LostFocus",
+            LostTopLevelFocus = "LostTopLevelFocus",
             GotFocus = "GotFocus",
+            GotTopLevelFocus = "GotTopLevelFocus",
             MouseDown = "MouseDown",
             MouseMove = "MouseMove",
             MouseUp = "MouseUp",
