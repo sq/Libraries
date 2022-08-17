@@ -164,10 +164,12 @@ namespace Squared.PRGUI {
                 return;
 
             if (IndexTable.TryGetValue(control, out int deleteAtIndex)) {
-                FireControlRemoveEvents(control);
+                if (Items[deleteAtIndex] != control)
+                    throw new Exception("Corrupt internal state");
                 Items.RemoveAt(deleteAtIndex);
                 IndexTable.Remove(control);
-                UpdateIndexTable(deleteAtIndex);
+                UpdateIndexTable(Math.Max(0, deleteAtIndex - 1));
+                FireControlRemoveEvents(control);
             }
 
             Invalidate();

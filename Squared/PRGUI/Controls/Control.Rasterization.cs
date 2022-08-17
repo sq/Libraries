@@ -340,7 +340,7 @@ namespace Squared.PRGUI {
                 if (ShowDebugMargins)
                     margins = context.Layout.GetMargins(LayoutKey);
                 if (ShowDebugPadding)
-                    margins = context.Layout.GetPadding(LayoutKey);
+                    padding = context.Layout.GetPadding(LayoutKey);
             }
 
             if (ShowDebugMargins)
