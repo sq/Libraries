@@ -333,6 +333,17 @@ namespace Squared.PRGUI {
             if (FireEvent(name, Focused, evt, filtersOnly: suppressRepeat))
                 return true;
 
+            // HACK: For modifier key inputs, dispatch them to the top level control as well since it may be a window.
+            // This allows a window to handle things like Ctrl-F4
+            if (
+                evt.Modifiers.Control || 
+                evt.Modifiers.Alt || 
+                SuppressRepeatKeys.Contains(evt.Key.GetValueOrDefault())
+            ) {
+                if (FireEvent(name, TopLevelFocused, evt, filtersOnly: suppressRepeat))
+                    return true;
+            }
+
             bool needsToClearFocus = false;
 
             if (name == UIEvents.KeyPress) {

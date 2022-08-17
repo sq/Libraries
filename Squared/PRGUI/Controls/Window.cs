@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
@@ -216,6 +217,11 @@ namespace Squared.PRGUI.Controls {
             if (name == UIEvents.GotTopLevelFocus) {
                 if (ElevateOnFocus)
                     Elevate();
+            } else if ((name == UIEvents.KeyPress) && AllowClose && (args is KeyEventArgs kea)) {
+                if ((kea.Key == Keys.F4) && kea.Modifiers.Control) {
+                    UserClose();
+                    return true;
+                }
             }
 
             return base.OnEvent(name, args);
