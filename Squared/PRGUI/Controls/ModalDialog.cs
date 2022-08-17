@@ -255,14 +255,19 @@ namespace Squared.PRGUI.Controls {
             NextResultFuture?.SetResult(result, null);
             Intangible = true;
             IsFadingOut = (Context.TopLevelFocused == this);
-            StartAnimation(Context.Animations?.HideModalDialog);
+            var f = StartAnimation(Context.Animations?.HideModalDialog);
             Context.NotifyModalClosed(this);
             if (Closed != null)
                 Closed(this, reason);
-            Context.Controls.Remove(this);
+            if (f.CompletedSuccessfully && f.Result == false)
+                Context.Controls.Remove(this);
             AcceptsFocus = false;
             _FocusDonor = null;
             return true;
+        }
+
+        public override void UserClose () {
+            Close(ModalCloseReason.UserCancelled);
         }
 
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

@@ -9,6 +9,7 @@ using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
+using Squared.Render.RasterShape;
 using Squared.Render.Text;
 using Squared.Util;
 
@@ -57,6 +58,8 @@ namespace Squared.PRGUI.Controls {
                 base.Collapsible = _DesiredCollapsible && !Maximized;
             }
         }
+
+        public bool AllowClose = false;
 
         public bool ChildrenAcceptFocus { get; set; } = true;
 
@@ -169,6 +172,54 @@ namespace Squared.PRGUI.Controls {
                 CollapsingEnabled = settings.HasStateFlag(ControlStates.ContainsFocus);
 
             base.OnRasterize(ref context, ref renderer, settings, decorations);
+
+            if (AllowClose && (context.Pass == RasterizePasses.Above))
+                RasterizeCloseButton(ref context, ref renderer, settings);
+        }
+
+        private RasterPolygonVertex[] ClosePolygon = new RasterPolygonVertex[4];
+
+        public const float MinCloseButtonSize = 8,
+            CloseButtonMargin = 20,
+            CloseButtonSizeMultiplier = 0.36f;
+
+        protected float CloseButtonSize => (float)Math.Round(
+            Math.Max(MinCloseButtonSize, MostRecentTitleBox.Height * CloseButtonSizeMultiplier), 
+            MidpointRounding.AwayFromZero
+        );
+        protected float CloseButtonPadding => CloseButtonSize + CloseButtonMargin;
+
+        private void RasterizeCloseButton (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            float pad = (CloseButtonPadding - CloseButtonSize) / 2f,
+                ySpace = ((MostRecentTitleBox.Height - CloseButtonSize) / 2f),
+                centering = (float)(Math.Round(CloseButtonSize * 0.5f, MidpointRounding.AwayFromZero)),
+                size = CloseButtonSize * 0.5f;
+            ySpace = (float)Math.Floor(ySpace);
+            settings.Box.SnapAndInset(out Vector2 tl, out Vector2 br);
+            var offset = new Vector2(br.X - pad - centering, tl.Y + ySpace + centering);
+            ClosePolygon[0] = new RasterPolygonVertex(offset + new Vector2(-size), startNew: true);
+            ClosePolygon[1] = new RasterPolygonVertex(offset + new Vector2(size));
+            ClosePolygon[2] = new RasterPolygonVertex(offset + new Vector2(size, -size), startNew: true);
+            ClosePolygon[3] = new RasterPolygonVertex(offset + new Vector2(-size, size));
+            var alpha = CloseButtonHitTest(context.MousePosition - tl) ? 1.0f : 0.85f;
+            pSRGBColor color = pSRGBColor.White(alpha), outlineColor = pSRGBColor.Black(alpha);
+
+            renderer.RasterizePolygon(
+                new ArraySegment<RasterPolygonVertex>(ClosePolygon), false, 2f, 1f,
+                innerColor: color, outerColor: color,
+                outlineColor: outlineColor
+            );
+        }
+
+        protected bool CloseButtonHitTest (Vector2 localPosition) {
+            if (localPosition.X < MostRecentTitleBox.Width - CloseButtonPadding)
+                return false;
+            if (localPosition.Y > MostRecentTitleBox.Height)
+                return false;
+            if ((localPosition.X > MostRecentTitleBox.Width) || (localPosition.Y < 0))
+                return false;
+
+            return true;
         }
 
         protected override bool OnMouseEvent (string name, MouseEventArgs args) {
@@ -230,11 +281,21 @@ namespace Squared.PRGUI.Controls {
                     (CollapsingEnabled && (args.SequentialClickCount == 2) && !Collapsed)
                 )
                     ToggleCollapsed();
+                else if (AllowClose && CloseButtonHitTest(args.RelativeGlobalPosition - args.Box.Position))
+                    UserClose();
+
                 return true;
             }
 
             // Don't fallback to TitledContainer's event handler, it does things we don't want
             return false;
+        }
+
+        public virtual void UserClose () {
+            FireEvent(UIEvents.Closed);
+            var f = StartAnimation(Context.Animations?.HideModalDialog);
+            if (f.CompletedSuccessfully && f.Result == false)
+                Context.Controls.Remove(this);
         }
 
         protected override string DescriptionPrefix => (Collapsed ? "Collapsed Window" : "Window");

@@ -454,12 +454,6 @@ namespace Squared.PRGUI.Controls {
 
             Aligner.EnsureAligned(ref context, ref relayoutRequested);
 
-            // Remove ourselves from the top-level context if we've just finished fading out.
-            // While this isn't strictly necessary, it's worth doing for many reasons
-            var opacity = GetOpacity(context.NowL);
-            if ((opacity <= 0) && !IsActive)
-                context.UIContext.Controls.Remove(this);
-
             if (relayoutRequested)
                 return;
 

@@ -463,7 +463,8 @@ namespace Squared.PRGUI {
 
             HideMenu = new FadeAnimation {
                 To = 0f,
-                DefaultDuration = MenuHideDuration
+                DefaultDuration = MenuHideDuration,
+                RemoveAtEnd = true
             };
 
             ShowModalDialog = new FadeAnimation {
@@ -473,7 +474,8 @@ namespace Squared.PRGUI {
 
             HideModalDialog = new FadeAnimation {
                 To = 0f,
-                DefaultDuration = ModalDialogHideDuration
+                DefaultDuration = ModalDialogHideDuration,
+                RemoveAtEnd = true
             };
 
             UpdateScaledSizes();
