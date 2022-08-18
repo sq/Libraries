@@ -233,6 +233,7 @@ namespace Squared.PRGUI.Controls {
             if (!IsCancelHandlerRegistered)
                 RegisterHandler(CancelControl, OnCancelClick, ref IsCancelHandlerRegistered);
             IsActive = true;
+            Elevate();
             if (Shown != null)
                 Shown(this);
             return f;

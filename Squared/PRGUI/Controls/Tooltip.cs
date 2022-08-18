@@ -16,7 +16,7 @@ namespace Squared.PRGUI.Controls {
         public static Vector2 DefaultAnchorPoint = new Vector2(0.5f, 1f),
             DefaultControlAlignmentPoint = new Vector2(0.5f, 0f);
 
-        protected ControlAlignmentHelper<Tooltip> Aligner;
+        public readonly ControlAlignmentHelper<Tooltip> Aligner;
         protected int FramesWaitingForAlignmentUpdate = 0;
 
         public Tooltip ()

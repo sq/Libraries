@@ -279,7 +279,7 @@ namespace Squared.PRGUI {
             LastClickPosition = mousePosition;
             PreviousClickTarget = target;
             LastClickTime = LastMouseDownTime;
-            FireEvent(UIEvents.Click, target, MakeMouseEventArgs(target, mousePosition, mouseDownPosition));
+            FireEvent(UIEvents.Click, target, MakeMouseEventArgs(target, mousePosition, mouseDownPosition, true));
 
             TTS.ControlClicked(target, MouseOver);
         }
@@ -386,7 +386,7 @@ namespace Squared.PRGUI {
             var position = targetRect.Contains(LastMousePosition)
                 ? LastMousePosition
                 : targetRect.Center;
-            var args = MakeMouseEventArgs(target, position, null);
+            var args = MakeMouseEventArgs(target, position, null, true);
             args.IsSynthetic = true;
             // FIXME: implement double-click for double-space-press
             args.SequentialClickCount = 1;
@@ -582,7 +582,7 @@ namespace Squared.PRGUI {
             return transformedGlobalPosition;
         }
 
-        internal MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
+        internal MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition, Vector2? mouseDownPosition, bool forClick = false) {
             var transformedGlobalPosition = CalculateRelativeGlobalPosition(target, globalPosition);
 
             {
@@ -594,8 +594,6 @@ namespace Squared.PRGUI {
                 }
                 var mdp = MouseDownPosition ?? mouseDownPosition ?? globalPosition;
                 var travelDistance = (globalPosition - mdp).Length();
-                var doubleClicking = IsInDoubleClickWindow(target, globalPosition);
-                doubleClicking = doubleClicking && (MouseCaptured != null);
                 if (!SpareMouseEventArgs.TryPopFront(out MouseEventArgs result, out _))
                     result = new MouseEventArgs();
                 result.Context = this;
@@ -615,12 +613,15 @@ namespace Squared.PRGUI {
                 result.MouseDownPosition = mdp;
                 result.MouseDownTimestamp = LastMouseDownTime;
                 result.MovedSinceMouseDown = travelDistance >= MinimumMouseMovementDistance;
-                result.DoubleClicking = doubleClicking;
                 result.PreviousButtons = LastMouseButtons;
                 result.Buttons = CurrentMouseButtons;
                 result.SequentialClickCount = (target == PreviousClickTarget)
                     ? SequentialClickCount
                     : 0;
+                var doubleClicking = IsInDoubleClickWindow(target, globalPosition) && result.SequentialClickCount == 2;
+                if (!forClick)
+                    doubleClicking = doubleClicking && (MouseCaptured != null);
+                result.DoubleClicking = doubleClicking;
                 UsedMouseEventArgs.Add(result);
                 return result;
             }

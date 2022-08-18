@@ -62,6 +62,7 @@ namespace Squared.PRGUI.Controls {
 
         public bool AllowClose = false;
         public bool ElevateOnFocus = false;
+        public bool ElevateTopmost = false;
 
         public bool ChildrenAcceptFocus { get; set; } = true;
 
@@ -230,7 +231,7 @@ namespace Squared.PRGUI.Controls {
         public void Elevate () {
             TryGetParent(out var parent);
             var parentCollection = (parent as IControlContainer)?.Children ?? Context.Controls;
-            var newOrder = parentCollection.PickNewHighestDisplayOrder(this, false);
+            var newOrder = parentCollection.PickNewHighestDisplayOrder(this, ElevateTopmost);
             DisplayOrder = newOrder;
         }
 

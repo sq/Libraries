@@ -169,11 +169,14 @@ namespace Squared.Render.Resources {
                     Exception exc = null;
                     LoadInfo.SetStatus(ResourceLoadStatus.OpeningStream, Provider.Now);
                     if (!Provider.TryGetStream(LoadInfo.Name, LoadInfo.Data, LoadInfo.Optional, out stream, out exc)) {
-                        Future.SetResult2(
-                            default(T), (exc != null) 
-                                ? ExceptionDispatchInfo.Capture(exc) 
-                                : null
-                        );
+                        if (LoadInfo.Optional && (exc is FileNotFoundException))
+                            Future.SetResult2(default(T), null);
+                        else
+                            Future.SetResult2(
+                                default(T), (exc != null)
+                                    ? ExceptionDispatchInfo.Capture(exc)
+                                    : null
+                            );
                         Provider.NotifyLoadFailed(LoadInfo, exc);
                         return;
                     }
@@ -757,7 +760,7 @@ namespace Squared.Render.Resources {
             } else if (errors.Count == 1) {
                 error = errors[0];
             } else {
-                error = new FileNotFoundException($"An unknown error occurred when opening '{name}'.", name);
+                error = new FileNotFoundException($"'{name}' could not be located in {Sources.Length} source(s).", name);
             }
             return false;
         }
