@@ -745,9 +745,9 @@ namespace Squared.PRGUI.Imperative {
 
             if (Control is Slider cast2) {
                 if (min.HasValue)
-                    cast2.Minimum = Convert.ToSingle(min);
+                    cast2.Minimum = Convert.ToSingle(min.Value);
                 if (max.HasValue)
-                    cast2.Maximum = Convert.ToSingle(max);
+                    cast2.Maximum = Convert.ToSingle(max.Value);
             }
 
             return this;

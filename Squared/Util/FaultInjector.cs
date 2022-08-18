@@ -43,12 +43,12 @@ namespace Squared.Util.Testing {
         /// </summary>
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Step () {
+        public void Step (double chanceScale = 1.0) {
             if (!Enabled || (Countdown-- > 0))
                 return;
 
             Countdown = RNG.Next(MinCountdown, MaxCountdown);
-            if (RNG.NextDouble() * 100 < PercentageChance)
+            if (RNG.NextDouble() * (100.0 / chanceScale) < PercentageChance)
                 InjectFault();
         }
 
@@ -59,10 +59,10 @@ namespace Squared.Util.Testing {
         /// </summary>
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Exception StepNonThrowing () {
+        public Exception StepNonThrowing (double chanceScale = 1.0) {
             if (!Enabled || (Countdown-- > 0))
                 return null;
-            if (RNG.NextDouble() * 100 >= PercentageChance)
+            if (RNG.NextDouble() * (100.0 / chanceScale) >= PercentageChance)
                 return null;
 
             Countdown = RNG.Next(MinCountdown, MaxCountdown);
