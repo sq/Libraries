@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Reflection;
 using Squared.Util.Containers;
 using System.Runtime.ExceptionServices;
+using System.Runtime.CompilerServices;
 
 namespace Squared.Task {
     public interface ISchedulable {
@@ -209,6 +210,14 @@ namespace Squared.Task {
             thunk.Signal.WaitOne();
             if (thunk.Exception != null)
                 thunk.Exception.Throw();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void AssertActive () {
+            if (Current is TaskSchedulerSynchronizationContext)
+                return;
+
+            throw new ThreadStateException($"Expected a TaskSchedulerSynchronizationContext to be active but the active context was {Current}");
         }
     }
 

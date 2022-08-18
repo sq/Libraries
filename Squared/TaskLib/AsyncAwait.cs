@@ -133,7 +133,7 @@ namespace Squared.Task {
             }
         }
 
-        public struct QueueToSchedulerTaskAwaiter : INotifyCompletion {
+        public struct QueueToSchedulerTaskAwaiter : ICriticalNotifyCompletion, INotifyCompletion {
             private TaskAwaiter Awaiter;
             private TaskScheduler Scheduler;
             private bool ForNextStep;
@@ -147,6 +147,8 @@ namespace Squared.Task {
                 ForNextStep = forNextStep;
             }
 
+            public void UnsafeOnCompleted (Action continuation) => OnCompleted(continuation);
+
             public void OnCompleted (Action continuation) {
                 QueueToSchedulerWhenComplete(Scheduler, Awaiter, continuation, ForNextStep, Awaiter.IsCompleted);
             }
@@ -157,7 +159,7 @@ namespace Squared.Task {
             public QueueToSchedulerTaskAwaiter GetAwaiter () => this;
         }
 
-        public struct QueueToSchedulerTaskAwaiter<T> : INotifyCompletion {
+        public struct QueueToSchedulerTaskAwaiter<T> : ICriticalNotifyCompletion, INotifyCompletion {
             private TaskAwaiter<T> Awaiter;
             private TaskScheduler Scheduler;
             private bool ForNextStep;
@@ -171,6 +173,8 @@ namespace Squared.Task {
                 ForNextStep = forNextStep;
             }
 
+            public void UnsafeOnCompleted (Action continuation) => OnCompleted(continuation);
+
             public void OnCompleted (Action continuation) {
                 QueueToSchedulerWhenComplete(Scheduler, Awaiter, continuation, ForNextStep, Awaiter.IsCompleted);
             }
@@ -181,7 +185,7 @@ namespace Squared.Task {
             public QueueToSchedulerTaskAwaiter<T> GetAwaiter () => this;
         }
 
-        public struct QueueToSchedulerAwaitable : INotifyCompletion {
+        public struct QueueToSchedulerAwaitable : ICriticalNotifyCompletion, INotifyCompletion {
             private TaskScheduler Scheduler;
             private bool ForNextStep;
 
@@ -189,6 +193,8 @@ namespace Squared.Task {
                 Scheduler = scheduler;
                 ForNextStep = forNextStep;
             }
+
+            public void UnsafeOnCompleted (Action continuation) => OnCompleted(continuation);
 
             public void OnCompleted (Action continuation) {
                 if (ForNextStep)
@@ -217,7 +223,7 @@ namespace Squared.Task {
         }
 
         public static void QueueToSchedulerWhenComplete<TAwaiter> (TaskScheduler scheduler, in TAwaiter awaiter, Action continuation, bool forNextStep, bool completeSynchronously)
-            where TAwaiter : INotifyCompletion
+            where TAwaiter : ICriticalNotifyCompletion
         {
             if (completeSynchronously) {
                 if (forNextStep)
@@ -230,7 +236,7 @@ namespace Squared.Task {
                     ForNextStep = forNextStep,
                     Continuation = continuation
                 };
-                awaiter.OnCompleted(thunk.OnCompleted);
+                awaiter.UnsafeOnCompleted(thunk.OnCompleted);
             }
         }
 

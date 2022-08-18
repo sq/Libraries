@@ -54,7 +54,7 @@ namespace Squared.Threading {
             }
         }
 
-        public struct FutureAwaiter<TResult> : INotifyCompletion {
+        public struct FutureAwaiter<TResult> : ICriticalNotifyCompletion, INotifyCompletion {
             public readonly CancellationScope.Registration Registration;
             public readonly Future<TResult> Future;
             public readonly bool HasDisposedValue;
@@ -81,6 +81,8 @@ namespace Squared.Threading {
                 ThrowOnError = throwOnError;
             }
 
+            public void UnsafeOnCompleted (Action continuation) => OnCompleted(continuation);
+
             public void OnCompleted (Action continuation) {
                 Future.RegisterOnResolved(Registration.OnCompleteWithUserData(continuation), Registration);
             }
@@ -104,7 +106,7 @@ namespace Squared.Threading {
             }
         }
 
-        public struct IFutureAwaiter : INotifyCompletion {
+        public struct IFutureAwaiter : ICriticalNotifyCompletion, INotifyCompletion {
             public readonly CancellationScope.Registration Registration;
             public readonly IFuture Future;
             public readonly bool HasDisposedValue;
@@ -131,6 +133,8 @@ namespace Squared.Threading {
                 ThrowOnError = throwOnError;
             }
 
+            public void UnsafeOnCompleted (Action continuation) => OnCompleted(continuation);
+
             public void OnCompleted (Action continuation) {
                 Future.RegisterOnResolved(Registration.OnCompleteWithUserData(continuation), Registration);
             }
@@ -154,7 +158,7 @@ namespace Squared.Threading {
             }
         }
 
-        public struct VoidFutureAwaiter : INotifyCompletion {
+        public struct VoidFutureAwaiter : ICriticalNotifyCompletion, INotifyCompletion {
             public readonly CancellationScope.Registration Registration;
             public readonly Future<NoneType> Future;
 
@@ -164,6 +168,8 @@ namespace Squared.Threading {
                 Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
             }
+
+            public void UnsafeOnCompleted (Action continuation) => OnCompleted(continuation);
 
             public void OnCompleted (Action continuation) {
                 Future.RegisterOnResolved(Registration.OnCompleteWithUserData(continuation), Registration);
@@ -376,7 +382,7 @@ namespace Squared.Threading {
                 return;
             }
 
-            task.ConfigureAwait(false).GetAwaiter().OnCompleted(() => {
+            task.GetAwaiter().OnCompleted(() => {
                 // FIXME: ExceptionDispatchInfo?
                 if (task.IsFaulted)
                     future.Fail(task.Exception.InnerExceptions.Count == 1 ? task.Exception.InnerException : task.Exception);
@@ -392,7 +398,7 @@ namespace Squared.Threading {
                 return;
             }
 
-            task.ConfigureAwait(false).GetAwaiter().OnCompleted(() => {
+            task.GetAwaiter().OnCompleted(() => {
                 future.SetResultFrom(task);
             });
             future.RegisterOnDispose(CancelScopeForTask, task);

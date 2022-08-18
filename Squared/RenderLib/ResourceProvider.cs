@@ -117,7 +117,7 @@ namespace Squared.Render.Resources {
                     }
                 } catch (Exception exc) {
                     Provider.NotifyLoadFailed(LoadInfo, exc);
-                    Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
+                    Provider.SetFutureResult2(Future, default, ExceptionDispatchInfo.Capture(exc));
                     if (!StreamIsDisposed) {
                         StreamIsDisposed = true;
                         Stream?.Dispose();
@@ -135,7 +135,7 @@ namespace Squared.Render.Resources {
                     if (err == null)
                         LoadInfo.SetStatus(ResourceLoadStatus.Created, Provider.Now);
                     try {
-                        Future.SetResult(value, err);
+                        Provider.SetFutureResult(Future, value, err);
                     } finally {
                         if (err != null)
                             Provider.NotifyLoadFailed(LoadInfo, err);
@@ -170,10 +170,10 @@ namespace Squared.Render.Resources {
                     LoadInfo.SetStatus(ResourceLoadStatus.OpeningStream, Provider.Now);
                     if (!Provider.TryGetStream(LoadInfo.Name, LoadInfo.Data, LoadInfo.Optional, out stream, out exc)) {
                         if (LoadInfo.Optional && (exc is FileNotFoundException))
-                            Future.SetResult2(default(T), null);
+                            Provider.SetFutureResult(Future, default, null);
                         else
-                            Future.SetResult2(
-                                default(T), (exc != null)
+                            Provider.SetFutureResult2(
+                                Future, default, (exc != null)
                                     ? ExceptionDispatchInfo.Capture(exc)
                                     : null
                             );
@@ -198,7 +198,7 @@ namespace Squared.Render.Resources {
                 } catch (Exception exc) {
                     if (stream != null)
                         stream.Dispose();
-                    Future.SetResult2(default(T), ExceptionDispatchInfo.Capture(exc));
+                    Provider.SetFutureResult2(Future, default, ExceptionDispatchInfo.Capture(exc));
                 }
             }
         }
@@ -211,6 +211,11 @@ namespace Squared.Render.Resources {
                     return PendingLoads.Count;
             }
         }
+
+        /// <summary>
+        /// If set, completion events will be posted to this scheduler's work queue.
+        /// </summary>
+        public Squared.Task.TaskScheduler CompletionScheduler;
 
         public readonly RenderCoordinator Coordinator;
         public bool IsDisposed { get; private set; }
@@ -239,6 +244,20 @@ namespace Squared.Render.Resources {
         public event ResourceLoadCompleteHandler OnLoad;
 
         internal long Now => TimeProvider.Ticks;
+
+        protected void SetFutureResult<T> (Future<T> future, T result, Exception error) {
+            if ((CompletionScheduler == null) || (Thread.CurrentThread == CompletionScheduler.MainThread))
+                future.SetResult(result, error);
+            else
+                CompletionScheduler.QueueWorkItem(() => future.SetResult(result, error));
+        }
+
+        protected void SetFutureResult2<T> (Future<T> future, T result, ExceptionDispatchInfo errorInfo) {
+            if ((CompletionScheduler == null) || (Thread.CurrentThread == CompletionScheduler.MainThread))
+                future.SetResult2(result, errorInfo);
+            else
+                CompletionScheduler.QueueWorkItem(() => future.SetResult2(result, errorInfo));
+        }
 
         internal void FireStartEvent (ResourceLoadInfo info) {
             if (OnLoadStart == null)
@@ -411,7 +430,7 @@ namespace Squared.Render.Resources {
             var exc = FaultInjector?.StepNonThrowing();
             if (exc != null) {
                 var result = new Future<T>();
-                result.SetResult(default, exc);
+                SetFutureResult(result, default, exc);
                 return result;
             }
 
@@ -442,7 +461,7 @@ namespace Squared.Render.Resources {
 
             if (performLoad) {
                 T instance = LoadSyncUncached(name, data, optional, out Exception exc);
-                future.SetResult(instance, exc);
+                SetFutureResult(future, instance, exc);
             } else if (!future.Completed) {
                 WaitForLoadSync(future, name, data);
             }
