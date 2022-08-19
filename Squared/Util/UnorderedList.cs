@@ -359,6 +359,15 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T CreateSlot () {
+            int newCount = _Count + 1;
+            EnsureCapacity(newCount);
+
+            _Count = newCount;
+            return ref _Items[_BufferOffset + newCount - 1];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (T[] items, int sourceOffset, int count) {
             int newCount = _Count + count;
             EnsureCapacity(newCount);
@@ -466,6 +475,15 @@ namespace Squared.Util {
 
             result = _Items[_BufferOffset + index];
             return true;
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T DangerousItemOrDefault (int index) {
+            if ((index < 0) || (index >= _Count))
+                return default(T);
+
+            return _Items[_BufferOffset + index];
         }
 
         [TargetedPatchingOptOut("")]

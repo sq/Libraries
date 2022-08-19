@@ -15,6 +15,7 @@ using IEventInfo = Squared.Util.Event.IEventInfo;
 using Squared.Threading;
 using Squared.Threading.AsyncAwait;
 using System.Runtime.ExceptionServices;
+using System.Threading.Tasks;
 
 namespace Squared.Threading {
     // FIXME: We should implement ICriticalNotifyCompletion and do ExecutionContext flowing for the normal variant.
@@ -382,6 +383,7 @@ namespace Squared.Threading {
                 return;
             }
 
+            // FIXME: ConfigureAwait(false)?
             task.GetAwaiter().OnCompleted(() => {
                 // FIXME: ExceptionDispatchInfo?
                 if (task.IsFaulted)
@@ -398,6 +400,7 @@ namespace Squared.Threading {
                 return;
             }
 
+            // FIXME: ConfigureAwait(false)?
             task.GetAwaiter().OnCompleted(() => {
                 future.SetResultFrom(task);
             });
@@ -449,6 +452,48 @@ namespace Squared.Threading {
             return new NonThrowingIFuture {
                 Future = future
             };
+        }
+
+        private class AsTaskThunk {
+            public readonly TaskCompletionSource<NoneType> CompletionSource = new TaskCompletionSource<NoneType>();
+
+            public Task Task => CompletionSource.Task;
+
+            internal void OnResolved (IFuture future) {
+                if (future.Failed)
+                    CompletionSource.SetException(future.Error);
+                else if (future.Disposed)
+                    CompletionSource.SetCanceled();
+                else
+                    CompletionSource.SetResult(NoneType.None);
+            }
+        }
+
+        public static Task AsTask (this IFuture future) {
+            var thunk = new AsTaskThunk();
+            future.RegisterOnResolved(thunk.OnResolved);
+            return thunk.Task;
+        }
+
+        private class AsTaskThunk<T> {
+            public readonly TaskCompletionSource<T> CompletionSource = new TaskCompletionSource<T>();
+
+            public Task<T> Task => CompletionSource.Task;
+
+            internal void OnResolved (Future<T> future) {
+                if (future.Failed)
+                    CompletionSource.SetException(future.Error);
+                else if (future.Disposed)
+                    CompletionSource.SetCanceled();
+                else
+                    CompletionSource.SetResult(future.Result);
+            }
+        }
+
+        public static Task<T> AsTask<T> (this Future<T> future) {
+            var thunk = new AsTaskThunk<T>();
+            future.RegisterOnResolved2(thunk.OnResolved);
+            return thunk.Task;
         }
     }
 }

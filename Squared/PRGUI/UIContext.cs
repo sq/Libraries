@@ -1176,8 +1176,8 @@ namespace Squared.PRGUI {
         private DenseList<IDecorator> DecoratorStack, TextDecoratorStack;
         private DenseList<IDecorationProvider> DecorationProviderStack;
         internal DenseList<UIContext.ScratchRenderTarget> RenderTargetStack;
-        internal short HiddenCount, Depth;
-        internal bool RelayoutRequestedForVisibilityChange, TransformActive;
+        internal short HiddenCount, Depth, TransformsActive;
+        internal bool RelayoutRequestedForVisibilityChange;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private T GetStackTop<T> (ref DenseList<T> stack) {
@@ -1236,7 +1236,8 @@ namespace Squared.PRGUI {
                 Opacity = Opacity,
                 Prepass = Prepass,
                 RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange,
-                CompositingTarget = CompositingTarget
+                CompositingTarget = CompositingTarget,
+                TransformsActive = TransformsActive
             };
             RenderTargetStack.Clone(ref result.RenderTargetStack, true);
             DecoratorStack.Clone(ref result.DecoratorStack, true);

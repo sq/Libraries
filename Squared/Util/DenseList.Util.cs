@@ -177,7 +177,7 @@ namespace Squared.Util {
 
             if ((index < 0) || (index >= list._Count))
                 BoundsCheckFailed();
-            return ref Unsafe.AddByteOffset(ref Unsafe.AsRef(in list.Item1), (IntPtr)(index * DenseList<T>.ElementByteOffset));
+            return ref Unsafe.AddByteOffset(ref Unsafe.AsRef(in list.Item1), (IntPtr)(index * DenseList<T>.ElementTraits.ByteOffset));
         }
 
         [TargetedPatchingOptOut("")]
@@ -189,7 +189,7 @@ namespace Squared.Util {
 
             if ((index < 0) || (index >= list._Count))
                 BoundsCheckFailed();
-            return ref Unsafe.AddByteOffset(ref list.Item1, (IntPtr)(index * DenseList<T>.ElementByteOffset));
+            return ref Unsafe.AddByteOffset(ref list.Item1, (IntPtr)(index * DenseList<T>.ElementTraits.ByteOffset));
         }
 #else
         [TargetedPatchingOptOut("")]

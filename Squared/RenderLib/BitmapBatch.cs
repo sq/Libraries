@@ -302,7 +302,8 @@ namespace Squared.Render {
             var newCount = _DrawCalls.Count + count;
             _DrawCalls.EnsureCapacity(newCount);
             for (int i = 0; i < count; i++) {
-                var item = items[i + firstIndex];
+                ref var item = ref DenseList<BitmapDrawCall>.UnsafeCreateSlotWithKnownCapacity(ref _DrawCalls);
+                item = items[i + firstIndex];
                 if (!BitmapDrawCall.CheckValid(ref item))
                     continue;
 
@@ -329,10 +330,10 @@ namespace Squared.Render {
                     item.AddColor = _addColor;
                 if (hasUserData)
                     item.UserData = _userData;
-                if (hasSortKey)
-                    item.SortKey = _sortKey;
-
-                DenseList<BitmapDrawCall>.UnsafeAddWithKnownCapacity(ref _DrawCalls, ref item);
+                if (hasSortKey) {
+                    item.SortOrder = _sortKey.Order;
+                    item.SortTags = _sortKey.Tags;
+                }
             }
         }
         

@@ -18,31 +18,60 @@ namespace Squared.Util {
         void Release (ref UnorderedList<T> items);
     }
 
-    // Pack=1 is absolutely necessary for the Unsafe version to work
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T> {
-        // NOTE: It is important for the items to be at the front of the list,
-        //  so that if it is boxed and pinned the pin pointer is aimed directly
-        //  at the elements
-        internal T Item1, Item2, Item3, Item4;
-        internal int _Count;
-        internal UnorderedList<T> _Items;
-
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T>, IOrderedEnumerable<T> {
 #if !NOSPAN
-        // FIXME: Using a cctor or initializer causes a conditional call any time a DenseList is used. Not great.
-        // The alternative of manually doing it only in access methods seems to generate worse code somehow though.
-        // The good news is the branch will predict correctly 100% of the time!
-        internal static int ElementByteOffset = ComputeByteOffset();
+        public static class ElementTraits {
+            // FIXME: Using a cctor or initializer causes a conditional call any time a DenseList is used. Not great.
+            // The alternative of manually doing it only in access methods seems to generate worse code somehow though.
+            // The good news is the branch will predict correctly 100% of the time!
+            public static uint ByteOffset = ComputeByteOffset();
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static unsafe int ComputeByteOffset () {
-            var temp = new DenseList<T>();
-            
-            return (int)((byte*)Unsafe.AsPointer(ref temp.Item2) - (byte*)Unsafe.AsPointer(ref temp.Item1));
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            internal static unsafe uint ComputeByteOffset () {
+                var temp = new DenseList<T>();
+                byte* p1 = (byte*)Unsafe.AsPointer(ref temp.Item1),
+                    p2 = (byte*)Unsafe.AsPointer(ref temp.Item2),
+                    p3 = (byte*)Unsafe.AsPointer(ref temp.Item3),
+                    p4 = (byte*)Unsafe.AsPointer(ref temp.Item4);
+
+                if ((p4 < p3) || (p3 < p2) || (p2 < p1) || (p4 < p2) || (p3 < p1) || (p4 < p1))
+                    throw new Exception($"Memory layout of DenseList<{typeof(T)}> is not sequential");
+
+                return (uint)(int)(p2 - p1);
+            }
+
+#if DEBUG
+            public static uint ListSize = ComputeListSize();
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            internal static unsafe uint ComputeListSize () {
+                var temp = new DenseList<T>();
+
+                ulong p1 = (ulong)(byte*)Unsafe.AsPointer(ref temp._Count),
+                    p2 = (ulong)(byte*)Unsafe.AsPointer(ref temp.Item1),
+                    p3 = (ulong)(byte*)Unsafe.AsPointer(ref temp.Item4),
+                    p4 = (ulong)(byte*)Unsafe.AsPointer(ref temp._Items);
+
+                var pMin = Math.Min(Math.Min(Math.Min(p1, p2), p3), p4);
+                var pMax = Math.Max(Math.Max(Math.Max(p1, p2), p3), p4);
+                return (uint)((pMax - pMin + (ulong)ByteOffset));
+            }
+#endif
+
         }
 #endif
 
-        private object _ListPoolOrAllocator;
+        // Since our max capacity is 4 items anyway, we might as well use a smaller value type so that
+        //  our struct is smaller. We put these at the front of the struct so that their alignment/packing
+        //  isn't impacted by the size of T
+        internal short _Count, _ListCapacity;
+        // Then put these two reference types next to each other because we know they're 4 or 8 bytes each
+        internal UnorderedList<T> _Items;
+        private  object _ListPoolOrAllocator;
+        // Finally put all the items at the end since they could be any size and pack weirdly
+        internal T Item1, Item2, Item3, Item4;
+
         public object ListPoolOrAllocator {
             get => _ListPoolOrAllocator;
             set {
@@ -51,12 +80,33 @@ namespace Squared.Util {
                 _ListPoolOrAllocator = value;
             }
         }
-        private int _ListCapacity;
-        public int? ListCapacity {
-            get => _ListCapacity > 0 ? _ListCapacity : (int?)null;
+        public short? ListCapacity {
+            get => _ListCapacity > 0 ? _ListCapacity : (short?)null;
             set {
                 _ListCapacity = value ?? 0;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe T InlineItemAtIndexOrDefault (int index) {
+#if !NOSPAN
+            // FIXME: This is a bit slower than the switch version for some reason?
+            if ((index < 0) || (index >= _Count))
+                return default;
+
+            return Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset));
+#else
+            switch (index) {
+                case 0:
+                    return Item1;
+                case 1:
+                    return Item2;
+                case 2:
+                    return Item3;
+                default:
+                    return Item4;
+            }
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -65,7 +115,7 @@ namespace Squared.Util {
             // FIXME: This is a bit slower than the switch version for some reason?
             if ((index < 0) || (index >= _Count))
                 EnumerableExtensions.BoundsCheckFailed();
-            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementByteOffset));
+            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset));
 #else
             switch (index) {
                 case 0:
@@ -90,7 +140,7 @@ namespace Squared.Util {
             // FIXME: This is a bit slower than the switch version for some reason?
             if ((index < 0) || (index >= _Count))
                 EnumerableExtensions.BoundsCheckFailed();
-            Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementByteOffset)) = value;
+            Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset)) = value;
 #else
             switch (index) {
                 case 0:
@@ -223,7 +273,7 @@ namespace Squared.Util {
                 return;
 
             if (lazy && !HasList) {
-                _ListCapacity = Math.Max(capacity, _ListCapacity);
+                _ListCapacity = (short)Math.Max(Math.Min(capacity, short.MaxValue), _ListCapacity);
             } else {
                 EnsureList(capacity);
                 _Items.EnsureCapacity(capacity);
@@ -261,7 +311,7 @@ namespace Squared.Util {
                 capacity = Math.Max(capacity.Value, absoluteMinimum);
             else if (!capacity.HasValue && (_ListCapacity > 0))
                 // Sensible minimum
-                capacity = Math.Max(_ListCapacity, absoluteMinimum);
+                capacity = Math.Max((int)_ListCapacity, absoluteMinimum);
             else
                 ;
 
@@ -340,7 +390,7 @@ namespace Squared.Util {
                 EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementByteOffset));
+            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset));
 #else
             switch (index) {
                 default:
@@ -374,6 +424,16 @@ namespace Squared.Util {
 
             GetInlineItemAtIndex(index, out result);
             return true;
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T ItemOrDefault (int index) {
+            var items = _Items;
+            if (items != null)
+                return items.DangerousItemOrDefault(index);
+
+            return InlineItemAtIndexOrDefault(index);
         }
 
         [TargetedPatchingOptOut("")]
@@ -462,7 +522,7 @@ namespace Squared.Util {
                     EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-                return Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementByteOffset));
+                return Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset));
 #else
                 switch (index) {
                     default:
@@ -501,7 +561,7 @@ namespace Squared.Util {
                 EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-            Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementByteOffset)) = value;
+            Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset)) = value;
 #else
             switch (index) {
                 default:
@@ -536,8 +596,20 @@ namespace Squared.Util {
             }
 
             var count = list._Count;
-            list._Count = count + 1;
+            list._Count = (short)(count + 1);
             list.SetItem(count, ref item);
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref T UnsafeCreateSlotWithKnownCapacity (ref DenseList<T> list) {
+            var items = list._Items;
+            if (items != null)
+                return ref items.CreateSlot();
+
+            var count = list._Count;
+            list._Count = (short)(count + 1);
+            return ref list.Item(count);
         }
 
         [TargetedPatchingOptOut("")]
@@ -712,7 +784,7 @@ namespace Squared.Util {
                 throw new ArgumentException("count");
 
             if (!HasList) {
-                _Count -= count;
+                _Count -= (short)count;
                 // FIXME: Element leak
                 return;
             }
@@ -755,7 +827,7 @@ namespace Squared.Util {
                 _Items.Clear();
                 _Items.AddRange(data, sourceOffset, count);
             } else {
-                _Count = count;
+                _Count = (short)count;
                 for (int i = 0; i < count; i++)
                     SetInlineItemAtIndex(i, ref data[sourceOffset]);
             }

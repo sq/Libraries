@@ -160,10 +160,13 @@ namespace Squared.Render.Internal {
                 HardwareBuffer = hardwareBuffer;
                 HardwareVertexOffset = hardwareVertexOffset;
                 HardwareIndexOffset = hardwareIndexOffset;
-                IsInitialized = true;
+                Volatile.Write(ref IsInitialized, true);
             }
 
             internal void ArraysChanged (TVertex[] newVertexArray, TIndex[] newIndexArray) {
+                while (!Volatile.Read(ref IsInitialized))
+                    Thread.SpinWait(10);
+
                 Vertices = new ArraySegment<TVertex>(
                     newVertexArray, Vertices.Offset, Vertices.Count
                 );
@@ -501,6 +504,10 @@ namespace Squared.Render.Internal {
             if (vertexCount > MaxVerticesPerHardwareBuffer)
                 throw new ArgumentOutOfRangeException("vertexCount", vertexCount, "Maximum vertex count on this platform is " + MaxVerticesPerHardwareBuffer);
 
+            int newVertexOffset, newIndexOffset, oldHwbVerticesUsed, oldHwbIndicesUsed;
+            HardwareBufferEntry hardwareBufferEntry;
+            SoftwareBuffer swb;
+
             lock (_StateLock) {
                 if (_FlushedToBuffers != 0)
                     throw new InvalidOperationException("Already flushed");
@@ -510,8 +517,6 @@ namespace Squared.Render.Internal {
                 //  so we can't be sure that the old array has been filled yet.
                 // Flush() is responsible for doing all these copies to ensure that all vertex data eventually makes it into the large array
                 //  from which actual hardware buffer initialization occurs.
-
-                SoftwareBuffer swb;
 
                 int oldVertexCount, oldIndexCount;
                 var didArraysChange = EnsureBufferCapacity(
@@ -527,8 +532,6 @@ namespace Squared.Render.Internal {
                         _swb.ArraysChanged(_VertexArray, _IndexArray);
                 }
 
-                HardwareBufferEntry hardwareBufferEntry;
-
                 hardwareBufferEntry = _FillingHardwareBufferEntry;
 
                 hardwareBufferEntry = PrepareToFillBuffer(
@@ -538,7 +541,6 @@ namespace Squared.Render.Internal {
                     forceExclusiveBuffer
                 );
 
-                int oldHwbVerticesUsed, oldHwbIndicesUsed;
                 oldHwbVerticesUsed = hardwareBufferEntry.VerticesUsed;
                 oldHwbIndicesUsed = hardwareBufferEntry.IndicesUsed;
 
@@ -547,21 +549,23 @@ namespace Squared.Render.Internal {
 
                 hardwareBufferEntry.SoftwareBufferCount += 1;
 
+                newVertexOffset = hardwareBufferEntry.VertexOffset;
+                newIndexOffset = hardwareBufferEntry.IndexOffset;
+
                 swb = _SoftwareBufferPool.Allocate();
-                if (swb.IsInitialized)
-                    throw new ThreadStateException();
-                swb.Initialize(
-                    new ArraySegment<TVertex>(_VertexArray, hardwareBufferEntry.VertexOffset + oldHwbVerticesUsed, requestedVertexCount),
-                    new ArraySegment<TIndex>(_IndexArray, hardwareBufferEntry.IndexOffset + oldHwbIndicesUsed, requestedIndexCount),
-                    hardwareBufferEntry.Buffer,
-                    oldHwbVerticesUsed,
-                    oldHwbIndicesUsed
-                );
-
                 _SoftwareBuffers.Add(swb);
-
-                return swb;
             }
+
+            if (swb.IsInitialized)
+                throw new ThreadStateException();
+            swb.Initialize(
+                new ArraySegment<TVertex>(_VertexArray, newVertexOffset + oldHwbVerticesUsed, requestedVertexCount),
+                new ArraySegment<TIndex>(_IndexArray, newIndexOffset + oldHwbIndicesUsed, requestedIndexCount),
+                hardwareBufferEntry.Buffer,
+                oldHwbVerticesUsed,
+                oldHwbIndicesUsed
+            );
+            return swb;
         }
 
         private XNABufferPair<TVertex> AllocateSuitablySizedHardwareBuffer (int vertexCount, int indexCount, bool dedicated) {

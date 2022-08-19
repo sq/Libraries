@@ -391,7 +391,7 @@ namespace Squared.PRGUI {
 
             var box = default(RectF);
             bool isZeroSized = false, isOutOfView = false,
-                transformActive = context.TransformActive || Appearance.HasTransformMatrix;
+                transformActive = (context.TransformsActive > 0) || Appearance.HasTransformMatrix;
             if (IsLayoutInvalid) {
                 if ((_LayoutKey == ControlKey.Corrupt) && !hidden && (RasterizeOrderingWarningCount++ < 10))
                     System.Diagnostics.Debug.WriteLine($"WARNING: Control {this} failed to rasterize because it had no valid layout. This likely means it was created after the most recent UIContext.Update.");
@@ -442,8 +442,8 @@ namespace Squared.PRGUI {
 
             var needsComposition = NeedsComposition(opacity < 1, hasTransformMatrix) || enableCompositor;
             var oldOpacity = context.Opacity;
-            var oldTransformActive = context.TransformActive;
-            context.TransformActive = context.TransformActive || hasTransformMatrix;
+            if (hasTransformMatrix)
+                context.TransformsActive++;
             try {
                 if (!needsComposition) {
                     context.Opacity *= opacity;
@@ -456,7 +456,8 @@ namespace Squared.PRGUI {
                 }
             } finally {
                 context.Opacity = oldOpacity;
-                context.TransformActive = oldTransformActive;
+                if (hasTransformMatrix)
+                    context.TransformsActive--;
             }
 
             return true;
