@@ -19,7 +19,7 @@ using Squared.Util.Event;
 
 namespace Squared.PRGUI.Controls {
     // Copied so the callee can pass it by-ref elsewhere
-    public delegate void CanvasPaintHandler (ref ImperativeRenderer renderer, DecorationSettings settings);
+    public delegate void CanvasPaintHandler (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
 
     public class Canvas : Control {
         public event CanvasPaintHandler OnPaint;
@@ -111,13 +111,13 @@ namespace Squared.PRGUI.Controls {
             return provider.Canvas ?? base.GetDefaultDecorator(provider) ?? provider.None;
         }
 
-        protected virtual void Paint (ref ImperativeRenderer renderer, in DecorationSettings settings) {
+        protected virtual void Paint (ref UIOperationContext context, ref ImperativeRenderer renderer, in DecorationSettings settings) {
             if (DisabledDueToException)
                 return;
 
             try {
                 if (OnPaint != null)
-                    OnPaint(ref renderer, settings);
+                    OnPaint(ref context, ref renderer, settings);
             } catch (Exception exc) {
                 Context.Log($"Unhandled exception in canvas {this}: {exc}");
                 DisabledDueToException = true;
@@ -174,7 +174,7 @@ namespace Squared.PRGUI.Controls {
             )) {
                 var contentRenderer = new ImperativeRenderer(container, context.Materials);
                 contentRenderer.BlendState = BlendState.NonPremultiplied;
-                Paint(ref contentRenderer, in settings);
+                Paint(ref context, ref contentRenderer, in settings);
             }
         }
 
@@ -191,7 +191,7 @@ namespace Squared.PRGUI.Controls {
             if (!_Buffered) {
                 AutoDisposeBuffer(renderer.Container.Coordinator);
                 renderer.MakeSubgroup(out contentRenderer);
-                Paint(ref contentRenderer, in settings);
+                Paint(ref context, ref contentRenderer, in settings);
             } else {
                 var buffer = Buffer.Get();
                 if (buffer == null)

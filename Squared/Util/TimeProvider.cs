@@ -177,14 +177,10 @@ namespace Squared.Util {
 
         public long Ticks {
             get {
-                if (_PausedSince.HasValue) {
-                    if (_DesiredTime.HasValue)
-                        return _DesiredTime.Value;
-
-                    return _PausedSince.Value + _Offset;
-                }
-
-                return Source.Ticks + _Offset;
+                if (_DesiredTime.HasValue)
+                    return _DesiredTime.Value;
+                else
+                    return Source.Ticks + _Offset;
             }
         }
 
@@ -206,15 +202,16 @@ namespace Squared.Util {
                 long now = Source.Ticks;
 
                 if (value == true) {
+                    _DesiredTime = Ticks;
                     _PausedSince = now;
                 } else if (_DesiredTime.HasValue) {
                     _PausedSince = null;
-                    _Offset = _DesiredTime.Value - now;
+                    _Offset = -now + _DesiredTime.Value;
                     _DesiredTime = null;
                 } else {
                     long since = _PausedSince.Value;
                     _PausedSince = null;
-                    _Offset -= (now - since);
+                    _Offset = (now - since);
                 }
             }
         }

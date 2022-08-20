@@ -38,14 +38,32 @@ namespace Squared.PRGUI.Controls {
 
         public delegate bool TryParseDelegate (string value, out object result);
 
-        public static TryParseDelegate GetParseDelegate (Type type) {
+        private static readonly Dictionary<Type, (bool, TryParseDelegate)> ParseDelegateCache = 
+            new Dictionary<Type, (bool, TryParseDelegate)>();
+
+        public static TryParseDelegate GetParseDelegate (Type type, bool includeFallback) {
+            lock (ParseDelegateCache) {
+                if (ParseDelegateCache.TryGetValue(type, out var tup) && (tup.Item1 == includeFallback))
+                    return tup.Item2;
+            }
+
+            TryParseDelegate result = null;
             var tryParse = type.GetMethod(
                 "TryParse", new [] { typeof(string), typeof(object).MakeByRefType() }
             );
             if (tryParse != null)
-                return (TryParseDelegate)Delegate.CreateDelegate(typeof(TryParseDelegate), tryParse);
+                result = (TryParseDelegate)Delegate.CreateDelegate(typeof(TryParseDelegate), tryParse);
 
-            return null;
+            // HACK
+            if (includeFallback && (result == null) && type.IsValueType) {
+                var gt = typeof(ParameterEditor<>).MakeGenericType(type);
+                var mi = gt.GetMethod("TryParseValueUntyped", BindingFlags.NonPublic | BindingFlags.Static);
+                result = (TryParseDelegate)Delegate.CreateDelegate(typeof(TryParseDelegate), mi, true);
+            }
+
+            lock (ParseDelegateCache)
+                ParseDelegateCache[type] = (includeFallback, result);
+            return result;
         }
     }
 
@@ -142,7 +160,7 @@ namespace Squared.PRGUI.Controls {
             else if (tryParse != null)
                 DefaultTryParseValue = (TypedTryParseDelegate)Delegate.CreateDelegate(typeof(TypedTryParseDelegate), null, tryParse);
             else 
-                DefaultTryParseValue = ParameterEditor.GetParseDelegate(typeof(T));
+                DefaultTryParseValue = ParameterEditor.GetParseDelegate(typeof(T), false);
 
             if (DefaultTryParseValue == null)
                 DefaultTryParseValue = (TypedTryParseDelegate)AwfulTryParseValue;
@@ -178,6 +196,23 @@ namespace Squared.PRGUI.Controls {
                 if (format1 != null)
                     DefaultFormatter = (Func<T, string>)Delegate.CreateDelegate(typeof(Func<T, string>), null, format1);
             }
+        }
+
+        internal static bool TryParseValueUntyped (string text, out object _result) {
+            bool ok = false;
+            T result = default;
+
+            if (DefaultTryParseValue is TypedTryParseDelegate2 ttpd2)
+                ok = ttpd2(text, CultureInfo.InvariantCulture, out result);
+            else if (DefaultTryParseValue is TypedTryParseDelegate ttpd)
+                ok = ttpd(text, out result);
+            else if (DefaultTryParseValue is ParameterEditor.TryParseDelegate tpd) {
+                if (tpd(text, out _result))
+                    return true;
+            }
+
+            _result = result;
+            return ok;
         }
 
         protected bool TryParseValue (string text, out T result) {

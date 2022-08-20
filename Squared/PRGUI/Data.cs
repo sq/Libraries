@@ -717,6 +717,13 @@ namespace Squared.PRGUI {
             Bottom = bottom;
         }
 
+        public Margins (Vector4 v4) {
+            Left = v4.X;
+            Top = v4.Y;
+            Right = v4.Z;
+            Bottom = v4.W;
+        }
+
         public override int GetHashCode () {
             return 0;
         }
@@ -836,8 +843,25 @@ namespace Squared.PRGUI {
             return new Vector4(margins.Left, margins.Top, margins.Right, margins.Bottom);
         }
 
+        public static explicit operator Margins (Vector4 v4) => new Margins(v4);
+
+        public static bool TryParse (string text, out Margins result) {
+            text = text.Trim().Replace("Margins(", "(");
+            int i = text.StartsWith("(") ? 1 : 0, count = text.EndsWith(")") ? text.Length - i - 1 : text.Length - i;
+            var pieces = text.Substring(i, count).Split(',');
+            result = default;
+            if (pieces.Length != 4)
+                return false;
+            if (!float.TryParse(pieces[0], out result.Left) ||
+                !float.TryParse(pieces[1], out result.Top) ||
+                !float.TryParse(pieces[2], out result.Right) ||
+                !float.TryParse(pieces[3], out result.Top))
+                return false;
+            return true;
+        }
+
         public override string ToString () {
-            return $"Margins (L{Left}, T{Top}, R{Right}, B{Bottom})";
+            return $"Margins({Left}, {Top}, {Right}, {Bottom})";
         }
 
         public Margins Min (ref Margins rhs) {
