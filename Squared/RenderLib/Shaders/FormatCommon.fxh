@@ -8,7 +8,10 @@
 #define ALPHA_CHANNEL_G 2
 
 #define ALPHA_MODE_NORMAL 0
-#define ALPHA_MODE_BC7 1
+// ExtractRgba won't do anything, but this indicates that the RGB channels are not premultiplied
+//  since it is incorrect to premultiply them
+#define ALPHA_MODE_BC 1
+#define ALPHA_MODE_BC7 2
 
 // formatTraits: rgbSource, alphaSource, needsPremultiply, alphaMode
 float ExtractMask (float4 input, float4 formatTraits) {

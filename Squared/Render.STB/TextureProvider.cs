@@ -11,7 +11,7 @@ using Squared.Threading;
 
 namespace Squared.Render {
     public class TextureLoadOptions {
-        public bool Premultiply = true;
+        public bool? Premultiply;
         public bool FloatingPoint;
         // If the source image is more than 8 bpp, enable loading it as 16bpp
         public bool Enable16Bit;
@@ -87,7 +87,7 @@ namespace Squared.Render {
 
         public static STB.Image DefaultPreload (string name, Stream stream, TextureLoadOptions options) {
             var image = new STB.Image(
-                stream, false, options.Premultiply, options.FloatingPoint, 
+                stream, false, options.Premultiply ?? true, options.FloatingPoint, 
                 options.Enable16Bit, options.GenerateMips, options.sRGBFromLinear || options.sRGB,
                 options.EnableGrayscale
             );

@@ -173,7 +173,6 @@ namespace Squared.PRGUI.Controls {
                 )
             )) {
                 var contentRenderer = new ImperativeRenderer(container, context.Materials);
-                contentRenderer.BlendState = BlendState.NonPremultiplied;
                 Paint(ref context, ref contentRenderer, in settings);
             }
         }

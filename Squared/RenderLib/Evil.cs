@@ -592,7 +592,8 @@ namespace Squared.Render.Evil {
         const int ALPHA_CHANNEL_G = 2;
 
         const int ALPHA_MODE_NORMAL = 0;
-        const int ALPHA_MODE_BC7 = 1;
+        const int ALPHA_MODE_BC = 1;
+        const int ALPHA_MODE_BC7 = 2;
 
         /// <returns>(x: valueSource, y: alphaSource, z: needsPremultiply, w: alphaMode)</returns>
         public static Vector4 GetTraits (SurfaceFormat format) {
@@ -615,8 +616,13 @@ namespace Squared.Render.Evil {
                 case SurfaceFormat.NormalizedByte2:
                     return new Vector4(VALUE_CHANNEL_RG, ALPHA_CONSTANT_ONE, 0, ALPHA_MODE_NORMAL);
                 case SurfaceFormat.Bgr565:
-                case SurfaceFormat.Dxt1:
                     return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CONSTANT_ONE, 0, ALPHA_MODE_NORMAL);
+                case SurfaceFormat.Dxt1:
+                    return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CONSTANT_ONE, 0, ALPHA_MODE_BC);
+                case SurfaceFormat.Dxt3:
+                case SurfaceFormat.Dxt5:
+                case SurfaceFormat.Dxt5SrgbEXT:
+                    return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CHANNEL_A, 0, ALPHA_MODE_BC);
 
                 // case SurfaceFormat.HalfVector4:
                 // case SurfaceFormat.HdrBlendable:
@@ -629,9 +635,6 @@ namespace Squared.Render.Evil {
                 // case SurfaceFormat.Color:
                 // case SurfaceFormat.ColorBgraExt:
                 // case SurfaceFormat.ColorSrgb:
-                // case SurfaceFormat.Dxt3:
-                // case SurfaceFormat.Dxt5:
-                // case SurfaceFormat.Dxt5Srgb:
                 default:
                     return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CHANNEL_A, 0, ALPHA_MODE_NORMAL);
             }

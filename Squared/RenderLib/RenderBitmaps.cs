@@ -1358,6 +1358,11 @@ namespace Squared.Render {
             : this(new TextureSet(texture), position, textureRegion, color, scale, origin, rotation) {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public BitmapDrawCall (TextureSet textures, Vector2 position)
+            : this(textures, position, textures.Texture1.Instance.Bounds(), Color.White, Vector2.One, Vector2.Zero, 0f) {
+        }
+
         public BitmapDrawCall (TextureSet textures, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin, float rotation) {
             if (!textures.Texture1.IsInitialized)
                 throw new NullReferenceException("texture1");

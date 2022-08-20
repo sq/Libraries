@@ -353,11 +353,19 @@ namespace Squared.PRGUI.Controls {
 
                 // HACK
                 var p = renderer.Parameters;
-                var blendState = BlendState ?? Context.PickDefaultBlendState(drawCall.Texture);
+                var defaultBlendState = Context.PickDefaultBlendState(drawCall.Texture1.Instance);
+                var blendState = BlendState ?? (
+                    (instance2 != null) 
+                        ? RenderStates.PorterDuffOver // The composited shaders always premultiply their inputs if necessary
+                        : defaultBlendState
+                );
                 // We have the compositor apply our blend state instead
                 if (settings.IsCompositing && (material == null))
                     blendState = BlendState.Opaque;
                 renderer.Parameters.AddRange(ref MaterialParameters);
+                // If the inputs are not premultiplied we should have the compositing shaders premultiply them
+                if (defaultBlendState == BlendState.NonPremultiplied)
+                    renderer.Parameters.Add("AutoPremultiplyBlockTextures", true);
                 renderer.Draw(ref drawCall, material: Material ?? material, blendState: blendState);
                 renderer.Parameters = p;
             }

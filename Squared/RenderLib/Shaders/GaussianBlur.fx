@@ -196,7 +196,7 @@ void GaussianOutlinedPixelShader(
 
     float4 traits = BitmapTraits;
     float4 texColor = tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
-    bool needPremul = PremultiplyTexture || (shadowColorIn.a < 0) || (traits.z >= 1);
+    bool needPremul = PremultiplyTexture || (shadowColorIn.a < 0) || (traits.z >= 1) || (traits.w >= ALPHA_MODE_BC);
     traits.z = 0;
     shadowColorIn.a = abs(shadowColorIn.a);
 
