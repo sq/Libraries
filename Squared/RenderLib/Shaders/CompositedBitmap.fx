@@ -5,7 +5,7 @@
 #include "TargetInfo.fxh"
 #include "sRGBCommon.fxh"
 
-uniform bool AutoPremultiplyBlockTextures;
+uniform bool AutoPremultiplyBlockTextures, TransparentExterior;
 
 float4 AdaptTraits (float4 traits) {
     // HACK: Assume block textures aren't premultiplied (they shouldn't be!!!!) and premultiply them
@@ -13,6 +13,24 @@ float4 AdaptTraits (float4 traits) {
     if (AutoPremultiplyBlockTextures && (traits.w >= ALPHA_MODE_BC))
         traits.z = 1;
     return traits;
+}
+
+float4 AutoClampAlpha (
+    in float4 rgba, in float2 uv, in float4 region, in float2 halfTexel
+) {
+    // TODO: Smooth edges, because the clamp() outside will cause an extra garbage pixel in
+    //  some cases and in other cases we will lose part of a pixel.
+    float a = min(
+        uv.x < 0
+            ? 0
+            : ((uv.x > 1)
+                ? 0 : 1),
+        uv.y < 0
+            ? 0 
+            : ((uv.y > 1)
+                ? 0 : 1)
+    );
+    return rgba * a;
 }
 
 void HighlightColorPixelShaderWithDiscard(
@@ -58,6 +76,8 @@ void CrossfadePixelShaderWithDiscard(
     float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS));
     float4 traits1 = AdaptTraits(BitmapTraits), traits2 = AdaptTraits(BitmapTraits2);
+    sample1 = AutoClampAlpha(sample1, texCoord, texRgn, HalfTexel);
+    sample2 = AutoClampAlpha(sample2, texCoord2, texRgn2, HalfTexel2);
     sample1 = ExtractRgba(sample1, traits1);
     sample2 = ExtractRgba(sample2, traits2);
     float4 lerped = lerp(sample1, sample2, blendWeight);
@@ -85,6 +105,8 @@ void OverPixelShaderWithDiscard(
     float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS)) * blendWeight;
     float4 traits1 = AdaptTraits(BitmapTraits), traits2 = AdaptTraits(BitmapTraits2);
+    sample1 = AutoClampAlpha(sample1, texCoord, texRgn, HalfTexel);
+    sample2 = AutoClampAlpha(sample2, texCoord2, texRgn2, HalfTexel2);
     sample1 = ExtractRgba(sample1, traits1);
     sample2 = ExtractRgba(sample2, traits2);
     float4 composited = sample1 + (sample2 * (1 - sample1.a));
@@ -112,6 +134,8 @@ void UnderPixelShaderWithDiscard(
     float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS)) * blendWeight;
     float4 traits1 = AdaptTraits(BitmapTraits), traits2 = AdaptTraits(BitmapTraits2);
+    sample1 = AutoClampAlpha(sample1, texCoord, texRgn, HalfTexel);
+    sample2 = AutoClampAlpha(sample2, texCoord2, texRgn2, HalfTexel2);
     sample1 = ExtractRgba(sample1, traits1);
     sample2 = ExtractRgba(sample2, traits2);
     float4 composited = sample2 + (sample1 * (1 - sample2.a));
@@ -139,6 +163,8 @@ void AtopPixelShaderWithDiscard(
     float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS)) * blendWeight;
     float4 traits1 = AdaptTraits(BitmapTraits), traits2 = AdaptTraits(BitmapTraits2);
+    sample1 = AutoClampAlpha(sample1, texCoord, texRgn, HalfTexel);
+    sample2 = AutoClampAlpha(sample2, texCoord2, texRgn2, HalfTexel2);
     sample1 = ExtractRgba(sample1, traits1);
     sample2 = ExtractRgba(sample2, traits2);
 
@@ -167,6 +193,8 @@ void MaskedPixelShaderWithDiscard(
     float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS));
     float4 traits1 = AdaptTraits(BitmapTraits), traits2 = AdaptTraits(BitmapTraits2);
+    sample1 = AutoClampAlpha(sample1, texCoord, texRgn, HalfTexel);
+    sample2 = AutoClampAlpha(sample2, texCoord2, texRgn2, HalfTexel2);
     sample1 = ExtractRgba(sample1, traits1);
     sample2 = ExtractRgba(sample2, traits2);
     float4 composited = sample1 * sample2;
