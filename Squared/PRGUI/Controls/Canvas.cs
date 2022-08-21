@@ -56,6 +56,7 @@ namespace Squared.PRGUI.Controls {
         public bool DisabledDueToException { get; private set; }
 
         private bool _ShouldDisposeBuffer;
+        public bool MipMap = false;
         public AutoRenderTarget Buffer { get; private set; }
 
         public BlendState CompositingBlendState = BlendState.Opaque;
@@ -147,7 +148,7 @@ namespace Squared.PRGUI.Controls {
 
             if (Buffer == null) {
                 _ContentIsValid = false;
-                Buffer = new AutoRenderTarget(coordinator, w, h, false, SurfaceFormat, DepthFormat);
+                Buffer = new AutoRenderTarget(coordinator, w, h, MipMap, SurfaceFormat, DepthFormat);
             } else {
                 _ContentIsValid = !Buffer.Resize(w, h);
             }

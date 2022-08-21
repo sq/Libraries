@@ -186,7 +186,7 @@ void RadialMaskSofteningPixelShader(
     in float4 addColor : COLOR1,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    // height scale, mip bias, unused, unused
+    // height scale, mip bias, masking strength, unused
     in float4 params : COLOR2,
     out float4 result : COLOR0
 ) {
@@ -212,8 +212,8 @@ void RadialMaskSofteningPixelShader(
 
     float resultValue = max(sum * InverseTapDivisorsAndSigma.y * params.x, 0);
 
-    result = (float4(resultValue, resultValue, resultValue, centerTapAlpha) + addColor) * multiplyColor;
-    result.a = min(result.a, centerTapAlpha);
+    result = (float4(resultValue, resultValue, resultValue, resultValue > 0 ? 1 : 0) + addColor) * multiplyColor;
+    result.a = lerp(result.a, min(result.a, centerTapAlpha), params.z);
 
     const float discardThreshold = (0.5 / 255.0);
     clip(result.a - discardThreshold);

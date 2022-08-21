@@ -1248,7 +1248,8 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="sigma">Governs the strength of the blur. Lower values are sharper.</param>
         /// <param name="tapCount">The number of samples ('taps') that will be read vertically or horizontally from the texture to compute each blurred sample.</param>
-        public void SetGaussianBlurParameters (Material m, double sigma, int tapCount, float mipBias = 0) {
+        /// <param name="meanFactor">Biases the filter kernel towards a mean (average of all the pixels) instead of a gaussian blur</param>
+        public void SetGaussianBlurParameters (Material m, double sigma, int tapCount, float meanFactor = 0f) {
             int tapsMinusOne = tapCount - 1;
             int weightCount = 1 + (tapsMinusOne / 2);
             if ((weightCount < 1) || (weightCount > MaxWeightCount))
@@ -1265,7 +1266,7 @@ namespace Squared.Render {
                 for (int i = 0; i < tapCount; i++) {
                     double x = i - (tapsMinusOne / 2.0);
                     double value = IntegrateGaussian(sigma, x - 0.5, x + 0.5);
-                    scratch.Data[i] = value;
+                    scratch.Data[i] = Arithmetic.Lerp(value, 1f / tapCount, meanFactor);
                     sum += scratch.Data[i];
                 }
 
