@@ -24,6 +24,14 @@ uniform const float  ShadowedTopMipBias, ShadowMipBias;
 uniform const bool   PremultiplyTexture;
 uniform const bool   AutoPremultiplyBlockTextures, TransparentExterior;
 
+float4 AdaptTraits(float4 traits) {
+    // HACK: Assume block textures aren't premultiplied (they shouldn't be!!!!) and premultiply them
+    // This ensures that the output is also premultiplied
+    if (AutoPremultiplyBlockTextures && (traits.w >= ALPHA_MODE_BC))
+        traits.z = 1;
+    return traits;
+}
+
 void BasicPixelShader(
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
@@ -98,7 +106,7 @@ void ShadowedPixelShader (
     float4 traits = BitmapTraits;
     if ((shadowColorIn.a < 0) || PremultiplyTexture)
         traits.z = 1;
-    texColor = ExtractRgba(texColor, BitmapTraits);
+    texColor = ExtractRgba(texColor, traits);
     shadowColorIn.a = abs(shadowColorIn.a);
 
     float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias));
@@ -122,10 +130,10 @@ void OutlinedPixelShader(
     addColor.a = 0;
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
-    float4 traits = BitmapTraits;
+    float4 traits = AdaptTraits(BitmapTraits);
     if ((shadowColorIn.a < 0) || PremultiplyTexture)
         traits.z = 1;
-    texColor = ExtractRgba(texColor, BitmapTraits);
+    texColor = ExtractRgba(texColor, traits);
     shadowColorIn.a = abs(shadowColorIn.a);
 
     float shadowAlpha = texColor.a;
@@ -172,6 +180,14 @@ void OutlinedPixelShaderWithDiscard(
     clip(result.a - discardThreshold);
 }
 
+// porter-duff A over B
+float4 over(float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
+    top *= topOpacity;
+    bottom *= bottomOpacity;
+
+    return top + (bottom * (1 - top.a));
+}
+
 void DistanceFieldOutlinedPixelShader(
     in float4 multiplyColor : COLOR0,
     in float4 addColor : COLOR1,
@@ -184,10 +200,10 @@ void DistanceFieldOutlinedPixelShader(
     addColor.a = 0;
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
-    float4 traits = BitmapTraits;
+    float4 traits = AdaptTraits(BitmapTraits);
     if ((shadowColorIn.a < 0) || PremultiplyTexture)
         traits.z = 1;
-    texColor = ExtractRgba(texColor, BitmapTraits);
+    texColor = ExtractRgba(texColor, traits);
     shadowColorIn.a = abs(shadowColorIn.a);
 
     float2 offset = (ShadowOffset * HalfTexel * 2);
@@ -209,16 +225,15 @@ void DistanceFieldOutlinedPixelShader(
     */
     float4 shadowColor = float4(shadowColorIn.rgb, 1);
     shadowColor = lerp(GlobalShadowColor, shadowColor, shadowColorIn.a > 0 ? 1 : 0);
-    shadowColor *= shadowAlpha * saturate(shadowColorIn.a);
 
     float4 overColor = (texColor * multiplyColor);
     overColor += (addColor * overColor.a);
 
     // Significantly improves the appearance of colored outlines and/or colored text
-    float4 overSRGB = pSRGBToPLinear(overColor),
-        shadowSRGB = pSRGBToPLinear(shadowColor);
-    result = lerp(shadowSRGB, overSRGB, overColor.a);
-    result = pLinearToPSRGB(result);
+    float4 overSRGB = pSRGBToPLinear_Accurate(overColor),
+        shadowSRGB = pSRGBToPLinear_Accurate(shadowColor);
+    result = over(overSRGB, 1, shadowSRGB, shadowAlpha * saturate(shadowColorIn.a));
+    result = pLinearToPSRGB_Accurate(result);
 
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);

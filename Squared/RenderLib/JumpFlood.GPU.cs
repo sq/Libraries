@@ -26,7 +26,7 @@ namespace Squared.Render.DistanceField {
         /// <param name="output"></param>
         public static void GenerateDistanceField (
             ref ImperativeRenderer renderer, Texture2D input, RenderTarget2D output,
-            int? layer = null, Rectangle? region = null, int? maxSteps = null
+            int? layer = null, Rectangle? region = null, int? maxSteps = null, float minimumAlpha = 0.0f
         ) {
             var _region = region ?? new Rectangle(0, 0, output.Width, output.Height);
 
@@ -41,7 +41,7 @@ namespace Squared.Render.DistanceField {
 
             var group = renderer.MakeSubgroup(layer: layer);
             var initGroup = group.ForRenderTarget(inBuffer, viewTransform: vt);
-            initGroup.Draw(input, new Vector2(-_region.Left, -_region.Top), material: renderer.Materials.JumpFloodInit);
+            initGroup.Draw(input, new Vector2(-_region.Left, -_region.Top), material: renderer.Materials.JumpFloodInit, userData: new Vector4(minimumAlpha, 0, 0, 0));
 
             for (
                 int i = 0, 

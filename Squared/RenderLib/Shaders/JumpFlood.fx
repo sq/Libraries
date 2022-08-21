@@ -13,13 +13,15 @@ float ScreenDistanceSquared(float2 xy) {
 void JumpFloodInitShader(
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
+    // minimumAlpha, unused, unused, unused
+    in float4 params : COLOR2,
     out float4 result : COLOR0
 ) {
     float md2 = ScreenDistanceSquared(float2(MaxDistance, MaxDistance));
     float2 coordClamped = clamp(texCoord, texRgn.xy, texRgn.zw);
     float4 input = tex2D(TextureSampler, coordClamped);
     float alpha = ExtractMask(input, BitmapTraits);
-    result = float4(MaxDistance, MaxDistance, md2, alpha > 0 ? 1.0 : 0.0);
+    result = float4(MaxDistance, MaxDistance, md2, alpha > params.x ? 1.0 : 0.0);
 }
 
 void JumpFloodJumpShader(
