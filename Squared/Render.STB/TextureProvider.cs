@@ -46,10 +46,15 @@ namespace Squared.Render {
     }
 
     public class Texture2DProvider : ResourceProvider<Texture2D> {
+        protected class GDFTFClosure {
+            public STB.Image Image;
+            public TextureLoadOptions Options;
+        }
+
         private readonly ConditionalWeakTable<Texture2D, Texture2D> DistanceFields = 
             new ConditionalWeakTable<Texture2D, Texture2D>();
 
-        private OnFutureResolvedWithData DisposeHandler;
+        private OnFutureResolvedWithData _DisposeHandler, _GenerateDistanceFieldThenDispose;
 
         new public TextureLoadOptions DefaultOptions {
             get {
@@ -71,15 +76,12 @@ namespace Squared.Render {
             source, coordinator, 
             enableThreadedCreate: false, enableThreadedPreload: true
         ) {
-            DisposeHandler = _DisposeHandler;
+            _DisposeHandler = DisposeHandler;
+            _GenerateDistanceFieldThenDispose = GenerateDistanceFieldThenDispose;
         }
 
         public Texture2D Load (string name, TextureLoadOptions options, bool cached = true, bool optional = false) {
             return base.LoadSync(name, options, cached, optional);
-        }
-
-        private void _DisposeHandler (IFuture future, object resource) {
-            Coordinator.DisposeResource((IDisposable)resource);
         }
 
         private unsafe static void ApplyColorSpaceConversion (STB.Image img, TextureLoadOptions options) {
@@ -114,63 +116,80 @@ namespace Squared.Render {
             if (async) {
                 var f = img.CreateTextureAsync(Coordinator, !EnableThreadedCreate, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB);
                 if (options.GenerateDistanceField)
-                    f.RegisterOnComplete(GenerateDistanceFieldThenDispose);
+                    f.RegisterOnComplete(_GenerateDistanceFieldThenDispose, new GDFTFClosure { Image = img, Options = options });
                 else
-                    f.RegisterOnComplete(DisposeHandler, img);
+                    f.RegisterOnComplete(_DisposeHandler, img);
                 return f;
             } else {
                 var result = new Future<Texture2D>(img.CreateTexture(Coordinator, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB));
                 if (options.GenerateDistanceField)
-                    GenerateDistanceFieldThenDispose(result);
+                    GenerateDistanceFieldThenDispose(result, new GDFTFClosure { Image = img, Options = options });
                 else
-                    img.Dispose();
+                    DisposeHandler(result, img);
                 return result;
-            }
-
-            void GenerateDistanceFieldThenDispose (IFuture f) {
-                // FIXME: Optimize this
-                float[] buf;
-                var config = new JumpFloodConfig {
-                    Width = img.Width,
-                    Height = img.Height,
-                    ThreadGroup = Coordinator.ThreadGroup
-                };
-                var format = img.GetFormat(options.sRGB | options.sRGBFromLinear, img.ChannelCount);
-                switch (format) {
-                    case SurfaceFormat.Alpha8:
-                        buf = JumpFlood.GenerateDistanceField((byte*)img.Data, config);
-                        break;
-                    case SurfaceFormat.Color:
-                    case SurfaceFormat.ColorBgraEXT:
-                    case SurfaceFormat.ColorSrgbEXT:
-                        buf = JumpFlood.GenerateDistanceField((Color*)img.Data, config);
-                        break;
-                    case SurfaceFormat.Single:
-                        buf = JumpFlood.GenerateDistanceField((float*)img.Data, config);
-                        break;
-                    case SurfaceFormat.Vector4:
-                        buf = JumpFlood.GenerateDistanceField((Vector4*)img.Data, config);
-                        break;
-                    default:
-                        throw new Exception($"Pixel format {format} not supported by distance field generator");
-                }
-
-                Texture2D df;
-                lock (Coordinator.CreateResourceLock)
-                    df = new Texture2D(Coordinator.Device, img.Width, img.Height, false, SurfaceFormat.Single);
-                lock (Coordinator.UseResourceLock)
-                    df.SetData(buf);
-
-                lock (DistanceFields)
-                    DistanceFields.Add((Texture2D)f.Result, df);
-
-                DisposeHandler(f, img);
             }
         }
 
-        public Texture2D GetDistanceField (Texture2D sprite) {
+        protected virtual void DisposeHandler (IFuture future, object resource) {
+            Coordinator.DisposeResource((IDisposable)resource);
+        }
+
+        protected unsafe virtual void GenerateDistanceFieldThenDispose (IFuture f, object resource) {
+            var closure = (GDFTFClosure)resource;
+            var img = closure.Image;
+            var options = closure.Options;
+            // FIXME: Optimize this
+            float[] buf;
+            var config = new JumpFloodConfig {
+                Width = img.Width,
+                Height = img.Height,
+                ThreadGroup = Coordinator.ThreadGroup
+            };
+            var format = img.GetFormat(options.sRGB | options.sRGBFromLinear, img.ChannelCount);
+            switch (format) {
+                case SurfaceFormat.Alpha8:
+                    buf = JumpFlood.GenerateDistanceField((byte*)img.Data, config);
+                    break;
+                case SurfaceFormat.Color:
+                case SurfaceFormat.ColorBgraEXT:
+                case SurfaceFormat.ColorSrgbEXT:
+                    buf = JumpFlood.GenerateDistanceField((Color*)img.Data, config);
+                    break;
+                case SurfaceFormat.Single:
+                    buf = JumpFlood.GenerateDistanceField((float*)img.Data, config);
+                    break;
+                case SurfaceFormat.Vector4:
+                    buf = JumpFlood.GenerateDistanceField((Vector4*)img.Data, config);
+                    break;
+                default:
+                    throw new Exception($"Pixel format {format} not supported by distance field generator");
+            }
+
+            Texture2D df;
+            lock (Coordinator.CreateResourceLock)
+                df = new Texture2D(Coordinator.Device, img.Width, img.Height, false, SurfaceFormat.Single);
+            lock (Coordinator.UseResourceLock)
+                df.SetData(buf);
+
+            lock (DistanceFields)
+                DistanceFields.Add((Texture2D)f.Result, df);
+
+            DisposeHandler(f, img);
+        }
+
+        public void DisposeDistanceField (Texture2D texture) {
             lock (DistanceFields) {
-                if (!DistanceFields.TryGetValue(sprite, out var result))
+                if (!DistanceFields.TryGetValue(texture, out var df))
+                    return;
+
+                DistanceFields.Remove(texture);
+                Coordinator.DisposeResource(df);
+            }
+        }
+
+        public Texture2D GetDistanceField (Texture2D texture) {
+            lock (DistanceFields) {
+                if (!DistanceFields.TryGetValue(texture, out var result))
                     return null;
                 else
                     return result;

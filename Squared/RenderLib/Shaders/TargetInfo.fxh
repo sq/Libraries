@@ -4,7 +4,7 @@
 #define ACCEPTS_VPOS in float2 __vpos__ : VPOS
 #define RAW_VPOS __vpos__.xy
 
-uniform float2 __RenderTargetDimensions__;
+uniform const float2 __RenderTargetDimensions__;
 
 #if FNA
 #define GET_VPOS normalize_vpos(__vpos__)

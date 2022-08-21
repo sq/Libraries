@@ -38,7 +38,7 @@
 
 #if VARIANT_RAMP
 
-uniform float2 RampUVOffset;
+uniform const float2 RampUVOffset;
 
 Texture2D RampTexture        : register(t3);
 sampler   RampTextureSampler : register(s3) {

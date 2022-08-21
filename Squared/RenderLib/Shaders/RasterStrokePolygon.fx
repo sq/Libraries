@@ -3,7 +3,7 @@
 
 #pragma fxcflagset(Untextured,Textured)
 
-// uniform bool ShadowPerSegment;
+// uniform const bool ShadowPerSegment;
 
 // FIXME: false is preferable here
 #define COLOR_PER_SPLAT true

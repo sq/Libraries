@@ -9,7 +9,7 @@
 #define LUT_BITMAP
 #include "LUTCommon.fxh"
 
-uniform float2 LightmapUVOffset;
+uniform const float2 LightmapUVOffset;
 
 float4 LightmappedPixelShaderCore(
     in float4 multiplyColor,

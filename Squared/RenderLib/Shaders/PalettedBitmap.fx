@@ -12,7 +12,7 @@ sampler TextureSamplerPoint : register(s5) {
     MagFilter = POINT;
 };
 
-uniform float2 PaletteSize;
+uniform const float2 PaletteSize;
 Texture2D Palette : register(t4);
 
 sampler PaletteSampler : register(s4) {

@@ -42,16 +42,16 @@ sampler NoiseSampler : register(s1) {
     Texture = (NoiseTexture);
 };
 
-uniform bool BlendInLinearSpace, OutputInLinearSpace, UsesNoise;
-uniform float HalfPixelOffset;
+uniform const bool BlendInLinearSpace, OutputInLinearSpace, UsesNoise;
+uniform const float HalfPixelOffset;
 
 // Count x, count y, base size for lod calculation, unused
-uniform float4 NozzleParams;
+uniform const float4 NozzleParams;
 
 #if Shadowed
 
 // offset x, offset y, unused, unused
-uniform float4 ShadowSettings, 
+uniform const float4 ShadowSettings, 
     // pSRGB or linear depending on blend parameter
     ShadowColor;
 
@@ -63,11 +63,11 @@ uniform float4 ShadowSettings,
 #endif
 
 // size, angle, flow, brushIndex
-uniform float4 Constants1;
+uniform const float4 Constants1;
 // hardness, color, spacing, baseSize
-uniform float4 Constants2;
+uniform const float4 Constants2;
 // TaperFactor, Increment, NoiseFactor, AngleFactor
-uniform float4 SizeDynamics, AngleDynamics, FlowDynamics, 
+uniform const float4 SizeDynamics, AngleDynamics, FlowDynamics, 
     BrushIndexDynamics, HardnessDynamics, ColorDynamics;
 // TODO: Spacing dynamics?
 

@@ -212,7 +212,7 @@ technique SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE_SHADOWED
 
 #ifdef SHAPE_TYPE_TECHNIQUE_NAME_RAMP
 
-uniform float2 RampUVOffset;
+uniform const float2 RampUVOffset;
 
 Texture2D RampTexture        : register(t3);
 sampler   RampTextureSampler : register(s3) {

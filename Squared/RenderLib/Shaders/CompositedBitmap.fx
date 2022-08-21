@@ -5,7 +5,7 @@
 #include "TargetInfo.fxh"
 #include "sRGBCommon.fxh"
 
-uniform bool AutoPremultiplyBlockTextures, TransparentExterior;
+uniform const bool AutoPremultiplyBlockTextures, TransparentExterior;
 
 float4 AdaptTraits (float4 traits) {
     // HACK: Assume block textures aren't premultiplied (they shouldn't be!!!!) and premultiply them

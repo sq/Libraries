@@ -18,12 +18,12 @@ const float OutlineDivisor = 2.2;
 
 // http://dev.theomader.com/gaussian-kernel-calculator/
 // Sigma 2, Kernel size 9
-uniform int TapCount = 5;
+uniform const int TapCount = 5;
 // TODO: Create versions of this that have a lower and higher max tap count, since the high limit
 //  probably produces a vastly worse shader
 // Alternately: Use a texture for the taps
-uniform float TapWeights[10] = { 0.20236, 0.179044, 0.124009, 0.067234, 0.028532, 0, 0, 0, 0, 0 };
-uniform float3 InverseTapDivisorsAndSigma = float3(1, 1, 2);
+uniform const float TapWeights[10] = { 0.20236, 0.179044, 0.124009, 0.067234, 0.028532, 0, 0, 0, 0, 0 };
+uniform const float3 InverseTapDivisorsAndSigma = float3(1, 1, 2);
 
 // HACK: Setting this any higher than 0.5 produces weird ringing artifacts.
 // In practice we're basically super-sampling the matrix... it doesn't make it blurry with a low

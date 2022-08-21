@@ -22,6 +22,7 @@ uniform const float2 ShadowOffset;
 uniform const float3 OutlineRadiusSoftnessAndPower;
 uniform const float  ShadowedTopMipBias, ShadowMipBias;
 uniform const bool   PremultiplyTexture;
+uniform const bool   AutoPremultiplyBlockTextures, TransparentExterior;
 
 void BasicPixelShader(
     in float4 multiplyColor : COLOR0, 
@@ -218,6 +219,9 @@ void DistanceFieldOutlinedPixelShader(
         shadowSRGB = pSRGBToPLinear(shadowColor);
     result = lerp(shadowSRGB, overSRGB, overColor.a);
     result = pLinearToPSRGB(result);
+
+    const float discardThreshold = (1.0 / 255.0);
+    clip(result.a - discardThreshold);
 }
 
 void BasicPixelShaderWithDiscard (

@@ -26,12 +26,12 @@ sampler TextureSampler : register(s0) {
 };
 
 // Mode, ScaleX, ScaleY
-uniform float4 TextureModeAndSize;
+uniform const float4 TextureModeAndSize;
 // Origin, Position
-uniform float4 TexturePlacement;
-uniform float4 TextureTraits;
+uniform const float4 TexturePlacement;
+uniform const float4 TextureTraits;
 // Saturation, Brightness, Clamp X, Clamp Y
-uniform float4 TextureOptions;
+uniform const float4 TextureOptions;
 
 // A bunch of the distance formulas in here are thanks to inigo quilez
 // http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
@@ -51,14 +51,14 @@ uniform float4 TextureOptions;
     ACCEPTS_VPOS, \
     out float4 result : COLOR0
 
-uniform bool BlendInLinearSpace, OutputInLinearSpace, BlendInOkLab;
-uniform float HalfPixelOffset;
+uniform const bool BlendInLinearSpace, OutputInLinearSpace, BlendInOkLab;
+uniform const float HalfPixelOffset;
 
 // offsetx, offsety, softness, fillSuppression
-uniform float4 ShadowOptions;
+uniform const float4 ShadowOptions;
 // expansion, inside
-uniform float4 ShadowOptions2;
-uniform float4 ShadowColorLinear;
+uniform const float4 ShadowOptions2;
+uniform const float4 ShadowColorLinear;
 
 #define ShadowSoftness ShadowOptions.z
 #define ShadowOffset ShadowOptions.xy
