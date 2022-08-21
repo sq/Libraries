@@ -11,7 +11,7 @@ using Squared.Util;
 
 namespace Squared.Render.DistanceField {
     public struct JumpFloodConfig {
-        public const int DefaultChunkSize = 256;
+        public const int DefaultChunkSize = 64;
 
         public Rectangle? Region;
         public ThreadGroup ThreadGroup;
@@ -38,7 +38,7 @@ namespace Squared.Render.DistanceField {
     }
 
     public class JumpFlood {
-        const float MaxDistance = 8192;
+        const float MaxDistance = 10240;
 
         unsafe struct InitializeChunkColor : IWorkItem {
             public Color* Input;
@@ -67,7 +67,7 @@ namespace Squared.Render.DistanceField {
 
             public unsafe void Execute () {
                 int* neighborOffsets = stackalloc int[8];
-                sbyte* neighborXOffsets = stackalloc sbyte[8];
+                int* neighborXOffsets = stackalloc int[8];
                 Vector2* neighborDeltas = stackalloc Vector2[8];
                 {
                     for (int y = -1, j = 0; y < 2; y++) {
@@ -76,15 +76,15 @@ namespace Squared.Render.DistanceField {
                                 continue;
 
                             neighborDeltas[j] = new Vector2(x * Step, y * Step);
-                            neighborXOffsets[j] = (sbyte)(x * Step);
+                            neighborXOffsets[j] = (x * Step);
                             neighborOffsets[j++] = (x * Step) + (y * Stride * Step);
                         }
                     }
                 }
 
                 unchecked {
-                    for (int _y = 0; _y < Height; _y++) {
-                        var yW = (_y + Y) * Stride;
+                    for (int y = 0; y < Height; y++) {
+                        var yW = (y + Y) * Stride;
                         for (int x = 0; x < Width; x++) {
                             var offset = (x + X) + yW;
                             var self = Input[offset];
@@ -95,14 +95,14 @@ namespace Squared.Render.DistanceField {
                                 if ((neighborOffset < MinIndex) || (neighborOffset >= MaxIndex))
                                     continue;
                                 // Detect X hitting left or right
-                                var neighborX = x + neighborXOffsets[z];
+                                var neighborX = (x + X) + neighborXOffsets[z];
                                 if ((neighborX < MinX) || (neighborX > MaxX))
                                     continue;
 
                                 var n = Input[neighborOffset];
-                                // If we crossed an inside/outside boundary we shouldn't use data from this neighbor
+                                // If we crossed an inside/outside boundary, treat this sample like it has zero distance
                                 if (n.W != self.W)
-                                    continue;
+                                    n = new Vector4(0, 0, 0, n.W);
 
                                 // Update neighbor x/y distances based on their distance from us
                                 n.X += neighborDeltas[z].X;
@@ -126,7 +126,7 @@ namespace Squared.Render.DistanceField {
             public Vector4[] Input;
             public float[] Output;
             public double DistanceScale;
-            public double DistanceOffset;
+            public float DistanceOffset;
             public int X, Y, Width, Height, Stride;
 
             public void Execute () {
@@ -136,12 +136,8 @@ namespace Squared.Render.DistanceField {
                         for (int x = 0; x < Width; x++) {
                             var offset = (x + X) + yW;
                             var input = Input[offset];
-                            var distance = Math.Sqrt(input.Z);
-                            if (distance < 256)
-                                ;
-                            if (input.W > 0f)
-                                distance = -distance;
-                            Output[offset] = (float)(DistanceOffset + (distance * DistanceScale));
+                            var distance = (float)(Math.Sqrt(input.Z) * DistanceScale);
+                            Output[offset] = DistanceOffset + (distance * (input.W > 0f ? -1f : 1f));
                         }
                     }
                 }
@@ -165,12 +161,14 @@ namespace Squared.Render.DistanceField {
             Vector4[] inBuffer = buf1, outBuffer = buf2;
             var sw = Stopwatch.StartNew();
             for (
-                int i = 0, numSteps = Math.Min(
-                    config.MaxSteps ?? 32,
-                    Math.Max(BitOperations.Log2Ceiling((uint)config.Width), BitOperations.Log2Ceiling((uint)config.Height))
-                ), step = 1;
-                i < numSteps; i++, step *= 2
+                int i = 0, 
+                    l2x = BitOperations.Log2Ceiling((uint)config.Width), 
+                    l2y = BitOperations.Log2Ceiling((uint)config.Height),
+                    l2 = Math.Min(l2x, l2y),
+                    numSteps = Math.Min(l2, config.MaxSteps ?? 32); 
+                i < numSteps; i++
             ) {
+                int step = 1 << (l2 - i - 1);
                 PerformJump(inBuffer, outBuffer, config, step);
 
                 var swap = inBuffer;

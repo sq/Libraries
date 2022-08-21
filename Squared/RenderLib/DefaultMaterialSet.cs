@@ -375,7 +375,7 @@ namespace Squared.Render {
         public Material ScreenSpaceStippledBitmap, WorldSpaceStippledBitmap;
         public Material ScreenSpacePalettedBitmapWithDiscard, WorldSpacePalettedBitmapWithDiscard;
         public Material ScreenSpaceHueBitmapWithDiscard, WorldSpaceHueBitmapWithDiscard;
-        public Material OutlinedBitmap, OutlinedBitmapWithDiscard;
+        public Material OutlinedBitmap, OutlinedBitmapWithDiscard, DistanceFieldOutlinedBitmap;
         public Material HighlightColorBitmap, CrossfadeBitmap;
         // Porter-duff compositing
         public Material UnderBitmap, OverBitmap, AtopBitmap;
@@ -617,6 +617,12 @@ namespace Squared.Render {
             );
             OutlinedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(defaultOffset);
 
+            DistanceFieldOutlinedBitmap = NewMaterial(
+                bitmapShader,
+                "DistanceFieldOutlinedBitmapTechnique"
+            );
+            DistanceFieldOutlinedBitmap.Parameters.ShadowOffset.SetValue(defaultOffset);
+
             BitmapWithDiscard = NewMaterial(
                 bitmapShader,
                 "BitmapWithDiscardTechnique"
@@ -719,7 +725,8 @@ namespace Squared.Render {
                 MaskedBitmap,
                 GradientMaskedBitmap,
                 OutlinedBitmap,
-                OutlinedBitmapWithDiscard
+                OutlinedBitmapWithDiscard,
+                DistanceFieldOutlinedBitmap
             };
 
             var filterMaterials = new[] {

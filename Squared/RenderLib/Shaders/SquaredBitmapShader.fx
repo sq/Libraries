@@ -18,7 +18,7 @@
 #define OutlineExponent 1.5 // HACK: Make the outlines sharper even if the texture edge is soft
 
 uniform const float4 GlobalShadowColor;
-uniform const float2 ShadowOffset;
+uniform const float2 ShadowOffset, OutlineRadiusAndSoftness;
 uniform const float  ShadowedTopMipBias, ShadowMipBias;
 uniform const bool   PremultiplyTexture;
 
@@ -170,6 +170,55 @@ void OutlinedPixelShaderWithDiscard(
     clip(result.a - discardThreshold);
 }
 
+void DistanceFieldOutlinedPixelShader(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float4 shadowColorIn : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    out float4 result : COLOR0
+) {
+    addColor.rgb *= addColor.a;
+    addColor.a = 0;
+
+    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
+    float4 traits = BitmapTraits;
+    if ((shadowColorIn.a < 0) || PremultiplyTexture)
+        traits.z = 1;
+    texColor = ExtractRgba(texColor, BitmapTraits);
+    shadowColorIn.a = abs(shadowColorIn.a);
+
+    float2 offset = (ShadowOffset * HalfTexel * 2);
+    // HACK: 5 tap averaging because the SDF may be slightly inaccurate, and not at full pixel offsets
+    float3 step = float3(HalfTexel * 1, 0);
+    float distance = tex2D(TextureSampler2, clamp2(texCoord + offset + step.xz, texRgn.xy, texRgn.zw)) + 
+        tex2D(TextureSampler2, clamp2(texCoord + offset - step.xz, texRgn.xy, texRgn.zw)) +
+        tex2D(TextureSampler2, clamp2(texCoord + offset + step.zy, texRgn.xy, texRgn.zw)) + 
+        tex2D(TextureSampler2, clamp2(texCoord + offset - step.zy, texRgn.xy, texRgn.zw)) + 
+        tex2D(TextureSampler2, clamp2(texCoord + offset, texRgn.xy, texRgn.zw));
+    distance /= 5.0;
+    distance -= OutlineRadiusAndSoftness.x;
+    // FIXME
+    float shadowAlpha = 1 - saturate(distance / OutlineRadiusAndSoftness.y);
+
+    /*
+    shadowAlpha = saturate(shadowAlpha / OutlineSumDivisor);
+    shadowAlpha = pow(shadowAlpha, OutlineExponent);
+    */
+    float4 shadowColor = float4(shadowColorIn.rgb, 1);
+    shadowColor = lerp(GlobalShadowColor, shadowColor, shadowColorIn.a > 0 ? 1 : 0);
+    shadowColor *= shadowAlpha * saturate(shadowColorIn.a);
+
+    float4 overColor = (texColor * multiplyColor);
+    overColor += (addColor * overColor.a);
+
+    // Significantly improves the appearance of colored outlines and/or colored text
+    float4 overSRGB = pSRGBToPLinear(overColor),
+        shadowSRGB = pSRGBToPLinear(shadowColor);
+    result = lerp(shadowSRGB, overSRGB, overColor.a);
+    result = pLinearToPSRGB(result);
+}
+
 void BasicPixelShaderWithDiscard (
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
@@ -312,5 +361,14 @@ technique OutlinedBitmapWithDiscardTechnique
     {
         vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 OutlinedPixelShaderWithDiscard();
+    }
+}
+
+technique DistanceFieldOutlinedBitmapTechnique
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 DistanceFieldOutlinedPixelShader();
     }
 }

@@ -133,9 +133,7 @@ namespace Squared.Render {
                 var config = new JumpFloodConfig {
                     Width = img.Width,
                     Height = img.Height,
-                    ThreadGroup = Coordinator.ThreadGroup,
-                    DistanceScale = 1 / 256f,
-                    DistanceOffset = 0.5f
+                    ThreadGroup = Coordinator.ThreadGroup
                 };
                 if ((img.ChannelCount == 4) && (img.SizeofPixel == 4))
                     buf = JumpFlood.GenerateDistanceField((Color*)img.Data, config);
