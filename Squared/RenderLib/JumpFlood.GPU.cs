@@ -55,6 +55,16 @@ namespace Squared.Render.DistanceField {
             }
         }
 
+        const int SizeRounding = 8, SizeRoundingMinusOne = SizeRounding - 1;
+
+        public static GPUScratchSurfaces AllocateScratchSurfaces (RenderCoordinator coordinator, int width, int height) {
+            var result = new GPUScratchSurfaces(coordinator);
+            width = ((width + SizeRoundingMinusOne) / SizeRounding) * SizeRounding;
+            height = ((height + SizeRoundingMinusOne) / SizeRounding) * SizeRounding;
+            result.Resize(width, height);
+            return result;
+        }
+
         /// <summary>
         /// Generates a distance field populated based on the alpha channel of an input image, using the GPU.
         /// </summary>
@@ -67,8 +77,8 @@ namespace Squared.Render.DistanceField {
 
             var coordinator = renderer.Container.Coordinator;
             scratchSurfaces = scratchSurfaces ?? new GPUScratchSurfaces(coordinator);
-            int width = ((_region.Width + 15) / 16) * 16,
-                height = ((_region.Height + 15) / 16) * 16;
+            int width = ((_region.Width + SizeRoundingMinusOne) / SizeRounding) * SizeRounding,
+                height = ((_region.Height + SizeRoundingMinusOne) / SizeRounding) * SizeRounding;
             scratchSurfaces.Resize(width, height);
 
             var vt = ViewTransform.CreateOrthographic(scratchSurfaces.InBuffer.Width, scratchSurfaces.InBuffer.Height);

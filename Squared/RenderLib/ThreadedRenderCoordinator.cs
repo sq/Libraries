@@ -1191,11 +1191,17 @@ namespace Squared.Render {
             }
         }
 
+        /// <summary>
+        /// Queues a resource to be disposed after the next draw and then erases its storage.
+        /// </summary>
         public void DisposeResource<T> (ref T resource) where T : IDisposable {
             DisposeResource(resource);
             resource = default(T);
         }
 
+        /// <summary>
+        /// Queues a resource to be disposed after the next draw.
+        /// </summary>
         public void DisposeResource (IDisposable resource) {
             if (resource == null)
                 return;
