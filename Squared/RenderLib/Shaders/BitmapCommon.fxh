@@ -180,3 +180,31 @@ void GenericVertexShader (
     float z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
     result = TransformPosition(float4(adjustedPosition, z, 1), true);
 }
+
+float AutoClampAlpha1 (
+    in float value, in float2 uv, in float4 region, in float2 halfTexel, in bool active
+) {
+    if (!active)
+        return value;
+    // Compute how far out the sample point is from the edges of the texture, then scale it down to
+    //  0 alpha as it travels far enough away.
+    // FIXME: Should this be half a texel instead of a full texel?
+    float2 invHalfTexel = rcp(halfTexel * 2);
+    float2 tl = -min(uv, 0), br = max(uv, 1) - 1;
+    float2 a = 1 - saturate(max(tl * invHalfTexel, br * invHalfTexel));
+    return value * min(a.x, a.y);
+}
+
+float4 AutoClampAlpha4 (
+    in float4 value, in float2 uv, in float4 region, in float2 halfTexel, in bool active
+) {
+    if (!active)
+        return value;
+    // Compute how far out the sample point is from the edges of the texture, then scale it down to
+    //  0 alpha as it travels far enough away.
+    // FIXME: Should this be half a texel instead of a full texel?
+    float2 invHalfTexel = rcp(halfTexel * 2);
+    float2 tl = -min(uv, 0), br = max(uv, 1) - 1;
+    float2 a = 1 - saturate(max(tl * invHalfTexel, br * invHalfTexel));
+    return value * min(a.x, a.y);
+}

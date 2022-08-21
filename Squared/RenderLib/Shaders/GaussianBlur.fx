@@ -23,7 +23,7 @@ uniform int TapCount = 5;
 //  probably produces a vastly worse shader
 // Alternately: Use a texture for the taps
 uniform float TapWeights[10] = { 0.20236, 0.179044, 0.124009, 0.067234, 0.028532, 0, 0, 0, 0, 0 };
-uniform float2 InverseTapDivisorsAndSigma = float3(1, 1, 2);
+uniform float3 InverseTapDivisorsAndSigma = float3(1, 1, 2);
 
 // HACK: Setting this any higher than 0.5 produces weird ringing artifacts.
 // In practice we're basically super-sampling the matrix... it doesn't make it blurry with a low
@@ -34,7 +34,7 @@ const float TapSpacingFactor = 0.5;
 //  the atlas is high-DPI
 #define DefaultShadowedTopMipBias MIP_BIAS
 uniform const float  ShadowedTopMipBias, ShadowMipBias, OutlineExponent = 1.2;
-uniform const bool   PremultiplyTexture;
+uniform const bool   PremultiplyTexture, TransparentExterior;
 
 uniform const float2 ShadowOffset;
 
@@ -63,7 +63,7 @@ float tapA(
     // FIXME: Use extract value so this works with single channel textures
     // HACK: We can't use tex2dbias here because we're inside a loop and it forces it to unroll
     float4 texColor = tex2Dlod(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, mipBias));
-    return ExtractMask(texColor, BitmapTraits);
+    return AutoClampAlpha1(ExtractMask(texColor, BitmapTraits), texCoord, texRgn, HalfTexel, TransparentExterior);
 }
 
 float4 tap(
