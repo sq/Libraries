@@ -41,6 +41,33 @@ namespace Squared.Render.DistanceField {
     public static partial class JumpFlood {
         const float MaxDistance = 10240;
 
+        private static int GetStepCount (int width, int height) {
+            int l2x = BitOperations.Log2Ceiling((uint)width),
+                l2y = BitOperations.Log2Ceiling((uint)height),
+                l2 = Math.Max(l2x, l2y),
+                numSteps = Math.Min(l2, 16);
+            return numSteps;
+        }
+
+        private static int GetStepSize (int width, int height, int index) {
+            int l2x = BitOperations.Log2Ceiling((uint)width),
+                l2y = BitOperations.Log2Ceiling((uint)height),
+                l2 = Math.Max(l2x, l2y),
+                numSteps = Math.Min(l2 + 1, 16);
+
+            // 1+JFA: 1, N/2, N/4, ..., 1
+            int result;
+            if (index <= 0)
+                result = 1;
+            else
+                result = 1 << (l2 - index - 1);
+
+            if (result < 1)
+                result = 1;
+
+            return result;
+        }
+
         unsafe struct InitializeChunkColor : IWorkItem {
             public Color* Input;
             public Vector4[] Output;
@@ -267,15 +294,8 @@ namespace Squared.Render.DistanceField {
             var result = new float[config.Width * config.Height];
             Vector4[] inBuffer = buf1, outBuffer = buf2;
             var sw = Stopwatch.StartNew();
-            for (
-                int i = 0, 
-                    l2x = BitOperations.Log2Ceiling((uint)config.Width), 
-                    l2y = BitOperations.Log2Ceiling((uint)config.Height),
-                    l2 = Math.Min(l2x, l2y),
-                    numSteps = Math.Min(l2, config.MaxSteps ?? 32); 
-                i < numSteps; i++
-            ) {
-                int step = 1 << (l2 - i - 1);
+            for (int i = 0, stepCount = GetStepCount(config.Width, config.Height); i < stepCount; i++) {
+                int step = GetStepSize(config.Width, config.Height, i);
                 PerformJump(inBuffer, outBuffer, config, step);
 
                 var swap = inBuffer;

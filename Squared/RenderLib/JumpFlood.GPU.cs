@@ -90,15 +90,8 @@ namespace Squared.Render.DistanceField {
 
             _region = new Rectangle(0, 0, _region.Width, _region.Height);
 
-            for (
-                int i = 0, 
-                    l2x = BitOperations.Log2Ceiling((uint)_region.Width), 
-                    l2y = BitOperations.Log2Ceiling((uint)_region.Height),
-                    l2 = Math.Min(l2x, l2y),
-                    numSteps = Math.Min(l2, maxSteps ?? 32); 
-                i < numSteps; i++
-            ) {
-                int step = 1 << (l2 - i - 1);
+            for (int i = 0, stepCount = GetStepCount(_region.Width, _region.Height); i < stepCount; i++) {
+                int step = GetStepSize(_region.Width, _region.Height, i);
                 var jumpGroup = group.ForRenderTarget(scratchSurfaces.OutBuffer, viewTransform: vt);
                 jumpGroup.Clear(layer: -1, color: new Color(step / 32f, 0, 0, 1f));
                 jumpGroup.Draw(
