@@ -42,7 +42,6 @@ void JumpFloodJumpShader(
             if (any(uv < texRgn.xy) || any(uv > texRgn.zw))
                 continue;
 
-            uv = clamp(uv, texRgn.xy, texRgn.zw);
             float4 n = tex2D(TextureSampler, uv);
 
             if (n.w != self.w)
