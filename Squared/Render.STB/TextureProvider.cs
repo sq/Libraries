@@ -131,7 +131,10 @@ namespace Squared.Render {
         }
 
         protected virtual void DisposeHandler (IFuture future, object resource) {
-            Coordinator.DisposeResource((IDisposable)resource);
+            if (resource is GDFTFClosure c)
+                Coordinator.DisposeResource(c.Image);
+            else
+                Coordinator.DisposeResource(resource as IDisposable);
         }
 
         protected unsafe virtual void GenerateDistanceFieldThenDispose (IFuture f, object resource) {

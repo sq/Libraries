@@ -229,6 +229,10 @@ void DistanceFieldOutlinedPixelShader(
     float4 overColor = (texColor * multiplyColor);
     overColor += (addColor * overColor.a);
 
+    // HACK: Ensure the outline does not paint under opaque pixels while faded out
+    if (multiplyColor.a < 1.0)
+        shadowAlpha -= texColor.a;
+
     // Significantly improves the appearance of colored outlines and/or colored text
     float4 overSRGB = pSRGBToPLinear_Accurate(overColor),
         shadowSRGB = pSRGBToPLinear_Accurate(shadowColor);
