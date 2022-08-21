@@ -25,13 +25,13 @@ void JumpFloodInitShader(
 void JumpFloodJumpShader(
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    // step, unused, unused, unused
+    // stepX, stepY, unused, unused
     in float4 params : COLOR2,
     out float4 result : COLOR0
 ) {
     float md2 = ScreenDistanceSquared(float2(MaxDistance, MaxDistance));
     float4 self = tex2D(TextureSampler, clamp(texCoord, texRgn.xy, texRgn.zw));
-    float2 texel = HalfTexel * 2 * params.x;
+    float2 texel = HalfTexel * 2 * params.xy;
 
     for (int y = -1; y < 2; y++) {
         for (int x = -1; x < 2; x++) {

@@ -195,5 +195,10 @@ namespace Squared.Render {
                     return result;
             }
         }
+
+        public void SetDistanceField (Texture2D texture, Texture2D distanceField) {
+            lock (DistanceFields)
+                DistanceFields.Add(texture, distanceField);
+        }
     }
 }

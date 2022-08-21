@@ -384,6 +384,7 @@ namespace Squared.Render {
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
         public Material RasterShapeUbershader;
+        public Material JumpFloodInit, JumpFloodJump, JumpFloodResolve;
         internal readonly Dictionary<RasterShaderKey, RasterShape.RasterShader> RasterShapeMaterials =
             new Dictionary<RasterShaderKey, RasterShape.RasterShader>(new RasterShaderKey.Comparer());
         internal readonly Dictionary<int, RasterStroke.StrokeShader[]> RasterStrokeMaterials =
@@ -518,6 +519,7 @@ namespace Squared.Render {
             var hslShader = BuiltInShaders.Load("HueBitmap");
             var stippledShader = BuiltInShaders.Load("StippledBitmap");
             var compositedShader = BuiltInShaders.Load("CompositedBitmap");
+            var jumpFloodShader = BuiltInShaders.Load("JumpFlood");
 
             Bitmap = NewMaterial(
                 bitmapShader,
@@ -708,6 +710,20 @@ namespace Squared.Render {
                 "WorldSpaceLightmappedsRGBBitmap"
             );
 
+            JumpFloodInit = NewMaterial(
+                jumpFloodShader,
+                "JumpFloodInit"
+            );
+
+            JumpFloodJump = NewMaterial(
+                jumpFloodShader,
+                "JumpFloodJump"
+            );
+
+            JumpFloodResolve = NewMaterial(
+                jumpFloodShader,
+                "JumpFloodResolve"
+            );
 
             var bitmapMaterials = new[] {
                 Bitmap,
@@ -726,7 +742,10 @@ namespace Squared.Render {
                 GradientMaskedBitmap,
                 OutlinedBitmap,
                 OutlinedBitmapWithDiscard,
-                DistanceFieldOutlinedBitmap
+                DistanceFieldOutlinedBitmap,
+                JumpFloodInit,
+                JumpFloodJump,
+                JumpFloodResolve
             };
 
             var filterMaterials = new[] {
