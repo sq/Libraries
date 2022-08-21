@@ -395,7 +395,7 @@ namespace Squared.Render {
         public Material ScreenSpaceLightmappedsRGBBitmap, WorldSpaceLightmappedsRGBBitmap;
         public Material ScreenSpaceHorizontalGaussianBlur, ScreenSpaceVerticalGaussianBlur, ScreenSpaceRadialGaussianBlur;
         public Material WorldSpaceHorizontalGaussianBlur, WorldSpaceVerticalGaussianBlur, WorldSpaceRadialGaussianBlur;
-        public Material GaussianOutlined, GaussianOutlinedWithDiscard;
+        public Material GaussianOutlined, GaussianOutlinedWithDiscard, RadialMaskSoftening;
         public Material Clear, SetScissor, SetViewport;
 
         private readonly Action<Material, FrameParams> _ApplyParamsDelegate;
@@ -749,7 +749,8 @@ namespace Squared.Render {
                 WorldSpaceVerticalGaussianBlur,
                 WorldSpaceRadialGaussianBlur,
                 GaussianOutlined,
-                GaussianOutlinedWithDiscard
+                GaussianOutlinedWithDiscard,
+                RadialMaskSoftening
             };
 
             foreach (var m in bitmapMaterials)
@@ -845,6 +846,11 @@ namespace Squared.Render {
             GaussianOutlinedWithDiscard = NewMaterial(
                 blurShader,
                 "GaussianOutlinedWithDiscard"
+            );
+
+            RadialMaskSoftening = NewMaterial(
+                blurShader,
+                "RadialMaskSoftening"
             );
         }
 
@@ -1277,8 +1283,8 @@ namespace Squared.Render {
                 var divisor = (sum * scale);
                 var inverseDivisor = 1.0 / divisor;
                 var inverseDivisor2 = inverseDivisor * inverseDivisor;
-                p["InverseTapDivisors"]?.SetValue(new Vector2(
-                    (float)inverseDivisor, (float)inverseDivisor2
+                p["InverseTapDivisorsAndSigma"]?.SetValue(new Vector3(
+                    (float)inverseDivisor, (float)inverseDivisor2, (float)sigma
                 ));
             }
         }

@@ -19,8 +19,11 @@ const float OutlineDivisor = 2.2;
 // http://dev.theomader.com/gaussian-kernel-calculator/
 // Sigma 2, Kernel size 9
 uniform int TapCount = 5;
+// TODO: Create versions of this that have a lower and higher max tap count, since the high limit
+//  probably produces a vastly worse shader
+// Alternately: Use a texture for the taps
 uniform float TapWeights[10] = { 0.20236, 0.179044, 0.124009, 0.067234, 0.028532, 0, 0, 0, 0, 0 };
-uniform float2 InverseTapDivisors = float2(1, 1);
+uniform float2 InverseTapDivisorsAndSigma = float3(1, 1, 2);
 
 // HACK: Setting this any higher than 0.5 produces weird ringing artifacts.
 // In practice we're basically super-sampling the matrix... it doesn't make it blurry with a low
@@ -81,9 +84,10 @@ float4 gaussianBlur1D(
 
     for (int i = 1; i < TapCount; i += 1) {
         float2 offset2 = stepSize * i;
+        float w = TapWeights[i];
 
-        sum += tap(texCoord - offset2, texRgn) * TapWeights[i];
-        sum += tap(texCoord + offset2, texRgn) * TapWeights[i];
+        sum += tap(texCoord - offset2, texRgn) * w;
+        sum += tap(texCoord + offset2, texRgn) * w;
     }
 
     return sum;
@@ -100,9 +104,10 @@ float gaussianBlurA(
 
     for (int i = 1; i < TapCount; i += 1) {
         float2 offset2 = stepSize * i;
+        float w = TapWeights[i];
 
-        sum += tapA(texCoord - offset2, texRgn, mipBias) * TapWeights[i];
-        sum += tapA(texCoord + offset2, texRgn, mipBias) * TapWeights[i];
+        sum += tapA(texCoord - offset2, texRgn, mipBias) * w;
+        sum += tapA(texCoord + offset2, texRgn, mipBias) * w;
     }
 
     return sum;
@@ -136,7 +141,7 @@ void HorizontalGaussianBlurPixelShader(
 ) {
     float4 centerTap = tap(texCoord, texRgn);
     float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(TapSpacingFactor, 0), texCoord, texRgn);
-    result = psEpilogue(sum * InverseTapDivisors.x, multiplyColor, addColor);
+    result = psEpilogue(sum * InverseTapDivisorsAndSigma.x, multiplyColor, addColor);
 }
 
 void VerticalGaussianBlurPixelShader(
@@ -148,7 +153,7 @@ void VerticalGaussianBlurPixelShader(
 ) {
     float4 centerTap = tap(texCoord, texRgn);
     float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(0, TapSpacingFactor), texCoord, texRgn);
-    result = psEpilogue(sum * InverseTapDivisors.x, multiplyColor, addColor);
+    result = psEpilogue(sum * InverseTapDivisorsAndSigma.x, multiplyColor, addColor);
 }
 
 void RadialGaussianBlurPixelShader(
@@ -167,12 +172,51 @@ void RadialGaussianBlurPixelShader(
 
     for (int i = 1; i < TapCount; i += 1) {
         float2 outerOffset = outerStepSize * i;
+        float w = TapWeights[i];
         
-        sum += gaussianBlur1D(centerTap, innerStepSize, texCoord - outerOffset, texRgn) * TapWeights[i];
-        sum += gaussianBlur1D(centerTap, innerStepSize, texCoord + outerOffset, texRgn) * TapWeights[i];
+        sum += gaussianBlur1D(centerTap, innerStepSize, texCoord - outerOffset, texRgn) * w;
+        sum += gaussianBlur1D(centerTap, innerStepSize, texCoord + outerOffset, texRgn) * w;
     }
 
-    result = psEpilogue(sum * InverseTapDivisors.y, multiplyColor, addColor);
+    result = psEpilogue(sum * InverseTapDivisorsAndSigma.y, multiplyColor, addColor);
+}
+
+void RadialMaskSofteningPixelShader(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    // height scale, mip bias, unused, unused
+    in float4 params : COLOR2,
+    out float4 result : COLOR0
+) {
+    float2 innerStepSize = HalfTexel * float2(TapSpacingFactor, 0), outerStepSize = HalfTexel * float2(0, TapSpacingFactor);
+
+    float4 traits = BitmapTraits;
+    bool needPremul = PremultiplyTexture || (traits.z >= 1) || (traits.w >= ALPHA_MODE_BC);
+    traits.z = 0;
+    float4 texColor = tap(texCoord, texRgn);
+
+    float centerTapAlpha = ExtractMask(texColor, traits),
+        mipBias = params.y,
+        centerValue = gaussianBlurA(centerTapAlpha, innerStepSize, texCoord, texRgn, mipBias),
+        sum = centerTapAlpha;
+
+    for (int i = 1; i < TapCount; i += 1) {
+        float2 outerOffset = outerStepSize * i;
+        float w = TapWeights[i];
+
+        sum += gaussianBlurA(centerTapAlpha, innerStepSize, texCoord - outerOffset, texRgn, mipBias) * w;
+        sum += gaussianBlurA(centerTapAlpha, innerStepSize, texCoord + outerOffset, texRgn, mipBias) * w;
+    }
+
+    float resultValue = max(sum * InverseTapDivisorsAndSigma.y * params.x, 0);
+
+    result = (float4(resultValue, resultValue, resultValue, centerTapAlpha) + addColor) * multiplyColor;
+    result.a = min(result.a, centerTapAlpha);
+
+    const float discardThreshold = (0.5 / 255.0);
+    clip(result.a - discardThreshold);
 }
 
 // porter-duff A over B
@@ -211,6 +255,7 @@ void GaussianOutlinedPixelShader(
 
     texCoord -= ShadowOffset * HalfTexel * 2;
 
+    // FIXME: Why is this here and implicitly truncating?
     float centerTap = (length(ShadowOffset) <= 0.001) ? ExtractMask(texColor, traits) : tap(texCoord, texRgn);
     texColor = ExtractRgba(texColor, traits);
     float centerValue = gaussianBlurA(centerTap, innerStepSize, texCoord, texRgn, ShadowMipBias);
@@ -219,12 +264,13 @@ void GaussianOutlinedPixelShader(
 
     for (int i = 1; i < TapCount; i += 1) {
         float2 outerOffset = outerStepSize * i;
+        float w = TapWeights[i];
 
-        sum += gaussianBlurA(centerTap, innerStepSize, texCoord - outerOffset, texRgn, ShadowMipBias) * TapWeights[i];
-        sum += gaussianBlurA(centerTap, innerStepSize, texCoord + outerOffset, texRgn, ShadowMipBias) * TapWeights[i];
+        sum += gaussianBlurA(centerTap, innerStepSize, texCoord - outerOffset, texRgn, ShadowMipBias) * w;
+        sum += gaussianBlurA(centerTap, innerStepSize, texCoord + outerOffset, texRgn, ShadowMipBias) * w;
     }
 
-    float shadowAlpha = saturate(((sum * InverseTapDivisors.x) - OutlineBias) / OutlineDivisor);
+    float shadowAlpha = saturate(((sum * InverseTapDivisorsAndSigma.x) - OutlineBias) / OutlineDivisor);
     shadowAlpha = saturate(shadowAlpha * max(1, shadowColorIn.a));
     shadowAlpha = pow(shadowAlpha, OutlineExponent);
 
@@ -337,5 +383,14 @@ technique GaussianOutlinedWithDiscard
     {
         vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 GaussianOutlinedPixelShaderWithDiscard();
+    }
+}
+
+technique RadialMaskSoftening
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 RadialMaskSofteningPixelShader();
     }
 }

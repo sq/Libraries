@@ -56,6 +56,10 @@ namespace Squared.PRGUI.Controls {
 
             // HACK
             if (includeFallback && (result == null) && type.IsValueType) {
+                // Sorry
+                if (type.IsValueType && type.Namespace == "System" && type.Name.StartsWith("Nullable`1"))
+                    type = type.GetGenericArguments()[0];
+
                 var gt = typeof(ParameterEditor<>).MakeGenericType(type);
                 var mi = gt.GetMethod("TryParseValueUntyped", BindingFlags.NonPublic | BindingFlags.Static);
                 result = (TryParseDelegate)Delegate.CreateDelegate(typeof(TryParseDelegate), mi, true);
