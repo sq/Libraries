@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -113,24 +116,33 @@ namespace Squared.Render.DistanceField {
         }
 
         struct Jump : IWorkItem {
+            [StructLayout(LayoutKind.Sequential, Pack = 1)]
+            struct Offsets {
+                public int Offset;
+                public short XOffset;
+                public float XDelta;
+                public float YDelta;
+            }
+
             public Vector4[] Input;
             public Vector4[] Output;
             public int X, Y, Width, Height, Stride, Step;
             public int MinX, MaxX, MinIndex, MaxIndex;
 
             public unsafe void Execute () {
-                int* neighborOffsets = stackalloc int[8];
-                int* neighborXOffsets = stackalloc int[8];
-                Vector2* neighborDeltas = stackalloc Vector2[8];
+                Offsets* offsets = stackalloc Offsets[8];
                 {
                     for (int y = -1, j = 0; y < 2; y++) {
                         for (int x = -1; x < 2; x++) {
                             if ((x == 0) && (y == 0))
                                 continue;
 
-                            neighborDeltas[j] = new Vector2(x * Step, y * Step);
-                            neighborXOffsets[j] = (x * Step);
-                            neighborOffsets[j++] = (x * Step) + (y * Stride * Step);
+                            offsets[j++] = new Offsets {
+                                Offset = ((x * Step) + (y * Stride * Step)),
+                                XOffset = (short)(x * Step),
+                                XDelta = x * Step,
+                                YDelta = y * Step
+                            };
                         }
                     }
                 }
@@ -140,35 +152,38 @@ namespace Squared.Render.DistanceField {
                         var yW = (y + Y) * Stride;
                         for (int x = 0; x < Width; x++) {
                             var offset = (x + X) + yW;
-                            var self = Input[offset];
+                            ref var self = ref Output[offset];
+                            self = Input[offset];
 
                             for (int z = 0; z < 8; z++) {
+                                ref var data = ref offsets[z];
                                 // Detect Y hitting top or bottom
-                                var neighborOffset = neighborOffsets[z] + offset;
-                                if ((neighborOffset < MinIndex) || (neighborOffset >= MaxIndex))
-                                    continue;
+                                var neighborOffset = data.Offset + offset;
                                 // Detect X hitting left or right
-                                var neighborX = (x + X) + neighborXOffsets[z];
-                                if ((neighborX < MinX) || (neighborX > MaxX))
+                                var neighborX = (x + X) + data.XOffset;
+                                if ((neighborOffset < MinIndex) || (neighborOffset >= MaxIndex) ||
+                                    (neighborX < MinX) || (neighborX > MaxX))
                                     continue;
 
-                                var n = Input[neighborOffset];
+                                ref var n = ref Input[neighborOffset];
                                 // If we crossed an inside/outside boundary, treat this sample like it has zero distance
-                                if (n.W != self.W)
-                                    n = new Vector4(0, 0, 0, n.W);
-
-                                // Update neighbor x/y distances based on their distance from us
-                                n.X += neighborDeltas[z].X;
-                                n.Y += neighborDeltas[z].Y;
-
-                                // Compute new distance squared based on the new computed distance
-                                var distance = ScreenDistanceSquared(n.X, n.Y);
-
-                                if (distance < self.Z)
-                                    self = new Vector4(n.X, n.Y, distance, self.W);
+                                if (n.W != self.W) {
+                                    var distance = ScreenDistanceSquared(data.XDelta, data.YDelta);
+                                    if (distance < self.Z) {
+                                        self.X = data.XDelta;
+                                        self.Y = data.YDelta;
+                                        self.Z = distance;
+                                    }
+                                } else {
+                                    float nx = n.X + data.XDelta, ny = n.Y + data.YDelta;
+                                    var distance = ScreenDistanceSquared(nx, ny);
+                                    if (distance < self.Z) {
+                                        self.X = nx;
+                                        self.Y = ny;
+                                        self.Z = distance;
+                                    }
+                                }
                             }
-
-                            Output[offset] = self;
                         }
                     }
                 }
@@ -195,6 +210,8 @@ namespace Squared.Render.DistanceField {
             }
         }
 
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static float ScreenDistanceSquared (float x, float y) {
             return (x * x) + (y * y);
         }
