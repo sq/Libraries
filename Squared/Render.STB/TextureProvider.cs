@@ -135,10 +135,25 @@ namespace Squared.Render {
                     Height = img.Height,
                     ThreadGroup = Coordinator.ThreadGroup
                 };
-                if ((img.ChannelCount == 4) && (img.SizeofPixel == 4))
-                    buf = JumpFlood.GenerateDistanceField((Color*)img.Data, config);
-                else
-                    throw new Exception($"Pixel format {img.GetFormat(options.sRGB | options.sRGBFromLinear, img.ChannelCount)} not supported by distance field generator");
+                var format = img.GetFormat(options.sRGB | options.sRGBFromLinear, img.ChannelCount);
+                switch (format) {
+                    case SurfaceFormat.Alpha8:
+                        buf = JumpFlood.GenerateDistanceField((byte*)img.Data, config);
+                        break;
+                    case SurfaceFormat.Color:
+                    case SurfaceFormat.ColorBgraEXT:
+                    case SurfaceFormat.ColorSrgbEXT:
+                        buf = JumpFlood.GenerateDistanceField((Color*)img.Data, config);
+                        break;
+                    case SurfaceFormat.Single:
+                        buf = JumpFlood.GenerateDistanceField((float*)img.Data, config);
+                        break;
+                    case SurfaceFormat.Vector4:
+                        buf = JumpFlood.GenerateDistanceField((Vector4*)img.Data, config);
+                        break;
+                    default:
+                        throw new Exception($"Pixel format {format} not supported by distance field generator");
+                }
 
                 Texture2D df;
                 lock (Coordinator.CreateResourceLock)

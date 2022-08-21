@@ -11,6 +11,8 @@ using Squared.Util;
 
 namespace Squared.Render.DistanceField {
     public struct JumpFloodConfig {
+        // TODO: Select a better value - maybe a non-power-of-two one to minimize false cache sharing?
+        // Basic testing in single and multi threaded scenarios shows little difference though
         public const int DefaultChunkSize = 64;
 
         public Rectangle? Region;
@@ -21,13 +23,7 @@ namespace Squared.Render.DistanceField {
             get => ChunkSizeOffset + DefaultChunkSize;
             set => ChunkSizeOffset = value - DefaultChunkSize;
         }
-        private float DistanceScaleMinusOne;
-        public float DistanceScale {
-            get => DistanceScaleMinusOne + 1;
-            set => DistanceScaleMinusOne = value - 1;
-        }
         public int? MaxSteps;
-        public float DistanceOffset;
 
         public Rectangle GetRegion () {
             var actualRect = new Rectangle(0, 0, Width, Height);
@@ -53,6 +49,63 @@ namespace Squared.Render.DistanceField {
                         for (int x = 0; x < Width; x++) {
                             var offset = (x + X) + yW;
                             Output[offset] = new Vector4(MaxDistance, MaxDistance, md2, Input[offset].A > 0 ? 1f : 0f);
+                        }
+                    }
+                }
+            }
+        }
+
+        unsafe struct InitializeChunkVector4 : IWorkItem {
+            public Vector4* Input;
+            public Vector4[] Output;
+            public int X, Y, Width, Height, Stride;
+
+            public void Execute () {
+                unchecked {
+                    var md2 = ScreenDistanceSquared(MaxDistance, MaxDistance);
+                    for (int _y = 0; _y < Height; _y++) {
+                        var yW = (_y + Y) * Stride;
+                        for (int x = 0; x < Width; x++) {
+                            var offset = (x + X) + yW;
+                            Output[offset] = new Vector4(MaxDistance, MaxDistance, md2, Input[offset].W > 0 ? 1f : 0f);
+                        }
+                    }
+                }
+            }
+        }
+
+        unsafe struct InitializeChunkByte : IWorkItem {
+            public byte* Input;
+            public Vector4[] Output;
+            public int X, Y, Width, Height, Stride;
+
+            public void Execute () {
+                unchecked {
+                    var md2 = ScreenDistanceSquared(MaxDistance, MaxDistance);
+                    for (int _y = 0; _y < Height; _y++) {
+                        var yW = (_y + Y) * Stride;
+                        for (int x = 0; x < Width; x++) {
+                            var offset = (x + X) + yW;
+                            Output[offset] = new Vector4(MaxDistance, MaxDistance, md2, Input[offset] > 0 ? 1f : 0f);
+                        }
+                    }
+                }
+            }
+        }
+
+        unsafe struct InitializeChunkSingle : IWorkItem {
+            public float* Input;
+            public Vector4[] Output;
+            public int X, Y, Width, Height, Stride;
+
+            public void Execute () {
+                unchecked {
+                    var md2 = ScreenDistanceSquared(MaxDistance, MaxDistance);
+                    for (int _y = 0; _y < Height; _y++) {
+                        var yW = (_y + Y) * Stride;
+                        for (int x = 0; x < Width; x++) {
+                            var offset = (x + X) + yW;
+                            Output[offset] = new Vector4(MaxDistance, MaxDistance, md2, Input[offset] > 0 ? 1f : 0f);
                         }
                     }
                 }
@@ -125,8 +178,6 @@ namespace Squared.Render.DistanceField {
         struct ResolveChunk : IWorkItem {
             public Vector4[] Input;
             public float[] Output;
-            public double DistanceScale;
-            public float DistanceOffset;
             public int X, Y, Width, Height, Stride;
 
             public void Execute () {
@@ -136,8 +187,8 @@ namespace Squared.Render.DistanceField {
                         for (int x = 0; x < Width; x++) {
                             var offset = (x + X) + yW;
                             var input = Input[offset];
-                            var distance = (float)(Math.Sqrt(input.Z) * DistanceScale);
-                            Output[offset] = DistanceOffset + (distance * (input.W > 0f ? -1f : 1f));
+                            var distance = (float)Math.Sqrt(input.Z);
+                            Output[offset] = distance * (input.W > 0f ? -1f : 1f);
                         }
                     }
                 }
@@ -151,13 +202,50 @@ namespace Squared.Render.DistanceField {
         /// <summary>
         /// Generates a distance field populated based on the alpha channel of an input image.
         /// </summary>
+        /// <param name="input">A grayscale image to act as the source for alpha</param>
+        /// <returns>A signed distance field</returns>
+        public static unsafe float[] GenerateDistanceField (byte* input, JumpFloodConfig config) {
+            var buf1 = new Vector4[config.Width * config.Height];
+            Initialize(input, buf1, config);
+            return GenerateEpilogue(buf1, config);
+        }
+
+        /// <summary>
+        /// Generates a distance field populated based on the alpha channel of an input image.
+        /// </summary>
         /// <param name="input">An RGBA image to act as the source for alpha</param>
         /// <returns>A signed distance field</returns>
         public static unsafe float[] GenerateDistanceField (Color* input, JumpFloodConfig config) {
-            Vector4[] buf1 = new Vector4[config.Width * config.Height], buf2 = new Vector4[config.Width * config.Height];
-            var result = new float[config.Width * config.Height];
-
+            var buf1 = new Vector4[config.Width * config.Height];
             Initialize(input, buf1, config);
+            return GenerateEpilogue(buf1, config);
+        }
+
+        /// <summary>
+        /// Generates a distance field populated based on the alpha channel of an input image.
+        /// </summary>
+        /// <param name="input">A grayscale image to act as the source for alpha</param>
+        /// <returns>A signed distance field</returns>
+        public static unsafe float[] GenerateDistanceField (float* input, JumpFloodConfig config) {
+            var buf1 = new Vector4[config.Width * config.Height];
+            Initialize(input, buf1, config);
+            return GenerateEpilogue(buf1, config);
+        }
+
+        /// <summary>
+        /// Generates a distance field populated based on the alpha channel of an input image.
+        /// </summary>
+        /// <param name="input">An RGBA image to act as the source for alpha</param>
+        /// <returns>A signed distance field</returns>
+        public static unsafe float[] GenerateDistanceField (Vector4* input, JumpFloodConfig config) {
+            var buf1 = new Vector4[config.Width * config.Height];
+            Initialize(input, buf1, config);
+            return GenerateEpilogue(buf1, config);
+        }
+
+        private static unsafe float[] GenerateEpilogue (Vector4[] buf1, JumpFloodConfig config) {
+            var buf2 = new Vector4[config.Width * config.Height];
+            var result = new float[config.Width * config.Height];
             Vector4[] inBuffer = buf1, outBuffer = buf2;
             var sw = Stopwatch.StartNew();
             for (
@@ -177,8 +265,32 @@ namespace Squared.Render.DistanceField {
             }
             Resolve(outBuffer, result, config);
             Debug.WriteLine($"Generating {config.Width}x{config.Height} distance field took {sw.ElapsedMilliseconds}ms");
-
             return result;
+        }
+
+        static unsafe void Initialize (byte* input, Vector4[] output, JumpFloodConfig config) {
+            var rgn = config.GetRegion();
+            var chunkSize = config.ChunkSize;
+            var queue = config.ThreadGroup?.GetQueueForType<InitializeChunkByte>();
+            for (int y = 0; y < rgn.Height; y += chunkSize) {
+                for (int x = 0; x < rgn.Width; x += chunkSize) {
+                    var workItem = new InitializeChunkByte {
+                        X = x + rgn.Left, Y = y + rgn.Top,
+                        Width = Math.Min(chunkSize, rgn.Width - x),
+                        Height = Math.Min(chunkSize, rgn.Height - y),
+                        Stride = config.Width,
+                        Input = input,
+                        Output = output
+                    };
+                    if (queue != null)
+                        queue.Enqueue(ref workItem, false);
+                    else
+                        workItem.Execute();
+                }
+                config.ThreadGroup?.NotifyQueuesChanged(false);
+            }
+            config.ThreadGroup?.NotifyQueuesChanged(true);
+            queue?.WaitUntilDrained();
         }
 
         static unsafe void Initialize (Color* input, Vector4[] output, JumpFloodConfig config) {
@@ -203,7 +315,57 @@ namespace Squared.Render.DistanceField {
                 config.ThreadGroup?.NotifyQueuesChanged(false);
             }
             config.ThreadGroup?.NotifyQueuesChanged(true);
-            queue.WaitUntilDrained();
+            queue?.WaitUntilDrained();
+        }
+
+        static unsafe void Initialize (float* input, Vector4[] output, JumpFloodConfig config) {
+            var rgn = config.GetRegion();
+            var chunkSize = config.ChunkSize;
+            var queue = config.ThreadGroup?.GetQueueForType<InitializeChunkSingle>();
+            for (int y = 0; y < rgn.Height; y += chunkSize) {
+                for (int x = 0; x < rgn.Width; x += chunkSize) {
+                    var workItem = new InitializeChunkSingle {
+                        X = x + rgn.Left, Y = y + rgn.Top,
+                        Width = Math.Min(chunkSize, rgn.Width - x),
+                        Height = Math.Min(chunkSize, rgn.Height - y),
+                        Stride = config.Width,
+                        Input = input,
+                        Output = output
+                    };
+                    if (queue != null)
+                        queue.Enqueue(ref workItem, false);
+                    else
+                        workItem.Execute();
+                }
+                config.ThreadGroup?.NotifyQueuesChanged(false);
+            }
+            config.ThreadGroup?.NotifyQueuesChanged(true);
+            queue?.WaitUntilDrained();
+        }
+
+        static unsafe void Initialize (Vector4* input, Vector4[] output, JumpFloodConfig config) {
+            var rgn = config.GetRegion();
+            var chunkSize = config.ChunkSize;
+            var queue = config.ThreadGroup?.GetQueueForType<InitializeChunkVector4>();
+            for (int y = 0; y < rgn.Height; y += chunkSize) {
+                for (int x = 0; x < rgn.Width; x += chunkSize) {
+                    var workItem = new InitializeChunkVector4 {
+                        X = x + rgn.Left, Y = y + rgn.Top,
+                        Width = Math.Min(chunkSize, rgn.Width - x),
+                        Height = Math.Min(chunkSize, rgn.Height - y),
+                        Stride = config.Width,
+                        Input = input,
+                        Output = output
+                    };
+                    if (queue != null)
+                        queue.Enqueue(ref workItem, false);
+                    else
+                        workItem.Execute();
+                }
+                config.ThreadGroup?.NotifyQueuesChanged(false);
+            }
+            config.ThreadGroup?.NotifyQueuesChanged(true);
+            queue?.WaitUntilDrained();
         }
 
         static void PerformJump (Vector4[] input, Vector4[] output, JumpFloodConfig config, int step) {
@@ -232,7 +394,7 @@ namespace Squared.Render.DistanceField {
                 config.ThreadGroup?.NotifyQueuesChanged(false);
             }
             config.ThreadGroup?.NotifyQueuesChanged(true);
-            queue.WaitUntilDrained();
+            queue?.WaitUntilDrained();
         }
 
         static unsafe void Resolve (Vector4[] input, float[] output, JumpFloodConfig config) {
@@ -247,9 +409,7 @@ namespace Squared.Render.DistanceField {
                         Height = Math.Min(chunkSize, rgn.Height - y),
                         Stride = config.Width,
                         Input = input,
-                        Output = output,
-                        DistanceScale = config.DistanceScale,
-                        DistanceOffset = config.DistanceOffset
+                        Output = output
                     };
                     if (queue != null)
                         queue.Enqueue(ref workItem, false);
@@ -259,7 +419,7 @@ namespace Squared.Render.DistanceField {
                 config.ThreadGroup?.NotifyQueuesChanged(false);
             }
             config.ThreadGroup?.NotifyQueuesChanged(true);
-            queue.WaitUntilDrained();
+            queue?.WaitUntilDrained();
         }
     }
 }

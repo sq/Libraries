@@ -18,7 +18,8 @@
 #define OutlineExponent 1.5 // HACK: Make the outlines sharper even if the texture edge is soft
 
 uniform const float4 GlobalShadowColor;
-uniform const float2 ShadowOffset, OutlineRadiusAndSoftness;
+uniform const float2 ShadowOffset;
+uniform const float3 OutlineRadiusSoftnessAndPower;
 uniform const float  ShadowedTopMipBias, ShadowMipBias;
 uniform const bool   PremultiplyTexture;
 
@@ -197,9 +198,9 @@ void DistanceFieldOutlinedPixelShader(
         tex2D(TextureSampler2, clamp2(texCoord + offset - step.zy, texRgn.xy, texRgn.zw)) + 
         tex2D(TextureSampler2, clamp2(texCoord + offset, texRgn.xy, texRgn.zw));
     distance /= 5.0;
-    distance -= OutlineRadiusAndSoftness.x;
+    distance -= OutlineRadiusSoftnessAndPower.x;
     // FIXME
-    float shadowAlpha = 1 - saturate(distance / OutlineRadiusAndSoftness.y);
+    float shadowAlpha = pow(1 - saturate(distance / OutlineRadiusSoftnessAndPower.y), OutlineRadiusSoftnessAndPower.z);
 
     /*
     shadowAlpha = saturate(shadowAlpha / OutlineSumDivisor);
