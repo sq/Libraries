@@ -1206,10 +1206,7 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int CompareTo (in TextureSet rhs) {
             unchecked {
-                var result = Texture1.Id - rhs.Texture1.Id;
-                if (result == 0)
-                    result = Texture2.Id - rhs.Texture2.Id;
-                return result;
+                return (Texture1.Id | (Texture2.Id << 16)) - (rhs.Texture1.Id | (rhs.Texture2.Id << 16));
             }
         }
     }
