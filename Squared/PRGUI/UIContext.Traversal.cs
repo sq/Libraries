@@ -458,8 +458,6 @@ namespace Squared.PRGUI {
 
                 currentCollection = parentContainer.Children;
             }
-
-            ;
         }
 
         private bool _FocusablePredicate (Control control) => control.IsValidFocusTarget;

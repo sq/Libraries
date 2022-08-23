@@ -4,7 +4,7 @@
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
 
-#define MaxDistance 10240
+#define MaxDistance 8192
 
 float ScreenDistanceSquared(float2 xy) {
     return dot(xy, xy);
@@ -21,7 +21,10 @@ void JumpFloodInitShader(
     float2 coordClamped = clamp(texCoord, texRgn.xy, texRgn.zw);
     float4 input = tex2D(TextureSampler, coordClamped);
     float alpha = ExtractMask(input, BitmapTraits);
-    result = float4(MaxDistance, MaxDistance, md2, alpha > params.x ? 1.0 : 0.0);
+    // The normal CPU version of this algorithm stores the squared distance, however, if we
+    //  store the non-squared distance it is able to fit easily into the range of a float16,
+    //  and we can run this using HalfVector4 buffers instead of Vector4 without any issues
+    result = float4(MaxDistance, MaxDistance, sqrt(md2), alpha > params.x ? 1.0 : 0.0);
 }
 
 void JumpFloodJumpShader(
@@ -32,6 +35,8 @@ void JumpFloodJumpShader(
     out float4 result : COLOR0
 ) {
     float4 self = tex2D(TextureSampler, clamp(texCoord, texRgn.xy, texRgn.zw));
+    // Distance is stored in non-squared form but we compare it squared
+    self.z *= self.z;
     float2 texel = params.xy;
 
     for (int y = -1; y < 2; y++) {
@@ -57,6 +62,7 @@ void JumpFloodJumpShader(
         }
     }
 
+    self.z = sqrt(self.z);
     result = self;
 }
 
@@ -67,7 +73,7 @@ void JumpFloodResolveShader(
 ) {
     float2 coordClamped = clamp(texCoord, texRgn.xy, texRgn.zw);
     float4 input = tex2D(TextureSampler, coordClamped);
-    float distance = sqrt(input.z);
+    float distance = input.z;
     if (input.w > 0)
         distance = -distance;
     result = float4(distance, distance, distance, input.w);

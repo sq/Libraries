@@ -160,8 +160,6 @@ namespace Squared.PRGUI.Controls {
 
             var result = scroll.HitTest(ref settings, ref HScrollbar, position) ||
                 scroll.HitTest(ref settings, ref VScrollbar, position);
-            if (result)
-                ;
             return result;
         }
 

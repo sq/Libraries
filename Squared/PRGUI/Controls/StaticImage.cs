@@ -338,8 +338,6 @@ namespace Squared.PRGUI.Controls {
                     UserData = RasterizerUserData,
                     TextureRegion = instance.BoundsFromRectangle(rect)
                 };
-                if (!pAddColor.IsTransparent)
-                    ;
                 Material material = null;
 
                 if ((instance2 != null) && (instance2 != instance)) {

@@ -669,8 +669,6 @@ namespace Squared.PRGUI.Controls {
             T newItem = default(T);
             if (grow || (oneItemSelected && shrink)) {
                 result = Manager.TryResizeSelection(delta, out newItem, true);
-                if (result == false)
-                    ;
             } else if (shrink) {
                 int min = Manager.MinSelectedIndex, max = Manager.MaxSelectedIndex;
                 if (delta > 0) {

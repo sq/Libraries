@@ -49,7 +49,8 @@ namespace Squared.CoreCLR
                         var ptr = (ulong*)pBufB;
                         do
                         {
-                            // FIXME: Use GetNonZeroBytes and remove the loop?
+                            // We could use GetNonZeroBytes, but that reduces the number of possible values
+                            // since all we need is one nonzero byte, not sixteen
                             _rng.GetBytes(buf);
                             _s0 = ptr[0];
                             _s1 = ptr[1];

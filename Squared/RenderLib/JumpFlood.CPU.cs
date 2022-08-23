@@ -28,7 +28,6 @@ namespace Squared.Render.DistanceField {
             get => ChunkSizeOffset + DefaultChunkSize;
             set => ChunkSizeOffset = value - DefaultChunkSize;
         }
-        public int? MaxSteps;
 
         public Rectangle GetRegion () {
             var actualRect = new Rectangle(0, 0, Width, Height);

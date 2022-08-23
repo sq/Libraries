@@ -25,12 +25,13 @@ namespace Squared.Render.Convenience {
         /// Approximates porter-duff Over and produces premultiplied output.
         /// </summary>
         public static readonly BlendState PorterDuffOver = new BlendState {
+            Name = "PorterDuffOver",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.InverseSourceAlpha,
             AlphaSourceBlend = Blend.One,
             ColorBlendFunction = BlendFunction.Add,
             ColorDestinationBlend = Blend.InverseSourceAlpha,
-            ColorSourceBlend = Blend.One
+            ColorSourceBlend = Blend.One,
         };
 
         /// <summary>
@@ -38,15 +39,17 @@ namespace Squared.Render.Convenience {
         /// Approximates porter-duff Over and produces premultiplied output.
         /// </summary>
         public static readonly BlendState PorterDuffNonPremultipliedOver = new BlendState {
+            Name = "PorterDuffNonPremultipliedOver",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.InverseSourceAlpha,
             AlphaSourceBlend = Blend.One,
             ColorBlendFunction = BlendFunction.Add,
             ColorDestinationBlend = Blend.InverseSourceAlpha,
-            ColorSourceBlend = Blend.SourceAlpha
+            ColorSourceBlend = Blend.SourceAlpha,
         };
 
         public static readonly BlendState SubtractiveBlend = new BlendState {
+            Name = "SubtractiveBlend",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -56,6 +59,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState SubtractiveBlendNonPremultiplied = new BlendState {
+            Name = "SubtractiveBlendNonPremultiplied",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -65,6 +69,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState AdditiveBlend = new BlendState {
+            Name = "AdditiveBlend",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -74,6 +79,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState AdditiveBlendNonPremultiplied = new BlendState {
+            Name = "AdditiveBlendNonPremultiplied",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -84,6 +90,7 @@ namespace Squared.Render.Convenience {
 
 
         public static readonly BlendState ReplaceDestinationPremultiplied = new BlendState {
+            Name = "ReplaceDestinationPremultiplied",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.Zero,
             AlphaSourceBlend = Blend.One,
@@ -93,6 +100,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState ReplaceDestinationNonPremultiplied = new BlendState {
+            Name = "ReplaceDestinationNonPremultiplied",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.Zero,
             AlphaSourceBlend = Blend.One,
@@ -102,6 +110,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState ReplaceDestinationAlpha = new BlendState {
+            Name = "ReplaceDestinationAlpha",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.Zero,
             AlphaSourceBlend = Blend.One,
@@ -111,6 +120,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState IncreaseDestinationAlpha = new BlendState {
+            Name = "IncreaseDestinationAlpha",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -120,6 +130,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState RefineDestinationAlpha = new BlendState {
+            Name = "RefineDestinationAlpha",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.SourceAlpha,
             AlphaSourceBlend = Blend.Zero,
@@ -129,6 +140,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState DestinationAlphaMask = new BlendState {
+            Name = "DestinationAlphaMask",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.Zero,
@@ -141,6 +153,7 @@ namespace Squared.Render.Convenience {
         public static readonly BlendState RasterShapeAlphaBlend = PorterDuffNonPremultipliedOver;
 
         public static readonly BlendState RasterShapeAdditiveBlend = new BlendState {
+            Name = "RasterShapeAdditiveBlend",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -150,6 +163,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState RasterShapeSubtractiveBlend = new BlendState {
+            Name = "RasterShapeSubtractiveBlend",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -159,6 +173,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState RasterShapeMaxBlend = new BlendState {
+            Name = "RasterShapeMaxBlend",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -169,6 +184,7 @@ namespace Squared.Render.Convenience {
 
 
         public static readonly BlendState MaxBlendValue = new BlendState {
+            Name = "MaxBlendValue",
             AlphaBlendFunction = BlendFunction.Max,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -178,6 +194,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState MinBlendValue = new BlendState {
+            Name = "MinBlendValue",
             AlphaBlendFunction = BlendFunction.Min,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -187,6 +204,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState MaxBlend = new BlendState {
+            Name = "MaxBlend",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -196,6 +214,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState MinBlend = new BlendState {
+            Name = "MinBlend",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.One,
@@ -205,6 +224,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState DrawNone = new BlendState {
+            Name = "DrawNone",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.Zero,
@@ -215,6 +235,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState MultiplyColor = new BlendState {
+            Name = "MultiplyColor",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.Zero,
@@ -224,6 +245,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly BlendState MultiplyColor2x = new BlendState {
+            Name = "MultiplyColor2x",
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
             AlphaSourceBlend = Blend.Zero,
@@ -233,11 +255,13 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly RasterizerState ScissorOnly = new RasterizerState {
+            Name = "ScissorOnly",
             CullMode = CullMode.None,
             ScissorTestEnable = true
         };
 
         public static readonly DepthStencilState StencilErase = new DepthStencilState {
+            Name = "StencilErase",
             StencilEnable = true,
             StencilFunction = CompareFunction.Always,
             StencilPass = StencilOperation.Replace,
@@ -246,6 +270,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly DepthStencilState StencilWrite = new DepthStencilState {
+            Name = "StencilWrite",
             StencilEnable = true,
             StencilFunction = CompareFunction.Always,
             StencilPass = StencilOperation.Replace,
@@ -254,6 +279,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly DepthStencilState StencilIntersection = new DepthStencilState {
+            Name = "StencilIntersection",
             StencilEnable = true,
             StencilFunction = CompareFunction.Equal,
             StencilPass = StencilOperation.Keep,
@@ -263,6 +289,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly DepthStencilState StencilTest = new DepthStencilState {
+            Name = "StencilTest",
             StencilEnable = true,
             StencilFunction = CompareFunction.NotEqual,
             StencilWriteMask = 0,
@@ -276,6 +303,7 @@ namespace Squared.Render.Convenience {
         /// Provides a sampler state appropriate for rendering text. The mip bias is adjusted to preserve sharpness.
         /// </summary>
         public static readonly SamplerState Text = new SamplerState {
+            Name = "Text",
             AddressU = TextureAddressMode.Clamp,
             AddressV = TextureAddressMode.Clamp,
             AddressW = TextureAddressMode.Clamp,
@@ -284,6 +312,7 @@ namespace Squared.Render.Convenience {
         };
 
         public static readonly SamplerState LinearMirror = new SamplerState {
+            Name = "LinearMirror",
             AddressU = TextureAddressMode.Mirror,
             AddressV = TextureAddressMode.Mirror,
             AddressW = TextureAddressMode.Mirror,
@@ -1269,7 +1298,48 @@ namespace Squared.Render.Convenience {
             Draw(
                 ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: samplerState2,
-                depthStencilState: depthStencilState, rasterizerState: rasterizerState
+                depthStencilState: depthStencilState, rasterizerState: rasterizerState,
+                material: material
+            );
+        }
+
+        public void Draw (
+            TextureSet textures, Vector2 position,
+            Rectangle? sourceRectangle1 = null, Rectangle? sourceRectangle2 = null,
+            Color? multiplyColor = null, Color addColor = default(Color),
+            float rotation = 0, Vector2? scale = null, Vector2? origin = null,
+            bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
+            DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
+            Material material = null, Vector4 userData = default(Vector4)
+        ) {
+            var drawCall = new BitmapDrawCall(textures, position);
+            if (sourceRectangle1.HasValue)
+                drawCall.TextureRegion = textures.Texture1.Instance.BoundsFromRectangle(sourceRectangle1.Value);
+            if (sourceRectangle2.HasValue)
+                drawCall.TextureRegion2 = textures.Texture2.Instance.BoundsFromRectangle(sourceRectangle1.Value);
+            else
+                drawCall.TextureRegion2 = Bounds.Unit;
+
+            drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(Color.White);
+            drawCall.AddColor = addColor;
+            drawCall.Rotation = rotation;
+            drawCall.UserData = userData;
+            drawCall.Scale = scale ?? Vector2.One;
+            drawCall.Origin = origin ?? Vector2.Zero;
+            if (mirrorX || mirrorY)
+                drawCall.Mirror(mirrorX, mirrorY);
+
+            drawCall.SortKey = sortKey.GetValueOrDefault(NextSortKey);
+            if (AutoIncrementSortKey)
+                NextSortKey.Order += 1;
+
+            Draw(
+                ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
+                samplerState: samplerState, samplerState2: samplerState2,
+                depthStencilState: depthStencilState, rasterizerState: rasterizerState,
+                material: material
             );
         }
 

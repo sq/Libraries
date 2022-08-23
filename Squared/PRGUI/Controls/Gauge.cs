@@ -326,9 +326,10 @@ namespace Squared.PRGUI.Controls {
             // HACK
             if ((value1 > 0) || (context.Pass != RasterizePasses.Content)) {
                 // FIXME: Do we need to do this?
+                /*
                 if (needBumpLayer)
                     // renderer.Layer += 1;
-                    ;
+                */
 
                 base.OnRasterize(ref context, ref renderer, settings, decorations);
             }

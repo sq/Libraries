@@ -238,7 +238,6 @@ namespace Squared.PRGUI.Controls {
                 context.Layout.SetLayoutFlags(spacer, ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak);
                 context.Layout.SetFixedSize(spacer, DisclosureArrowPadding, MostRecentTitleBox.Height);
                 context.Layout.InsertAtStart(result, spacer);
-                ;
             }
             return result;
         }

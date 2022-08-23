@@ -1453,9 +1453,7 @@ namespace Squared.PRGUI.Controls {
 
         void IReadingTarget.FormatValueInto (StringBuilder sb) {
             // FIXME: Should value reading be disabled when the value is masked?
-            if (Password)
-                ;
-            else
+            if (!Password)
                 sb.Append(Text);
         }
 

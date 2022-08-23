@@ -43,8 +43,8 @@ namespace Squared.Render.DistanceField {
                     return;
 
                 lock (Coordinator.CreateResourceLock) {
-                    InBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.Vector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents);
-                    OutBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.Vector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents);
+                    InBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents);
+                    OutBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents);
                 }
             }
 
@@ -71,7 +71,7 @@ namespace Squared.Render.DistanceField {
         /// <param name="scratchSurfaces">The scratch surfaces used by the generation process. You are responsible for disposing these next frame.</param>
         public static void GenerateDistanceField (
             ref ImperativeRenderer renderer, Texture2D input, RenderTarget2D output, ref GPUScratchSurfaces scratchSurfaces,
-            int? layer = null, Rectangle? region = null, int? maxSteps = null, float minimumAlpha = 0.0f
+            int? layer = null, Rectangle? region = null, float minimumAlpha = 0.0f
         ) {
             var _region = region ?? new Rectangle(0, 0, output.Width, output.Height);
 
@@ -113,10 +113,10 @@ namespace Squared.Render.DistanceField {
 
         public static void GenerateDistanceField (
             ref ImperativeRenderer renderer, Texture2D input, RenderTarget2D output,
-            int? layer = null, Rectangle? region = null, int? maxSteps = null, float minimumAlpha = 0.0f
+            int? layer = null, Rectangle? region = null, float minimumAlpha = 0.0f
         ) {
             GPUScratchSurfaces scratch = null;
-            GenerateDistanceField(ref renderer, input, output, ref scratch, layer, region, maxSteps, minimumAlpha);
+            GenerateDistanceField(ref renderer, input, output, ref scratch, layer, region, minimumAlpha);
             var coordinator = renderer.Container.Coordinator;
             coordinator.AfterPresent(() => {
                 coordinator.DisposeResource(scratch);

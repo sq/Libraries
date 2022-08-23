@@ -176,8 +176,6 @@ namespace Squared.PRGUI.NewEngine {
                     minOuterWidth = config.IsVertical ? effectiveRunMaxWidth : 0,
                     minOuterHeight = config.IsVertical ? 0 : effectiveRunMaxHeight;
 
-                ;
-
                 for (int pass = 0; pass < 10; pass++) {
                     if (countX < 1)
                         xSpace = 0;

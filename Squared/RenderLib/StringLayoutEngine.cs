@@ -907,6 +907,7 @@ namespace Squared.Render.Text {
                         actualPosition.X + (glyph.XOffset * effectiveScale) + characterOffset.X,
                         actualPosition.Y + (glyph.YOffset * effectiveScale) + characterOffset.Y + yOffset
                     );
+                    drawCall.ScaleF = effectiveScale * glyph.RenderScale;
                     drawCall.Textures = new TextureSet(glyph.Texture);
                     drawCall.TextureRegion = glyph.BoundsInTexture;
                     drawCall.Position = glyphPosition;

@@ -318,7 +318,6 @@ namespace Squared.Render.Text {
                     ),
                     XOffset = ftgs.BitmapLeft - bearingXMetric - Font.GlyphMargin,
                     YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin + Font.VerticalOffset + VerticalOffset,
-                    RectInTexture = rect,
                     // FIXME: This will become invalid if the extra spacing changes
                     // FIXME: Scale the spacing appropriately based on ratios
                     LineSpacing = sizeMetrics.Height.ToSingle() + ExtraLineSpacing,

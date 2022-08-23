@@ -1356,8 +1356,6 @@ namespace Squared.Render {
                 FlushViewTransformForFrameParamsChange = false;
                 LastAppliedViewTransform = viewTransform;
                 LastRenderTargetChangeIndex = rtci;
-                if (force)
-                    ;
                 ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
             } else if (am != null) {
                 ActiveViewTransform.AutoApply(am);

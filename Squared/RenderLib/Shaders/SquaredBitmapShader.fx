@@ -188,12 +188,26 @@ float4 over(float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return top + (bottom * (1 - top.a));
 }
 
+float distanceTap(float2 coord, float4 texRgn) {
+    float2 uv = clamp2(coord, texRgn.xy, texRgn.zw);
+    float tap = tex2D(TextureSampler2, uv).r;
+    // For taps outside the texture region, increase the length artificially
+    // This allows you to expand the bounds of your image and set TransparentExterior to give
+    //  it a satisfactory border even if it lacks whitespace around the outside
+    float2 clampedDistancePx = -min(coord, 0) + (max(coord, 1) - 1);
+    clampedDistancePx /= HalfTexel;
+    tap += length(clampedDistancePx);
+    return tap;
+}
+
 void DistanceFieldOutlinedPixelShader(
     in float4 multiplyColor : COLOR0,
     in float4 addColor : COLOR1,
     in float4 shadowColorIn : COLOR2,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
+    in float2 texCoord2 : TEXCOORD2,
+    in float4 texRgn2 : TEXCOORD3,
     out float4 result : COLOR0
 ) {
     addColor.rgb *= addColor.a;
@@ -204,16 +218,17 @@ void DistanceFieldOutlinedPixelShader(
     if ((shadowColorIn.a < 0) || PremultiplyTexture)
         traits.z = 1;
     texColor = ExtractRgba(texColor, traits);
+    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, HalfTexel, TransparentExterior);
     shadowColorIn.a = abs(shadowColorIn.a);
 
-    float2 offset = (ShadowOffset * HalfTexel * 2);
+    float2 offset = (ShadowOffset * HalfTexel2 * 2);
     // HACK: 5 tap averaging because the SDF may be slightly inaccurate, and not at full pixel offsets
-    float3 step = float3(HalfTexel * 1, 0);
-    float distance = tex2D(TextureSampler2, clamp2(texCoord + offset + step.xz, texRgn.xy, texRgn.zw)) + 
-        tex2D(TextureSampler2, clamp2(texCoord + offset - step.xz, texRgn.xy, texRgn.zw)) +
-        tex2D(TextureSampler2, clamp2(texCoord + offset + step.zy, texRgn.xy, texRgn.zw)) + 
-        tex2D(TextureSampler2, clamp2(texCoord + offset - step.zy, texRgn.xy, texRgn.zw)) + 
-        tex2D(TextureSampler2, clamp2(texCoord + offset, texRgn.xy, texRgn.zw));
+    float3 step = float3(HalfTexel2 * 1, 0);
+    float distance = distanceTap(texCoord2, texRgn2) + 
+        distanceTap(texCoord2 + offset - step.xz, texRgn2) +
+        distanceTap(texCoord2 + offset + step.zy, texRgn2) +
+        distanceTap(texCoord2 + offset - step.zy, texRgn2) +
+        distanceTap(texCoord2 + offset, texRgn2);
     distance /= 5.0;
     distance -= OutlineRadiusSoftnessAndPower.x;
     // FIXME
@@ -234,10 +249,15 @@ void DistanceFieldOutlinedPixelShader(
         shadowAlpha -= texColor.a;
 
     // Significantly improves the appearance of colored outlines and/or colored text
-    float4 overSRGB = pSRGBToPLinear_Accurate(overColor),
-        shadowSRGB = pSRGBToPLinear_Accurate(shadowColor);
-    result = over(overSRGB, 1, shadowSRGB, shadowAlpha * saturate(shadowColorIn.a));
-    result = pLinearToPSRGB_Accurate(result);
+    float4 overSRGB = overColor,
+        shadowSRGB = shadowColor;
+    overSRGB.rgb /= overSRGB.a;
+    overSRGB.rgb = SRGBToLinear(saturate(overSRGB.rgb));
+    shadowSRGB.rgb = SRGBToLinear(shadowSRGB.rgb);
+    // FIXME: Why do we have to double multiply here?
+    result = over(overSRGB, overSRGB.a, shadowColor, shadowAlpha * saturate(shadowColorIn.a));
+    result.rgb = LinearToSRGB(result.rgb);
+    result.rgb *= result.a;
 
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);

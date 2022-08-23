@@ -831,7 +831,6 @@ namespace Squared.Render.Internal {
             else if (wasValid != 0)
                 // FIXME: Happens sometimes on device reset?
                 throw new InvalidOperationException("Buffer validated twice");
-                ;
 
             _LastFrameValidated = frameIndex;
         }

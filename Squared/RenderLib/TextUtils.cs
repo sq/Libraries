@@ -1242,6 +1242,135 @@ namespace Squared.Render.Text {
         }
     }
 
+    public class AtlasGlyphSource : IGlyphSource, IDisposable, IEnumerable<AtlasGlyph> {
+        public class Size : IGlyphSource {
+            public readonly AtlasGlyphSource Source;
+            public float Scale;
+
+            private float? _LineSpacing;
+            public float LineSpacing {
+                get => _LineSpacing ?? Source.LineSpacing * Scale;
+                set => _LineSpacing = value;
+            }
+            public float DPIScaleFactor => Source.DPIScaleFactor;
+            public GlyphPixelAlignment? DefaultAlignment => Source.DefaultAlignment;
+            public bool IsDisposed => Source.IsDisposed;
+            public int Version => Source.Version;
+            public object UniqueKey => Source.UniqueKey;
+
+            public Size (AtlasGlyphSource source, float scale) {
+                Source = source;
+                Scale = scale;
+            }
+
+            public bool GetGlyph (uint ch, out Glyph result) {
+                return Source.GetGlyph(ch, Scale, LineSpacing, out result);
+            }
+        }
+
+        public readonly bool OwnsAtlas;
+        public readonly Atlases.Atlas Atlas;
+
+        public float LineSpacing { get; set; }
+        public float CharacterSpacing { get; set; }
+        public float DPIScaleFactor { get; set; }
+        public float? Baseline { get; set; }
+        public GlyphPixelAlignment? DefaultAlignment { get; set; }
+
+        public bool IsDisposed { get; private set; }
+        public int Version { get; set; }
+        public object UniqueKey { get; set; }
+
+        private bool NeedIncrementVersion = true;
+        private readonly Dictionary<uint, AtlasGlyph> Registry = 
+            new Dictionary<uint, AtlasGlyph>();
+
+        public AtlasGlyphSource (Atlases.Atlas atlas, bool ownsAtlas) {
+            Atlas = atlas;
+            OwnsAtlas = ownsAtlas;
+            LineSpacing = atlas.CellHeight;
+            DPIScaleFactor = 1.0f;
+        }
+
+        public bool GetGlyph (uint ch, out Glyph result) => GetGlyph(ch, 1.0f, null, out result);
+
+        public bool GetGlyph (uint ch, float scale, float? lineSpacing, out Glyph result) {
+            NeedIncrementVersion = true;
+            if (IsDisposed)
+                throw new ObjectDisposedException("AtlasGlyphSource");
+
+            if (!Registry.TryGetValue(ch, out var glyph)) {
+                result = default;
+                return false;
+            }
+
+            var cell = glyph.Index.HasValue
+                ? Atlas[glyph.Index.Value]
+                : Atlas[glyph.X, glyph.Y];
+
+            result = new Glyph {
+                Texture = Atlas.Texture,
+                BoundsInTexture = cell.Bounds,
+                Character = glyph.Character,
+                Width = Atlas.CellWidth * scale,
+                XOffset = glyph.XOffset * scale,
+                YOffset = glyph.YOffset * scale,
+                LeftSideBearing = glyph.LeftMargin * scale,
+                RightSideBearing = (glyph.RightMargin + CharacterSpacing) * scale,
+                LineSpacing = lineSpacing ?? (LineSpacing * scale),
+                Baseline = (Baseline ?? Atlas.CellHeight) * scale,
+                RenderScale = scale
+            };
+            return true;
+        }
+
+        public void Add (AtlasGlyph glyph) {
+            if (IsDisposed)
+                throw new ObjectDisposedException("AtlasGlyphSource");
+
+            Registry.Add(glyph.Character, glyph);
+            if (NeedIncrementVersion) {
+                NeedIncrementVersion = false;
+                Version++;
+            }
+        }
+
+        public void Dispose () {
+            if (IsDisposed)
+                return;
+            IsDisposed = true;
+            if (OwnsAtlas)
+                Atlas.Texture.Dispose();
+        }
+
+        public Dictionary<uint, AtlasGlyph>.ValueCollection.Enumerator GetEnumerator => Registry.Values.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator () => Registry.Values.GetEnumerator();
+        IEnumerator<AtlasGlyph> IEnumerable<AtlasGlyph>.GetEnumerator () => Registry.Values.GetEnumerator();
+    }
+
+    public struct AtlasGlyph {
+        public readonly uint Character;
+        public int? Index;
+        public int X, Y;
+        public string Name;
+        public float XOffset, YOffset, RightMargin, LeftMargin;
+
+        public AtlasGlyph (uint character, int index, string name = null) {
+            this = default;
+            Character = character;
+            Index = index;
+            Name = name;
+        }
+
+        public AtlasGlyph (uint character, int x, int y, string name = null) {
+            this = default;
+            Character = character;
+            X = x;
+            Y = y;
+            Name = name;
+        }
+    }
+
     public struct SpriteFontGlyphSource : IGlyphSource {
         public readonly SpriteFont Font;
         public readonly Texture2D Texture;
@@ -1297,7 +1426,6 @@ namespace Squared.Render.Text {
             glyph = new Glyph {
                 Character = ch,
                 Texture = Texture,
-                RectInTexture = rect,
                 BoundsInTexture = Texture.BoundsFromRectangle(in rect),
                 XOffset = cropping.X,
                 YOffset = cropping.Y,
@@ -1347,7 +1475,6 @@ namespace Squared.Render.Text {
     public struct Glyph {
         public AbstractTextureReference Texture;
         public uint Character;
-        public Rectangle RectInTexture;
         public Bounds BoundsInTexture;
         public float XOffset, YOffset;
         public float LeftSideBearing;
@@ -1356,6 +1483,11 @@ namespace Squared.Render.Text {
         public float CharacterSpacing;
         public float LineSpacing;
         public float Baseline;
+        private float RenderScaleMinusOne;
+        public float RenderScale {
+            get => RenderScaleMinusOne + 1;
+            set => RenderScaleMinusOne = value - 1;
+        }
         public Color? DefaultColor;
 
         public float WidthIncludingBearing {
