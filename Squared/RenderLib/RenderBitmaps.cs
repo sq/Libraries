@@ -521,8 +521,10 @@ namespace Squared.Render {
                         int callIndex;
                         if (indices != null) {
                             callIndex = indices[i];
-                            if (callIndex >= callCount)
+                            if (callIndex >= callCount) {
+                                drawCallsPrepared += 1;
                                 continue;
+                            }
                         } else {
                             callIndex = i;
                             if (callIndex >= callCount)
@@ -532,8 +534,13 @@ namespace Squared.Render {
                         ref var call = ref callArray[callIndex + drawCalls.Offset];
                         // HACK: If we don't do this, it's possible for an entire prepare to fail and then none
                         //  of the bitmaps in this batch get issued
-                        if (!call.Textures.Texture1.IsInitialized)
+                        if (!call.Textures.Texture1.IsInitialized) {
+                            // If we don't update the drawCallsPrepared counter, we will erroneously prepare some of
+                            //  our bitmaps to be drawn a second time and the result will be that an arbitrary subset
+                            //  of all our bitmaps draws twice
+                            drawCallsPrepared += 1;
                             continue;
+                        }
 
                         bool texturesEqual = call.Textures.Equals(in state.currentTextures);
 

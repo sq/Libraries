@@ -28,14 +28,9 @@ namespace Squared.Util {
                     return buffer;
 
                 var array = buffer.Array;
-                if (buffer.Offset == 0) {
-                    Array.Resize(ref array, minimumSize);
-                    return new ArraySegment<T>(array);
-                }  else {
-                    var newBuffer = Allocate(minimumSize);
-                    Array.Copy(array, buffer.Offset, newBuffer.Array, newBuffer.Offset, buffer.Count);
-                    return newBuffer;
-                }
+                var newBuffer = Allocate(minimumSize);
+                Array.Copy(array, buffer.Offset, newBuffer.Array, newBuffer.Offset, buffer.Count);
+                return newBuffer;
             }
         }
 
@@ -86,7 +81,6 @@ namespace Squared.Util {
         }
 
         public static int DefaultSize = 128;
-        public static int FirstGrowTarget = 1024;
 
         /// <summary>
         /// This value will be incremented every time the underlying buffer is re-allocated
@@ -294,12 +288,8 @@ namespace Squared.Util {
 
         private void Grow (int targetCapacity) {
             ArraySegment<T> newBuffer, oldBuffer = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
-            if (targetCapacity <= FirstGrowTarget) {
-                newBuffer = _Allocator.Resize(oldBuffer, FirstGrowTarget);
-            } else {
-                var newCapacity = PickGrowthSize(_BufferSize, targetCapacity);
-                newBuffer = _Allocator.Resize(oldBuffer,  newCapacity);
-            }
+            var newCapacity = PickGrowthSize(_BufferSize, targetCapacity);
+            newBuffer = _Allocator.Resize(oldBuffer,  newCapacity);
 
             BufferVersion++;
             _Items = newBuffer.Array;

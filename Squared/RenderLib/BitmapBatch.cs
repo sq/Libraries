@@ -25,9 +25,6 @@ namespace Squared.Render {
         public static readonly SamplerState DefaultSamplerState = SamplerState.LinearClamp;
 
         static BitmapBatch () {
-            // HACK: BitmapDrawCall is big so the default first grow target of 1024 is going to bump it into the large object heap. No good.
-            UnorderedList<BitmapDrawCall>.FirstGrowTarget = 512;
-
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
             // We can safely enable fast clear because BitmapDrawCall does not contain any object references,
             //  so leaving old garbage data around will not cause any problems
@@ -385,7 +382,7 @@ namespace Squared.Render {
             }
 
             using (var callBuffer = _DrawCalls.GetBuffer(false, _TinyScratchBuffer)) {
-                var callSegment = new ArraySegment<BitmapDrawCall>(callBuffer.Data, callBuffer.Offset, callBuffer.Count);
+                var callSegment = new ArraySegment<BitmapDrawCall>(callBuffer.Data, callBuffer.Offset, _DrawCalls.Count);
                 int drawCallsPrepared = 0;
                 var parameters = new BatchBuilderParameters {
                     material = Material,

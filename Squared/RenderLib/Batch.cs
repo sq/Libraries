@@ -571,6 +571,13 @@ namespace Squared.Render {
             _DrawCalls.Dispose();
             base.OnReleaseResources();
         }
+
+        public override string ToString () {
+            if (Name != null)
+                return string.Format("{0} x{6} '{5}' #{1} {2} layer={4} material={3}", GetType().Name, InstanceId, StateString, Material, Layer, FormatName(), Count);
+            else
+                return string.Format("{0} x{5} #{1} {2} layer={4} material={3}", GetType().Name, InstanceId, StateString, Material, Layer, Count);
+        }
     }
 
     public sealed class ClearBatch : Batch {
