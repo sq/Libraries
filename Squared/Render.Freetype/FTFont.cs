@@ -126,7 +126,7 @@ namespace Squared.Render.Text {
                     IDynamicAtlas newAtlas = ActualSDF
                         ? (IDynamicAtlas)(new DynamicAtlas<float>(
                             Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight,
-                            surfaceFormat, spacing, Font.SDFMipMapping ? MipGenerator.Get(MipFormat.SinglePseudoMin) : null, tag: $"{Font.Face.FamilyName} {SizePoints}pt"
+                            surfaceFormat, spacing, Font.SDFMipMapping ? MipGenerator.Get(MipFormat.Single) : null, tag: $"{Font.Face.FamilyName} {SizePoints}pt"
                         ) { ClearValue = 1024f })
                         : new DynamicAtlas<Color>(
                             Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight,

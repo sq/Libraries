@@ -211,6 +211,12 @@ float distanceTap2(float2 coord, float4 texRgn, float bias) {
     return distanceTapEpilogue(uv, coord, tap, HalfTexel2);
 }
 
+float computeMip(in float2 texCoordPx) {
+    float2 dx = ddx(texCoordPx), dy = ddy(texCoordPx);
+    float mag = max(dot(dx, dx), dot(dy, dy));
+    return 0.5 * log2(mag);
+}
+
 void DistanceFieldTextPixelShader(
     in float4 multiplyColor : COLOR0,
     in float4 addColor : COLOR1,
@@ -224,8 +230,21 @@ void DistanceFieldTextPixelShader(
     shadowColorIn.a = abs(shadowColorIn.a);
 
     float3 step = float3(HalfTexel * 1, 0);
-    float distance = distanceTap(texCoord, texRgn, -0.75);
-    float overAlpha = pow(1.0 - saturate((distance + TextDistanceScaleOffsetAndPower.y) * TextDistanceScaleOffsetAndPower.x), TextDistanceScaleOffsetAndPower.z);
+    // HACK: Use the mip value as an approximation of how much we're being scaled down. If we're being scaled down,
+    //  we need to adjust the distance parameters appropriately to maintain smooth edges because the size of a distance
+    //  field pixel stays fixed while the size of a screen pixel changes.
+    float bias = -0.5,
+        mip = computeMip(texCoord / HalfTexel), 
+        effectiveScale = TextDistanceScaleOffsetAndPower.x / (1 + abs(mip)),
+        effectiveOffset = TextDistanceScaleOffsetAndPower.y; // FIXME: Scale the offset too?
+    // HACK: 5 tap averaging because the SDF may be slightly inaccurate, and not at full pixel offsets
+    float distance = distanceTap(texCoord, texRgn, bias) +
+        distanceTap(texCoord - step.xz, texRgn, bias) +
+        distanceTap(texCoord + step.zy, texRgn, bias) +
+        distanceTap(texCoord - step.zy, texRgn, bias) +
+        distanceTap(texCoord, texRgn, bias);
+    distance /= 5.0;
+    float overAlpha = pow(1.0 - saturate((distance + effectiveOffset) * effectiveScale), TextDistanceScaleOffsetAndPower.z);
     float4 overColor = multiplyColor;
     overColor += (addColor * overColor.a);
 
