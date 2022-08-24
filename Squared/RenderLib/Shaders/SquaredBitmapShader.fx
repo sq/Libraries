@@ -255,7 +255,7 @@ void DistanceFieldTextPixelShader(
         overSRGB.rgb = SRGBToLinear(saturate(overSRGB.rgb));
         float4 shadowSRGB = shadowColor;
         shadowSRGB.rgb = SRGBToLinear(shadowSRGB.rgb);
-        result = over(overSRGB, overSRGB.a * overAlpha, shadowColor, shadowAlpha * saturate(shadowColorIn.a));
+        result = over(overSRGB, overSRGB.a * overAlpha, shadowColor, saturate(shadowAlpha * shadowColor.a));
         result.rgb = LinearToSRGB(result.rgb);
         result.rgb *= result.a;
     } else {

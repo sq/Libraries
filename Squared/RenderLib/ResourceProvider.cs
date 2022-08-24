@@ -386,7 +386,6 @@ namespace Squared.Render.Resources {
                         Coordinator.DisposeResource(future.Result as IDisposable);
                         return default(T);
                     } else {
-                        FireLoadEvent(info, future.Result);
                         return future.Result;
                     }
                 } else {

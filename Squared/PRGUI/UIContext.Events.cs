@@ -387,6 +387,8 @@ namespace Squared.PRGUI {
                 ? LastMousePosition
                 : targetRect.Center;
             var args = MakeMouseEventArgs(target, position, null, true);
+            args.PreviousButtons = MouseButtons.Left;
+            args.Buttons = MouseButtons.None;
             args.IsSynthetic = true;
             // FIXME: implement double-click for double-space-press
             args.SequentialClickCount = 1;
