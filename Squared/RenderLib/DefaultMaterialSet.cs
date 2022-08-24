@@ -375,7 +375,8 @@ namespace Squared.Render {
         public Material ScreenSpaceStippledBitmap, WorldSpaceStippledBitmap;
         public Material ScreenSpacePalettedBitmapWithDiscard, WorldSpacePalettedBitmapWithDiscard;
         public Material ScreenSpaceHueBitmapWithDiscard, WorldSpaceHueBitmapWithDiscard;
-        public Material OutlinedBitmap, OutlinedBitmapWithDiscard, DistanceFieldOutlinedBitmap;
+        public Material OutlinedBitmap, OutlinedBitmapWithDiscard;
+        public Material DistanceFieldText, DistanceFieldOutlinedBitmap;
         public Material HighlightColorBitmap, CrossfadeBitmap;
         // Porter-duff compositing
         public Material UnderBitmap, OverBitmap, AtopBitmap;
@@ -618,6 +619,12 @@ namespace Squared.Render {
                 "OutlinedBitmapWithDiscardTechnique"
             );
             OutlinedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(defaultOffset);
+
+            DistanceFieldText = NewMaterial(
+                bitmapShader,
+                "DistanceFieldTextTechnique"
+            );
+            DistanceFieldText.Parameters.ShadowOffset.SetValue(defaultOffset);
 
             DistanceFieldOutlinedBitmap = NewMaterial(
                 bitmapShader,

@@ -362,13 +362,21 @@ namespace Squared.Render.Resources {
         public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) {
             FaultInjector?.Step();
 
+            try {
+                data = FilterData(name, data);
+            } catch (Exception exc) {
+                var info2 = RecordPendingLoad(name, data, optional, false);
+                NotifyLoadFailed(info2, exc);
+                exception = exc;
+                return default(T);
+            }
+
             var info = RecordPendingLoad(name, data, optional, false);
             try {
-                var filteredData = FilterData(name, data);
                 info.SetStatus(ResourceLoadStatus.OpeningStream, Now);
                 if (TryGetStream(name, data, optional, out var stream, out exception)) {
                     info.SetStatus(ResourceLoadStatus.Preloading, Now);
-                    var preloadedData = PreloadInstance(name, stream, filteredData);
+                    var preloadedData = PreloadInstance(name, stream, data);
                     info.SetStatus(ResourceLoadStatus.Preloaded, Now);
                     info.SetStatus(ResourceLoadStatus.Creating, Now);
                     var future = CreateInstance(name, stream, data, preloadedData, false);

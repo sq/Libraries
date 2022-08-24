@@ -15,6 +15,7 @@ using Squared.Util;
 
 namespace Squared.Render.STB {
     public unsafe sealed class Image : IDisposable {
+        public readonly string Name;
         private volatile int _RefCount;
         public int RefCount => _RefCount;
 
@@ -36,6 +37,7 @@ namespace Squared.Render.STB {
 
         public Image (string path, bool premultiply = true, bool asFloatingPoint = false, bool enable16Bit = false)
             : this (OpenStream(path), true, premultiply, asFloatingPoint) {
+            Name = path;
         }
 
         public Image (
@@ -46,6 +48,7 @@ namespace Squared.Render.STB {
             var length = stream.Length - stream.Position;
 
             _RefCount = 1;
+            Name = (stream as FileStream)?.Name;
 
             if (!stream.CanSeek)
                 throw new ArgumentException("Stream must be seekable");

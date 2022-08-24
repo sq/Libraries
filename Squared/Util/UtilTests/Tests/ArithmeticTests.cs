@@ -387,8 +387,13 @@ namespace Squared.Util {
         public static void CompareFBenchmark () {
             long accumulator = 0;
             var allTestValues = GetAllTestValues();
-            var sw = Stopwatch.StartNew();
 
+            // Clumsy warming pass
+            for (int i = 0; i < 4; i++)
+                CompareFPass(allTestValues, ref accumulator);
+            accumulator = 0;
+
+            var sw = Stopwatch.StartNew();
             long totalSteps = (passCount * allTestValues.Length * allTestValues.Length);
             // Compare inlining does not seem to happen if the pass is inlined into this function
             for (int i = 0; i < passCount; i++)

@@ -114,4 +114,4 @@ params.txt
 /Squared/PRGUI.Demo/Fonts
 /Squared/PRGUI.Demo/Images
 # TODO: Remove this?
-/Squared/PRGUI.Demo/Test Cases/*.xml
+/Squared/PRGUI.Demo/Test Cases

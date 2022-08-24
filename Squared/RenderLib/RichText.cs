@@ -218,6 +218,11 @@ namespace Squared.Render.Text {
                 return false;
             } else {
                 var tex = Future.Result;
+                if (tex == null) {
+                    result = default;
+                    return false;
+                }
+
                 float? autoScaleX = Width / tex.Width,
                     autoScaleY = Height / tex.Height;
                 float scale = Scale;

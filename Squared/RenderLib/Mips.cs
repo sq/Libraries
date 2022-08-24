@@ -26,6 +26,12 @@ namespace Squared.Render.Mips {
         Vector4 = 5,
         // 16 byte premultiplied RGBA where each channel is a float
         pVector4 = 6,
+        // Grayscale float using Minimum instead of Average value
+        SingleMin = 7,
+        // Grayscale float combining Minimum and Average values (good for text SDFs)
+        SinglePseudoMin = 8,
+        // Grayscale float using Minimum instead of Average value
+        SingleMax = 9,
 
         // If set, the RGB channels are sRGB. Not valid for Gray1.
         sRGB = 0x10,
@@ -94,7 +100,7 @@ namespace Squared.Render.Mips {
         private static readonly MipGeneratorFn[] Cache;
 
         static MipGenerator () {
-            Cache = new MipGeneratorFn[1 + (int)(MipFormat.sRGB | MipFormat.pGray4)];
+            Cache = new MipGeneratorFn[1 + (int)(MipFormat.sRGB | MipFormat.SingleMax)];
             for (int i = 0; i < Cache.Length; i++)
                 Cache[i] = _Get((MipFormat)i);
         }
@@ -118,6 +124,14 @@ namespace Squared.Render.Mips {
                     return _PAGray;
                 case MipFormat.pGray4 | MipFormat.sRGB:
                     return _sRGBPAGray;
+                case MipFormat.Single:
+                    return _Single;
+                case MipFormat.SingleMin:
+                    return _SingleMin;
+                case MipFormat.SinglePseudoMin:
+                    return _SinglePseudoMin;
+                case MipFormat.SingleMax:
+                    return _SingleMax;
                 default:
                     return null;
             }
@@ -137,6 +151,12 @@ namespace Squared.Render.Mips {
         public static byte Average (byte a, byte b, byte c, byte d) {
             var sum = a + b + c + d;
             return (byte)(sum >> 2);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Average (float a, float b, float c, float d) {
+            var sum = a + b + c + d;
+            return sum / 4f;
         }
 
         private static unsafe void _Color (
@@ -247,6 +267,111 @@ namespace Squared.Render.Mips {
 
                         var result = destRow + x;
                         var gray = Average(a[0], a[1], c[0], c[1]);
+                        *result = gray;
+                    }
+                }
+            }
+        }
+
+        private static unsafe void _Single (
+            void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
+        ) {
+            if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
+                throw new ArgumentOutOfRangeException();
+
+            byte* pSrc = (byte*)src, pDest = (byte*)dest;
+            
+            unchecked {
+                for (var y = 0; y < destHeight; y++) {
+                    float* srcRow = (float*)(pSrc + ((y * 2) * srcStrideBytes)),
+                        srcRowNext = (float*)((byte*)srcRow + srcStrideBytes),
+                        destRow = (float*)(pDest + (y * destStrideBytes));
+
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + (x * 2);
+                        var c = srcRowNext + (x * 2);
+
+                        var result = destRow + x;
+                        var gray = Average(a[0], a[1], c[0], c[1]);
+                        *result = gray;
+                    }
+                }
+            }
+        }
+
+        private static unsafe void _SingleMin (
+            void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
+        ) {
+            if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
+                throw new ArgumentOutOfRangeException();
+
+            byte* pSrc = (byte*)src, pDest = (byte*)dest;
+            
+            unchecked {
+                for (var y = 0; y < destHeight; y++) {
+                    float* srcRow = (float*)(pSrc + ((y * 2) * srcStrideBytes)),
+                        srcRowNext = (float*)((byte*)srcRow + srcStrideBytes),
+                        destRow = (float*)(pDest + (y * destStrideBytes));
+
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + (x * 2);
+                        var c = srcRowNext + (x * 2);
+
+                        var result = destRow + x;
+                        var gray = Math.Min(Math.Min(a[0], a[1]), Math.Min(c[0], c[1]));
+                        *result = gray;
+                    }
+                }
+            }
+        }
+
+        private static unsafe void _SinglePseudoMin (
+            void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
+        ) {
+            if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
+                throw new ArgumentOutOfRangeException();
+
+            byte* pSrc = (byte*)src, pDest = (byte*)dest;
+            
+            unchecked {
+                for (var y = 0; y < destHeight; y++) {
+                    float* srcRow = (float*)(pSrc + ((y * 2) * srcStrideBytes)),
+                        srcRowNext = (float*)((byte*)srcRow + srcStrideBytes),
+                        destRow = (float*)(pDest + (y * destStrideBytes));
+
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + (x * 2);
+                        var c = srcRowNext + (x * 2);
+
+                        var result = destRow + x;
+                        var gray = Math.Min(Math.Min(a[0], a[1]), Math.Min(c[0], c[1])) +
+                            Average(a[0], a[1], c[0], c[1]);
+                        *result = gray / 2f;
+                    }
+                }
+            }
+        }
+
+        private static unsafe void _SingleMax (
+            void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
+        ) {
+            if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
+                throw new ArgumentOutOfRangeException();
+
+            byte* pSrc = (byte*)src, pDest = (byte*)dest;
+            
+            unchecked {
+                for (var y = 0; y < destHeight; y++) {
+                    float* srcRow = (float*)(pSrc + ((y * 2) * srcStrideBytes)),
+                        srcRowNext = (float*)((byte*)srcRow + srcStrideBytes),
+                        destRow = (float*)(pDest + (y * destStrideBytes));
+
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + (x * 2);
+                        var c = srcRowNext + (x * 2);
+
+                        var result = destRow + x;
+                        var gray = Math.Max(Math.Max(a[0], a[1]), Math.Max(c[0], c[1]));
                         *result = gray;
                     }
                 }

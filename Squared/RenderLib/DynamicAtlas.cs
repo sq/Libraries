@@ -22,7 +22,61 @@ namespace Squared.Render {
         Texture2D Texture { get; }
     }
 
-    public sealed class DynamicAtlas<T> : IDisposable, IDynamicTexture
+    public interface IDynamicAtlas : IDisposable, IDynamicTexture {
+        bool TryReserve (int widthW, int heightW, out DynamicAtlasReservation result);
+        void Invalidate (Rectangle rectangle);
+        void Clear ();
+        Bounds BoundsFromRectangle (in Rectangle rectangle);
+    }
+
+    public readonly struct DynamicAtlasReservation {
+        public readonly IDynamicAtlas Atlas;
+        public readonly int X, Y, Width, Height;
+
+        internal DynamicAtlasReservation (IDynamicAtlas atlas, int x, int y, int w, int h) {
+            Atlas = atlas;
+            X = x;
+            Y = y;
+            Width = w;
+            Height = h;
+        }
+
+        public T[] GetPixels<T> ()
+            where T : unmanaged
+        {
+            if (!(Atlas is DynamicAtlas<T> atlas))
+                throw new ArgumentException($"Expected DynamicAtlas<{typeof(T)}> but was {Atlas.GetType()}");
+
+            return atlas.Pixels;
+        }
+
+        public void Upload<T> (T[] pixels)
+            where T : unmanaged
+        {
+            if (!(Atlas is DynamicAtlas<T> atlas))
+                throw new ArgumentException($"Expected DynamicAtlas<{typeof(T)}> but was {Atlas.GetType()}");
+
+            for (var y = 0; y < Height; y++) {
+                var dest = ((Y + y) * Atlas.Width) + X;
+                var src = y * Width;
+                Array.Copy(pixels, src, atlas.Pixels, dest, Width);
+            }
+
+            Atlas.Invalidate(new Rectangle(X, Y, Width, Height));
+        }
+
+        public void Invalidate () {
+            Atlas.Invalidate(new Rectangle(X, Y, Width, Height));
+        }
+
+        public Rectangle Rectangle {
+            get {
+                return new Rectangle(X, Y, Width, Height);
+            }
+        }
+    }
+
+    public sealed class DynamicAtlas<T> : IDynamicAtlas
         where T : unmanaged
     {
         public readonly object Tag = null;
@@ -45,39 +99,6 @@ namespace Squared.Render {
             }
         }
 
-        public readonly struct Reservation {
-            public readonly DynamicAtlas<T> Atlas;
-            public readonly int X, Y, Width, Height;
-
-            internal Reservation (DynamicAtlas<T> atlas, int x, int y, int w, int h) {
-                Atlas = atlas;
-                X = x;
-                Y = y;
-                Width = w;
-                Height = h;
-            }
-
-            public void Upload (T[] pixels) {
-                for (var y = 0; y < Height; y++) {
-                    var dest = ((Y + y) * Atlas.Width) + X;
-                    var src = y * Width;
-                    Array.Copy(pixels, src, Atlas.Pixels, dest, Width);
-                }
-
-                Atlas.Invalidate(new Rectangle(X, Y, Width, Height));
-            }
-
-            public void Invalidate () {
-                Atlas.Invalidate(new Rectangle(X, Y, Width, Height));
-            }
-
-            public Rectangle Rectangle {
-                get {
-                    return new Rectangle(X, Y, Width, Height);
-                }
-            }
-        }
-
         public bool IsDisposed { get; private set; }
 
         public readonly RenderCoordinator Coordinator;
@@ -89,6 +110,7 @@ namespace Squared.Render {
         public T[] Pixels { get; private set; }
         public bool IsDirty => (DirtyMipsRegion.Width + DirtyUploadRegion.Width + DirtyMipsRegion.Height + DirtyUploadRegion.Height) > 0;
         public int Spacing { get; private set; }
+        public T? ClearValue;
 
         private int X, Y, RowHeight;
         private object Lock = new object();
@@ -121,6 +143,7 @@ namespace Squared.Render {
 
             EnsureValidResource();
 
+            _NeedClear = true;
             Pixels = new T[width * height];
             if (mipGenerator != null) {
                 var totalMipSize = 4;
@@ -397,7 +420,7 @@ namespace Squared.Render {
             }
         }
 
-        public bool TryReserve (int width, int height, out Reservation result) {
+        public bool TryReserve (int width, int height, out DynamicAtlasReservation result) {
             lock (Lock) {
                 bool needWrap = (X + width) >= (Width - 1);
 
@@ -407,7 +430,7 @@ namespace Squared.Render {
                         needWrap && ((Y + RowHeight + height) >= Height)
                     )
                 ) {
-                    result = default(Reservation);
+                    result = default(DynamicAtlasReservation);
                     return false;
                 }
 
@@ -417,7 +440,7 @@ namespace Squared.Render {
                     RowHeight = 0;
                 }
 
-                result = new Reservation(this, X, Y, width, height);
+                result = new DynamicAtlasReservation(this, X, Y, width, height);
                 X += width + Spacing;
                 RowHeight = Math.Max(RowHeight, height);
             }
@@ -435,8 +458,17 @@ namespace Squared.Render {
                 _NeedClear = false;
             }
 
-            Array.Clear(Pixels, 0, Pixels.Length);
+            if (ClearValue.HasValue) {
+                var cv = ClearValue.Value;
+                // FIXME: Optimized implementation
+                for (int i = 0; i < Pixels.Length; i++)
+                    Pixels[i] = cv;
+            } else {                
+                Array.Clear(Pixels, 0, Pixels.Length);
+            }
         }
+
+        void IDynamicAtlas.Clear () => Clear();
 
         public void Clear (bool eraseOldPixels = true) {
             lock (Lock) {
