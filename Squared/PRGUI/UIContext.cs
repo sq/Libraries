@@ -911,31 +911,35 @@ namespace Squared.PRGUI {
         /// </summary>
         public void UpdateSubtreeLayout (Control subtreeRoot) {
             MakeOperationContext(out var tempCtx);
+            UpdateSubtreeLayout(ref tempCtx, subtreeRoot);
+        }
 
+        internal void UpdateSubtreeLayout (ref UIOperationContext context, Control subtreeRoot) {
             var pll = Interlocked.Exchange(ref _PostLayoutListeners, null);
             if (pll == null)
                 pll = new UnorderedList<IPostLayoutListener>();
             else
                 pll.Clear();
-            tempCtx.Shared.PostLayoutListeners = pll;
+            context.Shared.PostLayoutListeners = pll;
 
             var wasUpdatingSubtreeLayout = IsUpdatingSubtreeLayout;
             try {
                 IsUpdatingSubtreeLayout = true;
-                UpdateSubtreeLayout(ref tempCtx, subtreeRoot);
+                UpdateSubtreeLayoutPass(ref context, subtreeRoot);
 
-                if (NotifyLayoutListeners(ref tempCtx)) {
-                    DoUpdateLayoutInternal(ref tempCtx, true);
-                    UpdateSubtreeLayout(ref tempCtx, subtreeRoot);
-                    NotifyLayoutListeners(ref tempCtx);
+                if (NotifyLayoutListeners(ref context)) {
+                    DoUpdateLayoutInternal(ref context, true);
+                    UpdateSubtreeLayoutPass(ref context, subtreeRoot);
+                    NotifyLayoutListeners(ref context);
                 }
             } finally {
+                context.Shared.PostLayoutListeners = null;
                 IsUpdatingSubtreeLayout = wasUpdatingSubtreeLayout;
                 Interlocked.CompareExchange(ref _PostLayoutListeners, pll, null);
             }
         }
 
-        private void UpdateSubtreeLayout (ref UIOperationContext context, Control subtreeRoot) {
+        private void UpdateSubtreeLayoutPass (ref UIOperationContext context, Control subtreeRoot) {
             ControlKey parentKey;
             Control parent;
             if (!subtreeRoot.TryGetParent(out parent))
@@ -954,6 +958,7 @@ namespace Squared.PRGUI {
                     ? (ControlKey?)null 
                     : subtreeRoot.LayoutKey
             );
+
             if (UseNewEngine)
                 Engine.UpdateSubtree(subtreeRoot.LayoutKey);
             else
@@ -1020,7 +1025,9 @@ namespace Squared.PRGUI {
                 instance.Invalidate();
 
                 // FIXME: Sometimes this keeps happening every frame
-                UpdateSubtreeLayout(instance);
+                MakeOperationContext(ref _TooltipContext1, ref _TooltipContext2, out var ctx);
+                UpdateSubtreeLayout(ref ctx, instance);
+                ctx.Shared.InUse = false;
 
                 /*
                 if (instance.TextLayoutIsIncomplete)
@@ -1040,7 +1047,13 @@ namespace Squared.PRGUI {
 
             PreviousTooltipAnchor = anchor;
             IsTooltipVisible = true;
-            UpdateSubtreeLayout(instance);
+
+            {
+                // FIXME: Does this really need to happen every frame? It's expensive
+                MakeOperationContext(ref _TooltipContext1, ref _TooltipContext2, out var ctx);
+                UpdateSubtreeLayout(ref ctx, instance);
+                ctx.Shared.InUse = false;
+            }
 
             if (fireEvent)
                 FireEvent(UIEvents.TooltipShown, anchor);
@@ -1081,7 +1094,8 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        private volatile UIOperationContextShared _RasterizeFree, _RasterizeInUse, _UpdateFree, _UpdateInUse;
+        private volatile UIOperationContextShared _RasterizeFree, _RasterizeInUse, _UpdateFree, _UpdateInUse,
+            _TooltipContext1, _TooltipContext2;
 
         internal void MakeOperationContext (ref UIOperationContextShared _free, ref UIOperationContextShared _inUse, out UIOperationContext result) {
             var free = Interlocked.Exchange(ref _free, null);

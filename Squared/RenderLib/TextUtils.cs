@@ -1249,7 +1249,7 @@ namespace Squared.Render.Text {
 
             private float? _LineSpacing;
             public float LineSpacing {
-                get => _LineSpacing ?? Source.LineSpacing * Scale;
+                get => _LineSpacing * Scale ?? Source.LineSpacing * Scale;
                 set => _LineSpacing = value;
             }
             public float DPIScaleFactor => Source.DPIScaleFactor;
