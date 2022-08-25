@@ -338,7 +338,8 @@ namespace Squared.PRGUI {
             if (
                 evt.Modifiers.Control || 
                 evt.Modifiers.Alt || 
-                SuppressRepeatKeys.Contains(evt.Key.GetValueOrDefault())
+                SuppressRepeatKeys.Contains(evt.Key.GetValueOrDefault()) ||
+                ForwardToTopLevelKeys.Contains(evt.Key.GetValueOrDefault())
             ) {
                 if (FireEvent(name, TopLevelFocused, evt, filtersOnly: suppressRepeat))
                     return true;

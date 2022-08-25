@@ -47,6 +47,21 @@ namespace Squared.PRGUI {
             Keys.Insert
         };
 
+        // HACK: Top level containers might want to do something by default with these keys,
+        //  like do directional focus navigation or close a modal on enter
+        public static readonly HashSet<Keys> ForwardToTopLevelKeys = new HashSet<Keys> {
+            Keys.Escape,
+            Keys.Enter,
+            Keys.Left,
+            Keys.Right,
+            Keys.Up,
+            Keys.Down,
+            Keys.PageUp,
+            Keys.PageDown,
+            Keys.End,
+            Keys.Home
+        };
+
         public bool LogRelayoutRequests = false;
 
         /// <summary>

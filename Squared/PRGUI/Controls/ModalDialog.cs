@@ -46,6 +46,8 @@ namespace Squared.PRGUI.Controls {
 
         bool IModal.CanClose (ModalCloseReason reason) => true;
 
+        public bool AllowCancel = true;
+
         public Control AcceptControl {
             get => _AcceptControl;
             set {
@@ -182,6 +184,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected virtual void OnCancelClick (IEventInfo e) {
+            if (!AllowCancel) {
+                e.Consume();
+                return;
+            }
+
             if ((Cancelled != null) && Cancelled(this)) {
                 e.Consume();
                 return;
@@ -240,6 +247,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         bool IModal.Close (ModalCloseReason reason) {
+            if (!AllowCancel && (reason == ModalCloseReason.UserCancelled))
+                return false;
             return Close(reason);
         }
 
@@ -250,6 +259,9 @@ namespace Squared.PRGUI.Controls {
         public bool Close (TResult result, ModalCloseReason reason) {
             CancelDrag();
             if (!IsActive)
+                return false;
+
+            if (!AllowCancel && (reason == ModalCloseReason.UserCancelled))
                 return false;
 
             IsActive = false;
@@ -284,8 +296,15 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) {
-            if (name != UIEvents.KeyUp)
+        protected override bool OnEvent<T> (string name, T args) {
+            if (args is KeyEventArgs kea)
+                return OnKeyEvent(name, kea);
+
+            return base.OnEvent(name, args);
+        }
+
+        private bool OnKeyEvent (string name, KeyEventArgs args) {
+            if (name != UIEvents.KeyPress)
                 return false;
 
             // HACK
@@ -313,6 +332,10 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
+        bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) {
+            return false;
+        }
+
         IEnumerable<AcceleratorInfo> IAcceleratorSource.Accelerators {
             get {
                 if (AcceptControl != null)
@@ -321,6 +344,8 @@ namespace Squared.PRGUI.Controls {
                     yield return new AcceleratorInfo(CancelControl, Keys.Escape);
             }
         }
+
+        public Task<TResult> GetResult () => NextResultFuture.AsTask();
     }
 
     public class ModalDialog : ModalDialog<object, object> {
