@@ -232,7 +232,7 @@ namespace Squared.PRGUI.Controls {
             else
                 Appearance.Opacity = 1f;
             GenerateDynamicContent(true);
-            _FocusDonor = focusDonor ?? context.TopLevelFocused;
+            _FocusDonor = focusDonor ?? context.Focused;
             context.ShowModal(this, false);
             // HACK: Ensure event handlers are registered if they weren't already
             if (!IsAcceptHandlerRegistered)
