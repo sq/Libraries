@@ -22,7 +22,7 @@ void evaluateLineSegment (
 void computeTLBR_Polygon (
     in float2 radius, in float outlineSize, in float4 params,
     in float vertexOffset, in float vertexCount, in float _closed,
-    out float2 tl, out float2 br
+    in float2 coordOffset, out float2 tl, out float2 br
 ) {
     tl = 99999;
     br = -99999;
@@ -36,7 +36,7 @@ void computeTLBR_Polygon (
     for (int i = 0; i < count; i++) {
         float4 xytr = getPolyVertex(offset);
         int nodeType = (int)xytr.z;
-        float2 pos = xytr.xy;
+        float2 pos = xytr.xy + coordOffset;
         maxLocalRadius = max(maxLocalRadius, xytr.w);
         offset++;
         if (nodeType == NODE_BEZIER) {
