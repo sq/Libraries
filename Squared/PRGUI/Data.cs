@@ -742,6 +742,9 @@ namespace Squared.PRGUI {
                 return false;
         }
 
+        public static bool operator == (Margins lhs, Margins rhs) => lhs.Equals(rhs);
+        public static bool operator != (Margins lhs, Margins rhs) => !lhs.Equals(rhs);
+
         public float this [uint index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {

@@ -68,6 +68,9 @@ namespace Squared.PRGUI {
                 return false;
         }
 
+        public static bool operator == (ColorVariable lhs, ColorVariable rhs) => lhs.Equals(ref rhs);
+        public static bool operator != (ColorVariable lhs, ColorVariable rhs) => !lhs.Equals(ref rhs);
+
         public override int GetHashCode () {
             if (_HasValue)
                 return _Value.GetHashCode();

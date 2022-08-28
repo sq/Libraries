@@ -24,7 +24,7 @@ namespace Squared.PRGUI.Controls {
     }
 
     public interface IModalDialog<TResult> : IModalDialog {
-        new void SetResultValues (TResult accept, TResult cancel);
+        void SetResultValues (TResult accept, TResult cancel);
         void SetResultValues (Func<TResult> getAccept, TResult cancel);
         void SetResultValues (Func<TResult> getAccept, Func<TResult> getCancel);
     }
@@ -380,7 +380,7 @@ namespace Squared.PRGUI.Controls {
             };
         }
 
-        public void Close (ModalCloseReason reason) {
+        new public void Close (ModalCloseReason reason) {
             base.Close(default, reason);
         }
     }

@@ -1328,6 +1328,13 @@ namespace Squared.Render.Text {
             if (IsDisposed)
                 throw new ObjectDisposedException("AtlasGlyphSource");
 
+            if (glyph.Index >= Atlas.Count)
+                throw new ArgumentOutOfRangeException("glyph.Index");
+            else if (glyph.X >= Atlas.WidthInCells)
+                throw new ArgumentOutOfRangeException("glyph.X");
+            else if (glyph.Y >= Atlas.HeightInCells)
+                throw new ArgumentOutOfRangeException("glyph.Y");
+
             Registry.Add(glyph.Character, glyph);
             if (NeedIncrementVersion) {
                 NeedIncrementVersion = false;

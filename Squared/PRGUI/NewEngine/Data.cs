@@ -239,6 +239,13 @@ namespace Squared.PRGUI.NewEngine {
                 return false;
         }
 
+        public override int GetHashCode () {
+            return AllFlags.GetHashCode();
+        }
+
+        public static bool operator == (ControlConfiguration lhs, ControlConfiguration rhs) => lhs.Equals(rhs);
+        public static bool operator != (ControlConfiguration lhs, ControlConfiguration rhs) => !lhs.Equals(rhs);
+
         public override string ToString () {
             return $"{_BoxFlags} {_ContainerFlags}";
         }

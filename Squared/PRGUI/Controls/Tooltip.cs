@@ -236,11 +236,14 @@ namespace Squared.PRGUI {
         }
 
         public override bool Equals (object obj) {
-            if (obj is TooltipSettings)
-                return Equals((TooltipSettings)obj);
+            if (obj is TooltipSettings tts)
+                return Equals(tts);
             else
                 return false;
         }
+
+        public static bool operator == (TooltipSettings lhs, TooltipSettings rhs) => lhs.Equals(rhs);
+        public static bool operator != (TooltipSettings lhs, TooltipSettings rhs) => !lhs.Equals(rhs);
     }
 
     public struct AbstractTooltipContent {
@@ -301,11 +304,14 @@ namespace Squared.PRGUI {
         }
 
         public override bool Equals (object obj) {
-            if (obj is AbstractTooltipContent)
-                return Equals((AbstractTooltipContent)obj);
+            if (obj is AbstractTooltipContent atc)
+                return Equals(atc);
             else
                 return false;
         }
+
+        public static bool operator == (AbstractTooltipContent lhs, AbstractTooltipContent rhs) => lhs.Equals(rhs);
+        public static bool operator != (AbstractTooltipContent lhs, AbstractTooltipContent rhs) => !lhs.Equals(rhs);
 
         public static implicit operator AbstractTooltipContent (Func<Control, AbstractString> func) {
             return new AbstractTooltipContent { GetText = func };
