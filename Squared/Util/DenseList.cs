@@ -667,6 +667,7 @@ namespace Squared.Util {
                 return;
 
             T item;
+            // Fast paths to avoid allocating/boxing enumerator instances
             if (enumerable is T[] array) {
                 EnsureCapacity(Count + array.Length);
                 for (int i = 0, c = array.Length; i < c; i++)

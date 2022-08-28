@@ -137,6 +137,20 @@ namespace Squared.Util {
         public static T FirstOrDefault<T> (this List<T> list) => list.Count > 0 ? list[0] : default;
         public static T LastOrDefault<T> (this List<T> list) => list.Count > 0 ? list[list.Count - 1] : default;
         public static int Count<T> (this List<T> list) => list.Count;
+        public static bool All<T> (this List<T> list, Func<T, bool> predicate) {
+            foreach (var item in list)
+                if (!predicate(item))
+                    return false;
+
+            return true;
+        }
+        public static bool Any<T> (this List<T> list, Func<T, bool> predicate) {
+            foreach (var item in list)
+                if (predicate(item))
+                    return true;
+
+            return false;
+        }
 
         public static ListWhereEnumerator<T> Where<T> (this List<T> list, Predicate<T> predicate) =>
             new ListWhereEnumerator<T>(list, predicate);
@@ -592,7 +606,7 @@ namespace Squared.Util {
             return result;
         }
 
-        public DenseList<T> Concat (IEnumerable<T> rhs) {
+        public DenseList<T> Concat<U> (U rhs) where U : IEnumerable<T> {
             Clone(out DenseList<T> result);
             result.AddRange(rhs);
             return result;
