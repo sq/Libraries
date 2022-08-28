@@ -304,18 +304,18 @@ namespace Squared.Util {
         }
 
         public static bool operator == (Tween<T> lhs, Tween<T> rhs) {
-            return lhs.Equals(in rhs);
+            return lhs.Equals(ref rhs);
         }
 
         public static bool operator != (Tween<T> lhs, Tween<T> rhs) {
-            return !lhs.Equals(in rhs);
+            return !lhs.Equals(ref rhs);
         }
 
         public override int GetHashCode () {
             return From.GetHashCode() ^ To.GetHashCode();
         }
 
-        public bool Equals (in Tween<T> rhs, EqualityComparer<T> comparer = null) {
+        public bool Equals (ref Tween<T> rhs, EqualityComparer<T> comparer = null) {
             if (comparer == null)
                 comparer = DefaultComparer;
 
@@ -332,16 +332,16 @@ namespace Squared.Util {
         }
 
         public bool Equals (Tween<T> rhs, EqualityComparer<T> comparer) {
-            return Equals(in rhs, comparer);
+            return Equals(ref rhs, comparer);
         }
 
         public bool Equals (Tween<T> rhs) {
-            return Equals(in rhs, null);
+            return Equals(ref rhs, null);
         }
 
         public override bool Equals (object obj) {
             if (obj is Tween<T> t)
-                return Equals(in t, null);
+                return Equals(ref t, null);
             else
                 return false;
         }

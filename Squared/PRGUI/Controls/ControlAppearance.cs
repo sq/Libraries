@@ -377,41 +377,61 @@ namespace Squared.PRGUI {
         public Tween<Matrix>? Transform {
             get => _TransformMatrix?.Matrix;
             set {
-                var tm = _TransformMatrix;
-                if (
-                    !value.HasValue ||
-                    (
-                        ((value.Value.From == ControlMatrixInfo.IdentityMatrix) && 
-                        (value.Value.To == ControlMatrixInfo.IdentityMatrix))
-                    )
-                ) {
-                    if (
-                        (tm != null) && 
-                        (tm.TransformOriginMinusOneHalf != Vector2.Zero) &&
-                        tm.HasValue
-                    ) {
-                        _TransformMatrix = new ControlMatrixInfo {
-                            TransformOriginMinusOneHalf = tm.TransformOriginMinusOneHalf,
-                            Matrix = ControlMatrixInfo.IdentityMatrix,
-                            HasValue = false
-                        };
-                    } else
-                        _TransformMatrix = null;
+                if (value == null)
+                    ClearTransform();
+                else
+                    SetTransform(value.Value);
+            }
+        }
 
-                    return;
-                }
+        public void ClearTransform (bool unsafeNoAllocation = false) {
+            var tm = _TransformMatrix;
+            if (
+                (tm != null) && 
+                (tm.TransformOriginMinusOneHalf != Vector2.Zero) &&
+                tm.HasValue
+            ) {
+                if (unsafeNoAllocation && _TransformMatrix != null) {
+                    _TransformMatrix.HasValue = false;
+                    _TransformMatrix.Matrix = ControlMatrixInfo.IdentityMatrix;
+                } else
+                    _TransformMatrix = new ControlMatrixInfo {
+                        TransformOriginMinusOneHalf = tm.TransformOriginMinusOneHalf,
+                        Matrix = ControlMatrixInfo.IdentityMatrix,
+                        HasValue = false
+                    };
+            } else
+                _TransformMatrix = null;
+        }
 
-                // Avoid an unnecessary allocation if this won't change anything
-                if ((tm?.Matrix == value) && tm.HasValue)
-                    return;
+        public void SetTransform (Tween<Matrix> value, Vector2? origin = null, bool unsafeNoAllocation = false) {
+            if (
+                (value.From == ControlMatrixInfo.IdentityMatrix) && 
+                (value.To == ControlMatrixInfo.IdentityMatrix)
+            ) {
+                ClearTransform(unsafeNoAllocation);
+                return;
+            }
 
+            var tm = _TransformMatrix;
+            // Avoid an unnecessary allocation if this won't change anything
+            if (
+                (tm != null) && (tm.TransformOrigin == (origin ?? tm.TransformOrigin)) && 
+                tm.HasValue && tm.Matrix.Equals(ref value)
+            )
+                return;
+
+            if (unsafeNoAllocation && (tm != null)) {
+                tm.HasValue = true;
+                tm.Matrix = value;
+            } else {
                 // Unfortunately we have to allocate a new one every time,
                 //  because 'this' could have been cloned and we would potentially be trampling a shared
                 //  instance.
                 _TransformMatrix = new ControlMatrixInfo {
                     HasValue = true,
-                    Matrix = value.Value,
-                    TransformOriginMinusOneHalf = tm?.TransformOriginMinusOneHalf ?? Vector2.Zero
+                    Matrix = value,
+                    TransformOrigin = origin ?? tm?.TransformOrigin ?? new Vector2(0.5f)
                 };
             }
         }
@@ -462,5 +482,10 @@ namespace Squared.PRGUI {
         public bool HasValue = true;
         public Tween<Matrix> Matrix;
         public Vector2 TransformOriginMinusOneHalf;
+
+        public Vector2 TransformOrigin {
+            get => TransformOriginMinusOneHalf + new Vector2(0.5f);
+            set => TransformOriginMinusOneHalf = value - new Vector2(0.5f);
+        }
     }
 }
