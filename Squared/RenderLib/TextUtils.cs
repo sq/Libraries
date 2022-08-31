@@ -1037,7 +1037,7 @@ namespace Squared.Render.Text {
                     if (le.Markers.Count > 0) {
                         var m = GetMarkers();
                         foreach (var kvp in le.Markers) {
-                            if ((rls.MarkedStrings.Count > 0) && (kvp.MarkedString != default)) {
+                            if ((rls.MarkedStrings != null) && (rls.MarkedStrings.Count > 0) && (kvp.MarkedString != default)) {
                                 if (_RichMarkers == null)
                                     _RichMarkers = new List<LayoutMarker>();
                                 _RichMarkers.Add(kvp);
@@ -1055,6 +1055,7 @@ namespace Squared.Render.Text {
                     _Buffer = le.buffer;
                     SetFlag(InternalFlags.HasCachedStringLayout, true);
                 } finally {
+                    rls.Dispose();
                     le.Dispose();
                 }
             }

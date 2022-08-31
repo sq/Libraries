@@ -136,7 +136,10 @@ namespace Squared.PRGUI.Controls {
 
         static bool AwfulTryParseValue (string text, out T result) {
             try {
-                result = (T)Convert.ChangeType(text, typeof(T));
+                if (typeof(T).IsEnum)
+                    result = (T)Enum.Parse(typeof(T), text);
+                else
+                    result = (T)Convert.ChangeType(text, typeof(T));
                 return true;
             } catch {
                 result = default;

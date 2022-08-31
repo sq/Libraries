@@ -188,6 +188,12 @@ namespace Squared.Util {
             return output;
         }
 
+        public void CopyTo (IList<T> destination) {
+            // FIXME: Optimize this
+            for (int i = 0, c = Count; i < c; i++)
+                destination.Add(this[i]);
+        }
+
         public void CopyTo (T[] destination) => CopyTo(destination, 0, _Count);
 
         public void CopyTo (T[] destination, int destinationOffset, int count) {

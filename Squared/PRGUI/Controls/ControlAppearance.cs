@@ -301,7 +301,7 @@ namespace Squared.PRGUI {
         ///  context's global decoration size scale ratio.
         /// </summary>
         public bool AutoScaleMetrics {
-            get => GetAppearanceFlag(AppearanceFlags.DoNotAutoScaleMetrics);
+            get => !GetAppearanceFlag(AppearanceFlags.DoNotAutoScaleMetrics);
             set => SetAppearanceFlag(AppearanceFlags.DoNotAutoScaleMetrics, !value);
         }
 

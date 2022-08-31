@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -304,12 +305,15 @@ namespace Squared.Render.Text {
         }
     }
 
-    public struct RichTextLayoutState {
+    public struct RichTextLayoutState : IDisposable {
+        private static readonly ThreadLocal<List<ImmutableAbstractString>> MarkedStringLists =
+            new ThreadLocal<List<ImmutableAbstractString>>();
+
         public IGlyphSource DefaultGlyphSource, GlyphSource;
         public readonly Color? InitialColor;
         public readonly float InitialScale;
         public readonly float InitialSpacing;
-        public DenseList<ImmutableAbstractString> MarkedStrings;
+        public List<ImmutableAbstractString> MarkedStrings;
 
         public RichTextLayoutState (ref StringLayoutEngine engine, IGlyphSource defaultGlyphSource) {
             InitialColor = engine.overrideColor;
@@ -317,7 +321,8 @@ namespace Squared.Render.Text {
             InitialSpacing = engine.spacing;
             DefaultGlyphSource = defaultGlyphSource;
             GlyphSource = null;
-            MarkedStrings = default;
+            MarkedStrings = MarkedStringLists.Value;
+            MarkedStringLists.Value = null;
         }
 
         public void Reset (ref StringLayoutEngine engine) {
@@ -325,6 +330,14 @@ namespace Squared.Render.Text {
             engine.overrideColor = InitialColor;
             engine.scale = InitialScale;
             engine.spacing = InitialSpacing;
+        }
+
+        public void Dispose () {
+            MarkedStrings?.Clear();
+            if (MarkedStrings != null) {
+                MarkedStringLists.Value = MarkedStrings;
+                MarkedStrings = null;
+            }
         }
     }
 
@@ -421,7 +434,11 @@ namespace Squared.Render.Text {
             string styleName, bool? overrideSuppress = null
         ) {
             var state = new RichTextLayoutState(ref layoutEngine, defaultGlyphSource);
-            return Append(ref layoutEngine, ref state, text, styleName, overrideSuppress);
+            try {
+                return Append(ref layoutEngine, ref state, text, styleName, overrideSuppress);
+            } finally {
+                state.Dispose();
+            }
         }
 
         private static readonly HashSet<char>
@@ -585,40 +602,46 @@ namespace Squared.Render.Text {
                         var markedState = new RichTextLayoutState(ref layoutEngine, state.DefaultGlyphSource) {
                             GlyphSource = state.GlyphSource
                         };
-                        if (MarkedStringProcessor != null)
-                            action = MarkedStringProcessor(ref astr, ref id, ref markedState, ref layoutEngine);
+                        try {
+                            if (MarkedStringProcessor != null)
+                                action = MarkedStringProcessor(ref astr, ref id, ref markedState, ref layoutEngine);
 
-                        if (action == MarkedStringAction.Error)
-                            parseErrors.Add(new RichParseError {
-                                Message = "Processing failed",
-                                Offset = bracketed.Offset,
-                                Text = bracketed.Value,
-                            });
+                            if (action == MarkedStringAction.Error)
+                                parseErrors.Add(new RichParseError {
+                                    Message = "Processing failed",
+                                    Offset = bracketed.Offset,
+                                    Text = bracketed.Value,
+                                });
 
-                        if (action != MarkedStringAction.Omit) {
-                            var l = astr.Length;
-                            // FIXME: Omit this too?
-                            // TODO: Store an AbstractString instead?
-                            state.MarkedStrings.Add(bracketed);
-                            if (action == MarkedStringAction.RichText)
-                                AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref referencedImages, ref parseErrors);
-                            else if (action != MarkedStringAction.PlainText) {
-                                var initialIndex = layoutEngine.currentCharacterIndex;
-                                var m = new LayoutMarker(initialIndex, initialIndex + l - 1) {
-                                    MarkedString = bracketed.Value,
-                                    MarkedID = id,
-                                    MarkedStringActualText = astr
-                                };
-                                layoutEngine.Markers.Add(m);
+                            if (action != MarkedStringAction.Omit) {
+                                var l = astr.Length;
+                                // FIXME: Omit this too?
+                                // TODO: Store an AbstractString instead?
+                                if (state.MarkedStrings == null)
+                                    state.MarkedStrings = new List<ImmutableAbstractString>();
+                                state.MarkedStrings.Add(bracketed);
+                                if (action == MarkedStringAction.RichText)
+                                    AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref referencedImages, ref parseErrors);
+                                else if (action != MarkedStringAction.PlainText) {
+                                    var initialIndex = layoutEngine.currentCharacterIndex;
+                                    var m = new LayoutMarker(initialIndex, initialIndex + l - 1) {
+                                        MarkedString = bracketed.Value,
+                                        MarkedID = id,
+                                        MarkedStringActualText = astr
+                                    };
+                                    layoutEngine.Markers.Add(m);
 
-                                AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
-                            } else {
-                                AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
+                                    AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
+                                } else {
+                                    AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
+                                }
                             }
-                        }
 
-                        if (MarkedStringProcessor != null)
-                            markedState.Reset(ref layoutEngine);
+                            if (MarkedStringProcessor != null)
+                                markedState.Reset(ref layoutEngine);
+                        } finally {
+                            markedState.Dispose();
+                        }
                     } else {
                         var close = (next == '[') ? ']' : ')';
                         layoutEngine.AppendText(state.GlyphSource ?? state.DefaultGlyphSource, "<invalid: $" + next + bracketed + close + ">");
