@@ -716,8 +716,12 @@ namespace Squared.PRGUI {
         }
 
         protected void ComputeEffectiveScaleRatios (IDecorationProvider decorations, out Vector2 padding, out Vector2 margins, out Vector2 size) {
-            margins = decorations.SpacingScaleRatio * decorations.MarginScaleRatio;
-            padding = decorations.SpacingScaleRatio * decorations.PaddingScaleRatio;
+            if (Appearance.AutoScaleSpacing) {
+                margins = decorations.SpacingScaleRatio * decorations.MarginScaleRatio;
+                padding = decorations.SpacingScaleRatio * decorations.PaddingScaleRatio;
+            } else {
+                margins = padding = Vector2.One;
+            }
 
             if (Appearance.AutoScaleMetrics)
                 size = decorations.SizeScaleRatio;

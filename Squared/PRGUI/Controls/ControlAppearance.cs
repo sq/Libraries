@@ -137,6 +137,7 @@ namespace Squared.PRGUI {
             SuppressSpacing       = SuppressPadding | SuppressMargins,
             HasTransformMatrix    = 0b100000000,
             OpacityIsSet          = 0b1000000000,
+            DoNotAutoScaleSpacing = 0b10000000000
         }
 
         /// <summary>
@@ -297,12 +298,28 @@ namespace Squared.PRGUI {
         public bool HasTextColor => BackgroundColor.HasValue;
 
         /// <summary>
-        /// If set, the control's fixed size and size constraints will be affected by the
-        ///  context's global decoration size scale ratio.
+        /// If set, the control's fixed size and size constraints
+        ///  will be affected by the context's global decoration size scale ratios.
         /// </summary>
         public bool AutoScaleMetrics {
             get => !GetAppearanceFlag(AppearanceFlags.DoNotAutoScaleMetrics);
             set => SetAppearanceFlag(AppearanceFlags.DoNotAutoScaleMetrics, !value);
+        }
+
+        /// <summary>
+        /// If set, the control's padding and margins
+        ///  will be affected by the context's global decoration size scale ratios.
+        /// </summary>
+        public bool AutoScaleSpacing {
+            get => !GetAppearanceFlag(AppearanceFlags.DoNotAutoScaleSpacing);
+            set => SetAppearanceFlag(AppearanceFlags.DoNotAutoScaleSpacing, !value);
+        }
+
+        public bool AutoScale {
+            get => (AutoScaleMetrics && AutoScaleSpacing);
+            set {
+                AutoScaleMetrics = AutoScaleSpacing = value;
+            }
         }
 
         internal bool OpacityIsSet => GetAppearanceFlag(AppearanceFlags.OpacityIsSet);
