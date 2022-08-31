@@ -160,7 +160,7 @@
     <Message Importance="High" Text="Shader compiler mode switches: '$(ShaderCompilerModeSwitches)'" />
 
     <Error Text="EnableFNA is set and FNAPath could not be automatically detected after searching nearby folders." Condition=" ('$(FNAPath)' == '') And ('$(EnableFNA)' == 'true') " />
-    <Error Text="SDL2.dll could not be found in the configured FNALibsPath." Condition=" ('$(EnableFNA)' == 'true') And !Exists('$(FNALibsPath)\$(FNAPlatformTarget)\SDL2.dll') " />
+    <Error Text="SDL2.dll could not be found in the configured FNALibsPath\FNAPlatformTarget: '$(FNALibsPath)\$(FNAPlatformTarget)\SDL2.dll'." Condition=" ('$(EnableFNA)' == 'true') And !Exists('$(FNALibsPath)\$(FNAPlatformTarget)\SDL2.dll') " />
 
     <Error Text="FNALibsPath '$(FNALibsPath)' does not exist or is not set" Condition=" !Exists('$(FNALibsPath)') And ('$(EnableFNA)' == 'true') " />
   </Target>
