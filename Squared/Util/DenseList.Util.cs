@@ -185,13 +185,7 @@ namespace Squared.Util {
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe ref readonly T ReadItem<T> (this in DenseList<T> list, int index) {
-            var items = list._Items;
-            if (items != null)
-                return ref items.DangerousReadItem(index);
-
-            if ((index < 0) || (index >= list._Count))
-                BoundsCheckFailed();
-            return ref Unsafe.AddByteOffset(ref Unsafe.AsRef(in list.Item1), (IntPtr)(index * DenseList<T>.ElementTraits.ByteOffset));
+            return ref Item(ref Unsafe.AsRef(in list), index);
         }
 
         [TargetedPatchingOptOut("")]
@@ -203,7 +197,8 @@ namespace Squared.Util {
 
             if ((index < 0) || (index >= list._Count))
                 BoundsCheckFailed();
-            return ref Unsafe.AddByteOffset(ref list.Item1, (IntPtr)(index * DenseList<T>.ElementTraits.ByteOffset));
+
+            return ref Unsafe.AddByteOffset(ref list.Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref list.Item2) - (byte*)Unsafe.AsPointer(ref list.Item1)) * index));
         }
 #else
         [TargetedPatchingOptOut("")]

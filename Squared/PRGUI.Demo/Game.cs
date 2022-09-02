@@ -1322,7 +1322,7 @@ namespace PRGUI.Demo {
             CanvasEllipsePosition = args.LocalPosition;
         }
 
-        private void Canvas_OnPaint (ref ImperativeRenderer renderer, Squared.PRGUI.Decorations.DecorationSettings settings) {
+        private void Canvas_OnPaint (ref UIOperationContext context, ref ImperativeRenderer renderer, Squared.PRGUI.Decorations.DecorationSettings settings) {
             var contentRect = settings.ContentBox;
             var position = CanvasEllipsePosition ?? contentRect.Center;
             renderer.AutoIncrementLayer = true;
@@ -1475,11 +1475,14 @@ namespace PRGUI.Demo {
         protected void DenseListTest (ref DenseList<int> dl) {
             ref int one = ref dl.Item(0);
             ref int two = ref dl.Item(1);
+            // int one = dl[0], two = dl[1];
             if (one == two)
                 throw new Exception();
             else if (one != 1)
                 throw new Exception();
+#if DEBUG
             var size = DenseList<int>.ElementTraits.ListSize;
+#endif
             ;
         }
 

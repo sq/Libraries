@@ -22,26 +22,6 @@ namespace Squared.Util {
     public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T>, IOrderedEnumerable<T> {
 #if !NOSPAN
         public static class ElementTraits {
-            // FIXME: Using a cctor or initializer causes a conditional call any time a DenseList is used. Not great.
-            // The alternative of manually doing it only in access methods seems to generate worse code somehow though.
-            // The good news is the branch will predict correctly 100% of the time!
-            public static uint ByteOffset = ComputeByteOffset();
-
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            internal static unsafe uint ComputeByteOffset () {
-                var temp = new DenseList<T>();
-                byte* p1 = (byte*)Unsafe.AsPointer(ref temp.Item1),
-                    p2 = (byte*)Unsafe.AsPointer(ref temp.Item2),
-                    p3 = (byte*)Unsafe.AsPointer(ref temp.Item3),
-                    p4 = (byte*)Unsafe.AsPointer(ref temp.Item4);
-
-                if ((p4 < p3) || (p3 < p2) || (p2 < p1) || (p4 < p2) || (p3 < p1) || (p4 < p1))
-                    throw new Exception($"Memory layout of DenseList<{typeof(T)}> is not sequential");
-
-                return (uint)(int)(p2 - p1);
-            }
-
-#if DEBUG
             public static uint ListSize = ComputeListSize();
 
             [MethodImpl(MethodImplOptions.NoInlining)]
@@ -50,15 +30,17 @@ namespace Squared.Util {
 
                 ulong p1 = (ulong)(byte*)Unsafe.AsPointer(ref temp._Count),
                     p2 = (ulong)(byte*)Unsafe.AsPointer(ref temp.Item1),
-                    p3 = (ulong)(byte*)Unsafe.AsPointer(ref temp.Item4),
-                    p4 = (ulong)(byte*)Unsafe.AsPointer(ref temp._Items);
+                    p3 = (ulong)(byte*)Unsafe.AsPointer(ref temp.Item2),
+                    p4 = (ulong)(byte*)Unsafe.AsPointer(ref temp.Item4),
+                    p5 = (ulong)(byte*)Unsafe.AsPointer(ref temp._Items);
 
-                var pMin = Math.Min(Math.Min(Math.Min(p1, p2), p3), p4);
-                var pMax = Math.Max(Math.Max(Math.Max(p1, p2), p3), p4);
-                return (uint)((pMax - pMin + (ulong)ByteOffset));
+                if ((p4 < p3) || (p3 < p2))
+                    throw new Exception("Incoherent struct layout");
+
+                var pMin = Math.Min(Math.Min(Math.Min(Math.Min(p1, p2), p3), p4), p5);
+                var pMax = Math.Max(Math.Max(Math.Max(Math.Max(p1, p2), p3), p4), p5);
+                return (uint)((pMax - pMin + (p3 - p2)));
             }
-#endif
-
         }
 #endif
 
@@ -94,7 +76,7 @@ namespace Squared.Util {
             if ((index < 0) || (index >= _Count))
                 return default;
 
-            return Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset));
+            return Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index));
 #else
             switch (index) {
                 case 0:
@@ -115,7 +97,7 @@ namespace Squared.Util {
             // FIXME: This is a bit slower than the switch version for some reason?
             if ((index < 0) || (index >= _Count))
                 EnumerableExtensions.BoundsCheckFailed();
-            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset));
+            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index));
 #else
             switch (index) {
                 case 0:
@@ -140,7 +122,7 @@ namespace Squared.Util {
             // FIXME: This is a bit slower than the switch version for some reason?
             if ((index < 0) || (index >= _Count))
                 EnumerableExtensions.BoundsCheckFailed();
-            Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset)) = value;
+            Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index)) = value;
 #else
             switch (index) {
                 case 0:
@@ -385,7 +367,7 @@ namespace Squared.Util {
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void GetItem (int index, out T result) {
+        public unsafe void GetItem (int index, out T result) {
             var items = _Items;
             if (items != null) {
                 items.DangerousGetItem(index, out result);
@@ -396,7 +378,7 @@ namespace Squared.Util {
                 EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset));
+            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index));
 #else
             switch (index) {
                 default:
@@ -516,7 +498,7 @@ namespace Squared.Util {
             return -1;
         }
 
-        public T this [int index] {
+        public unsafe T this [int index] {
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
@@ -528,7 +510,7 @@ namespace Squared.Util {
                     EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-                return Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset));
+                return Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index));
 #else
                 switch (index) {
                     default:
@@ -556,7 +538,9 @@ namespace Squared.Util {
             SetItem(index, ref value);
         }
 
-        public void SetItem (int index, ref T value) {
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe void SetItem (int index, ref T value) {
             var items = _Items;
             if (items != null) {
                 items.DangerousSetItem(index, ref value);
@@ -567,7 +551,7 @@ namespace Squared.Util {
                 EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-            Unsafe.AddByteOffset(ref Item1, (IntPtr)(index * ElementTraits.ByteOffset)) = value;
+            Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index)) = value;
 #else
             switch (index) {
                 default:
@@ -601,8 +585,7 @@ namespace Squared.Util {
                 return;
             }
 
-            var count = list._Count;
-            list._Count = (short)(count + 1);
+            var count = list._Count++;
             list.SetItem(count, ref item);
         }
 
@@ -613,8 +596,7 @@ namespace Squared.Util {
             if (items != null)
                 return ref items.CreateSlot();
 
-            var count = list._Count;
-            list._Count = (short)(count + 1);
+            var count = list._Count++;
             return ref list.Item(count);
         }
 
@@ -889,42 +871,6 @@ namespace Squared.Util {
             }
         }
 
-        private struct IndexAndValue {
-            public bool Valid;
-            public int Index;
-            public T Value;
-
-            [TargetedPatchingOptOut("")]
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public IndexAndValue (ref DenseList<T> list, int[] indices, int index) {
-                if (indices != null) {
-                    if (index >= indices.Length) {
-                        Index = -1;
-                        Valid = false;
-                    } else {
-                        Index = indices[index];
-                    }
-                } else
-                    Index = index;
-                Valid = list.TryGetItem(Index, out Value);
-            }
-        }
-
-        [TargetedPatchingOptOut("")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int CompareValues<TComparer> (TComparer comparer, ref IndexAndValue a, ref IndexAndValue b) 
-            where TComparer : IRefComparer<T>
-        {
-            return comparer.Compare(ref a.Value, ref b.Value);
-        }
-
-        private void FlushValueOrIndex (ref IndexAndValue value, int index, ref T field, int[] indices) {
-            if (indices != null)
-                indices[index] = value.Index;
-            else
-                field = value.Value;
-        }
-
         private int IndexOf_Small<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
             if ((_Count > 0) && predicate(in Item1, in userData))
                 return 0;
@@ -1036,6 +982,30 @@ namespace Squared.Util {
                 return this[index];
         }
 
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void SortPair<TComparer> (TComparer comparer, ref T item1, ref T item2)
+            where TComparer : IRefComparer<T>
+        {
+            if (comparer.Compare(ref item2, ref item1) >= 0)
+                return;
+            var temp = item1;
+            item1 = item2;
+            item2 = temp;
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void SortPair_Indexed<TComparer> (TComparer comparer, ref int index1, ref int index2)
+            where TComparer : IRefComparer<T>
+        {
+            if (comparer.Compare(ref this.Item(index2), ref this.Item(index1)) >= 0)
+                return;
+            var temp = index1;
+            index1 = index2;
+            index2 = temp;
+        }
+
         private void Sort_Small<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IRefComparer<T>
         {
@@ -1046,76 +1016,37 @@ namespace Squared.Util {
             if ((indices != null) && (indices.Length < count))
                 throw new ArgumentOutOfRangeException("indices", "index array length must must match or exceed number of elements");
 
-            IndexAndValue v1 = new IndexAndValue(ref this, indices, 0),
-                v2 = new IndexAndValue(ref this, indices, 1),
-                v3 = new IndexAndValue(ref this, indices, 2),
-                v4 = new IndexAndValue(ref this, indices, 3);
-
-            IndexAndValue va, vb;
-            if (CompareValues(comparer, ref v1, ref v2) <= 0) {
-                va = v1; vb = v2;
-            } else {
-                va = v2; vb = v1;
-            }
-
+            // Use a sorting network to sort either the values or indices in-place
             if (count == 2) {
-                v1 = va;
-                v2 = vb;
-            } else if (_Count == 3) {
-                if (CompareValues(comparer, ref vb, ref v3) <= 0) {
-                    v1 = va;
-                    v2 = vb;
-                } else if (CompareValues(comparer, ref va, ref v3) <= 0) {
-                    v1 = va;
-                    v2 = v3;
-                    v3 = vb;
+                if (indices != null)
+                    SortPair_Indexed(comparer, ref indices[0], ref indices[1]);
+                else
+                    SortPair(comparer, ref Item1, ref Item2);
+            } else if (count == 3) {
+                if (indices != null) {
+                    SortPair_Indexed(comparer, ref indices[0], ref indices[1]);
+                    SortPair_Indexed(comparer, ref indices[0], ref indices[2]);
+                    SortPair_Indexed(comparer, ref indices[1], ref indices[2]);
                 } else {
-                    v1 = v3;
-                    v2 = va;
-                    v3 = vb;
+                    SortPair(comparer, ref Item1, ref Item2);
+                    SortPair(comparer, ref Item1, ref Item3);
+                    SortPair(comparer, ref Item2, ref Item3);
                 }
-                ;
             } else {
-                IndexAndValue vc, vd;
-                if (CompareValues(comparer, ref v3, ref v4) <= 0) {
-                    vc = v3; vd = v4;
+                if (indices != null) {
+                    SortPair_Indexed(comparer, ref indices[0], ref indices[1]);
+                    SortPair_Indexed(comparer, ref indices[2], ref indices[3]);
+                    SortPair_Indexed(comparer, ref indices[0], ref indices[2]);
+                    SortPair_Indexed(comparer, ref indices[1], ref indices[3]);
+                    SortPair_Indexed(comparer, ref indices[1], ref indices[2]);
                 } else {
-                    vc = v4; vd = v3;
+                    SortPair(comparer, ref Item1, ref Item2);
+                    SortPair(comparer, ref Item3, ref Item4);
+                    SortPair(comparer, ref Item1, ref Item3);
+                    SortPair(comparer, ref Item2, ref Item4);
+                    SortPair(comparer, ref Item2, ref Item3);
                 }
-
-                IndexAndValue vm1, vm2;
-                if (CompareValues(comparer, ref va, ref vc) <= 0) {
-                    v1 = va;
-                    vm1 = vc;
-                } else {
-                    v1 = vc;
-                    vm1 = va;
-                }
-
-                if (CompareValues(comparer, ref vb, ref vd) >= 0) {
-                    v4 = vb;
-                    vm2 = vd;
-                } else {
-                    v4 = vd;
-                    vm2 = vb;
-                }
-
-                if (CompareValues(comparer, ref vm1, ref vm2) <= 0) {
-                    v2 = vm1;
-                    v3 = vm2;
-                } else {
-                    v2 = vm2;
-                    v3 = vm1;
-                }
-                ;
             }
-
-            FlushValueOrIndex(ref v1, 0, ref Item1, indices);
-            FlushValueOrIndex(ref v2, 1, ref Item2, indices);
-            if (count > 2)
-                FlushValueOrIndex(ref v3, 2, ref Item3, indices);
-            if (count > 3)
-                FlushValueOrIndex(ref v4, 3, ref Item4, indices);
         }
 
         private void Sort_Large<TComparer> (TComparer comparer, int[] indices)
