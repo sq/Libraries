@@ -195,7 +195,9 @@ float distanceTapEpilogue(float2 uv, float2 coord, float tap, float2 halfTexel) 
     //  it a satisfactory border even if it lacks whitespace around the outside
     float2 clampedDistancePx = -min(coord, 0) + (max(coord, 1) - 1);
     clampedDistancePx /= halfTexel;
-    tap += length(clampedDistancePx);
+    // HACK: Ensure that the input tap isn't negative since we know by definition exterior texels can never
+    //  be 'inside' the image represented by the distance field, no matter what the corner texel says
+    tap = max(0, tap) + length(clampedDistancePx);
     return tap;
 }
 
@@ -339,10 +341,10 @@ void DistanceFieldOutlinedPixelShader(
     overSRGB.rgb /= overSRGB.a;
     overSRGB.rgb = SRGBToLinear(saturate(overSRGB.rgb));
     shadowSRGB.rgb = SRGBToLinear(shadowSRGB.rgb);
-    // FIXME: Why do we have to double multiply here?
     result = over(overSRGB, overSRGB.a, shadowColor, shadowAlpha * saturate(shadowColorIn.a));
-    result.rgb = LinearToSRGB(result.rgb);
-    result.rgb *= result.a;
+    // over() produces a premultiplied result, but it's in linear space so we need to depremultiply it, then
+    //  turn it into premultiplied sRGB
+    result = pLinearToPSRGB_Accurate(result);
 
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);

@@ -41,6 +41,10 @@ namespace Squared.PRGUI.Controls {
         /// Image1 using Image2 as an rgba mask
         /// </summary>
         Masked,
+        /// <summary>
+        /// A custom material is set, so suppress automated behavior
+        /// </summary>
+        CustomMaterial
     }
 
     public class StaticImage : Control, IPostLayoutListener {
@@ -328,8 +332,11 @@ namespace Squared.PRGUI.Controls {
                 pSRGBColor pColor = pSRGBColor.FromPLinear(color4),
                     pAddColor = pSRGBColor.FromPLinear(addColor4);
                 var rect = new Rectangle(-DrawExpansion, -DrawExpansion, instance.Width + (DrawExpansion * 2), instance.Height + (DrawExpansion * 2));
-                position.X += DrawExpansion * scale;
-                position.Y += DrawExpansion * scale;
+                if (DrawExpansion != 0) {
+                    Vector2 expansionAlignment = (DrawExpansion * scale) * (new Vector2(0.5f) - Alignment) * 2f;
+                    // FIXME: This might be backwards
+                    position -= expansionAlignment;
+                }
                 var drawCall = new BitmapDrawCall(instance, position.Round(0)) {
                     Origin = Alignment,
                     ScaleF = scale,
@@ -341,12 +348,16 @@ namespace Squared.PRGUI.Controls {
                 Material material = null;
 
                 if ((instance2 != null) && (instance2 != instance)) {
-                    var opacity2 = Image2Opacity.Get(now: context.NowL);
-                    var scale2 = ComputeDisplayScaleRatio(instance2, settings.ContentBox.Width, settings.ContentBox.Height);
-                    drawCall.UserData = new Vector4(opacity2);
                     drawCall.Texture2 = instance2;
-                    drawCall.AlignTexture2(scale2 / scale, preserveAspectRatio: true);
-                    material = SelectMaterialForTwoImages(renderer.Materials);
+                    if (Image2Mode != StaticImageCompositeMode.CustomMaterial) {
+                        var opacity2 = Image2Opacity.Get(now: context.NowL);
+                        var scale2 = ComputeDisplayScaleRatio(instance2, settings.ContentBox.Width, settings.ContentBox.Height);
+                        drawCall.UserData = new Vector4(opacity2);
+                        drawCall.AlignTexture2(scale2 / scale, preserveAspectRatio: true);
+                        material = SelectMaterialForTwoImages(renderer.Materials);
+                    } else {
+                        drawCall.TextureRegion2 = drawCall.TextureRegion;
+                    }
                 }
 
                 // HACK

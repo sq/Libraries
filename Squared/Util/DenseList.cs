@@ -28,6 +28,9 @@ namespace Squared.Util {
             internal static unsafe uint ComputeListSize () {
                 var temp = new DenseList<T>();
 
+                // Because this struct contains reference types, the runtime seems to be free to
+                //  order the fields any way it likes. So Item1-4 may be at the front, for example
+                // It does seem to maintain internal order for properties of the same type, at least.
                 ulong p1 = (ulong)(byte*)Unsafe.AsPointer(ref temp._Count),
                     p2 = (ulong)(byte*)Unsafe.AsPointer(ref temp.Item1),
                     p3 = (ulong)(byte*)Unsafe.AsPointer(ref temp.Item2),
