@@ -18,6 +18,17 @@ namespace Squared.CoreCLR
     /// the sequence of numbers generated or what methods call what other methods.
     /// </summary>
     public struct Xoshiro {
+        public readonly struct State {
+            public readonly ulong A, B, C, D;
+
+            public State (Xoshiro source) {
+                A = source._s0;
+                B = source._s1;
+                C = source._s2;
+                D = source._s3;
+            }
+        }
+
         // NextUInt64 is based on the algorithm from http://prng.di.unimi.it/xoshiro256starstar.c:
         //
         //     Written in 2018 by David Blackman and Sebastiano Vigna (vigna@acm.org)
@@ -69,6 +80,16 @@ namespace Squared.CoreCLR
             _s2 = state[2];
             _s3 = state[3];
         }
+
+        public Xoshiro (State state) {
+            _s0 = state.A;
+            _s1 = state.B;
+            _s2 = state.C;
+            _s3 = state.D;
+            _isInitialized = true;
+        }
+
+        public State GetState () => new State(this);
 
         public void Save (ulong[] result) {
             if (!_isInitialized)
