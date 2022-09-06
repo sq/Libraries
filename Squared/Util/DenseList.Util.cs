@@ -435,6 +435,12 @@ namespace Squared.Util {
             }
         }
 
+        public static explicit operator DenseList<T> (List<T> list) {
+            var result = new DenseList<T>();
+            result.AddRange(list);
+            return result;
+        }
+
         public bool Any () {
             if (Count == 0)
                 return false;
@@ -458,6 +464,24 @@ namespace Squared.Util {
 
         public bool All (Func<T, bool> predicate) {
             return CountWhere(predicate) == Count;
+        }
+
+        public bool SequenceEqual (ref DenseList<T> rhs) => SequenceEqual(ref rhs, EqualityComparer<T>.Default);
+
+        public bool SequenceEqual<TEqualityComparer> (ref DenseList<T> rhs, TEqualityComparer comparer)
+            where TEqualityComparer : IEqualityComparer<T>
+        {
+            if (Count != rhs.Count)
+                return false;
+
+            for (int i = 0, c = Count; i < c; i++) {
+                ref var itemL = ref this.Item(i);
+                ref var itemR = ref rhs.Item(i);
+                if (!comparer.Equals(itemL, itemR))
+                    return false;
+            }
+
+            return true;
         }
 
         public DenseDistinct<T, Enumerator, IEqualityComparer<T>> Distinct () {

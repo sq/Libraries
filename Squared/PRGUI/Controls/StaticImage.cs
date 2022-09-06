@@ -349,7 +349,7 @@ namespace Squared.PRGUI.Controls {
 
                 if ((instance2 != null) && (instance2 != instance)) {
                     drawCall.Texture2 = instance2;
-                    if (Image2Mode != StaticImageCompositeMode.CustomMaterial) {
+                    if ((Image2Mode != StaticImageCompositeMode.CustomMaterial) && (Material == null)) {
                         var opacity2 = Image2Opacity.Get(now: context.NowL);
                         var scale2 = ComputeDisplayScaleRatio(instance2, settings.ContentBox.Width, settings.ContentBox.Height);
                         drawCall.UserData = new Vector4(opacity2);

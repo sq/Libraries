@@ -453,5 +453,17 @@ namespace Squared.Util {
             Assert.AreEqual(2, two);
             Assert.AreEqual("hello", hello);
         }
+
+        [Test]
+        public void SequenceEqual () {
+            var a = new DenseList<int> { 1, 2, 3 };
+            var b = new DenseList<int> { 1, 2, 3 };
+            var c = new DenseList<int> { 1, 2, 3, 4 };
+            var d = new DenseList<int> { 2, 3, 4, 5 };
+            Assert.True(a.SequenceEqual(ref a));
+            Assert.True(a.SequenceEqual(ref b));
+            Assert.False(a.SequenceEqual(ref c));
+            Assert.False(c.SequenceEqual(ref d));
+        }
     }
 }
