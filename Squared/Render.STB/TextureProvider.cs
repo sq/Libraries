@@ -191,6 +191,9 @@ namespace Squared.Render {
         }
 
         public Texture2D GetDistanceField (Texture2D texture) {
+            if (texture == null)
+                return null;
+
             lock (DistanceFields) {
                 if (!DistanceFields.TryGetValue(texture, out var result))
                     return null;

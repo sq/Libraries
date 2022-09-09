@@ -858,7 +858,7 @@ namespace Squared.PRGUI {
             if (!float.TryParse(pieces[0], out result.Left) ||
                 !float.TryParse(pieces[1], out result.Top) ||
                 !float.TryParse(pieces[2], out result.Right) ||
-                !float.TryParse(pieces[3], out result.Top))
+                !float.TryParse(pieces[3], out result.Bottom))
                 return false;
             return true;
         }
