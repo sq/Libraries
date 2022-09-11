@@ -446,37 +446,46 @@ namespace Squared.Game {
         }
 
         public static string ToString (this Vector2 v2, IFormatProvider provider) {
+            if (provider == null)
+                provider = CultureInfo.InvariantCulture.NumberFormat;
+
             var sb = GetVectorBuilder();
             sb.Append('{');
-            sb.Append(v2.X.ToString("N", provider));
+            sb.Append(v2.X.ToString("F", provider));
             sb.Append(", ");
-            sb.Append(v2.Y.ToString("N", provider));
+            sb.Append(v2.Y.ToString("F", provider));
             sb.Append('}');
             return sb.ToString();
         }
 
         public static string ToString (this Vector3 v3, IFormatProvider provider) {
+            if (provider == null)
+                provider = CultureInfo.InvariantCulture.NumberFormat;
+
             var sb = GetVectorBuilder();
             sb.Append('{');
-            sb.Append(v3.X.ToString("N", provider));
+            sb.Append(v3.X.ToString("F", provider));
             sb.Append(", ");
-            sb.Append(v3.Y.ToString("N", provider));
+            sb.Append(v3.Y.ToString("F", provider));
             sb.Append(", ");
-            sb.Append(v3.Z.ToString("N", provider));
+            sb.Append(v3.Z.ToString("F", provider));
             sb.Append('}');
             return sb.ToString();
         }
 
         public static string ToString (this Vector4 v4, IFormatProvider provider) {
+            if (provider == null)
+                provider = CultureInfo.InvariantCulture.NumberFormat;
+
             var sb = GetVectorBuilder();
             sb.Append('{');
-            sb.Append(v4.X.ToString("N", provider));
+            sb.Append(v4.X.ToString("F", provider));
             sb.Append(", ");
-            sb.Append(v4.Y.ToString("N", provider));
+            sb.Append(v4.Y.ToString("F", provider));
             sb.Append(", ");
-            sb.Append(v4.Z.ToString("N", provider));
+            sb.Append(v4.Z.ToString("F", provider));
             sb.Append(", ");
-            sb.Append(v4.W.ToString("N", provider));
+            sb.Append(v4.W.ToString("F", provider));
             sb.Append('}');
             return sb.ToString();
         }
@@ -488,6 +497,9 @@ namespace Squared.Game {
         public static bool TryParse (string text, out Vector2 result) => TryParse(text, null, out result);
 
         public static bool TryParse (string text, IFormatProvider provider, out Vector2 result) {
+            if (provider == null)
+                provider = CultureInfo.InvariantCulture.NumberFormat;
+
             result = default;
             if (float.TryParse(text, NumberStyles.Float, provider, out float v)) {
                 result = new Vector2(v);
@@ -508,6 +520,9 @@ namespace Squared.Game {
         public static bool TryParse (string text, out Vector3 result) => TryParse(text, null, out result);
 
         public static bool TryParse (string text, IFormatProvider provider, out Vector3 result) {
+            if (provider == null)
+                provider = CultureInfo.InvariantCulture.NumberFormat;
+
             result = default;
             if (float.TryParse(text, NumberStyles.Float, provider, out float v)) {
                 result = new Vector3(v);
@@ -529,6 +544,9 @@ namespace Squared.Game {
         public static bool TryParse (string text, out Vector4 result) => TryParse(text, null, out result);
 
         public static bool TryParse (string text, IFormatProvider provider, out Vector4 result) {
+            if (provider == null)
+                provider = CultureInfo.InvariantCulture.NumberFormat;
+
             result = default;
             if (float.TryParse(text, NumberStyles.Float, provider, out float v)) {
                 result = new Vector4(v);
