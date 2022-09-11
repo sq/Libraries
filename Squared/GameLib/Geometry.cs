@@ -433,7 +433,7 @@ namespace Squared.Game {
 
         // FIXME: Optimize this
         static readonly Regex VectorRegex = new Regex(
-            @"{\s*(X:)?\s*(?<x>[0-9.\-]+)\s*(Y:|,)?\s*(?<y>[0-9.\-]+)\s*((Z:|,)?\s*(?<z>[0-9.\-]+))?(\s*(W:|,)?\s*(?<w>[0-9.\-]+))?\s*}", 
+            @"{\s*(X:)?\s*(?<x>[0-9,\-]*[0-9](.[0-9]+)?)\s*(Y:|,)?\s*(?<y>[0-9,\-]*[0-9](.[0-9]+)?)\s*((Z:|,)?\s*(?<z>[0-9,\-]*[0-9](.[0-9]+)?))?(\s*(W:|,)?\s*(?<w>[0-9,\-]*[0-9](.[0-9]+)?))?\s*}", 
             RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase
         );
 
@@ -441,7 +441,7 @@ namespace Squared.Game {
 
         private static StringBuilder GetVectorBuilder () {
             var result = VectorBuilders.Value;
-            result.Clear();
+            result.Clear(); 
             return result;
         }
 
@@ -481,6 +481,10 @@ namespace Squared.Game {
             return sb.ToString();
         }
 
+        // HACK: Because our regex can handle commas in some places, this ensures that they will be parsed
+        // Please don't rely on this though.
+        const NumberStyles VectorStyle = NumberStyles.Float | NumberStyles.AllowThousands;
+
         public static bool TryParse (string text, out Vector2 result) => TryParse(text, null, out result);
 
         public static bool TryParse (string text, IFormatProvider provider, out Vector2 result) {
@@ -496,8 +500,8 @@ namespace Squared.Game {
             Group x = m.Groups["x"], y = m.Groups["y"];
             if (!x.Success || !y.Success)
                 return false;
-            if (!float.TryParse(x.Value, NumberStyles.Float, provider, out result.X) || !float.TryParse(y.Value, NumberStyles.Float, provider, out result.Y))
-                return false;
+            if (!float.TryParse(x.Value, VectorStyle, provider, out result.X) || !float.TryParse(y.Value, VectorStyle, provider, out result.Y))
+                return false; 
             return true;
         }
 
@@ -516,8 +520,8 @@ namespace Squared.Game {
             Group x = m.Groups["x"], y = m.Groups["y"], z = m.Groups["z"];
             if (!x.Success || !y.Success || !z.Success)
                 return false;
-            if (!float.TryParse(x.Value, NumberStyles.Float, provider, out result.X) || !float.TryParse(y.Value, NumberStyles.Float, provider, out result.Y) ||
-                !float.TryParse(z.Value, NumberStyles.Float, provider, out result.Z))
+            if (!float.TryParse(x.Value, VectorStyle, provider, out result.X) || !float.TryParse(y.Value, VectorStyle, provider, out result.Y) ||
+                !float.TryParse(z.Value, VectorStyle, provider, out result.Z))
                 return false;
             return true;
         }
@@ -537,8 +541,8 @@ namespace Squared.Game {
             Group x = m.Groups["x"], y = m.Groups["y"], z = m.Groups["z"], w = m.Groups["w"];
             if (!x.Success || !y.Success || !z.Success || !w.Success)
                 return false;
-            if (!float.TryParse(x.Value, NumberStyles.Float, provider, out result.X) || !float.TryParse(y.Value, NumberStyles.Float, provider, out result.Y) ||
-                !float.TryParse(z.Value, NumberStyles.Float, provider, out result.Z) || !float.TryParse(w.Value, NumberStyles.Float, provider, out result.W))
+            if (!float.TryParse(x.Value, VectorStyle, provider, out result.X) || !float.TryParse(y.Value, VectorStyle, provider, out result.Y) ||
+                !float.TryParse(z.Value, VectorStyle, provider, out result.Z) || !float.TryParse(w.Value, VectorStyle, provider, out result.W))
                 return false;
             return true;
         }

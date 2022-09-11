@@ -69,6 +69,16 @@ namespace Squared.PRGUI.Controls {
                 ParseDelegateCache[type] = (includeFallback, result);
             return result;
         }
+
+        public static Delegate GetValueEncoder (Type type, IFormatProvider formatProvider) {
+            if (type.IsValueType) {
+                var t = typeof(ParameterEditor<>).MakeGenericType(type);
+                var m = t.GetMethod("GetValueEncoder");
+                return (Delegate)m.Invoke(null, new[] { formatProvider });
+            } else {
+                return (Func<object, string>)((object value) => value?.ToString());
+            }
+        }
     }
 
     public class ParameterEditor<T> : EditableText, IScrollableControl, IParameterEditor, IValueControl<T>
@@ -203,6 +213,17 @@ namespace Squared.PRGUI.Controls {
                 if (format1 != null)
                     DefaultFormatter = (Func<T, string>)Delegate.CreateDelegate(typeof(Func<T, string>), null, format1);
             }
+        }
+
+        public static Func<T, string> GetValueEncoder (IFormatProvider formatProvider) {
+            return (v) => {
+                if (DefaultFormatter is Func<T, string> f)
+                    return f(v);
+                else if (DefaultFormatter is Func<T, IFormatProvider, string> fp)
+                    return fp(v, formatProvider);
+                else
+                    return string.Format(formatProvider, "{0:N}", v);
+            };
         }
 
         internal static bool TryParseValueUntyped (string text, out object _result) {
@@ -376,20 +397,13 @@ namespace Squared.PRGUI.Controls {
             _TryParseValue = tryParse ?? DefaultTryParseValue;
             _Compare = compare ?? DefaultCompare;
 
-            ValueEncoder = (v) => {
-                var nfi = FormatProvider as NumberFormatInfo;
-                if (nfi != null) {
-                    // HACK
-                    nfi.NumberGroupSeparator = "";
-                    nfi.NumberDecimalDigits = IntegerOnly ? 0 : DecimalDigits;
-                }
-                if (DefaultFormatter is Func<T, string> f)
-                    return f(v);
-                else if (DefaultFormatter is Func<T, IFormatProvider, string> fp)
-                    return fp(v, FormatProvider);
-                else
-                    return string.Format(FormatProvider, "{0:N}", v);
-            };
+            var nfi = FormatProvider as NumberFormatInfo;
+            if (nfi != null) {
+                // HACK
+                nfi.NumberGroupSeparator = "";
+                nfi.NumberDecimalDigits = IntegerOnly ? 0 : DecimalDigits;
+            }
+            ValueEncoder = GetValueEncoder(nfi);
             SelectAllOnFocus = true;
             SelectNoneOnFocusLoss = true;
         }
