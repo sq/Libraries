@@ -25,6 +25,17 @@ namespace Squared.Render {
         public SurfaceFormat PreferredFormat { get; protected set; }
         public DepthFormat PreferredDepthFormat { get; protected set; }
         public int PreferredMultiSampleCount { get; protected set; }
+        private bool _WasRecreated;
+        public bool WasRecreated {
+            get {
+                var result = _WasRecreated;
+                _WasRecreated = false;
+                return result;
+            }
+            set {
+                _WasRecreated = value;
+            }
+        }
 
         protected object Lock = new object();
 
@@ -62,6 +73,8 @@ namespace Squared.Render {
         }
 
         protected RenderTarget2D CreateInstance () {
+            WasRecreated = true;
+
             lock (Coordinator.CreateResourceLock) {
                 var result = new RenderTarget2D(
                     Coordinator.Device, Width, Height, MipMap,

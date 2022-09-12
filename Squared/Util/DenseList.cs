@@ -987,6 +987,16 @@ namespace Squared.Util {
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T Find<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
+            var index = IndexOf(predicate, in userData);
+            if (index < 0)
+                return default;
+            else
+                return this[index];
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void SortPair<TComparer> (TComparer comparer, ref T item1, ref T item2)
             where TComparer : IRefComparer<T>
         {
