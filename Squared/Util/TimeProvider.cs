@@ -5,6 +5,7 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Squared.Util {
     public static class Time {
@@ -12,6 +13,8 @@ namespace Squared.Util {
         /// The length of a second in ticks.
         /// </summary>
         public const long SecondInTicks = 10000000;
+
+        public const double SecondInTicksD = SecondInTicks;
 
         /// <summary>
         /// The length of a millisecond in ticks.
@@ -24,15 +27,24 @@ namespace Squared.Util {
         public static ITimeProvider DefaultTimeProvider;
 
         public static long Ticks {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return DefaultTimeProvider.Ticks;
             }
         }
 
         public static double Seconds {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return DefaultTimeProvider.Seconds;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double SecondsFromTicks (long ticks) {
+            long seconds = ticks / SecondInTicks;
+            double subsec = (ticks - (seconds * SecondInTicks)) / SecondInTicksD;
+            return subsec + seconds;
         }
 
         static Time () {
@@ -52,24 +64,23 @@ namespace Squared.Util {
 
     public sealed class DotNetTimeProvider : ITimeProvider {
         long _Offset;
-        decimal _Scale;
 
         public DotNetTimeProvider () {
             _Offset = Stopwatch.GetTimestamp();
-            _Scale = Time.SecondInTicks;
         }
 
         public long Ticks {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return Stopwatch.GetTimestamp() - _Offset;
             }
         }
 
         public double Seconds {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                decimal scaledTicks = Stopwatch.GetTimestamp() - _Offset;
-                scaledTicks /= _Scale;
-                return (double)scaledTicks;
+                long ticks = Stopwatch.GetTimestamp() - _Offset;
+                return Time.SecondsFromTicks(ticks);
             }
         }
     }
@@ -82,6 +93,7 @@ namespace Squared.Util {
         [DllImport("Kernel32.dll")]
         private static extern bool QueryPerformanceFrequency (out long lpFrequency);
 
+        // FIXME: Don't use decimal since it's slow
         private decimal _Frequency;
         private long _Offset;
 
@@ -139,13 +151,14 @@ namespace Squared.Util {
         public long CurrentTime = 0;
 
         public long Ticks {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return CurrentTime; }
         }
 
         public double Seconds {
-            get { 
-                decimal ticks = CurrentTime;
-                return (double)(ticks / Squared.Util.Time.SecondInTicks); 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                return Time.SecondsFromTicks(CurrentTime);
             }
         }
 
@@ -176,6 +189,7 @@ namespace Squared.Util {
         }
 
         public long Ticks {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (_DesiredTime.HasValue)
                     return _DesiredTime.Value;
@@ -185,13 +199,14 @@ namespace Squared.Util {
         }
 
         public double Seconds {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                decimal ticks = Ticks;
-                return (double)(ticks / Time.SecondInTicks);
+                return Time.SecondsFromTicks(Ticks);
             }
         }
 
         public bool Paused {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return _PausedSince.HasValue;
             }
@@ -265,20 +280,21 @@ namespace Squared.Util {
         }
 
         public long Ticks {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return ScaledElapsed;
             }
         }
 
         public double Seconds {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                decimal ticks = ScaledElapsed;
-
-                return (double)(ticks / Squared.Util.Time.SecondInTicks);
+                return Time.SecondsFromTicks(ScaledElapsed);
             }
         }
 
         public float TimeScale {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return _TimeScale / 10000.0f;
             }
