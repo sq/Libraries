@@ -808,6 +808,9 @@ namespace Squared.PRGUI {
                 }
             }
 
+            var gto = GlobalTooltipOpacity.Get(NowL);
+            if (gto <= 0)
+                return;
             var cttt = target as ICustomTooltipTarget;
             var tts = cttt?.TooltipSettings;
 
@@ -844,6 +847,9 @@ namespace Squared.PRGUI {
                     );
                     CurrentTooltipContentVersion = version;
                 }
+
+                if (gto < 1)
+                    GetTooltipInstance().Appearance.Opacity = GlobalTooltipOpacity;
             } else {
                 var shouldDismissInstantly = (target != null) && IsTooltipActive && 
                     GetTooltipInstance().GetRect(context: this).Contains(LastMousePosition);

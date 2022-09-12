@@ -372,7 +372,8 @@ namespace Squared.Render {
     public class MaterialEffectParameters {
         internal readonly Effect Effect;
         internal readonly Dictionary<string, EffectParameter> Cache = 
-            new Dictionary<string, EffectParameter>(StringComparer.Ordinal);
+            // Higher capacity for faster lookup
+            new Dictionary<string, EffectParameter>(1024, StringComparer.Ordinal);
 
         public readonly EffectParameter ScaleAndPosition, InputAndOutputZRanges;
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;

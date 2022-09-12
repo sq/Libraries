@@ -1378,8 +1378,9 @@ namespace Squared.Render {
         /// <param name="rasterizerState">The new rasterizer state, or null.</param>
         /// <param name="depthStencilState">The new depth/stencil state, or null.</param>
         /// <param name="blendState">The new blend state, or null.</param>
+        /// <param name="clone">Clones the return value and adds it to this material set.</param>
         /// <returns>The material with state(s) applied.</returns>
-        public Material Get (Material baseMaterial, RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null) {
+        public Material Get (Material baseMaterial, RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null, bool clone = false) {
             if (
                 (rasterizerState == null) &&
                 (depthStencilState == null) &&
@@ -1392,6 +1393,10 @@ namespace Squared.Render {
             if (!MaterialDictionary.TryGetValue(key, out result)) {
                 result = baseMaterial.SetStates(blendState: blendState, depthStencilState: depthStencilState, rasterizerState: rasterizerState);
                 MaterialDictionary.Add(key, result);
+            }
+            if (clone) {
+                result = result?.Clone();
+                Add(result);
             }
             return result;
         }

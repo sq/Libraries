@@ -64,7 +64,7 @@ namespace Squared.Render {
             T result = null;
 
             lock (_Pool)
-                _Pool.TryPopFront(out result);
+                _Pool.TryPopBack(out result);
 
             if (result == null)
                 result = AllocateNew();
@@ -201,13 +201,13 @@ namespace Squared.Render {
             ) {
                 if (_LargePool.Count > 0)
                     lock (_LargePool)
-                        _LargePool.TryPopFront(out result);
+                        _LargePool.TryPopBack(out result);
             }
 
             if (capacityIsHint || !isBig || (LargePoolCapacity <= 0)) {
                 if (_Pool.Count > 0)
                     lock (_Pool)
-                        _Pool.TryPopFront(out result);
+                        _Pool.TryPopBack(out result);
             }
 
             if (result == null)
@@ -380,7 +380,7 @@ namespace Squared.Render {
 
             T[] result;
             lock (pool)
-                pool.TryPopFront(out result);
+                pool.TryPopBack(out result);
 
             if (result == null)
                 result = new T[pool.AllocationSize];

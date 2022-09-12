@@ -1020,7 +1020,7 @@ namespace Squared.Render.Convenience {
             ImperativeRenderer result;
             MatrixBox mb;
             lock (ImperativeRendererUtil.MatrixBoxes) {
-                if (!ImperativeRendererUtil.MatrixBoxes.TryPopFront(out mb))
+                if (!ImperativeRendererUtil.MatrixBoxes.TryPopBack(out mb))
                     mb = new MatrixBox();
             }
             mb.Matrix = matrix;
@@ -1147,7 +1147,7 @@ namespace Squared.Render.Convenience {
         public void ChangeModelViewMatrix (ref Matrix m, bool replace = false, int? layer = null) {
             MatrixBox mb;
             lock (ImperativeRendererUtil.MatrixBoxes)
-                if (!ImperativeRendererUtil.MatrixBoxes.TryPopFront(out mb))
+                if (!ImperativeRendererUtil.MatrixBoxes.TryPopBack(out mb))
                     mb = new MatrixBox();
             mb.Matrix = m;
             mb.Replace = replace;

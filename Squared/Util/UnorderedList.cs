@@ -592,6 +592,18 @@ namespace Squared.Util {
             return true;
         }
 
+        public bool TryPopBack (out T result) {
+            if (_Count == 0) {
+                result = default(T);
+                return false;
+            }
+
+            var index = _Count-- - 1;
+            result = _Items[_BufferOffset + index];
+            _Items[index] = default(T);
+            return true;
+        }
+
         public int Count {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {

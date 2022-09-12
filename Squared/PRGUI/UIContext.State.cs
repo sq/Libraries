@@ -37,6 +37,12 @@ namespace Squared.PRGUI {
         private Control _PreferredTooltipSource;
 
         /// <summary>
+        /// This tween's value will be applied to the tooltip so you can conditionally hide it based on application state
+        ///  without actually causing it to go away or having to call HideTooltip repeatedly
+        /// </summary>
+        public Tween<float> GlobalTooltipOpacity = 1f;
+
+        /// <summary>
         /// The control most recently interacted with by the user
         /// </summary>
         public Control FixatedControl => MouseCaptured ?? KeyboardSelection ?? Hovering;

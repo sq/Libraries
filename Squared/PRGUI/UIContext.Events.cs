@@ -597,7 +597,7 @@ namespace Squared.PRGUI {
                 }
                 var mdp = MouseDownPosition ?? mouseDownPosition ?? globalPosition;
                 var travelDistance = (globalPosition - mdp).Length();
-                if (!SpareMouseEventArgs.TryPopFront(out MouseEventArgs result, out _))
+                if (!SpareMouseEventArgs.TryPopBack(out MouseEventArgs result))
                     result = new MouseEventArgs();
                 result.Context = this;
                 result.Now = Now;

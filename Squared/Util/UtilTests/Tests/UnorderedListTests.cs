@@ -125,5 +125,20 @@ namespace Squared.Util {
                 l.ToArray()
             );
         }
+
+        [Test]
+        public void PopFrontAndBack () {
+            var l = new UnorderedList<int>(new int[] { 1, 2, 3, 4, 5 });
+
+            Assert.True(l.TryPopFront(out int i));
+            Assert.AreEqual(1, i);
+            Assert.AreEqual(5, l.DangerousGetItem(0));
+            Assert.True(l.TryPopBack(out i));
+            Assert.AreEqual(4, i);
+            Assert.AreEqual(5, l.DangerousGetItem(0));
+            Assert.True(l.TryPopFrontOrdered(out i));
+            Assert.AreEqual(5, i);
+            Assert.AreEqual(2, l.DangerousGetItem(0));
+        }
     }
 }
