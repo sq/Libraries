@@ -1324,13 +1324,21 @@ namespace Squared.Render {
         }
 
         private void ApplyParamsToMaterial (Material m, FrameParams @params) {
-            m.Parameters?.Time?.SetValue(@params.Seconds);
+            if (m.Parameters == null)
+                return;
+
+            m.Parameters.Time?.SetValue(@params.Seconds);
             if (@params.FrameIndex.HasValue)
-                m.Parameters?.FrameIndex?.SetValue((float)@params.FrameIndex.Value);
+                m.Parameters.FrameIndex?.SetValue((float)@params.FrameIndex.Value);
 
-            m.Parameters?.HalfPixelOffset?.SetValue(!Coordinator.IsOpenGL ? 1f : 0f);
+            m.Parameters.HalfPixelOffset?.SetValue(!Coordinator.IsOpenGL ? 1f : 0f);
 
-            uDithering.TrySet(m, ref @params.DitheringSettings);
+            if (!m.Parameters.DitheringInitialized) {
+                m.Parameters.DitheringInitialized = true;
+                m.Parameters.Dithering = GetUniformBinding(m, this.uDithering);
+            }
+            if (m.Parameters.Dithering != null)
+                m.Parameters.Dithering.Value = @params.DitheringSettings;
         }
 
         internal void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {

@@ -51,6 +51,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ADSR.cs" />
     <Compile Include="Arithmetic.cs" />
     <Compile Include="BitSet.cs" />
     <Compile Include="CoreCLR\BitOperations.cs" />

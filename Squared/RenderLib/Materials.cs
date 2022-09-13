@@ -109,6 +109,9 @@ namespace Squared.Render {
 
             OwningThread = Thread.CurrentThread;
 
+            BeginHandlers = beginHandlers;
+            EndHandlers   = endHandlers;
+
             // FIXME: This should probably never be null.
             if (Effect != null) {
                 Parameters = new MaterialEffectParameters(Effect);
@@ -117,9 +120,6 @@ namespace Squared.Render {
                         TextureParameters.Add(p);
                 }
             }
-
-            BeginHandlers = beginHandlers;
-            EndHandlers   = endHandlers;
         }
 
         public Material WrapWithHandlers (
@@ -385,6 +385,10 @@ namespace Squared.Render {
         public readonly EffectParameter HalfPixelOffset;
         public readonly EffectParameter RenderTargetDimensions;
         public readonly EffectParameter Palette, PaletteSize;
+
+        // Used by DefaultMaterialSet
+        internal bool DitheringInitialized;
+        internal UniformBinding<DitheringSettings> Dithering;
 
         internal readonly EffectParameter BitmapTexture, SecondTexture;
 
