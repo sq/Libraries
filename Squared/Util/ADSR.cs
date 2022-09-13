@@ -107,7 +107,7 @@ namespace Squared.Util {
 
             duration = Math.Max(duration, Attack + Decay);
 
-            double releaseTime = seconds - duration,
+            double releaseTime = seconds - duration + Release,
                 // A normal exponential ADSR ramp slopes up slowly and then slopes down fast
                 attack = ((Attack > 0) && enableAttack) ? Ramp(seconds / Attack, Modes.Attack, Inverse.Attack) : 0,
                 decay = ((Decay > 0) && enableDecay) ? Ramp((seconds - Attack) / Decay, Modes.Decay, Inverse.Decay) : 0,
