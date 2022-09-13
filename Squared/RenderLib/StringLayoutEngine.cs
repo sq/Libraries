@@ -977,6 +977,9 @@ namespace Squared.Render.Text {
                 if (category == UnicodeCategory.OtherPunctuation)
                     isWordWrapPoint = true;
             }
+            // Wrapping and justify expansion should never occur for a non-breaking space
+            if (codepoint == 0x00A0)
+                isWordWrapPoint = false;
 
             if (ch1 == '\n')
                 lineBreak = true;

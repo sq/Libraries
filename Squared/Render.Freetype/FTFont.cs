@@ -254,7 +254,7 @@ namespace Squared.Render.Text {
             const uint FirstDigit = '0', LastDigit = '9';
             private bool NeedNormalization = true;
 
-            private void ApplyWidthNormalization () {
+            private void ApplyWidthNormalization (bool normalizeNumberWidths) {
                 NeedNormalization = false;
                 Color? nullableDefaultColor = null;
                 Color defaultColor;
@@ -274,10 +274,21 @@ namespace Squared.Render.Text {
                 if (maxWidth < 0)
                     return;
 
-                for (uint i = FirstDigit; i <= LastDigit; i++) {
-                    var padding = maxWidth - LowCache[i].WidthIncludingBearing;
-                    LowCache[i].LeftSideBearing += padding / 2f;
-                    LowCache[i].RightSideBearing += padding / 2f;
+                {
+                    // Figure space (specified to be the same size as a number)
+                    PopulateGlyphCache(0x2007, out var figureSpace, null);
+                    var padding = maxWidth - figureSpace.WidthIncludingBearing;
+                    figureSpace.LeftSideBearing += (padding / 2f);
+                    figureSpace.RightSideBearing += (padding / 2f);
+                    Cache[0x2007] = figureSpace;
+                }
+
+                if (normalizeNumberWidths) {
+                    for (uint i = FirstDigit; i <= LastDigit; i++) {
+                        var padding = maxWidth - LowCache[i].WidthIncludingBearing;
+                        LowCache[i].LeftSideBearing += padding / 2f;
+                        LowCache[i].RightSideBearing += padding / 2f;
+                    }
                 }
             }
 
@@ -288,14 +299,15 @@ namespace Squared.Render.Text {
                 }
 
                 if (ch < LowCacheSize) {
-                    if (Font.EqualizeNumberWidths && (ch >= FirstDigit) && (ch <= LastDigit) && NeedNormalization)
-                        ApplyWidthNormalization();
+                    if (NeedNormalization)
+                        ApplyWidthNormalization(Font.EqualizeNumberWidths);
 
                     if (LowCache[ch].Texture.IsInitialized) {
                         glyph = LowCache[ch];
                         return true;
                     }
-                }
+                } else if ((ch == 0x2007) && NeedNormalization)
+                    ApplyWidthNormalization(Font.EqualizeNumberWidths);
 
                 Color? nullableDefaultColor = null;
                 Color defaultColor;
