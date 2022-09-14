@@ -110,7 +110,7 @@ void ShadowedPixelShader (
     texColor = ExtractRgba(texColor, traits);
     shadowColorIn.a = abs(shadowColorIn.a);
 
-    float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias));
+    float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias)).a;
     if (shadowColor.a > 1)
         shadowColor = normalize(shadowColor);
     float4 texColorSRGB = pSRGBToPLinear((texColor * multiplyColor) + (addColor * texColor.a)),

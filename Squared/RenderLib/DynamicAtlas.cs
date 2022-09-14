@@ -118,8 +118,8 @@ namespace Squared.Render {
         private bool _NeedClear, _IsQueued, _NeedRequeue;
         private T[] MipBuffer;
         private int MipLevelCount;
-        private readonly MipGeneratorFn GenerateMip;
         private Rectangle DirtyMipsRegion, DirtyUploadRegion;
+        private MipGeneratorFn GenerateMip;
 
         public DynamicAtlas (
             RenderCoordinator coordinator, int width, int height, SurfaceFormat format, 
@@ -167,6 +167,18 @@ namespace Squared.Render {
             MipLevelCount = Texture.LevelCount;
 
             Invalidate();
+        }
+
+        public MipGeneratorFn MipGenerator {
+            get => GenerateMip;
+            set {
+                if (value == GenerateMip)
+                    return;
+                if (value == null)
+                    throw new NullReferenceException();
+                GenerateMip = value;
+                Invalidate();
+            }
         }
 
         private void EnsureValidResource () {

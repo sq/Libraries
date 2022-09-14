@@ -62,6 +62,22 @@ namespace Squared.Render.Text {
 
             public bool IsDisposed { get; private set; }
 
+            public bool ContainsColorGlyphs {
+                get => _ContainsColorGlyphs;
+                set {
+                    if (_ContainsColorGlyphs == value)
+                        return;
+
+                    _ContainsColorGlyphs = value;
+
+                    foreach (var atlas in Atlases)
+                        if (atlas is DynamicAtlas<Color> dac)
+                            dac.MipGenerator = PickMipGenerator(Font, value);
+                }
+            }
+
+            private bool _ContainsColorGlyphs;
+
             object IGlyphSource.UniqueKey => this;
 
             public FontSize (FreeTypeFont font, float sizePoints) {
@@ -89,7 +105,10 @@ namespace Squared.Render.Text {
 
             internal bool ActualSDF => SDF ?? Font.SDF;
 
-            private unsafe static MipGeneratorFn PickMipGenerator (FreeTypeFont font) {
+            private unsafe static MipGeneratorFn PickMipGenerator (FreeTypeFont font, bool rgba) {
+                if (rgba)
+                    return MipGenerator.Get(MipFormat.pRGBA);
+
                 // TODO: Add a property that controls whether srgb is used. Or is freetype always srgb?
                 return font.sRGB
                     // FIXME: Use a sRGB gamma ramp for this?
@@ -104,6 +123,8 @@ namespace Squared.Render.Text {
                     throw new NullReferenceException("bitmap.Buffer");
 
                 int width = bitmap.Width, rows = bitmap.Rows, pitch = bitmap.Pitch;
+                if (bitmap.PixelMode == PixelMode.Bgra)
+                    ContainsColorGlyphs = true;
 
                 // FIXME: Dynamic
                 int spacing = 4;
@@ -130,7 +151,7 @@ namespace Squared.Render.Text {
                         ) { ClearValue = 1024f })
                         : new DynamicAtlas<Color>(
                             Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight,
-                            surfaceFormat, spacing, Font.MipMapping ? PickMipGenerator(Font) : null, tag: $"{Font.Face.FamilyName} {SizePoints}pt"
+                            surfaceFormat, spacing, Font.MipMapping ? PickMipGenerator(Font, ContainsColorGlyphs) : null, tag: $"{Font.Face.FamilyName} {SizePoints}pt"
                         );
                     Atlases.Add(newAtlas);
                     if (!newAtlas.TryReserve(widthW, heightW, out result))
@@ -163,13 +184,33 @@ namespace Squared.Render.Text {
                         }
                     }
                 } else {
+                    var srgb = (surfaceFormat != SurfaceFormat.Color);
+                    var table = Font.GammaRamp?.GammaTable;
                     fixed (Color* pPixels = result.GetPixels<Color>()) {
+
                         var pDest = (byte*)pPixels;
                         switch (bitmap.PixelMode) {
-                            case PixelMode.Gray:
-                                var table = Font.GammaRamp?.GammaTable;
-                                var srgb = (surfaceFormat != SurfaceFormat.Color);
+                            case PixelMode.Bgra:
+                                for (var y = 0; y < rows; y++) {
+                                    var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                                    var pDestRow = pDest + (rowOffset * 4);
+                                    int yPitch = y * pitch;
 
+                                    // FIXME: Implement gamma table somehow? Because the glyphs are already premultiplied, I'm not sure how
+                                    // FIXME: SRGB
+                                    for (var x = 0; x < width; x++) {
+                                        var ppSrc = pSrc + (x * 4) + yPitch;
+                                    
+                                        pDestRow[3] = ppSrc[3];
+                                        pDestRow[2] = ppSrc[0];
+                                        pDestRow[1] = ppSrc[1];
+                                        pDestRow[0] = ppSrc[2];
+                                        pDestRow += 4;
+                                    }
+                                }
+                                break;
+
+                            case PixelMode.Gray:
                                 for (var y = 0; y < rows; y++) {
                                     var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
                                     var pDestRow = pDest + (rowOffset * 4);
