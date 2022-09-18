@@ -66,6 +66,12 @@ namespace Squared.Render {
                 _AllIsPopulated = true;
             }
         }
+        
+        // FIXME: Move this to a new util type
+        public static Color AdjustBrightness (this Color c, float factor, bool clamp = true, bool issRGB = true) {
+            var pSRGB = new pSRGBColor(c, issRGB);
+            return pSRGB.AdjustBrightness(factor, clamp).ToColor();
+        }
 
         public static KeyValuePair<string, Color>[] All {
             get {
