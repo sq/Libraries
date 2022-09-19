@@ -614,11 +614,15 @@ namespace Squared.Render {
         };
 
         public static readonly DepthStencilState ResetDepthState = new DepthStencilState {
-            Name = "ResetDepthState"
+            Name = "ResetDepthState",
+            DepthBufferEnable = false,
+            StencilEnable = false,
         };
 
         public static readonly RasterizerState ResetRasterizerState = new RasterizerState {
-            Name = "ResetRasterizerState"
+            Name = "ResetRasterizerState",
+            CullMode = CullMode.None,
+            ScissorTestEnable = false
         };
 
         public static readonly SamplerState ResetSamplerState = new SamplerState {
