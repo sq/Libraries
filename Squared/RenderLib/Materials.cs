@@ -45,6 +45,10 @@ namespace Squared.Render {
         /// Default parameter values that will be applied each time you apply this material
         /// </summary>
         public MaterialParameterValues DefaultParameters;
+        /// <summary>
+        /// The default parameters from this other material will be applied first
+        /// </summary>
+        public Material InheritDefaultParametersFrom;
 
         public readonly MaterialEffectParameters Parameters;
 
@@ -144,7 +148,7 @@ namespace Squared.Render {
                 newBeginHandlers, newEndHandlers
             ) {
                 DelegatedHintPipeline = this,
-                DefaultParameters = DefaultParameters
+                InheritDefaultParametersFrom = this
             };
             return result;
         }
@@ -161,8 +165,8 @@ namespace Squared.Render {
             ) {
                 HintPipeline = HintPipeline,
                 OwnsEffect = true,
-                DefaultParameters = DefaultParameters
             };
+            DefaultParameters.CopyTo(ref result.DefaultParameters);
             return result;
         }
 
@@ -222,6 +226,7 @@ namespace Squared.Render {
         public void Flush (DeviceManager deviceManager) {
             deviceManager.ActiveViewTransform?.AutoApply(this);
 
+            InheritDefaultParametersFrom?.DefaultParameters.Apply(this);
             DefaultParameters.Apply(this);
 
             ValidateParameters();
@@ -233,6 +238,7 @@ namespace Squared.Render {
             deviceManager.ActiveViewTransform?.AutoApply(this);
 
             // FIXME: Avoid double-set for cases where there is a default + override, since it's wasteful
+            InheritDefaultParametersFrom?.DefaultParameters.Apply(this);
             DefaultParameters.Apply(this);
             parameters.Apply(this);
 
@@ -779,6 +785,13 @@ namespace Squared.Render {
 
         IEnumerator IEnumerable.GetEnumerator () {
             throw new NotImplementedException();
+        }
+
+        internal void CopyTo (ref MaterialParameterValues rhs) {
+            if (Count == 0)
+                return;
+            foreach (var entry in Entries)
+                rhs.Set(entry);
         }
     }
 }

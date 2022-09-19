@@ -613,6 +613,14 @@ namespace Squared.Render {
             Name = "ResetBlendState"
         };
 
+        public static readonly DepthStencilState ResetDepthState = new DepthStencilState {
+            Name = "ResetDepthState"
+        };
+
+        public static readonly RasterizerState ResetRasterizerState = new RasterizerState {
+            Name = "ResetRasterizerState"
+        };
+
         public static readonly SamplerState ResetSamplerState = new SamplerState {
             Filter = TextureFilter.Point,
             AddressU = TextureAddressMode.Clamp,
@@ -647,8 +655,8 @@ namespace Squared.Render {
             }
 
             device.BlendState = ResetBlendState;
-            device.DepthStencilState = DepthStencilState.None;
-            device.RasterizerState = RasterizerState.CullNone;
+            device.DepthStencilState = ResetDepthState;
+            device.RasterizerState = ResetRasterizerState;
         }
 
         public MemoryStatistics GetMemoryStatistics () {
