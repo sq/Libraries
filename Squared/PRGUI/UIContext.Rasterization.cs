@@ -119,9 +119,8 @@ namespace Squared.PRGUI {
             if (result.UsedRectangles.Count == 0) {
                 using (var group = BatchGroup.ForRenderTarget(prepass, 0, result.Instance, name: "Scratch Prepass")) {
                     result.Renderer = new ImperativeRenderer(group, Materials);
-                    result.Renderer.DepthStencilState = DepthStencilState.None;
                     result.Renderer.BlendState = BlendState.AlphaBlend;
-                    result.Renderer.Clear(-9999, color: Color.Transparent /* FrameColors[FrameIndex % FrameColors.Length] * 0.5f */, stencil: 0);
+                    result.Renderer.Clear(-9999, color: Color.Transparent, z: 0f, /* FrameColors[FrameIndex % FrameColors.Length] * 0.5f */ stencil: 0);
                 }
             }
 
@@ -262,10 +261,9 @@ namespace Squared.PRGUI {
                 context.Prepass = prepassContainer;
                 var renderer = new ImperativeRenderer(container, Materials) {
                     BlendState = BlendState.AlphaBlend,
-                    DepthStencilState = DepthStencilState.None,
                     RasterizerState = RenderStates.ScissorOnly,
                 };
-                renderer.Clear(color: clearColor, stencil: 0, layer: -999);
+                renderer.Clear(color: clearColor, stencil: 0, z: 0f, layer: -999);
                 // FIXME: Modals that don't have background fade will be overlapped by these overlays
                 // The ideal is for those to instead float over the current overlay plane on a new one
                 renderer.MakeSubgroup(out OverlayRenderer, layer: 999);
@@ -323,7 +321,7 @@ namespace Squared.PRGUI {
                     var passSet = new RasterizePassSet(ref renderer, control, 0, OverlayQueue);
                     passSet.Below.DepthStencilState =
                         passSet.Content.DepthStencilState =
-                        passSet.Above.DepthStencilState = DepthStencilState.None;
+                        passSet.Above.DepthStencilState = null;
                     control.Rasterize(ref context, ref passSet, opacityModifier);
                 }
 
@@ -405,7 +403,6 @@ namespace Squared.PRGUI {
             using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget, name: "Final Pass")) {
                 var renderer = new ImperativeRenderer(rtBatch, Materials) {
                     BlendState = BlendState.AlphaBlend,
-                    DepthStencilState = DepthStencilState.None
                 };
                 renderer.Clear(color: Color.Black);
                 renderer.Layer += 1;
@@ -443,7 +440,9 @@ namespace Squared.PRGUI {
                 StencilPass = StencilOperation.Replace,
                 StencilFail = StencilOperation.Keep,
                 ReferenceStencil = targetReferenceStencil,
-                DepthBufferEnable = false
+                DepthBufferEnable = false,
+                DepthBufferWriteEnable = true,
+                DepthBufferFunction = CompareFunction.Always
             };
 
             StencilEraseStates[targetReferenceStencil] = result;
@@ -461,7 +460,9 @@ namespace Squared.PRGUI {
                 StencilPass = StencilOperation.IncrementSaturation,
                 StencilFail = StencilOperation.Keep,
                 ReferenceStencil = previousReferenceStencil,
-                DepthBufferEnable = false
+                DepthBufferEnable = false,
+                DepthBufferWriteEnable = true,
+                DepthBufferFunction = CompareFunction.Always
             };
 
             StencilWriteStates[previousReferenceStencil] = result;
@@ -480,7 +481,9 @@ namespace Squared.PRGUI {
                 StencilFail = StencilOperation.Keep,
                 ReferenceStencil = referenceStencil,
                 StencilWriteMask = 0,
-                DepthBufferEnable = false
+                DepthBufferEnable = false,
+                DepthBufferWriteEnable = true,
+                DepthBufferFunction = CompareFunction.Always
             };
 
             StencilTestStates[referenceStencil] = result;

@@ -19,7 +19,7 @@
 
 // These depth offsets are applied to shadow/outline and then to text respectively so that
 //  by enabling depth testing you can prevent shadows/outlines from covering neighboring glyphs
-uniform const float2 DepthOffsets = float2(-0.05, 0.05);
+uniform const float2 DepthOffsets = float2(0.01, 0.05);
 uniform const float4 GlobalShadowColor;
 uniform const float2 ShadowOffset;
 uniform const float3 OutlineRadiusSoftnessAndPower;
@@ -95,7 +95,7 @@ void ToSRGBPixelShader(
 }
 
 float computeZForShadow (float originalZ, float texZ) {
-    return originalZ + (texZ > (4 / 255)) ? DepthOffsets.y : DepthOffsets.x;
+    return originalZ + (texZ > (63 / 255)) ? DepthOffsets.y : DepthOffsets.x;
 }
 
 void ShadowedPixelShader (
@@ -369,7 +369,7 @@ void DistanceFieldOutlinedPixelShader(
 
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);
-    z = computeZForShadow(originalZ, overSRGB.a);
+    z = computeZForShadow(originalZ, texColor.a);
 }
 
 void BasicPixelShaderWithDiscard (
@@ -408,7 +408,7 @@ void ShadowedPixelShaderWithDiscard (
     );
 
     const float discardThreshold = (1.0 / 255.0);
-    clip(result.a - discardThreshold);
+    // clip(result.a - discardThreshold);
 }
 
 technique BitmapTechnique

@@ -169,7 +169,7 @@ namespace Squared.PRGUI {
             } else {
                 contentRenderer.DepthStencilState =
                     (previousStackDepth <= 0)
-                    ? DepthStencilState.None
+                    ? null
                     : context.UIContext.GetStencilTest(previousStackDepth);
                 childrenPassSet = new RasterizePassSet(ref contentRenderer, this, newStackDepth, passSet.OverlayQueue);
             }

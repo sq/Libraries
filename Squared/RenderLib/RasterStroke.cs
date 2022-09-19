@@ -585,6 +585,7 @@ namespace Squared.Render.RasterStroke {
 
             // manager.Device.SetStringMarkerEXT(this.ToString());
             var device = manager.Device;
+            var sds = new Convenience.SavedDeviceState(device);
 
             // FIXME: Select technique based on this
             bool hasNoise = (Brush.Flow.NoiseFactor != 0) ||
@@ -733,6 +734,7 @@ namespace Squared.Render.RasterStroke {
                 device.VertexTextures[2] = null;
             }
 
+            sds.Restore(device);
             NativeBatch.RecordCommands(_SubBatches.Count);
             hwb.SetInactive();
             cornerHwb.SetInactive();

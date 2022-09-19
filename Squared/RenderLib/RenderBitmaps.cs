@@ -772,6 +772,7 @@ namespace Squared.Render {
                 var totalDraws = 0;
 
                 var cornerHwb = _CornerBuffer.HardwareBuffer;
+                var sds = new Convenience.SavedDeviceState(device);
                 try {
                     cornerHwb.SetActive();
                     cornerHwb.GetBuffers(out cornerVb, out cornerIb);
@@ -873,6 +874,7 @@ namespace Squared.Render {
                     cornerHwb.TrySetInactive();
                     if (previousHardwareBuffer != null)
                         previousHardwareBuffer.TrySetInactive();
+                    sds.Restore(device);
                 }
 
                 _BufferGenerator = null;

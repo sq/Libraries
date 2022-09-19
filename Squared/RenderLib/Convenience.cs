@@ -339,14 +339,39 @@ namespace Squared.Render.Convenience {
         };
     }
 
+    internal struct SavedDeviceState {
+        private bool IsValid;
+        public BlendState SavedBlendState;
+        public DepthStencilState SavedDepthStencilState;
+        public RasterizerState SavedRasterizerState;
+
+        public SavedDeviceState (GraphicsDevice dev) {
+            IsValid = true;
+            SavedBlendState = dev.BlendState;
+            SavedDepthStencilState = dev.DepthStencilState;
+            SavedRasterizerState = dev.RasterizerState;
+        }
+
+        public void Restore (GraphicsDevice dev) {
+            if (!IsValid)
+                return;
+            dev.BlendState = SavedBlendState;
+            dev.DepthStencilState = SavedDepthStencilState;
+            dev.RasterizerState = SavedRasterizerState;
+        }
+    }
+
     public sealed class MaterialStateSet {
         public BlendState BlendState;
         public DepthStencilState DepthStencilState;
         public RasterizerState RasterizerState;
         public SamplerState SamplerState1, SamplerState2, SamplerState3;
 
+        private DenseList<SavedDeviceState> StateStack;
+
         public void Apply (DeviceManager dm) {
             var dev = dm.Device;
+            StateStack.Add(new SavedDeviceState(dev));
             if (BlendState != null)
                 dev.BlendState = BlendState;
             if (DepthStencilState != null)
@@ -359,6 +384,14 @@ namespace Squared.Render.Convenience {
                 dev.SamplerStates[1] = SamplerState2;
             if (SamplerState3 != null)
                 dev.SamplerStates[2] = SamplerState3;
+        }
+
+        public void UnApply (DeviceManager dm) {
+            var dev = dm.Device;
+            var sds = StateStack.LastOrDefault();
+            sds.Restore(dev);
+            if (StateStack.Count > 0)
+                StateStack.RemoveTail(1);
         }
     }
 
@@ -421,21 +454,33 @@ namespace Squared.Render.Convenience {
         ) {
             var mss = new MaterialStateSet();
 
-            var numBeginHandlers = (inner.BeginHandlers != null) ? inner.BeginHandlers.Length + 1 : 1;
+            int numBeginHandlers = (inner.BeginHandlers != null) ? inner.BeginHandlers.Length + 1 : 1,
+                numEndHandlers = (inner.EndHandlers != null) ? inner.EndHandlers.Length + 1 : 1;
             var handlers = new List<Action<DeviceManager>>(numBeginHandlers);
-            if (inner.BeginHandlers != null)
-            foreach (var bh in inner.BeginHandlers) {
-                var bhs = bh.Target as MaterialStateSet;
+            var endHandlers = new List<Action<DeviceManager>>(numEndHandlers);
 
-                if (bhs != null) {
-                    mss.RasterizerState = bhs.RasterizerState ?? mss.RasterizerState;
-                    mss.DepthStencilState = bhs.DepthStencilState ?? mss.DepthStencilState;
-                    mss.BlendState = bhs.BlendState ?? mss.BlendState;
-                    mss.SamplerState1 = bhs.SamplerState1 ?? mss.SamplerState1;
-                    mss.SamplerState2 = bhs.SamplerState2 ?? mss.SamplerState2;
-                    mss.SamplerState3 = bhs.SamplerState3 ?? mss.SamplerState3;
-                } else {
-                    handlers.Add(bh);
+            if (inner.BeginHandlers != null) {
+                foreach (var bh in inner.BeginHandlers) {
+                    var bhs = bh.Target as MaterialStateSet;
+
+                    if (bhs != null) {
+                        mss.RasterizerState = bhs.RasterizerState ?? mss.RasterizerState;
+                        mss.DepthStencilState = bhs.DepthStencilState ?? mss.DepthStencilState;
+                        mss.BlendState = bhs.BlendState ?? mss.BlendState;
+                        mss.SamplerState1 = bhs.SamplerState1 ?? mss.SamplerState1;
+                        mss.SamplerState2 = bhs.SamplerState2 ?? mss.SamplerState2;
+                        mss.SamplerState3 = bhs.SamplerState3 ?? mss.SamplerState3;
+                    } else {
+                        handlers.Add(bh);
+                    }
+                }
+            }
+
+            if (inner.EndHandlers != null) {
+                foreach (var eh in inner.EndHandlers) {
+                    var ehs = eh.Target as MaterialStateSet;
+                    if (ehs == null)
+                        handlers.Insert(0, eh);
                 }
             }
 
@@ -447,13 +492,15 @@ namespace Squared.Render.Convenience {
             mss.SamplerState3 = samplerState3 ?? mss.SamplerState3;
 
             handlers.Add(mss.Apply);
+            endHandlers.Add(mss.UnApply);
 
             var result = new Material(
                 inner.Effect, null,
-                handlers.ToArray(), inner.EndHandlers
+                handlers.ToArray(), endHandlers.ToArray()
             ) {
                 DelegatedHintPipeline = inner,
-                Name = inner.Name
+                Name = inner.Name,
+                InheritDefaultParametersFrom = inner
             };
             return result;
         }

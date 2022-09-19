@@ -100,8 +100,8 @@ namespace Squared.PRGUI {
         /// If the mouse leaves tooltip-bearing controls for this long (in seconds) the tooltip appearance delay will reset
         /// </summary>
         public float TooltipDisappearDelay = 0.233f;
-        public float TooltipFadeDurationFast = 0.1f;
-        public float TooltipFadeDuration = 0.175f;
+        public float TooltipFadeDurationFast = 10.1f;
+        public float TooltipFadeDuration = 10.175f;
 
         /// <summary>
         /// Constrains the size of tooltips. If the tooltip becomes too wide, its content will be wrapped.

@@ -38,6 +38,7 @@ uniform const bool   PremultiplyTexture, TransparentExterior;
 
 uniform const float2 ShadowOffset;
 
+uniform const float2 DepthOffsets = float2(0.01, 0.05);
 uniform const float4 GlobalShadowColor;
 
 sampler TapSampler : register(s0) {
@@ -53,6 +54,10 @@ float computeMip (in float2 texCoordPx) {
     float2 dx = ddx(texCoordPx), dy = ddy(texCoordPx);
     float mag = max(dot(dx, dx), dot(dy, dy));
     return 0.5 * log2(mag);
+}
+
+float computeZForShadow(float originalZ, float texZ) {
+    return originalZ + (texZ > (4 / 255)) ? DepthOffsets.y : DepthOffsets.x;
 }
 
 float tapA(
@@ -233,7 +238,9 @@ void GaussianOutlinedPixelShader(
     in float4 shadowColorIn : COLOR2,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    out float4 result : COLOR0
+    in float originalZ : POSITION1,
+    out float4 result : COLOR0,
+    out float  z : DEPTH0
 ) {
     addColor.rgb *= addColor.a;
     addColor.a = 0;
@@ -285,6 +292,7 @@ void GaussianOutlinedPixelShader(
     if (needPremul)
         overColor.rgb *= overColor.a;
     result = pLinearToPSRGB(over(overColor, 1, pSRGBToPLinear(shadowColor), shadowAlpha * multiplyColor.a));
+    z = computeZForShadow(originalZ, overColor.a);
 
     /*
     // Significantly improves the appearance of colored outlines and/or colored text
@@ -302,12 +310,14 @@ void GaussianOutlinedPixelShaderWithDiscard(
     in float4 outlineColorIn : COLOR2,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    out float4 result : COLOR0
+    in float originalZ : POSITION1,
+    out float4 result : COLOR0,
+    out float  z      : DEPTH0
 ) {
     GaussianOutlinedPixelShader(
         multiplyColor, addColor,
         outlineColorIn, texCoord, texRgn,
-        result
+        originalZ, result, z
     );
 
     const float discardThreshold = (0.5 / 255.0);

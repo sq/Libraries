@@ -835,6 +835,8 @@ namespace Squared.Render.RasterShape {
             var isSrgbRenderTarget = 
                 (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
 
+            var sds = new Convenience.SavedDeviceState(device);
+
             for (int i = 0; i < _SubBatches.Count; i++) {
                 ref var sb = ref _SubBatches.Item(i);
                 var rasterShader = (UseUbershader && sb.Type != RasterShapeType.Polygon) 
@@ -946,6 +948,8 @@ namespace Squared.Render.RasterShape {
                 rasterShader.RasterTexture?.SetValue((Texture2D)null);
                 rasterShader.RampTexture?.SetValue((Texture2D)null);
             }
+
+            sds.Restore(device);
 
             NativeBatch.RecordCommands(_SubBatches.Count);
             hwb.SetInactive();
