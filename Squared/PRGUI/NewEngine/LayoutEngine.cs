@@ -403,19 +403,21 @@ namespace Squared.PRGUI.NewEngine {
 #endif
         }
     
-        public bool HitTest (Vector2 position, out BoxRecord record, out BoxLayoutResult result, bool exhaustive) {
+        public bool DebugHitTest (Vector2 position, out BoxRecord record, out BoxLayoutResult result, bool exhaustive) {
             record = default;
             result = default;
-            return HitTest(in Root(), position, ref record, ref result, exhaustive);
+            // We perform the top level hit test in reverse order so that controls last in the Children list block hit tests
+            //  to children at the front of the list. This matches how it normally works
+            return DebugHitTest(in Root(), position, ref record, ref result, exhaustive, true);
         }
 
-        private bool HitTest (in BoxRecord control, Vector2 position, ref BoxRecord record, ref BoxLayoutResult result, bool exhaustive) {
+        private bool DebugHitTest (in BoxRecord control, Vector2 position, ref BoxRecord record, ref BoxLayoutResult result, bool exhaustive, bool reverse) {
             ref var testResult = ref UnsafeResult(control.Key);
             var inside = testResult.Rect.Contains(position);
 
             if (inside || exhaustive) {
-                foreach (var ckey in Children(control.Key)) {
-                    if (HitTest(in this[ckey], position, ref record, ref result, exhaustive))
+                foreach (var ckey in Children(control.Key, reverse)) {
+                    if (DebugHitTest(in this[ckey], position, ref record, ref result, exhaustive, false))
                         return true;
                 }
             }

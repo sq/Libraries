@@ -15,7 +15,7 @@ namespace Squared.PRGUI.NewEngine {
             // Without this, tooltips will glitch
             // Ideally we would query the parent's position, but the parent may not be laid out yet
             if ((depth == 0) && config.IsFloating)
-                result.Rect.Position = control.FloatingPosition ?? Vector2.Zero;
+                result.Rect.Position = (control.FloatingPosition ?? Vector2.Zero) + control.Margins.TopLeft;
 
             Vector2 contentPosition = result.Rect.Position + new Vector2(control.Padding.Left, control.Padding.Top),
                 contentSpace = result.Rect.Size - control.Padding.Size,
@@ -64,7 +64,7 @@ namespace Squared.PRGUI.NewEngine {
 
                     if (childConfig.IsStackedOrFloating) {
                         if (childConfig.IsFloating) {
-                            childResult.Rect.Position = contentPosition + (child.FloatingPosition ?? Vector2.Zero);
+                            childResult.Rect.Position = contentPosition + (child.FloatingPosition ?? Vector2.Zero) + child.Margins.TopLeft;
                             childResult.AvailableSpace = contentExtent - childResult.Rect.Position - new Vector2(childMargins.Right, childMargins.Bottom);
 
                             // Unless the floating child has an explicit position, we want to align it within the available space we just calculated

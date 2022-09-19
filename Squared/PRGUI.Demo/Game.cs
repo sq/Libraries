@@ -29,7 +29,7 @@ using Squared.Util.Text;
 namespace PRGUI.Demo {
     public class DemoGame : MultithreadedGame {
         static string SavedTreePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "prgui.xml");
-        bool UseSavedTree = false;
+        bool UseSavedTree = true;
         ControlKey? HighlightRecord = null;
 
         // ABXY
@@ -1512,7 +1512,7 @@ namespace PRGUI.Demo {
                     Mouse.PreviousState = Mouse.CurrentState;
                     Mouse.CurrentState = Microsoft.Xna.Framework.Input.Mouse.GetState();
 
-                    if (Context.Engine.HitTest(
+                    if (Context.Engine.DebugHitTest(
                         new Vector2(Mouse.CurrentState.X, Mouse.CurrentState.Y), out var record, out _, Keyboard.CurrentState.IsKeyDown(Keys.E)
                     ) && !record.Parent.IsInvalid)
                         HighlightRecord = record.Key;
@@ -1522,8 +1522,9 @@ namespace PRGUI.Demo {
                     if (HighlightRecord.HasValue) {
                         if ((Mouse.PreviousState.LeftButton == ButtonState.Released) && (Mouse.CurrentState.LeftButton == ButtonState.Pressed)) {
                             ref var item = ref Context.Engine[HighlightRecord.Value];
-                            item.Width.Maximum = item.Width.HasMaximum ? (float?)null : 200;
-                            item.Height.Maximum = item.Height.HasMaximum ? (float?)null : 200;
+                            Console.WriteLine($"Clicked: {HighlightRecord}");
+                            item.Width.Maximum = item.Width.HasMaximum ? (float?)null : 400;
+                            item.Height.Maximum = item.Height.HasMaximum ? (float?)null : 400;
                         } else if ((Mouse.PreviousState.RightButton == ButtonState.Released) && (Mouse.CurrentState.RightButton == ButtonState.Pressed)) {
                             Console.WriteLine($"Deleting {HighlightRecord}");
                             Context.Engine.Remove(HighlightRecord.Value);
