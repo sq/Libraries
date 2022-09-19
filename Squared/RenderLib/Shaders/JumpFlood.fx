@@ -93,7 +93,7 @@ void JumpFloodJumpShader(
 
             float4 n = tex2D(TextureSampler, uv);
 
-            if (sign(n.w) != sign(self.w))
+            if (n.w != self.w)
                 n.xyz = 0;
 
             n.x += x * params.z;

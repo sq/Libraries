@@ -93,19 +93,18 @@ inline float2 ComputeRotatedCorner (
 
 void ScreenSpaceVertexShader (
     in float4 positionAndRotation : POSITION0, // x, y, z, rot
-    in float4 texRgn1             : POSITION1, // x1, y1, x2, y2
-    in float4 texRgn2             : POSITION2, // x1, y1, x2, y2
-    in float4 scaleOrigin         : POSITION3, // scalex, scaley, originx, originy
-    inout float4 multiplyColor    : COLOR0,
-    inout float4 addColor         : COLOR1,
-    inout float4 userData         : COLOR2,
-    in float3 cornerWeights       : NORMAL2,
-    out float2 texCoord1          : TEXCOORD0,
-    out float4 newTexRgn1         : TEXCOORD1,
-    out float2 texCoord2          : TEXCOORD2,
-    out float4 newTexRgn2         : TEXCOORD3,
-    out float4 result             : POSITION0,
-    out float  z                  : POSITION1
+    in float4 texRgn1 : POSITION1, // x1, y1, x2, y2
+    in float4 texRgn2 : POSITION2, // x1, y1, x2, y2
+    in float4 scaleOrigin : POSITION3, // scalex, scaley, originx, originy
+    inout float4 multiplyColor : COLOR0,
+    inout float4 addColor : COLOR1,
+    inout float4 userData : COLOR2,
+    in float3 cornerWeights : NORMAL2,
+    out float2 texCoord1 : TEXCOORD0,
+    out float4 newTexRgn1 : TEXCOORD1,
+    out float2 texCoord2 : TEXCOORD2,
+    out float4 newTexRgn2 : TEXCOORD3,
+    out float4 result : POSITION0
 ) {
     float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerWeights, regionSize);
@@ -115,26 +114,24 @@ void ScreenSpaceVertexShader (
     
     positionAndRotation.xy += rotatedCorner;
 
-    z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
+    float z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
     result = TransformPosition(float4(positionAndRotation.xy, z, 1), true);
-    z = result.z;
 }
 
 void WorldSpaceVertexShader (
     in float4 positionAndRotation : POSITION0, // x, y
-    in float4 texRgn1             : POSITION1, // x1, y1, x2, y2
-    in float4 texRgn2             : POSITION2, // x1, y1, x2, y2
-    in float4 scaleOrigin         : POSITION3, // scalex, scaley, originx, originy
-    inout float4 multiplyColor    : COLOR0,
-    inout float4 addColor         : COLOR1,
-    inout float4 userData         : COLOR2,
-    in float3 cornerWeights       : NORMAL2,
-    out float2 texCoord1          : TEXCOORD0,
-    out float4 newTexRgn1         : TEXCOORD1,
-    out float2 texCoord2          : TEXCOORD2,
-    out float4 newTexRgn2         : TEXCOORD3,
-    out float4 result             : POSITION0,
-    out float  z                  : POSITION1
+    in float4 texRgn1 : POSITION1, // x1, y1, x2, y2
+    in float4 texRgn2 : POSITION2, // x1, y1, x2, y2
+    in float4 scaleOrigin : POSITION3, // scalex, scaley, originx, originy
+    inout float4 multiplyColor : COLOR0,
+    inout float4 addColor : COLOR1,
+    inout float4 userData : COLOR2,
+    in float3 cornerWeights : NORMAL2,
+    out float2 texCoord1 : TEXCOORD0,
+    out float4 newTexRgn1 : TEXCOORD1,
+    out float2 texCoord2 : TEXCOORD2,
+    out float4 newTexRgn2 : TEXCOORD3,
+    out float4 result : POSITION0
 ) {
     float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerWeights, regionSize);
@@ -144,29 +141,27 @@ void WorldSpaceVertexShader (
     
     positionAndRotation.xy += rotatedCorner - GetViewportPosition().xy;
     
-    z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
+    float z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
     result = TransformPosition(float4(positionAndRotation.xy * GetViewportScale().xy, z, 1), true);
-    z = result.z;
 }
 
 void GenericVertexShader (
     in float4 positionAndRotation : POSITION0, // x, y, z, rot
-    in float4 texRgn1             : POSITION1, // x1, y1, x2, y2
-    in float4 texRgn2             : POSITION2, // x1, y1, x2, y2
-    in float4 scaleOrigin         : POSITION3, // scalex, scaley, originx, originy
-    inout float4 multiplyColor    : COLOR0,
-    inout float4 addColor         : COLOR1,
-    inout float4 userData         : COLOR2,
-    in float3 cornerWeights       : NORMAL2,
+    in float4 texRgn1 : POSITION1, // x1, y1, x2, y2
+    in float4 texRgn2 : POSITION2, // x1, y1, x2, y2
+    in float4 scaleOrigin : POSITION3, // scalex, scaley, originx, originy
+    inout float4 multiplyColor : COLOR0,
+    inout float4 addColor : COLOR1,
+    inout float4 userData : COLOR2,
+    in float3 cornerWeights : NORMAL2,
     inout int2 worldSpace : BLENDINDICES1,
-    out float2 texCoord1          : TEXCOORD0,
-    out float4 newTexRgn1         : TEXCOORD1,
-    out float2 texCoord2          : TEXCOORD2,
-    out float4 newTexRgn2         : TEXCOORD3,
-    out float4 result             : POSITION0,
-    out float  z                  : POSITION1,
+    out float2 texCoord1 : TEXCOORD0,
+    out float4 newTexRgn1 : TEXCOORD1,
+    out float2 texCoord2 : TEXCOORD2,
+    out float4 newTexRgn2 : TEXCOORD3,
     // originX, originY, vertexX, vertexY
-    out float4 originalPositionData : TEXCOORD7
+    out float4 originalPositionData : TEXCOORD7,
+    out float4 result : POSITION0
 ) {
     float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerWeights, regionSize);
@@ -182,9 +177,8 @@ void GenericVertexShader (
         adjustedPosition.xy *= GetViewportScale().xy;
     }
     
-    z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
+    float z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
     result = TransformPosition(float4(adjustedPosition, z, 1), true);
-    z = result.z;
 }
 
 float AutoClampAlpha1 (
