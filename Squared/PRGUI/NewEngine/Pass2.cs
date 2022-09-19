@@ -203,6 +203,14 @@ namespace Squared.PRGUI.NewEngine {
                             expandChildY = childConfig.FillColumn && !child.Height.HasFixed;
                         float amountX = countX > 0 ? xSpace / countX : 0, amountY = countY > 0 ? ySpace / countY : 0;
 
+                        // If a control's parent has a size constraint set, it may be too small to hold all of its children,
+                        //  which will produce a negative expansion amount and try to crush the children.
+                        // If the child has preventcrush set, we shouldn't crush it, so we need to set the amount to 0
+                        if ((childConfig.ChildFlags & ContainerFlags.PreventCrush_X) == ContainerFlags.PreventCrush_X)
+                            amountX = Math.Max(0, amountX);
+                        if ((childConfig.ChildFlags & ContainerFlags.PreventCrush_Y) == ContainerFlags.PreventCrush_Y)
+                            amountY = Math.Max(0, amountY);
+
                         if (childConfig.IsStackedOrFloating) {
                             // Floating = Stacked, but don't expand to fill parent
                             // Maybe I should rethink this :)
