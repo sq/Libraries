@@ -17,6 +17,9 @@
 #define OutlineSumDivisor 1.45 // HACK: Make the outline thicker than a normal drop shadow
 #define OutlineExponent 1.5 // HACK: Make the outlines sharper even if the texture edge is soft
 
+// These depth offsets are applied to shadow/outline and then to text respectively so that
+//  by enabling depth testing you can prevent shadows/outlines from covering neighboring glyphs
+uniform const float2 DepthOffsets = float2(-0.05, 0.05);
 uniform const float4 GlobalShadowColor;
 uniform const float2 ShadowOffset;
 uniform const float3 OutlineRadiusSoftnessAndPower;
@@ -91,13 +94,19 @@ void ToSRGBPixelShader(
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
 
+float computeZForShadow (float originalZ, float texZ) {
+    return originalZ + (texZ > (4 / 255)) ? DepthOffsets.y : DepthOffsets.x;
+}
+
 void ShadowedPixelShader (
     in float4 multiplyColor : COLOR0,
     in float4 addColor : COLOR1,
     in float4 shadowColorIn : COLOR2,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    out float4 result : COLOR0
+    in float  originalZ : POSITION1,
+    out float4 result : COLOR0,
+    out float  z : DEPTH0
 ) {
     addColor.rgb *= addColor.a;
     addColor.a = 0;
@@ -117,6 +126,7 @@ void ShadowedPixelShader (
         shadowColorSRGB = pSRGBToPLinear(shadowColor);
     result = texColorSRGB + (shadowColorSRGB * (1 - texColorSRGB.a));
     result = pLinearToPSRGB(result);
+    z = computeZForShadow(originalZ, texColorSRGB.a);
 }
 
 void OutlinedPixelShader(
@@ -125,7 +135,9 @@ void OutlinedPixelShader(
     in float4 shadowColorIn : COLOR2,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    out float4 result : COLOR0
+    in float  originalZ : POSITION1,
+    out float4 result : COLOR0,
+    out float  z : DEPTH0
 ) {
     addColor.rgb *= addColor.a;
     addColor.a = 0;
@@ -161,6 +173,7 @@ void OutlinedPixelShader(
         shadowSRGB = pSRGBToPLinear(shadowColor);
     result = lerp(shadowSRGB, overSRGB, overColor.a);
     result = pLinearToPSRGB(result);
+    z = computeZForShadow(originalZ, overColor.a);
 }
 
 void OutlinedPixelShaderWithDiscard(
@@ -169,12 +182,14 @@ void OutlinedPixelShaderWithDiscard(
     in float4 outlineColorIn : COLOR2,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    out float4 result : COLOR0
+    in float  originalZ : POSITION1,
+    out float4 result : COLOR0,
+    out float  z : DEPTH0
 ) {
     OutlinedPixelShader(
         multiplyColor, addColor,
         outlineColorIn, texCoord, texRgn,
-        result
+        originalZ, result, z
     );
 
     const float discardThreshold = (1.0 / 255.0);
@@ -225,7 +240,9 @@ void DistanceFieldTextPixelShader(
     in float4 shadowColorIn : COLOR2,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    out float4 result : COLOR0
+    in float  originalZ : POSITION1,
+    out float4 result : COLOR0,
+    out float  z      : DEPTH0
 ) {
     addColor.rgb *= addColor.a;
     addColor.a = 0;
@@ -279,8 +296,10 @@ void DistanceFieldTextPixelShader(
         result = over(overSRGB, overSRGB.a * overAlpha, shadowColor, saturate(shadowAlpha * shadowColor.a));
         result.rgb = LinearToSRGB(result.rgb);
         result.rgb *= result.a;
+        z = computeZForShadow(originalZ, overSRGB.a * overAlpha);
     } else {
         result = overColor * overAlpha;
+        z = computeZForShadow(originalZ, overColor * overAlpha);
     }
 
     const float discardThreshold = (1.0 / 255.0);
@@ -295,7 +314,9 @@ void DistanceFieldOutlinedPixelShader(
     in float4 texRgn : TEXCOORD1,
     in float2 texCoord2 : TEXCOORD2,
     in float4 texRgn2 : TEXCOORD3,
-    out float4 result : COLOR0
+    in float  originalZ : POSITION1,
+    out float4 result : COLOR0,
+    out float  z : DEPTH0
 ) {
     addColor.rgb *= addColor.a;
     addColor.a = 0;
@@ -348,6 +369,7 @@ void DistanceFieldOutlinedPixelShader(
 
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);
+    z = computeZForShadow(originalZ, overSRGB.a);
 }
 
 void BasicPixelShaderWithDiscard (
@@ -375,12 +397,14 @@ void ShadowedPixelShaderWithDiscard (
     in float4 shadowColorIn : COLOR2,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    out float4 result : COLOR0
+    in float  originalZ : POSITION1,
+    out float4 result : COLOR0,
+    out float  z : DEPTH0
 ) {
     ShadowedPixelShader(
         multiplyColor, addColor,
         shadowColorIn, texCoord, texRgn,
-        result
+        originalZ, result, z
     );
 
     const float discardThreshold = (1.0 / 255.0);

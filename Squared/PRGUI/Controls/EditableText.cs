@@ -265,7 +265,8 @@ namespace Squared.PRGUI.Controls {
                         result.First = 0;
                     if (result.Second > Builder.Length)
                         result.Second = Builder.Length;
-                }
+                } else
+                    result = default;
                 return result;
             }
         }

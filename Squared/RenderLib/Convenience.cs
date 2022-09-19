@@ -309,6 +309,15 @@ namespace Squared.Render.Convenience {
             DepthBufferEnable = false
         };
 
+        public static readonly DepthStencilState OutlinedTextDepthStencil = new DepthStencilState {
+            Name = "OutlinedTextDepthStencil",
+            DepthBufferEnable = true,
+            DepthBufferWriteEnable = true,
+            // We want to allow pixels with the same depth to draw on top of each other, so that
+            //  antialiasing looks correct - we just want to block pixels of lower depth (outline/shadow pixels)
+            DepthBufferFunction = CompareFunction.GreaterEqual
+        };
+
         /// <summary>
         /// Provides a sampler state appropriate for rendering text. The mip bias is adjusted to preserve sharpness.
         /// </summary>
