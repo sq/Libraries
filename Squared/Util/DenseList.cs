@@ -574,6 +574,37 @@ namespace Squared.Util {
 #endif
         }
 
+        public UnorderedList<T> GetStorage (bool ensureList) {
+            if (ensureList)
+                EnsureList();
+            return _Items;
+        }
+
+        public void UseExistingStorage (UnorderedList<T> storage) {
+            if (storage == null)
+                return;
+            var oldItems = _Items;
+            _Items = storage;
+            storage.Clear();
+            if (oldItems != null)
+                oldItems.CopyTo(storage);
+            else if (_Count >= 4) {
+                storage.Add(Item1);
+                storage.Add(Item2);
+                storage.Add(Item3);
+                storage.Add(Item4);
+            } else if (_Count >= 3) {
+                storage.Add(Item1);
+                storage.Add(Item2);
+                storage.Add(Item3);
+            } else if (_Count >= 2) {
+                storage.Add(Item1);
+                storage.Add(Item2);
+            } else if (_Count >= 1) {
+                storage.Add(Item1);
+            }
+        }
+
         private void Add_Slow (ref T item) {
             EnsureList();
             _Items.Add(ref item);

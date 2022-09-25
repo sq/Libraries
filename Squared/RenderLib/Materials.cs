@@ -513,6 +513,14 @@ namespace Squared.Render {
 
         private bool IsCleared;
         private DenseList<Entry> Entries;
+
+        public object GetListStorage () {
+            return Entries.GetStorage(true);
+        }
+
+        public void UseExistingListStorage (object storage) {
+            Entries.UseExistingStorage((UnorderedList<Entry>)storage);
+        }
         
         public int Count {
             [TargetedPatchingOptOut("")]

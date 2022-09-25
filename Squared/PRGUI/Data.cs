@@ -884,6 +884,10 @@ namespace Squared.PRGUI {
                 Math.Max(Bottom, rhs.Bottom)
             );
         }
+
+        public Vector4 ToVector4 () {
+            return (Vector4)this;
+        }
     }
 
     public struct ControlDimension {
