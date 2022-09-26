@@ -2232,7 +2232,8 @@ namespace Squared.Render.Convenience {
                         Container, actualLayer, Material.Null, 
                         useZBuffer: UseZBuffer, depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
                     );
-                    mmbb.MaterialParameters = Parameters;
+                    mmbb.MaterialParameters.Clear();
+                    Parameters.CopyTo(ref mmbb.MaterialParameters);
                     bb = mmbb;
                 } else {
                     var _bb = BitmapBatch.New(
@@ -2241,7 +2242,8 @@ namespace Squared.Render.Convenience {
                         useZBuffer: UseZBuffer, zBufferOnlySorting: ZBufferOnlySorting, 
                         depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
                     );
-                    _bb.MaterialParameters = Parameters;
+                    _bb.MaterialParameters.Clear();
+                    Parameters.CopyTo(ref _bb.MaterialParameters);
                     if (BitmapBatchInitialCapacity.HasValue)
                         _bb.EnsureCapacity(BitmapBatchInitialCapacity.Value, true);
                     bb = _bb;
@@ -2295,7 +2297,8 @@ namespace Squared.Render.Convenience {
                 }
 
                 var b = GeometryBatch.New(Container, actualLayer, material);
-                b.MaterialParameters = Parameters;
+                b.MaterialParameters.Clear();
+                Parameters.CopyTo(ref b.MaterialParameters);
                 cacheEntry.Batch = b;
                 Cache.InsertAtFront(ref cacheEntry, -1);
             }
@@ -2359,7 +2362,8 @@ namespace Squared.Render.Convenience {
                     batch.DitheringSettings = DitheringSettings.Disable;
                 else
                     batch.DitheringSettings = null;
-                batch.MaterialParameters = Parameters;
+                batch.MaterialParameters.Clear();
+                Parameters.CopyTo(ref batch.MaterialParameters);
                 // FIXME: why the hell
                 batch.UseUbershader = RasterUseUbershader;
                 cacheEntry.Batch = batch;
@@ -2420,7 +2424,8 @@ namespace Squared.Render.Convenience {
                 else
                     batch.DitheringSettings = null;
                 batch.BlendInLinearSpace = RasterBlendInLinearSpace;
-                batch.MaterialParameters = Parameters;
+                batch.MaterialParameters.Clear();
+                Parameters.CopyTo(ref batch.MaterialParameters);
                 cacheEntry.Batch = batch;
                 Cache.InsertAtFront(ref cacheEntry, -1);
             }

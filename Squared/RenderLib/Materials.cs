@@ -505,6 +505,9 @@ namespace Squared.Render {
                         return lhs.PrimitiveValue.V4 == rhs.PrimitiveValue.V4;
                     case EntryValueType.Q:
                         return lhs.PrimitiveValue.Q == rhs.PrimitiveValue.Q;
+                    case EntryValueType.Texture:
+                    case EntryValueType.Array:
+                        return ReferenceEquals(lhs.ReferenceValue, rhs.ReferenceValue);
                     default:
                         throw new ArgumentOutOfRangeException("lhs.ValueType");
                 }
