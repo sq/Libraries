@@ -22,7 +22,7 @@ uniform const float2 ShadowOffset;
 uniform const float3 OutlineRadiusSoftnessAndPower;
 uniform const float3 TextDistanceScaleOffsetAndPower = float3(0.25, 1.0, 1.8);
 uniform const float  ShadowedTopMipBias, ShadowMipBias;
-uniform const bool   PremultiplyTexture;
+uniform const bool   PremultiplyTexture, MultiplyShadowAlpha = true;
 uniform const bool   AutoPremultiplyBlockTextures, TransparentExterior;
 
 float4 AdaptTraits(float4 traits) {
@@ -113,8 +113,10 @@ void ShadowedPixelShader (
     float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias)).a;
     if (shadowColor.a > 1)
         shadowColor = normalize(shadowColor);
-    float4 texColorSRGB = pSRGBToPLinear((texColor * multiplyColor) + (addColor * texColor.a)),
-        shadowColorSRGB = pSRGBToPLinear(shadowColor);
+    float4 texColorSRGB = pSRGBToPLinear((texColor * multiplyColor) + (addColor * texColor.a));
+    if (MultiplyShadowAlpha)
+        shadowColor *= multiplyColor.a;
+    float4 shadowColorSRGB = pSRGBToPLinear(shadowColor);
     result = texColorSRGB + (shadowColorSRGB * (1 - texColorSRGB.a));
     result = pLinearToPSRGB(result);
 }
@@ -155,6 +157,9 @@ void OutlinedPixelShader(
 
     float4 overColor = (texColor * multiplyColor);
     overColor += (addColor * overColor.a);
+
+    if (MultiplyShadowAlpha)
+        shadowColor *= multiplyColor.a;
 
     // Significantly improves the appearance of colored outlines and/or colored text
     float4 overSRGB = pSRGBToPLinear(overColor),

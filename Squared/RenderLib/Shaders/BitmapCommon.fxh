@@ -181,6 +181,7 @@ void GenericVertexShader (
     result = TransformPosition(float4(adjustedPosition, z, 1), true);
 }
 
+// FIXME: region is unused
 float AutoClampAlpha1 (
     in float value, in float2 uv, in float4 region, in float2 halfTexel, in bool active
 ) {
@@ -195,6 +196,7 @@ float AutoClampAlpha1 (
     return value * min(a.x, a.y);
 }
 
+// FIXME: region is unused
 float4 AutoClampAlpha4 (
     in float4 value, in float2 uv, in float4 region, in float2 halfTexel, in bool active
 ) {

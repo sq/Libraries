@@ -11,18 +11,89 @@ namespace Squared.Util {
         Cosine = 2
     }
 
+    public struct ADSRModes {
+        public ADSRRampMode Attack, Decay, Release;
+
+        public ADSRModes (ADSRRampMode mode) {
+            Attack = Decay = Release = mode;
+        }
+
+        public ADSRModes (ADSRRampMode attack, ADSRRampMode decay, ADSRRampMode release) {
+            Attack = attack;
+            Decay = decay;
+            Release = release;
+        }
+
+        public static implicit operator ADSRModes (ADSRRampMode mode) =>
+            new ADSRModes { Attack = mode, Decay = mode, Release = mode };
+
+        public override int GetHashCode () {
+            // FIXME
+            return 0;
+        }
+
+        public bool Equals (ADSRModes rhs) {
+            return (Attack == rhs.Attack) &&
+                (Decay == rhs.Decay) &&
+                (Release == rhs.Release);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is ADSRModes ms)
+                return Equals(ms);
+            else
+                return false;
+        }
+
+        public override string ToString () {
+            if ((Attack == Decay) && (Decay == Release))
+                return $"ADSRModes({Attack})";
+            else
+                return $"ADSRModes(attack={Attack}, decay={Decay}, release={Release})";
+        }
+    }
+
+    public struct ADSRInvert {
+        public bool Value, Attack, Decay, Release;
+
+        public ADSRInvert (bool value, bool attack, bool decay, bool release) {
+            Value = value;
+            Attack = attack;
+            Decay = decay;
+            Release = release;
+        }
+
+        public override int GetHashCode () {
+            // FIXME
+            return 0;
+        }
+
+        public bool Equals (ADSRInvert rhs) {
+            return (Value == rhs.Value) &&
+                (Attack == rhs.Attack) &&
+                (Decay == rhs.Decay) &&
+                (Release == rhs.Release);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is ADSRInvert ifl)
+                return Equals(ifl);
+            else
+                return false;
+        }
+
+        public override string ToString () {
+            var sb = new StringBuilder();
+            sb.Append("ADSRInvert(");
+            sb.Append(Value ? "true, " : "false, ");
+            sb.Append(Attack ? "true, " : "false, ");
+            sb.Append(Decay ? "true, " : "false, ");
+            sb.Append(Release ? "true)" : "false)");
+            return sb.ToString();
+        }
+    }
+
     public struct ADSR {
-        public struct ModeSet {
-            public ADSRRampMode Attack, Decay, Release;
-
-            public static implicit operator ModeSet (ADSRRampMode mode) =>
-                new ModeSet { Attack = mode, Decay = mode, Release = mode };
-        }
-
-        public struct InverseFlags {
-            public bool Value, Attack, Decay, Release;
-        }
-
         /// <summary>
         /// The amount of time the envelope takes to reach 1.0 from 0.0
         /// </summary>
@@ -40,21 +111,21 @@ namespace Squared.Util {
         /// </summary>
         public double Release;
 
-        public ModeSet Modes;
-        public InverseFlags Inverse;
+        public ADSRModes Modes;
+        public ADSRInvert Inverse;
         private double RampExponentMinus2;
 
         public ADSR (
             double attack, double decay, double sustain, double release, 
             ADSRRampMode mode = ADSRRampMode.Linear, double exponent = 2.0,
-            InverseFlags inverse = default
-        ) : this(attack, decay, sustain, release, (ModeSet)mode, exponent, inverse) {
+            ADSRInvert inverse = default
+        ) : this(attack, decay, sustain, release, (ADSRModes)mode, exponent, inverse) {
         }
 
         public ADSR (
             double attack, double decay, double sustain, double release, 
-            ModeSet modes, double exponent = 2.0,
-            InverseFlags inverse = default
+            ADSRModes modes, double exponent = 2.0,
+            ADSRInvert inverse = default
         ) : this() {
             Attack = attack;
             Decay = decay;
@@ -124,7 +195,8 @@ namespace Squared.Util {
             return (Attack == rhs.Attack) &&
                 (Decay == rhs.Decay) &&
                 (Sustain == rhs.Sustain) &&
-                (Release == rhs.Release);
+                (Release == rhs.Release) &&
+                Modes.Equals(rhs.Modes);
         }
 
         public override bool Equals (object obj) {
@@ -140,7 +212,10 @@ namespace Squared.Util {
         }
 
         public override string ToString () {
-            return $"ADSR({Attack}, {Decay}, {Sustain}, {Release})";
+            if (Inverse.Equals(default(ADSRInvert)))
+                return $"ADSR({Attack}, {Decay}, {Sustain}, {Release}, modes={Modes}, exponent={RampExponent})";
+            else
+                return $"ADSR({Attack}, {Decay}, {Sustain}, {Release}, modes={Modes}, exponent={RampExponent}, inverse={Inverse})";
         }
 
         public double GetMinimumDuration (double holdDuration = 0) {

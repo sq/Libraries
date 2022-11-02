@@ -572,7 +572,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private bool OnMouseEvent (string name, MouseEventArgs args) {
+        protected virtual bool OnMouseEvent (string name, MouseEventArgs args) {
             if (ProcessMouseEventForScrollbar(name, args))
                 return true;
 
@@ -694,7 +694,7 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        private bool OnKeyEvent (string name, KeyEventArgs args) {
+        protected virtual bool OnKeyEvent (string name, KeyEventArgs args) {
             if (args.Key != null && UIContext.ModifierKeys.Contains(args.Key.Value))
                 return false;
             if (name != UIEvents.KeyPress)
@@ -762,6 +762,22 @@ namespace Squared.PRGUI.Controls {
 
         public void SelectNone () {
             SetSelectedIndex(-1, true);
+        }
+
+        public void GetSelectedIndices (IList<int> destination) {
+            Manager.GetSelectedIndices(destination);
+        }
+
+        public void GetSelectedIndices (out DenseList<int> result) {
+            Manager.GetSelectedIndices(out result);
+        }
+
+        public IEnumerable<T> SelectedItems {
+            get {
+                GetSelectedIndices(out var indices);
+                foreach (var index in indices)
+                    yield return Items[index];
+            }
         }
 
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {

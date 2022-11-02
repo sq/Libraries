@@ -683,6 +683,10 @@ namespace Squared.PRGUI {
         public static RectF FromPoints (Vector2 position, Vector2 extent) {
             return new RectF(position, extent - position);
         }
+
+        public Vector4 ToVector4 () {
+            return new Vector4(Left, Top, Width, Height);
+        }
     }
 
     [StructLayout(LayoutKind.Explicit)]

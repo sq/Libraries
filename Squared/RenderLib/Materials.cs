@@ -603,6 +603,16 @@ namespace Squared.Render {
             });
         }
 
+        public void Add (string name, float value) {
+            Set(new Entry {
+                Name = name,
+                ValueType = EntryValueType.F,
+                PrimitiveValue = {
+                    F = value
+                }
+            });
+        }
+
         public void Add (string name, Color value) {
             Set(new Entry {
                 Name = name,
@@ -619,16 +629,6 @@ namespace Squared.Render {
                 ValueType = EntryValueType.B,
                 PrimitiveValue = {
                     B = value
-                }
-            });
-        }
-
-        public void Add (string name, float value) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.F,
-                PrimitiveValue = {
-                    F = value
                 }
             });
         }

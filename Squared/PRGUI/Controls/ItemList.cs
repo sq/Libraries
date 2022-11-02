@@ -188,6 +188,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        public DenseList<int> SelectedIndices => _SelectedIndices;
+
         public bool TryExpandOrShrinkSelectionToItem (ref T item, bool fireEvent = true) {
             var newIndex = Items.IndexOf(ref item, Comparer);
             if (newIndex < 0)
@@ -428,6 +430,15 @@ namespace Squared.PRGUI.Controls {
                 return true;
 
             return TrySetSelectedIndex(indexOf, fireEvent);
+        }
+
+        public void GetSelectedIndices (IList<int> destination) {
+            _SelectedIndices.CopyTo(destination);
+        }
+
+        public void GetSelectedIndices (out DenseList<int> result) {
+            result = default;
+            _SelectedIndices.CopyTo(ref result);
         }
     }
 

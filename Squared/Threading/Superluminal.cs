@@ -21,7 +21,7 @@ namespace Squared.Threading.Profiling {
             UncaughtException
         }
 
-        private const int PERFORMANCEAPI_MAJOR_VERSION = 2;
+        private const int PERFORMANCEAPI_MAJOR_VERSION = 3;
         private const int PERFORMANCEAPI_MINOR_VERSION = 0;
         private const int PERFORMANCEAPI_VERSION = ((PERFORMANCEAPI_MAJOR_VERSION << 16) | PERFORMANCEAPI_MINOR_VERSION);
 
@@ -41,6 +41,10 @@ namespace Squared.Threading.Profiling {
 	        public IntPtr pBeginEventWide;
 	        public IntPtr pBeginEventWideN;
 	        public IntPtr pEndEvent;
+            public IntPtr pRegisterFiber;
+            public IntPtr pUnregisterFiber;
+            public IntPtr pBeginFiberSwitch;
+            public IntPtr pEndFiberSwitch;
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
