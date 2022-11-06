@@ -551,7 +551,6 @@ namespace Squared.PRGUI {
             SuppressFocusChangeAnimationsThisStep = false;
             _PreviouslyFocusedForTimestampUpdate = _Focused;
 
-            var previouslyFixated = FixatedControl;
             var previouslyHovering = Hovering;
 
             UpdateCaptureAndHovering(_CurrentInput.CursorPosition);
@@ -686,8 +685,9 @@ namespace Squared.PRGUI {
 
             EnsureValidFocus();
 
-            if (FixatedControl != previouslyFixated)
-                HandleFixationChange(previouslyFixated, FixatedControl);
+            if (FixatedControl != PreviouslyFixated)
+                HandleFixationChange(PreviouslyFixated, FixatedControl);
+            PreviouslyFixated = FixatedControl;
         }
 
         private void TickControl (Control control, Vector2 globalPosition, Vector2? mouseDownPosition) {

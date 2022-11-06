@@ -46,6 +46,9 @@ namespace Squared.PRGUI {
         /// The control most recently interacted with by the user
         /// </summary>
         public Control FixatedControl => MouseCaptured ?? KeyboardSelection ?? Hovering;
+        
+        // We track this across updates so that programmatic focus changes will still fire the fixation change event
+        private Control PreviouslyFixated;
 
         /// <summary>
         /// The control that most recently received a click from the user
