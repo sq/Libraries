@@ -271,8 +271,7 @@ namespace Squared.Render.RasterStroke {
             }
         }
 
-        public RasterBrush (Texture2D atlas, float sizePx, float spacing = DefaultSpacing, int countX = 1, int countY = 1) {
-            this = default;
+        public RasterBrush (Texture2D atlas, float sizePx, float spacing = DefaultSpacing, int countX = 1, int countY = 1) : this() {
             NozzleAtlas = atlas;
             NozzleCountX = countX;
             NozzleCountY = countY;

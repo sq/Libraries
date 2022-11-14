@@ -1363,15 +1363,13 @@ namespace Squared.Render.Text {
         public string Name;
         public float XOffset, YOffset, RightMargin, LeftMargin;
 
-        public AtlasGlyph (uint character, int index, string name = null) {
-            this = default;
+        public AtlasGlyph (uint character, int index, string name = null) : this() {
             Character = character;
             Index = index;
             Name = name;
         }
 
-        public AtlasGlyph (uint character, int x, int y, string name = null) {
-            this = default;
+        public AtlasGlyph (uint character, int x, int y, string name = null) : this() {
             Character = character;
             X = x;
             Y = y;

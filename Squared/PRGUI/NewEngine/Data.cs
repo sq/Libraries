@@ -94,9 +94,7 @@ namespace Squared.PRGUI.NewEngine {
         [Unserialized]
         internal BoxFlag _BoxFlags;
 
-        public ControlConfiguration (ControlFlags value) {
-            this = default;
-
+        public ControlConfiguration (ControlFlags value) : this() {
             {
                 bool aend = value.IsFlagged(ControlFlags.Container_Align_End),
                     astart = value.IsFlagged(ControlFlags.Container_Align_Start),

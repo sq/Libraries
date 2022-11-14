@@ -55,8 +55,11 @@ namespace Squared.PRGUI.Input {
                 Modifiers.Format(output);
                 if (output.Length > length)
                     output.Append("+");
-                // FIXME: Enum.ToString allocates for some reason
-                output.Append(Key.ToString());
+                if ((Key >= Keys.D0) && (Key <= Keys.D9))
+                    output.Append(Key - Keys.D0);
+                else
+                    // FIXME: Enum.ToString allocates for some reason
+                    output.Append(Key.ToString());
             }
 
             if (splitPosition.HasValue)
