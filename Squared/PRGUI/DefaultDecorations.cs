@@ -1364,11 +1364,12 @@ namespace Squared.PRGUI {
                 radius = TooltipCornerRadius ?? FloatingContainerCornerRadius ?? ContainerCornerRadius;
             // For any corners that are aligned with our anchor (if we have one), we make that corner
             //  sharp instead of rounded to subtly convey what this menu is attached to
+            var alwaysRounded = settings.HasTrait("always-rounded");
             var radiusCw = new Vector4(
-                settings.HasTrait("aligned-tl") ? 0f : radius,
-                settings.HasTrait("aligned-tr") ? 0f : radius,
-                settings.HasTrait("aligned-br") ? 0f : radius,
-                settings.HasTrait("aligned-bl") ? 0f : radius
+                !alwaysRounded && settings.HasTrait("aligned-tl") ? 0f : radius,
+                !alwaysRounded && settings.HasTrait("aligned-tr") ? 0f : radius,
+                !alwaysRounded && settings.HasTrait("aligned-br") ? 0f : radius,
+                !alwaysRounded && settings.HasTrait("aligned-bl") ? 0f : radius
             );
             color2.W = 1;
             renderer.RasterizeRectangle(

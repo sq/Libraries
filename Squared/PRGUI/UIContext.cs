@@ -496,6 +496,7 @@ namespace Squared.PRGUI {
             UnhandledEvents.Clear();
 
             var queuedFocus = QueuedFocus;
+            Control queuedFocusResult = null;
             var activeModal = ActiveModal;
 
             if (queuedFocus.value != null) {
@@ -504,7 +505,11 @@ namespace Squared.PRGUI {
                     // Attempting to set focus to something outside of a modal can cause it to close
                     Control.IsEqualOrAncestor(queuedFocus.value, (Control)activeModal)
                 ) {
-                    if (TrySetFocus(queuedFocus.value, queuedFocus.force, queuedFocus.isUserInitiated, queuedFocus.suppressAnimations))
+                    var oldFocus = Focused;
+                    var queuedOk = TrySetFocus(queuedFocus.value, queuedFocus.force, queuedFocus.isUserInitiated, queuedFocus.suppressAnimations);
+                    queuedFocusResult = Focused;
+                    // TrySetFocus may have failed but changed the current focus. Treat that as equivalent and clear the queued focus.
+                    if (queuedOk || (queuedFocusResult != oldFocus))
                         QueuedFocus = default;
                 }
             }
@@ -533,7 +538,7 @@ namespace Squared.PRGUI {
             // Detect that while we successfully applied queued focus, it was reset somehow, and queue it again
             if (
                 (queuedFocus.value != null) && (QueuedFocus.value == null) &&
-                (Focused != queuedFocus.value)
+                ((Focused != queuedFocus.value) && (Focused != queuedFocusResult))
             ) {
                 // FIXME: This shouldn't really happen
                 QueuedFocus = queuedFocus;
