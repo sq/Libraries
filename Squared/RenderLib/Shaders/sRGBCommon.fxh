@@ -127,7 +127,7 @@ float4 OkLabToPSRGB (float4 oklab) {
         return 0;
     float3 rgb = OkLabToLinearSRGB(oklab.rgb);
     float3 srgb = LinearToSRGB(rgb);
-    float4 pSrgb = float4(srgb * oklab.a, oklab.a);
+    return float4(srgb * oklab.a, oklab.a);
 }
 
 // end oklab

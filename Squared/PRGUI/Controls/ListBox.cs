@@ -249,6 +249,8 @@ namespace Squared.PRGUI.Controls {
                     ? FormatValue(value)
                     : value.ToString();
             st.Appearance = DefaultChildAppearance;
+            if ((st.Appearance.GlyphSourceProvider == null) && (Appearance.GlyphSourceProvider != null))
+                st.Appearance.GlyphSourceProvider = Appearance.GlyphSourceProvider;
             st.Text = text;
             st.Wrap = false;
             st.Multiline = false;

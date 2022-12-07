@@ -124,7 +124,9 @@ namespace Squared.PRGUI.Imperative {
                 foundWhere = i;
             }
 
+            bool isNew;
             if ((foundWhere == NextIndex) && (instance != null)) {
+                isNew = false;
                 instance.Data.Set<TData>(key, data);
                 NextIndex++;
             } else {
@@ -145,9 +147,10 @@ namespace Squared.PRGUI.Imperative {
                 ApplyAppearance(instance);
                 ApplyLayoutFlags(instance, null);
                 AddInternal(instance);
+                isNew = true;
             }
 
-            return new ControlBuilder<TControl>(instance);
+            return new ControlBuilder<TControl>(instance, isNew);
         }
 
         public ControlBuilder<StaticText> Label (AbstractString text, AbstractTooltipContent tooltip = default, ControlFlags? layoutFlags = null) {
@@ -226,14 +229,17 @@ namespace Squared.PRGUI.Imperative {
             if (instance?.GetType() != typeof(TControl))
                 instance = null;
 
-            if (instance == null)
+            bool isNew = false;
+            if (instance == null) {
                 instance = new TControl();
+                isNew = true;
+            }
 
             ApplyAppearance(instance);
             ApplyLayoutFlags(instance, layoutFlags);
             AddInternal(instance);
 
-            var result = new ControlBuilder<TControl>(instance);
+            var result = new ControlBuilder<TControl>(instance, isNew);
             if (tooltip != default)
                 result.SetTooltip(tooltip);
             return result;
@@ -324,7 +330,7 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<Control> Properties {
-            get => new ControlBuilder<Control>(Control);
+            get => new ControlBuilder<Control>(Control, IsNewInstance);
         }
 
         public bool GetEvent<TSource> (string eventName, out TSource source)
@@ -349,19 +355,26 @@ namespace Squared.PRGUI.Imperative {
         public static ControlBuilder<TControl> New<TControl> (TControl instance = null) 
             where TControl : Control, new()
         {
-            return new ControlBuilder<TControl>(instance ?? new TControl());
+            bool isNew = false;
+            if (instance == null) {
+                isNew = true;
+                instance = new TControl();
+            }
+            return new ControlBuilder<TControl>(instance, isNew);
         }
     }
 
     public struct ControlBuilder<TControl>
         where TControl : Control {
 
+        public bool IsNew { get; internal set; }
         public TControl Control { get; internal set; }
         UIContext Context => Control.Context;
 
-        public ControlBuilder (TControl control) {
+        public ControlBuilder (TControl control, bool isNew) {
             if (control == null)
                 throw new ArgumentNullException("control");
+            IsNew = isNew;
             Control = control;
         }
 

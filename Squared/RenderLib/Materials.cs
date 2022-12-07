@@ -446,6 +446,9 @@ namespace Squared.Render {
     }
 
     public struct MaterialParameterValues : IEnumerable<KeyValuePair<string, object>> {
+        // TODO: Store Texture and Array separately so we can fit more values more efficiently,
+        //  since it's common to have a few textures + a few uniforms
+
         internal enum EntryValueType : int {
             None,
             Texture,
