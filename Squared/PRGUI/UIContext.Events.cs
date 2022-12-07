@@ -621,6 +621,7 @@ namespace Squared.PRGUI {
                 result.SequentialClickCount = (target == PreviousClickTarget)
                     ? SequentialClickCount
                     : 0;
+                result.IsSynthetic = false;
                 var doubleClicking = IsInDoubleClickWindow(target, globalPosition) && result.SequentialClickCount == 2;
                 if (!forClick)
                     doubleClicking = doubleClicking && (MouseCaptured != null);
