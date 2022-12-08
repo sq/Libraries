@@ -330,23 +330,26 @@ namespace Squared.Render.Text {
             // HACK: If a marker is inside of the wrapped word or around it, we need to adjust the marker to account
             //  for the fact that its anchoring characters have just moved
             for (int i = 0; i < Markers.Count; i++) {
-                var m = Markers[i];
-                Bounds oldBounds = m.Bounds.LastOrDefault(),
-                    newBounds = oldBounds.Translate(adjustment);
-
-                newBounds.TopLeft.X = (position?.X ?? 0) + xOffset;
-                newBounds.TopLeft.Y = Math.Max(newBounds.TopLeft.Y, newBounds.BottomRight.Y - currentLineSpacing);
+                ref var m = ref Markers.Item(i);
 
                 if ((m.FirstDrawCallIndex == null) || (m.FirstDrawCallIndex > lastGlyphIndex))
                     continue;
                 if (m.LastDrawCallIndex < firstGlyphIndex)
                     continue;
-                if (m.Bounds.Count < 1)
-                    continue;
 
-                m.Bounds[m.Bounds.Count - 1] = newBounds;
+                for (int j = 0; j < m.Bounds.Count; j++) {
+                    var oldBounds = m.Bounds[j];
 
-                Markers[i] = m;
+                    if (oldBounds.TopLeft.X < firstOffset.X)
+                        continue;
+
+                    var newBounds = oldBounds.Translate(adjustment);
+
+                    newBounds.TopLeft.X = (position?.X ?? 0) + xOffset;
+                    newBounds.TopLeft.Y = Math.Max(newBounds.TopLeft.Y, newBounds.BottomRight.Y - currentLineSpacing);
+
+                    m.Bounds[j] = newBounds;
+                }
             }
         }
 
