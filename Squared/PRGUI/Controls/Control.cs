@@ -100,12 +100,12 @@ namespace Squared.PRGUI {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected ref BoxRecord Record (ref UIOperationContext context) => ref context.UIContext.Engine[LayoutKey];
+        protected ref BoxRecord Record (ref UIOperationContext context) => ref context.UIContext.Engine.UnsafeItem(LayoutKey);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected ref BoxLayoutResult LayoutResult (ref UIOperationContext context) => ref context.UIContext.Engine.Result(LayoutKey);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected ref BoxRecord Record (UIContext context) => ref context.Engine[LayoutKey];
+        protected ref BoxRecord Record (UIContext context) => ref context.Engine.UnsafeItem(LayoutKey);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected ref BoxLayoutResult LayoutResult (UIContext context) => ref context.Engine.Result(LayoutKey);
 

@@ -106,11 +106,10 @@ namespace Squared.PRGUI.NewEngine {
         public ref BoxRecord this [ControlKey key] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                // FIXME: Because we are sharing IDs
+                // FIXME: A lot of code assumes it can safely touch invalid indices
+                // That's probably OK though.
                 // if (key.ID < 0 || key.ID >= _Count)
-                if ((key.ID < 0) || (key.ID >= Records.Length))
-                    ThrowKeyOutOfRange();
-                // return ref Records[key.ID];
+                //    ThrowKeyOutOfRange();
                 return ref UnsafeItem(key.ID);
             }
         }
@@ -119,7 +118,7 @@ namespace Squared.PRGUI.NewEngine {
         /// Returns a reference to the item (or an invalid dummy item)
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref BoxRecord UnsafeItem (ControlKey key) => ref UnsafeItem(key.ID);
+        internal ref BoxRecord UnsafeItem (ControlKey key) => ref UnsafeItem(key.ID);
 
         /// <summary>
         /// Returns a reference to the item (or an invalid dummy item)
@@ -127,10 +126,10 @@ namespace Squared.PRGUI.NewEngine {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref BoxRecord UnsafeItem (int index) {
             // FIXME: Because we are sharing IDs
-            // if ((index < 0) || (index >= _Count))
-            if ((index < 0) || (index >= Records.Length))
+            if ((index < 0) || (index >= _Count)) {
+                Invalid = default;
                 return ref Invalid;
-            else {
+            } else {
                 ref var result = ref Records[index];
                 // HACK
                 result._Key = index;
@@ -160,8 +159,7 @@ namespace Squared.PRGUI.NewEngine {
         public ref BoxRecord GetOrCreate (ControlKey? existingKey, Layout.LayoutTags tag = default, ControlFlags flags = default) {
             var index = existingKey?.ID ?? -1;
             // FIXME
-            // if ((index < 0) || (index >= _Count))
-            if ((index < 0) || (index >= Records.Length))
+            if ((index < 0) || (index >= _Count))
                 return ref Create(tag, flags);
 
             ref var result = ref Records[index];
@@ -386,7 +384,7 @@ namespace Squared.PRGUI.NewEngine {
             var serializer = new XmlSerializer(typeof(BoxRecord[]));
             using (var stream = File.OpenRead(filename)) {
                 var temp = (BoxRecord[])serializer.Deserialize(stream);
-                Array.Clear(Records, 0, Records.Length);
+                Array.Clear(Records, 0, _Count);
                 Array.Copy(temp, Records, temp.Length);
                 _Count = temp.Length;
             }

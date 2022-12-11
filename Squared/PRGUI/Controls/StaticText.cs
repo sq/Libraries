@@ -479,6 +479,8 @@ namespace Squared.PRGUI.Controls {
             UpdateLineBreak(ref context, decorations, null, ref computedPadding, ref computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            if (result.IsInvalid)
+                return result;
             Record(ref context).Tag = LayoutTags.Text;
 
             // HACK: Ensure that we report all the textures we use even if we're not currently being rasterized
