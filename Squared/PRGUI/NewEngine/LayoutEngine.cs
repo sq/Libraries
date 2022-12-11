@@ -290,7 +290,7 @@ namespace Squared.PRGUI.NewEngine {
                 pPreviousSibling._NextSibling = pNewItem.Key;
 
             if (pParent.FirstChild == later)
-                pParent.FirstChild = newSibling;
+                pParent._FirstChild = newSibling;
 
             pLater._PreviousSibling = pNewItem.Key;
         }
