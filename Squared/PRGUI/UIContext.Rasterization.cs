@@ -239,9 +239,8 @@ namespace Squared.PRGUI {
                     if (modal.BackgroundFadeLevel > 0f) {
                         maxFadeLevel = Math.Max(maxFadeLevel, modal.BackgroundFadeLevel);
                         if (!WasBackgroundFaded) {
-                            BackgroundFadeTween = Tween.StartNow(
-                                BackgroundFadeTween.Get(NowL), 1f,
-                                seconds: BackgroundFadeDuration * (Animations?.AnimationDurationMultiplier ?? 1), now: NowL
+                            BackgroundFadeTween = BackgroundFadeTween.ChangeDirection(
+                                1f, NowL, BackgroundFadeDuration * (Animations?.AnimationDurationMultiplier ?? 1)
                             );
                         }
 
@@ -251,7 +250,9 @@ namespace Squared.PRGUI {
                 }
 
                 if (fadeBackgroundAtIndex < 0 && WasBackgroundFaded) {
-                    BackgroundFadeTween = new Tween<float>(0f);
+                    BackgroundFadeTween = BackgroundFadeTween.ChangeDirection(
+                        0f, NowL, BackgroundFadeDuration * (Animations?.AnimationDurationMultiplier ?? 1) * 0.5f
+                    );
                     WasBackgroundFaded = false;
                 }
 
