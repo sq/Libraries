@@ -206,5 +206,18 @@ namespace Squared.Render {
             lock (DistanceFields)
                 DistanceFields.Add(texture, distanceField);
         }
+
+        public override void AddAllInstancesTo<U> (ICollection<U> result) {
+            base.AddAllInstancesTo(result);
+
+            lock (Cache)
+            foreach (var entry in Cache.Values) {
+                if (!entry.Future.CompletedSuccessfully)
+                    continue;
+                var df = GetDistanceField(entry.Future.Result);
+                if (df != null)
+                    result.Add((U)df);
+            }
+        }
     }
 }

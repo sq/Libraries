@@ -497,7 +497,7 @@ namespace Squared.Render.Resources {
             return LoadSync(name, DefaultOptions, cached, optional);
         }
 
-        public void AddAllInstancesTo<U> (ICollection<U> result)
+        public virtual void AddAllInstancesTo<U> (ICollection<U> result)
             where U : T
         {
             lock (Cache)

@@ -668,6 +668,11 @@ namespace Squared.Util {
             var toRemove = Count - newItems.Count;
             if (toRemove > 0)
                 RemoveRange(newItems.Count, toRemove);
+
+#if DEBUG
+            if (Count != newItems.Count)
+                throw new Exception();
+#endif
         }
 
         [TargetedPatchingOptOut("")]
