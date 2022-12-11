@@ -866,6 +866,9 @@ namespace Squared.PRGUI.Controls {
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) => FormatValueInto(sb);
 
         protected virtual void OnLayoutComplete( ref UIOperationContext context, ref bool relayoutRequested) {
+            if (LayoutKey.IsInvalid)
+                return;
+
             if (ChangeInternalFlag(StaticTextStateFlags.NeedRelayout, false))
                 relayoutRequested = true;
 
