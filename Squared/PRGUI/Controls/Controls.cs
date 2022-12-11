@@ -28,7 +28,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
-            context.Engine[result].Tag = LayoutTags.Spacer;
+            Record(ref context).Tag = LayoutTags.Spacer;
             return result;
         }
 

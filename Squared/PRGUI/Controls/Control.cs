@@ -792,6 +792,7 @@ namespace Squared.PRGUI {
 #endif
 
             ref var result = ref context.Engine.GetOrCreate(existingKey);
+            LayoutKey = result;
 
             var decorationProvider = context.DecorationProvider;
             var decorations = GetDecorator(decorationProvider, context.DefaultDecorator);

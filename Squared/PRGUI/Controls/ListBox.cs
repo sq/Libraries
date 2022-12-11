@@ -383,7 +383,7 @@ namespace Squared.PRGUI.Controls {
             if (result.IsInvalid)
                 return result;
 
-            ref var record = ref Context.Engine[result];
+            ref var record = ref Record(ref context);
             record.Tag = LayoutTags.ListBox;
 
             var rowMode = (ContainerFlags & ControlFlags.Container_Column) != ControlFlags.Container_Column;

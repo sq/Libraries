@@ -280,19 +280,19 @@ namespace Squared.PRGUI.NewEngine {
             AssertNotEqual(later, newSibling);
 
             ref var pLater = ref this[later];
+            ref var pParent = ref this[pLater.Parent];
             ref var pNewItem = ref this[newSibling];
             ref var pPreviousSibling = ref UnsafeItem(pLater.PreviousSibling);
 
-            if (pPreviousSibling.IsValid)
-                pNewItem._NextSibling = pPreviousSibling.NextSibling;
-            else
-                pNewItem._NextSibling = ControlKey.Invalid;
-
+            pNewItem._NextSibling = later;
             pNewItem._Parent = pLater.Parent;
             pNewItem._PreviousSibling = pLater.PreviousSibling;
 
             if (pPreviousSibling.IsValid)
                 pPreviousSibling._NextSibling = pNewItem.Key;
+
+            if (pParent.FirstChild == later)
+                pParent.FirstChild = newSibling;
 
             pLater._PreviousSibling = pNewItem.Key;
         }

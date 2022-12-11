@@ -221,7 +221,7 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            ref var rec = ref context.Engine[result];
+            ref var rec = ref Record(ref context);
             rec.Tag = LayoutTags.TabContainer;
             var constrainSize = (Container.ConstrainSize || ContainerFlags.IsFlagged(ControlFlags.Container_Constrain_Size));
             var containerFlags = ContainerFlags | ExtraContainerFlags;

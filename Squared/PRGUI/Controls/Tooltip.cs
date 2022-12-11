@@ -53,7 +53,7 @@ namespace Squared.PRGUI.Controls {
             var decorator = GetDefaultDecorator(context.DecorationProvider);
             Aligner.ExtraMargins = decorator.Margins;
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
-            context.Engine[result].Tag = LayoutTags.Tooltip;
+            Record(ref context).Tag = LayoutTags.Tooltip;
             return result;
         }
 
