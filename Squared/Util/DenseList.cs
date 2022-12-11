@@ -537,6 +537,39 @@ namespace Squared.Util {
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe void ClearItem (int index) {
+            var items = _Items;
+            if (items != null) {
+                items.DangerousClearItem(index);
+                return;
+            }
+
+            if ((index < 0) || (index >= _Count))
+                EnumerableExtensions.BoundsCheckFailed();
+
+#if !NOSPAN
+            Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index)) = default;
+#else
+            switch (index) {
+                default:
+                case 0:
+                    Item1 = default;
+                    return;
+                case 1:
+                    Item2 = default;
+                    return;
+                case 2:
+                    Item3 = default;
+                    return;
+                case 3:
+                    Item4 = default;
+                    return;
+            }
+#endif
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetItem (int index, T value) {
             SetItem(index, ref value);
         }
@@ -621,6 +654,20 @@ namespace Squared.Util {
 
             var count = list._Count++;
             list.SetItem(count, ref item);
+        }
+
+        public void ReplaceWith (ref DenseList<T> newItems) {
+            var count = Count;
+            for (int i = 0, c = newItems.Count; i < c; i++) {
+                ref var item = ref newItems.Item(i);
+                if (i >= count)
+                    Add(ref item);
+                else
+                    SetItem(i, ref item);
+            }
+            var toRemove = Count - newItems.Count;
+            if (toRemove > 0)
+                RemoveRange(newItems.Count, toRemove);
         }
 
         [TargetedPatchingOptOut("")]
@@ -795,9 +842,12 @@ namespace Squared.Util {
         }
 
         public void RemoveRange (int index, int count) {
-            // FIXME: Slow
-            EnsureList();
-            _Items.DangerousRemoveRange(index, count);
+            if (HasList) {
+                _Items.DangerousRemoveRange(index, count);
+            } else {
+                for (int i = index + count - 1; i >= index; i--)
+                    RemoveAt(i);
+            }
         }
 
         public void RemoveTail (int count) {

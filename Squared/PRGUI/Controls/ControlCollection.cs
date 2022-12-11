@@ -164,6 +164,7 @@ namespace Squared.PRGUI {
                 return;
 
             if (IndexTable.TryGetValue(control, out int deleteAtIndex)) {
+                InvalidateOrderedItems();
                 if (Items[deleteAtIndex] != control)
                     throw new Exception("Corrupt internal state");
                 Items.RemoveAt(deleteAtIndex);
@@ -177,6 +178,7 @@ namespace Squared.PRGUI {
 
         public void RemoveAt (int index) {
             var control = Items[index];
+            InvalidateOrderedItems();
             FireControlRemoveEvents(control);
             Items.RemoveAt(index);
             IndexTable.Remove(control);
@@ -192,12 +194,18 @@ namespace Squared.PRGUI {
             return result;
         }
 
+        private void InvalidateOrderedItems () {
+            TabOrderLastValidFrame = -1;
+            PaintOrderLastValidFrame = -1;
+        }
+
         public void Clear () {
             IndexTable.Clear();
 
             foreach (var control in Items)
                 FireControlRemoveEvents(control);
 
+            InvalidateOrderedItems();
             Items.Clear();
             Invalidate();
         }
@@ -243,7 +251,12 @@ namespace Squared.PRGUI {
                 Min = (Items.Count > 0) ? int.MaxValue : 0,
                 Max = (Items.Count > 0) ? int.MinValue : 0
             };
-            targetList.Clear();
+            // This can cause a leak of removed controls, but since we set lastValid to -1 on remove,
+            //  it should usually not leak
+            if (lastValidFrame < 0)
+                targetList.Clear();
+            else
+                targetList.UnsafeFastClear();
             targetList.EnsureCapacity(Items.Count);
             lastValidFrame = currentFrame;
             return true;

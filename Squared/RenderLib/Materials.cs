@@ -585,6 +585,11 @@ namespace Squared.Render {
             IsCleared = false;
         }
 
+        public void ReplaceWith (ref MaterialParameterValues values) {
+            IsCleared = false;
+            Entries.ReplaceWith(ref values.Entries);
+        }
+
         private void Set (ref Entry entry) {
             AutoClear();
             var index = Find(entry.Name);

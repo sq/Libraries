@@ -494,6 +494,15 @@ namespace Squared.Util {
             _Items[_BufferOffset + index] = newValue;
         }
 
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void DangerousClearItem (int index) {
+            if ((index < 0) || (index >= _Count))
+                BoundsCheckFailed();
+
+            _Items[_BufferOffset + index] = default;
+        }
+
         /// <summary>
         /// WARNING: This will not preserve the order of the array! If you want that, use the Ordered version
         /// </summary>
