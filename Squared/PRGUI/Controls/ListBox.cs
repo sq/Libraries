@@ -383,13 +383,13 @@ namespace Squared.PRGUI.Controls {
             if (result.IsInvalid)
                 return result;
 
-            context.Layout.SetTag(result, LayoutTags.ListBox);
+            ref var record = ref Context.Engine[result];
+            record.Tag = LayoutTags.ListBox;
 
             var rowMode = (ContainerFlags & ControlFlags.Container_Column) != ControlFlags.Container_Column;
             if (!existingKey.HasValue && rowMode) {
-                var expandSpacer = context.Layout.CreateItem(LayoutTags.Spacer);
-                context.Layout.SetLayoutFlags(expandSpacer, ControlFlags.Layout_ForceBreak | ControlFlags.Layout_Fill);
-                context.Layout.Append(result, expandSpacer);
+                ref var expandSpacer = ref context.Engine.Create(LayoutTags.Spacer, parent: result);
+                expandSpacer.OldFlags = ControlFlags.Layout_ForceBreak | ControlFlags.Layout_Fill;
             }
 
             var hasPushedDecorator = false;
@@ -398,16 +398,16 @@ namespace Squared.PRGUI.Controls {
             for (int i = 0, c = children.Count; i < c; i++) {
                 var child = children[i];
                 var lk = child.LayoutKey;
+                ref var childRec = ref context.Engine[lk];
                 var childIndex = Manager.IndexOfControl(child);
                 var isSelected = Manager.IsSelectedIndex(childIndex);
                 SetTextDecorator(ref context, child, isSelected, ref hasPushedDecorator);
-                var m = context.Layout.GetMargins(lk);
+                ref var m = ref childRec.Margins;
                 // HACK: Override decorator margins
                 m.Top = child.Margins.Top;
                 m.Bottom = child.Margins.Bottom + ItemSpacing;
-                context.Layout.SetMargins(lk, m);
                 if (ColumnCount == 1)
-                    context.Layout.SetItemForceBreak(lk, true);
+                    childRec.Config.ForceBreak = true;
             }
 
             if (hasPushedDecorator)
@@ -469,7 +469,7 @@ namespace Squared.PRGUI.Controls {
 
             if (MouseOverItemNeedsUpdate) {
                 MouseOverItemNeedsUpdate = false;
-                MouseOverItem = ChildFromGlobalPosition(context.Layout, LastMouseOverPosition);
+                MouseOverItem = ChildFromGlobalPosition(LastMouseOverPosition);
             }
         }
 
@@ -527,7 +527,7 @@ namespace Squared.PRGUI.Controls {
             return null;
         }
 
-        private Control ChildFromGlobalPosition (LayoutContext context, Vector2 globalPosition) {
+        private Control ChildFromGlobalPosition (Vector2 globalPosition) {
             try {
                 // Console.WriteLine($"Hovering = {Context.Hovering}, MouseOver = {Context.MouseOver}");
 
@@ -579,7 +579,7 @@ namespace Squared.PRGUI.Controls {
                 return true;
 
             Items.GetControlForValue(SelectedItem, out Control selectedControl);
-            var control = ChildFromGlobalPosition(Context.Layout, args.RelativeGlobalPosition);
+            var control = ChildFromGlobalPosition(args.RelativeGlobalPosition);
             LastMouseOverPosition = args.RelativeGlobalPosition;
             MouseOverItem = control;
             // Console.WriteLine($"ChildFromGlobalPosition == {control}");
@@ -799,8 +799,8 @@ namespace Squared.PRGUI.Controls {
                     if (selectedControl == null)
                         continue;
 
-                    var parentColumn = context.Layout.GetParent(selectedControl.LayoutKey);
-                    context.Layout.TryGetContentRect(parentColumn, out parentBox);
+                    var parentColumn = context.Engine[selectedControl.LayoutKey].Parent;
+                    parentBox = context.Engine.Result(parentColumn).ContentRect;
                     selectionBox = selectedControl.GetRect();
                     selectionBox.Top += selectionDecorator.Margins.Top;
                     selectionBox.Left = parentBox.Left + selectionDecorator.Margins.Left;

@@ -214,12 +214,12 @@ namespace Squared.PRGUI.Controls {
             var hasPushedDecorator = false;
             foreach (var child in Children) {
                 var lk = child.LayoutKey;
+                ref var childRec = ref context.Engine[lk];
                 SetTextDecorator(ref context, child, ref hasPushedDecorator);
-                var m = context.Layout.GetMargins(lk);
+                ref var m = ref childRec.Margins;
                 // HACK: Override decorator margins
                 m.Top = child.Margins.Top;
                 m.Bottom = child.Margins.Bottom + ItemSpacing;
-                context.Layout.SetMargins(lk, m);
             }
 
             if (hasPushedDecorator)

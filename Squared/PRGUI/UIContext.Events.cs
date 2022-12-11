@@ -872,7 +872,7 @@ namespace Squared.PRGUI {
             instance.Text = currentText;
             instance.Invalidate();
 
-            var offset = Layout.GetRect(Focused.LayoutKey).Position;
+            var offset = Engine.Result(Focused.LayoutKey).Rect.Position;
             // HACK
             var editable = Focused as Controls.EditableText;
             if (editable != null) {

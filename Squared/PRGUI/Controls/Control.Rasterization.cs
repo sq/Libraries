@@ -327,20 +327,12 @@ namespace Squared.PRGUI {
                     GetDebugBoxColor(context.Depth) * alpha, layer: layer
                 );
 
-            if (!context.Layout.TryGetFlags(LayoutKey, out ControlFlags flags))
-                return;
+            var config = Record(ref context).Config;
 
             Margins margins = default, padding = default;
-            if (UIContext.UseNewEngine) {
-                if (ShowDebugMargins || ShowDebugPadding) {
-                    ComputeAppearanceSpacing(this, ref context, out margins, out var padding1, out var padding2);
-                    padding = padding1 + padding2;
-                }
-            } else {
-                if (ShowDebugMargins)
-                    margins = context.Layout.GetMargins(LayoutKey);
-                if (ShowDebugPadding)
-                    padding = context.Layout.GetPadding(LayoutKey);
+            if (ShowDebugMargins || ShowDebugPadding) {
+                ComputeAppearanceSpacing(this, ref context, out margins, out var padding1, out var padding2);
+                padding = padding1 + padding2;
             }
 
             if (ShowDebugMargins)
@@ -349,7 +341,7 @@ namespace Squared.PRGUI {
             if (ShowDebugPadding)
                 RasterizeDebugMargins(ref context, ref passSet, ref rect, padding, -1f, Color.Yellow, layer);
 
-            if (ShowDebugBreakMarkers && mouseIsOver && flags.IsBreak()) {
+            if (ShowDebugBreakMarkers && mouseIsOver && config.ForceBreak) {
                 rect = new RectF(
                     new Vector2(rect.Left - 1.5f, rect.Center.Y - 7.5f),
                     new Vector2(6.5f, 15)
@@ -364,10 +356,7 @@ namespace Squared.PRGUI {
                         ? new Vector2(rect.Extent.X, rect.Position.Y)
                         : new Vector2(rect.Position.X, rect.Extent.Y);
 
-                pSRGBColor arrowColor =
-                    flags.IsFlagged(ControlFlags.Layout_ForceBreak)
-                        ? Color.White
-                        : Color.Yellow;
+                pSRGBColor arrowColor = Color.White;
 
                 passSet.Above.RasterizeTriangle(
                     a, b, c, radius: 0f, outlineRadius: 1f,

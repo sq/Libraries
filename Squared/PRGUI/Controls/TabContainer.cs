@@ -221,12 +221,13 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            context.Layout.SetTag(result, LayoutTags.TabContainer);
+            ref var rec = ref context.Engine[result];
+            rec.Tag = LayoutTags.TabContainer;
             var constrainSize = (Container.ConstrainSize || ContainerFlags.IsFlagged(ControlFlags.Container_Constrain_Size));
             var containerFlags = ContainerFlags | ExtraContainerFlags;
             if (constrainSize)
                 containerFlags |= ControlFlags.Container_Constrain_Size;
-            context.Layout.SetContainerFlags(result, containerFlags);
+            rec.OldContainerFlags = containerFlags;
 
             {
                 var adoc = AbsoluteDisplayOffset; // AbsoluteDisplayOffsetOfChildren;
@@ -234,23 +235,23 @@ namespace Squared.PRGUI.Controls {
                 LayoutItem(ref context, existingKey.HasValue, result, adoc, TabStrip);
                 ControlKey childBox;
                 if (existingKey.HasValue)
-                    childBox = context.Layout.GetLastChild(result);
-                else {
-                    childBox = context.Layout.CreateItem();
-                    context.Layout.Append(result, childBox);
-                }
+                    childBox = rec.LastChild;
+                else
+                    childBox = context.Engine.Create(parent: result);
                 var childBoxFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Column;
                 // HACK
                 if (constrainSize)
                     childBoxFlags |= ControlFlags.Container_Constrain_Size;
 
-                context.Layout.SetTag(childBox, LayoutTags.TabChildBox);
-                context.Layout.SetContainerFlags(childBox, childBoxFlags);
-                context.Layout.SetLayoutFlags(
-                    childBox, TabsOnLeft
-                        ? ControlFlags.Layout_Fill
-                        : ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak
-                );
+                ref var childRec = ref context.Engine[childBox];
+                childRec.Tag = LayoutTags.TabChildBox;
+                childRec.OldFlags = childBoxFlags |
+                    (
+                        TabsOnLeft
+                            ? ControlFlags.Layout_Fill
+                            : ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak
+                    );
+
                 var childLayoutFlags = default(ControlFlags) |
                     (ExpandTabsX ? ControlFlags.Layout_Fill_Row : default(ControlFlags)) |
                     (ExpandTabsY ? ControlFlags.Layout_Fill_Column : default(ControlFlags)) | 

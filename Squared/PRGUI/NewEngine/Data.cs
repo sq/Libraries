@@ -214,17 +214,21 @@ namespace Squared.PRGUI.NewEngine {
                 (((BoxFlags)_BoxFlags & ~BoxFlags.MASK) | value);
         }
 
+        public bool ForceBreak {
+            get => (_BoxFlags & BoxFlag.Break) != default;
+            set => _BoxFlags = (_BoxFlags & ~BoxFlag.Break) | (value ? BoxFlag.Break : default);
+        }
+
         // TODO: Consider making these public and add setters
-        internal bool ForceBreak => (_BoxFlags & BoxFlag.Break) != default;
-        internal bool Clip => (_ContainerFlags & ContainerFlag.Boxes_Clip) == ContainerFlag.Boxes_Clip;
-        internal bool ConstrainGrowth => (_ContainerFlags & ContainerFlag.Boxes_Constrain_Growth) == ContainerFlag.Boxes_Constrain_Growth;
-        internal bool IsVertical => (_ContainerFlags & ContainerFlag.Layout_Column) != default;
-        internal bool IsStacked => (_BoxFlags & BoxFlag.Stacked) == BoxFlag.Stacked;
-        internal bool IsStackedOrFloating => (_BoxFlags & BoxFlag.Stacked) != default;
-        internal bool IsFloating => (_BoxFlags & BoxFlag.Floating) == BoxFlag.Floating;
-        internal bool IsWrap => (_ContainerFlags & ContainerFlag.Arrange_Wrap) != default;
-        internal bool FillRow => (_BoxFlags & BoxFlag.Fill_Row) == BoxFlag.Fill_Row;
-        internal bool FillColumn => (_BoxFlags & BoxFlag.Fill_Column) == BoxFlag.Fill_Column;
+        public bool Clip => (_ContainerFlags & ContainerFlag.Boxes_Clip) == ContainerFlag.Boxes_Clip;
+        public bool ConstrainGrowth => (_ContainerFlags & ContainerFlag.Boxes_Constrain_Growth) == ContainerFlag.Boxes_Constrain_Growth;
+        public bool IsVertical => (_ContainerFlags & ContainerFlag.Layout_Column) != default;
+        public bool IsStacked => (_BoxFlags & BoxFlag.Stacked) == BoxFlag.Stacked;
+        public bool IsStackedOrFloating => (_BoxFlags & BoxFlag.Stacked) != default;
+        public bool IsFloating => (_BoxFlags & BoxFlag.Floating) == BoxFlag.Floating;
+        public bool IsWrap => (_ContainerFlags & ContainerFlag.Arrange_Wrap) != default;
+        public bool FillRow => (_BoxFlags & BoxFlag.Fill_Row) == BoxFlag.Fill_Row;
+        public bool FillColumn => (_BoxFlags & BoxFlag.Fill_Column) == BoxFlag.Fill_Column;
 
         public bool Equals (ControlConfiguration rhs) =>
             (_BoxFlags == rhs._BoxFlags) &&
@@ -369,12 +373,22 @@ namespace Squared.PRGUI.NewEngine {
 #endif
 
         internal ControlFlags _OldFlags;
-        internal ControlFlags OldFlags {
-            get => _OldFlags;
+        public ControlFlags OldFlags {
+            internal get => _OldFlags;
             set {
                 _OldFlags = value;
                 Config = new ControlConfiguration(value);
             }
+        }
+
+        public ControlFlags OldLayoutFlags {
+            internal get => _OldFlags & ControlFlagMask.Layout;
+            set => OldFlags = (_OldFlags & ControlFlagMask.Container) | (value & ControlFlagMask.Layout);
+        }
+
+        public ControlFlags OldContainerFlags {
+            internal get => _OldFlags & ControlFlagMask.Container;
+            set => OldFlags = (_OldFlags & ControlFlagMask.Layout) | (value & ControlFlagMask.Container);
         }
 
         // TODO: When controls are overflowing/being clipped, we want to clip the lowest priority
@@ -390,6 +404,8 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         public bool IsValid => !Key.IsInvalid;
+
+        public static implicit operator ControlKey (BoxRecord rec) => rec.Key;
 
         public override string ToString () {
             return $"#{Key.ID} {Tag} {Config}";

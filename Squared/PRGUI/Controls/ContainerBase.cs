@@ -292,7 +292,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected virtual ControlKey CreateColumn (ref UIOperationContext context, ControlKey parent, int columnIndex) {
-            var result = context.Layout.CreateItem(LayoutTags.Column);
+            ref var result = ref context.Engine.Create(LayoutTags.Column, parent: parent);
             // FIXME
             var cf = ComputeContainerFlags();
             var resultFlags = cf | ControlFlags.Container_Prevent_Crush_Y;
@@ -308,10 +308,8 @@ namespace Squared.PRGUI.Controls {
                     ? ControlFlags.Layout_Anchor_Right | ControlFlags.Layout_Anchor_Top
                     : ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top;
 
-            context.Layout.InsertAtEnd(parent, result);
-            context.Layout.SetLayoutFlags(result, layoutFlags);
-            context.Layout.SetContainerFlags(result, resultFlags);
-            // context.Layout.SetContainerFlags(parent, );
+            result.OldFlags = layoutFlags | resultFlags;
+            // context.Engine.SetContainerFlags(parent, );
             return result;
         }
 
@@ -321,7 +319,9 @@ namespace Squared.PRGUI.Controls {
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var wasInvalid = IsLayoutInvalid;
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
-            context.Layout.SetTag(result, LayoutTags.Container);
+            ref var rec = ref context.Engine[result];
+            rec.Tag = LayoutTags.Container;
+
             var children = Children;
             if (result.IsInvalid || SuppressChildLayout) {
                 NeedToInvalidateChildLayout = true;
@@ -342,7 +342,7 @@ namespace Squared.PRGUI.Controls {
                 containerFlags |= ControlFlags.Container_Row;
             }
 
-            context.Layout.SetContainerFlags(result, containerFlags);
+            rec.OldContainerFlags = containerFlags;
 
             if ((context.HiddenCount <= 0) && Visible)
                 GenerateDynamicContent(DynamicContentIsInvalid);
@@ -371,10 +371,10 @@ namespace Squared.PRGUI.Controls {
                     childExistingKey = item.LayoutKey;
 
                 var itemKey = item.GenerateLayoutTree(ref context, ColumnKeys[columnIndex], childExistingKey);
+                ref var itemRec = ref context.Engine[itemKey];
                 if (multiColumn && AutoBreakColumnItems) {
-                    var lf = Context.Layout.GetLayoutFlags(itemKey);
-                    if (!lf.IsBreak())
-                        Context.Layout.SetLayoutFlags(itemKey, lf | ControlFlags.Layout_ForceBreak);
+                    if (!itemRec.Config.ForceBreak)
+                        itemRec.Config.ForceBreak = true;
                 }
             }
             return result;
@@ -619,7 +619,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
-            context.Layout.SetTag(result, LayoutTags.Group);
+            context.Engine[result].Tag = LayoutTags.Group;
             return result;
         }
 

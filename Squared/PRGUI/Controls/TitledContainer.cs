@@ -234,10 +234,10 @@ namespace Squared.PRGUI.Controls {
                 return result;
 
             if (Title.Length == 0 && !existingKey.HasValue && Collapsible) {
-                var spacer = context.Layout.CreateItem();
-                context.Layout.SetLayoutFlags(spacer, ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak);
-                context.Layout.SetFixedSize(spacer, DisclosureArrowPadding, MostRecentTitleBox.Height);
-                context.Layout.InsertAtStart(result, spacer);
+                ref var spacer = ref context.Engine.Create();
+                spacer.OldFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak;
+                spacer.FixedSize = new Vector2(DisclosureArrowPadding, MostRecentTitleBox.Height);
+                context.Engine.InsertAtStart(result, spacer);
             }
             return result;
         }

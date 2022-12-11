@@ -126,7 +126,7 @@ namespace Squared.PRGUI.Controls {
                     : ControlFlags.Container_Constrain_Size;
                 Aligner.AlignmentPending = true;
                 var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
-                context.Layout.SetTag(result, LayoutTags.Window);
+                context.Engine[result].Tag = LayoutTags.Window;
                 return result;
             } finally {
                 if (Collapsed)

@@ -1669,7 +1669,7 @@ namespace PRGUI.Demo {
             /*
             var hoveringControl = Context.HitTest(new Vector2(MouseState.X, MouseState.Y), false);
             if (hoveringControl != null) {
-                var hoveringBox = hoveringControl.GetRect(Context.Layout);
+                var hoveringBox = hoveringControl.GetRect(context.Engine);
 
                 if (false)
                     ir.RasterizeRectangle(

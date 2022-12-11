@@ -138,18 +138,22 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-        public ref BoxRecord Create (out ControlKey result, Layout.LayoutTags tag = default, ControlFlags flags = default) {
+        public ref BoxRecord Create (out ControlKey result, Layout.LayoutTags tag = default, ControlFlags flags = default, ControlKey? parent = null) {
             ref BoxRecord record = ref Create(tag, flags);
             result = record.Key;
+            if (parent.HasValue)
+                InsertAtEnd(parent.Value, result);
             return ref record;
         }
 
-        public ref BoxRecord Create (Layout.LayoutTags tag = default, ControlFlags flags = default) {
+        public ref BoxRecord Create (Layout.LayoutTags tag = default, ControlFlags flags = default, ControlKey? parent = null) {
             var index = _Count++;
             ref var result = ref Records[index];
             result._Key = new ControlKey(index);
             result.OldFlags = flags;
             result.Tag = tag;
+            if (parent.HasValue)
+                InsertAtEnd(parent.Value, result);
             return ref result;
         }
 

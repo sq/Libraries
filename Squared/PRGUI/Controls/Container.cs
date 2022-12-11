@@ -283,10 +283,7 @@ namespace Squared.PRGUI.Controls {
                 for (int i = 0; i < ColumnCount; i++) {
                     var ckey = ColumnKeys[i];
                     RectF columnBounds;
-                    if (UIContext.UseNewEngine)
-                        context.Engine.TryMeasureContent(ckey, out columnBounds);
-                    else
-                        context.Layout.TryMeasureContent(ckey, out columnBounds);
+                    context.Engine.TryMeasureContent(ckey, out columnBounds);
                     if (i == 0) {
                         contentRect = columnBounds;
                     } else {
@@ -296,10 +293,7 @@ namespace Squared.PRGUI.Controls {
                     ok = true;
                 }
             } else {
-                if (UIContext.UseNewEngine)
-                    ok = context.Engine.TryMeasureContent(LayoutKey, out contentRect);
-                else
-                    ok = context.Layout.TryMeasureContent(LayoutKey, out contentRect);
+                ok = context.Engine.TryMeasureContent(LayoutKey, out contentRect);
             }
             if (ok)
                 contentBounds = contentRect.Size;
@@ -329,7 +323,7 @@ namespace Squared.PRGUI.Controls {
         protected virtual void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
             // FIXME: This should be done somewhere else
             if (Scrollable) {
-                context.Layout.TryGetContentRect(LayoutKey, out RectF contentBox);
+                var contentBox = context.Engine.Result(LayoutKey).ContentRect;
                 var scrollbar = context.DecorationProvider?.Scrollbar;
                 float viewportWidth = contentBox.Width,
                     viewportHeight = contentBox.Height;

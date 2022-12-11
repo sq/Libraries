@@ -35,8 +35,6 @@ namespace Squared.PRGUI {
         /// <summary>
         /// The layout engine used to compute control sizes and positions
         /// </summary>
-        public readonly LayoutContext Layout = new LayoutContext();
-
         public readonly NewEngine.LayoutEngine Engine;
 
         /// <summary>
@@ -236,9 +234,9 @@ namespace Squared.PRGUI {
         }
 
         private void DoUpdateLayoutInternal (ref UIOperationContext context, bool secondTime) {
-            Layout.CanvasSize = CanvasSize;
-            Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row);
-            Layout.SetTag(Layout.Root, LayoutTags.Root);
+            Engine.CanvasSize = CanvasSize;
+            Engine.Root().Config.ChildDirection = NewEngine.Enums.ChildDirection.Row;
+            Engine.Root().Tag = LayoutTags.Root;
 
             if (UseNewEngine) {
                 ref var root = ref Engine.Root();
@@ -253,7 +251,7 @@ namespace Squared.PRGUI {
 
             foreach (var control in _TopLevelControls)
                 control.GenerateLayoutTree(
-                    ref context, Layout.Root, 
+                    ref context, Engine.Root(), 
                     (secondTime && !control.LayoutKey.IsInvalid) 
                         ? control.LayoutKey 
                         : (ControlKey?)null
@@ -280,37 +278,6 @@ namespace Squared.PRGUI {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private float? NegativeToNull (float value) => (value <= -1) ? (float?)null : value;
 
-        private unsafe void SyncEngines () {
-            for (int i = 0; i < Layout.Count; i++) {
-                var key = new ControlKey(i);
-                var pItem = Layout.LayoutPtr(key, false);
-                // FIXME
-                if (pItem == null)
-                    continue;
-                ref var rec = ref Engine.GetOrCreate(key, pItem->Tag, pItem->Flags);
-                rec.Margins = pItem->Margins;
-                rec.Padding = pItem->Padding;
-                rec.FloatingPosition = (pItem->Flags & ControlFlags.Internal_Has_Position) != default ? pItem->FloatingPosition : (Vector2?)null;
-                rec.Width = new ControlDimension {
-                    Minimum = NegativeToNull(pItem->MinimumSize.X),
-                    Maximum = NegativeToNull(pItem->MaximumSize.X),
-                    Fixed = NegativeToNull(pItem->FixedSize.X)
-                };
-                rec.Height = new ControlDimension {
-                    Minimum = NegativeToNull(pItem->MinimumSize.Y),
-                    Maximum = NegativeToNull(pItem->MaximumSize.Y),
-                    Fixed = NegativeToNull(pItem->FixedSize.Y)
-                };
-
-                // FIXME: Is this always right? Probably
-                rec._FirstChild = pItem->FirstChild;
-                rec._LastChild = pItem->LastChild;
-                rec._PreviousSibling = pItem->PreviousSibling;
-                rec._NextSibling = pItem->NextSibling;
-                rec._Parent = pItem->Parent;
-            }
-        }
-
         public void Update () {
             FrameIndex++;
 
@@ -323,31 +290,21 @@ namespace Squared.PRGUI {
             context.Shared.PostLayoutListeners = pll;
 
             try {
-                Layout.Clear();
-                if (UseNewEngine)
-                    Engine.Clear();
+                Engine.Clear();
 
                 DoUpdateLayoutInternal(ref context, false);
-                Layout.Update();
-                if (UseNewEngine) {
-                    SyncEngines();
-                    Engine.Update();
-                    // TODO: Perform a pass after this that copies the LayoutResult into all of our controls,
-                    //  so that they will always have valid data from the most recent update even if we are
-                    //  in the middle of a new update
-                    // The easiest solution would be to always have the Controls[] array in Engine and copy
-                    //  everything into it at the end of Update. This is probably worthwhile since it is cache
-                    //  efficient and most controls will have their rect used at least once for rasterization
-                    //  or hit testing
-                }
+                Engine.Update();
+                // TODO: Perform a pass after this that copies the LayoutResult into all of our controls,
+                //  so that they will always have valid data from the most recent update even if we are
+                //  in the middle of a new update
+                // The easiest solution would be to always have the Controls[] array in Engine and copy
+                //  everything into it at the end of Update. This is probably worthwhile since it is cache
+                //  efficient and most controls will have their rect used at least once for rasterization
+                //  or hit testing
 
                 if (NotifyLayoutListeners(ref context)) {
                     DoUpdateLayoutInternal(ref context, true);
-                    Layout.Update();
-                    if (UseNewEngine) {
-                        SyncEngines();
-                        Engine.Update();
-                    }
+                    Engine.Update();
                     NotifyLayoutListeners(ref context);
                 }
 
@@ -954,7 +911,7 @@ namespace Squared.PRGUI {
             ControlKey parentKey;
             Control parent;
             if (!subtreeRoot.TryGetParent(out parent))
-                parentKey = Layout.Root;
+                parentKey = Engine.Root();
             else if (!parent.LayoutKey.IsInvalid)
                 parentKey = parent.LayoutKey;
             else {
@@ -970,10 +927,7 @@ namespace Squared.PRGUI {
                     : subtreeRoot.LayoutKey
             );
 
-            if (UseNewEngine)
-                Engine.UpdateSubtree(subtreeRoot.LayoutKey);
-            else
-                Layout.UpdateSubtree(subtreeRoot.LayoutKey);
+            Engine.UpdateSubtree(subtreeRoot.LayoutKey);
         }
 
         public Vector2 PlaceTooltipContentIntoTooltip (
@@ -1153,7 +1107,7 @@ namespace Squared.PRGUI {
         }
 
         public void Dispose () {
-            Layout.Dispose();
+            // Engine.Dispose();
 
             foreach (var rt in ScratchRenderTargets)
                 rt.Dispose();
@@ -1182,7 +1136,6 @@ namespace Squared.PRGUI {
         public UIContext UIContext => Shared?.Context;
         public RenderCoordinator RenderCoordinator => Prepass.Coordinator;
         public DefaultMaterialSet Materials => UIContext?.Materials;
-        public LayoutContext Layout => UIContext?.Layout;
         public NewEngine.LayoutEngine Engine => UIContext?.Engine;
 
         public float Now => Shared?.Now ?? 0f;

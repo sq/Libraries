@@ -12,6 +12,7 @@ using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Flags;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.RasterShape;
@@ -97,6 +98,16 @@ namespace Squared.PRGUI {
                 _LayoutKey = value;
             }
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected ref BoxRecord Record (ref UIOperationContext context) => ref context.UIContext.Engine[LayoutKey];
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected ref BoxLayoutResult LayoutResult (ref UIOperationContext context) => ref context.UIContext.Engine.Result(LayoutKey);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected ref BoxRecord Record (UIContext context) => ref context.Engine[LayoutKey];
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected ref BoxLayoutResult LayoutResult (UIContext context) => ref context.Engine.Result(LayoutKey);
 
         /// <summary>
         /// If false, the control will not participate in layout or rasterization
@@ -514,16 +525,6 @@ namespace Squared.PRGUI {
                     // TODO: Only register if the control is explicitly interested, to reduce overhead?
                     if ((this is IPostLayoutListener listener) && (existingKey == null))
                         context.PostLayoutListeners?.Add(listener);
-
-                    if (UIContext.UseNewEngine) {
-                        ref var rec = ref context.Engine[LayoutKey];
-                        if (context.Layout.TryGetFlags(LayoutKey, out ControlFlags cf))
-                            rec.OldFlags = cf;
-
-#if DEBUG
-                        context.Engine.Controls[LayoutKey.ID] = this;
-#endif
-                    }
                 }
             } finally {
                 if (Appearance.DecorationProvider != null)
@@ -540,14 +541,9 @@ namespace Squared.PRGUI {
                 return false;
             }
 
-            if (UIContext.UseNewEngine) {
-                ref var res = ref context.Engine.Result(LayoutKey);
-                rect = res.Rect;
-                contentRect = res.ContentRect;
-            } else {
-                if (!context.Layout.GetRects(LayoutKey, out rect, out contentRect))
-                    return false;
-            }
+            ref var res = ref LayoutResult(context);
+            rect = res.Rect;
+            contentRect = res.ContentRect;
 
             if (applyOffset) {
                 rect.Left += _AbsoluteDisplayOffset.X;
@@ -640,15 +636,8 @@ namespace Squared.PRGUI {
 
             context = context ?? Context;
             RectF result;
-            if (UIContext.UseNewEngine) {
-                ref var res = ref context.Engine.Result(LayoutKey);
-                result = contentRect ? res.ContentRect : res.Rect;
-            } else {
-                if (contentRect)
-                    context.Layout.TryGetContentRect(LayoutKey, out result);
-                else
-                    context.Layout.TryGetRect(LayoutKey, out result);
-            }
+            ref var res = ref LayoutResult(context);
+            result = contentRect ? res.ContentRect : res.Rect;
 
             if (displayRect) {
                 // FIXME: Is applying the margins correct to begin with?                
@@ -802,7 +791,7 @@ namespace Squared.PRGUI {
             RasterizeIsPending = true;
 #endif
 
-            var result = existingKey ?? context.Layout.CreateItem();
+            ref var result = ref context.Engine.GetOrCreate(existingKey);
 
             var decorationProvider = context.DecorationProvider;
             var decorations = GetDecorator(decorationProvider, context.DefaultDecorator);
@@ -814,12 +803,14 @@ namespace Squared.PRGUI {
 
             var actualLayoutFlags = ComputeLayoutFlags(width.HasFixed, height.HasFixed);
 
-            context.Layout.SetLayoutFlags(result, actualLayoutFlags);
-            context.Layout.SetLayoutData(result, ref Layout.FloatingPosition, ref computedMargins, ref computedPadding);
-            context.Layout.SetSizeConstraints(result, in width, in height);
+            result.OldFlags = actualLayoutFlags;
+            result.FloatingPosition = Layout.FloatingPosition;
+            result.Margins = computedMargins;
+            result.Padding = computedPadding;
+            context.Engine.SetSizeConstraints(ref result, in width, in height);
 
             if (!parent.IsInvalid && !existingKey.HasValue) {
-                context.Layout.InsertAtEnd(parent, result);
+                context.Engine.InsertAtEnd(parent, result);
             }
 
             return result;

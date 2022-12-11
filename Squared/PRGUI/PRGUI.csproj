@@ -88,7 +88,6 @@
     <Compile Include="Flags.cs" />
     <Compile Include="Imperative.cs" />
     <Compile Include="Input.cs" />
-    <Compile Include="LayoutContext.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Data.cs" />
     <Compile Include="NewEngine\Data.cs" />
