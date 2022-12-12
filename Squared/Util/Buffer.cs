@@ -68,11 +68,11 @@ namespace Squared.Util {
                 ReturnToPool = returnToPool;
             }
 
-            public static implicit operator T[] (Buffer _) {
+            public static implicit operator T[] (in Buffer _) {
                 return _.Data;
             }
 
-            public static implicit operator ArraySegment<T> (Buffer _) {
+            public static implicit operator ArraySegment<T> (in Buffer _) {
                 return new ArraySegment<T>(_.Data, 0, _.Data.Length);
             }
 

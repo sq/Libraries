@@ -251,7 +251,7 @@ namespace Squared.PRGUI {
 
             foreach (var control in _TopLevelControls)
                 control.GenerateLayoutTree(
-                    ref context, Engine.Root(), 
+                    ref context, Engine.Root().Key, 
                     (secondTime && !control.LayoutKey.IsInvalid) 
                         ? control.LayoutKey 
                         : (ControlKey?)null
@@ -911,7 +911,7 @@ namespace Squared.PRGUI {
             ControlKey parentKey;
             Control parent;
             if (!subtreeRoot.TryGetParent(out parent))
-                parentKey = Engine.Root();
+                parentKey = Engine.Root().Key;
             else if (!parent.LayoutKey.IsInvalid)
                 parentKey = parent.LayoutKey;
             else {

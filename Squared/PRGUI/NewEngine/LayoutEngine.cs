@@ -152,7 +152,7 @@ namespace Squared.PRGUI.NewEngine {
             result.OldFlags = flags;
             result.Tag = tag;
             if (parent.HasValue)
-                InsertAtEnd(parent.Value, result);
+                InsertAtEnd(parent.Value, result.Key);
             return ref result;
         }
 

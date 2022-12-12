@@ -808,7 +808,13 @@ namespace Squared.PRGUI.Controls {
             IGlyphSource font = null;
             if (Appearance.GlyphSourceProvider != null)
                 font = Appearance.GlyphSourceProvider();
-            font = font ?? Appearance.GlyphSource ?? GetGlyphSource(ref context, textDecorations) ?? GetGlyphSource(ref context, decorations);
+            font = font ?? Appearance.GlyphSource;
+            if (font == null) {
+                var tempBox = default(RectF);
+                MakeDecorationSettings(ref tempBox, ref tempBox, GetCurrentState(ref context), false, true, out var settings);
+                font = GetGlyphSource(ref context, textDecorations, ref settings) ?? 
+                    GetGlyphSource(ref context, decorations, ref settings);
+            }
             if (font == null)
                 throw new NullReferenceException($"Decorators provided no font for control {this} ({textDecorations}, {decorations})");
             return SyncWithCurrentFont(font);

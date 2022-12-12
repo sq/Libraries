@@ -13,8 +13,8 @@ namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
         private void UpdateRunCommon (
             ref LayoutRun run, 
-            in BoxRecord control, ref BoxLayoutResult result,
-            in BoxRecord child, ref BoxLayoutResult childResult,
+            ref BoxRecord control, ref BoxLayoutResult result,
+            ref BoxRecord child, ref BoxLayoutResult childResult,
             ref int firstRunIndex, int currentRunIndex
         ) {
             if (firstRunIndex < 0)
@@ -44,13 +44,15 @@ namespace Squared.PRGUI.NewEngine {
                 run.ExpandCountY++;
             // It is important that floating controls do not update the size of the floating run.
             // Stacked controls should, though.
-            if (!childConfig.IsFloating) {
-                run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childOuterWidth);
-                run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childOuterHeight);
-            }
-            if (!childConfig.IsStackedOrFloating) {
-                run.TotalWidth += childOuterWidth;
-                run.TotalHeight += childOuterHeight;
+            if (!childConfig.NoMeasurement) {
+                if (!childConfig.IsFloating) {
+                    run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, childOuterWidth);
+                    run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, childOuterHeight);
+                }
+                if (!childConfig.IsStackedOrFloating) {
+                    run.TotalWidth += childOuterWidth;
+                    run.TotalHeight += childOuterHeight;
+                }
             }
         }
 

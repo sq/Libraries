@@ -102,8 +102,8 @@ namespace Squared.PRGUI.NewEngine {
                     childConfig.IsStackedOrFloating, isBreak
                 );
                 UpdateRunCommon(
-                    ref run, in control, ref result,
-                    in child, ref childResult,
+                    ref run, ref control, ref result,
+                    ref child, ref childResult,
                     ref result.FirstRunIndex, currentRunIndex
                 );
 

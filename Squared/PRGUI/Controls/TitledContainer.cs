@@ -237,7 +237,7 @@ namespace Squared.PRGUI.Controls {
                 ref var spacer = ref context.Engine.Create();
                 spacer.OldFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak;
                 spacer.FixedSize = new Vector2(DisclosureArrowPadding, MostRecentTitleBox.Height);
-                context.Engine.InsertAtStart(result, spacer);
+                context.Engine.InsertAtStart(result, spacer.Key);
             }
             return result;
         }

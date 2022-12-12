@@ -417,6 +417,16 @@ namespace Squared.PRGUI.Controls {
         private bool OnKeyEvent (string name, KeyEventArgs args) {
             if (args.Key != null && UIContext.ModifierKeys.Contains(args.Key.Value))
                 return false;
+            // FIXME: Why isn't this KeyPress?
+            if (name == UIEvents.KeyDown) {
+                if ((args.Key >= Keys.D1) && (args.Key <= Keys.D9) && ((int)(args.Key - Keys.D1) < Count)) {
+                    SelectItemViaKeyboard(this[(int)(args.Key - Keys.D1)]);
+                    if (SelectedItem != null)
+                        return ChooseItem(SelectedItem);
+                    else
+                        return true;
+                }
+            }
             if (name != UIEvents.KeyPress)
                 return true;
 
@@ -826,6 +836,8 @@ namespace Squared.PRGUI.Controls {
                     yield return new Accessibility.AcceleratorInfo(this[SelectedIndex - 1], "Up");
                 if (SelectedIndex < (Children.Count - 1))
                     yield return new Accessibility.AcceleratorInfo(this[SelectedIndex + 1], "Down");
+                for (int i = 0; i < Count && i < 9; i++)
+                    yield return new Accessibility.AcceleratorInfo(this[i], Keys.D1 + i);
             }
         }
 

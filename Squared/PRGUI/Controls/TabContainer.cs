@@ -237,7 +237,7 @@ namespace Squared.PRGUI.Controls {
                 if (existingKey.HasValue)
                     childBox = rec.LastChild;
                 else
-                    childBox = context.Engine.Create(parent: result);
+                    childBox = context.Engine.Create(parent: result).Key;
                 var childBoxFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Column;
                 // HACK
                 if (constrainSize)

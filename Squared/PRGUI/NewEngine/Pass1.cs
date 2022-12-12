@@ -42,8 +42,8 @@ namespace Squared.PRGUI.NewEngine {
                 float outerW = childResult.Rect.Width + child.Margins.X,
                     outerH = childResult.Rect.Height + child.Margins.Y;
                 ref var run = ref Pass1_UpdateRun(
-                    in control, ref result, 
-                    in child, ref childResult, 
+                    ref control, ref result, 
+                    ref child, ref childResult, 
                     ref currentRunIndex
                 );
 
@@ -124,8 +124,8 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         private ref LayoutRun Pass1_UpdateRun (
-            in BoxRecord control, ref BoxLayoutResult result, 
-            in BoxRecord child, ref BoxLayoutResult childResult, 
+            ref BoxRecord control, ref BoxLayoutResult result, 
+            ref BoxRecord child, ref BoxLayoutResult childResult, 
             ref int currentRunIndex
         ) {
             var previousRunIndex = currentRunIndex;
@@ -142,8 +142,8 @@ namespace Squared.PRGUI.NewEngine {
                 IncreaseContentSizeForCompletedRun(in control, ref result, previousRunIndex);
 
             UpdateRunCommon(
-                ref run, in control, ref result,
-                in child, ref childResult,
+                ref run, ref control, ref result,
+                ref child, ref childResult,
                 ref result.FirstRunIndex, currentRunIndex
             );
 

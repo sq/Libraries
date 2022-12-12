@@ -214,21 +214,65 @@ namespace Squared.PRGUI.NewEngine {
                 (((BoxFlags)_BoxFlags & ~BoxFlags.MASK) | value);
         }
 
+        [Unserialized]
         public bool ForceBreak {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_BoxFlags & BoxFlag.Break) != default;
             set => _BoxFlags = (_BoxFlags & ~BoxFlag.Break) | (value ? BoxFlag.Break : default);
         }
+        [Unserialized]
+        public bool NoMeasurement {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_BoxFlags & BoxFlag.NoMeasurement) == BoxFlag.NoMeasurement;
+            set => _BoxFlags = (_BoxFlags & ~BoxFlag.NoMeasurement) | (value ? BoxFlag.NoMeasurement : default);
+        }
 
         // TODO: Consider making these public and add setters
-        public bool Clip => (_ContainerFlags & ContainerFlag.Boxes_Clip) == ContainerFlag.Boxes_Clip;
-        public bool ConstrainGrowth => (_ContainerFlags & ContainerFlag.Boxes_Constrain_Growth) == ContainerFlag.Boxes_Constrain_Growth;
-        public bool IsVertical => (_ContainerFlags & ContainerFlag.Layout_Column) != default;
-        public bool IsStacked => (_BoxFlags & BoxFlag.Stacked) == BoxFlag.Stacked;
-        public bool IsStackedOrFloating => (_BoxFlags & BoxFlag.Stacked) != default;
-        public bool IsFloating => (_BoxFlags & BoxFlag.Floating) == BoxFlag.Floating;
-        public bool IsWrap => (_ContainerFlags & ContainerFlag.Arrange_Wrap) != default;
-        public bool FillRow => (_BoxFlags & BoxFlag.Fill_Row) == BoxFlag.Fill_Row;
-        public bool FillColumn => (_BoxFlags & BoxFlag.Fill_Column) == BoxFlag.Fill_Column;
+        [Unserialized]
+        public bool Clip {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_ContainerFlags & ContainerFlag.Boxes_Clip) == ContainerFlag.Boxes_Clip;
+        }
+        [Unserialized]
+        public bool ConstrainGrowth {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_ContainerFlags & ContainerFlag.Boxes_Constrain_Growth) == ContainerFlag.Boxes_Constrain_Growth;
+        }
+        [Unserialized]
+        public bool IsVertical {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_ContainerFlags & ContainerFlag.Layout_Column) != default;
+        }
+        [Unserialized]
+        public bool IsStacked {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_BoxFlags & BoxFlag.Stacked) == BoxFlag.Stacked;
+        }
+        [Unserialized]
+        public bool IsStackedOrFloating {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_BoxFlags & BoxFlag.Stacked) != default;
+        }
+        [Unserialized]
+        public bool IsFloating {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_BoxFlags & BoxFlag.Floating) == BoxFlag.Floating;
+        }
+        [Unserialized]
+        public bool IsWrap {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_ContainerFlags & ContainerFlag.Arrange_Wrap) != default;
+        }
+        [Unserialized]
+        public bool FillRow {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_BoxFlags & BoxFlag.Fill_Row) == BoxFlag.Fill_Row;
+        }
+        [Unserialized]
+        public bool FillColumn {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_BoxFlags & BoxFlag.Fill_Column) == BoxFlag.Fill_Column;
+        }
 
         public bool Equals (ControlConfiguration rhs) =>
             (_BoxFlags == rhs._BoxFlags) &&
@@ -405,7 +449,7 @@ namespace Squared.PRGUI.NewEngine {
 
         public bool IsValid => !Key.IsInvalid;
 
-        public static implicit operator ControlKey (BoxRecord rec) => rec.Key;
+        public static implicit operator ControlKey (in BoxRecord rec) => rec.Key;
 
         public override string ToString () {
             return $"#{Key.ID} {Tag} {Config}";

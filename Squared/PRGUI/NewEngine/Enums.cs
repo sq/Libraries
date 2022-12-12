@@ -147,6 +147,11 @@ namespace Squared.PRGUI.NewEngine.Enums {
         /// </summary>
         CollapseMargins = 0b10000000,
 
+        /// <summary>
+        /// The box will not be included in its parent's content size calculations (for spacers)
+        /// </summary>
+        NoMeasurement   = 0b100000000,
+
         // No anchor = centered
         DEFAULT       = Fill_Row 
     }

@@ -760,6 +760,12 @@ namespace Squared.PRGUI {
             control.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
         }
 
+        protected IGlyphSource GetGlyphSource (ref UIOperationContext context, IDecorator decorator, ref DecorationSettings settings) {
+            if (decorator == null)
+                return null;
+            return decorator.GetGlyphSource(ref settings);
+        }
+
         protected IGlyphSource GetGlyphSource (ref UIOperationContext context, IDecorator decorator) {
             if (decorator == null)
                 return null;
@@ -792,7 +798,7 @@ namespace Squared.PRGUI {
 #endif
 
             ref var result = ref context.Engine.GetOrCreate(existingKey);
-            LayoutKey = result;
+            LayoutKey = result.Key;
 
             var decorationProvider = context.DecorationProvider;
             var decorations = GetDecorator(decorationProvider, context.DefaultDecorator);
@@ -811,10 +817,10 @@ namespace Squared.PRGUI {
             context.Engine.SetSizeConstraints(ref result, in width, in height);
 
             if (!parent.IsInvalid && !existingKey.HasValue) {
-                context.Engine.InsertAtEnd(parent, result);
+                context.Engine.InsertAtEnd(parent, result.Key);
             }
 
-            return result;
+            return result.Key;
         }
 
         protected ControlFlags ComputeLayoutFlags (bool hasFixedWidth, bool hasFixedHeight) {
@@ -866,10 +872,9 @@ namespace Squared.PRGUI {
 
                 // HACK: If a modal has temporarily borrowed focus from us, we should still appear
                 //  to be focused.
-                var fm = context.UIContext.Focused as IModal;
                 if (
                     (context.UIContext.Focused == this) || 
-                    (fm?.FocusDonor == this)
+                    ((context.UIContext.Focused as IModal)?.FocusDonor == this)
                 ) {
                     result |= ControlStates.Focused;
                     result |= ControlStates.ContainsFocus;

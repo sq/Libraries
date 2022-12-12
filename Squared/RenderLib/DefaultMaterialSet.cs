@@ -400,7 +400,7 @@ namespace Squared.Render {
         public Material GaussianOutlined, GaussianOutlinedWithDiscard, RadialMaskSoftening;
         public Material Clear, SetScissor, SetViewport;
 
-        private readonly Action<Material, FrameParams> _ApplyParamsDelegate;
+        private readonly RefMaterialAction<FrameParams> _ApplyParamsDelegate;
         protected readonly RefMaterialAction<ViewTransform> _ApplyViewTransformDelegate; 
         protected readonly UnorderedList<ViewTransform> ViewTransformStack = new UnorderedList<ViewTransform>();
 
@@ -1228,7 +1228,7 @@ namespace Squared.Render {
             ) {
                 LastAppliedFrameParams = @params;
                 LastIsOpenGL = Coordinator.IsOpenGL;
-                ForEachMaterial(_ApplyParamsDelegate, @params);
+                ForEachMaterial(_ApplyParamsDelegate, ref @params);
             }
 
             // HACK
@@ -1323,7 +1323,7 @@ namespace Squared.Render {
             }
         }
 
-        private void ApplyParamsToMaterial (Material m, FrameParams @params) {
+        private void ApplyParamsToMaterial (Material m, ref FrameParams @params) {
             if (m.Parameters == null)
                 return;
 

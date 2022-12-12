@@ -390,6 +390,7 @@ namespace Squared.PRGUI.Controls {
             if (!existingKey.HasValue && rowMode) {
                 ref var expandSpacer = ref context.Engine.Create(LayoutTags.Spacer, parent: result);
                 expandSpacer.OldFlags = ControlFlags.Layout_ForceBreak | ControlFlags.Layout_Fill;
+                expandSpacer.Config.NoMeasurement = true;
             }
 
             var hasPushedDecorator = false;
@@ -862,12 +863,6 @@ namespace Squared.PRGUI.Controls {
                 // FIXME: If we're partially offscreen this value will be too small
                 PageSize = Math.Max(1, displayPageSize / 2);
             }
-        }
-
-        private void CalculateScrollable (UIContext context) {
-            context.UpdateSubtreeLayout(this);
-            if (GetContentBounds(context, out Vector2 contentBounds))
-                Scrollable = (contentBounds.Y >= Height.Maximum) || !Height.HasMaximum;
         }
 
         StringBuilder TextBuilder = new StringBuilder();

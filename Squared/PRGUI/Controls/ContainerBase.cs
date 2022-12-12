@@ -310,7 +310,7 @@ namespace Squared.PRGUI.Controls {
 
             result.OldFlags = layoutFlags | resultFlags;
             // context.Engine.SetContainerFlags(parent, );
-            return result;
+            return result.Key;
         }
 
         protected ControlKey[] ColumnKeys;

@@ -35,6 +35,21 @@ namespace Squared.Render.STB {
             return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         }
 
+        public static unsafe void GetInfoFromFile (FileStream stream, string path, out int width, out int height, out int channels) {
+            bool ownsStream = stream == null;
+            if (ownsStream)
+                stream = File.Open(path, FileMode.Open);
+            using (var mappedFile = MemoryMappedFile.CreateFromFile(stream, null, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, true))
+            using (var view = mappedFile.CreateViewAccessor(0, stream.Length, MemoryMappedFileAccess.Read)) {
+                byte* ptr = null;
+                view.SafeMemoryMappedViewHandle.AcquirePointer(ref ptr);
+                Native.API.stbi_info_from_memory(ptr, (int)view.Capacity, out width, out height, out channels);
+                view.SafeMemoryMappedViewHandle.ReleasePointer();
+            }
+            if (ownsStream)
+                stream.Dispose();
+        }
+
         public Image (string path, bool premultiply = true, bool asFloatingPoint = false, bool enable16Bit = false)
             : this (OpenStream(path), true, premultiply, asFloatingPoint) {
             Name = path;

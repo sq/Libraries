@@ -43,6 +43,11 @@ namespace Squared.PRGUI.Controls {
             ShowHorizontalScrollbar ?? AutoShowHScroll;
         protected bool ShouldShowVerticalScrollbar =>
             ShowVerticalScrollbar ?? AutoShowVScroll;
+        /// <summary>
+        /// The scrollable region must be bigger than this (in pixels) before a scrollbar
+        ///  will appear
+        /// </summary>
+        protected virtual float ScrollMinimumAmount => 5;
 
         private bool AutoShowHScroll, AutoShowVScroll;
         private Vector2 _ScrollOffset;
@@ -346,10 +351,16 @@ namespace Squared.PRGUI.Controls {
                     maxScrollY = Math.Max(0, maxScrollY);
 
                     // HACK: Suppress flickering during size transitions
-                    if (maxScrollX <= 1)
+                    // FIXME: Due to incorrect padding/margins calculations somewhere, the participant window in HL
+                    //  has a slightly too wide content size
+                    if (maxScrollX <= ScrollMinimumAmount) {
                         maxScrollX = 0;
-                    if (maxScrollY <= 1)
+                        contentSizeX = viewportWidth;
+                    }
+                    if (maxScrollY <= ScrollMinimumAmount) {
                         maxScrollY = 0;
+                        contentSizeY = viewportHeight;
+                    }
 
                     MinScrollOffset = Vector2.Zero;
                     MaxScrollOffset = new Vector2(maxScrollX, maxScrollY);

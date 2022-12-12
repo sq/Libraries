@@ -99,8 +99,10 @@ namespace Squared.PRGUI.NewEngine {
                             x += childOuterSize.X;
                         }
 
-                        result.ContentSize.X = Math.Max(result.ContentSize.X, childResult.Rect.Right - contentPosition.X);
-                        result.ContentSize.Y = Math.Max(result.ContentSize.Y, childResult.Rect.Bottom - contentPosition.Y);
+                        if (!child.Config.NoMeasurement) {
+                            result.ContentSize.X = Math.Max(result.ContentSize.X, childResult.Rect.Right - contentPosition.X);
+                            result.ContentSize.Y = Math.Max(result.ContentSize.Y, childResult.Rect.Bottom - contentPosition.Y);
+                        }
 
                         // TODO: Clip left/top edges as well?
                         // TODO: Separate x/y
