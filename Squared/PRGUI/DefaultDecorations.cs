@@ -574,6 +574,11 @@ namespace Squared.PRGUI {
         public float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
 
+        void IDecorationProvider.OnEvent<T> (Control control, string name, T args) => OnControlEvent(control, name, args);
+
+        protected virtual void OnControlEvent<T> (Control control, string name, T args) {
+        }
+
         public float GetHoveringAlpha (ref UIOperationContext context, ControlStates state, out bool isHovering, float? fadeLength = null) {
             isHovering = state.IsFlagged(ControlStates.Hovering);
 
@@ -1591,13 +1596,7 @@ namespace Squared.PRGUI {
             }
 
             var track = new RectF(trackA, trackB - trackA);
-            if (
-                track.Contains(args.GlobalPosition) && 
-                (
-                    (eventName != UIEvents.MouseMove) ||
-                    (args.Buttons != MouseButtons.None)
-                )
-            )
+            if (track.Contains(args.GlobalPosition))
                 processed = true;
 
             return processed;

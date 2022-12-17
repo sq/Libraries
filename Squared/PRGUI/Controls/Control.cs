@@ -498,12 +498,17 @@ namespace Squared.PRGUI {
         protected virtual void OnDisplayOffsetChanged () {
         }
 
+        internal bool InvokeEventFilter<T> (string name, T args) {
+            (Appearance.DecorationProvider ?? Context?.Decorations)?.OnEvent(this, name, args);
+            return EventFilter?.OnEvent(this, name, args) ?? false;
+        }
+
         internal bool HandleEvent (string name) {
-            return (EventFilter?.OnEvent(this, name, NoneType.None) ?? false) || OnEvent(name, NoneType.None);
+             return InvokeEventFilter(name, NoneType.None) || OnEvent(name, NoneType.None);
         }
 
         internal bool HandleEvent<T> (string name, T args) {
-            return (EventFilter?.OnEvent(this, name, args) ?? false) || OnEvent(name, args);
+            return InvokeEventFilter(name, args) || OnEvent(name, args);
         }
 
         protected virtual bool OnEvent<T> (string name, T args) {

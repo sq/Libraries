@@ -318,8 +318,7 @@ namespace Squared.PRGUI.Controls {
             if (_HoveringItem != item) {
                 var previous = _HoveringItem;
                 _HoveringItem = item;
-                fireSelectEvent = false;
-                OnSelectionChange(previous, item);
+                FireEvent("ItemHover", item);
             }
 
             if (name == UIEvents.MouseDown) {

@@ -194,7 +194,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void Manager_SelectionChanged () {
-            OnSelectionChanged(true);
+            OnSelectionChanged(false);
         }
 
         private void OnSelectionChanged (bool forUserInput) {

@@ -172,6 +172,11 @@ namespace Squared.PRGUI.Decorations {
         IDecorator HyperTextHotspot { get; }
         IDecorator LoadingSpinner { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
+
+        /// <summary>
+        /// Allows reacting to control events to play feedback animations or sound effects
+        /// </summary>
+        void OnEvent<T> (Control control, string name, T args);
     }
 
     public delegate bool TextSettingsGetter (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData);

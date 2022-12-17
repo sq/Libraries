@@ -62,8 +62,11 @@ namespace Squared.PRGUI {
             if (targetHandlesFirst && !filtersOnly && target.HandleEvent(name, args))
                 return true;
 
-            if (suppressHandler)
+            if (suppressHandler) {
+                if (!targetHandlesFirst)
+                    target.InvokeEventFilter(name, args);
                 return false;
+            }
 
             if (targetHandlesFirst && EventBus.Broadcast(target, name, args))
                 return true;
@@ -93,8 +96,11 @@ namespace Squared.PRGUI {
             if (targetHandlesFirst && !filtersOnly && target.HandleEvent(name))
                 return true;
 
-            if (suppressHandler)
+            if (suppressHandler) {
+                if (!targetHandlesFirst)
+                    target.InvokeEventFilter(name, NoneType.None);
                 return false;
+            }
 
             if (targetHandlesFirst && EventBus.Broadcast<object>(target, name, null))
                 return true;
