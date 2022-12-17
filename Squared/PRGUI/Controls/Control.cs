@@ -453,7 +453,7 @@ namespace Squared.PRGUI {
         }
 
         protected bool FireEvent (string name) {
-            return (EventFilter?.OnEvent(this, name) ?? false) || 
+            return (EventFilter?.OnEvent(this, name, NoneType.None) ?? false) || 
                 (Context?.FireEvent(name, this, suppressHandler: true) ?? false);
         }
 
@@ -499,7 +499,7 @@ namespace Squared.PRGUI {
         }
 
         internal bool HandleEvent (string name) {
-            return (EventFilter?.OnEvent(this, name) ?? false) || OnEvent<NoneType>(name, NoneType.None);
+            return (EventFilter?.OnEvent(this, name, NoneType.None) ?? false) || OnEvent(name, NoneType.None);
         }
 
         internal bool HandleEvent<T> (string name, T args) {

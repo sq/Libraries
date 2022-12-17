@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Input;
 using Squared.Render;
+using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.PRGUI {
@@ -103,7 +104,7 @@ namespace Squared.PRGUI {
             Control ctl = target, parent = null;
             while (ctl?.TryGetParent(out parent) == true) {
                 var filter = (parent as IControlContainer).ChildEventFilter;
-                if ((filter != null) && filter.OnEvent(target, name))
+                if ((filter != null) && filter.OnEvent(target, name, NoneType.None))
                     return true;
                 ctl = parent;
             }

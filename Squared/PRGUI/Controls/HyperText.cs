@@ -159,10 +159,6 @@ namespace Squared.PRGUI.Controls {
                 child.AbsoluteDisplayOffset = ado;
         }
 
-        bool IControlEventFilter.OnEvent (Control target, string name) {
-            return false;
-        }
-
         bool IControlEventFilter.OnEvent<T> (Control target, string name, T args) {
             if (name == UIEvents.Click) {
                 if (OnHotSpotClicked != null) {

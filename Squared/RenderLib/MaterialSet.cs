@@ -120,7 +120,8 @@ namespace Squared.Render {
 
         protected void BuildMaterialCache () {
             lock (Lock) {
-                MaterialCacheScratchSet.Clear();
+                // Not necessary and expensive
+                // MaterialCacheScratchSet.Clear();
 
                 foreach (var field in AllMaterialFields) {
                     var material = field();

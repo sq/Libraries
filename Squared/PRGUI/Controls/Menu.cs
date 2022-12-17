@@ -126,7 +126,8 @@ namespace Squared.PRGUI.Controls {
                 return;
             var oldSelection = _SelectedItem;
             _SelectedItem = value;
-            OnSelectionChange(oldSelection, value);
+            if (fireEvents)
+                OnSelectionChange(oldSelection, value);
             if (snap && SnapMouseToNewSelection)
                 _PendingSnap = value;
             else
