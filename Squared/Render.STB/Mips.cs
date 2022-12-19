@@ -40,13 +40,13 @@ namespace Squared.Render {
             var colorspace = (format & MipFormat.sRGB) == MipFormat.sRGB
                 ? stbir_colorspace.SRGB
                 : stbir_colorspace.LINEAR;
-            var channels = masked == MipFormat.Gray1 ? 1 : 4;
+            var channels = (masked == MipFormat.Gray1) || (masked == MipFormat.Single) ? 1 : 4;
             var flags = (masked == MipFormat.pRGBA) || 
                 (masked == MipFormat.pGray4) ||
                 (masked == MipFormat.pVector4)
                 ? stbir_flags.ALPHA_PREMULTIPLIED
                 : default;
-            var alpha_channel = (masked == MipFormat.Gray1) ? -1 : 3;
+            var alpha_channel = channels == 1 ? -1 : 3;
 
             unsafe void Implementation (
                 void* src, int srcWidth, int srcHeight, int srcStrideBytes, 

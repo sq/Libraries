@@ -32,7 +32,8 @@ namespace Squared.PRGUI.Controls {
     public class ModalDialog<TParameters, TResult> : Window, IModalDialog<TResult>, IAcceleratorSource {
         public event Action<IModal> Shown;
         public event Action<IModal, ModalCloseReason> Closed;
-        public event Func<IModal, bool> Accepted, Cancelled;
+        public event Func<IModal, bool> BeforeAccept, BeforeCancel;
+        public event Action<IModal, TResult> Accepted;
 
         public TParameters Parameters;
 
@@ -174,7 +175,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected virtual void OnAcceptClick (IEventInfo e) {
-            if ((Accepted != null) && Accepted(this)) {
+            if ((BeforeAccept != null) && BeforeAccept(this)) {
                 e.Consume();
                 return;
             }
@@ -189,7 +190,7 @@ namespace Squared.PRGUI.Controls {
                 return;
             }
 
-            if ((Cancelled != null) && Cancelled(this)) {
+            if ((BeforeCancel != null) && BeforeCancel(this)) {
                 e.Consume();
                 return;
             }
@@ -270,6 +271,8 @@ namespace Squared.PRGUI.Controls {
             IsFadingOut = (Context.TopLevelFocused == this);
             var f = StartAnimation(Context.Animations?.HideModalDialog);
             Context.NotifyModalClosed(this);
+            if ((reason == ModalCloseReason.UserConfirmed) && (Accepted != null))
+                Accepted(this, result);
             if (Closed != null)
                 Closed(this, reason);
             if (f.CompletedSuccessfully && f.Result == false)
