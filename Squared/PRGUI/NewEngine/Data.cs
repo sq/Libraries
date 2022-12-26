@@ -364,6 +364,7 @@ namespace Squared.PRGUI.NewEngine {
     public struct BoxRecord {
         // Managed by the layout engine
         // TODO: Use a custom dense backing store and no setters
+        [Unserialized]
         internal ControlKeyDefaultInvalid _Key, _Parent, _FirstChild, 
             _LastChild, _PreviousSibling, _NextSibling;
 
@@ -416,20 +417,28 @@ namespace Squared.PRGUI.NewEngine {
         public string DebugLabel;
 #endif
 
+        [Unserialized]
         internal ControlFlags _OldFlags;
+
         public ControlFlags OldFlags {
+#if DEBUG
+            get => _OldFlags;
+#else
             internal get => _OldFlags;
+#endif
             set {
                 _OldFlags = value;
                 Config = new ControlConfiguration(value);
             }
         }
 
+        [Unserialized]
         public ControlFlags OldLayoutFlags {
             internal get => _OldFlags & ControlFlagMask.Layout;
             set => OldFlags = (_OldFlags & ControlFlagMask.Container) | (value & ControlFlagMask.Layout);
         }
 
+        [Unserialized]
         public ControlFlags OldContainerFlags {
             internal get => _OldFlags & ControlFlagMask.Container;
             set => OldFlags = (_OldFlags & ControlFlagMask.Layout) | (value & ControlFlagMask.Container);

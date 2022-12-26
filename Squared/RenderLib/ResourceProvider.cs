@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
@@ -21,6 +22,7 @@ namespace Squared.Render.Resources {
     public delegate void ResourceLoadCompleteHandler (ResourceLoadInfo info, object resource);
 
     public enum ResourceLoadStatus : int {
+        Uninitialized,
         Queued,
         OpeningStream,
         Preloading,
@@ -382,7 +384,7 @@ namespace Squared.Render.Resources {
                     var future = CreateInstance(name, stream, data, preloadedData, false);
                     info.SetStatus(ResourceLoadStatus.Created, Now);
                     NotifyLoadCompleted(info, future.Result);
-                    if (IsDisposed) {
+                    if (IsDisposed && future.CompletedSuccessfully) {
                         Coordinator.DisposeResource(future.Result as IDisposable);
                         return default(T);
                     } else {
@@ -553,11 +555,13 @@ namespace Squared.Render.Resources {
         public string Prefix { get; set; }
         public string[] Extensions { get; protected set; }
         public SearchOption Options;
+        public bool UseMmap;
 
-        public FileStreamProvider (string path, string prefix = null, string[] extensions = null, bool recursive = false) {
+        public FileStreamProvider (string path, string prefix = null, string[] extensions = null, bool recursive = false, bool mmap = false) {
             Path = path;
             Extensions = extensions;
             Options = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+            UseMmap = mmap;
         }
 
         protected string Filter {
@@ -594,6 +598,16 @@ namespace Squared.Render.Resources {
             return name;
         }
 
+        private Stream OpenFile (string path) {
+            if (UseMmap) {
+                var mmf = MemoryMappedFile.CreateFromFile(path, FileMode.Open, null, 0, MemoryMappedFileAccess.ReadWrite);
+                // FIXME: Dispose the mmap when disposing the stream?
+                return mmf.CreateViewStream(0, 0, MemoryMappedFileAccess.ReadWrite);
+            } else {
+                return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            }
+        }
+
         public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception, bool exactName = false) {
             var pathsSearched = new DenseList<string>();
 
@@ -604,7 +618,7 @@ namespace Squared.Render.Resources {
                 candidateStreamName = System.IO.Path.Combine(Path, FixupName(exactName ? name : (Prefix ?? "") + name + extension, false));
                 if (File.Exists(candidateStreamName)) {
                     try {
-                        result = File.Open(candidateStreamName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                        result = OpenFile(candidateStreamName);
                         break;
                     } catch (Exception exc) {
                         exception = exception ?? exc;
@@ -617,7 +631,7 @@ namespace Squared.Render.Resources {
                 candidateStreamName = System.IO.Path.Combine(Path, FixupName((Prefix ?? "") + name, false));
                 if (File.Exists(candidateStreamName)) {
                     try {
-                        result = File.Open(candidateStreamName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                        result = OpenFile(candidateStreamName);
                     } catch (Exception exc) {
                         exception = exception ?? exc;
                     }

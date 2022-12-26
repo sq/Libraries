@@ -149,8 +149,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         public float BackgroundFadeLevel { get; set; } = 1.0f;
-        bool IModal.RetainFocus => true;
 
+        public bool RetainFocus { get; set; } = true;
         public bool BlockHitTests { get; set; } = true;
         public bool BlockInput { get; set; } = true;
         public bool IsActive { get; private set; }
