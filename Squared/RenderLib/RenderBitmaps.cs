@@ -119,14 +119,18 @@ namespace Squared.Render {
     }
 
     public sealed class BitmapDrawCallOrderAndTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
-        private FastMath.U32F32 Buffer = new FastMath.U32F32();
+        private FastMath.U32F32_X2 Buffer = new FastMath.U32F32_X2();
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             unchecked {
+#if !NOSPAN
+                var result = FastMath.CompareF(ref Unsafe.As<float, FastMath.U32F32_X1>(ref x.SortOrder), ref Unsafe.As<float, FastMath.U32F32_X1>(ref y.SortOrder));
+#else
                 Buffer.F1 = x.SortOrder; Buffer.F2 = y.SortOrder;
                 var result = FastMath.CompareF(ref Buffer);
+#endif
                 if (result == 0)
                     result = x.Textures.CompareTo(in y.Textures);
                 return result;
@@ -141,7 +145,7 @@ namespace Squared.Render {
     }
 
     public sealed class BitmapDrawCallTextureAndReverseOrderComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
-        private FastMath.U32F32 Buffer = new FastMath.U32F32();
+        private FastMath.U32F32_X2 Buffer = new FastMath.U32F32_X2();
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -149,8 +153,12 @@ namespace Squared.Render {
             unchecked {
                 var result = x.Textures.CompareTo(in y.Textures);
                 if (result == 0) {
+#if !NOSPAN
+                    result = FastMath.CompareF(ref Unsafe.As<float, FastMath.U32F32_X1>(ref y.SortOrder), ref Unsafe.As<float, FastMath.U32F32_X1>(ref x.SortOrder));
+#else
                     Buffer.F1 = y.SortOrder; Buffer.F2 = x.SortOrder;
                     result = FastMath.CompareF(ref Buffer);
+#endif
                 }
                 return result;
             }

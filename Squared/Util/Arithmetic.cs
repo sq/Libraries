@@ -1131,7 +1131,17 @@ namespace Squared.Util {
         }
 
         [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 4)]
-        public struct U32F32 {
+        public struct U32F32_X1 {
+            [FieldOffset(0)]
+            public uint U32;
+            [FieldOffset(0)]
+            public int I32;
+            [FieldOffset(0)]
+            public float F32;
+        }
+
+        [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 8)]
+        public struct U32F32_X2 {
             [FieldOffset(0)]
             public uint U1;
             [FieldOffset(0)]
@@ -1148,7 +1158,31 @@ namespace Squared.Util {
 
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int CompareF (ref U32F32 buf) {
+        public static int CompareF (ref U32F32_X1 lhs, ref U32F32_X1 rhs) {
+            // Hot magic in action!
+            // We pass the union by reference and have the caller initialize it.
+            // Otherwise, we'd have to initialize it at entry to this function, which is expensive
+            // If it was passed by value it'd be copied per-call, which is pointless
+
+            unchecked {
+                var shiftI1 = (lhs.I32 >> 31);
+
+                // Precomputing these shifts once and storing them in locals creates memory
+                //  loads/stores so it's better to just compute over and over, it produces
+                //  fewer insns and theoretically doesn't hit stack/mem as much
+                if (shiftI1 != (rhs.I32 >> 31))
+                    return shiftI1 - (rhs.I32 >> 31);
+
+                // Storing these expressions into locals raises overhead, so just write them out bare
+                return (int)(lhs.U32 - rhs.U32) * 
+                    // We use a bit shift instead of a * 2 because it seems to be faster
+                    ((shiftI1 << 1) + 1);
+            }
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int CompareF (ref U32F32_X2 buf) {
             // Hot magic in action!
             // We pass the union by reference and have the caller initialize it.
             // Otherwise, we'd have to initialize it at entry to this function, which is expensive
@@ -1197,10 +1231,14 @@ namespace Squared.Util {
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe int CompareF (float lhs, float rhs) {
-            U32F32 u = default;
+#if !NOSPAN
+            return CompareF(ref Unsafe.As<float, U32F32_X1>(ref lhs), ref Unsafe.As<float, U32F32_X1>(ref rhs));
+#else
+            U32F32_X2 u = default;
             u.F1 = lhs;
             u.F2 = rhs;
             return CompareF(ref u);
+#endif
         }
     }
 
