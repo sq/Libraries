@@ -64,6 +64,7 @@ namespace Squared.Render.Text {
         private Color? _Color;
         private float _Scale;
         private float _Spacing;
+        private float _AdditionalLineSpacing;
         private float _SortKey;
         private float _DesiredWidth;
         private float? _MaxExpansion;
@@ -485,6 +486,15 @@ namespace Squared.Render.Text {
             }
         }
 
+        public float AdditionalLineSpacing {
+            get {
+                return _AdditionalLineSpacing;
+            }
+            set {
+                InvalidatingValueAssignment(ref _AdditionalLineSpacing, value);
+            }
+        }
+
         public float SortKey {
             get {
                 return _SortKey;
@@ -859,6 +869,7 @@ namespace Squared.Render.Text {
                 defaultColor = _DefaultColor,
                 scale = _Scale,
                 spacing = _Spacing,
+                additionalLineSpacing = _AdditionalLineSpacing,
                 sortKey = _SortKey,
                 desiredWidth = _DesiredWidth,
                 maxExpansion = _MaxExpansion,

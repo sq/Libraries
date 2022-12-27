@@ -153,6 +153,7 @@ namespace Squared.Render.Text {
         public Color? Color;
         public float? Scale;
         public float? Spacing;
+        public float? AdditionalLineSpacing;
         public RichStyleApplier Apply;
     }
 
@@ -313,12 +314,14 @@ namespace Squared.Render.Text {
         public readonly Color? InitialColor;
         public readonly float InitialScale;
         public readonly float InitialSpacing;
+        public readonly float InitialLineSpacing;
         public List<ImmutableAbstractString> MarkedStrings;
 
         public RichTextLayoutState (ref StringLayoutEngine engine, IGlyphSource defaultGlyphSource) {
             InitialColor = engine.overrideColor;
             InitialScale = engine.scale;
             InitialSpacing = engine.spacing;
+            InitialLineSpacing = engine.additionalLineSpacing;
             DefaultGlyphSource = defaultGlyphSource;
             GlyphSource = null;
             MarkedStrings = MarkedStringLists.Value;
@@ -330,6 +333,7 @@ namespace Squared.Render.Text {
             engine.overrideColor = InitialColor;
             engine.scale = InitialScale;
             engine.spacing = InitialSpacing;
+            engine.additionalLineSpacing = InitialLineSpacing;
         }
 
         public void Dispose () {
@@ -450,7 +454,8 @@ namespace Squared.Render.Text {
             Color,
             Scale,
             Spacing,
-            Font
+            Font,
+            LineSpacing
         }
 
         private static readonly Dictionary<ImmutableAbstractString, RichRuleId> RuleNameTable =
@@ -461,6 +466,9 @@ namespace Squared.Render.Text {
                 { "sc", RichRuleId.Scale },
                 { "spacing", RichRuleId.Spacing },
                 { "sp", RichRuleId.Spacing },
+                { "linespacing", RichRuleId.LineSpacing },
+                { "ls", RichRuleId.LineSpacing },
+                { "line-spacing", RichRuleId.LineSpacing },
                 { "font", RichRuleId.Font },
                 { "f", RichRuleId.Font },
                 { "glyphsource", RichRuleId.Font },
@@ -571,6 +579,12 @@ namespace Squared.Render.Text {
                                         layoutEngine.spacing = state.InitialSpacing;
                                     else
                                         layoutEngine.spacing = state.InitialSpacing * newSpacing;
+                                    break;
+                                case RichRuleId.LineSpacing:
+                                    if (!float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out float newLineSpacing))
+                                        layoutEngine.additionalLineSpacing = state.InitialLineSpacing;
+                                    else
+                                        layoutEngine.additionalLineSpacing = newLineSpacing;
                                     break;
                                 case RichRuleId.Font:
                                     if (GlyphSources != null)
@@ -684,6 +698,7 @@ namespace Squared.Render.Text {
             layoutEngine.overrideColor = style.Color ?? layoutEngine.overrideColor;
             layoutEngine.scale = style.Scale * state.InitialScale ?? state.InitialScale;
             layoutEngine.spacing = style.Spacing ?? state.InitialSpacing;
+            layoutEngine.additionalLineSpacing = style.AdditionalLineSpacing ?? state.InitialLineSpacing;
             if (style.Apply != null)
                 style.Apply(in style, ref layoutEngine, ref state);
         }

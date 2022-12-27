@@ -43,6 +43,7 @@ namespace Squared.Render.Text {
         public int?                lineBreakLimit;
         public float               scale;
         private float              _spacingMinusOne;
+        public float               additionalLineSpacing;
         public float               xOffsetOfFirstLine;
         public float               xOffsetOfWrappedLine;
         public float               xOffsetOfNewLine;
@@ -656,7 +657,7 @@ namespace Squared.Render.Text {
         public void Advance (
             float width, float height, bool doNotAdjustLineSpacing = false, bool considerBoxes = true
         ) {
-            var lineSpacing = height;
+            var lineSpacing = height + additionalLineSpacing;
             float x = characterOffset.X;
             if (!doNotAdjustLineSpacing)
                 ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
@@ -715,7 +716,7 @@ namespace Squared.Render.Text {
             var estimatedBounds = dc.EstimateDrawBounds();
             estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
             estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
-            var lineSpacing = estimatedBounds.Size.Y;
+            var lineSpacing = estimatedBounds.Size.Y + additionalLineSpacing;
             if (!doNotAdjustLineSpacing)
                 ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
             float y1 = y,
@@ -1034,6 +1035,7 @@ namespace Squared.Render.Text {
             deadGlyph = !font.GetGlyph(codepoint, out glyph);
 
             glyphLineSpacing = glyph.LineSpacing * effectiveScale;
+            glyphLineSpacing += additionalLineSpacing;
             glyphBaseline = glyph.Baseline * effectiveScale;
             if (deadGlyph) {
                 if (currentLineSpacing > 0) {
@@ -1043,6 +1045,7 @@ namespace Squared.Render.Text {
                     Glyph space;
                     if (font.GetGlyph(' ', out space)) {
                         glyphLineSpacing = space.LineSpacing * effectiveScale;
+                        glyphLineSpacing += additionalLineSpacing;
                         glyphBaseline = space.Baseline * effectiveScale;
                     }
                 }
