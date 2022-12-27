@@ -290,7 +290,7 @@ namespace Squared.Util {
         };
 
         private static void TestPairImpl (float a, float b, ref int errorCount) {
-            var buf = new FastMath.U32F32 { F1 = a, F2 = b };
+            var buf = new FastMath.U32F32_X2 { F1 = a, F2 = b };
             var expected = a.CompareTo(b);
             var actual = Math.Sign(FastMath.CompareF(ref buf));
             if (expected != actual) {
@@ -325,7 +325,7 @@ namespace Squared.Util {
             var allTestValues = new List<float>(TestValues);
             allTestValues.Capacity = allTestValues.Capacity + 0x1FFF;
 
-            var buf = default(FastMath.U32F32);
+            var buf = default(FastMath.U32F32_X2);
             // This burns some time but it's worthwhile to be exhaustive
             for (var i = 0; i < 0x1FFF; i++) {
                 buf.I1 = i;
@@ -370,7 +370,7 @@ namespace Squared.Util {
         }
 
         private static void CompareFPass (float[] allTestValues, ref long totalAccumulator) {
-            var buf = default(FastMath.U32F32);
+            var buf = default(FastMath.U32F32_X2);
             int accumulator = 0, c = allTestValues.Length;
             for (int i = 0; i < c; i++) {
                 buf.F1 = allTestValues[i];

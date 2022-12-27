@@ -186,7 +186,7 @@ namespace Squared.PRGUI.NewEngine {
                     if ((xSpace <= 1) && (ySpace <= 1) && (pass > 0))
                         break;
 
-                    float p = 0 ;
+                    float p = 0;
                     foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                         ref var child = ref this[ckey];
                         ref var childResult = ref Result(ckey);
@@ -242,7 +242,7 @@ namespace Squared.PRGUI.NewEngine {
                                 if (config.Clip || (config.ConstrainGrowth && (newChildW > childOuterW)))
                                     newChildW = Math.Min(newChildW, config.IsVertical ? cw : cw - p);
                                 float expanded = newChildW - childOuterW;
-                                if (expanded < amountX)
+                                if (expanded < Math.Max(0, amountX - 1))
                                     newCountX--;
                                 newXSpace -= expanded;
                                 childResult.Rect.Width = newChildW - margins.X;
@@ -258,7 +258,7 @@ namespace Squared.PRGUI.NewEngine {
                                 childResult.AvailableSpace.Y = Math.Max(childResult.AvailableSpace.Y, newChildH);
                                 newChildH = child.Height.Constrain(newChildH - margins.Y, true) + margins.Y;
                                 float expanded = childOuterH - childResult.Rect.Height;
-                                if (expanded < amountY)
+                                if (expanded < Math.Max(0, amountY - 1))
                                     newCountY--;
                                 newYSpace -= expanded;
                                 childResult.Rect.Height = newChildH - margins.Y;
