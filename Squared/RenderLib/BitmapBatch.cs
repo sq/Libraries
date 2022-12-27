@@ -280,11 +280,18 @@ namespace Squared.Render {
                 hasUserData = userData.HasValue,
                 hasOpacity = multiplyOpacity.HasValue;
 
+            int destinationOffset = _DrawCalls.Count,
+                newCount = destinationOffset + count;
+            _DrawCalls.EnsureCapacity(newCount);
+            // Do a big block copy first before modifying the bitmaps (if at all), since the larger copy can perform
+            //  better than a bunch of small item JIT_MemCpys. The first few items will fall out of cache once we're
+            //  done but that's not a big problem since BitmapDrawCalls are big to begin with
+            _DrawCalls.AddRange(items, firstIndex, count);
+
             if (
                 !hasOffset && !hasMultiplyColor && !hasAddColor &&
                 !hasUserData && !hasSortKey && !hasScale && !hasOpacity
             ) {
-                AddRange(items, firstIndex, count);
                 return;
             }
 
@@ -295,13 +302,12 @@ namespace Squared.Render {
             var _sortKey = sortKey ?? default(DrawCallSortKey);
             var _userData = userData ?? default(Vector4);
             var _opacity = multiplyOpacity ?? 1.0f;
+            if (multiplyOpacity.HasValue && hasMultiplyColor)
+                _multiplyColor *= _opacity;
 
-            var newCount = _DrawCalls.Count + count;
-            _DrawCalls.EnsureCapacity(newCount);
             for (int i = 0; i < count; i++) {
-                ref var item = ref DenseList<BitmapDrawCall>.UnsafeCreateSlotWithKnownCapacity(ref _DrawCalls);
-                item = items[i + firstIndex];
-                if (!BitmapDrawCall.CheckValid(ref item))
+                ref var item = ref _DrawCalls.Item(destinationOffset + i);
+                if (!item.Textures.Texture1.IsInitialized)
                     continue;
 
                 if (hasScale) {
@@ -315,10 +321,7 @@ namespace Squared.Render {
                     item.Position.Y += _offset.Y;
                 }
                 if (hasMultiplyColor) {
-                    if (hasOpacity)
-                        item.MultiplyColor = _multiplyColor * _opacity;
-                    else
-                        item.MultiplyColor = _multiplyColor;
+                    item.MultiplyColor = _multiplyColor;
                 } else if (hasOpacity) {
                     item.MultiplyColor *= _opacity;
                 }
