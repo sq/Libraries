@@ -29,12 +29,11 @@ namespace Squared.Render.Text {
                 if (closer != null) {
                     if (ch == closer) {
                         if (closer == ')') {
-                            var markedText = richText.Substring(rangeStarted, i - rangeStarted);
+                            var markedText = new AbstractString(richText, rangeStarted, i - rangeStarted);
                             var pipeOffset = markedText.IndexOf('|');
                             if (pipeOffset >= 0)
-                                result.Append(markedText.Substring(pipeOffset + 1));
-                            else
-                                result.Append(markedText);
+                                markedText = new AbstractString(markedText, pipeOffset);
+                            result.Append(markedText.ToString());
                         }
                         closer = null;
                     }
@@ -54,6 +53,45 @@ namespace Squared.Render.Text {
             return result.ToString();
         }
 
+        private static int PlainTextLength_Slow (AbstractString richText, int firstDollarOffset, bool includeWhitespace = true) {
+            var result = firstDollarOffset;
+
+            int rangeStarted = 0;
+            char? closer = null;
+            for (int i = firstDollarOffset, l = richText.Length; i < l; i++) {
+                var ch = richText[i];
+                var next = (i < l - 1) ? richText[i + 1] : '\0';
+                if (closer != null) {
+                    if (ch == closer) {
+                        if (closer == ')') {
+                            var markedText = new AbstractString(richText, rangeStarted, i - rangeStarted);
+                            var pipeOffset = markedText.IndexOf('|');
+                            if (pipeOffset >= 0)
+                                markedText = new AbstractString(markedText, pipeOffset);
+
+                            if (!includeWhitespace)
+                                result += PlainTextLength_Slow(markedText, 0, false);
+                            else
+                                result += markedText.Length;
+                        }
+                        closer = null;
+                    }
+                    continue;
+                } else if (ch == '$') {
+                    if ((next == '(') || (next == '[')) {
+                        closer = (next == '(') ? ')' : ']';
+                        i++;
+                        rangeStarted = i + 1;
+                        continue;
+                    }
+                } else if (includeWhitespace || !char.IsWhiteSpace(ch)) {
+                    result++;
+                }
+            }
+
+            return result;
+        }
+
         public static string ToPlainText (AbstractString richText) {
             if (richText.IsNull)
                 return null;
@@ -65,6 +103,22 @@ namespace Squared.Render.Text {
             }
 
             return richText.ToString();
+        }
+
+        public static int PlainTextLength (AbstractString richText, bool includeWhitespace = true) {
+            if (richText.IsNull)
+                return 0;
+
+            if (!includeWhitespace)
+                return PlainTextLength_Slow(richText, 0, false);
+
+            for (int i = 0, l = richText.Length; i < l - 1; i++) {
+                var c = richText[i];
+                if ((c == '$') && (richText[i + 1] == '[') || (richText[i + 1] == '('))
+                    return PlainTextLength_Slow(richText, i, true);
+            }
+
+            return richText.Length;
         }
 
         public static DenseList<RichRule> ParseRules (AbstractString text, ref DenseList<RichParseError> parseErrors) {

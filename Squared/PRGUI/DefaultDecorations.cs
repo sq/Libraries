@@ -1320,17 +1320,26 @@ namespace Squared.PRGUI {
         protected virtual void Window_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             ConfigureTexture("Window", ref settings, out var texture, out var textureRegion, out var textureSettings);
 
-            var fillColor = settings.BackgroundColor ?? ColorScheme.WindowFill ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill;
+            // HACK: Handle having composition disabled for windows, since in some cases it's desirable to do that
+            var fillColor = (pSRGBColor)(settings.BackgroundColor ?? ColorScheme.WindowFill ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill)
+                * context.Opacity;
+            var shadow = FloatingContainerShadow ?? ContainerShadow;
+            if (shadow.HasValue) {
+                var _ = shadow.Value;
+                _.Color *= context.Opacity;
+                shadow = _;
+            }
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
             renderer.RasterizeRectangle(
                 a, b,
                 radius: FloatingContainerCornerRadius ?? ContainerCornerRadius,
-                outlineRadius: Button_GetOutlineSize(InertOutlineThickness), outlineColor: ColorScheme.FloatingContainerOutline ?? ColorScheme.ContainerOutline,
+                outlineRadius: Button_GetOutlineSize(InertOutlineThickness), 
+                outlineColor: (ColorScheme.FloatingContainerOutline ?? ColorScheme.ContainerOutline) * context.Opacity,
                 innerColor: fillColor, 
                 outerColor: fillColor,
-                shadow: FloatingContainerShadow ?? ContainerShadow,
+                shadow: shadow,
                 texture: texture,
                 textureRegion: textureRegion,
                 textureSettings: textureSettings
