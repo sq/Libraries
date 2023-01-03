@@ -334,7 +334,7 @@ namespace Squared.Render.Convenience {
             Name = "LinearMirror",
             AddressU = TextureAddressMode.Mirror,
             AddressV = TextureAddressMode.Mirror,
-            AddressW = TextureAddressMode.Mirror,
+            AddressW = TextureAddressMode.Clamp,
             Filter = TextureFilter.Linear,
         };
     }

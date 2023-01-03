@@ -293,8 +293,7 @@ namespace Squared.Render.STB {
                 coordinator.AutoAllocatedTextureResources.Add(result);
             }
 
-            // FIXME: FP mips, 16bit mips
-            if ((MipChain != null) && !IsFloatingPoint && !Is16Bit)
+            if (MipChain != null)
                 UploadWithMips(coordinator, result, false);
             else
                 UploadDirect(coordinator, result, false);
@@ -318,9 +317,8 @@ namespace Squared.Render.STB {
                 coordinator.AutoAllocatedTextureResources.Add(tex);
             }
 
-            // FIXME: FP mips, 16bit mips
             Future<Texture2D> result;
-            if ((MipChain != null) && !IsFloatingPoint && !Is16Bit)
+            if (MipChain != null)
                 result = UploadWithMips(coordinator, tex, true);
             else
                 result = UploadDirect(coordinator, tex, true);
@@ -350,7 +348,6 @@ namespace Squared.Render.STB {
             int levelWidth = Width, levelHeight = Height;
             int previousLevelWidth = Width, previousLevelHeight = Height;
             // FIXME
-            MipChain = new byte[64][];
             var pins = new List<GCHandle>();
 
             MipFormat format = (MipFormat)(-1);
@@ -374,6 +371,10 @@ namespace Squared.Render.STB {
                 format |= MipFormat.sRGB;
 
             var mipGenerator = STBMipGenerator.Get(format);
+            if (mipGenerator == null)
+                return;
+
+            MipChain = new byte[64][];
 
             for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
                 if (IsDisposed)
