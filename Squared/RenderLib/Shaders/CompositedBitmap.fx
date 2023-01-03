@@ -173,7 +173,7 @@ void MaskedPixelShaderWithDiscard(
     addColor.a = 0;
 
     float4 sample1 = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
-    float4 sample2 = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS));
+    float4 sample2 = tex2D(TextureSampler2, clamp2(texCoord2, texRgn2.xy, texRgn2.zw));
     float4 traits1 = AdaptTraits(BitmapTraits), traits2 = AdaptTraits(BitmapTraits2);
     sample1 = AutoClampAlpha4(sample1, texCoord, texRgn, HalfTexel, TransparentExterior);
     sample2 = AutoClampAlpha4(sample2, texCoord2, texRgn2, HalfTexel2, TransparentExterior);
@@ -222,7 +222,7 @@ void GradientMaskedPixelShaderWithDiscard(
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     // FIXME: Use a different value?
-    float4 maskColor = tex2Dbias(TextureSampler2, float4(clamp2(texCoord2, texRgn2.xy, texRgn2.zw), 0, MIP_BIAS));
+    float4 maskColor = tex2D(TextureSampler2, clamp2(texCoord2, texRgn2.xy, texRgn2.zw));
     texColor = ExtractRgba(texColor, traits1);
     float mask, alpha;
     ExtractLuminanceAlpha(maskColor, traits2, mask, alpha);
