@@ -716,7 +716,7 @@ namespace Squared.Render.Text {
             var estimatedBounds = dc.EstimateDrawBounds();
             estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
             estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
-            var lineSpacing = estimatedBounds.Size.Y + additionalLineSpacing;
+            var lineSpacing = (float)Math.Ceiling(estimatedBounds.Size.Y + additionalLineSpacing + ((margin?.Y ?? 0) * 0.5f));
             if (!doNotAdjustLineSpacing)
                 ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
             float y1 = y,
