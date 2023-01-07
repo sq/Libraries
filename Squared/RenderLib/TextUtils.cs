@@ -954,6 +954,7 @@ namespace Squared.Render.Text {
             this.SplitAtWrapCharactersOnly = source.SplitAtWrapCharactersOnly;
             this.IncludeTrailingWhitespace = source.IncludeTrailingWhitespace;
             this.DesiredWidth = source.DesiredWidth;
+            this.MaxExpansion = source.MaxExpansion;
             SetFlag(InternalFlags.AwaitingDependencies, false);
         }
 

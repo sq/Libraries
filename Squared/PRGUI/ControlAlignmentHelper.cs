@@ -25,21 +25,41 @@ namespace Squared.PRGUI {
         public delegate bool UpdatePositionHandler (in Vector2 newPosition, in RectF parentRect, in RectF rect, bool updateDesiredPosition);
 
         public bool Enabled = true, UseTransformedAnchor = false;
+        private bool IsNewInstance = true;
 
         public UpdatePositionHandler UpdatePosition;
         public Func<bool> IsAnimating, IsLocked;
 
         public Margins ExtraMargins;
 
+        private Vector2 _AlignmentPoint = new Vector2(0.5f, 0.5f), _AnchorPoint = new Vector2(0.5f, 0.5f);
+
         /// <summary>
         /// Configures what point on the control [0 - 1] is aligned onto the anchor point
         /// </summary>
-        public Vector2 ControlAlignmentPoint { get; set; } = new Vector2(0.5f, 0.5f);
+        public Vector2 ControlAlignmentPoint {
+            get => _AlignmentPoint;
+            set {
+                if ((_AlignmentPoint == value) && !IsNewInstance)
+                    return;
+                IsNewInstance = false;
+                _AlignmentPoint = value;
+                AlignmentPending = true;
+            }
+        }
 
         /// <summary>
         /// Configures what point on the anchor [0 - 1] is used as the center for alignment
         /// </summary>
-        public Vector2 AnchorPoint { get; set; } = new Vector2(0.5f, 0.5f);
+        public Vector2 AnchorPoint {
+            get => _AnchorPoint;
+            set {
+                if (_AnchorPoint == value)
+                    return;
+                _AnchorPoint = value;
+                AlignmentPending = true;
+            }
+        }
 
         /// <summary>
         /// If set, alignment will be relative to this control. Otherwise, the screen will be used.
@@ -47,6 +67,8 @@ namespace Squared.PRGUI {
         public Control Anchor {
             get => _Anchor;
             set {
+                if (_Anchor != value)
+                    AlignmentPending = true;
                 _Anchor = value;
                 _LastAnchorRect = default;
                 _LastParentRect = default;
