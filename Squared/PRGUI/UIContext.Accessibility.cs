@@ -360,7 +360,7 @@ namespace Squared.PRGUI {
             if (Focused != null)
                 RasterizedOverlayBoxes.Add(new RasterizedOverlayBox {
                     Control = Focused,
-                    ControlBox = Focused.GetRect(contentRect: true)
+                    ControlBox = Focused.GetRect(displayRect: true)
                 });
 
             // FIXME: This looks confusing
@@ -464,7 +464,7 @@ namespace Squared.PRGUI {
             if (label.Length <= 0)
                 return;
 
-            var box = control.GetRect();
+            var box = control.GetRect(displayRect: true);
             if ((box.Width <= 1) || (box.Height <= 1))
                 return;
 
