@@ -198,10 +198,11 @@ namespace Squared.Render.Text {
                     m.CurrentSplitGlyphCount++;
                 }
 
-                m.FirstLineIndex = m.FirstLineIndex ?? _rowIndex;
-                m.LastLineIndex = _rowIndex;
+                m.FirstWordIndex = m.FirstWordIndex ?? wordIndex;
+                m.FirstLineIndex = m.FirstLineIndex ?? (ushort)_rowIndex;
+                m.LineCount = (ushort)(_rowIndex - m.FirstLineIndex.Value);
                 m.FirstDrawCallIndex = m.FirstDrawCallIndex ?? drawCallIndex;
-                m.LastDrawCallIndex = drawCallIndex ?? m.LastDrawCallIndex;
+                m.LastDrawCallIndex = (drawCallIndex ?? m.LastDrawCallIndex);
                 Markers[i] = m;
             }
         }
@@ -563,14 +564,18 @@ namespace Squared.Render.Text {
 
             for (int j = 0, c = Markers.Count; j < c; j++) {
                 ref var marker = ref Markers.Item(j);
+                // HACK: If word justification is enabled, do approximate justification of the boxes too
+                var wordSpace = marker.FirstWordIndex.HasValue 
+                    ? (marker.FirstWordIndex.Value - firstWord) * wordSpacing
+                    : 0f;
                 // FIXME: Multiline boxes
                 if ((marker.FirstLineIndex != line) || (marker.LastLineIndex != line))
                     continue;
 
                 for (int k = 0, ck = marker.Bounds.Count; k < ck; k++) {
                     ref var b = ref marker.Bounds.Item(k);
-                    b.TopLeft.X += whitespace;
-                    b.BottomRight.X += whitespace;
+                    b.TopLeft.X += whitespace + wordSpace;
+                    b.BottomRight.X += whitespace + wordSpace;
                 }
             }
         }

@@ -145,10 +145,10 @@ namespace Squared.Render.Text {
         public int FirstCharacterIndex, LastCharacterIndex;
 
         // Outputs
-        public int? FirstDrawCallIndex, LastDrawCallIndex;
-        public int? FirstLineIndex, LastLineIndex;
-        public int GlyphCount;
-        internal int CurrentSplitGlyphCount;
+        internal ushort LineCount, CurrentSplitGlyphCount;
+        public ushort GlyphCount;
+        public int? FirstDrawCallIndex, LastDrawCallIndex, FirstWordIndex, FirstLineIndex;
+        public int? LastLineIndex => FirstLineIndex + LineCount;
         public DenseList<Bounds> Bounds;
 
         public LayoutMarker (int firstIndex, int lastIndex) : this() {
