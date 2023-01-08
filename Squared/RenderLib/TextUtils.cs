@@ -977,6 +977,7 @@ namespace Squared.Render.Text {
             this.IncludeTrailingWhitespace = source.IncludeTrailingWhitespace;
             this.DesiredWidth = source.DesiredWidth;
             this.MaxExpansion = source.MaxExpansion;
+            this.DisableMarkers = source.DisableMarkers;
             SetFlag(InternalFlags.AwaitingDependencies, false);
         }
 
