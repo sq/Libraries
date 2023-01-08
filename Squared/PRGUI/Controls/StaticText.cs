@@ -74,7 +74,8 @@ namespace Squared.PRGUI.Controls {
             HideOverflow = true,
             RecordUsedTextures = true,
             AlignToPixels = DefaultGlyphPixelAlignment,
-            ExpandHorizontallyWhenAligning = false
+            ExpandHorizontallyWhenAligning = false,
+            DisableMarkers = true
         };
         private DynamicStringLayout ContentMeasurement = null;
         private float? MostRecentWidthForLineBreaking = null, MostRecentWidth = null;

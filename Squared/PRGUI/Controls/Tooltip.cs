@@ -115,6 +115,7 @@ namespace Squared.PRGUI.Controls {
         private void ConfigureDefaultLayout (DynamicStringLayout content) {
             _NeedsLayoutReset = false;
             content.Reset();
+            content.DisableMarkers = true;
             content.AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment;
             content.WordWrap = true;
             content.CharacterWrap = false;

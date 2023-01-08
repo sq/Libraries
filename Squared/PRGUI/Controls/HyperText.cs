@@ -42,6 +42,7 @@ namespace Squared.PRGUI.Controls {
         public HyperText ()
             : base () {
             RichText = true;
+            Content.DisableMarkers = false;
         }
 
         protected override bool HasChildren => true;

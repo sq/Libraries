@@ -25,6 +25,7 @@ namespace Squared.Render.Text {
         public bool                hideOverflow;
         public bool                reverseOrder;
         public bool                measureOnly;
+        public bool                disableMarkers;
         public bool                recordUsedTextures;
         public bool                expandHorizontallyWhenAligning;
         public bool                splitAtWrapCharactersOnly;
@@ -161,7 +162,7 @@ namespace Squared.Render.Text {
         }
 
         private void ProcessMarkers (ref Bounds bounds, int currentCodepointSize, int? drawCallIndex, bool splitMarker, bool didWrapWord) {
-            if (measureOnly)
+            if (measureOnly || disableMarkers)
                 return;
             if (suppress || suppressUntilNextLine)
                 return;

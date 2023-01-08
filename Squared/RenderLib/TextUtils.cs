@@ -31,6 +31,7 @@ namespace Squared.Render.Text {
             SplitAtWrapCharactersOnly      = 0b1000000000,
             IncludeTrailingWhitespace      = 0b10000000000,
             AwaitingDependencies           = 0b100000000000,
+            DisableMarkers                 = 0b1000000000000
         }
 
         /// <summary>
@@ -170,6 +171,7 @@ namespace Squared.Render.Text {
             ExpandHorizontallyWhenAligning = true;
             ReplacementCharacter = default;
             WordWrapCharacters = default;
+            DisableMarkers = false;
             SetFlag(InternalFlags.AwaitingDependencies, false);
             _Dependencies?.Clear();
             _RichMarkers?.Clear();
@@ -202,6 +204,9 @@ namespace Squared.Render.Text {
         }
 
         public LayoutMarker? Mark (int characterIndex) {
+            if (DisableMarkers)
+                return null;
+
             var m = GetMarkers();
             var key = new Pair<int>(characterIndex, characterIndex);
 
@@ -219,6 +224,9 @@ namespace Squared.Render.Text {
         }
 
         public LayoutMarker? Mark (int firstCharacterIndex, int lastCharacterIndex) {
+            if (DisableMarkers)
+                return null;
+
             var m = GetMarkers();
             var key = new Pair<int>(firstCharacterIndex, lastCharacterIndex);
 
@@ -690,6 +698,19 @@ namespace Squared.Render.Text {
         }
 
         /// <summary>
+        /// Does not generate the markers table even if there are marked strings
+        /// </summary>
+        public bool DisableMarkers {
+            get => GetFlag(InternalFlags.DisableMarkers);
+            set {
+                if (value)
+                    InvalidatingFlagAssignment(InternalFlags.DisableMarkers, value);
+                else
+                    SetFlag(InternalFlags.DisableMarkers, value);
+            }
+        }
+
+        /// <summary>
         /// Aligns the entire layout (not single lines) horizontally after layout is complete
         /// </summary>
         public HorizontalAlignment Alignment {
@@ -890,6 +911,7 @@ namespace Squared.Render.Text {
                 lineLimit = _LineLimit,
                 lineBreakLimit = _LineBreakLimit,
                 measureOnly = MeasureOnly,
+                disableMarkers = DisableMarkers,
                 replacementCodepoint = _ReplacementCharacter,
                 recordUsedTextures = RecordUsedTextures,
                 usedTextures = _UsedTextures,

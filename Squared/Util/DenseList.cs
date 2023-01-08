@@ -616,6 +616,9 @@ namespace Squared.Util {
         public void UseExistingStorage (UnorderedList<T> storage) {
             if (storage == null)
                 return;
+            if (_Items == storage)
+                return;
+
             var oldItems = _Items;
             _Items = storage;
             storage.Clear();
@@ -636,6 +639,10 @@ namespace Squared.Util {
             } else if (_Count >= 1) {
                 storage.Add(Item1);
             }
+
+            oldItems?.Clear();
+            if (ListPool != null)
+                ListPool.Release(ref oldItems);
         }
 
         private void Add_Slow (ref T item) {
