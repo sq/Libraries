@@ -87,28 +87,28 @@ namespace Squared.Render.STB {
 
                 switch (format) {
                     case ImageWriteFormat.HDR:
-                        if (bytesPerPixel != 16)
-                            throw new NotImplementedException("Non-vector4");
+                        if ((bytesPerPixel / numComponents) != 4)
+                            throw new NotImplementedException("Non-fp32");
                         Native.API.stbi_write_hdr_to_func(callback, _pScratch, width, height, numComponents, (float*)(void*)data);
                         break;
                     case ImageWriteFormat.PNG:
-                        if (bytesPerPixel != 4)
-                            throw new NotImplementedException("Non-rgba32");
+                        if ((bytesPerPixel / numComponents) != 1)
+                            throw new NotImplementedException("Non-8bpp");
                         Native.API.stbi_write_png_to_func(callback, _pScratch, width, height, numComponents, data, width * bytesPerPixel);
                         break;
                     case ImageWriteFormat.BMP:
-                        if (bytesPerPixel != 4)
-                            throw new NotImplementedException("Non-rgba32");
+                        if ((bytesPerPixel / numComponents) != 1)
+                            throw new NotImplementedException("Non-8bpp");
                         Native.API.stbi_write_bmp_to_func(callback, _pScratch, width, height, numComponents, data);
                         break;
                     case ImageWriteFormat.TGA:
-                        if (bytesPerPixel != 4)
-                            throw new NotImplementedException("Non-rgba32");
+                        if ((bytesPerPixel / numComponents) != 1)
+                            throw new NotImplementedException("Non-8bpp");
                         Native.API.stbi_write_tga_to_func(callback, _pScratch, width, height, numComponents, data);
                         break;
                     case ImageWriteFormat.JPEG:
-                        if (bytesPerPixel != 4)
-                            throw new NotImplementedException("Non-rgba32");
+                        if ((bytesPerPixel / numComponents) != 1)
+                            throw new NotImplementedException("Non-8bpp");
                         Native.API.stbi_write_jpg_to_func(callback, _pScratch, width, height, numComponents, data, jpegQuality);
                         break;
                     default:

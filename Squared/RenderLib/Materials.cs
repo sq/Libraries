@@ -18,6 +18,8 @@ using System.Runtime;
 
 namespace Squared.Render {
     public sealed class Material : IDisposable {
+        public static bool LogPreloadTime = false;
+
         public sealed class PipelineHint {
             public static readonly PipelineHint Default = new PipelineHint {
                 HasIndices = true,
@@ -353,7 +355,7 @@ namespace Squared.Render {
             else
                 deviceManager.Device.DrawPrimitives(PrimitiveType.TriangleList, 0, 2);
 
-            if (sw.ElapsedMilliseconds > 10)
+            if ((sw.ElapsedMilliseconds > 10) || LogPreloadTime)
                 Debug.WriteLine($"Preloading shader {Effect.CurrentTechnique.Name} took {sw.ElapsedMilliseconds}ms");
 
             return true;

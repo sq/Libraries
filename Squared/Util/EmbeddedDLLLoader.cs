@@ -20,7 +20,8 @@ namespace Squared.Util {
         public readonly Assembly Assembly;
         internal readonly List<IntPtr> LoadedHandles = new List<IntPtr>();
         internal readonly List<string> CreatedFiles = new List<string>();
-        internal string TemporaryDirectory;
+
+        public static string TemporaryDirectory;
 
         internal bool IsRegisteredForShutdownNotice;
 
@@ -44,6 +45,8 @@ namespace Squared.Util {
                 Directory.CreateDirectory(path);
                 TemporaryDirectory = path;
             }
+            if (!Directory.Exists(TemporaryDirectory))
+                Directory.CreateDirectory(TemporaryDirectory);
             return TemporaryDirectory;
         }
 

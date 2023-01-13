@@ -6,7 +6,7 @@
 #define STBIRDEF extern "C" __declspec(dllexport)
 
 #define STBI_NO_STDIO
-#define STBI_WRITE_NO_STDIO
+// #define STBI_WRITE_NO_STDIO
 
 #define STBI_BUFFER_SIZE 40960
 
@@ -16,9 +16,11 @@
 #define STBI_NO_PNM
 #define STBI_NO_HDR
 
-#define STBI_WRITE_NO_HDR
+// #define STBI_WRITE_NO_HDR
 
 #define STBIR_MAX_CHANNELS 4
+
+#include <stdio.h>
 
 #include "stb_image.h"
 #include "stb_image_write.h"

@@ -506,7 +506,10 @@ namespace Squared.Render.Resources {
                 foreach (var entry in Cache.Values) {
                     if (!entry.Future.CompletedSuccessfully)
                         continue;
-                    result.Add((U)entry.Future.Result);
+                    var instance = (U)entry.Future.Result;
+                    if (instance == null)
+                        continue;
+                    result.Add(instance);
                 }
         }
 

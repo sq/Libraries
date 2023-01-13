@@ -114,7 +114,8 @@ namespace Squared.Render {
             bool mipMap = false,
             SurfaceFormat preferredFormat = SurfaceFormat.Color,
             DepthFormat preferredDepthFormat = DepthFormat.None,
-            int preferredMultiSampleCount = 1
+            int preferredMultiSampleCount = 1,
+            string name = null
         ) : base(
             coordinator, width, height,
             mipMap, preferredFormat, preferredDepthFormat, 
@@ -124,6 +125,8 @@ namespace Squared.Render {
                 throw new ArgumentNullException(nameof(coordinator));
 
             GetOrCreateInstance(true);
+            if (name != null)
+                SetName(name);
         }
 
         public void SetName (string name) {

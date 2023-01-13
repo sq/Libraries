@@ -148,7 +148,7 @@ namespace Squared.PRGUI.Controls {
 
             if (Buffer == null) {
                 _ContentIsValid = false;
-                Buffer = new AutoRenderTarget(coordinator, w, h, MipMap, SurfaceFormat, DepthFormat);
+                Buffer = new AutoRenderTarget(coordinator, w, h, MipMap, SurfaceFormat, DepthFormat, name: "Canvas.Buffer");
             } else {
                 _ContentIsValid = !Buffer.Resize(w, h);
             }

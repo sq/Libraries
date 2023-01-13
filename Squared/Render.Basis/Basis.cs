@@ -423,3 +423,11 @@ namespace Squared.Render.Basis {
         }
     }
 }
+
+namespace Squared.Zstd {
+    public static class API {
+        /// <returns>Number of bytes decompressed, or -1 on error</returns>
+        [DllImport(Render.Basis.Transcoder.DllName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern unsafe int ZstdDecompress (byte* result, int resultSize, byte* source, int sourceSize);
+    }
+}

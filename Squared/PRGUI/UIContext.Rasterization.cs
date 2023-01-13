@@ -53,7 +53,8 @@ namespace Squared.PRGUI {
                     height = (int)(context.CanvasSize.Y * context.ScratchScaleFactor);
                 Instance = new AutoRenderTarget(
                     coordinator, width, height,
-                    false, Context.ScratchSurfaceFormat, DepthFormat.Depth24Stencil8
+                    false, Context.ScratchSurfaceFormat, DepthFormat.Depth24Stencil8,
+                    name: "UIContext.ScratchRenderTarget"
                 );
             }
 

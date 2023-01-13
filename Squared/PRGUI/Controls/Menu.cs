@@ -853,7 +853,7 @@ namespace Squared.PRGUI.Controls {
         public void RemoveAt (int index) => Children.RemoveAt(index);
         public void Clear () => Children.Clear();
         new public void Add (Control child) => Children.Add(child);
-        public void Add (string text) => Children.Add(new StaticText { Text = text });
+        public void Add (string text) => Children.Add(new StaticText { Text = text, Appearance = { GlyphSourceProvider = Appearance.GlyphSourceProvider } });
 
         bool IModal.BlockInput => CloseOnClickOutside && BlockInput;
         bool IModal.RetainFocus => !CloseOnClickOutside && !CloseWhenFocusLost && RetainFocus;

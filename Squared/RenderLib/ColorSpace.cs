@@ -490,6 +490,12 @@ namespace Squared.Render {
             );
         }
 
+        public pSRGBColor AdjustBrightnessOklab (float factor, bool clamp = true) {
+            ToOkLab(out var l, out var a, out var b, out var o);
+            float newL = clamp ? Arithmetic.Saturate(l * factor) : l * factor;
+            return FromOkLab(newL, a, b, o);
+        }
+
         public static pSRGBColor FromLinear (float r, float g, float b, float a = 1.0f) =>
             FromLinear(new Vector4(r, g, b, a));
 

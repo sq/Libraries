@@ -1282,7 +1282,8 @@ namespace Squared.Render {
         /// <param name="sigma">Governs the strength of the blur. Lower values are sharper.</param>
         /// <param name="tapCount">The number of samples ('taps') that will be read vertically or horizontally from the texture to compute each blurred sample.</param>
         /// <param name="meanFactor">Biases the filter kernel towards a mean (average of all the pixels) instead of a gaussian blur</param>
-        public void SetGaussianBlurParameters (Material m, double sigma, int tapCount, float meanFactor = 0f) {
+        /// <param name="gain">A factor to increase or decrease the output of the filter kernel (will brighten or darken the resulting image)</param>
+        public void SetGaussianBlurParameters (Material m, double sigma, int tapCount, float meanFactor = 0f, float gain = 1.0f) {
             int tapsMinusOne = tapCount - 1;
             int weightCount = 1 + (tapsMinusOne / 2);
             if ((weightCount < 1) || (weightCount > MaxWeightCount))
@@ -1318,7 +1319,7 @@ namespace Squared.Render {
                 var inverseDivisor = 1.0 / divisor;
                 var inverseDivisor2 = inverseDivisor * inverseDivisor;
                 p["InverseTapDivisorsAndSigma"]?.SetValue(new Vector3(
-                    (float)inverseDivisor, (float)inverseDivisor2, (float)sigma
+                    (float)inverseDivisor * gain, (float)inverseDivisor2 * gain, (float)sigma
                 ));
             }
         }

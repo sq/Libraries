@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 #include "basisu_transcoder.h"
+#include "../zstd/zstd.h"
 #include <mutex>
 
 using namespace basist;
@@ -26,6 +27,13 @@ BOOL WINAPI DllMain (
 }
 
 extern "C" {
+    __declspec(dllexport) int32_t ZstdDecompress(unsigned char * result, int32_t result_size, unsigned const char * source, int32_t source_size) {
+        size_t actualUncompSize = ZSTD_decompress(result, (size_t)result_size, source, (size_t)source_size);
+        if (ZSTD_isError(actualUncompSize))
+            return -1;
+        return (int32_t)actualUncompSize;
+    }
+
     transcoder_info __declspec(dllexport) * New (bool ktx2) {
         {
             std::lock_guard<std::mutex> guard(initializer_mutex);
