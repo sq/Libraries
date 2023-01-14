@@ -61,12 +61,19 @@ namespace Squared.PRGUI {
         /// Returns true if the modal can be closed for this reason.
         /// </summary>
         bool CanClose (ModalCloseReason reason);
-        void Show (UIContext context);
         /// <summary>
         /// Attempts to close the modal.
         /// </summary>
         /// <returns>true if the modal was successfully closed.</returns>
         bool Close (ModalCloseReason reason);
+        /// <summary>
+        /// Call this to show the modal
+        /// </summary>
+        void Show (UIContext context);
+        /// <summary>
+        /// Called by the context when the modal is first shown
+        /// </summary>
+        void OnShown ();
         bool OnUnhandledKeyEvent (string name, KeyEventArgs args);
         bool OnUnhandledEvent (string name, IEventInfo args);
     }

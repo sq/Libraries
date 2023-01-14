@@ -153,7 +153,7 @@ namespace Squared.PRGUI.Controls {
         public bool RetainFocus { get; set; } = true;
         public bool BlockHitTests { get; set; } = true;
         public bool BlockInput { get; set; } = true;
-        public bool IsActive { get; private set; }
+        public bool IsActive { get; protected set; }
         private bool IsFadingOut;
 
         private Future<TResult> NextResultFuture = null;
@@ -161,7 +161,7 @@ namespace Squared.PRGUI.Controls {
         public ModalDialog (TParameters parameters)
             : base () {
             Parameters = parameters;
-            Appearance.Opacity = 0f;
+            // Appearance.Opacity = 0f;
         }
 
         private void RegisterHandler (Control target, EventSubscriber handler, ref bool isRegistered) {
@@ -204,10 +204,6 @@ namespace Squared.PRGUI.Controls {
             return modal.Show(context);
         }
 
-        void IModal.Show (UIContext context) {
-            Show(context);
-        }
-
         public Future<TResult> Show (UIContext context, Control focusDonor = null, Vector2? donorAlignment = null) {
             Context = context;
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
@@ -219,7 +215,7 @@ namespace Squared.PRGUI.Controls {
                 // HACK
                 AlignmentAnchorPoint = Vector2.One - donorAlignment.Value;
             } else {
-                Alignment = Alignment;
+                Aligner.AlignmentPending = true;
             }
             IsFadingOut = false;
             Visible = true;
@@ -234,17 +230,26 @@ namespace Squared.PRGUI.Controls {
                 Appearance.Opacity = 1f;
             GenerateDynamicContent(true);
             _FocusDonor = focusDonor ?? context.Focused;
+            IsActive = true;
             context.ShowModal(this, false);
             // HACK: Ensure event handlers are registered if they weren't already
             if (!IsAcceptHandlerRegistered)
                 RegisterHandler(AcceptControl, OnAcceptClick, ref IsAcceptHandlerRegistered);
             if (!IsCancelHandlerRegistered)
                 RegisterHandler(CancelControl, OnCancelClick, ref IsCancelHandlerRegistered);
-            IsActive = true;
             Elevate();
             if (Shown != null)
                 Shown(this);
             return f;
+        }
+
+        void IModal.Show (UIContext context) {
+            Show(context);
+        }
+
+        void IModal.OnShown () {
+            if (!IsActive)
+                throw new InvalidOperationException("Call ModalDialog.Show, not Context.ShowModal(...)");
         }
 
         bool IModal.Close (ModalCloseReason reason) {

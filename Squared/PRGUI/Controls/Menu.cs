@@ -190,6 +190,10 @@ namespace Squared.PRGUI.Controls {
             ShowHorizontalScrollbar = false;
             ShowVerticalScrollbar = null;
             AutoBreakColumnItems = true;
+            Shown += (_) => {
+                if (!IsActive)
+                    throw new InvalidOperationException("Use Menu.Show not Context.ShowModal(...)");
+            };
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
@@ -710,7 +714,12 @@ namespace Squared.PRGUI.Controls {
         }
 
         void IModal.Show (UIContext context) {
-            Show(context, (Vector2?)null);
+            Show(context);
+        }
+
+        void IModal.OnShown () {
+            if (!IsActive)
+                throw new InvalidOperationException("Call Menu.Show, not Context.ShowModal(...)");
         }
 
         public Future<Control> Show (UIContext context, Vector2? position = null, Control selectedItem = null) {

@@ -358,6 +358,7 @@ namespace Squared.PRGUI {
                 throw new InvalidOperationException("Modal already visible");
             else
                 ModalStack.Add(modal);
+            modal.OnShown();
             TrySetFocus(ctl, false, false);
             FireEvent(UIEvents.Shown, ctl);
         }
