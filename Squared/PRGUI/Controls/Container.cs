@@ -326,6 +326,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected virtual void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
+            if (LayoutKey.IsInvalid)
+                return;
+
             // FIXME: This should be done somewhere else
             if (Scrollable) {
                 var contentBox = context.Engine.Result(LayoutKey).ContentRect;

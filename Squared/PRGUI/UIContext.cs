@@ -289,6 +289,7 @@ namespace Squared.PRGUI {
                 pll.Clear();
             context.Shared.PostLayoutListeners = pll;
 
+            IsUpdating = true;
             try {
                 Engine.Clear();
 
@@ -303,6 +304,7 @@ namespace Squared.PRGUI {
                 //  or hit testing
 
                 if (NotifyLayoutListeners(ref context)) {
+                    IsPerformingRelayout = true;
                     DoUpdateLayoutInternal(ref context, true);
                     Engine.Update();
                     NotifyLayoutListeners(ref context);
@@ -310,6 +312,8 @@ namespace Squared.PRGUI {
 
                 UpdateAutoscroll();
             } finally {
+                IsUpdating = false;
+                IsPerformingRelayout = false;
                 Interlocked.CompareExchange(ref _PostLayoutListeners, pll, null);
                 context.Shared.InUse = false;
             }

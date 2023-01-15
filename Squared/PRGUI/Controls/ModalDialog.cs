@@ -42,7 +42,7 @@ namespace Squared.PRGUI.Controls {
 
         public bool CloseOnEnter = false, CloseOnEscape = true;
 
-        private bool IsAcceptHandlerRegistered, IsCancelHandlerRegistered;
+        private bool IsAcceptHandlerRegistered, IsCancelHandlerRegistered, ShowNextUpdate;
         private Control _AcceptControl, _CancelControl;
 
         bool IModal.CanClose (ModalCloseReason reason) => true;
@@ -218,7 +218,13 @@ namespace Squared.PRGUI.Controls {
                 Aligner.AlignmentPending = true;
             }
             IsFadingOut = false;
-            Visible = true;
+
+            // If the context is busy updating and we're not already active, hide ourselves for a frame
+            if (!context.IsUpdating)
+                Visible = true;
+            else
+                Visible = IsActive;
+
             Intangible = false;
             if (IsActive)
                 return NextResultFuture;
@@ -240,7 +246,17 @@ namespace Squared.PRGUI.Controls {
             Elevate();
             if (Shown != null)
                 Shown(this);
+            ShowNextUpdate = context.IsUpdating;
             return f;
+        }
+
+        protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
+            base.OnLayoutComplete(ref context, ref relayoutRequested);
+
+            if (ShowNextUpdate && context.UIContext.IsPerformingRelayout) {
+                ShowNextUpdate = false;
+                Visible = true;
+            }
         }
 
         void IModal.Show (UIContext context) {

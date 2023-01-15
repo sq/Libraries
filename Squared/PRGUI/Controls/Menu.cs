@@ -41,6 +41,7 @@ namespace Squared.PRGUI.Controls {
         Vector2 MousePositionWhenShown;
         bool? MouseInsideWhenShown;
 
+        private bool ShowNextUpdate = false;
         private Future<Control> NextResultFuture = null;
 
         private Control TooltipTarget => _SelectedItem ?? _HoveringItem;
@@ -466,6 +467,11 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(ref context, ref relayoutRequested);
 
+            if (ShowNextUpdate && context.UIContext.IsPerformingRelayout) {
+                ShowNextUpdate = false;
+                Visible = true;
+            }
+
             Aligner.EnsureAligned(ref context, ref relayoutRequested);
 
             if (relayoutRequested)
@@ -632,6 +638,11 @@ namespace Squared.PRGUI.Controls {
             MousePositionWhenShown = context.LastInputState.CursorPosition;
             MouseInsideWhenShown = null;
             CalculateScrollable(context);
+
+            if (Context.IsUpdating) {
+                Visible = false;
+                ShowNextUpdate = true;
+            }
         }
 
         private void CalculateScrollable (UIContext context) {

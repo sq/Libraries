@@ -195,6 +195,9 @@ namespace Squared.PRGUI {
             // HACK: Suppress the 'if not Visible then don't perform layout' behavior
             IsUpdatingSubtreeLayout;
 
+        public bool IsUpdating { get; private set; }
+        public bool IsPerformingRelayout { get; private set; }
+
         private Vector2 LastMousePosition => _LastInput.CursorPosition;
         private MouseButtons LastMouseButtons => _LastInput.Buttons;
         private KeyboardModifiers CurrentModifiers => _CurrentInput.Modifiers;

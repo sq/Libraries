@@ -218,7 +218,7 @@ namespace Squared.PRGUI.Controls {
             var height = titleDecorations.Margins.Bottom +
                 // FIXME: Scale this?
                 titleDecorations.Padding.Y +
-                (MostRecentTitleHeight ?? gs.LineSpacing);
+                gs.LineSpacing;
             unscaledPadding.Top += height;
         }
 
@@ -313,6 +313,9 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(ref context, ref relayoutRequested);
 
+            if (LayoutKey.IsInvalid)
+                return;
+
             var actuallyCollapsed = !_CollapsePending && _Collapsed && Collapsible;
 
             if (_CollapsePending && MostRecentFullSize.HasValue)
@@ -341,10 +344,7 @@ namespace Squared.PRGUI.Controls {
                 var layout = TitleLayout.Get();
                 var titleBox = settings.Box;
                 MostRecentTitleHeight = (layout.DrawCalls.Count > 0) ? layout.Size.Y : (float?)null;
-                titleBox.Height = titleDecorator.Padding.Top + titleDecorator.Padding.Bottom +
-                    ((layout.DrawCalls.Count > 0)
-                        ? layout.Size.Y
-                        : TitleLayout.GlyphSource.LineSpacing);
+                titleBox.Height = titleDecorator.Padding.Top + titleDecorator.Padding.Bottom + TitleLayout.GlyphSource.LineSpacing;
                 if (Title.Length == 0) {
                     if (Collapsible)
                         titleBox.Width = DisclosureArrowPadding;

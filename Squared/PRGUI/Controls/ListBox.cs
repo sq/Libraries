@@ -440,6 +440,9 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(ref context, ref relayoutRequested);
 
+            if (LayoutKey.IsInvalid)
+                return;
+
             var children = Children;
             if (children.Count > 0) {
                 float h = 0;

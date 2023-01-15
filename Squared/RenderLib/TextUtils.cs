@@ -1115,6 +1115,7 @@ namespace Squared.Render.Text {
     }
 
     public class FallbackGlyphSource : IGlyphSource, IDisposable, IEnumerable<IGlyphSource> {
+        public float? OverrideLineSpacing;
         public bool IsDisposed { get; private set; }
         public bool MaxLineSpacing = true;
         public bool OwnsSources = true;
@@ -1158,6 +1159,9 @@ namespace Squared.Render.Text {
 
         public float LineSpacing {
             get {
+                if (OverrideLineSpacing.HasValue)
+                    return OverrideLineSpacing.Value;
+
                 if (!MaxLineSpacing)
                     return Sources[0].LineSpacing;
 
