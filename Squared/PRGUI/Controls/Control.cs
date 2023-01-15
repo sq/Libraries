@@ -523,14 +523,17 @@ namespace Squared.PRGUI {
                 if (Appearance.DecorationProvider != null)
                     UIOperationContext.PushDecorationProvider(ref context, Appearance.DecorationProvider);
                 LayoutKey = OnGenerateLayoutTree(ref context, parent, existingKey);
+
                 if (!LayoutKey.IsInvalid) {
                     if (ChangeInternalFlag(InternalStateFlags.VisibleHasChanged, false))
                         context.RelayoutRequestedForVisibilityChange = true;
-
-                    // TODO: Only register if the control is explicitly interested, to reduce overhead?
-                    if ((this is IPostLayoutListener listener) && (existingKey == null))
-                        context.PostLayoutListeners?.Add(listener);
                 }
+
+                // TODO: Only register if the control is explicitly interested, to reduce overhead?
+                // We need to do this even if LayoutKey is invalid, because the post layout listener may reconfigure the control
+                //  and cause a 1-frame glitch
+                if ((this is IPostLayoutListener listener) && (existingKey == null))
+                    context.PostLayoutListeners?.Add(listener);
             } finally {
                 if (Appearance.DecorationProvider != null)
                     UIOperationContext.PopDecorationProvider(ref context);
