@@ -369,6 +369,7 @@ namespace Squared.Render.Text {
         public readonly float InitialScale;
         public readonly float InitialSpacing;
         public readonly float InitialLineSpacing;
+        public DenseList<string> Tags;
         public List<ImmutableAbstractString> MarkedStrings;
 
         public RichTextLayoutState (ref StringLayoutEngine engine, IGlyphSource defaultGlyphSource) {
@@ -380,6 +381,7 @@ namespace Squared.Render.Text {
             GlyphSource = null;
             MarkedStrings = MarkedStringLists.Value;
             MarkedStringLists.Value = null;
+            Tags = default;
         }
 
         public void Reset (ref StringLayoutEngine engine) {
@@ -440,7 +442,7 @@ namespace Squared.Render.Text {
         public Dictionary<ImmutableAbstractString, IGlyphSource> GlyphSources;
         public Dictionary<ImmutableAbstractString, RichStyle> Styles;
         public Dictionary<ImmutableAbstractString, RichImage> Images;
-        public Func<AbstractString, AsyncRichImage> ImageProvider;
+        public Func<AbstractString, RichTextConfiguration, AsyncRichImage> ImageProvider;
         public Dictionary<char, KerningAdjustment> KerningAdjustments;
         public MarkedStringProcessor MarkedStringProcessor;
         public ColorConversionMode ColorMode;
@@ -448,6 +450,10 @@ namespace Squared.Render.Text {
         /// If set, any images referenced by rich text will not be inserted.
         /// </summary>
         public bool DisableImages;
+        /// <summary>
+        /// Contains user-provided data that can be used by your ImageProvider or MarkedStringProcessor.
+        /// </summary>
+        public DenseList<string> Tags;
 
         public string DefaultStyle;
 
@@ -492,6 +498,7 @@ namespace Squared.Render.Text {
             string styleName, bool? overrideSuppress = null
         ) {
             var state = new RichTextLayoutState(ref layoutEngine, defaultGlyphSource);
+            state.Tags.AddRange(ref Tags);
             try {
                 return Append(ref layoutEngine, ref state, text, styleName, overrideSuppress);
             } finally {
@@ -572,7 +579,7 @@ namespace Squared.Render.Text {
                         referencedImages.Add(ref ai);
                     } else if (
                         commandMode && (ImageProvider != null) && 
-                        (ai = ImageProvider(bracketed.Value)).IsInitialized
+                        (ai = ImageProvider(bracketed.Value, this)).IsInitialized
                     ) {
                         var currentX1 = 0f;
                         var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
@@ -670,6 +677,7 @@ namespace Squared.Render.Text {
                         var markedState = new RichTextLayoutState(ref layoutEngine, state.DefaultGlyphSource) {
                             GlyphSource = state.GlyphSource
                         };
+                        markedState.Tags.AddRange(ref Tags);
                         try {
                             if (MarkedStringProcessor != null)
                                 action = MarkedStringProcessor(ref astr, ref id, ref markedState, ref layoutEngine);

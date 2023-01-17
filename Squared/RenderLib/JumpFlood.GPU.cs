@@ -88,19 +88,27 @@ namespace Squared.Render.DistanceField {
             initGroup.Clear(layer: -1, value: new Vector4(MaxDistance, MaxDistance, MaxDistance * MaxDistance, 0f));
             var initMaterial = renderer.Materials.JumpFloodInit;
             initGroup.Parameters.Add("Smoothing", smoothingLevel > 0.01f);
-            initGroup.Draw(input, new Vector2(-_region.Left, -_region.Top), material: initMaterial, userData: new Vector4(minimumAlpha, Math.Min(smoothingLevel, 0.99f - minimumAlpha), 0, 0));
+            initGroup.Draw(
+                input, new Vector2(-_region.Left, -_region.Top), material: initMaterial, userData: new Vector4(minimumAlpha, Math.Min(smoothingLevel, 0.99f - minimumAlpha), 0, 0),
+                layer: 0
+            );
 
             _region = new Rectangle(0, 0, _region.Width, _region.Height);
 
+            RenderTarget2D result = null;
+
             for (int i = 0, stepCount = GetStepCount(_region.Width, _region.Height); i < stepCount; i++) {
+                result = scratchSurfaces.OutBuffer;
+                var jumpGroup = group.ForRenderTarget(result, viewTransform: vt);
+
                 int step = GetStepSize(_region.Width, _region.Height, i);
-                var jumpGroup = group.ForRenderTarget(scratchSurfaces.OutBuffer, viewTransform: vt);
                 jumpGroup.Clear(layer: -1, color: new Color(step / 32f, 0, 0, 1f));
                 jumpGroup.Draw(
                     scratchSurfaces.InBuffer, Vector2.Zero, sourceRectangle: _region,
                     userData: new Vector4(step / (float)scratchSurfaces.InBuffer.Width, step / (float)scratchSurfaces.InBuffer.Height, step, 0), 
                     samplerState: SamplerState.PointClamp,
-                    material: renderer.Materials.JumpFloodJump
+                    material: renderer.Materials.JumpFloodJump,
+                    layer: 0
                 );
 
                 var swap = scratchSurfaces.InBuffer;
@@ -110,7 +118,7 @@ namespace Squared.Render.DistanceField {
 
             var resolveGroup = group.ForRenderTarget(output, viewTransform: ViewTransform.CreateOrthographic(output.Width, output.Height));
             resolveGroup.Clear(layer: -1, color: Color.Transparent);
-            resolveGroup.Draw(scratchSurfaces.OutBuffer, Vector2.Zero, material: renderer.Materials.JumpFloodResolve);
+            resolveGroup.Draw(result, Vector2.Zero, material: renderer.Materials.JumpFloodResolve, layer: 0);
         }
 
         public static void GenerateDistanceField (

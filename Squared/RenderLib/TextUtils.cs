@@ -1040,6 +1040,7 @@ namespace Squared.Render.Text {
                         var ka = _RichTextConfiguration.KerningAdjustments;
                         _RichTextConfiguration.KerningAdjustments = _KerningAdjustments ?? ka;
                         rls = new RichTextLayoutState(ref le, glyphSource);
+                        rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
                         var dependencies = _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
                         if (dependencies.Count > 0) {
                             if (_Dependencies == null)
