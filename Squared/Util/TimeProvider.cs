@@ -40,7 +40,6 @@ namespace Squared.Util {
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double SecondsFromTicks (long ticks) {
             long seconds = ticks / SecondInTicks;
             double subsec = (ticks - (seconds * SecondInTicks)) / SecondInTicksD;
@@ -69,9 +68,9 @@ namespace Squared.Util {
         /// The length of a millisecond in ticks.
         /// </summary>
         public static readonly long MillisecondInStopwatchTicks = Stopwatch.Frequency / 1000;
-        public static readonly double StopwatchTicksToTicks = Time.SecondInTicks / (double)(Stopwatch.Frequency);
+        public static readonly double StopwatchTicksToTicks = Time.SecondInTicks / (double)Stopwatch.Frequency;
 
-        public static readonly bool NeedsExpensiveConversion = (Stopwatch.Frequency) != Time.SecondInTicks;
+        public static readonly bool NeedsExpensiveConversion = Stopwatch.Frequency != Time.SecondInTicks;
 
         long _Offset;
 
@@ -80,15 +79,16 @@ namespace Squared.Util {
             _Offset = Stopwatch.GetTimestamp();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static long GetStopwatchTicks () {
-            return Stopwatch.GetTimestamp();
+        public static double SecondsFromStopwatchTicks (long ticks) {
+            long seconds = ticks / Stopwatch.Frequency;
+            double subsec = (ticks - (seconds * Stopwatch.Frequency)) / SecondInStopwatchTicksD;
+            return subsec + seconds;
         }
 
         public long Ticks {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                long ticks = GetStopwatchTicks() - _Offset;
+                long ticks = Stopwatch.GetTimestamp() - _Offset;
                 if (NeedsExpensiveConversion)
                     return (long)(ticks * StopwatchTicksToTicks);
                 else
@@ -99,9 +99,9 @@ namespace Squared.Util {
         public double Seconds {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                long ticks = GetStopwatchTicks() - _Offset;
+                long ticks = Stopwatch.GetTimestamp() - _Offset;
                 if (NeedsExpensiveConversion)
-                    return ticks / SecondInStopwatchTicksD;
+                    return SecondsFromStopwatchTicks(ticks);
                 else
                     return Time.SecondsFromTicks(ticks);
             }
