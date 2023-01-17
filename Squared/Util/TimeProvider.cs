@@ -63,24 +63,47 @@ namespace Squared.Util {
     }
 
     public sealed class DotNetTimeProvider : ITimeProvider {
+        public static readonly double SecondInStopwatchTicksD = Stopwatch.Frequency;
+
+        /// <summary>
+        /// The length of a millisecond in ticks.
+        /// </summary>
+        public static readonly long MillisecondInStopwatchTicks = Stopwatch.Frequency / 1000;
+        public static readonly double StopwatchTicksToTicks = Time.SecondInTicks / (double)(Stopwatch.Frequency);
+
+        public static readonly bool NeedsExpensiveConversion = (Stopwatch.Frequency) != Time.SecondInTicks;
+
         long _Offset;
 
         public DotNetTimeProvider () {
+            // FIXME: Detect low resolution stopwatch and do something?
             _Offset = Stopwatch.GetTimestamp();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static long GetStopwatchTicks () {
+            return Stopwatch.GetTimestamp();
         }
 
         public long Ticks {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return Stopwatch.GetTimestamp() - _Offset;
+                long ticks = GetStopwatchTicks() - _Offset;
+                if (NeedsExpensiveConversion)
+                    return (long)(ticks * StopwatchTicksToTicks);
+                else
+                    return ticks;
             }
         }
 
         public double Seconds {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                long ticks = Stopwatch.GetTimestamp() - _Offset;
-                return Time.SecondsFromTicks(ticks);
+                long ticks = GetStopwatchTicks() - _Offset;
+                if (NeedsExpensiveConversion)
+                    return ticks / SecondInStopwatchTicksD;
+                else
+                    return Time.SecondsFromTicks(ticks);
             }
         }
     }

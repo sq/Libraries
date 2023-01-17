@@ -426,7 +426,7 @@ namespace Squared.Render {
             } finally {
                 DirtyUploadRegion = Rectangle.Union(DirtyUploadRegion, region);
                 hMips.Free();
-                var elapsedMs = (Stopwatch.GetTimestamp() - started) / (double)Time.MillisecondInTicks;
+                var elapsedMs = (Stopwatch.GetTimestamp() - started) / (double)(Stopwatch.Frequency / 1000);
                 if (elapsedMs >= 3)
                     Debug.WriteLine($"Generating mips took {elapsedMs}ms for {region.Width}x{region.Height} region");
             }

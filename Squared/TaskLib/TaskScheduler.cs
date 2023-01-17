@@ -690,7 +690,7 @@ namespace Squared.Task {
                 if (timeout.HasValue) {
                     var elapsed = Stopwatch.GetTimestamp() - started;
 
-                    if ((double)elapsed / Time.SecondInTicks >= timeout)
+                    if ((double)elapsed / Stopwatch.Frequency >= timeout)
                         throw new TimeoutException();
                 }
             }
@@ -710,7 +710,7 @@ namespace Squared.Task {
                 if (timeout.HasValue) {
                     var elapsed = Stopwatch.GetTimestamp() - started;
 
-                    if (((double)elapsed / Time.SecondInTicks) >= timeout)
+                    if (((double)elapsed / Stopwatch.Frequency) >= timeout)
                         throw new TimeoutException();
                 }
             }
