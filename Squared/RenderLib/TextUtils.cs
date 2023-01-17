@@ -992,7 +992,7 @@ namespace Squared.Render.Text {
             if (GetFlag(InternalFlags.AwaitingDependencies)) {
                 bool stillWaiting = false;
                 foreach (var d in _Dependencies) {
-                    if (!d.HasValue) {
+                    if (!d.HasValue && !d.Dead) {
                         stillWaiting = true;
                         break;
                     }
@@ -1050,7 +1050,7 @@ namespace Squared.Render.Text {
 
                             for (int i = 0, c = dependencies.Count; i < c; i++) {
                                 var d = dependencies[i];
-                                if (!d.HasValue)
+                                if (!d.HasValue && !d.Dead)
                                     SetFlag(InternalFlags.AwaitingDependencies, true);
                                 _Dependencies.Add(d);
                             }

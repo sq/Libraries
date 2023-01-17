@@ -220,6 +220,14 @@ namespace Squared.Render.Text {
         public float Scale;
         public float VerticalAlignment;
         public bool DoNotAdjustLineSpacing, CreateBox;
+        public readonly bool Dead;
+
+        public AsyncRichImage (bool dead) {
+            if (!dead)
+                throw new ArgumentException();
+            this = default;
+            Dead = true;
+        }
 
         public AsyncRichImage (ref RichImage img) {
             var tex = img.Texture.Instance;
@@ -236,6 +244,7 @@ namespace Squared.Render.Text {
             HardHorizontalAlignment = img.HardHorizontalAlignment;
             HardVerticalAlignment = img.HardVerticalAlignment;
             VerticalAlignment = img.VerticalAlignment;
+            Dead = false;
         }
 
         public AsyncRichImage (RichImage img)
@@ -260,6 +269,7 @@ namespace Squared.Render.Text {
             Value = null;
             DoNotAdjustLineSpacing = doNotAdjustLineSpacing;
             CreateBox = createBox;
+            Dead = false;
         }
 
         public bool TryGetValue (out RichImage result) {
@@ -305,17 +315,8 @@ namespace Squared.Render.Text {
             }
         }
 
-        public bool HasValue {
-            get {
-                return Value.HasValue || (Future?.Completed ?? false);
-            }
-        }
-
-        public bool IsInitialized {
-            get {
-                return (Future != null) || Value.HasValue;
-            }
-        }
+        public bool HasValue => Value.HasValue || (Future?.Completed ?? false);
+        public bool IsInitialized => (Future != null) || Value.HasValue || Dead;
     }
 
     public struct RichImage {
@@ -583,7 +584,9 @@ namespace Squared.Render.Text {
                     ) {
                         var currentX1 = 0f;
                         var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
-                        if (DisableImages) {
+                        if (ai.Dead) {
+                            referencedImages.Add(ai);
+                        } else if (DisableImages) {
                             referencedImages.Add(ai);
                             parseErrors.Add(new RichParseError {
                                 Offset = bracketed.Offset,
