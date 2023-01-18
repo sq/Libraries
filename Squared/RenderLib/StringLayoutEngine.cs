@@ -50,7 +50,7 @@ namespace Squared.Render.Text {
         public float               xOffsetOfNewLine;
         public float               desiredWidth;
         public float               extraLineBreakSpacing;
-        public float?              maxExpansion;
+        public float?              maxExpansionPerSpace;
         public float?              lineBreakAtX;
         public float?              stopAtY;
         public GlyphPixelAlignment alignToPixels;
@@ -457,20 +457,13 @@ namespace Squared.Render.Text {
 
             float lineWidth = (endDc.BottomRight.X - firstDc.TopLeft.X),
                 // FIXME: Why is this padding here?
-                localMinX = firstDc.TopLeft.X - actualPosition.X, localMaxX = originalMaxX - 0.1f;
+                localMinX = firstDc.TopLeft.X - actualPosition.X, localMaxX = originalMaxX - 0.1f,
+                actualDesiredWidth = Math.Max(desiredWidth, localMaxX);
 
             if (
-                currentLineBreakAtX.HasValue && expandHorizontallyWhenAligning &&
-                // HACK: Expanding in justify mode doesn't make sense, especially if the expand was constrained
-                (globalAlignment != HorizontalAlignment.JustifyCharacters) &&
-                (globalAlignment != HorizontalAlignment.JustifyWords)
+                (actualDesiredWidth > 1) && expandHorizontallyWhenAligning
             )
-                localMaxX = currentLineBreakAtX.Value;
-
-            // Expand the line horizontally to fit the desired width
-            // FIXME: This is still kind of busted and things are also busted with it turned off
-            if (desiredWidth > 0)
-                localMaxX = Math.Max(localMaxX, Math.Min(desiredWidth, currentLineBreakAtX ?? desiredWidth));
+                localMaxX = Math.Max(localMaxX, actualDesiredWidth);
 
             // HACK: Attempt to ensure that alignment doesn't penetrate boxes
             // FIXME: This doesn't work and I can't figure out why
@@ -504,21 +497,25 @@ namespace Squared.Render.Text {
             //  against the right side of the layout box.
             float characterSpacing = 0, wordSpacing = 0, accumulatedSpacing = 0;
             if (localAlignment >= HorizontalAlignment.JustifyWords) {
-                if (maxExpansion.HasValue && whitespace > maxExpansion.Value) {
+                wordSpacing = whitespace / wordCountMinusOne;
+
+                if (maxExpansionPerSpace.HasValue && wordSpacing > maxExpansionPerSpace.Value) {
+                    wordSpacing = 0;
                     whitespace = (localAlignment == HorizontalAlignment.JustifyWordsCentered)
                         ? whitespace / 2
                         : 0;
                 } else {
-                    wordSpacing = whitespace / wordCountMinusOne;
                     whitespace = 0;
                 }
             } else if (localAlignment >= HorizontalAlignment.JustifyCharacters) {
-                if (maxExpansion.HasValue && whitespace > maxExpansion.Value) {
+                characterSpacing = whitespace / (lastIndex - firstIndex);
+
+                if (maxExpansionPerSpace.HasValue && characterSpacing > maxExpansionPerSpace.Value) {
+                    characterSpacing = 0;
                     whitespace = (localAlignment == HorizontalAlignment.JustifyCharactersCentered)
                         ? whitespace / 2
                         : 0;
                 } else {
-                    characterSpacing = whitespace / (lastIndex - firstIndex);
                     whitespace = 0;
                 }
             }

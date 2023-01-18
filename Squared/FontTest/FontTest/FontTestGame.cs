@@ -183,7 +183,7 @@ namespace FontTest {
                     Images[i] = Texture2D.FromStream(Graphics.GraphicsDevice, s);
         }
 
-        private AsyncRichImage Text_ImageProvider (AbstractString arg) {
+        private AsyncRichImage Text_ImageProvider (AbstractString arg, RichTextConfiguration config) {
             int i;
             float x;
             float? y;
@@ -292,10 +292,10 @@ namespace FontTest {
 
             Text.Position = TopLeft;
             var targetX = BottomRight.X - TopLeft.X;
-            Text.ExpandHorizontallyWhenAligning = !Expand.Value;
+            Text.ExpandHorizontallyWhenAligning = Expand.Value;
             Text.LineBreakAtX = targetX;
             Text.DesiredWidth = Expand.Value ? targetX : 0;
-            Text.MaxExpansion = LimitExpansion.Value ? 100 : (float?)null;
+            Text.MaxExpansionPerSpace = LimitExpansion.Value ? 16 : (float?)null;
             Text.StopAtY = BottomRight.Y - TopLeft.Y;
             Text.WrapIndentation = Indent.Value ? 64 : 0;
 

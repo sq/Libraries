@@ -309,7 +309,7 @@ namespace Squared.PRGUI {
 
             Tooltip = new DelegateDecorator {
                 Margins = new Margins(8),
-                Padding = new Margins(8, 8),
+                Padding = new Margins(10, 10),
                 UnscaledPadding = new Margins(2, 0),
                 GetTextSettings = GetTextSettings_Tooltip,
                 GetFont = () => TooltipFont ?? DefaultFont,

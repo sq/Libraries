@@ -31,6 +31,7 @@ namespace Squared.PRGUI.Controls {
                 UseTransformedAnchor = true
             };
             ConfigureDefaultLayout(Content);
+            AutoSizeIsMaximum = false;
             AcceptsMouseInput = false;
             AcceptsFocus = false;
             AutoSize = true;
@@ -46,6 +47,7 @@ namespace Squared.PRGUI.Controls {
         new public void Invalidate () {
             base.Invalidate();
             Aligner.AlignmentPending = true;
+            ResetAutoSize();
             // FIXME: Do something else here? Invalidate the alignment?
         }
 
@@ -127,6 +129,11 @@ namespace Squared.PRGUI.Controls {
         public void ApplySettings (TooltipSettings settings) {
             RichText = settings.RichText;
             _RichTextConfiguration = settings.RichTextConfiguration;
+
+            // HACK: We never want these to carry over between tooltips
+            Content.LineBreakAtX = null;
+            Content.DesiredWidth = 0;
+
             if (settings.ConfigureLayout != null) {
                 settings.ConfigureLayout(Content);
                 _NeedsLayoutReset = true;

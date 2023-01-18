@@ -68,7 +68,7 @@ namespace Squared.Render.Text {
         private float _AdditionalLineSpacing;
         private float _SortKey;
         private float _DesiredWidth;
-        private float? _MaxExpansion;
+        private float? _MaxExpansionPerSpace;
         private int _CharacterSkipCount;
         private int _CharacterLimit;
         private float _XOffsetOfFirstLine;
@@ -152,11 +152,13 @@ namespace Squared.Render.Text {
             CharacterLimit = int.MaxValue;
             XOffsetOfFirstLine = 0;
             XOffsetOfNewLine = 0;
+            DesiredWidth = 0;
             LineBreakAtX = null;
             StopAtY = null;
             WordWrap = false;
             CharacterWrap = true;
             WrapIndentation = 0f;
+            AdditionalLineSpacing = 0f;
             ExtraLineBreakSpacing = 0f;
             AlignToPixels = GlyphPixelAlignment.Default;
             WrapCharacter = '\0';
@@ -587,15 +589,15 @@ namespace Squared.Render.Text {
         }
 
         /// <summary>
-        /// When using justify alignment modes, the amount of whitespace added to a line of text
-        ///   will not exceed this amount.
+        /// When using justify alignment modes, the amount of whitespace added to each gap
+        ///  in a line of text will not exceed this amount.
         /// </summary>
-        public float? MaxExpansion {
+        public float? MaxExpansionPerSpace {
             get {
-                return _MaxExpansion;
+                return _MaxExpansionPerSpace;
             }
             set {
-                InvalidatingNullableAssignment(ref _MaxExpansion, value);
+                InvalidatingNullableAssignment(ref _MaxExpansionPerSpace, value);
             }
         }
 
@@ -893,7 +895,7 @@ namespace Squared.Render.Text {
                 additionalLineSpacing = _AdditionalLineSpacing,
                 sortKey = _SortKey,
                 desiredWidth = _DesiredWidth,
-                maxExpansion = _MaxExpansion,
+                maxExpansionPerSpace = _MaxExpansionPerSpace,
                 characterSkipCount = _CharacterSkipCount,
                 characterLimit = _CharacterLimit,
                 xOffsetOfFirstLine = _XOffsetOfFirstLine,
@@ -976,7 +978,7 @@ namespace Squared.Render.Text {
             this.SplitAtWrapCharactersOnly = source.SplitAtWrapCharactersOnly;
             this.IncludeTrailingWhitespace = source.IncludeTrailingWhitespace;
             this.DesiredWidth = source.DesiredWidth;
-            this.MaxExpansion = source.MaxExpansion;
+            this.MaxExpansionPerSpace = source.MaxExpansionPerSpace;
             this.DisableMarkers = source.DisableMarkers;
             SetFlag(InternalFlags.AwaitingDependencies, false);
         }
