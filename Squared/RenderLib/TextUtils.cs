@@ -1117,11 +1117,12 @@ namespace Squared.Render.Text {
         }
     }
 
-    public class FallbackGlyphSource : IGlyphSource, IDisposable, IEnumerable<IGlyphSource> {
+    public class FallbackGlyphSource : IGlyphSource, IDisposable, IEnumerable<IGlyphSource>, IGlyphSourceChangeListener {
         public float? OverrideLineSpacing;
         public bool IsDisposed { get; private set; }
         public bool MaxLineSpacing = true;
         public bool OwnsSources = true;
+        public int Version { get; private set; }
         public GlyphPixelAlignment? DefaultAlignment { get; set; }
         private readonly IGlyphSource[] Sources = null;
 
@@ -1130,16 +1131,20 @@ namespace Squared.Render.Text {
         public FallbackGlyphSource (bool ownsSources, params IGlyphSource[] sources) {
             OwnsSources = ownsSources;
             Sources = sources;
+            var weakSelf = new WeakReference<IGlyphSourceChangeListener>(this);
+            foreach (var s in Sources)
+                s.RegisterForChangeNotification(weakSelf);
         }
 
         public FallbackGlyphSource (params IGlyphSource[] sources) {
             Sources = sources;
+            var weakSelf = new WeakReference<IGlyphSourceChangeListener>(this);
+            foreach (var s in Sources)
+                s.RegisterForChangeNotification(weakSelf);
         }
 
-        public SpriteFont SpriteFont
-        {
-            get
-            {
+        public SpriteFont SpriteFont {
+            get {
                 return null;
             }
         }
@@ -1152,6 +1157,10 @@ namespace Squared.Render.Text {
 
             result = default(Glyph);
             return false;
+        }
+
+        void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) {
+            throw new InvalidOperationException("Nesting FallbackGlyphSources is not supported");
         }
 
         public float DPIScaleFactor {
@@ -1174,17 +1183,6 @@ namespace Squared.Render.Text {
                 return ls;
             }
         }
-
-        int IGlyphSource.Version {
-            [TargetedPatchingOptOut("")]
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get {
-                int result = 0;
-                foreach (var item in Sources)
-                    result += item.Version;
-                return result;
-            }
-        }
         
         public void Dispose () {
             IsDisposed = true;
@@ -1202,6 +1200,14 @@ namespace Squared.Render.Text {
         IEnumerator IEnumerable.GetEnumerator () {
             return ((IEnumerable<IGlyphSource>)Sources).GetEnumerator();
         }
+
+        void IGlyphSourceChangeListener.NotifyChanged (IGlyphSource source) {
+            Version++;
+        }
+    }
+
+    public interface IGlyphSourceChangeListener {
+        void NotifyChanged (IGlyphSource source);
     }
 
     public interface IGlyphSource {
@@ -1212,6 +1218,7 @@ namespace Squared.Render.Text {
         bool IsDisposed { get; }
         int Version { get; }
         object UniqueKey { get; }
+        void RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener);
     }
 
     public static class TextUtils {
@@ -1309,6 +1316,9 @@ namespace Squared.Render.Text {
             public bool GetGlyph (uint ch, out Glyph result) {
                 return Source.GetGlyph(ch, Scale, LineSpacing, out result);
             }
+
+            void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) =>
+                ((IGlyphSource)Source).RegisterForChangeNotification(listener);
         }
 
         public readonly bool OwnsAtlas;
@@ -1327,6 +1337,12 @@ namespace Squared.Render.Text {
         private bool NeedIncrementVersion = true;
         private readonly Dictionary<uint, AtlasGlyph> Registry = 
             new Dictionary<uint, AtlasGlyph>();
+        private DenseList<WeakReference<IGlyphSourceChangeListener>> ChangeListeners;
+
+        void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) {
+            if (!ChangeListeners.Contains(listener))
+                ChangeListeners.Add(listener);
+        }
 
         public AtlasGlyphSource (Atlases.Atlas atlas, bool ownsAtlas) {
             Atlas = atlas;
@@ -1382,6 +1398,9 @@ namespace Squared.Render.Text {
             if (NeedIncrementVersion) {
                 NeedIncrementVersion = false;
                 Version++;
+                foreach (var listener in ChangeListeners)
+                    if (listener.TryGetTarget(out var t))
+                        t.NotifyChanged(this);
             }
         }
 
@@ -1459,6 +1478,8 @@ namespace Squared.Render.Text {
             return Font.MeasureString(text);
         }
 
+        void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) {
+        }
 
         public float DPIScaleFactor {
             get {

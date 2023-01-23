@@ -100,9 +100,9 @@ namespace Squared.PRGUI {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected ref BoxRecord Record (ref UIOperationContext context) => ref context.UIContext.Engine.UnsafeItem(LayoutKey);
+        protected ref BoxRecord Record (ref UIOperationContext context) => ref context.Shared.Context.Engine.UnsafeItem(LayoutKey);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected ref BoxLayoutResult LayoutResult (ref UIOperationContext context) => ref context.UIContext.Engine.Result(LayoutKey);
+        protected ref BoxLayoutResult LayoutResult (ref UIOperationContext context) => ref context.Shared.Context.Engine.Result(LayoutKey);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected ref BoxRecord Record (UIContext context) => ref context.Engine.UnsafeItem(LayoutKey);
@@ -865,44 +865,45 @@ namespace Squared.PRGUI {
 
         protected virtual ControlStates GetCurrentState (ref UIOperationContext context) {
             var result = default(ControlStates);
+            var ctx = context.UIContext;
 
             if (!Enabled) {
                 result |= ControlStates.Disabled;
             } else {
-                if (context.UIContext.Hovering == this)
+                if (ctx.Hovering == this)
                     result |= ControlStates.Hovering;
 
-                if (context.UIContext.CurrentTooltipAnchor == this)
+                if (ctx.CurrentTooltipAnchor == this)
                     result |= ControlStates.AnchorForTooltip;
 
-                if (context.UIContext.MouseOver == this)
+                if (ctx.MouseOver == this)
                     result |= ControlStates.MouseOver;
 
                 // HACK: If a modal has temporarily borrowed focus from us, we should still appear
                 //  to be focused.
                 if (
-                    (context.UIContext.Focused == this) || 
-                    ((context.UIContext.Focused as IModal)?.FocusDonor == this)
+                    (ctx.Focused == this) || 
+                    ((ctx.Focused as IModal)?.FocusDonor == this)
                 ) {
                     result |= ControlStates.Focused;
                     result |= ControlStates.ContainsFocus;
                 }
 
                 if (
-                    context.UIContext.FocusChain.Contains(this) ||
-                    (context.UIContext.ModalFocusDonor == this) ||
-                    (context.UIContext.TopLevelModalFocusDonor == this)
+                    ctx.FocusChain.Contains(this) ||
+                    (ctx.ModalFocusDonor == this) ||
+                    (ctx.TopLevelModalFocusDonor == this)
                 )
                     result |= ControlStates.ContainsFocus;
 
-                if (context.UIContext.PreviousHovering == this)
+                if (ctx.PreviousHovering == this)
                     result |= ControlStates.PreviouslyHovering;
 
-                if (context.UIContext.PreviousFocused == this)
+                if (ctx.PreviousFocused == this)
                     result |= ControlStates.PreviouslyFocused;
             }
 
-            if ((context.UIContext.MouseCaptured == this) || (context.ActivateKeyHeld && context.UIContext.Focused == this))
+            if ((ctx.MouseCaptured == this) || (context.ActivateKeyHeld && ctx.Focused == this))
                 result |= ControlStates.Pressed;
 
             return result;

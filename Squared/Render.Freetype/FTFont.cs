@@ -49,6 +49,12 @@ namespace Squared.Render.Text {
             internal int _Version;
             internal bool? _SDF;
 
+            internal DenseList<WeakReference<IGlyphSourceChangeListener>> ChangeListeners;
+            void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) {
+                if (!ChangeListeners.Contains(listener))
+                    ChangeListeners.Add(listener);
+            }
+
             public bool? SDF {
                 get => _SDF;
                 set {
@@ -478,6 +484,10 @@ namespace Squared.Render.Text {
                 Cache.Clear();
 
                 _LineSpacing = null;
+
+                foreach (var listener in ChangeListeners)
+                    if (listener.TryGetTarget(out var t))
+                        t.NotifyChanged(this);
             }
 
             float IGlyphSource.DPIScaleFactor {
@@ -691,6 +701,9 @@ namespace Squared.Render.Text {
                 return DefaultSize.LineSpacing;
             }
         }
+
+        void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) =>
+            ((IGlyphSource)DefaultSize).RegisterForChangeNotification(listener);
 
         int IGlyphSource.Version {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

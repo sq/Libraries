@@ -1140,8 +1140,8 @@ namespace Squared.PRGUI {
 
         public UIContext UIContext => Shared?.Context;
         public RenderCoordinator RenderCoordinator => Prepass.Coordinator;
-        public DefaultMaterialSet Materials => UIContext?.Materials;
-        public NewEngine.LayoutEngine Engine => UIContext?.Engine;
+        public DefaultMaterialSet Materials => Shared?.Context?.Materials;
+        public NewEngine.LayoutEngine Engine => Shared?.Context?.Engine;
 
         public float Now => Shared?.Now ?? 0f;
         public long NowL => Shared?.NowL ?? 0;
@@ -1163,15 +1163,6 @@ namespace Squared.PRGUI {
         internal bool RelayoutRequestedForVisibilityChange;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private T GetStackTop<T> (ref DenseList<T> stack) {
-            var index = stack.Count - 1;
-            if (index < 0)
-                return default;
-            else
-                return stack[index];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void StackPush<T> (ref DenseList<T> stack, T value) {
             stack.Add(value);
         }
@@ -1184,17 +1175,17 @@ namespace Squared.PRGUI {
             stack.RemoveAt(index);
         }
 
-        public IDecorationProvider DecorationProvider => GetStackTop(ref DecorationProviderStack) ?? UIContext?.Decorations;
+        public IDecorationProvider DecorationProvider => DecorationProviderStack.LastOrDefault() ?? Shared?.Context?.Decorations;
         public static void PushDecorationProvider (ref UIOperationContext context, IDecorationProvider value) => 
             StackPush(ref context.DecorationProviderStack, value);
         public static void PopDecorationProvider (ref UIOperationContext context) => 
             StackPop(ref context.DecorationProviderStack);
-        public IDecorator DefaultDecorator => GetStackTop(ref DecoratorStack);
+        public IDecorator DefaultDecorator => DecoratorStack.LastOrDefault();
         public static void PushDecorator (ref UIOperationContext context, IDecorator value) => 
             StackPush(ref context.DecoratorStack, value);
         public static void PopDecorator (ref UIOperationContext context) => 
             StackPop(ref context.DecoratorStack);
-        public IDecorator DefaultTextDecorator => GetStackTop(ref TextDecoratorStack);
+        public IDecorator DefaultTextDecorator => TextDecoratorStack.LastOrDefault();
         public static void PushTextDecorator (ref UIOperationContext context, IDecorator value) => 
             StackPush(ref context.TextDecoratorStack, value);
         public static void PopTextDecorator (ref UIOperationContext context) => 
