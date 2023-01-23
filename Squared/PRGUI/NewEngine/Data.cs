@@ -369,36 +369,42 @@ namespace Squared.PRGUI.NewEngine {
             _LastChild, _PreviousSibling, _NextSibling;
 
         public ControlKey Key {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _Key.Key;
 #if DEBUG
             set => _Key.Key = value;
 #endif
         }
         public ControlKey Parent {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _Parent.Key;
 #if DEBUG
             set => _Parent.Key = value;
 #endif
         }
         public ControlKey FirstChild {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _FirstChild.Key;
 #if DEBUG
             set => _FirstChild.Key = value;
 #endif
         }
         public ControlKey LastChild {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _LastChild.Key;
 #if DEBUG
             set => _LastChild.Key = value;
 #endif
         }
         public ControlKey PreviousSibling {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]            
             get => _PreviousSibling.Key;
 #if DEBUG
             set => _PreviousSibling.Key = value;
 #endif
         }
         public ControlKey NextSibling {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _NextSibling.Key;
 #if DEBUG
             set => _NextSibling.Key = value;

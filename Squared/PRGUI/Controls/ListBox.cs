@@ -186,11 +186,12 @@ namespace Squared.PRGUI.Controls {
             // HACK: Most lists will contain enough items to need scrolling, so just always show the bar
             ShowVerticalScrollbar = true;
             Scrollable = true;
-            AutoBreakColumnItems = true;
+            AutoBreakColumnItems = false;
             // FIXME
             Manager = new ItemListManager<T>(comparer ?? EqualityComparer<T>.Default);
             DefaultCreateControlForValue = _DefaultCreateControlForValue;
             Manager.SelectionChanged += Manager_SelectionChanged;
+            Container.Arrangement = Flags.ChildArrangement.Column;
         }
 
         private void Manager_SelectionChanged () {
@@ -282,8 +283,12 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             bool scrollOffsetChanged = false;
-            // FIXME: Column mode no longer works anymore and I don't know how I broke it
-            ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Break_Allow | ControlFlags.Container_Align_Start |
+            ContainerFlags = (
+                    (ColumnCount == 1) 
+                    ? ControlFlags.Container_Column
+                    : ControlFlags.Container_Row | ControlFlags.Container_Break_Allow
+                )
+                | ControlFlags.Container_Align_Start |
                 (AutoSize ? default : ControlFlags.Container_No_Expansion_Y);
 
             // HACK: Ensure the scroll region is updated immediately if our column count changes,
@@ -407,8 +412,6 @@ namespace Squared.PRGUI.Controls {
                 // HACK: Override decorator margins
                 m.Top = child.Margins.Top;
                 m.Bottom = child.Margins.Bottom + ItemSpacing;
-                if (ColumnCount == 1)
-                    childRec.Config.ForceBreak = true;
             }
 
             if (hasPushedDecorator)

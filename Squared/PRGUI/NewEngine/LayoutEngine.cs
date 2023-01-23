@@ -131,8 +131,8 @@ namespace Squared.PRGUI.NewEngine {
                 return ref Invalid;
             } else {
                 ref var result = ref Records[index];
-                // HACK
-                result._Key = index;
+                // FIXME: Why was this here?
+                // result._Key.IndexPlusOne = index + 1;
                 return ref result;
             }
         }

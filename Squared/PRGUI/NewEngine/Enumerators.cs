@@ -51,7 +51,7 @@ namespace Squared.PRGUI.NewEngine {
                     return false;
                 }
 
-                if (Current.IsInvalid) {
+                if (Current.ID < 0) {
                     if (Started)
                         return false;
 
@@ -62,13 +62,13 @@ namespace Squared.PRGUI.NewEngine {
                     var nextItem = Reverse ? pCurrent.PreviousSibling : pCurrent.NextSibling;
                     if (Current == LastItem)
                         _Current = ControlKey.Invalid;
-                    else if (nextItem.IsInvalid)
+                    else if (nextItem.ID < 0)
                         _Current = ControlKey.Invalid;
                     else
                         _Current = nextItem;
                 }
 
-                return !Current.IsInvalid;
+                return Current.ID >= 0;
             }
 
             void IEnumerator.Reset () {

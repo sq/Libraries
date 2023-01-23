@@ -65,12 +65,12 @@ namespace Squared.PRGUI.Layout {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator == (ControlKey lhs, ControlKey rhs) {
-            return lhs.Equals(rhs);
+            return lhs.ID == rhs.ID;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator != (ControlKey lhs, ControlKey rhs) {
-            return !lhs.Equals(rhs);
+            return lhs.ID != rhs.ID;
         }
 
 #if DEBUG
