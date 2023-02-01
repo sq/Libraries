@@ -143,9 +143,12 @@ namespace Squared.Render {
 
             var oLhs = lhs.Data as TextureLoadOptions;
             var oRhs = rhs.Data as TextureLoadOptions;
-            return (oLhs?.GenerateMips == oRhs?.GenerateMips) && (oLhs?.GenerateDistanceField == oRhs?.GenerateMips) &&
+            var result = (oLhs?.GenerateMips == oRhs?.GenerateMips) && (oLhs?.GenerateDistanceField == oRhs?.GenerateDistanceField) &&
                 (oLhs?.Premultiply == oRhs?.Premultiply) && (oLhs?.PadToPowerOfTwo == oRhs?.PadToPowerOfTwo) &&
                 (oLhs?.FloatingPoint == oRhs?.FloatingPoint);
+            if (!result)
+                System.Diagnostics.Debug.WriteLine($"Texture cache miss for '{lhs.Name}' due to options");
+            return result;
         }
 
         protected unsafe virtual void GenerateDistanceFieldThenDispose (IFuture f, object resource) {

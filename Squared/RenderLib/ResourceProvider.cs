@@ -354,7 +354,7 @@ namespace Squared.Render.Resources {
         }
 
         protected virtual CacheKey MakeKey (string name, object data) {
-            return new CacheKey { Name = name, Data = data };
+            return new CacheKey { Name = name, Data = data ?? DefaultOptions };
         }
 
         /// <summary>
@@ -399,11 +399,15 @@ namespace Squared.Render.Resources {
             return data;
         }
 
-        public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) {
+        public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) =>
+            LoadSyncUncached(name, data, optional, out exception, false);
+
+        private T LoadSyncUncached (string name, object data, bool optional, out Exception exception, bool dataFiltered) {
             FaultInjector?.Step();
 
             try {
-                data = FilterData(name, data);
+                if (!dataFiltered)
+                    data = FilterData(name, data);
             } catch (Exception exc) {
                 var info2 = RecordPendingLoad(name, data, optional, false);
                 NotifyLoadFailed(info2, exc);
@@ -505,10 +509,18 @@ namespace Squared.Render.Resources {
         }
 
         public T LoadSync (string name, object data, bool cached, bool optional) {
+            try {
+                data = FilterData(name, data);
+            } catch (Exception exc) {
+                var info2 = RecordPendingLoad(name, data, optional, false);
+                NotifyLoadFailed(info2, exc);
+                throw;
+            }
+
             var future = GetFutureForResource(name, data, cached, out bool performLoad);
 
             if (performLoad) {
-                T instance = LoadSyncUncached(name, data, optional, out Exception exc);
+                T instance = LoadSyncUncached(name, data, optional, out Exception exc, true);
                 SetFutureResult(future, instance, exc);
             } else if (!future.Completed) {
                 WaitForLoadSync(future, name, data);
