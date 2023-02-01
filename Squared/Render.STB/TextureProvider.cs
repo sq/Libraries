@@ -137,6 +137,17 @@ namespace Squared.Render {
                 Coordinator.DisposeResource(resource as IDisposable);
         }
 
+        protected override bool AreKeysEqual (ref CacheKey lhs, ref CacheKey rhs) {
+            if (!base.AreKeysEqual(ref lhs, ref rhs))
+                return false;
+
+            var oLhs = lhs.Data as TextureLoadOptions;
+            var oRhs = rhs.Data as TextureLoadOptions;
+            return (oLhs?.GenerateMips == oRhs?.GenerateMips) && (oLhs?.GenerateDistanceField == oRhs?.GenerateMips) &&
+                (oLhs?.Premultiply == oRhs?.Premultiply) && (oLhs?.PadToPowerOfTwo == oRhs?.PadToPowerOfTwo) &&
+                (oLhs?.FloatingPoint == oRhs?.FloatingPoint);
+        }
+
         protected unsafe virtual void GenerateDistanceFieldThenDispose (IFuture f, object resource) {
             var closure = (GDFTFClosure)resource;
             var img = closure.Image;

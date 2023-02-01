@@ -90,6 +90,22 @@ namespace Squared.Render.Resources {
     {
         public FaultInjector FaultInjector;
 
+        protected sealed class CacheKeyComparer : IEqualityComparer<CacheKey> {
+            public readonly ResourceProvider<T> Provider;
+
+            public CacheKeyComparer (ResourceProvider<T> provider) {
+                Provider = provider;
+            }
+
+            public bool Equals (CacheKey x, CacheKey y) {
+                return Provider.AreKeysEqual(ref x, ref y);
+            }
+
+            public int GetHashCode (CacheKey obj) {
+                return obj.Name.GetHashCode();
+            }
+        }
+
         protected class CreateWorkItem : IWorkItem {
             public static WorkItemConfiguration Configuration =>
                 new WorkItemConfiguration {
@@ -224,13 +240,18 @@ namespace Squared.Render.Resources {
         public readonly bool EnableThreadedPreload = true, 
             EnableThreadedCreate = false;
 
+        protected struct CacheKey {
+            public string Name;
+            public object Data;
+        }
+
         protected struct CacheEntry {
             public string Name;
             public Future<T> Future;
             public object Data;
         }
 
-        protected readonly Dictionary<string, CacheEntry> Cache = new Dictionary<string, CacheEntry>();
+        protected readonly Dictionary<CacheKey, CacheEntry> Cache;
         protected object DefaultOptions;
 
         protected WorkQueue<PreloadWorkItem> PreloadQueue { get; private set; }
@@ -327,18 +348,35 @@ namespace Squared.Render.Resources {
 
             PreloadQueue = coordinator.ThreadGroup.GetQueueForType<PreloadWorkItem>(forMainThread: !EnableThreadedPreload);
             CreateQueue = coordinator.ThreadGroup.GetQueueForType<CreateWorkItem>(forMainThread: !EnableThreadedCreate);
+            Cache = new Dictionary<CacheKey, CacheEntry>(
+                new CacheKeyComparer(this)
+            );
+        }
+
+        protected virtual CacheKey MakeKey (string name, object data) {
+            return new CacheKey { Name = name, Data = data };
+        }
+
+        /// <summary>
+        /// Override this if you wish to take load options into account when looking items up in the cache
+        /// </summary>
+        protected virtual bool AreKeysEqual (ref CacheKey lhs, ref CacheKey rhs) {
+            return lhs.Name.Equals(rhs.Name);
         }
 
         protected bool Evict (string name) {
             CacheEntry ce;
             lock (Cache) {
-                if (!Cache.TryGetValue(name, out ce)) {
+                // FIXME
+                var key = MakeKey(name, null);
+                if (!Cache.TryGetValue(key, out ce)) {
                     name = StreamSource.FixupName(name, true);
-                    if (!Cache.TryGetValue(name, out ce))
+                    key = MakeKey(name, null);
+                    if (!Cache.TryGetValue(key, out ce))
                         return false;
                 }
 
-                Cache.Remove(name);
+                Cache.Remove(key);
             }
             // FIXME: Release the resource? Dispose the future?
             return true;
@@ -419,11 +457,12 @@ namespace Squared.Render.Resources {
         private Future<T> GetFutureForResource (string name, object data, bool cached, out bool performLoad) {
             name = StreamSource.FixupName(name, true);
             performLoad = false;
+            var key = MakeKey(name, data);
             CacheEntry entry;
             if (cached) {
                 lock (Cache) {
-                    if (!Cache.TryGetValue(name, out entry)) {
-                        Cache[name] = entry = MakeCacheEntry(name, data);
+                    if (!Cache.TryGetValue(key, out entry)) {
+                        Cache[key] = entry = MakeCacheEntry(name, data);
                         performLoad = true;
                     }
                 }

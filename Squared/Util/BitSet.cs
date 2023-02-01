@@ -159,6 +159,28 @@ namespace Squared.Util.Containers {
             return true;
         }
 
+        public static unsafe T As<T> (ref BitSet bits)
+            where T : unmanaged 
+        {
+            // FIXME: Fast version using Unsafe
+            UInt64* pBits = stackalloc UInt64[4];
+            pBits[0] = bits.A;
+            pBits[1] = bits.B;
+            pBits[2] = bits.C;
+            pBits[3] = bits.D;
+            T* pResult = (T*)pBits;
+            return *pResult;
+        }
+
+        public static unsafe void SetFrom<T> (ref BitSet bits, T newValue)
+            where T : unmanaged 
+        {
+            // FIXME: Fast version using Unsafe
+            UInt64* pBits = stackalloc UInt64[4];
+            T* pResult = (T*)pBits;
+            *pResult = newValue;
+        }
+
         public void SetAll () {
             A = B = C = D = ~0UL;
         }
