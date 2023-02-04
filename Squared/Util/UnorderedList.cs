@@ -609,7 +609,7 @@ namespace Squared.Util {
 
             var index = _Count-- - 1;
             result = _Items[_BufferOffset + index];
-            _Items[index] = default(T);
+            _Items[_BufferOffset + index] = default(T);
             return true;
         }
 
