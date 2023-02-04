@@ -218,8 +218,8 @@ namespace Squared.PRGUI.Controls {
             if (name == UIEvents.GotTopLevelFocus) {
                 if (ElevateOnFocus)
                     Elevate();
-            } else if ((name == UIEvents.KeyPress) && AllowClose && (args is KeyEventArgs kea)) {
-                if ((kea.Key == Keys.F4) && kea.Modifiers.Control) {
+            } else if ((name == UIEvents.KeyPress) && AllowClose && KeyEventArgs.From(ref args, out var ka)) {
+                if ((ka.Key == Keys.F4) && ka.Modifiers.Control) {
                     UserClose();
                     return true;
                 }

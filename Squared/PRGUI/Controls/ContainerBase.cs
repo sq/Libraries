@@ -409,7 +409,8 @@ namespace Squared.PRGUI.Controls {
                 maxA = layerA;
 
 #if !NOSPAN
-            var currentLayerContext = System.Runtime.CompilerServices.Unsafe.SkipInit<RasterizePassSet>();
+            RasterizePassSet currentLayerContext;
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out currentLayerContext);
 #else
             var currentLayerContext = default(RasterizePassSet);
 #endif

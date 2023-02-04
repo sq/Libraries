@@ -238,7 +238,7 @@ namespace Squared.PRGUI.Controls {
         protected override bool OnEvent<T> (string name, T args) {
             if (args is MouseEventArgs ma)
                 return OnMouseEvent(name, ma);
-            else if (args is KeyEventArgs ka)
+            else if (KeyEventArgs.From(ref args, out var ka))
                 return OnKeyEvent(name, ka);
             else
                 return base.OnEvent(name, args);

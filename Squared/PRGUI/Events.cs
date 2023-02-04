@@ -82,6 +82,8 @@ namespace Squared.PRGUI {
         public override string ToString () {
             return $"MouseEventArgs {{ NowL={NowL}, Modifiers={Modifiers}, Buttons={Buttons}, GlobalPosition={GlobalPosition}, MovedSinceMouseDown={MovedSinceMouseDown}, DoubleClicking={DoubleClicking}, SequentialClickCount={SequentialClickCount} }}";
         }
+
+        public static bool From<TSource> (ref TSource source, out MouseEventArgs result) => Evil.TryCoerce(ref source, out result);
     }
 
     public struct KeyEventArgs {
@@ -91,6 +93,8 @@ namespace Squared.PRGUI {
         public KeyboardModifiers Modifiers;
         public Keys? Key;
         public char? Char;
+
+        public static bool From<TSource> (ref TSource source, out KeyEventArgs result) => Evil.TryCoerce(ref source, out result);
     }
 
     /// <summary>

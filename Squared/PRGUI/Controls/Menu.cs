@@ -375,7 +375,7 @@ namespace Squared.PRGUI.Controls {
             else if (name == UIEvents.LostFocus) {
                 if (CloseWhenFocusLost)
                     Close(ModalCloseReason.Dismissed);
-            } else if (args is KeyEventArgs ka)
+            } else if (KeyEventArgs.From(ref args, out var ka))
                 return OnKeyEvent(name, ka);
             else
                 return base.OnEvent(name, args);

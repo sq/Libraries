@@ -174,13 +174,23 @@ namespace Squared.PRGUI {
         }
     }
 
-    internal static class Evil {
+    public static class Evil {
         public static TTo Coerce<TFrom, TTo> (ref TFrom value) {
 #if NOSPAN
             return (TTo)(object)value;
 #else
             return Unsafe.As<TFrom, TTo>(ref value);
 #endif
+        }
+
+        public static bool TryCoerce<TFrom, TTo> (ref TFrom value, out TTo result) {
+            if (typeof (TTo) == typeof(TFrom)) {
+                result = Coerce<TFrom, TTo>(ref value);
+                return true;
+            } else {
+                result = default;
+                return false;
+            }
         }
     }
 }

@@ -137,6 +137,10 @@ namespace Squared.Render {
                 Coordinator.DisposeResource(resource as IDisposable);
         }
 
+        protected virtual void OnCacheMiss (CacheKey lhs, CacheKey rhs) {
+            System.Diagnostics.Debug.WriteLine($"Texture cache miss for '{lhs.Name}' due to options");
+        }
+
         protected override bool AreKeysEqual (ref CacheKey lhs, ref CacheKey rhs) {
             if (!base.AreKeysEqual(ref lhs, ref rhs))
                 return false;
@@ -147,7 +151,7 @@ namespace Squared.Render {
                 (oLhs?.Premultiply == oRhs?.Premultiply) && (oLhs?.PadToPowerOfTwo == oRhs?.PadToPowerOfTwo) &&
                 (oLhs?.FloatingPoint == oRhs?.FloatingPoint);
             if (!result)
-                System.Diagnostics.Debug.WriteLine($"Texture cache miss for '{lhs.Name}' due to options");
+                OnCacheMiss(lhs, rhs);
             return result;
         }
 

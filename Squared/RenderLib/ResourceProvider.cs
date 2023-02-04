@@ -364,14 +364,14 @@ namespace Squared.Render.Resources {
             return lhs.Name.Equals(rhs.Name);
         }
 
-        protected bool Evict (string name) {
+        protected bool Evict (string name, object data) {
             CacheEntry ce;
             lock (Cache) {
                 // FIXME
-                var key = MakeKey(name, null);
+                var key = MakeKey(name, data);
                 if (!Cache.TryGetValue(key, out ce)) {
                     name = StreamSource.FixupName(name, true);
-                    key = MakeKey(name, null);
+                    key = MakeKey(name, data);
                     if (!Cache.TryGetValue(key, out ce))
                         return false;
                 }
