@@ -8,24 +8,23 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public struct ControlDataCollection : IEnumerable<KeyValuePair<string, object>> {
-        DenseList<IControlData> Items;
+        DenseList<ControlDataBase> Items;
 
         public void Clear () {
             Items.Clear();
         }
 
-        private bool Find<T> (ref ControlDataKey key, out ControlData<T> result) {
-            if (Items.Count == 0) {
+        private bool Find<T> (string key, out ControlData<T> result) {
+            int count = Items.Count;
+            if (count == 0) {
                 result = default;
                 return false;
             }
 
-            for (int i = 0, c = Items.Count; i < c; i++) {
-                ref var item = ref Items.Item(i);
-                if (item.KeyEquals(in key)) {
-                    result = (ControlData<T>)item;
+            for (int i = 0; i < count; i++) {
+                result = Items[i] as ControlData<T>;
+                if ((result != null) && string.Equals(result.Key, key))
                     return true;
-                }
             }
 
             result = default;
@@ -37,16 +36,14 @@ namespace Squared.PRGUI.Controls {
         }
 
         public T Get<T> (string name, T defaultValue) {
-            var key = new ControlDataKey { Type = typeof(T), Key = name };
-            if (Find(ref key, out ControlData<T> data))
+            if (Find(name, out ControlData<T> data))
                 return data.Value;
             else
                 return defaultValue;
         }
 
         public bool TryGet<T> (string name, out T result) {
-            var key = new ControlDataKey { Type = typeof(T), Key = name };
-            if (Find(ref key, out ControlData<T> data)) {
+            if (Find(name, out ControlData<T> data)) {
                 result = data.Value;
                 return true;
             }
@@ -67,12 +64,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void Set<T> (string name, ref T value) {
-            var key = new ControlDataKey { Type = typeof(T), Key = name };
-            if (Find(ref key, out ControlData<T> data))
+            if (Find(name, out ControlData<T> data))
                 data.Value = value;
             else
                 Items.Add(new ControlData<T> {
-                    Key = key,
+                    Key = name,
                     Value = value
                 });
         }
@@ -80,11 +76,12 @@ namespace Squared.PRGUI.Controls {
         public bool Remove<T> (string name) {
             if (Items.Count == 0)
                 return false;
-            var key = new ControlDataKey { Type = typeof(T), Key = name };
 
             for (int i = 0, c = Items.Count; i < c; i++) {
-                ref var item = ref Items.Item(i);
-                if (item.KeyEquals(in key)) {
+                var item = Items[i] as ControlData<T>;
+                if (item == null)
+                    continue;
+                if (string.Equals(item.Key, name)) {
                     Items.RemoveAt(i);
                     return true;
                 }
@@ -95,8 +92,7 @@ namespace Squared.PRGUI.Controls {
         public bool UpdateOrCreate<T> (string name, T expected, T replacement)
             where T : IEquatable<T>
         {
-            var key = new ControlDataKey { Type = typeof(T), Key = name };
-            if (Find(ref key, out ControlData<T> existingItem)) {
+            if (Find(name, out ControlData<T> existingItem)) {
                 if (expected.Equals(existingItem.Value)) {
                     existingItem.Value = replacement;
                     return true;
@@ -104,7 +100,7 @@ namespace Squared.PRGUI.Controls {
                     return false;
             }
             Items.Add(new ControlData<T> {
-                Key = key,
+                Key = name,
                 Value = replacement
             });
             return true;
@@ -116,11 +112,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void Add<T> (string name, T value) {
-            var key = new ControlDataKey { Type = typeof(T), Key = name };
-            if (Find<T>(ref key, out _))
+            if (Find<T>(name, out _))
                 throw new ArgumentException("Key already exists");
             Items.Add(new ControlData<T> {
-                Key = key,
+                Key = name,
                 Value = value
             });
         }
@@ -130,7 +125,7 @@ namespace Squared.PRGUI.Controls {
                 yield break;
 
             foreach (var item in Items)
-                yield return new KeyValuePair<string, object>(item.Key, item.Value);
+                yield return new KeyValuePair<string, object>(item.Key, item.BoxedValue);
         }
 
         IEnumerator IEnumerable.GetEnumerator () {
@@ -138,49 +133,15 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    internal interface IControlData {
-        bool KeyEquals (in ControlDataKey key);
-        string Key { get; }
-        Type Type { get; }
-        object Value { get; set; }
-    }
-
-    internal sealed class ControlData<T> : IControlData {
-        public ControlDataKey Key;
-        public T Value;
-
-        public Type Type => Key.Type;
-        string IControlData.Key => Key.Key;
-        object IControlData.Value {
-            get => Value;
-            set {
-                Value = (T)value;
-            }
-        }
-
-        public bool KeyEquals (in ControlDataKey key) {
-            return Key.Equals(in key);
-        }
-    }
-
-    internal struct ControlDataKey {
-        public Type Type;
+    internal abstract class ControlDataBase {
         public string Key;
 
-        public bool Equals (in ControlDataKey rhs) {
-            return (Type == rhs.Type) &&
-                string.Equals(Key, rhs.Key);
-        }
+        public abstract object BoxedValue { get; }
+    }
 
-        public override bool Equals (object obj) {
-            if (obj is ControlDataKey cdk)
-                return Equals(in cdk);
-            else
-                return false;
-        }
+    internal sealed class ControlData<T> : ControlDataBase {
+        public T Value;
 
-        public override int GetHashCode () {
-            return Type.GetHashCode();
-        }
+        public override object BoxedValue => Value;
     }
 }

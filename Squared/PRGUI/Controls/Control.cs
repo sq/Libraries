@@ -83,6 +83,7 @@ namespace Squared.PRGUI {
         private InternalStateFlags InternalState = InternalStateFlags.Visible | InternalStateFlags.Enabled;
 
         protected bool IsLayoutInvalid {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetInternalFlag(InternalStateFlags.LayoutInvalid) || _LayoutKey.IsInvalid;
             set {
                 SetInternalFlag(InternalStateFlags.LayoutInvalid, false);
@@ -91,6 +92,7 @@ namespace Squared.PRGUI {
 
         private ControlKey _LayoutKey = ControlKey.Corrupt;
         public ControlKey LayoutKey {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _LayoutKey;
             private set {
                 if (value == _LayoutKey)
@@ -113,6 +115,7 @@ namespace Squared.PRGUI {
         /// If false, the control will not participate in layout or rasterization
         /// </summary>
         public bool Visible {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetInternalFlag(InternalStateFlags.Visible);
             set {
                 if (!ChangeInternalFlag(InternalStateFlags.Visible, value))
@@ -125,6 +128,7 @@ namespace Squared.PRGUI {
         /// If false, the control cannot receive focus or input
         /// </summary>
         public bool Enabled {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetInternalFlag(InternalStateFlags.Enabled);
             set {
                 if (ChangeInternalFlag(InternalStateFlags.Enabled, value) && (value == false))
@@ -183,6 +187,7 @@ namespace Squared.PRGUI {
         /// Intangible controls are ignored by hit-tests
         /// </summary>
         public bool Intangible {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetInternalFlag(InternalStateFlags.Intangible);
             set {
                 if (ChangeInternalFlag(InternalStateFlags.Intangible, value))
@@ -195,6 +200,7 @@ namespace Squared.PRGUI {
         ///  to its beneficiary, if set
         /// </summary>
         public Control FocusBeneficiary {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _FocusBeneficiary;
             set {
                 if (value != null) {
@@ -205,7 +211,10 @@ namespace Squared.PRGUI {
             }
         }
 
-        public bool HasParent => (WeakParent != null) && WeakParent.TryGetTarget(out Control temp);
+        public bool HasParent {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (WeakParent != null) && WeakParent.TryGetTarget(out Control temp);
+        }
 
         internal bool IsValidFocusTarget => 
             (
@@ -252,10 +261,12 @@ namespace Squared.PRGUI {
             TypeID = GetType().GetHashCode();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool GetInternalFlag (InternalStateFlags flag) {
             return (InternalState & flag) == flag;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool? GetInternalFlag (InternalStateFlags isSetFlag, InternalStateFlags valueFlag) {
             if ((InternalState & isSetFlag) != isSetFlag)
                 return null;
@@ -362,21 +373,14 @@ namespace Squared.PRGUI {
         private UIContext _CachedContext;
 
         public UIContext Context {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (_CachedContext != null)
                     return _CachedContext;
                 if (WeakParent == null)
                     return null;
 
-                if (TryGetParent(out Control parent)) {
-                    var result = parent.Context;
-                    if (result != null) {
-                        Context = result;
-                        return result;
-                    }
-                }
-
-                return null;
+                return GetContext_Slow();
             }
             set {
                 if (_CachedContext == value)
@@ -388,6 +392,18 @@ namespace Squared.PRGUI {
                 _CachedContext = value;
                 InitializeForContext();
             }
+        }
+
+        private UIContext GetContext_Slow () {
+            if (TryGetParent(out Control parent)) {
+                var result = parent.Context;
+                if (result != null) {
+                    Context = result;
+                    return result;
+                }
+            }
+
+            return null;
         }
 
         public static bool IsRecursivelyTransparent (Control control, bool includeSelf = true) {
@@ -484,6 +500,7 @@ namespace Squared.PRGUI {
         /// The total display offset of the control (taking into account scrolling of any parent controls).
         /// </summary>
         public Vector2 AbsoluteDisplayOffset {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return _AbsoluteDisplayOffset;
             }
@@ -824,9 +841,10 @@ namespace Squared.PRGUI {
             result.Padding = computedPadding;
             context.Engine.SetSizeConstraints(ref result, in width, in height);
 
-            if (!parent.IsInvalid && !existingKey.HasValue) {
+            if (!parent.IsInvalid && !existingKey.HasValue)
                 context.Engine.InsertAtEnd(parent, result.Key);
-            }
+
+            
 
             return result.Key;
         }

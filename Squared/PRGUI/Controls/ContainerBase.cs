@@ -362,6 +362,7 @@ namespace Squared.PRGUI.Controls {
             for (int i = 0, c = children.Count; i < c; i++) {
                 var item = children[i];
                 var columnIndex = i % ColumnCount;
+                // FIXME: We shouldn't need to do this every frame
                 item.AbsoluteDisplayOffset = adoc;
 
                 // If we're performing layout again on an existing layout item, attempt to do the same

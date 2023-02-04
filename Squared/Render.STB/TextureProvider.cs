@@ -225,16 +225,16 @@ namespace Squared.Render {
                 DistanceFields.Add(texture, distanceField);
         }
 
-        public override void AddAllInstancesTo<U> (ICollection<U> result) {
+        public override void AddAllInstancesTo (ICollection<Texture2D> result) {
             base.AddAllInstancesTo(result);
 
             lock (Cache)
             foreach (var entry in Cache.Values) {
-                if (!entry.Future.CompletedSuccessfully)
+                if (!entry.Future.GetResult(out var tex))
                     continue;
-                var df = GetDistanceField(entry.Future.Result);
+                var df = GetDistanceField(tex);
                 if (df != null)
-                    result.Add((U)df);
+                    result.Add(df);
             }
         }
     }

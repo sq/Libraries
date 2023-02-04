@@ -675,12 +675,12 @@ namespace Squared.PRGUI.Controls {
             return newControl;
         }
 
-        public void GenerateInvalidatedControls (
+        public bool GenerateInvalidatedControls (
             CreateControlForValueDelegate<T> createControlForValue
         ) {
             var originalCount = InvalidatedControls.Count;
             if (originalCount == 0)
-                return;
+                return false;
 
             foreach (var ic in InvalidatedControls) {
                 if (!GetValueForControl(ic, out T value))
@@ -692,6 +692,8 @@ namespace Squared.PRGUI.Controls {
             if (InvalidatedControls.Count != originalCount)
                 throw new Exception("New controls were invalidated while previous ones were being updated");
             InvalidatedControls.Clear();
+
+            return true;
         }
 
         public void GenerateControls (

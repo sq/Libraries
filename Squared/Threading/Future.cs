@@ -805,6 +805,7 @@ namespace Squared.Threading {
         /// Returns true if the future has been disposed or is in the process of being disposed.
         /// </summary>
         public bool Disposed {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 int state = _State;
                 return (state == State_Disposed) || (state == State_Disposing);
@@ -816,6 +817,7 @@ namespace Squared.Threading {
         /// Note that if the future is currently being completed, this may return false.
         /// </summary>
         public bool Resolved {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 int state = _State;
                 return (state != State_Indeterminate) && (state != State_Empty);
@@ -827,6 +829,7 @@ namespace Squared.Threading {
         /// Note that if the future is currently being completed, this may return false.
         /// </summary>
         public bool Completed {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 int state = _State;
                 return (state == State_CompletedWithValue) || (state == State_CompletedWithError);
@@ -838,6 +841,7 @@ namespace Squared.Threading {
         /// Note that if the future is currently being completed, this may return false.
         /// </summary>
         public bool CompletedSuccessfully {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 OnErrorCheck();
                 return _State == State_CompletedWithValue;
@@ -849,6 +853,7 @@ namespace Squared.Threading {
         /// Note that if the future is currently being completed, this may return false.
         /// </summary>
         public bool Failed {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 OnErrorCheck();
                 return _State == State_CompletedWithError;
@@ -856,20 +861,23 @@ namespace Squared.Threading {
         }
 
         Type IFuture.ResultType {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return typeof(T);
             }
         }
 
         object IFuture.Result {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return this.Result;
+                return Result;
             }
         }
 
         object IFuture.Result2 {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return this.Result2;
+                return Result2;
             }
         }
 
@@ -882,6 +890,7 @@ namespace Squared.Threading {
         }
 
         public Future.State State {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 int state = _State;
                 if (state == State_Disposing)

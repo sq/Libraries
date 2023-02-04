@@ -372,8 +372,8 @@ namespace Squared.PRGUI.Controls {
                     MouseOverItemNeedsUpdate = true;
                 }
             } else if (generatingEnabled) {
-                Items.GenerateInvalidatedControls(CreateControlForValue ?? DefaultCreateControlForValue);
-                MouseOverItemNeedsUpdate = true;
+                if (Items.GenerateInvalidatedControls(CreateControlForValue ?? DefaultCreateControlForValue))
+                    MouseOverItemNeedsUpdate = true;
             }
 
             if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection)

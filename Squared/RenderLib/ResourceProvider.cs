@@ -550,14 +550,11 @@ namespace Squared.Render.Resources {
             return LoadSync(name, DefaultOptions, cached, optional);
         }
 
-        public virtual void AddAllInstancesTo<U> (ICollection<U> result)
-            where U : T
-        {
+        public virtual void AddAllInstancesTo (ICollection<T> result) {
             lock (Cache)
                 foreach (var entry in Cache.Values) {
-                    if (!entry.Future.CompletedSuccessfully)
+                    if (!entry.Future.GetResult(out var instance))
                         continue;
-                    var instance = (U)entry.Future.Result;
                     if (instance == null)
                         continue;
                     result.Add(instance);
