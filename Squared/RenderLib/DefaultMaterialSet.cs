@@ -1026,7 +1026,8 @@ namespace Squared.Render {
             )
                 material.HintPipeline = shapeHint;
             RasterShapeMaterials[key] = new RasterShape.RasterShader(material);
-            Add(material, false);
+            // RasterShapeMaterials isn't automatically enumerated
+            Add(material, true);
         }
 
         private void LoadRasterShapeVariantsFromManifest (

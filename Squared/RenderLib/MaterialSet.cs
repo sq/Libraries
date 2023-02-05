@@ -317,9 +317,11 @@ namespace Squared.Render {
             foreach (var u in ru)
                 u.Initialize(extraMaterial);
 
-            if (registerInList)
-                lock (Lock)
+            lock (Lock) {
+                if (registerInList)
                     ExtraMaterials.Add(extraMaterial);
+                MaterialCache.UnsafeFastClear();
+            }
         }
 
         public bool Remove (Material extraMaterial) {

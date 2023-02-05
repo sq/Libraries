@@ -73,7 +73,7 @@ namespace Squared.PRGUI.NewEngine {
             foreach (var key in RecalcSizeQueue)
                 Pass2c_Recalculate(ref UnsafeItem(key), ref UnsafeResult(key));
 
-            RecalcSizeQueue.Clear();
+            RecalcSizeQueue.UnsafeFastClear();
 
             Pass3_Arrange(ref root, ref result, 0);
         }

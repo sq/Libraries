@@ -360,7 +360,7 @@ namespace Squared.PRGUI.NewEngine {
     /// <summary>
     /// Represents a box being laid out by the layout engine
     /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct BoxRecord {
         // Managed by the layout engine
         // TODO: Use a custom dense backing store and no setters

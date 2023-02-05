@@ -82,6 +82,8 @@ namespace Squared.PRGUI.NewEngine {
 
         public int Count => _Count;
         public void Clear () {
+            // FIXME: Find some way to optimize this out or do it on a thread,
+            //  it eats a lot of CPU time
             Array.Clear(Records, 0, _Count + 1);
             Array.Clear(Results, 0, _Count);
             _Count = 0;

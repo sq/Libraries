@@ -620,14 +620,14 @@ namespace Squared.PRGUI {
 
     public struct ControlDimension {
         [Flags]
-        private enum Flag : uint {
+        private enum Flag : byte {
             Minimum = 0b1,
             Maximum = 0b10,
             Fixed   = 0b100
         }
 
-        private Flag Flags;
         private float _Minimum, _Maximum, _Fixed;
+        private Flag Flags;
 
         public static ControlDimension operator * (float lhs, ControlDimension rhs) {
             Scale(ref rhs, lhs);

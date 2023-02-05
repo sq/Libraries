@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework;
 using Squared.Game;
 
 namespace Squared.PRGUI.Layout {
-    public enum LayoutTags : int {
+    public enum LayoutTags : byte {
         Default = 0,
         Spacer,
         Text,

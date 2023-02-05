@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.PRGUI.Layout;
 using Squared.PRGUI.NewEngine.Enums;
+using Squared.Util;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private Queue<ControlKey> RecalcSizeQueue = new Queue<ControlKey>(Capacity);
+        private UnorderedList<ControlKey> RecalcSizeQueue = new UnorderedList<ControlKey>(Capacity);
 
         private bool Pass2 (
             ref BoxRecord control, ref BoxLayoutResult result, int depth
@@ -36,7 +37,7 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             if (needRecalc)
-                RecalcSizeQueue.Enqueue(control.Key);
+                RecalcSizeQueue.Add(control.Key);
             return needRecalc;
         }
 
