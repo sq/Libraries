@@ -134,9 +134,6 @@ namespace Squared.Render {
                 foreach (var coll in AllMaterialCollections)
                     coll()?.AddToSet(MaterialCache);
 
-                foreach (var m in ExtraMaterials)
-                    MaterialCache.Add(m);
-
                 /*
                 var set = new HashSet<Material>(MaterialCache, ReferenceComparer<Material>.Instance);
                 var extra = MaterialCache.Count - set.Count;
