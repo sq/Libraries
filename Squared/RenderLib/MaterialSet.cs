@@ -122,9 +122,6 @@ namespace Squared.Render {
             lock (Lock) {
                 MaterialCache.UnsafeFastClear();
 
-                // Not necessary and expensive
-                // MaterialCacheScratchSet.Clear();
-
                 foreach (var field in AllMaterialFields) {
                     var material = field();
                     if (material != null)

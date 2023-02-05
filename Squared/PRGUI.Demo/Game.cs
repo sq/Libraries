@@ -1756,12 +1756,12 @@ namespace PRGUI.Demo {
         public void BeforeIssueComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall) {
         }
 
-        public void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall, float opacity) {
+        public void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall, float opacity, BlendState blendState) {
             var temp = drawCall;
             temp.Texture2 = Mask;
             temp.TextureRegion2 = Bounds.Unit.Translate(new Vector2(-0.1f, -0.25f));
             temp.AlignTexture2(control.GetRect().Width / Mask.Width);
-            renderer.Draw(ref temp, material: Material);
+            renderer.Draw(ref temp, material: Material, blendState: blendState);
         }
 
         public bool WillComposite (Control control, float opacity) {
@@ -1788,11 +1788,11 @@ namespace PRGUI.Demo {
             Materials.SetGaussianBlurParameters(Material, sigma, 7, 0);
         }
 
-        public void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall, float opacity) {
+        public void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall, float opacity, BlendState blendState) {
             if ((opacity >= 1) && (control.Context.TopLevelFocused == control))
-                renderer.Draw(ref drawCall, blendState: RenderStates.PorterDuffOver);
+                renderer.Draw(ref drawCall, blendState: blendState ?? RenderStates.PorterDuffOver);
             else
-                renderer.Draw(ref drawCall, material: Material);
+                renderer.Draw(ref drawCall, material: Material, blendState: blendState);
         }
 
         public bool WillComposite (Control control, float opacity) {

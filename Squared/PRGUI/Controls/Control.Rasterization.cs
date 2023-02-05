@@ -590,7 +590,8 @@ namespace Squared.PRGUI {
             );
 
             if (Appearance.HasTransformMatrix || enableCompositor) {
-                RasterizeIntoPrepassComposited(ref passSet, ref compositeBox, ref dc, enableCompositor, effectiveOpacity);
+                GetMaterialAndBlendStateForCompositing(out _, out BlendState compositeBlendState);
+                RasterizeIntoPrepassComposited(ref passSet, ref compositeBox, ref dc, enableCompositor, effectiveOpacity, compositeBlendState);
             } else if (Appearance.Overlay) {
                 passSet.OverlayQueue.Add(ref dc);
             } else {
@@ -605,7 +606,7 @@ namespace Squared.PRGUI {
 
         private void RasterizeIntoPrepassComposited (
             ref RasterizePassSet passSet, ref RectF compositeBox, ref BitmapDrawCall dc,
-            bool enableCompositor, float effectiveOpacity
+            bool enableCompositor, float effectiveOpacity, BlendState blendState
         ) {
             if (MostRecentCompositeData == null)
                 MostRecentCompositeData = new CompositionData();
@@ -620,9 +621,9 @@ namespace Squared.PRGUI {
             ((BatchGroup)subgroup.Container).SetViewTransform(Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null);
             subgroup.BlendState = RenderStates.PorterDuffOver;
             if (enableCompositor)
-                Appearance.Compositor.Composite(this, ref subgroup, ref dc, effectiveOpacity);
+                Appearance.Compositor.Composite(this, ref subgroup, ref dc, effectiveOpacity, blendState);
             else
-                subgroup.Draw(ref dc, material: Appearance.CompositeMaterial);
+                subgroup.Draw(ref dc, material: Appearance.CompositeMaterial, blendState: blendState);
         }
     }
 }

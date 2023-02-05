@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
@@ -96,7 +97,7 @@ namespace Squared.PRGUI {
         /// Composites the control into the scene using the provided renderer and draw call data.
         /// Note that the <paramref name="opacity"/> value has already been applied to <paramref name="drawCall"/>.MultiplyColor.
         /// </summary>
-        void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall, float opacity);
+        void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall, float opacity, BlendState blendState);
         /// <summary>
         /// Invoked immediately after the compositor draw operation is issued to the GPU.
         /// If you made any state changes in BeforeIssueComposite, you should undo them here.
