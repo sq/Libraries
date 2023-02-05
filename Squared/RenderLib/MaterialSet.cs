@@ -18,7 +18,7 @@ namespace Squared.Render {
     public interface IMaterialCollection {
         void ForEachMaterial<T> (Action<Material, T> action, T userData);
         void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData);
-        void AddToSet (HashSet<Material> set);
+        void AddToSet (UnorderedList<Material> set);
         IEnumerable<Material> Materials { get; }
     }
 
@@ -42,7 +42,7 @@ namespace Squared.Render {
             Clear();
         }
 
-        public void AddToSet (HashSet<Material> set) {
+        public void AddToSet (UnorderedList<Material> set) {
             for (int i = 0, c = Count; i < c; i++)
                 set.Add(this[i]);
         }
@@ -76,7 +76,7 @@ namespace Squared.Render {
                 action(material, ref userData);
         }
 
-        public void AddToSet (HashSet<Material> set) {
+        public void AddToSet (UnorderedList<Material> set) {
             foreach (var material in Values)
                 set.Add(material);
         }
@@ -107,7 +107,7 @@ namespace Squared.Render {
         public bool IsDisposed { get; private set; }
 
         protected UnorderedList<Material> MaterialCache = new UnorderedList<Material>(1024);
-        private HashSet<Material> MaterialCacheScratchSet = new HashSet<Material>(1024, new ReferenceComparer<Material>());
+        // private HashSet<Material> MaterialCacheScratchSet = new HashSet<Material>(1024, new ReferenceComparer<Material>());
 
         public MaterialSetBase() 
             : base() {
@@ -120,31 +120,34 @@ namespace Squared.Render {
 
         protected void BuildMaterialCache () {
             lock (Lock) {
+                MaterialCache.UnsafeFastClear();
+
                 // Not necessary and expensive
                 // MaterialCacheScratchSet.Clear();
 
                 foreach (var field in AllMaterialFields) {
                     var material = field();
                     if (material != null)
-                        MaterialCacheScratchSet.Add(material);
+                        MaterialCache.Add(material);
                 }
 
                 foreach (var coll in AllMaterialCollections)
-                    coll()?.AddToSet(MaterialCacheScratchSet);
+                    coll()?.AddToSet(MaterialCache);
 
                 foreach (var m in ExtraMaterials)
-                    MaterialCacheScratchSet.Add(m);
-
-                MaterialCache.Clear();
-                foreach (var m in MaterialCacheScratchSet)
                     MaterialCache.Add(m);
+
+                /*
+                var set = new HashSet<Material>(MaterialCache, ReferenceComparer<Material>.Instance);
+                var extra = MaterialCache.Count - set.Count;
+                ;
+                */
             }
         }
 
         protected void ReleaseMaterialCache () {
             lock (Lock) {
                 MaterialCache.Clear();
-                MaterialCacheScratchSet.Clear();
             }
         }
 
@@ -303,7 +306,7 @@ namespace Squared.Render {
             return result;
         }
 
-        public void Add (Material extraMaterial) {
+        public void Add (Material extraMaterial, bool registerInList = true) {
             if (IsDisposed)
                 throw new ObjectDisposedException("MaterialSetBase");
 
@@ -314,8 +317,9 @@ namespace Squared.Render {
             foreach (var u in ru)
                 u.Initialize(extraMaterial);
 
-            lock (Lock)
-                ExtraMaterials.Add(extraMaterial);
+            if (registerInList)
+                lock (Lock)
+                    ExtraMaterials.Add(extraMaterial);
         }
 
         public bool Remove (Material extraMaterial) {

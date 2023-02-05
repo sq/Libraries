@@ -941,12 +941,12 @@ namespace Squared.Render {
                 untexturedShadowed == null ? null : new RasterStroke.StrokeShader(material3),
                 texturedShadowed == null ? null : new RasterStroke.StrokeShader(material4)
             };
-            Add(material1);
-            Add(material2);
+            Add(material1, false);
+            Add(material2, false);
             if (material4 != null)
-                Add(material3);
+                Add(material3, false);
             if (material4 != null)
-                Add(material4);
+                Add(material4, false);
         }
 
         private void LoadRasterStrokeMaterials () {
@@ -1026,7 +1026,7 @@ namespace Squared.Render {
             )
                 material.HintPipeline = shapeHint;
             RasterShapeMaterials[key] = new RasterShape.RasterShader(material);
-            Add(material);
+            Add(material, false);
         }
 
         private void LoadRasterShapeVariantsFromManifest (
@@ -1173,26 +1173,29 @@ namespace Squared.Render {
         /// <summary>
         /// Immediately changes the view transform of the material set, without waiting for a clear.
         /// </summary>
-        public void PushViewTransform (ref ViewTransform viewTransform, bool force = false) {
+        public void PushViewTransform (ref ViewTransform viewTransform, bool force = false, bool defer = false) {
             ViewTransformStack.Add(viewTransform);
-            ApplyViewTransform(viewTransform, force || !LazyViewTransformChanges);
+            if (!defer)
+                ApplyViewTransform(viewTransform, force || !LazyViewTransformChanges);
         }
 
         /// <summary>
         /// Immediately restores the previous view transform of the material set, without waiting for a clear.
         /// </summary>
-        public void PopViewTransform (out ViewTransform previous, bool force = false) {
+        public void PopViewTransform (out ViewTransform previous, bool force = false, bool defer = false) {
             previous = ViewTransform;
             ViewTransformStack.DangerousRemoveAt(ViewTransformStack.Count - 1);
-            ApplyViewTransform(ViewTransform, force || !LazyViewTransformChanges);
+            if (!defer)
+                ApplyViewTransform(ViewTransform, force || !LazyViewTransformChanges);
         }
 
         /// <summary>
         /// Immediately restores the previous view transform of the material set, without waiting for a clear.
         /// </summary>
-        public void PopViewTransform (bool force = false) {
+        public void PopViewTransform (bool force = false, bool defer = false) {
             ViewTransformStack.DangerousRemoveAt(ViewTransformStack.Count - 1);
-            ApplyViewTransform(ViewTransform, force || !LazyViewTransformChanges);
+            if (!defer)
+                ApplyViewTransform(ViewTransform, force || !LazyViewTransformChanges);
         }
 
         private FrameParams? LastAppliedFrameParams;
