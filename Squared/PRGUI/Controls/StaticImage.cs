@@ -135,14 +135,20 @@ namespace Squared.PRGUI.Controls {
                 blendState = null;
                 return;
             }
-            material = Material;            
+            if (Appearance.Compositor == null)
+                material = Material;
+            else
+                material = null;
             blendState = BlendState ?? Context.PickDefaultBlendState(Image.Instance);
         }
 
         protected override bool NeedsComposition (bool hasOpacity, bool hasTransform) {
-            if (Appearance.BackgroundColor.IsTransparent) {
+            if ((Material != null) && (Appearance.Compositor != null))
+                return true;
+
+            if (Appearance.BackgroundColor.IsTransparent)
                 hasOpacity = hasTransform = false;
-            }
+
             return base.NeedsComposition(hasOpacity, hasTransform);
         }
 
@@ -369,7 +375,7 @@ namespace Squared.PRGUI.Controls {
                         : defaultBlendState
                 );
                 // We have the compositor apply our blend state instead
-                if (settings.IsCompositing && (material == null))
+                if (settings.IsCompositing && ((Material ?? material) == null))
                     blendState = BlendState.Opaque;
                 renderer.Parameters.AddRange(ref MaterialParameters);
                 // If the inputs are not premultiplied we should have the compositing shaders premultiply them

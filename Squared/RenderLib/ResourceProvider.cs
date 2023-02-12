@@ -458,7 +458,7 @@ namespace Squared.Render.Resources {
             };
         }
 
-        private Future<T> GetFutureForResource (string name, object data, bool cached, out bool performLoad) {
+        private Future<T> GetFutureForResource (string name, object data, bool cached, bool createIfMissing, out bool performLoad) {
             name = StreamSource.FixupName(name, true);
             performLoad = false;
             var key = MakeKey(name, data);
@@ -466,7 +466,9 @@ namespace Squared.Render.Resources {
             if (cached) {
                 lock (Cache) {
                     if (!Cache.TryGetValue(key, out entry)) {
-                        Cache[key] = entry = MakeCacheEntry(name, data);
+                        if (createIfMissing)
+                            Cache[key] = entry = MakeCacheEntry(name, data);
+
                         performLoad = true;
                     }
                 }
@@ -487,7 +489,7 @@ namespace Squared.Render.Resources {
             }
 
             data = FilterData(name, data);
-            var future = GetFutureForResource(name, data, cached, out bool performLoad);
+            var future = GetFutureForResource(name, data, cached, true, out bool performLoad);
 
             if (performLoad) {
                 var workItem = new PreloadWorkItem {
@@ -508,6 +510,16 @@ namespace Squared.Render.Resources {
             return result;
         }
 
+        public bool TryGetExisting (string name, object data, out T result) {
+            data = FilterData(name, data);
+            var f = GetFutureForResource(name, data, true, false, out _);
+            if (f == null) {
+                result = default;
+                return false;
+            }
+            return f.GetResult(out result, out _);
+        }
+
         public T LoadSync (string name, object data, bool cached, bool optional) {
             try {
                 data = FilterData(name, data);
@@ -517,7 +529,7 @@ namespace Squared.Render.Resources {
                 throw;
             }
 
-            var future = GetFutureForResource(name, data, cached, out bool performLoad);
+            var future = GetFutureForResource(name, data, cached, true, out bool performLoad);
 
             if (performLoad) {
                 T instance = LoadSyncUncached(name, data, optional, out Exception exc, true);
