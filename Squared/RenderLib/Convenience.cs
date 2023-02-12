@@ -2494,7 +2494,7 @@ namespace Squared.Render.Convenience {
             using (var rsb = GetRasterStrokeBatch(
                 layer, worldSpace, blendState, ref brush
             )) {
-                rsb.AddPolygonVertices(vertices, out int indexOffset, out int count, vertexTransform, vertexModifier);
+                var containsBezier = rsb.AddPolygonVertices(vertices, out int indexOffset, out int count, vertexTransform, vertexModifier);
                 rsb.Add(new RasterStrokeDrawCall {
                     Type = RasterStrokeType.Polygon,
                     PolygonIndexOffset = indexOffset,
@@ -2506,7 +2506,8 @@ namespace Squared.Render.Convenience {
                     Biases = biases ?? default,
                     BlendIn = colorSpace ?? RasterShapeColorSpace.LinearRGB,
                     SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace
+                    WorldSpace = worldSpace ?? WorldSpace,
+                    ContainsBezier = containsBezier
                 });
             }
 

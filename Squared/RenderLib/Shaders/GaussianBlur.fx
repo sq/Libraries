@@ -11,10 +11,10 @@
 #include "DitherCommon.fxh"
 #include "sRGBCommon.fxh"
 
-const float OutlineBias = 0.025;
+static const float OutlineBias = 0.025;
 // HACK: Since we're not fully averaging out the taps, most pixels will have a shadow opacity
 //  well above 1.0. We divide it by an arbitrary value to create softer edges
-const float OutlineDivisor = 2.2;
+static const float OutlineDivisor = 2.2;
 
 // http://dev.theomader.com/gaussian-kernel-calculator/
 // Sigma 2, Kernel size 9
@@ -82,6 +82,7 @@ float4 gaussianBlur1D(
 ) {
     float4 sum = centerTap * TapWeights[0];
 
+    [loop]
     for (int i = 1; i < TapCount; i += 1) {
         float2 offset2 = stepSize * i;
         float w = TapWeights[i];
@@ -102,6 +103,7 @@ float gaussianBlurA(
 ) {
     float sum = centerTap * TapWeights[0];
 
+    [loop]
     for (int i = 1; i < TapCount; i += 1) {
         float2 offset2 = stepSize * i;
         float w = TapWeights[i];
@@ -170,6 +172,7 @@ void RadialGaussianBlurPixelShader(
 
     float4 sum = centerValue * TapWeights[0];
 
+    [loop]
     for (int i = 1; i < TapCount; i += 1) {
         float2 outerOffset = outerStepSize * i;
         float w = TapWeights[i];
@@ -202,6 +205,7 @@ void RadialMaskSofteningPixelShader(
         centerValue = gaussianBlurA(centerTapAlpha, innerStepSize, texCoord, texRgn, mipBias),
         sum = centerTapAlpha;
 
+    [loop]
     for (int i = 1; i < TapCount; i += 1) {
         float2 outerOffset = outerStepSize * i;
         float w = TapWeights[i];
@@ -262,6 +266,7 @@ void GaussianOutlinedPixelShader(
 
     float sum = centerTap;
 
+    [loop]
     for (int i = 1; i < TapCount; i += 1) {
         float2 outerOffset = outerStepSize * i;
         float w = TapWeights[i];

@@ -1,12 +1,14 @@
 // O3 produces literally 1/3 the instructions of OD or O0 so let's just be kind to the driver
 #pragma fxcparams(/O3 /Zi)
 
-#pragma fxcflagset(Untextured,Textured)
+#pragma fxcflagset(Untextured,Textured,UntexturedBezier,TexturedBezier)
 
 // uniform const bool ShadowPerSegment;
 
 // FIXME: false is preferable here
 #define COLOR_PER_SPLAT true
+// Allows more than 255 vertices but makes this shader compile much slower
+#define LONG_POLYGON 0
 // #define VISUALIZE_TEXCOORDS
 // #define VISUALIZE_OVERDRAW
 #include "PolygonCommon.fxh"
@@ -44,7 +46,9 @@ void computeTLBR_Polygon(
     float maxLocalRadius = 0;
     int offset = (int)vertexOffset, count = (int)vertexCount;
 
+#if LONG_POLYGON
     while (count > 0) {
+#endif
         while (count-- > 0) {
             float4 xytr = getPolyVertex(offset);
             int nodeType = (int)xytr.z;
@@ -53,6 +57,7 @@ void computeTLBR_Polygon(
             offset++;
 
             REQUIRE_BRANCH
+#if ENABLE_BEZIER
             if (nodeType == NODE_BEZIER) {
                 float4 controlPoints = getPolyVertex(offset);
                 offset++;
@@ -62,16 +67,21 @@ void computeTLBR_Polygon(
                 br = max(bbr, br);
                 estimatedLengthPx += controlPoints.z;
             } else {
+#endif
                 // FIXME: Is this right? Not doing it seems to break our bounding boxes
                 tl = min(pos, tl);
                 br = max(pos, br);
 
                 if (nodeType != NODE_START)
                     estimatedLengthPx += length(pos - prev);
+#if ENABLE_BEZIER
             }
+#endif
             prev = pos;
         }
+#if LONG_POLYGON
     }
+#endif
 
     if (br.x < tl.x)
         tl.x = br.x = -9999;
@@ -151,7 +161,9 @@ void __VARIANT_FS_NAME (
     offset = (int)ab.x;
     count = (int)ab.y;
     float4 prev = 0;
+#if LONG_POLYGON
     while (count > 0) {
+#endif
         while (count-- > 0) {
             float4 xytr = getPolyVertex(offset);
             int nodeType = (int)xytr.z;
@@ -161,6 +173,7 @@ void __VARIANT_FS_NAME (
 
             offset++;
             REQUIRE_BRANCH
+#if ENABLE_BEZIER
             if (nodeType == NODE_BEZIER) {
                 float4 controlPoints = getPolyVertex(offset);
                 offset++;
@@ -196,7 +209,9 @@ void __VARIANT_FS_NAME (
                 }
                 distanceTraveled += bezierLength;
                 totalSteps += steps;
-            } else if (nodeType == NODE_LINE) {
+            } else
+#endif // ENABLE_BEZIER
+            if (nodeType == NODE_LINE) {
                 steps = rasterStrokeLineCommon(
                     localRadiuses2, worldPosition, float4(prev.xy, pos), seed, taper, localBiases,
                     distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
@@ -212,7 +227,9 @@ void __VARIANT_FS_NAME (
 
             prev = xytr;
         }
+#if LONG_POLYGON
     }
+#endif
     /*
     SHADOW_LOOP_FOOTER
     if (!ShadowPerSegment)

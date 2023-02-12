@@ -893,16 +893,22 @@ namespace Squared.Render {
             string untexturedName = BuiltInShaderManifest.FindVariant(name, "Untextured", "1"),
                 texturedName = BuiltInShaderManifest.FindVariant(name, "Textured", "1"),
                 untexturedShadowedName = BuiltInShaderManifest.FindVariant(name, "UntexturedShadowed", "1"),
-                texturedShadowedName = BuiltInShaderManifest.FindVariant(name, "TexturedShadowed", "1");
+                texturedShadowedName = BuiltInShaderManifest.FindVariant(name, "TexturedShadowed", "1"),
+                untexturedBezierName = BuiltInShaderManifest.FindVariant(name, "UntexturedBezier", "1"),
+                texturedBezierName = BuiltInShaderManifest.FindVariant(name, "TexturedBezier", "1");
 
             Effect untextured = BuiltInShaders.Load(untexturedName),
                 textured = BuiltInShaders.Load(texturedName),
                 untexturedShadowed = untexturedShadowedName == null ? null : BuiltInShaders.Load(untexturedShadowedName, true, true),
-                texturedShadowed = texturedShadowedName == null ? null : BuiltInShaders.Load(texturedShadowedName, true, true);
+                texturedShadowed = texturedShadowedName == null ? null : BuiltInShaders.Load(texturedShadowedName, true, true),
+                untexturedBezier = untexturedBezierName == null ? null : BuiltInShaders.Load(untexturedBezierName, true, true),
+                texturedBezier = texturedBezierName == null ? null : BuiltInShaders.Load(texturedBezierName, true, true);
             Material material1 = NewMaterial(untextured, untexturedName),
                 material2 = NewMaterial(textured, texturedName),
                 material3 = untexturedShadowed == null ? null : NewMaterial(untexturedShadowed, untexturedShadowedName),
-                material4 = texturedShadowed == null ? null : NewMaterial(texturedShadowed, texturedShadowedName);
+                material4 = texturedShadowed == null ? null : NewMaterial(texturedShadowed, texturedShadowedName),
+                material5 = untexturedBezier == null ? null : NewMaterial(untexturedBezier, untexturedBezierName),
+                material6 = texturedBezier == null ? null : NewMaterial(texturedBezier, texturedBezierName);
 
             material1.Name = $"{type}_Untextured";
             material2.Name = $"{type}_Textured";
@@ -910,6 +916,10 @@ namespace Squared.Render {
                 material3.Name = $"{type}_UntexturedShadowed";
             if (material4 != null)
                 material4.Name = $"{type}_TexturedShadowed";
+            if (material5 != null)
+                material5.Name = $"{type}_UntexturedBezier";
+            if (material6 != null)
+                material6.Name = $"{type}_TexturedBezier";
 
             var shapeHint = new Material.PipelineHint {
                 HasIndices = true,
@@ -932,6 +942,10 @@ namespace Squared.Render {
                         material3.HintPipeline = shapeHint;
                     if (material4 != null)
                         material4.HintPipeline = shapeHint;
+                    if (material5 != null)
+                        material5.HintPipeline = shapeHint;
+                    if (material6 != null)
+                        material6.HintPipeline = shapeHint;
                 }
             }
 
@@ -939,14 +953,20 @@ namespace Squared.Render {
                 new RasterStroke.StrokeShader(material1),
                 new RasterStroke.StrokeShader(material2),
                 untexturedShadowed == null ? null : new RasterStroke.StrokeShader(material3),
-                texturedShadowed == null ? null : new RasterStroke.StrokeShader(material4)
+                texturedShadowed == null ? null : new RasterStroke.StrokeShader(material4),
+                untexturedBezier == null ? null : new RasterStroke.StrokeShader(material5),
+                texturedBezier == null ? null : new RasterStroke.StrokeShader(material6),
             };
             Add(material1, false);
             Add(material2, false);
-            if (material4 != null)
+            if (material3 != null)
                 Add(material3, false);
             if (material4 != null)
                 Add(material4, false);
+            if (material5 != null)
+                Add(material5, false);
+            if (material6 != null)
+                Add(material6, false);
         }
 
         private void LoadRasterStrokeMaterials () {

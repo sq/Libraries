@@ -314,7 +314,7 @@ namespace Squared.Render.RasterStroke {
     public struct RasterStrokeDrawCall {
         public RasterStrokeType Type;
 
-        public bool WorldSpace;
+        public bool WorldSpace, ContainsBezier;
 
         /// <summary>
         /// The beginning of the stroke.
@@ -407,14 +407,15 @@ namespace Squared.Render.RasterStroke {
                 RasterStrokeBatch self, ref RasterStrokeDrawCall last, ref RasterStrokeDrawCall dc
             ) {
                 // FIXME
-                return (last.Type == dc.Type);
+                return (last.Type == dc.Type) && (last.ContainsBezier == dc.ContainsBezier);
             }
 
             protected override void CreateBatch (RasterStrokeBatch self, ref RasterStrokeDrawCall drawCall, int offset, int count) {
                 self._SubBatches.Add(new SubBatch {
                     InstanceOffset = offset,
                     InstanceCount = count,
-                    Type = drawCall.Type
+                    Type = drawCall.Type,
+                    ContainsBezier = drawCall.ContainsBezier,
                 });
             }
         }
@@ -422,6 +423,7 @@ namespace Squared.Render.RasterStroke {
         private struct SubBatch {
             public int InstanceOffset, InstanceCount;
             public RasterStrokeType Type;
+            public bool ContainsBezier;
         }
 
         private static bool HasGeneratedShadowWarning;
@@ -443,7 +445,7 @@ namespace Squared.Render.RasterStroke {
         private Texture2D NoiseTexture;
         private PolygonBuffer _PolygonBuffer = null;
 
-        const int MaxVertexCount = 65535;
+        public const int MaxVertexCount = 255;
 
         const int CornerBufferRepeatCount = 1;
         const int CornerBufferVertexCount = CornerBufferRepeatCount * 4;
@@ -644,7 +646,10 @@ namespace Squared.Render.RasterStroke {
                 ref var sb = ref _SubBatches.Item(i);
                 var type = (int)sb.Type;
                 var idx = (atlas != null) ? 1 : 0;
-                if (!Brush.ShadowColor.IsTransparent)
+                if (sb.Type == RasterStrokeType.Polygon) {
+                    if (sb.ContainsBezier)
+                        idx += 4;
+                } else if (!Brush.ShadowColor.IsTransparent)
                     idx += 2;
 
                 var material = Materials.RasterStrokeMaterials[type][idx];
@@ -740,7 +745,11 @@ namespace Squared.Render.RasterStroke {
             _SoftwareBuffer = null;
         }
 
-        new public void Add (in RasterStrokeDrawCall dc) {
+        new public void Add (RasterStrokeDrawCall dc) {
+            Add(ref dc);
+        }
+
+        new public void Add (ref RasterStrokeDrawCall dc) {
             var result = dc;
             // FIXME
             result.Index = _DrawCalls.Count;
@@ -766,12 +775,23 @@ namespace Squared.Render.RasterStroke {
             return result;
         }
 
-        public void AddPolygonVertices (
+        // Returns whether any of the vertices are a bezier
+        public bool AddPolygonVertices (
             ArraySegment<RasterPolygonVertex> vertices, out int indexOffset, out int vertexCount,
             Matrix? vertexTransform = null, Func<RasterPolygonVertex, RasterPolygonVertex> vertexModifier = null
         ) {
+            var containsBezier = false;
+            for (int i = 0; i < vertices.Count; i++) {
+                if (vertices.Array[i + vertices.Offset].Type == RasterVertexType.Bezier) {
+                    containsBezier = true;
+                    break;
+                }
+            }
+
             _PolygonBuffer = Container.Frame.PrepareData.GetPolygonBuffer(Container);
             _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount, false, vertexTransform, vertexModifier);
+
+            return containsBezier;
         }
 
         protected override void OnReleaseResources () {
