@@ -116,6 +116,8 @@ namespace Squared.Render {
         private volatile bool IsResetting;
         private volatile bool FirstFrameSinceReset;
 
+        public event EventHandler<string> OnLogMessage;
+
         private readonly Func<bool> _SyncBeginDraw;
         private readonly Action _SyncEndDraw;
         private readonly Action<Frame> _ThreadedDraw;
@@ -178,6 +180,26 @@ namespace Squared.Render {
         public string GraphicsBackendName { get; private set; }
 
         public readonly HashSet<Texture2D> AutoAllocatedTextureResources = new HashSet<Texture2D>(new ReferenceComparer<Texture2D>());
+
+        internal void LogPrint (string text) {
+            if (OnLogMessage != null)
+                OnLogMessage(this, text);
+        }
+
+        internal void LogPrint<T1> (string format, T1 arg1) {
+            if (OnLogMessage != null)
+                OnLogMessage(this, string.Format(format, arg1));
+        }
+
+        internal void LogPrint<T1, T2> (string format, T1 arg1, T2 arg2) {
+            if (OnLogMessage != null)
+                OnLogMessage(this, string.Format(format, arg1, arg2));
+        }
+
+        internal void LogPrint<T1, T2, T3> (string format, T1 arg1, T2 arg2, T3 arg3) {
+            if (OnLogMessage != null)
+                OnLogMessage(this, string.Format(format, arg1, arg2, arg3));
+        }
 
         internal void StartWorkPhase (WorkPhases phase) {
             var sw = Stopwatches[(int)phase];

@@ -921,12 +921,20 @@ namespace Squared.Render {
             if (material6 != null)
                 material6.Name = $"{type}_TexturedBezier";
 
-            var shapeHint = new Material.PipelineHint {
+            var strokeHint = new Material.PipelineHint {
                 HasIndices = true,
                 VertexFormats = new Type[] {
                     typeof(CornerVertex),
                     typeof(RasterStroke.RasterStrokeVertex)
-                }
+                },
+                VertexTextureFormats = 
+                    (type == RasterStroke.RasterStrokeType.Polygon)
+                        ? new SurfaceFormat[] {
+                            (SurfaceFormat)9999,
+                            (SurfaceFormat)9999,
+                            SurfaceFormat.Vector4
+                        }
+                        : default
             };
 
             if (
@@ -934,18 +942,18 @@ namespace Squared.Render {
                 PreloadAllRasterStrokeShaders ||
                 PreloadAllShaders
             ) {
-                material1.HintPipeline = shapeHint;
-                material2.HintPipeline = shapeHint;
+                material1.HintPipeline = strokeHint;
+                material2.HintPipeline = strokeHint;
 
                 if (PreloadAllRasterStrokeShaders || PreloadAllShaders) {
                     if (material3 != null)
-                        material3.HintPipeline = shapeHint;
+                        material3.HintPipeline = strokeHint;
                     if (material4 != null)
-                        material4.HintPipeline = shapeHint;
+                        material4.HintPipeline = strokeHint;
                     if (material5 != null)
-                        material5.HintPipeline = shapeHint;
+                        material5.HintPipeline = strokeHint;
                     if (material6 != null)
-                        material6.HintPipeline = shapeHint;
+                        material6.HintPipeline = strokeHint;
                 }
             }
 
@@ -957,16 +965,16 @@ namespace Squared.Render {
                 untexturedBezier == null ? null : new RasterStroke.StrokeShader(material5),
                 texturedBezier == null ? null : new RasterStroke.StrokeShader(material6),
             };
-            Add(material1, false);
-            Add(material2, false);
+            Add(material1);
+            Add(material2);
             if (material3 != null)
-                Add(material3, false);
+                Add(material3);
             if (material4 != null)
-                Add(material4, false);
+                Add(material4);
             if (material5 != null)
-                Add(material5, false);
+                Add(material5);
             if (material6 != null)
-                Add(material6, false);
+                Add(material6);
         }
 
         private void LoadRasterStrokeMaterials () {

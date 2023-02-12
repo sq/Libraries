@@ -316,14 +316,23 @@ namespace Squared.Render {
                 coordinator.DisposeResource(tempVb);
             }
             if ((hint.VertexTextureFormats?.Length ?? 0) >= 1) {
-                for (int i = 0; i < hint.VertexTextureFormats.Length; i++) {
-                    Texture2D tempTexture;
-                    lock (coordinator.CreateResourceLock) {
-                        tempTexture = new Texture2D(deviceManager.Device, 1, 1, false, hint.VertexTextureFormats[i]);
-                        coordinator.AutoAllocatedTextureResources.Add(tempTexture);
+                for (int i = 0; i < 4; i++) {
+                    var vtf = i < hint.VertexTextureFormats.Length 
+                        ? hint.VertexTextureFormats[i] 
+                        : (SurfaceFormat)9999;
+
+                    Texture2D tempTexture = null;
+                    if (((int)vtf) < 32) {
+                        lock (coordinator.CreateResourceLock) {
+                            tempTexture = new Texture2D(deviceManager.Device, 1, 1, false, vtf);
+                            coordinator.AutoAllocatedTextureResources.Add(tempTexture);
+                        }
+                        deviceManager.Device.VertexSamplerStates[i] = SamplerState.PointClamp;
+                    } else {
+                        deviceManager.Device.VertexSamplerStates[i] = RenderManager.ResetSamplerState;
                     }
+
                     deviceManager.Device.VertexTextures[i] = tempTexture;
-                    deviceManager.Device.VertexSamplerStates[i] = SamplerState.PointClamp;
                     coordinator.DisposeResource(tempTexture);
                 }
             } else {

@@ -708,13 +708,16 @@ namespace Squared.Render.RasterStroke {
                 device.SamplerStates[0] = Brush.NozzleSamplerState ?? SamplerState.LinearWrap;
                 device.SamplerStates[1] = SamplerState.PointWrap;
 
+                // Make sure no other vertex textures are bound, it matters
+                for (int j = 0; j < 4; j++)
+                    device.VertexTextures[j] = null;
+
                 if (sb.Type == RasterStrokeType.Polygon) {
                     lock (_PolygonBuffer.Lock) {
                         device.Textures[2] = _PolygonBuffer.Texture;
                         device.VertexTextures[2] = _PolygonBuffer.Texture;
                     }
                 } else {
-                    device.VertexTextures[2] = null;
                     device.Textures[2] = null;
                 }
 
@@ -724,12 +727,16 @@ namespace Squared.Render.RasterStroke {
 
                 device.SetVertexBuffers(scratchBindings);
 
+                var started = Time.Seconds;
                 device.DrawInstancedPrimitives(
                     PrimitiveType.TriangleList, 
                     0, _CornerBuffer.HardwareVertexOffset, CornerBufferVertexCount, 
                     _CornerBuffer.HardwareIndexOffset, CornerBufferPrimCount, 
                     sb.InstanceCount
                 );
+                var elapsed = (Time.Seconds - started);
+                if (elapsed > 5 / 1000.0)
+                    Materials.Coordinator.LogPrint($"Drawing strokes of type {0} took {1}sec", sb.Type, elapsed);
 
                 device.Textures[0] = null;
                 device.Textures[1] = null;

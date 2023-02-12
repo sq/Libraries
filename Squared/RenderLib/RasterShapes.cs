@@ -933,12 +933,16 @@ namespace Squared.Render.RasterShape {
 
                 device.SetVertexBuffers(scratchBindings);
 
+                var started = Time.Ticks;
                 device.DrawInstancedPrimitives(
                     PrimitiveType.TriangleList, 
                     0, _CornerBuffer.HardwareVertexOffset, CornerBufferVertexCount, 
                     _CornerBuffer.HardwareIndexOffset, CornerBufferPrimCount, 
                     sb.InstanceCount
                 );
+                var elapsed = (Time.Seconds - started);
+                if (elapsed > 5 / 1000.0)
+                    Materials.Coordinator.LogPrint($"Drawing shapes of type {0} took {1}sec", sb.Type, elapsed);
 
                 device.Textures[0] = null;
                 device.Textures[2] = null;

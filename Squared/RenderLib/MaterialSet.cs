@@ -373,6 +373,8 @@ namespace Squared.Render {
         }
 
         protected virtual IEnumerable<Material> GetShadersToPreload () {
+            BuildMaterialCache();
+
             foreach (var m in AllMaterials) {
                 if (m.HintPipeline == null && m.DelegatedHintPipeline?.HintPipeline == null)
                     continue;
