@@ -145,9 +145,24 @@ namespace Squared.PRGUI.NewEngine {
             float cw = result.Rect.Width - control.Padding.X,
                 ch = result.Rect.Height - control.Padding.Y;
 
+            // HACK: Find the last run that contains an expandable child and mark that as the one to perform expansion for
+            // This allows having things like status bars at the bottom of a box without them eating all the expansion space
+            var lastExpandableRun = -1;
+            var spaceAfterLastExpandableRun = 0f;
             foreach (var runIndex in Runs(control.Key)) {
                 ref var run = ref Run(runIndex);
-                var isLastRun = (run.NextRunIndex < 0) || (runIndex == result.FloatingRunIndex);
+                var expand = config.IsVertical ? run.ExpandCountX > 0 : run.ExpandCountY > 0;
+                if (expand) {
+                    lastExpandableRun = runIndex;
+                    spaceAfterLastExpandableRun = 0;
+                } else {
+                    spaceAfterLastExpandableRun += config.IsVertical ? run.MaxOuterWidth : run.MaxOuterHeight;
+                }
+            }
+
+            foreach (var runIndex in Runs(control.Key)) {
+                ref var run = ref Run(runIndex);
+                var expandThisRun = (lastExpandableRun == runIndex) || (run.NextRunIndex < 0) || (runIndex == result.FloatingRunIndex);
 
                 // We track our own count here so that when expansion hits a constraint, we
                 //  can reduce the count to evenly distribute the leftovers to non-constrained controls
@@ -159,20 +174,25 @@ namespace Squared.PRGUI.NewEngine {
                 // In the demo this is necessary to ensure that the 'item a ... item b' menu item is laid out correctly
                 float runMaxOuterWidth = config.Clip && config.IsVertical ? Math.Min(cw, run.MaxOuterWidth) : run.MaxOuterWidth,
                     runMaxOuterHeight = config.Clip && !config.IsVertical ? Math.Min(ch, run.MaxOuterHeight) : run.MaxOuterHeight,
+                    // The last run in a box might not contain any expandable controls, in which case the pass up above determined
+                    //  that an earlier run should be expanded instead. We want to ensure that when we expand a run other than
+                    //  the last one, we leave enough space for the non-expandable runs that follow it, like a status bar.
+                    unexpandableBuffer = (runIndex == result.FloatingRunIndex) ? 0 : spaceAfterLastExpandableRun,
                     // HACK: For the last run in a box we want to expand the run to fill the entire available space
                     //  otherwise listbox items will have a width of 0 :(
-                    effectiveRunMaxWidth = isLastRun && config.IsVertical ? Math.Max(cw, runMaxOuterWidth) : runMaxOuterWidth,
-                    effectiveRunMaxHeight = isLastRun && !config.IsVertical ? Math.Max(ch, runMaxOuterHeight) : runMaxOuterHeight,
+                    effectiveRunMaxWidth = expandThisRun && config.IsVertical ? Math.Max(cw - unexpandableBuffer, runMaxOuterWidth) : runMaxOuterWidth,
+                    effectiveRunMaxHeight = expandThisRun && !config.IsVertical ? Math.Max(ch - unexpandableBuffer, runMaxOuterHeight) : runMaxOuterHeight,
                     effectiveRunTotalWidth = run.TotalWidth,
                     effectiveRunTotalHeight = run.TotalHeight,
                     // HACK: In the old engine the last run would be expanded to fill on both axes, and we rely on this
                     //  right now for various things. This should be improved on
+                    // We need unexpandableBuffer here too for cases where xSpace/ySpace are doing the expanding
                     xSpace = config.IsVertical
-                        ? (isLastRun ? cw - effectiveRunMaxWidth : 0)
+                        ? (expandThisRun ? cw - effectiveRunMaxWidth - unexpandableBuffer : 0)
                         : cw - effectiveRunTotalWidth,
                     ySpace = config.IsVertical
                         ? ch - effectiveRunTotalHeight 
-                        : (isLastRun ? ch - effectiveRunMaxHeight : 0),
+                        : (expandThisRun ? ch - effectiveRunMaxHeight - unexpandableBuffer : 0),
                     newXSpace = xSpace, newYSpace = ySpace,
                     minOuterWidth = config.IsVertical ? effectiveRunMaxWidth : 0,
                     minOuterHeight = config.IsVertical ? 0 : effectiveRunMaxHeight;

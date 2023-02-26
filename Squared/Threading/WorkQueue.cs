@@ -137,7 +137,7 @@ namespace Squared.Threading {
     }
 
     internal static class WorkItemConfigurationForType<T>
-        where T : IWorkItem 
+        where T : IWorkItemBase
     {
         public static readonly WorkItemConfiguration Configuration;
 
@@ -196,15 +196,22 @@ namespace Squared.Threading {
     public interface IMainThreadWorkItem : IWorkItem {
     }
 
-    public interface IWorkItem {
+    public interface IWorkItemBase {
+    }
+
+    public interface IWorkItem : IWorkItemBase {
         void Execute ();
     }
 
+    public interface IWorkItem2 : IWorkItemBase {
+        void Execute (ThreadGroup group);
+    }
+
     public delegate void OnWorkItemComplete<T> (ref T item)
-        where T : IWorkItem;
+        where T : IWorkItemBase;
 
     internal struct InternalWorkItem<T>
-        where T : IWorkItem
+        where T : IWorkItemBase
     {
 #if DEBUG
         public bool                  Valid;
@@ -224,12 +231,18 @@ namespace Squared.Threading {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Execute (ref InternalWorkItem<T> item) {
+        public static void Execute (ThreadGroup owner, ref InternalWorkItem<T> item) {
 #if DEBUG
             if (!item.Valid)
                 throw new WorkQueueException(item.Queue, "Invalid work item");
 #endif
-            item.Data.Execute();
+            if (item.Data is IWorkItem2 iwi2)
+                iwi2.Execute(owner);
+            else if (item.Data is IWorkItem iwi)
+                iwi.Execute();
+            else
+                throw new WorkQueueException(item.Queue, "Invalid work item type");
+
             if (item.OnComplete != null)
                 item.OnComplete(ref item.Data);
         }
@@ -242,7 +255,7 @@ namespace Squared.Threading {
     }
 
     public sealed class WorkQueue<T> : IWorkQueue
-        where T : IWorkItem 
+        where T : IWorkItemBase
     {
         const int DefaultBufferSize = 512;
 
@@ -526,7 +539,7 @@ namespace Squared.Threading {
                     if (running) {
                         try {
                             numProcessed++;
-                            InternalWorkItem<T>.Execute(ref item);
+                            InternalWorkItem<T>.Execute(Owner, ref item);
                             result++;
                         } finally {
                             processedCounter = Interlocked.Increment(ref ItemsProcessed);

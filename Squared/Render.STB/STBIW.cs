@@ -72,7 +72,9 @@ namespace Squared.Render.STB {
             if (dataLength < (bytesPerPixel * width * height))
                 throw new ArgumentException("buffer");
 
-            using (var scratch = BufferPool<byte>.Allocate(1024 * 64))
+            const int bufferSize = 1024 * 64;
+
+            using (var scratch = BufferPool<byte>.Allocate(bufferSize))
             fixed (byte * _pScratch = scratch.Data) {
                 Native.WriteCallback callback = (pScratch, pData, count) => {
                     int offset = 0;

@@ -15,6 +15,9 @@ using Squared.Util;
 
 namespace Squared.Render.STB {
     public unsafe sealed class Image : IDisposable {
+        // FIXME: Causes crashes
+        public const bool EnableMmap = true;
+
         public readonly string Name;
         private volatile int _RefCount;
         public int RefCount => _RefCount;
@@ -80,7 +83,7 @@ namespace Squared.Render.STB {
                 hData = GCHandle.Alloc(buffer, GCHandleType.Pinned);
                 pData = (byte*)hData.AddrOfPinnedObject();
                 readOffset = (int)ms.Position;
-            } else if (stream is FileStream fs) {
+            } else if (EnableMmap && (stream is FileStream fs)) {
                 mappedFile = MemoryMappedFile.CreateFromFile(fs, null, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, false);
                 mappedView = mappedFile.CreateViewAccessor(0, fs.Length, MemoryMappedFileAccess.Read);
                 mappedView.SafeMemoryMappedViewHandle.AcquirePointer(ref pData);

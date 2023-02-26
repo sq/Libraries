@@ -260,7 +260,7 @@ namespace Squared.Threading {
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue<T> (T item, OnWorkItemComplete<T> onComplete = null)
-            where T : IWorkItem
+            where T : IWorkItemBase
         {
             var queue = GetQueueForType<T>();
             queue.Enqueue(ref item, onComplete);
@@ -269,7 +269,7 @@ namespace Squared.Threading {
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue<T> (ref T item, OnWorkItemComplete<T> onComplete = null)
-            where T : IWorkItem
+            where T : IWorkItemBase
         {
             var queue = GetQueueForType<T>();
             queue.Enqueue(ref item, onComplete);
@@ -283,7 +283,7 @@ namespace Squared.Threading {
         /// </summary>
         /// <param name="forMainThread">Pass true if you wish to queue a work item to run on the main thread. Will be set automatically for main-thread-only work items.</param>
         public WorkQueue<T> GetQueueForType<T> (bool forMainThread = false)
-            where T : IWorkItem 
+            where T : IWorkItemBase
         {
             var type = typeof(T);
             bool resultIsNew;
@@ -331,7 +331,7 @@ namespace Squared.Threading {
         }
 
         private WorkQueue<T> CreateQueueForType<T> (bool isMainThreadOnly)
-            where T : IWorkItem
+            where T : IWorkItemBase
         {
             return new WorkQueue<T>(this) {
                 IsMainThreadQueue = isMainThreadOnly

@@ -1519,7 +1519,7 @@ namespace PRGUI.Demo {
                     else
                         HighlightRecord = null;
 
-                    if (HighlightRecord.HasValue) {
+                    if (HighlightRecord.HasValue && IsActive) {
                         if ((Mouse.PreviousState.LeftButton == ButtonState.Released) && (Mouse.CurrentState.LeftButton == ButtonState.Pressed)) {
                             ref var item = ref Context.Engine[HighlightRecord.Value];
                             Console.WriteLine($"Clicked: {HighlightRecord}");
