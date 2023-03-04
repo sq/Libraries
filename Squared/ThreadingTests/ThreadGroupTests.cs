@@ -11,7 +11,7 @@ namespace Squared.Threading {
     public class TestWorkItem : IWorkItem {
         public bool Ran;
 
-        public void Execute () {
+        public void Execute (ThreadGroup group) {
             Ran = true;
         }
     }
@@ -19,19 +19,19 @@ namespace Squared.Threading {
     public class SleepyWorkItem : IWorkItem {
         public bool Ran;
 
-        public void Execute () {
+        public void Execute (ThreadGroup group) {
             Thread.Sleep(200);
             Ran = true;
         }
     }
 
     public struct VoidWorkItem : IWorkItem {
-        public void Execute () {
+        public void Execute (ThreadGroup group) {
         }
     }
 
     public struct SlightlySlowWorkItem : IWorkItem {
-        public void Execute () {
+        public void Execute (ThreadGroup group) {
             Thread.Sleep(1);
         }
     }
@@ -39,7 +39,7 @@ namespace Squared.Threading {
     public struct BlockingWorkItem : IWorkItem {
         public AutoResetEvent Signal;
 
-        public void Execute () {
+        public void Execute (ThreadGroup group) {
             Signal?.WaitOne();
         }
     }
@@ -52,7 +52,7 @@ namespace Squared.Threading {
 
         public AutoResetEvent Signal;
 
-        public void Execute () {
+        public void Execute (ThreadGroup group) {
             Signal?.WaitOne();
         }
     }
