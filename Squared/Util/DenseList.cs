@@ -307,12 +307,12 @@ namespace Squared.Util {
                 ;
 
             UnorderedList<T> items;
-            if (ListPool != null)
-                items = ListPool.Allocate(capacity, false);
+            if (_ListPoolOrAllocator is IListPool<T> lp)
+                items = lp.Allocate(capacity, false);
             else if (capacity.HasValue)
-                items = new UnorderedList<T>(capacity.Value, Allocator);
+                items = new UnorderedList<T>(capacity.Value, (UnorderedList<T>.Allocator)_ListPoolOrAllocator);
             else
-                items = new UnorderedList<T>(Allocator);
+                items = new UnorderedList<T>((UnorderedList<T>.Allocator)_ListPoolOrAllocator);
 
             _Items = items;
             if (_Count > 0)
@@ -1246,19 +1246,33 @@ namespace Squared.Util {
         }
 
         public Enumerator GetEnumerator () {
-            return new Enumerator(in this);
+            var result = new Enumerator {
+                Index = -1,
+                Count = Count,
+            };
+            if (_Items != null) {
+                var buf = _Items.GetBuffer();
+                result.Offset = buf.Offset;
+                result.Items = buf.Array;
+            } else {
+                result.Item1 = Item1;
+                result.Item2 = Item2;
+                result.Item3 = Item3;
+                result.Item4 = Item4;
+            }
+            return result;
         }
 
         IEnumerator<T> IEnumerable<T>.GetEnumerator () {
             if (Count == 0)
                 return BoxedEmptyEnumerator.Instance;
-            return new Enumerator(in this);
+            return GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator () {
             if (Count == 0)
                 return BoxedEmptyEnumerator.Instance;
-            return new Enumerator(in this);
+            return GetEnumerator();
         }
 
         int IList<T>.IndexOf (T item) {

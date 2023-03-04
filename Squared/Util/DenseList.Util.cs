@@ -311,32 +311,13 @@ namespace Squared.Util {
         }
 
         public struct Enumerator : IEnumerator<T>, IDenseQuerySource<Enumerator> {
-            private int Index;
+            // We initialize all this state from outside to avoid having to copy the list when creating
+            //  its enumerator (since 'ref this' isn't legal and 'in DenseList<T>' might cause a copy)
+            internal int Index;
 
-            private readonly T Item1, Item2, Item3, Item4;
-            private readonly bool HasList;
-            private readonly T[] Items;
-            private readonly int Offset, Count;
-
-            internal Enumerator (in DenseList<T> list) {
-                Index = -1;
-                Count = list.Count;
-                Item1 = list.Item1;
-                Item2 = list.Item2;
-                Item3 = list.Item3;
-                Item4 = list.Item4;
-
-                var items = list._Items;
-                HasList = items != null;
-                if (items != null) {
-                    var buffer = items.GetBuffer();
-                    Offset = buffer.Offset;
-                    Items = buffer.Array;
-                } else {
-                    Offset = 0;
-                    Items = null;
-                }
-            }
+            internal T Item1, Item2, Item3, Item4;
+            internal T[] Items;
+            internal int Offset, Count;
 
             // TODO: Find a way to expose a ref version of this without upsetting the compiler
             // The 'Unsafe.Add' approach used in .Item and .ReadItem doesn't work for some reason
@@ -347,7 +328,7 @@ namespace Squared.Util {
                 get {
                     if ((Index < 0) || (Index >= Count))
                         throw new InvalidOperationException("No current value");
-                    else if (HasList)
+                    else if (Items != null)
                         return Items[Index];
                     else switch (Index) {
                         case 0:
@@ -389,7 +370,7 @@ namespace Squared.Util {
             public bool TryGetNext (ref T result) {
                 var countMinus1 = Count - 1;
                 if (Index++ < countMinus1) {
-                    if (HasList) {
+                    if (Items != null) {
                         result = Items[Index];
                         return false;
                     } else switch (Index) {
