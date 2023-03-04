@@ -87,8 +87,10 @@ namespace Squared.Render {
                             batches[i] = combiner.Combine(a, b);
                             batches[i].Container = a.Container;
 
-                            if ((a != batches[i]) && (a.ReleaseAfterDraw))
+                            if (a != batches[i])
                                 batchesToRelease.Add(a);
+                            if (b != batches[j])
+                                batchesToRelease.Add(b);
 
                             eliminatedCount += 1;
                             break;

@@ -12,14 +12,14 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Util;
 
 namespace Squared.Render {
-    public interface IBatch : IDisposable {
+    public interface IBatch {
         void Prepare (Batch.PrepareContext context);
         void Suspend ();
 
         bool AreParametersEqual (ref MaterialParameterValues rhs);
     }
 
-    public abstract class Batch : IBatch {
+    public abstract class Batch : IBatch, IDisposable {
         public static class IdForType<T> where T : Batch {
             public static readonly int Id;
 
@@ -188,6 +188,7 @@ namespace Squared.Render {
         }
 
         public static bool CaptureStackTraces = false;
+        public static bool ThrowOnBatchLeak = false;
 
         /// <summary>
         /// Set a name for the batch to aid debugging;
@@ -202,7 +203,6 @@ namespace Squared.Render {
         public Func<bool> GetEnabled;
 
         internal long InstanceId;
-        internal bool ReleaseAfterDraw;
         internal bool Released;
         internal IBatchPool Pool;
 
@@ -227,6 +227,18 @@ namespace Squared.Render {
 
             InstanceId = Interlocked.Increment(ref NextInstanceId);
         }
+
+#if DEBUG
+        ~Batch () {
+            if (Released)
+                return;
+
+            var msg = "{GetType().Name} was not released. Allocated at {StackTrace}";
+            Debug.WriteLine(msg);
+            if (ThrowOnBatchLeak)
+                throw new Exception(msg);
+        }
+#endif
 
         /// <summary>
         /// You can manually generate different values for this in order to automatically sort specific batches against each other
@@ -254,7 +266,6 @@ namespace Squared.Render {
             if (BatchesCombinedIntoThisOne != null)
                 BatchesCombinedIntoThisOne.Clear();
             Released = false;
-            ReleaseAfterDraw = false;
             Layer = layer;
             Material = material;
             MaterialParameters.Clear();
@@ -277,35 +288,6 @@ namespace Squared.Render {
         }
 
         /// <summary>
-        /// Adds a previously-constructed batch to a new frame/container.
-        /// Use this if you already created a batch in a previous frame and wish to use it again.
-        /// </summary>
-        public void Reuse (IBatchContainer newContainer, int? newLayer = null) {
-            Thread.MemoryBarrier();
-            if (Released)
-                throw new ObjectDisposedException("batch");
-            else if (State.IsCombined)
-                throw new InvalidOperationException("Batch was combined into another batch");
-
-            if (newLayer.HasValue)
-                Layer = newLayer.Value;
-
-            Thread.MemoryBarrier();
-            if (!State.IsInitialized)
-                throw new Exception("Not initialized");
-
-            Thread.MemoryBarrier();
-            if (State.IsPrepareQueued)
-                throw new Exception("Batch currently queued for prepare");
-
-            Thread.MemoryBarrier();
-            State.IsPrepared = State.IsIssued = false;
-            Thread.MemoryBarrier();
-
-            newContainer.Add(this);
-        }
-
-        /// <summary>
         /// Suspends preparing of the batch until you call Dispose on it.
         /// This allows you to begin filling a batch with draw calls on another thread while the rest of the
         ///  render preparation pipeline continues.
@@ -323,6 +305,10 @@ namespace Squared.Render {
         public void CaptureStack (int extraFramesToSkip) {
             if (CaptureStackTraces)
                 StackTrace = new StackTrace(1 + extraFramesToSkip, true);
+        }
+
+        public void Dispose () {
+            // Does nothing
         }
 
         protected void OnPrepareDone () {
@@ -382,25 +368,6 @@ namespace Squared.Render {
         }
 
         protected virtual void OnReleaseResources () {
-            if (Released)
-                return;
-
-            Thread.MemoryBarrier();
-            if (State.IsPrepareQueued)
-                throw new Exception("Batch currently queued for prepare");
-            else if (!State.IsInitialized)
-                throw new Exception("Batch uninitialized");
-            Thread.MemoryBarrier();
-
-            State.IsPrepared = false;
-            State.IsInitialized = false;
-            Released = true;
-            Thread.MemoryBarrier();
-
-            Pool.Release(this);
-
-            Container = null;
-            Material = null;
         }
 
         public void ReleaseResources () {
@@ -410,27 +377,37 @@ namespace Squared.Render {
             if (Released)
                 throw new ObjectDisposedException("Batch");
 
-            if (!ReleaseAfterDraw)
-                return;
+            Thread.MemoryBarrier();
+            if (State.IsPrepareQueued)
+                throw new Exception("Batch currently queued for prepare");
+            else if (!State.IsInitialized)
+                throw new Exception("Batch uninitialized");
+            Released = true;
+            Thread.MemoryBarrier();
+
+            State.IsPrepared = false;
+            State.IsInitialized = false;
+            Container = null;
+            Material = null;
+            Thread.MemoryBarrier();
 
             OnReleaseResources();
+
+            StackTrace = null;
+            Thread.MemoryBarrier();
+
+            Pool.Release(this);
         }
 
         /// <summary>
         /// Notifies the render manager that it should release the batch once the current frame is done drawing.
         /// You may opt to avoid calling this method in order to reuse a batch across multiple frames.
         /// </summary>
-        public virtual void Dispose () {
+        public void Resume () {
             if (SuspendFuture != null)
                 SuspendFuture.SetResult(Threading.NoneType.None, null);
-
-            ReleaseAfterDraw = true;
-        }
-
-        public bool IsReusable {
-            get {
-                return !ReleaseAfterDraw;
-            }
+            else
+                throw new InvalidOperationException("Not suspended");
         }
 
         public bool IsReleased {

@@ -1187,12 +1187,13 @@ namespace Squared.Render.Convenience {
             else if (Container.IsReleased)
                 throw new ObjectDisposedException("The container this ImperativeRenderer is drawing into has been disposed.");
 
-            using (var batch = GetBitmapBatch(
+            var batch = GetBitmapBatch(
                 layer, worldSpace,
-                blendState ?? PickBlendStateForTextures(ref drawCall.Textures), samplerState, depthStencilState ?? DepthStencilState, 
+                blendState ?? PickBlendStateForTextures(ref drawCall.Textures), samplerState, depthStencilState ?? DepthStencilState,
                 rasterizerState ?? RasterizerState, material ?? DefaultBitmapMaterial,
                 samplerState2: samplerState2 ?? SamplerState2
-            )) {
+            );
+            {
                 if (LowPriorityMaterialOrdering) {
                     if (material != null)
                         material = Materials.Get(material, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState);
@@ -1409,11 +1410,12 @@ namespace Squared.Render.Convenience {
             Material material = null, Vector2? scale = null, Vector4? userData = null,
             float? multiplyOpacity = null
         ) {
-            using (var batch = GetBitmapBatch(
-                layer, worldSpace, blendState, samplerState, 
+            var batch = GetBitmapBatch(
+                layer, worldSpace, blendState, samplerState,
                 depthStencilState ?? DepthStencilState, rasterizerState ?? RasterizerState,
                 material ?? DefaultBitmapMaterial, samplerState2: samplerState2
-            )) {
+            );
+            {
                 if (LowPriorityMaterialOrdering) {
                     if (material != null)
                         material = Materials.Get(material, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState);
@@ -2295,6 +2297,7 @@ namespace Squared.Render.Convenience {
                 }
 
                 var b = GeometryBatch.New(Container, actualLayer, material);
+                b.Dispose();
                 b.MaterialParameters.ReplaceWith(ref Parameters);
                 cacheEntry.Batch = b;
                 Cache.InsertAtFront(ref cacheEntry, -1);
@@ -2355,6 +2358,7 @@ namespace Squared.Render.Convenience {
                     RasterizerState, DepthStencilState, desiredBlendState, rampTexture,
                     rampUVOffset
                 );
+                batch.Dispose();
                 if (DisableDithering)
                     batch.DitheringSettings = DitheringSettings.Disable;
                 else
@@ -2415,6 +2419,7 @@ namespace Squared.Render.Convenience {
                     Container, actualLayer, Materials, ref brush,
                     RasterizerState, DepthStencilState, desiredBlendState
                 );
+                batch.Dispose();
                 if (DisableDithering)
                     batch.DitheringSettings = DitheringSettings.Disable;
                 else
