@@ -72,7 +72,7 @@ namespace Squared.Render.DistanceField {
             public Vector4[] Output;
             public int X, Y, Width, Height, Stride;
 
-            public void Execute () {
+            public void Execute (ThreadGroup group) {
                 unchecked {
                     var md2 = ScreenDistanceSquared(MaxDistance, MaxDistance);
                     for (int _y = 0; _y < Height; _y++) {
@@ -91,7 +91,7 @@ namespace Squared.Render.DistanceField {
             public Vector4[] Output;
             public int X, Y, Width, Height, Stride;
 
-            public void Execute () {
+            public void Execute (ThreadGroup group) {
                 unchecked {
                     var md2 = ScreenDistanceSquared(MaxDistance, MaxDistance);
                     for (int _y = 0; _y < Height; _y++) {
@@ -110,7 +110,7 @@ namespace Squared.Render.DistanceField {
             public Vector4[] Output;
             public int X, Y, Width, Height, Stride;
 
-            public void Execute () {
+            public void Execute (ThreadGroup group) {
                 unchecked {
                     var md2 = ScreenDistanceSquared(MaxDistance, MaxDistance);
                     for (int _y = 0; _y < Height; _y++) {
@@ -129,7 +129,7 @@ namespace Squared.Render.DistanceField {
             public Vector4[] Output;
             public int X, Y, Width, Height, Stride;
 
-            public void Execute () {
+            public void Execute (ThreadGroup group) {
                 unchecked {
                     var md2 = ScreenDistanceSquared(MaxDistance, MaxDistance);
                     for (int _y = 0; _y < Height; _y++) {
@@ -157,7 +157,7 @@ namespace Squared.Render.DistanceField {
             public int X, Y, Width, Height, Stride, Step;
             public int MinX, MaxX, MinIndex, MaxIndex;
 
-            public unsafe void Execute () {
+            public unsafe void Execute (ThreadGroup group) {
                 Offsets* offsets = stackalloc Offsets[8];
                 {
                     for (int y = -1, j = 0; y < 2; y++) {
@@ -223,7 +223,7 @@ namespace Squared.Render.DistanceField {
             public float[] Output;
             public int X, Y, Width, Height, Stride;
 
-            public void Execute () {
+            public void Execute (ThreadGroup group) {
                 unchecked {
                     for (int _y = 0; _y < Height; _y++) {
                         var yW = (_y + Y) * Stride;
@@ -323,7 +323,7 @@ namespace Squared.Render.DistanceField {
                     if (queue != null)
                         queue.Enqueue(ref workItem, false);
                     else
-                        workItem.Execute();
+                        workItem.Execute(config.ThreadGroup);
                 }
                 config.ThreadGroup?.NotifyQueuesChanged(false);
             }
@@ -348,7 +348,7 @@ namespace Squared.Render.DistanceField {
                     if (queue != null)
                         queue.Enqueue(ref workItem, false);
                     else
-                        workItem.Execute();
+                        workItem.Execute(config.ThreadGroup);
                 }
                 config.ThreadGroup?.NotifyQueuesChanged(false);
             }
@@ -373,7 +373,7 @@ namespace Squared.Render.DistanceField {
                     if (queue != null)
                         queue.Enqueue(ref workItem, false);
                     else
-                        workItem.Execute();
+                        workItem.Execute(config.ThreadGroup);
                 }
                 config.ThreadGroup?.NotifyQueuesChanged(false);
             }
@@ -398,7 +398,7 @@ namespace Squared.Render.DistanceField {
                     if (queue != null)
                         queue.Enqueue(ref workItem, false);
                     else
-                        workItem.Execute();
+                        workItem.Execute(config.ThreadGroup);
                 }
                 config.ThreadGroup?.NotifyQueuesChanged(false);
             }
@@ -427,7 +427,7 @@ namespace Squared.Render.DistanceField {
                     if (queue != null)
                         queue.Enqueue(ref workItem, false);
                     else
-                        workItem.Execute();
+                        workItem.Execute(config.ThreadGroup);
                 }
                 config.ThreadGroup?.NotifyQueuesChanged(false);
             }
@@ -452,7 +452,7 @@ namespace Squared.Render.DistanceField {
                     if (queue != null)
                         queue.Enqueue(ref workItem, false);
                     else
-                        workItem.Execute();
+                        workItem.Execute(config.ThreadGroup);
                 }
                 config.ThreadGroup?.NotifyQueuesChanged(false);
             }

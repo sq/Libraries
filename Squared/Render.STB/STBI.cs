@@ -458,7 +458,7 @@ namespace Squared.Render.STB {
                         // FIXME
                         queue.Enqueue(workItem, OnItemComplete);
                     } else
-                        workItem.Execute();
+                        workItem.Execute(coordinator.ThreadGroup);
 
                     previousLevelWidth = levelWidth;
                     previousLevelHeight = levelHeight;
@@ -532,7 +532,7 @@ namespace Squared.Render.STB {
             public object Mip { get; set; }
             public int LevelWidth { get; internal set; }
 
-            public void Execute () {
+            public void Execute (ThreadGroup group) {
                 var pin = default(GCHandle);
                 void* pData;
                 if (Mip != null) {

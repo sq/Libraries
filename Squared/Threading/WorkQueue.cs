@@ -137,7 +137,7 @@ namespace Squared.Threading {
     }
 
     internal static class WorkItemConfigurationForType<T>
-        where T : IWorkItemBase
+        where T : IWorkItem
     {
         public static readonly WorkItemConfiguration Configuration;
 
@@ -196,22 +196,15 @@ namespace Squared.Threading {
     public interface IMainThreadWorkItem : IWorkItem {
     }
 
-    public interface IWorkItemBase {
-    }
-
-    public interface IWorkItem : IWorkItemBase {
-        void Execute ();
-    }
-
-    public interface IWorkItem2 : IWorkItemBase {
+    public interface IWorkItem {
         void Execute (ThreadGroup group);
     }
 
     public delegate void OnWorkItemComplete<T> (ref T item)
-        where T : IWorkItemBase;
+        where T : IWorkItem;
 
     internal struct InternalWorkItem<T>
-        where T : IWorkItemBase
+        where T : IWorkItem
     {
 #if DEBUG
         public bool                  Valid;
@@ -236,12 +229,7 @@ namespace Squared.Threading {
             if (!item.Valid)
                 throw new WorkQueueException(item.Queue, "Invalid work item");
 #endif
-            if (item.Data is IWorkItem2 iwi2)
-                iwi2.Execute(owner);
-            else if (item.Data is IWorkItem iwi)
-                iwi.Execute();
-            else
-                throw new WorkQueueException(item.Queue, "Invalid work item type");
+            item.Data.Execute(owner);
 
             if (item.OnComplete != null)
                 item.OnComplete(ref item.Data);
@@ -255,7 +243,7 @@ namespace Squared.Threading {
     }
 
     public sealed class WorkQueue<T> : IWorkQueue
-        where T : IWorkItemBase
+        where T : IWorkItem
     {
         const int DefaultBufferSize = 512;
 

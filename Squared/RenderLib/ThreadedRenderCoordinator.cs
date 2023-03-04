@@ -67,7 +67,7 @@ namespace Squared.Render {
                 Frame = frame;
             }
 
-            public void Execute () {
+            public void Execute (ThreadGroup group) {
                 try {
                     IsDrawingOnThisThread.Value = true;
                     Monitor.Enter(Frame);

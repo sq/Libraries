@@ -97,7 +97,7 @@ namespace Squared.Render {
 
             public UnorderedList<T> List;
 
-            public void Execute () {
+            public void Execute (ThreadGroup group) {
                 List.Clear();
                 ClearedLists.Value.Add(List);
             }

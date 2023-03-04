@@ -94,7 +94,7 @@ namespace Squared.Render {
             public DynamicAtlas<T> Atlas;
             public Rectangle Region;
 
-            public void Execute () {
+            public void Execute (ThreadGroup group) {
                 Atlas.GenerateMips(Region);
             }
         }

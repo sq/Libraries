@@ -962,7 +962,7 @@ namespace Squared.Render {
                 batch.SetPrepareQueued(false);
             }
 
-            public void Execute () {
+            public void Execute (ThreadGroup group) {
                 Execute(Batch, ref Context);
             }
         };
@@ -1012,7 +1012,7 @@ namespace Squared.Render {
                 if (context.Async)
                     Queue.Enqueue(ref task, false);
                 else
-                    task.Execute();
+                    task.Execute(Group);
                 task = new Task(b, ref context);
             }
         }
@@ -1057,7 +1057,7 @@ namespace Squared.Render {
             if (context.Async) {
                 Queue.Enqueue(task, false);
             } else {
-                task.Execute();
+                task.Execute(Group);
             }
         }
 

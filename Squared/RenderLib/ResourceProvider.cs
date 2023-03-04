@@ -120,7 +120,7 @@ namespace Squared.Render.Resources {
             public object PreloadedData;
             public bool StreamIsDisposed;
 
-            void IWorkItem.Execute () {
+            void IWorkItem.Execute (ThreadGroup group) {
                 Future<T> instance = null;
                 try {
                     LoadInfo.AsyncOperationQueued = false;
@@ -180,7 +180,7 @@ namespace Squared.Render.Resources {
             public ResourceLoadInfo LoadInfo;
             public long StartedWhen;
 
-            void IWorkItem.Execute () {
+            void IWorkItem.Execute (ThreadGroup group) {
                 Stream stream = null;
                 try {
                     LoadInfo.AsyncOperationQueued = false;
