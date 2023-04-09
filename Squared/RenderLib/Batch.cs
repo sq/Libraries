@@ -396,7 +396,7 @@ namespace Squared.Render {
             StackTrace = null;
             Thread.MemoryBarrier();
 
-            Pool.Release(this);
+            Pool?.Release(this);
         }
 
         /// <summary>

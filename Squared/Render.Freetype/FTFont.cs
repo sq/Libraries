@@ -476,6 +476,7 @@ namespace Squared.Render.Text {
                     return;
 
                 _Version++;
+                NeedNormalization = true;
 
                 foreach (var atlas in Atlases)
                     atlas.Clear();
