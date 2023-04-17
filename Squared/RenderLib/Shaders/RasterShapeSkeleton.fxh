@@ -988,13 +988,13 @@ void rasterShapeCommon (
     float outlineStartDistance = -(outlineSize * 0.5) + 0.5,
         outlineEndDistance = outlineStartDistance + outlineSize,
         // Ideally this range would be smaller, but a larger range produces softer fill outlines
-        //  for shapes like ellipses and lines
-        fillStartDistance = FillGamma > 0 ? -radius : -1.01,
+        //  for shapes like ellipses and lines. If FillGamma is set we try to ramp over the whole interior
+        fillStartDistance = FillGamma > 0 ? min(-abs(radius.x) + 0.5, -1.01) : -1.01,
         // Expand the fill if there is an outline to reduce the seam between fill and outline
         fillEndDistance = 0.5 + min(outlineSize, 0.5);
 
     if (FillGamma > 0)
-        fillAlpha = pow(1.0 - saturate((distance - fillStartDistance) / (fillEndDistance - fillStartDistance)), FillGamma);
+        fillAlpha = 1.0 - pow(saturate((distance - fillStartDistance) / (fillEndDistance - fillStartDistance)), FillGamma);
     else
         fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
 
