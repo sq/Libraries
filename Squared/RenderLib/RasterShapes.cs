@@ -432,7 +432,7 @@ namespace Squared.Render.RasterShape {
         /// <summary>
         /// Applies gamma correction to the outline to make it appear softer or sharper.
         /// </summary>
-        public float OutlineGammaMinusOne;
+        public float GammaMinusOne;
         /// <summary>
         /// Configures the color space to blend between colors in.
         /// </summary>
@@ -753,7 +753,7 @@ namespace Squared.Render.RasterShape {
                         InnerColor = dc.InnerColor4,
                         OutlineColor = dc.OutlineColor4,
                         OuterColor = dc.OuterColor4,
-                        Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, fill.ModeF, dc.OutlineGammaMinusOne),
+                        Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, fill.ModeF, dc.GammaMinusOne),
                         Parameters2 = new Vector4(gpower, fill.FillRange.X, fill.FillRange.Y, fill.Offset),
                         TextureRegion = dc.TextureBounds.ToVector4(),
                         Type = (short)dc.Type,

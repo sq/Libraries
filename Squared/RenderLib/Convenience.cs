@@ -778,10 +778,11 @@ namespace Squared.Render.Convenience {
             set => SetFlag(ImperativeRendererFlags.UseDiscard, value);
         }
 
-        private float RasterOutlineGammaMinusOne;
+        private float RasterGammaMinusOne;
 
         /// <summary>
         /// If set, outlines on raster shapes will be soft instead of hard.
+        /// For shapes with an outline thickness of 0 the fill will always be hard unless gamma is negative.
         /// </summary>
         public bool RasterSoftOutlines {
             [TargetedPatchingOptOut("")]
@@ -969,7 +970,7 @@ namespace Squared.Render.Convenience {
             SamplerState2 = samplerState2;
             NextSortKey = new DrawCallSortKey(tags, 0);
             DeclarativeSorter = declarativeSorter;
-            RasterOutlineGammaMinusOne = 0;
+            RasterGammaMinusOne = 0;
             DefaultBitmapMaterial = null;
             BitmapBatchInitialCapacity = null;
             if (worldSpace)
@@ -983,14 +984,37 @@ namespace Squared.Render.Convenience {
         }
 
         /// <summary>
-        /// Applies gamma correction to outlines to make them look sharper.
+        /// Applies gamma correction to outlines to make them look sharper or softer.
+        /// More effective when soft outlines are enabled.
         /// </summary>
         public float RasterOutlineGamma {
             get {
-                return RasterOutlineGammaMinusOne + 1;
+                return RasterGammaMinusOne + 1;
             }
             set {
-                RasterOutlineGammaMinusOne = value - 1;
+                RasterGammaMinusOne = value - 1;
+            }
+        }
+
+        /// <summary>
+        /// Applies gamma to the interior of a shape in addition to its outline.
+        /// </summary>
+        public float RasterGamma {
+            get {
+                if (RasterGammaMinusOne < -1)
+                    return -(RasterGammaMinusOne + 1);
+                else
+                    return 0;
+            }
+            set {
+                if (value <= 0) {
+                    if (RasterGammaMinusOne > -1)
+                        return;
+                    else
+                        RasterGammaMinusOne = 0;
+                } else {
+                    RasterGammaMinusOne = -value - 1;
+                }
             }
         }
 
@@ -1657,7 +1681,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -1693,7 +1717,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -1728,7 +1752,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -1767,7 +1791,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -1803,7 +1827,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -1839,7 +1863,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -1875,7 +1899,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -1910,7 +1934,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -1945,7 +1969,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -1979,7 +2003,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = color,
                     OuterColor = color,
                     OutlineColor = color,
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -2025,7 +2049,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -2063,7 +2087,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor,
                     OutlineColor = outlineColor,
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -2132,7 +2156,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,
@@ -2174,7 +2198,7 @@ namespace Squared.Render.Convenience {
                     InnerColor = innerColor,
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
-                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    GammaMinusOne = RasterGammaMinusOne,
                     BlendIn = colorSpace ?? RasterColorSpace,
                     Fill = fill,
                     AnnularRadius = annularRadius ?? 0,

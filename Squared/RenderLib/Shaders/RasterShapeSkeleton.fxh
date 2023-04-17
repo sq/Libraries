@@ -908,7 +908,11 @@ void rasterShapeCommon (
     // HACK
     outlineSize = max(abs(outlineSize), 0.0001);
     bool HardOutline = (params.x >= 0);
-    float OutlineGammaMinusOne = params.w;
+    float OutlineGammaMinusOne = params.w, FillGamma = 0;
+    if (OutlineGammaMinusOne < -1) {
+        FillGamma = -OutlineGammaMinusOne - 1;
+        OutlineGammaMinusOne = FillGamma - 1;
+    }        
 
 #ifdef INCLUDE_RECTANGLE
     if (type == TYPE_Rectangle)
@@ -985,11 +989,14 @@ void rasterShapeCommon (
         outlineEndDistance = outlineStartDistance + outlineSize,
         // Ideally this range would be smaller, but a larger range produces softer fill outlines
         //  for shapes like ellipses and lines
-        fillStartDistance = -1.01,
+        fillStartDistance = FillGamma > 0 ? -radius : -1.01,
         // Expand the fill if there is an outline to reduce the seam between fill and outline
         fillEndDistance = 0.5 + min(outlineSize, 0.5);
 
-    fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
+    if (FillGamma > 0)
+        fillAlpha = pow(1.0 - saturate((distance - fillStartDistance) / (fillEndDistance - fillStartDistance)), FillGamma);
+    else
+        fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
 
     PREFER_FLATTEN
     if (outlineSize > 0.001) {
