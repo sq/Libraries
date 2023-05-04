@@ -1665,7 +1665,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            Vector2? rampUVOffset = null, int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0, Vector2? gradientCenter = null
         ) {
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
@@ -1676,7 +1676,7 @@ namespace Squared.Render.Convenience {
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = center,
                     B = radius,
-                    C = new Vector2(fill.ModeF, 0),
+                    C = (gradientCenter ?? new Vector2(0.5f, 0.5f)) - new Vector2(0.5f, 0.5f),
                     Radius = radius,
                     OutlineSize = 0,
                     InnerColor = innerColor,
@@ -1702,7 +1702,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            Vector2? rampUVOffset = null, int sortKey = 0
+            Vector2? rampUVOffset = null, int sortKey = 0, Vector2? gradientCenter = null
         ) {
             using (var eb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
@@ -1713,7 +1713,7 @@ namespace Squared.Render.Convenience {
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = center,
                     B = radius,
-                    C = new Vector2(fill.ModeF, fill.Offset),
+                    C = (gradientCenter ?? new Vector2(0.5f, 0.5f)) - new Vector2(0.5f, 0.5f),
                     Radius = radius,
                     OutlineSize = outlineRadius,
                     InnerColor = innerColor,

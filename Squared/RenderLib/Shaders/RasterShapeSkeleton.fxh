@@ -473,14 +473,32 @@ void evaluateEllipse (
     gradientWeight = float2(1 - saturate(-distanceF), fakeY);
     if (gradientType == GRADIENT_TYPE_Natural)
         gradientType = GRADIENT_TYPE_Radial;
-    else if (
+        
+    if (
+        (gradientType == GRADIENT_TYPE_Radial) ||
+        (gradientType == GRADIENT_TYPE_Radial_Enclosing) ||
+        (gradientType == GRADIENT_TYPE_Radial_Enclosed)
+    ) {
+        float2 radialSize = (gradientType == GRADIENT_TYPE_Radial_Enclosing)
+            ? max(b.x, b.y)
+            : (
+                (gradientType == GRADIENT_TYPE_Radial_Enclosed)
+                    ? min(b.x, b.y)
+                    : b
+            ),
+            center = a + (c * b),
+            dist = worldPosition - center,
+            distScaled = dist / radialSize;
+        gradientWeight = length(distScaled);        
+        gradientType = GRADIENT_TYPE_Other;
+    } else if (
         (gradientType == GRADIENT_TYPE_Linear_Enclosing) ||
         (gradientType == GRADIENT_TYPE_Linear_Enclosed)
     ) {
         // Options:
         // * 2 = touches corners of a box enclosing the ellipse
         // * 2 * sqrt(2) == touches corners of a box enclosed by the ellipse
-        float2 distance2 = abs(worldPosition - a) / (br - tl) * (
+        float2 distance2 = abs(worldPosition - a + (c * b)) / (br - tl) * (
             (gradientType == GRADIENT_TYPE_Linear_Enclosed) 
                 ? (2 * sqrt(2)) 
                 : 2
