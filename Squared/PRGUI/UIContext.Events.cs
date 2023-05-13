@@ -634,6 +634,8 @@ namespace Squared.PRGUI {
                     doubleClicking = doubleClicking && (MouseCaptured != null);
                 result.DoubleClicking = doubleClicking;
                 UsedMouseEventArgs.Add(result);
+                if (target is IMouseEventArgsFilter imeaf)
+                    imeaf.FilterMouseEventArgs(result);
                 return result;
             }
         }

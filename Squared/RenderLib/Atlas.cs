@@ -10,26 +10,29 @@ using Squared.Game;
 namespace Squared.Render.Atlases {
     public class Atlas : IEnumerable<Atlas.Cell> {
         public struct Cell {
-            public readonly Atlas Atlas;
+            public readonly Texture2D Texture;
             public readonly int Index;
             public readonly Bounds Bounds;
             public readonly Rectangle Rectangle;
 
-            public Cell (Atlas atlas, int index, ref Bounds bounds, ref Rectangle rectangle) {
-                Atlas = atlas;
+            public Cell (Texture2D texture, int index, ref Bounds bounds, ref Rectangle rectangle) {
+                Texture = texture;
                 Index = index;
                 Bounds = bounds;
                 Rectangle = rectangle;
             }
 
-            public Texture2D Texture {
-                get {
-                    return Atlas.Texture;
-                }
+            public int Width => Rectangle.Width;
+            public int Height => Rectangle.Height;
+
+            public static implicit operator Cell (Texture2D texture) {
+                var b = Bounds.Unit;
+                var r = new Rectangle(0, 0, texture.Width, texture.Height);
+                return new Cell(texture, 0, ref b, ref r);
             }
 
             public static implicit operator Texture2D (Cell cell) {
-                return cell.Atlas.Texture;
+                return cell.Texture;
             }
 
             public static implicit operator Rectangle (Cell cell) {
@@ -119,6 +122,10 @@ namespace Squared.Render.Atlases {
             GenerateCells();
         }
 
+        public Atlas (Texture2D texture) 
+            : this (texture, texture.Width, texture.Height) {
+        }
+
         public static Atlas FromCount (
             Texture2D texture, int countX, int countY,
             int marginLeft = 0, int marginTop = 0,
@@ -178,7 +185,7 @@ namespace Squared.Render.Atlases {
                         CellWidth, CellHeight
                     );
                     var bounds = Texture.BoundsFromRectangle(in rectangle);
-                    var cell = new Cell(this, i, ref bounds, ref rectangle);
+                    var cell = new Cell(Texture, i, ref bounds, ref rectangle);
 
                     Cells.Add(cell);
                 }

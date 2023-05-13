@@ -21,7 +21,7 @@ namespace Squared.PRGUI.Controls {
     // Copied so the callee can pass it by-ref elsewhere
     public delegate void CanvasPaintHandler (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
 
-    public class Canvas : Control {
+    public class Canvas : Control, IMouseEventArgsFilter {
         public event CanvasPaintHandler OnPaint;
         public bool HasPaintHandler => (OnPaint != null);
 
@@ -86,6 +86,9 @@ namespace Squared.PRGUI.Controls {
         protected override bool ShouldClipContent => !_Buffered;
         protected override bool HasPreRasterizeHandler => (_Buffered && (!_CacheContent || !_ContentIsValid || (Buffer == null))) || base.HasPreRasterizeHandler;
 
+        public float Zoom = 1.0f;
+        public Vector2 Pan = Vector2.Zero;
+
         public Canvas () 
             : base () {
             // HACK: Set Intangible if you don't want this
@@ -137,6 +140,18 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        public Matrix GetContentTransform () {
+            return Matrix.CreateScale(Zoom) * Matrix.CreateTranslation(Pan.X, Pan.Y, 0f);
+        }
+
+        void IMouseEventArgsFilter.FilterMouseEventArgs (MouseEventArgs args) {
+            var xform = GetContentTransform();
+            xform = Matrix.Invert(xform);
+            var temp = Vector4.Transform(args.LocalPosition, xform);
+            temp /= temp.W;
+            args.LocalPosition = new Vector2(temp.X, temp.Y);
+        }
+
         protected bool EnsureValidBuffer (RenderCoordinator coordinator, ref RectF contentBox) {
             AutoDisposeBuffer(coordinator);
             var bufferSize = (contentBox.Size * InternalResolution).Ceiling();
@@ -165,13 +180,15 @@ namespace Squared.PRGUI.Controls {
             settings.IsCompositing = true;
             // FIXME
             var layer = 0;
+            var vt = ViewTransform.CreateOrthographic(
+                // Maintain a fixed width/height even if internal resolution is not 1.0
+                (int)Math.Ceiling(settings.ContentBox.Width),
+                (int)Math.Ceiling(settings.ContentBox.Height)
+            );
+            vt.ModelView = GetContentTransform();
             using (var container = BatchGroup.ForRenderTarget(
                 context.Prepass, layer, Buffer, materialSet: context.Materials,
-                viewTransform: ViewTransform.CreateOrthographic(
-                    // Maintain a fixed width/height even if internal resolution is not 1.0
-                    (int)Math.Ceiling(settings.ContentBox.Width), 
-                    (int)Math.Ceiling(settings.ContentBox.Height)
-                )
+                viewTransform: vt
             )) {
                 var contentRenderer = new ImperativeRenderer(container, context.Materials);
                 Paint(ref context, ref contentRenderer, in settings);
@@ -184,13 +201,11 @@ namespace Squared.PRGUI.Controls {
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            ImperativeRenderer contentRenderer;
-
             settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
 
             if (!_Buffered) {
                 AutoDisposeBuffer(renderer.Container.Coordinator);
-                renderer.MakeSubgroup(out contentRenderer);
+                var contentRenderer = renderer.MakeSubgroup(GetContentTransform());
                 Paint(ref context, ref contentRenderer, in settings);
             } else {
                 var buffer = Buffer.Get();

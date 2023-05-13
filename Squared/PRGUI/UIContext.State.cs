@@ -230,5 +230,10 @@ namespace Squared.PRGUI {
         public bool HasBeenFocusedSinceStartOfUpdate (Control control) {
             return (Focused == control) && (FocusedAtStartOfUpdate == control);
         }
+
+        public Vector2 GetLocalCursorPosition (Control relativeTo) {
+            var temp = MakeMouseEventArgs(relativeTo, CurrentInputState.CursorPosition, null, false);
+            return temp.LocalPosition;
+        }
     }
 }

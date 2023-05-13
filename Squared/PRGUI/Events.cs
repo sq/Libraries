@@ -106,4 +106,11 @@ namespace Squared.PRGUI {
         /// </summary>
         bool OnEvent<T> (Control target, string name, T args);
     }
+
+    /// <summary>
+    /// Intercepts the MouseEventArgs of mouse events targeting the control before they are dispatched
+    /// </summary>
+    public interface IMouseEventArgsFilter {
+        void FilterMouseEventArgs (MouseEventArgs args);
+    }
 }

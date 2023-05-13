@@ -565,7 +565,8 @@ namespace Squared.Render.RasterShape {
             TextureModeAndSize,
             TexturePlacement,
             TextureTraits,
-            TextureOptions;
+            TextureOptions,
+            TextureSizePx;
 
         public RasterShader (Material material) {
             Material = material;
@@ -583,6 +584,7 @@ namespace Squared.Render.RasterShape {
             TexturePlacement = p["TexturePlacement"];
             TextureTraits = p["TextureTraits"];
             TextureOptions = p["TextureOptions"];
+            TextureSizePx = p["TextureSizePx"];
         }
     }
 
@@ -856,6 +858,7 @@ namespace Squared.Render.RasterShape {
                 rasterShader.BlendInOkLab?.SetValue(sb.BlendInOkLab);
                 rasterShader.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
                 rasterShader.RasterTexture?.SetValue(Texture);
+                rasterShader.TextureSizePx?.SetValue(new Vector2(Texture?.Width ?? 0, Texture?.Height ?? 0));
                 rasterShader.RampTexture?.SetValue(RampTexture);
                 rasterShader.RampUVOffset?.SetValue(RampUVOffset);
 

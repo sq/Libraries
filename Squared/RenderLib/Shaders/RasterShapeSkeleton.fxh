@@ -25,6 +25,8 @@ sampler TextureSampler : register(s0) {
     Texture = (RasterTexture);
 };
 
+uniform const float2 TextureSizePx;
+
 // Mode, ScaleX, ScaleY
 uniform const float4 TextureModeAndSize;
 // Origin, Position
@@ -1122,6 +1124,14 @@ float4 texComposite (float4 fill, float fillAlpha, float4 texColor, float mode) 
     return fill;
 }
 
+float computeMip (in float2 texCoordPx) {
+    float2 dx = ddx(texCoordPx), dy = ddy(texCoordPx);
+    float _ddx = dot(dx, dx), _ddy = dot(dy, dy);
+    // FIXME: If the x and y scale ratios differ significantly this can result in extreme blurring
+    float mag = max(_ddx, _ddy);
+    return 0.5 * log2(mag);
+}
+
 float4 texturedShapeCommon (
     in float2 worldPosition, in float4 texRgn,
     in float4 ab, in float4 cd,
@@ -1168,11 +1178,12 @@ float4 texturedShapeCommon (
         texCoord = (posTextureScaled * texSize) + texRgn.xy;
     }
 
+    float mipLevel = computeMip(texCoord * TextureSizePx) + BACKGROUND_MIP_BIAS;
     float2 texCoordClamped = clamp(texCoord, texRgn.xy, texRgn.zw);
     texCoord = lerp(texCoord, texCoordClamped, TextureOptions.zw);
 
     // TODO: Will the automatic mip selection work correctly here? Probably not
-    float4 texColor = tex2Dbias(TextureSampler, float4(texCoord, 0, BACKGROUND_MIP_BIAS));
+    float4 texColor = tex2Dlod(TextureSampler, float4(texCoord, 0, mipLevel));
     texColor = ExtractRgba(texColor, TextureTraits);
 
     // FIXME: OkLab
