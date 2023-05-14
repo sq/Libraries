@@ -340,7 +340,7 @@ namespace Squared.PRGUI.Input {
         }
 
         public void TryMoveCursor (Vector2 position) {
-            Mouse.SetPosition((int)(position.X / Scale.Y), (int)(position.Y / Scale.Y));
+            Mouse.SetPosition((int)(position.X / Scale.X), (int)(position.Y / Scale.Y));
         }
     }
 
