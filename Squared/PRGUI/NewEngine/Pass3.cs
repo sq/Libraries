@@ -107,9 +107,9 @@ namespace Squared.PRGUI.NewEngine {
                         // TODO: Clip left/top edges as well?
                         // TODO: Separate x/y
                         if ((config._ContainerFlags & Enums.ContainerFlag.Boxes_Clip) != default) {
-                            var rightEdge = (contentPosition + result.ContentSize).X - childMargins.Right;
+                            var rightEdge = result.Rect.Right - control.Padding.Right - childMargins.Right;
                             childResult.Rect.Width = Math.Max(0, Math.Min(childResult.Rect.Width, rightEdge - childResult.Rect.Left));
-                            var bottomEdge = (contentPosition + result.ContentSize).Y - childMargins.Bottom;
+                            var bottomEdge = result.Rect.Bottom - control.Padding.Bottom - childMargins.Bottom;
                             childResult.Rect.Height = Math.Max(0, Math.Min(childResult.Rect.Height, bottomEdge - childResult.Rect.Top));
                         }
                     }
