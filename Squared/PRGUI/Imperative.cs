@@ -980,12 +980,9 @@ namespace Squared.PRGUI.Imperative {
                 c.DynamicContents = value;
             return this;
         }
-        public ControlBuilder<TControl> SetColumnCount (int value, bool? autoBreak = null) {
-            if (Control is ContainerBase c) {
+        public ControlBuilder<TControl> SetColumnCount (int value) {
+            if (Control is ContainerBase c)
                 c.ColumnCount = value;
-                if (autoBreak != null)
-                    c.AutoBreakColumnItems = autoBreak.Value;
-            }
             return this;
         }
 

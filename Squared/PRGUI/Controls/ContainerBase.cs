@@ -161,7 +161,6 @@ namespace Squared.PRGUI.Controls {
 
         private int _ColumnCount = 1;
 
-        public bool AutoBreakColumnItems = false;
         public bool[] ColumnExpansion;
 
         /// <summary>
@@ -372,11 +371,6 @@ namespace Squared.PRGUI.Controls {
                     childExistingKey = item.LayoutKey;
 
                 var itemKey = item.GenerateLayoutTree(ref context, ColumnKeys[columnIndex], childExistingKey);
-                ref var itemRec = ref context.Engine[itemKey];
-                if (multiColumn && AutoBreakColumnItems) {
-                    if (!itemRec.Config.ForceBreak)
-                        itemRec.Config.ForceBreak = true;
-                }
             }
             return result;
         }

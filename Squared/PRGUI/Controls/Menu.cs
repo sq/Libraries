@@ -190,7 +190,6 @@ namespace Squared.PRGUI.Controls {
             Scrollable = true;
             ShowHorizontalScrollbar = false;
             ShowVerticalScrollbar = null;
-            AutoBreakColumnItems = true;
             Shown += (_) => {
                 if (!IsActive)
                     throw new InvalidOperationException("Use Menu.Show not Context.ShowModal(...)");

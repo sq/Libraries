@@ -186,7 +186,6 @@ namespace Squared.PRGUI.Controls {
             // HACK: Most lists will contain enough items to need scrolling, so just always show the bar
             ShowVerticalScrollbar = true;
             Scrollable = true;
-            AutoBreakColumnItems = false;
             // FIXME
             Manager = new ItemListManager<T>(comparer ?? EqualityComparer<T>.Default);
             DefaultCreateControlForValue = _DefaultCreateControlForValue;

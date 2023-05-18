@@ -78,7 +78,8 @@ namespace Squared.PRGUI.Controls {
             DisableMarkers = true
         };
         private DynamicStringLayout ContentMeasurement = null;
-        private float? MostRecentWidthForLineBreaking = null, MostRecentWidth = null;
+        private float? MostRecentWidthForLineBreaking = null, 
+            MostRecentWidth = null;
 
         protected int? CharacterLimit { get; set; }
 
@@ -523,6 +524,12 @@ namespace Squared.PRGUI.Controls {
                 // FIXME: Should S.R do this?
                 if ((dw <= 1) && Content.LineBreakAtX.HasValue && Content.ExpandHorizontallyWhenAligning && AutoSizeIsMaximum)
                     dw = Content.LineBreakAtX.Value;
+                else if ((dw <= 1) && Content.ExpandHorizontallyWhenAligning && MostRecentWidth.HasValue)
+                    // HACK: In justify mode if expansion is enabled, we want to fill our entire box even if we have no explicit
+                    //  width constraint. This allows having multiple autosized columns in a container that will be justified
+                    //  naturally with each one filling its space with text
+                    // Without doing this, there would be a gutter on the right side.
+                    dw = MostRecentWidth.Value - computedPadding.X - AutoSizePadding;
                 Content.DesiredWidth = dw;
             } else
                 Content.DesiredWidth = 0;
@@ -886,7 +893,18 @@ namespace Squared.PRGUI.Controls {
             if (ChangeInternalFlag(StaticTextStateFlags.NeedRelayout, false))
                 relayoutRequested = true;
 
-            MostRecentWidth = LayoutResult(ref context).Rect.Width;
+            ref var result = ref LayoutResult(ref context);
+            if (result.Rect.Width != MostRecentWidth) {
+                MostRecentWidth = result.Rect.Width;
+                // HACK: This ensures that if our width changes, we recompute our justified layout to eliminate
+                //  any gutter on the right side.
+                if (
+                    (TextAlignment >= HorizontalAlignment.JustifyCharacters) &&
+                    Content.ExpandHorizontallyWhenAligning
+                ) {
+                    relayoutRequested = true;
+                }
+            }
         }
 
         void IPostLayoutListener.OnLayoutComplete (
