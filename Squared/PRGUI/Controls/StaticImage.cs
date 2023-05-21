@@ -70,16 +70,13 @@ namespace Squared.PRGUI.Controls {
             set => ScaleToFitX = ScaleToFitY = value;
         }
         /// <summary>
-        /// If set, the control will attempt to automatically expand to contain the image on these axes.
+        /// If set, the control will be auto-sized to fit the image on this axis.
         /// </summary>
-        public ImageDimensions ExpandAxes;
-        /// <summary>
-        /// If set, the control will attempt to automatically shrink on these axes to eliminate empty space.
-        /// </summary>
-        public ImageDimensions ShrinkAxes;
+        public LayoutDimensions? AutoSizeAxis = null;
 
         bool AreRecentRectsValid;
-        RectF MostRecentParentContentRect, MostRecentContentRect;
+        RectF MostRecentContentRect;
+        Vector2 MostRecentAvailableSpace;
 
         private AbstractTextureReference _Image;
         public AbstractTextureReference Image {
@@ -152,11 +149,6 @@ namespace Squared.PRGUI.Controls {
             return base.NeedsComposition(hasOpacity, hasTransform);
         }
 
-        public void SetFixedAxes (ImageDimensions axes) {
-            ExpandAxes |= axes;
-            ShrinkAxes |= axes;
-        }
-
         private void InvalidateAutoSize () {
             AreRecentRectsValid = false;
         }
@@ -185,7 +177,45 @@ namespace Squared.PRGUI.Controls {
             );
         }
 
+        void IPostLayoutListener.OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
+            if (IsLayoutInvalid || (_Image.Instance == null)) {
+                AreRecentRectsValid = false;
+                return;
+            }
+
+            if (!AutoSizeAxis.HasValue)
+                return;
+
+            var result = Context.Engine.Result(LayoutKey);
+            var scale = AutoSizeAxis == LayoutDimensions.X ? new Vector2(1, 0) : new Vector2(0, 1);
+            if (!AreRecentRectsValid)
+                relayoutRequested = true;
+            AreRecentRectsValid = true;
+            if ((result.ContentRect.Size * scale) != (MostRecentContentRect.Size * scale))
+                relayoutRequested = true;
+            MostRecentContentRect = result.ContentRect;
+            if ((result.AvailableSpace * scale) != (MostRecentAvailableSpace * scale))
+                relayoutRequested = true;
+            MostRecentAvailableSpace = result.AvailableSpace;
+        }
+
         private void ComputeAutoSize (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height) {
+            if (!AutoSizeAxis.HasValue)
+                return;
+            if (!AreRecentRectsValid)
+                return;
+
+            var img = Image.Instance;
+            float scale = ComputeDisplayScaleRatio(
+                img, 
+                (AutoSizeAxis == LayoutDimensions.X) ? width.Constrain(99999, true) : MostRecentAvailableSpace.X, 
+                (AutoSizeAxis == LayoutDimensions.Y) ? height.Constrain(99999, true) : MostRecentAvailableSpace.Y
+            );
+            if (AutoSizeAxis == LayoutDimensions.X)
+                width.Minimum = img.Width * scale;
+            else if (AutoSizeAxis == LayoutDimensions.Y)
+                height.Minimum = img.Height * scale;
+
             // FIXME
             /*
             if (!AutoSizeWidth && !AutoSizeHeight)
@@ -240,13 +270,6 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             ComputeAutoSize(ref context, ref width, ref height);
-            // FIXME
-            /*
-            var newW = Math.Max(w ?? -9999, Width.Minimum ?? -9999);
-            var newH = Math.Max(h ?? -9999, Height.Minimum ?? -9999);
-            Width.Minimum = (newW > -9999) ? newW : (float?)null;
-            Height.Minimum = (newH > -9999) ? newH : (float?)null;
-            */
         }
 
         protected float? ComputeScaleToFit (ref RectF box) {
@@ -387,37 +410,6 @@ namespace Squared.PRGUI.Controls {
 
             if (ShowLoadingSpinner)
                 context.DecorationProvider.LoadingSpinner?.Rasterize(ref context, ref renderer, ref settings);
-        }
-
-        void IPostLayoutListener.OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
-            if (IsLayoutInvalid || (_Image.Instance == null)) {
-                AreRecentRectsValid = false;
-                return;
-            }
-
-            var contentRect = GetRect(contentRect: true);
-            var parentContentRect = TryGetParent(out Control parent)
-                ? parent.GetRect(contentRect: true)
-                : context.UIContext.CanvasRect;
-
-            MostRecentContentRect = contentRect;
-            MostRecentParentContentRect = parentContentRect;
-            AreRecentRectsValid = false;
-
-            // FIXME
-            /*
-            if (newRect.Size != MostRecentRect.Size) {
-                if (ScaleToFitX && (newRect.Width != MostRecentRect.Width))
-                    MostRecentScaleToFit = null;
-                if (ScaleToFitY && (newRect.Height != MostRecentRect.Height))
-                    MostRecentScaleToFit = null;
-                MostRecentRectIsValid = false;
-                MostRecentRect = newRect;
-            }
-
-            if (!MostRecentRectIsValid)
-                relayoutRequested = true;
-            */
         }
     }
 }

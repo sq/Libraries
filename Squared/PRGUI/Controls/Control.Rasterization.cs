@@ -406,6 +406,7 @@ namespace Squared.PRGUI {
                     (box.Left > vext.X) ||
                     (box.Top > vext.Y);
 
+                // FIXME: Transform not applied in non-composited mode. But maybe that's good?
                 RasterizeDebugOverlays(ref context, ref passSet, box);
             }
 
