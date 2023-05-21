@@ -1068,13 +1068,14 @@ namespace Squared.Render.Convenience {
             string name = null, int? layer = null, ViewTransformModifier viewTransformModifier = null
         ) {
             result = this;
+            PrepareCopyForUse(ref result);
+
             var group = BatchGroup.New(
                 Container, layer ?? Layer, before: before, after: after, userData: userData,
                 materialSet: Materials, name: name
             );
             if (viewTransformModifier != null)
                 group.SetViewTransform(viewTransformModifier);
-            result.Cache.Count = 0;
             group.Dispose();
             result.Container = group;
             result.Layer = 0;
@@ -1093,8 +1094,16 @@ namespace Squared.Render.Convenience {
             ((BatchGroup)result.Container).SetViewTransform(in viewTransform);
         }
 
+        void PrepareCopyForUse (ref ImperativeRenderer copy) {
+            // Ensure that the Parameters list for the result gets its own storage
+            copy.Parameters = default;
+            Parameters.CopyTo(ref copy.Parameters);
+            copy.Cache.Count = 0;
+        }
+
         public ImperativeRenderer Clone (bool nextLayer = true) {
             var result = this;
+            PrepareCopyForUse(ref result);
 
             if (nextLayer)
                 Layer += 1;
@@ -1108,13 +1117,14 @@ namespace Squared.Render.Convenience {
             in ViewTransform? viewTransform = null
         ) {
             var result = this;
+            PrepareCopyForUse(ref result);
+
             var group = BatchGroup.ForRenderTarget(
                 newContainer ?? Container, layer ?? Layer, renderTarget, before, after, userData, name: name, 
                 materialSet: Materials, viewTransform: viewTransform
             );
             group.Dispose();
             result.Container = group;
-            result.Cache.Count = 0;
             // FIXME: is this ever correct?
             result.Layer = 0;
 
@@ -1129,13 +1139,14 @@ namespace Squared.Render.Convenience {
             in ViewTransform? viewTransform = null
         ) {
             var result = this;
+            PrepareCopyForUse(ref result);
+
             var group = BatchGroup.ForRenderTarget(
                 newContainer ?? Container, layer ?? Layer, renderTarget, before, after, userData, name: name, 
                 materialSet: Materials, viewTransform: viewTransform
             );
             group.Dispose();
             result.Container = group;
-            result.Cache.Count = 0;
             // FIXME: is this ever correct?
             result.Layer = 0;
 
