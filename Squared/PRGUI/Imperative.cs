@@ -767,8 +767,8 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> SetValue<TValue> (TValue value) {
-            var cast = (Control as IValueControl<TValue>);
-            cast.Value = value;
+            if (Control is IValueControl<TValue> ivc)
+                ivc.Value = value;
             return this;
         }
         public bool Value<TValue> (ref TValue value) {

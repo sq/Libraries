@@ -19,7 +19,10 @@ namespace Squared.PRGUI.NewEngine {
 
             Vector2 contentPosition = result.Rect.Position + new Vector2(control.Padding.Left, control.Padding.Top),
                 contentSpace = result.Rect.Size - control.Padding.Size,
-                contentExtent = result.Rect.Extent - control.Padding.BottomRight;
+                contentExtent = result.Rect.Extent - control.Padding.BottomRight,
+                // HACK: In the event that a box only contains stacked controls, ContentSize will be 0 (is this a bug?)
+                //  so we need to also ensure it's at least as big as the content rect
+                contentSizeExpanded = new Vector2(Math.Max(contentSpace.X, result.ContentSize.X), Math.Max(contentSpace.Y, result.ContentSize.Y));
 
             ControlKey firstProcessed = ControlKey.Invalid,
                 lastProcessed = ControlKey.Invalid;
@@ -75,7 +78,7 @@ namespace Squared.PRGUI.NewEngine {
                                 childResult.Rect.Position += alignment;
                             }
                         } else {
-                            var stackSpace = result.ContentSize - childOuterSize;
+                            var stackSpace = contentSizeExpanded - childOuterSize;
                             // If the control is stacked and aligned but did not fill the container (size constraints, etc)
                             //  then try to align it
                             stackSpace.X = Math.Max(stackSpace.X, 0f) * xChildAlign;

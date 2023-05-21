@@ -206,10 +206,13 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             var img = Image.Instance;
+            // In cases where we are nested inside a container, our available space may be 0.
+            // In that case, make do with our content rect.
+            var aspace = new Vector2(Math.Max(MostRecentContentRect.Width, MostRecentAvailableSpace.X), Math.Max(MostRecentContentRect.Height, MostRecentAvailableSpace.Y));
             float scale = ComputeDisplayScaleRatio(
                 img, 
-                (AutoSizeAxis == LayoutDimensions.X) ? width.Constrain(99999, true) : MostRecentAvailableSpace.X, 
-                (AutoSizeAxis == LayoutDimensions.Y) ? height.Constrain(99999, true) : MostRecentAvailableSpace.Y
+                (AutoSizeAxis == LayoutDimensions.X) ? width.Constrain(99999, true) : aspace.X, 
+                (AutoSizeAxis == LayoutDimensions.Y) ? height.Constrain(99999, true) : aspace.Y
             );
             if (AutoSizeAxis == LayoutDimensions.X)
                 width.Minimum = img.Width * scale;
