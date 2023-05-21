@@ -401,6 +401,9 @@ namespace Squared.PRGUI {
             }
         }
 
+        public bool IsTransformAnimating (long now) => (_TransformMatrix?.HasValue == true) &&
+            !_TransformMatrix.Matrix.IsConstant && !_TransformMatrix.Matrix.IsOver(now);
+
         public void ClearTransform (bool unsafeNoAllocation = false) {
             var tm = _TransformMatrix;
             if (
