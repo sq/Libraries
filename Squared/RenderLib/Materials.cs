@@ -528,15 +528,32 @@ namespace Squared.Render {
             }
         }
 
+        public bool AllocateNewStorageOnWrite;
+
         private bool IsCleared;
         private DenseList<Entry> Entries;
 
         public object GetListStorage () {
+            FlushCopyOnWrite();
             return Entries.GetStorage(true);
         }
 
         public void UseExistingListStorage (object storage) {
+            AllocateNewStorageOnWrite = false;
             Entries.UseExistingStorage((UnorderedList<Entry>)storage);
+        }
+
+        void FlushCopyOnWrite () {
+            if (!AllocateNewStorageOnWrite)
+                return;
+
+            AllocateNewStorageOnWrite = false;
+            if (!Entries.HasList)
+                return;
+
+            var oldEntries = Entries;
+            Entries = default;
+            oldEntries.CopyTo(ref Entries);
         }
         
         public int Count {
@@ -568,6 +585,7 @@ namespace Squared.Render {
             var index = Find(name);
             if (index < 0)
                 return;
+            FlushCopyOnWrite();
             Entries.RemoveAt(index);
         }
 
@@ -592,22 +610,27 @@ namespace Squared.Render {
         private void AutoClear () {
             if (!IsCleared)
                 return;
+            FlushCopyOnWrite();
             Entries.Clear();
             IsCleared = false;
         }
 
         public void ReplaceWith (ref MaterialParameterValues values) {
             IsCleared = false;
+            FlushCopyOnWrite();
             Entries.ReplaceWith(ref values.Entries);
         }
 
         private void Set (ref Entry entry) {
             AutoClear();
             var index = Find(entry.Name);
-            if (index < 0)
+            if (index < 0) {
+                FlushCopyOnWrite();
                 Entries.Add(entry);
-            else
+            } else if (!Entry.Equals(ref Entries.Item(index), ref entry)) {
+                FlushCopyOnWrite();
                 Entries[index] = entry;
+            }
         }
 
         private void Set (Entry entry) => Set(ref entry);

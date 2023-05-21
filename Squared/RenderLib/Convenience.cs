@@ -1068,7 +1068,7 @@ namespace Squared.Render.Convenience {
             string name = null, int? layer = null, ViewTransformModifier viewTransformModifier = null
         ) {
             result = this;
-            PrepareCopyForUse(ref result);
+            PrepareCopyForUse(ref result, true);
 
             var group = BatchGroup.New(
                 Container, layer ?? Layer, before: before, after: after, userData: userData,
@@ -1094,16 +1094,16 @@ namespace Squared.Render.Convenience {
             ((BatchGroup)result.Container).SetViewTransform(in viewTransform);
         }
 
-        void PrepareCopyForUse (ref ImperativeRenderer copy) {
-            // Ensure that the Parameters list for the result gets its own storage
-            copy.Parameters = default;
-            Parameters.CopyTo(ref copy.Parameters);
-            copy.Cache.Count = 0;
+        void PrepareCopyForUse (ref ImperativeRenderer copy, bool emptyCache) {
+            // Ensure that the Parameters list for the result gets its own storage if it is modified
+            copy.Parameters.AllocateNewStorageOnWrite = true;
+            if (emptyCache)
+                copy.Cache.Count = 0;
         }
 
         public ImperativeRenderer Clone (bool nextLayer = true) {
             var result = this;
-            PrepareCopyForUse(ref result);
+            PrepareCopyForUse(ref result, false);
 
             if (nextLayer)
                 Layer += 1;
@@ -1117,7 +1117,7 @@ namespace Squared.Render.Convenience {
             in ViewTransform? viewTransform = null
         ) {
             var result = this;
-            PrepareCopyForUse(ref result);
+            PrepareCopyForUse(ref result, true);
 
             var group = BatchGroup.ForRenderTarget(
                 newContainer ?? Container, layer ?? Layer, renderTarget, before, after, userData, name: name, 
@@ -1139,7 +1139,7 @@ namespace Squared.Render.Convenience {
             in ViewTransform? viewTransform = null
         ) {
             var result = this;
-            PrepareCopyForUse(ref result);
+            PrepareCopyForUse(ref result, true);
 
             var group = BatchGroup.ForRenderTarget(
                 newContainer ?? Container, layer ?? Layer, renderTarget, before, after, userData, name: name, 
