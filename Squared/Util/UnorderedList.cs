@@ -719,5 +719,23 @@ namespace Squared.Util {
             _Count = newCount;
             return new ArraySegment<T>(_Items, oldCount + _BufferOffset, count);
         }
+
+        public bool SequenceEqual (UnorderedList<T> rhs) => SequenceEqual(rhs, EqualityComparer<T>.Default);
+
+        public bool SequenceEqual<TEqualityComparer> (UnorderedList<T> rhs, TEqualityComparer comparer)
+            where TEqualityComparer : IEqualityComparer<T>
+        {
+            if (Count != rhs.Count)
+                return false;
+
+            for (int i = 0, c = Count; i < c; i++) {
+                ref var itemL = ref this.DangerousItem(i);
+                ref var itemR = ref rhs.DangerousItem(i);
+                if (!comparer.Equals(itemL, itemR))
+                    return false;
+            }
+
+            return true;
+        }
     }
 }
