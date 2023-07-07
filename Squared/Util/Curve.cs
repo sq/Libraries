@@ -425,7 +425,7 @@ namespace Squared.Util.Containers {
             return result;
         }
 
-        protected abstract bool GetValueAtPosition (float position, int firstIndex, int lastIndex, out TValue result);
+        protected abstract bool GetValueAtPosition (float position, int firstIndex, int lastIndex, out TValue result, Interpolator<TValue> interpolator = null);
 
         public void Clear () {
             _Items.Clear();
@@ -609,7 +609,7 @@ namespace Squared.Util.Containers {
             SetValueAtPositionInternal(position, value, new PointData { Interpolator = interpolator }, true);
         }
 
-        protected override bool GetValueAtPosition (float position, int firstIndex, int lastIndex, out T result) {
+        protected override bool GetValueAtPosition (float position, int firstIndex, int lastIndex, out T result, Interpolator<T> interpolator = null) {
             if (lastIndex < firstIndex) {
                 result = default;
                 return false;
@@ -628,11 +628,11 @@ namespace Squared.Util.Containers {
                 else if (offset > 1.0f)
                     offset = 1.0f;
 
-                var interpolator = lowerItem.Data.Interpolator ?? DefaultInterpolator;
+                interpolator = interpolator ?? lowerItem.Data.Interpolator ?? DefaultInterpolator;
                 result = interpolator(_InterpolatorSource, index, offset);
             } else {
                 if ((index == lastIndex) && (firstIndex != lastIndex) && (index > 0)) {
-                    var interpolator = lowerItem.Data.Interpolator ?? DefaultInterpolator;
+                    interpolator = interpolator ?? lowerItem.Data.Interpolator ?? DefaultInterpolator;
                     // HACK: Try to avoid harsh 'snapping' when arriving at the end if the interpolator has a
                     //  weird behavior where t=1 does not produce the end value. (Interpolators shouldn't do
                     //  this, but they can - pSRGBColor.LerpOkLCh for example)
@@ -685,7 +685,7 @@ namespace Squared.Util.Containers {
             _InterpolatorSource = GetHermiteInputForIndex;
         }
 
-        protected override bool GetValueAtPosition (float position, int firstIndex, int lastIndex, out T result) {
+        protected override bool GetValueAtPosition (float position, int firstIndex, int lastIndex, out T result, Interpolator<T> interpolator = null) {
             if (lastIndex < firstIndex) {
                 result = default;
                 return false;
@@ -703,7 +703,7 @@ namespace Squared.Util.Containers {
                 else if (offset > 1.0f)
                     offset = 1.0f;
 
-                result = _Interpolator(_InterpolatorSource, (index * 2), offset);
+                result = (interpolator ?? _Interpolator)(_InterpolatorSource, (index * 2), offset);
             } else {
                 result = lowerItem.Value;
             }
