@@ -123,7 +123,6 @@ namespace Squared.Render {
         private readonly Vector4 _Vector4;
         private readonly Color _Color;
 
-
         static pSRGBColor () {
             RegisterInterpolator("OkLab", LerpOkLab);
             RegisterInterpolator("OkLCh", LerpOkLCh);
@@ -262,10 +261,12 @@ namespace Squared.Render {
             return FromLinear(Arithmetic.Saturate(R), Arithmetic.Saturate(G), Arithmetic.Saturate(B), opacity);
         }
 
-        public void ToOkLab (out float L, out float a, out float b, out float opacity) =>
-            ToOkLab(ToLinear(), out L, out a, out b, out opacity);
+        public void ToOkLab (out float L, out float a, out float b, out float opacity) {
+            var l = ToLinear();
+            ToOkLab(ref l, out L, out a, out b, out opacity);
+        }
 
-        public static void ToOkLab (Vector4 linearColor, out float L, out float a, out float b, out float opacity) {
+        public static void ToOkLab (ref Vector4 linearColor, out float L, out float a, out float b, out float opacity) {
             double l = 0.4122214708 * linearColor.X + 0.5363325363 * linearColor.Y + 0.0514459929 * linearColor.Z;
 	        double m = 0.2119034982 * linearColor.X + 0.6806995451 * linearColor.Y + 0.1073969566 * linearColor.Z;
 	        double s = 0.0883024619 * linearColor.X + 0.2817188376 * linearColor.Y + 0.6299787005 * linearColor.Z;
@@ -285,8 +286,8 @@ namespace Squared.Render {
             return FromOkLab(L, a, b, opacity);
         }
 
-        public static void ToOkLCh (Vector4 linearColor, out float L, out float C, out float h, out float opacity) {
-            ToOkLab(linearColor, out L, out var a, out var b, out opacity);
+        public static void ToOkLCh (ref Vector4 linearColor, out float L, out float C, out float h, out float opacity) {
+            ToOkLab(ref linearColor, out L, out var a, out var b, out opacity);
             ColorSpace.OkLabToOkLCh(a, b, out var dC, out var dh);
             C = (float)dC;
             h = (float)dh;

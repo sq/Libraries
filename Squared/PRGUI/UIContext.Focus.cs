@@ -439,5 +439,71 @@ namespace Squared.PRGUI {
             return (control.Enabled || control.AcceptsFocusWhenDisabled)
                 && control.Visible && !Control.IsRecursivelyTransparent(control);
         }
+
+        internal bool TryMoveFocusDirectionally (int x, int y, bool isUserInitiated = true, Control relativeTo = null) {
+            relativeTo = relativeTo ?? Focused;
+
+            var focusRect = relativeTo.GetRect(displayRect: true, context: this);
+            (Control control, float distance) result = (null, 999999f);
+
+            var context = FindTopLevelAncestor(relativeTo);
+            Scan(context, ref result);
+            
+            void Scan (Control control, ref (Control control, float distance) closest) {
+                if ((control is IControlContainer container) && IsValidContainerToSearchForFocusableControls(control)) {
+                    foreach (var candidate in container.Children) {
+                        if (candidate == relativeTo)
+                            continue;
+
+                        Scan(candidate, ref closest);
+
+                        if (!candidate.IsValidFocusTarget || !candidate.AcceptsFocus)
+                            continue;
+
+                        var currentRect = candidate.GetRect(displayRect: true, context: this);
+                        var displacement = new Vector2(
+                            currentRect.Left > focusRect.Right
+                                ? currentRect.Left - focusRect.Right
+                                : (currentRect.Right < focusRect.Left
+                                    ? -(focusRect.Left - currentRect.Right)
+                                    : 0),
+                            currentRect.Top > focusRect.Bottom
+                                ? currentRect.Top - focusRect.Bottom
+                                : (currentRect.Bottom < focusRect.Top
+                                    ? -(focusRect.Top - currentRect.Bottom)
+                                    : 0)
+                        );
+
+                        // HACK: If controls are exactly neighbors, fake a small distance
+                        if (currentRect.Left == focusRect.Right)
+                            displacement.X = 0.1f;
+                        else if (focusRect.Left == currentRect.Right)
+                            displacement.X = -0.1f;
+                        if (currentRect.Top == focusRect.Bottom)
+                            displacement.Y = 0.1f;
+                        else if (focusRect.Top == currentRect.Bottom)
+                            displacement.Y = -0.1f;
+
+                        if ((x != 0) && Math.Sign(displacement.X) != x)
+                            continue;
+                        if ((y != 0) && Math.Sign(displacement.Y) != y)
+                            continue;
+                        (Control control, float distance) current = (candidate, ((currentRect.Center - focusRect.Center) * new Vector2(Math.Sign(x), Math.Sign(y))).Length());
+                        if (current.distance < closest.distance)
+                            closest = current;
+                    }
+                }
+            }
+
+            if (result.control != null) {
+                if (TrySetFocus(result.control, isUserInitiated: isUserInitiated)) {
+                    // HACK: Fixes tooltips from previous controls getting stuck during keyboard navigation
+                    SetKeyboardSelection(result.control, isUserInitiated);
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }

@@ -43,6 +43,8 @@ namespace Squared.PRGUI {
         public ControlCollection Controls { get; private set; }
 
         internal void ClearKeyboardSelection () {
+            if (_PreferredTooltipSource == _KeyboardSelection)
+                _PreferredTooltipSource = null;
             SuppressAutoscrollDueToInputScroll = false;
             _KeyboardSelection = null;
             MousePositionWhenKeyboardSelectionWasLastUpdated = LastMousePosition;
@@ -337,6 +339,8 @@ namespace Squared.PRGUI {
             ctl.DisplayOrder = Controls.PickNewHighestDisplayOrder(ctl, topmost);
             if (!Controls.Contains(ctl))
                 Controls.Add(ctl);
+            // Clearing the keyboard selection is necessary for arrow navigation to work right once a modal is opened
+            ClearKeyboardSelection();
             NotifyModalShown(modal);
         }
 

@@ -40,7 +40,7 @@ namespace Squared.PRGUI.Controls {
         protected Control _FocusDonor;
         public Control FocusDonor => _FocusDonor;
 
-        public bool CloseOnEnter = false, CloseOnEscape = true;
+        public bool CloseOnEnter = false, CloseOnEscape = true, ArrowKeyNavigation = true;
 
         private bool IsAcceptHandlerRegistered, IsCancelHandlerRegistered, ShowNextUpdate;
         private Control _AcceptControl, _CancelControl;
@@ -357,6 +357,22 @@ namespace Squared.PRGUI.Controls {
         }
 
         bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) {
+            if (!ArrowKeyNavigation)
+                return false;
+
+            if (name != UIEvents.KeyPress)
+                return false;
+
+            switch (args.Key) {
+                case Keys.Left:
+                case Keys.Right:
+                case Keys.Up:
+                case Keys.Down:
+                    int x = (args.Key == Keys.Left) ? -1 : ((args.Key == Keys.Right) ? 1 : 0),
+                        y = (args.Key == Keys.Up) ? -1 : ((args.Key == Keys.Down) ? 1 : 0);
+                    return Context.TryMoveFocusDirectionally(x, y);
+            }
+
             return false;
         }
 
