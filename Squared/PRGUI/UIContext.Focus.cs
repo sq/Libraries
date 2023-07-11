@@ -461,6 +461,8 @@ namespace Squared.PRGUI {
                             continue;
 
                         var currentRect = candidate.GetRect(displayRect: true, context: this);
+                        var displacement = currentRect.Center - focusRect.Center;
+                        /*
                         var displacement = new Vector2(
                             currentRect.Left > focusRect.Right
                                 ? currentRect.Left - focusRect.Right
@@ -483,12 +485,16 @@ namespace Squared.PRGUI {
                             displacement.Y = 0.1f;
                         else if (focusRect.Top == currentRect.Bottom)
                             displacement.Y = -0.1f;
+                        */
 
                         if ((x != 0) && Math.Sign(displacement.X) != x)
                             continue;
                         if ((y != 0) && Math.Sign(displacement.Y) != y)
                             continue;
-                        (Control control, float distance) current = (candidate, ((currentRect.Center - focusRect.Center) * new Vector2(Math.Sign(x), Math.Sign(y))).Length());
+                        // We want to prefer controls that are close to aligned with the current one on the desired axis.
+                        // We do this by amplifying the distance on the other axis
+                        float modifiedDistance = (displacement * new Vector2(x != 0 ? 1 : 2, y != 0 ? 1 : 2)).Length();
+                        (Control control, float distance) current = (candidate, modifiedDistance);
                         if (current.distance < closest.distance)
                             closest = current;
                     }
