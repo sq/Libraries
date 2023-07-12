@@ -36,7 +36,7 @@ namespace Squared.Util.Event {
                 if (StrongSource != null)
                     return StrongSource;
                 else
-                    return WeakSource.Target;
+                    return WeakSource?.Target;
             }
         }
 

@@ -42,7 +42,8 @@ namespace Squared.PRGUI.Controls {
 
         public bool CloseOnEnter = false, CloseOnEscape = true, ArrowKeyNavigation = true;
 
-        private bool IsAcceptHandlerRegistered, IsCancelHandlerRegistered, ShowNextUpdate;
+        private bool ShowNextUpdate;
+        private EventSubscription AcceptHandlerRegistered, CancelHandlerRegistered;
         private Control _AcceptControl, _CancelControl;
 
         bool IModal.CanClose (ModalCloseReason reason) => true;
@@ -54,8 +55,10 @@ namespace Squared.PRGUI.Controls {
             set {
                 if (_AcceptControl == value)
                     return;
+                if (_AcceptControl != null)
+                    AcceptHandlerRegistered.Dispose();
                 _AcceptControl = value;
-                RegisterHandler(_AcceptControl, OnAcceptClick, ref IsAcceptHandlerRegistered);
+                RegisterHandler(_AcceptControl, OnAcceptClick, ref AcceptHandlerRegistered);
             }
         }
 
@@ -64,8 +67,10 @@ namespace Squared.PRGUI.Controls {
             set {
                 if (_CancelControl == value)
                     return;
+                if (_CancelControl != null)
+                    CancelHandlerRegistered.Dispose();
                 _CancelControl = value;
-                RegisterHandler(_CancelControl, OnCancelClick, ref IsCancelHandlerRegistered);
+                RegisterHandler(_CancelControl, OnCancelClick, ref CancelHandlerRegistered);
             }
         }
 
@@ -164,14 +169,13 @@ namespace Squared.PRGUI.Controls {
             // Appearance.Opacity = 0f;
         }
 
-        private void RegisterHandler (Control target, EventSubscriber handler, ref bool isRegistered) {
+        private void RegisterHandler (Control target, EventSubscriber handler, ref EventSubscription subscription) {
             if (Context == null)
                 return;
             if (target == null)
                 return;
 
-            Context.EventBus.Subscribe(target, UIEvents.Click, handler);
-            isRegistered = true;
+            subscription = Context.EventBus.Subscribe(target, UIEvents.Click, handler);
         }
 
         protected virtual void OnAcceptClick (IEventInfo e) {
@@ -239,10 +243,10 @@ namespace Squared.PRGUI.Controls {
             IsActive = true;
             context.ShowModal(this, false);
             // HACK: Ensure event handlers are registered if they weren't already
-            if (!IsAcceptHandlerRegistered)
-                RegisterHandler(AcceptControl, OnAcceptClick, ref IsAcceptHandlerRegistered);
-            if (!IsCancelHandlerRegistered)
-                RegisterHandler(CancelControl, OnCancelClick, ref IsCancelHandlerRegistered);
+            if (AcceptHandlerRegistered.EventFilter.Source != AcceptControl)
+                RegisterHandler(AcceptControl, OnAcceptClick, ref AcceptHandlerRegistered);
+            if (CancelHandlerRegistered.EventFilter.Source != CancelControl)
+                RegisterHandler(CancelControl, OnCancelClick, ref CancelHandlerRegistered);
             Elevate();
             if (Shown != null)
                 Shown(this);
