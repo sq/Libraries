@@ -345,6 +345,8 @@ namespace Squared.PRGUI.Input {
     }
 
     public sealed class GamepadVirtualKeyboardAndCursor : IInputSource {
+        public const float DpadNavigationSpeedMultiplier = 0.66f;
+
         public struct InputBindings {
             public static readonly InputBindings Default = new InputBindings {
                 FocusBack = new [] { Buttons.LeftShoulder },
@@ -400,7 +402,7 @@ namespace Squared.PRGUI.Input {
         bool GenerateKeyPressForActivation = false;
 
         Keys LastKeyEvent;
-        double LastKeyEventFirstTime, LastKeyEventTime;
+        double LastKeyEventFirstTime, LastKeyEventTime, LastDpadEventFirstTime, LastDpadEventTime;
 
         private FuzzyHitTest FuzzyHitTest;
 
@@ -482,6 +484,9 @@ namespace Squared.PRGUI.Input {
             return hovering.IsValidMouseInputTarget || (hovering.FocusBeneficiary != null) || !hovering.HasParent;
         }
 
+        private bool IsHeld (ref GamePadState state, Buttons button) =>
+            state.IsButtonDown(button);
+
         private bool IsHeld (ref GamePadState state, Buttons[] buttons) {
             foreach (var button in buttons)
                 if (state.IsButtonDown(button))
@@ -490,9 +495,11 @@ namespace Squared.PRGUI.Input {
             return false;
         }
 
-        private bool IsHeld (Buttons[] buttons) {
-            return IsHeld(ref CurrentState, buttons);
-        }
+        private bool IsHeld (Buttons button) =>
+            IsHeld(ref CurrentState, button);
+
+        private bool IsHeld (Buttons[] buttons) =>
+            IsHeld(ref CurrentState, buttons);
 
         public void Update (ref InputState previous, ref InputState current) {
             PreviousState = CurrentState;
@@ -595,19 +602,17 @@ namespace Squared.PRGUI.Input {
 
                 DispatchKeyEventsForButton(ref current, Keys.Enter, mods, Bindings.Enter);
                 DispatchKeyEventsForButton(ref current, Keys.Escape, mods, Bindings.Escape);
-                var wasUpPressed = DispatchKeyEventsForButton(ref current, Keys.Up, mods, Bindings.UpArrow);
-                var wasDownPressed = DispatchKeyEventsForButton(ref current, Keys.Down, mods, Bindings.DownArrow);
-                var wasArrowPressed = (wasUpPressed || wasDownPressed);
-                wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Left, mods, Bindings.LeftArrow);
-                wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Right, mods, Bindings.RightArrow);
+                bool wasUpPressed = DispatchKeyEventsForButton(ref current, Keys.Up, mods, Bindings.UpArrow),
+                    wasDownPressed = DispatchKeyEventsForButton(ref current, Keys.Down, mods, Bindings.DownArrow),
+                    wasLeftPressed = DispatchKeyEventsForButton(ref current, Keys.Left, mods, Bindings.LeftArrow),
+                    wasRightPressed = DispatchKeyEventsForButton(ref current, Keys.Right, mods, Bindings.RightArrow);
+                var wasArrowPressed = (wasUpPressed || wasDownPressed || wasLeftPressed || wasRightPressed);
                 var focusChanged = DispatchKeyEventsForButton(ref current, Keys.Tab, shift, Bindings.FocusBack);
                 focusChanged |= DispatchKeyEventsForButton(ref current, Keys.Tab, mods, Bindings.FocusForward);
                 // FIXME: Do this arrow fallback with a priority/consume model, make sure to handle weird transitions
                 //  like 'Foo handled the keydown but didn't handle the keyup'
-                if (!wasUpPressed && EnableDpadFocusNavigation)
-                    focusChanged |= DispatchKeyEventsForButton(ref current, Keys.Tab, shift, Bindings.UpArrow);
-                if (!wasDownPressed && EnableDpadFocusNavigation)
-                    focusChanged |= DispatchKeyEventsForButton(ref current, Keys.Tab, mods, Bindings.DownArrow);
+                if (!wasArrowPressed && EnableDpadFocusNavigation)
+                    focusChanged |= PerformDpadFocusNavigation(ref current, mods);
                 DispatchKeyEventsForButton(ref current, Keys.Apps, mods, Bindings.Menu);
 
                 if (focusChanged || wasArrowPressed) {
@@ -686,6 +691,47 @@ namespace Squared.PRGUI.Input {
             }
 
             PreviousUpdateTime = now;
+        }
+
+        private bool PerformDpadFocusNavigation (ref InputState current, KeyboardModifiers mods) {
+            int x = 0, y = 0;
+            if (ShouldDpadNavigateInDirection(Buttons.DPadLeft, Keys.Left, out var leftHeld))
+                x -= 1;
+            if (ShouldDpadNavigateInDirection(Buttons.DPadRight, Keys.Right, out var rightHeld))
+                x += 1;
+            if (ShouldDpadNavigateInDirection(Buttons.DPadUp, Keys.Up, out var upHeld))
+                y -= 1;
+            if (ShouldDpadNavigateInDirection(Buttons.DPadDown, Keys.Down, out var downHeld))
+                y += 1;
+
+            if ((x != 0) || (y != 0))
+                return Context.TryMoveFocusDirectionally(x, y, true);
+
+            if (!leftHeld && !upHeld && !rightHeld && !downHeld) {
+                // Reset repeat acceleration if none of the arrows are held.
+                // It's possible this wouldn't happen otherwise, since PerformDpadFocusNavigation isn't called every frame.
+                LastDpadEventFirstTime = Context.Now;
+            }
+
+            return false;
+        }
+
+        private bool ShouldDpadNavigateInDirection (Buttons button, Keys virtualKey, out bool isHeld) {
+            var wasHeld = IsHeld(ref PreviousState, button);
+            isHeld = IsHeld(ref CurrentState, button);
+
+            if (wasHeld == isHeld) {
+                if (
+                    isHeld &&
+                    Context.UpdateRepeat(Context.Now, LastDpadEventFirstTime, ref LastDpadEventTime, DpadNavigationSpeedMultiplier)
+                ) {
+                    LastDpadEventTime = Context.Now;
+                    return true;
+                } else
+                    return false;
+            }
+
+            return wasHeld && !isHeld;
         }
 
         private bool DispatchKeyEventsForButton (ref InputState state, Keys key, Buttons[] buttons) {

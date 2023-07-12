@@ -492,7 +492,7 @@ namespace Squared.PRGUI {
                         if ((y != 0) && Math.Sign(displacement.Y) != y)
                             continue;
                         // We want to prefer controls that are close to aligned with the current one on the desired axis.
-                        // We do this by amplifying the distance on the other axis
+                        // We do this by amplifying the distance on the other axis  
                         float modifiedDistance = (displacement * new Vector2(x != 0 ? 1 : 2, y != 0 ? 1 : 2)).Length();
                         (Control control, float distance) current = (candidate, modifiedDistance);
                         if (current.distance < closest.distance)
