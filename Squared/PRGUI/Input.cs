@@ -377,7 +377,7 @@ namespace Squared.PRGUI.Input {
         public float FuzzyHitTestDistance = 24f;
         public float SlowPxPerSecond = 64f,
             FastPxPerSecond = 1280f;
-        public float AccelerationExponent = 2.75f,
+        public float AccelerationExponent = 2.4f,
             Deadzone = 0.1f;
         public float? FixedTimeStep = null;
 
@@ -548,6 +548,7 @@ namespace Squared.PRGUI.Input {
                 SnapToControl = null;
             }
 
+            var oldFocusedControl = Context.Focused;
             var focusedModal = Context.Focused as IModal;
             var effectiveSnapTarget = SnapToControl;
 
@@ -619,7 +620,7 @@ namespace Squared.PRGUI.Input {
                     var newSelectedControl = (Context.FixatedControl as ISelectionBearer)?.SelectedControl;
                     var newSelectionRect = (Context.FixatedControl as ISelectionBearer)?.SelectionRect;
                     if (
-                        focusChanged || 
+                        (focusChanged || (oldFocusedControl != Context.Focused)) || 
                         (newSelectedControl != currentSelectedControl) ||
                         (newSelectionRect != currentSelectionRect)
                     )
@@ -704,8 +705,13 @@ namespace Squared.PRGUI.Input {
             if (ShouldDpadNavigateInDirection(Buttons.DPadDown, Keys.Down, out var downHeld))
                 y += 1;
 
-            if ((x != 0) || (y != 0))
-                return Context.TryMoveFocusDirectionally(x, y, true);
+            if ((x != 0) || (y != 0)) {
+                var stc = SnapToControl;
+                SnapToControl = null;
+                if (Context.TryMoveFocusDirectionally(x, y, true))
+                    return true;
+                SnapToControl = stc;
+            }
 
             if (!leftHeld && !upHeld && !rightHeld && !downHeld) {
                 // Reset repeat acceleration if none of the arrows are held.
