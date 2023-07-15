@@ -45,7 +45,7 @@ sampler NoiseSampler : register(s1) {
 uniform const bool BlendInLinearSpace, OutputInLinearSpace, UsesNoise;
 uniform const float HalfPixelOffset;
 
-// Count x, count y, base size for lod calculation, unused
+// Count x, count y, base size for lod calculation, angle from degrees ? 1 : 0
 uniform const float4 NozzleParams;
 
 #if Shadowed

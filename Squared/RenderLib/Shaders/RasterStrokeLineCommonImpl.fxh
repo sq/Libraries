@@ -31,7 +31,9 @@ float IMPL_NAME (
         stepT = 1.0 / splatCount, globalStepT = 1.0 / globalSplatCount,
         angleRadians = atan2(ba.y, ba.x),
         // FIXME: 360deg -> 1.0
-        angleFactor = angleRadians;
+        angleFactor = angleRadians,
+        // For AngleFromDirection
+        angleBias = NozzleParams.w * atan2(ba.y, -ba.x);
 
     float2 closestPoint = GET_CLOSEST_POINT(worldPosition, centerT);
     if (EARLY_REJECT)
@@ -73,7 +75,7 @@ float IMPL_NAME (
 
         // biases are: (Size, Flow, Hardness, Color)
         float splatAngleFactor = evaluateDynamics(Constants1.y, AngleDynamics, float4(taper, globalI, noise1.y, angleFactor), 1),
-            splatAngle = splatAngleFactor * PI * 2,
+            splatAngle = (splatAngleFactor * PI * 2) + angleBias,
             flow = evaluateDynamics(Constants1.z + biases.y, FlowDynamics, float4(taper, globalI, noise1.z, angleFactor), 2),
             brushIndex = evaluateDynamics2(abs(Constants1.w), brushCount, BrushIndexDynamics, float4(taper, globalI, noise1.w, angleFactor), true, brushCount),
             hardness = evaluateDynamics(Constants2.x + biases.z, HardnessDynamics, float4(taper, globalI, noise2.x, angleFactor), 1.0),

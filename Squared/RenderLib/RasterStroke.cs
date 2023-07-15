@@ -220,6 +220,7 @@ namespace Squared.Render.RasterStroke {
         }
         public pSRGBColor ShadowColor;
 
+        public bool AngleFromDirection;
         public BrushDynamics AngleDegrees;
         public float SizePx;
 
@@ -306,7 +307,8 @@ namespace Squared.Render.RasterStroke {
                 (Hardness == rhs.Hardness) &&
                 (Color == rhs.Color) &&
                 (_ShadowSettings == rhs._ShadowSettings) &&
-                (ShadowColor == rhs.ShadowColor);
+                (ShadowColor == rhs.ShadowColor) &&
+                (AngleFromDirection == rhs.AngleFromDirection);
         }
     }
     
@@ -639,7 +641,7 @@ namespace Squared.Render.RasterStroke {
                 constants2 = new Vector4(
                     Brush.Hardness.UploadConstant, Brush.Color.UploadConstant, Brush.Spacing, Brush.SizePx
                 ),
-                nozzleParams = new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleBaseSize, 0);
+                nozzleParams = new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleBaseSize, Brush.AngleFromDirection ? 1 : 0);
             angle.Y /= 360f;
 
             for (int i = 0; i < _SubBatches.Count; i++) {

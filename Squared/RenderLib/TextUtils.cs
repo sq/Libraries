@@ -1367,6 +1367,9 @@ namespace Squared.Render.Text {
                 ? Atlas[glyph.Index.Value]
                 : Atlas[glyph.X, glyph.Y];
 
+            var unbiasedScale = scale;
+            scale *= glyph.Scale;
+
             result = new Glyph {
                 Texture = Atlas.Texture,
                 BoundsInTexture = cell.Bounds,
@@ -1377,7 +1380,8 @@ namespace Squared.Render.Text {
                 LeftSideBearing = glyph.LeftMargin * scale,
                 RightSideBearing = (glyph.RightMargin + CharacterSpacing) * scale,
                 LineSpacing = lineSpacing ?? (LineSpacing * scale),
-                Baseline = (Baseline ?? Atlas.CellHeight) * scale,
+                // HACK: Use unbiasedScale here because glyph.Scale is used to make the glyph bigger, we don't want to mess up the current baseline
+                Baseline = (Baseline ?? Atlas.CellHeight) * unbiasedScale,
                 RenderScale = scale
             };
             return true;
@@ -1423,6 +1427,11 @@ namespace Squared.Render.Text {
         public int X, Y;
         public string Name;
         public float XOffset, YOffset, RightMargin, LeftMargin;
+        public float Scale {
+            get => ScaleMinusOne + 1f;
+            set => ScaleMinusOne = value - 1f;
+        }
+        private float ScaleMinusOne;
 
         public AtlasGlyph (uint character, int index, string name = null) : this() {
             Character = character;
