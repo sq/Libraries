@@ -10,6 +10,7 @@ using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
+using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
@@ -136,7 +137,7 @@ namespace Squared.PRGUI.Controls {
                 material = Material;
             else
                 material = null;
-            blendState = BlendState ?? Context.PickDefaultBlendState(Image.Instance);
+            blendState = BlendState ?? Context.PickDefaultBlendState(Image.Instance ?? Image2.Instance);
         }
 
         protected override bool NeedsComposition (bool hasOpacity, bool hasTransform) {
@@ -178,7 +179,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         void IPostLayoutListener.OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
-            if (IsLayoutInvalid || (_Image.Instance == null)) {
+            if (IsLayoutInvalid || ((_Image.Instance ?? _Image2.Instance) == null)) {
                 AreRecentRectsValid = false;
                 return;
             }
@@ -205,7 +206,7 @@ namespace Squared.PRGUI.Controls {
             if (!AreRecentRectsValid)
                 return;
 
-            var img = Image.Instance;
+            var img = Image.Instance ?? Image2.Instance;
             // In cases where we are nested inside a container, our available space may be 0.
             // In that case, make do with our content rect.
             var aspace = new Vector2(Math.Max(MostRecentContentRect.Width, MostRecentAvailableSpace.X), Math.Max(MostRecentContentRect.Height, MostRecentAvailableSpace.Y));
@@ -342,13 +343,22 @@ namespace Squared.PRGUI.Controls {
             base.OnRasterize(ref context, ref renderer, settings, decorations);
 
             if (context.Pass == Pass) {
-                if (Image.IsDisposedOrNull)
+                if (Image.IsDisposedOrNull && Image2.IsDisposedOrNull)
                     return;
 
                 var instance = Image.Instance;
                 var instance2 = Image2.Instance;
+                float opacity1 = !settings.IsCompositing ? context.Opacity : 1.0f,
+                    opacity2 = Image2Opacity.Get(now: context.NowL);
 
-                var scale = ComputeDisplayScaleRatio(instance, settings.ContentBox.Width, settings.ContentBox.Height);
+                if (instance == null) {
+                    instance = instance2;
+                    instance2 = null;
+                    opacity1 = opacity2;
+                    opacity2 = 0.0f;
+                }
+
+                var scale = ComputeDisplayScaleRatio(instance ?? instance2, settings.ContentBox.Width, settings.ContentBox.Height);
                 var position = new Vector2(
                     Arithmetic.Lerp(settings.Box.Left, settings.Box.Extent.X, Alignment.X),
                     Arithmetic.Lerp(settings.Box.Top, settings.Box.Extent.Y, Alignment.Y)
@@ -360,7 +370,7 @@ namespace Squared.PRGUI.Controls {
                     addColor4 = AddColor.Get(context.NowL) ?? Vector4.Zero;
                 // FIXME: Always use context.Opacity?
                 if (!settings.IsCompositing)
-                    color4 *= context.Opacity;
+                    color4 *= opacity1;
                 pSRGBColor pColor = pSRGBColor.FromPLinear(color4),
                     pAddColor = pSRGBColor.FromPLinear(addColor4);
                 var rect = new Rectangle(-DrawExpansion, -DrawExpansion, instance.Width + (DrawExpansion * 2), instance.Height + (DrawExpansion * 2));
@@ -382,7 +392,6 @@ namespace Squared.PRGUI.Controls {
                 if ((instance2 != null) && (instance2 != instance)) {
                     drawCall.Texture2 = instance2;
                     if ((Image2Mode != StaticImageCompositeMode.CustomMaterial) && (Material == null)) {
-                        var opacity2 = Image2Opacity.Get(now: context.NowL);
                         var scale2 = ComputeDisplayScaleRatio(instance2, settings.ContentBox.Width, settings.ContentBox.Height);
                         drawCall.UserData = new Vector4(opacity2);
                         drawCall.AlignTexture2(scale2 / scale, preserveAspectRatio: true);
@@ -413,6 +422,17 @@ namespace Squared.PRGUI.Controls {
 
             if (ShowLoadingSpinner)
                 context.DecorationProvider.LoadingSpinner?.Rasterize(ref context, ref renderer, ref settings);
+        }
+
+        public void CrossfadeTo (Texture2D newImage, float duration) {
+            Image2 = Image;
+            Image = newImage;
+            if (Image2.IsDisposedOrNull && !Image.IsDisposedOrNull) {
+                MultiplyColor = Tween<Color>.StartNow(Color.Transparent, Color.White, duration, now: Context.NowL);
+            } else {
+                Image2Mode = StaticImageCompositeMode.Crossfade;
+                Image2Opacity = Tween.StartNow(1f, 0f, duration, now: Context.NowL);
+            }
         }
     }
 }

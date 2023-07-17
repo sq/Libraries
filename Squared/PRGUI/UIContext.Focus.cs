@@ -440,7 +440,7 @@ namespace Squared.PRGUI {
                 && control.Visible && !Control.IsRecursivelyTransparent(control);
         }
 
-        internal bool TryMoveFocusDirectionally (int x, int y, bool isUserInitiated = true, Control relativeTo = null) {
+        public bool TryMoveFocusDirectionally (int x, int y, bool isUserInitiated = true, Control relativeTo = null) {
             relativeTo = relativeTo ?? Focused;
 
             var focusRect = relativeTo.GetRect(displayRect: true, context: this);
