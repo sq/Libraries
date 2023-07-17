@@ -373,6 +373,23 @@ namespace Squared.PRGUI.Controls {
                     color4 *= opacity1;
                 pSRGBColor pColor = pSRGBColor.FromPLinear(color4),
                     pAddColor = pSRGBColor.FromPLinear(addColor4);
+
+                // HACK
+                var p = renderer.Parameters;
+                var defaultBlendState = Context.PickDefaultBlendState(instance);
+                var blendState = BlendState ?? (
+                    (instance2 != null) 
+                        ? RenderStates.PorterDuffOver // The composited shaders always premultiply their inputs if necessary
+                        : defaultBlendState
+                );
+                renderer.Parameters.AddRange(ref MaterialParameters);
+                // If the inputs are not premultiplied we should have the compositing shaders premultiply them
+                if ((defaultBlendState == BlendState.NonPremultiplied) || (defaultBlendState == RenderStates.PorterDuffNonPremultipliedOver))
+                    renderer.Parameters.Add("AutoPremultiplyBlockTextures", true);
+                var isPostPremultiplied = (blendState == BlendState.NonPremultiplied) || (blendState == RenderStates.PorterDuffNonPremultipliedOver);
+                if (isPostPremultiplied)
+                    pColor = pColor.Unpremultiply();
+
                 var rect = new Rectangle(-DrawExpansion, -DrawExpansion, instance.Width + (DrawExpansion * 2), instance.Height + (DrawExpansion * 2));
                 if (DrawExpansion != 0) {
                     Vector2 expansionAlignment = (DrawExpansion * scale) * (new Vector2(0.5f) - Alignment) * 2f;
@@ -400,22 +417,10 @@ namespace Squared.PRGUI.Controls {
                         drawCall.TextureRegion2 = drawCall.TextureRegion;
                     }
                 }
-
-                // HACK
-                var p = renderer.Parameters;
-                var defaultBlendState = Context.PickDefaultBlendState(drawCall.Texture1.Instance);
-                var blendState = BlendState ?? (
-                    (instance2 != null) 
-                        ? RenderStates.PorterDuffOver // The composited shaders always premultiply their inputs if necessary
-                        : defaultBlendState
-                );
                 // We have the compositor apply our blend state instead
                 if (settings.IsCompositing && ((Material ?? material) == null))
                     blendState = BlendState.Opaque;
-                renderer.Parameters.AddRange(ref MaterialParameters);
-                // If the inputs are not premultiplied we should have the compositing shaders premultiply them
-                if (defaultBlendState == BlendState.NonPremultiplied)
-                    renderer.Parameters.Add("AutoPremultiplyBlockTextures", true);
+
                 renderer.Draw(ref drawCall, material: Material ?? material, blendState: blendState);
                 renderer.Parameters = p;
             }
@@ -425,13 +430,22 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void CrossfadeTo (Texture2D newImage, float duration) {
+            if (newImage == Image.Instance)
+                return;
+
+            // Attempt to figure out what the opacity of the image previously was
+            var oldOpacity = (Image.IsDisposedOrNull 
+                ? Image2Opacity.Get(Context.NowL) 
+                : MultiplyColor.Get(Context.NowL)?.W ?? 1f
+            );
             Image2 = Image;
             Image = newImage;
             if (Image2.IsDisposedOrNull && !Image.IsDisposedOrNull) {
-                MultiplyColor = Tween<Color>.StartNow(Color.Transparent, Color.White, duration, now: Context.NowL);
+                // ChangeDirection is inappropriate here since the image was likely previously invisible
+                MultiplyColor = Tween<Color>.StartNow(Color.White * oldOpacity, Color.White, duration, now: Context.NowL);
             } else {
                 Image2Mode = StaticImageCompositeMode.Crossfade;
-                Image2Opacity = Tween.StartNow(1f, 0f, duration, now: Context.NowL);
+                Image2Opacity = Tween.StartNow(oldOpacity, 0f, duration, now: Context.NowL);
             }
         }
     }

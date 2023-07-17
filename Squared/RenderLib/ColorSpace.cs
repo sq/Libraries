@@ -358,6 +358,14 @@ namespace Squared.Render {
             return new pSRGBColor(result, isPremultiplied: true);
         }
 
+        public pSRGBColor Unpremultiply () {
+            var v4 = ToVector4();
+            var a = v4.W;
+            v4 /= v4.W;
+            v4.W = a;
+            return new pSRGBColor(v4, true);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public pSRGBColor (in Vector4 v4, bool isPremultiplied = true) {
             IsVector4 = true;
