@@ -694,7 +694,8 @@ namespace Squared.Render.Text {
             float scale = 1, float verticalAlignment = 1,
             Color? multiplyColor = null, bool doNotAdjustLineSpacing = false,
             bool createBox = false, float? hardXAlignment = null, float? hardYAlignment = null,
-            float? overrideWidth = null, float? overrideHeight = null, float? maxWidthPercent = null
+            float? overrideWidth = null, float? overrideHeight = null, float? maxWidthPercent = null,
+            bool clear = false
         ) {
             float x = characterOffset.X, y = characterOffset.Y;
 
@@ -738,6 +739,7 @@ namespace Squared.Render.Text {
             var lineSpacing = (float)Math.Ceiling(estimatedBounds.Size.Y + additionalLineSpacing + ((margin?.Y ?? 0) * 0.5f));
             if (!doNotAdjustLineSpacing)
                 ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
+
             float y1 = y,
                 y2 = y + currentBaseline - estimatedBounds.Size.Y - (margin?.Y * 0.5f ?? 0);
             float? overrideX = null, overrideY = null;
@@ -745,6 +747,23 @@ namespace Squared.Render.Text {
                 overrideX = Arithmetic.Lerp(0, (lineBreakAtX ?? 0f) - estimatedBounds.Size.X, hardXAlignment.Value);
             if (hardYAlignment.HasValue)
                 overrideY = Arithmetic.Lerp(0, (stopAtY ?? 0f) - estimatedBounds.Size.Y, hardYAlignment.Value);
+
+            if (clear) {
+                var testBox = estimatedBounds.Translate(new Vector2(overrideX ?? x, y1));
+                for (int i = 0, c = boxes.Count; i < c; i++) {
+                    ref var box = ref boxes.Item(i);
+                    if (!box.Intersects(testBox))
+                        continue;
+                    var adjustment = Math.Max(0, box.BottomRight.Y - y1);
+                    characterOffset.Y += adjustment;
+                    // FIXME: Unconstrained?
+                    y1 += adjustment;
+                    y2 += adjustment;
+                    testBox.TopLeft.Y += adjustment;
+                    testBox.BottomRight.Y += adjustment;
+                }
+            }
+
             if (createBox)
                 y2 = Math.Max(y1, y2);
 
@@ -1241,6 +1260,11 @@ namespace Squared.Render.Text {
                 if (b.BottomRight.X <= (rightEdge - 2f))
                     continue;
                 if (!Bounds.Intersect(row, b))
+                    continue;
+                // HACK: Don't force wrap for boxes that extend all the way to the left, since they are probably full-width images
+                //  from a previous line.
+                // FIXME: We should just force entire lines down so this never happens
+                if (b.TopLeft.X <= 0.5f)
                     continue;
                 rightEdge = Math.Min(b.TopLeft.X, rightEdge);
             }

@@ -219,7 +219,7 @@ namespace Squared.Render.Text {
         public float? HardHorizontalAlignment, HardVerticalAlignment;
         public float Scale;
         public float VerticalAlignment;
-        public bool DoNotAdjustLineSpacing, CreateBox;
+        public bool DoNotAdjustLineSpacing, CreateBox, Clear;
         public readonly bool Dead;
 
         public AsyncRichImage (bool dead) {
@@ -241,6 +241,7 @@ namespace Squared.Render.Text {
             Future = null;
             DoNotAdjustLineSpacing = img.DoNotAdjustLineSpacing;
             CreateBox = img.CreateBox;
+            Clear = img.Clear;
             HardHorizontalAlignment = img.HardHorizontalAlignment;
             HardVerticalAlignment = img.HardVerticalAlignment;
             VerticalAlignment = img.VerticalAlignment;
@@ -256,7 +257,7 @@ namespace Squared.Render.Text {
             Future<Texture2D> f, float? width = null, float? height = null, 
             Vector2? margin = null, float? hardHorizontalAlignment = null, float? hardVerticalAlignment = null, 
             float scale = 1f, float verticalAlignment = 1f, bool doNotAdjustLineSpacing = false, 
-            bool createBox = false, float? maxWidthPercent = null
+            bool createBox = false, float? maxWidthPercent = null, bool clear = false
         ) {
             if (f == null)
                 throw new ArgumentNullException("f");
@@ -271,6 +272,7 @@ namespace Squared.Render.Text {
             Value = null;
             DoNotAdjustLineSpacing = doNotAdjustLineSpacing;
             CreateBox = createBox;
+            Clear = clear;
             Dead = false;
             MaxWidthPercent = maxWidthPercent;
         }
@@ -305,6 +307,7 @@ namespace Squared.Render.Text {
                 result = new RichImage {
                     Texture = tex,
                     CreateBox = CreateBox,
+                    Clear = Clear,
                     DoNotAdjustLineSpacing = DoNotAdjustLineSpacing,
                     Scale = scale,
                     HardHorizontalAlignment = HardHorizontalAlignment,
@@ -330,10 +333,9 @@ namespace Squared.Render.Text {
         public float? OverrideWidth, OverrideHeight, MaxWidthPercent;
         public float? HardHorizontalAlignment, HardVerticalAlignment;
         public bool DoNotAdjustLineSpacing;
-        public bool CreateBox;
+        public bool CreateBox, Clear;
         private float VerticalAlignmentMinusOne;
         private float ScaleMinusOne;
-        private float MaxWidthPercentMinus100;
 
         public float VerticalAlignment {
             get => VerticalAlignmentMinusOne + 1;
@@ -774,7 +776,7 @@ namespace Squared.Render.Text {
                 doNotAdjustLineSpacing: image.DoNotAdjustLineSpacing, createBox: image.CreateBox, 
                 hardXAlignment: image.HardHorizontalAlignment, hardYAlignment: image.HardVerticalAlignment,
                 overrideWidth: image.OverrideWidth, overrideHeight: image.OverrideHeight,
-                maxWidthPercent: image.MaxWidthPercent
+                maxWidthPercent: image.MaxWidthPercent, clear: image.Clear
             );
         }
 
