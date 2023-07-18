@@ -694,7 +694,7 @@ namespace Squared.Render.Text {
             float scale = 1, float verticalAlignment = 1,
             Color? multiplyColor = null, bool doNotAdjustLineSpacing = false,
             bool createBox = false, float? hardXAlignment = null, float? hardYAlignment = null,
-            float? overrideWidth = null, float? overrideHeight = null
+            float? overrideWidth = null, float? overrideHeight = null, float? maxWidthPercent = null
         ) {
             float x = characterOffset.X, y = characterOffset.Y;
 
@@ -717,8 +717,24 @@ namespace Squared.Render.Text {
             };
             clearUserData = true;
             var estimatedBounds = dc.EstimateDrawBounds();
-            estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
-            estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
+
+            float widthConstraint = maxWidthPercent.HasValue
+                ? Math.Max(desiredWidth, currentLineBreakAtX ?? lineBreakAtX ?? desiredWidth) * maxWidthPercent.Value / 100f
+                : float.MaxValue;
+            if (widthConstraint <= 0)
+                widthConstraint = float.MaxValue;
+
+            var constrainedWidth = Math.Min(widthConstraint, overrideWidth ?? estimatedBounds.Size.X);
+            if (constrainedWidth < estimatedBounds.Size.X) {
+                dc.ScaleF = constrainedWidth / texture.Width;
+                estimatedBounds = dc.EstimateDrawBounds();
+            }
+
+            // FIXME: Rewrite all this stuff, it makes no sense
+
+            estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + constrainedWidth;
+            if (maxWidthPercent >= 100)
+                estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
             var lineSpacing = (float)Math.Ceiling(estimatedBounds.Size.Y + additionalLineSpacing + ((margin?.Y ?? 0) * 0.5f));
             if (!doNotAdjustLineSpacing)
                 ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
@@ -737,9 +753,10 @@ namespace Squared.Render.Text {
                 overrideY ?? Arithmetic.Lerp(y1, y2, verticalAlignment)
             );
             estimatedBounds = dc.EstimateDrawBounds();
-            estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + (overrideWidth ?? estimatedBounds.Size.X);
-            estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
-            var sizeX = (overrideWidth ?? estimatedBounds.Size.X) + (margin?.X ?? 0);
+            estimatedBounds.BottomRight.X = estimatedBounds.TopLeft.X + Math.Min(constrainedWidth, overrideWidth ?? estimatedBounds.Size.X);
+            if (maxWidthPercent >= 100)
+                estimatedBounds.BottomRight.Y = estimatedBounds.TopLeft.Y + (overrideHeight ?? estimatedBounds.Size.Y);
+            var sizeX = Math.Min(constrainedWidth, overrideWidth ?? estimatedBounds.Size.X) + (margin?.X ?? 0);
             if (!overrideX.HasValue) {
                 characterOffset.X += sizeX;
                 characterOffsetUnconstrained.X += sizeX;

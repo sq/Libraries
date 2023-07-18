@@ -214,7 +214,7 @@ namespace Squared.Render.Text {
     public struct AsyncRichImage {
         public Future<Texture2D> Future;
         public RichImage? Value;
-        public float? Width, Height;
+        public float? Width, Height, MaxWidthPercent;
         public Vector2? Margin;
         public float? HardHorizontalAlignment, HardVerticalAlignment;
         public float Scale;
@@ -245,6 +245,7 @@ namespace Squared.Render.Text {
             HardVerticalAlignment = img.HardVerticalAlignment;
             VerticalAlignment = img.VerticalAlignment;
             Dead = false;
+            MaxWidthPercent = null;
         }
 
         public AsyncRichImage (RichImage img)
@@ -254,7 +255,8 @@ namespace Squared.Render.Text {
         public AsyncRichImage (
             Future<Texture2D> f, float? width = null, float? height = null, 
             Vector2? margin = null, float? hardHorizontalAlignment = null, float? hardVerticalAlignment = null, 
-            float scale = 1f, float verticalAlignment = 1f, bool doNotAdjustLineSpacing = false, bool createBox = false
+            float scale = 1f, float verticalAlignment = 1f, bool doNotAdjustLineSpacing = false, 
+            bool createBox = false, float? maxWidthPercent = null
         ) {
             if (f == null)
                 throw new ArgumentNullException("f");
@@ -270,6 +272,7 @@ namespace Squared.Render.Text {
             DoNotAdjustLineSpacing = doNotAdjustLineSpacing;
             CreateBox = createBox;
             Dead = false;
+            MaxWidthPercent = maxWidthPercent;
         }
 
         public bool TryGetValue (out RichImage result) {
@@ -309,7 +312,8 @@ namespace Squared.Render.Text {
                     Margin = Margin ?? Vector2.Zero,
                     OverrideHeight = Height * Scale,
                     OverrideWidth = Width * Scale,
-                    VerticalAlignment = VerticalAlignment
+                    VerticalAlignment = VerticalAlignment,
+                    MaxWidthPercent = MaxWidthPercent
                 };
                 return true;
             }
@@ -323,29 +327,22 @@ namespace Squared.Render.Text {
         public AbstractTextureReference Texture;
         public Bounds? Bounds;
         public Vector2 Margin;
-        public float? OverrideWidth, OverrideHeight;
+        public float? OverrideWidth, OverrideHeight, MaxWidthPercent;
         public float? HardHorizontalAlignment, HardVerticalAlignment;
         public bool DoNotAdjustLineSpacing;
         public bool CreateBox;
         private float VerticalAlignmentMinusOne;
         private float ScaleMinusOne;
+        private float MaxWidthPercentMinus100;
 
         public float VerticalAlignment {
-            get {
-                return VerticalAlignmentMinusOne + 1;
-            }
-            set {
-                VerticalAlignmentMinusOne = value - 1;
-            }
+            get => VerticalAlignmentMinusOne + 1;
+            set => VerticalAlignmentMinusOne = value - 1;
         }
 
         public float Scale {
-            get {
-                return ScaleMinusOne + 1;
-            }
-            set {
-                ScaleMinusOne = value - 1;
-            }
+            get => ScaleMinusOne + 1;
+            set => ScaleMinusOne = value - 1;
         }
 
         public static implicit operator RichImage (AbstractTextureReference texture) {
@@ -776,7 +773,8 @@ namespace Squared.Render.Text {
                 textureRegion: image.Bounds ?? Bounds.Unit,
                 doNotAdjustLineSpacing: image.DoNotAdjustLineSpacing, createBox: image.CreateBox, 
                 hardXAlignment: image.HardHorizontalAlignment, hardYAlignment: image.HardVerticalAlignment,
-                overrideWidth: image.OverrideWidth, overrideHeight: image.OverrideHeight
+                overrideWidth: image.OverrideWidth, overrideHeight: image.OverrideHeight,
+                maxWidthPercent: image.MaxWidthPercent
             );
         }
 
