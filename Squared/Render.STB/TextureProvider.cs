@@ -49,6 +49,7 @@ namespace Squared.Render {
         protected class GDFTFClosure {
             public STB.Image Image;
             public TextureLoadOptions Options;
+            public string Name;
         }
 
         private readonly ConditionalWeakTable<Texture2D, Texture2D> DistanceFields = 
@@ -114,16 +115,16 @@ namespace Squared.Render {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
             var img = (STB.Image)preloadedData;
             if (async) {
-                var f = img.CreateTextureAsync(Coordinator, !EnableThreadedCreate, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB);
+                var f = img.CreateTextureAsync(Coordinator, !EnableThreadedCreate, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB, name: name);
                 if (options.GenerateDistanceField)
-                    f.RegisterOnComplete(_GenerateDistanceFieldThenDispose, new GDFTFClosure { Image = img, Options = options });
+                    f.RegisterOnComplete(_GenerateDistanceFieldThenDispose, new GDFTFClosure { Image = img, Options = options, Name = name });
                 else
                     f.RegisterOnComplete(_DisposeHandler, img);
                 return f;
             } else {
-                var result = new Future<Texture2D>(img.CreateTexture(Coordinator, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB));
+                var result = new Future<Texture2D>(img.CreateTexture(Coordinator, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB, name: name));
                 if (options.GenerateDistanceField)
-                    GenerateDistanceFieldThenDispose(result, new GDFTFClosure { Image = img, Options = options });
+                    GenerateDistanceFieldThenDispose(result, new GDFTFClosure { Image = img, Options = options, Name = name });
                 else
                     DisposeHandler(result, img);
                 return result;
@@ -188,7 +189,10 @@ namespace Squared.Render {
 
             Texture2D df;
             lock (Coordinator.CreateResourceLock)
-                df = new Texture2D(Coordinator.Device, img.Width, img.Height, false, SurfaceFormat.Single);
+                df = new Texture2D(Coordinator.Device, img.Width, img.Height, false, SurfaceFormat.Single) {
+                    Name = closure.Name,
+                };
+
             lock (Coordinator.UseResourceLock)
                 df.SetData(buf);
 
@@ -226,14 +230,15 @@ namespace Squared.Render {
         }
 
         public override void AddAllInstancesTo (ICollection<Texture2D> result) {
-            base.AddAllInstancesTo(result);
-
-            lock (Cache)
-            foreach (var entry in Cache.Values) {
+            lock (FirstLevelCache)
+            foreach (var entry in Entries()) {
                 if (!entry.Future.GetResult(out var tex))
                     continue;
+                if (tex?.IsDisposed == false)
+                    result.Add(tex);
+
                 var df = GetDistanceField(tex);
-                if (df != null)
+                if (df?.IsDisposed == false)
                     result.Add(df);
             }
         }

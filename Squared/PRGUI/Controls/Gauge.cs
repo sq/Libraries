@@ -72,15 +72,20 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void SetValue (float value, bool enableAnimation = true) {
+            SetValue(value, enableAnimation ? (float?)null : 0f);
+        }
+
+        public void SetValue (float value, float? animationDuration) {
             value = Math.Max(Math.Min(value, _Limit), 0f);
 
             if (_Value == value)
                 return;
 
-            if (enableAnimation)
-                AnimateTo(value);
+            if ((animationDuration == null) || (animationDuration > 0f))
+                AnimateTo(value, animationDuration);
             else
                 ValueTween = value;
+
             _Value = value;
             FireEvent(UIEvents.ValueChanged);
         }
@@ -111,7 +116,7 @@ namespace Squared.PRGUI.Controls {
 
         public bool IsAnimating => !ValueTween.IsConstant && !ValueTween.IsOver(Context.NowL);
 
-        private void AnimateTo (float to) {
+        private void AnimateTo (float to, float? duration) {
             // HACK
             if (Context == null) {
                 ValueTween = to;
@@ -121,7 +126,9 @@ namespace Squared.PRGUI.Controls {
             var from = ValueTween.Get(Context.NowL);
             var distance = Math.Abs(to - from);
             float length;
-            if (distance >= FastAnimationThreshold)
+            if (duration.HasValue)
+                length = duration.Value;
+            else if (distance >= FastAnimationThreshold)
                 length = FastAnimationLength;
             else
                 length = Math.Max(MinAnimationLength, (distance / FastAnimationThreshold) * MaxAnimationLength);

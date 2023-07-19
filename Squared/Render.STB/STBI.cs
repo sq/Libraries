@@ -280,7 +280,7 @@ namespace Squared.Render.STB {
             }
         }
 
-        public Texture2D CreateTexture (RenderCoordinator coordinator, bool padToPowerOfTwo = false, bool sRGB = false) {
+        public Texture2D CreateTexture (RenderCoordinator coordinator, bool padToPowerOfTwo = false, bool sRGB = false, string name = null) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image");
             // FIXME: Channel count
@@ -291,7 +291,8 @@ namespace Squared.Render.STB {
             Texture2D result;
             lock (coordinator.CreateResourceLock) {
                 result = new Texture2D(coordinator.Device, width, height, MipChain != null, GetFormat(sRGB, ChannelCount)) {
-                    Tag = "STB.Image"
+                    Tag = "STB.Image",
+                    Name = name,
                 };
                 coordinator.AutoAllocatedTextureResources.Add(result);
             }
@@ -304,7 +305,7 @@ namespace Squared.Render.STB {
             return result;
         }
 
-        public Future<Texture2D> CreateTextureAsync (RenderCoordinator coordinator, bool mainThread, bool padToPowerOfTwo, bool sRGB = false) {
+        public Future<Texture2D> CreateTextureAsync (RenderCoordinator coordinator, bool mainThread, bool padToPowerOfTwo, bool sRGB = false, string name = null) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image");
             // FIXME: Channel count
@@ -315,7 +316,8 @@ namespace Squared.Render.STB {
             Texture2D tex;
             lock (coordinator.CreateResourceLock) {
                 tex = new Texture2D(coordinator.Device, width, height, MipChain != null, GetFormat(sRGB, ChannelCount)) {
-                    Tag = "STB.Image"
+                    Tag = "STB.Image",
+                    Name = name,
                 };
                 coordinator.AutoAllocatedTextureResources.Add(tex);
             }

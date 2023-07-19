@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -89,6 +90,68 @@ namespace Squared.Render.Resources {
         where T : class 
     {
         public FaultInjector FaultInjector;
+
+        protected struct EntryEnumerator : IEnumerator<CacheEntry>, IEnumerable<CacheEntry> {
+            public readonly ResourceProvider<T> Provider;
+
+            private Dictionary<string, SecondLevelCache>.ValueCollection.Enumerator FirstLevel;
+            private SecondLevelCache.ValueCollection.Enumerator SecondLevel;
+            private bool IsInitialized;
+
+            public EntryEnumerator (ResourceProvider<T> provider)
+                : this () 
+            {
+                Provider = provider;
+            }
+
+            public CacheEntry Current {
+                get;
+                private set; 
+            }
+            object IEnumerator.Current => Current;
+
+            public void Dispose () {
+                IsInitialized = false;
+                SecondLevel.Dispose();
+                FirstLevel.Dispose();
+            }
+
+            public IEnumerator<CacheEntry> GetEnumerator () => this;
+            IEnumerator IEnumerable.GetEnumerator () => this;
+
+            public bool MoveNext () {
+                if (!IsInitialized) {
+                    IsInitialized = true;
+                    FirstLevel = Provider.FirstLevelCache.Values.GetEnumerator();
+                    if (!FirstLevel.MoveNext())
+                        return false;
+                    SecondLevel = FirstLevel.Current.Values.GetEnumerator();
+                }
+
+                while (!SecondLevel.MoveNext()) {
+                    if (!FirstLevel.MoveNext())
+                        return false;
+
+                    SecondLevel = FirstLevel.Current.Values.GetEnumerator();
+                }
+
+                Current = SecondLevel.Current;
+
+                return true;
+            }
+
+            public void Reset () {
+                Dispose();
+            }
+        }
+
+        protected class SecondLevelCache : Dictionary<CacheKey, CacheEntry> {
+            public bool Retain;
+
+            public SecondLevelCache (ResourceProvider<T> provider)
+                : base(provider.Comparer) {
+            }
+        }
 
         protected sealed class CacheKeyComparer : IEqualityComparer<CacheKey> {
             public readonly ResourceProvider<T> Provider;
@@ -251,7 +314,9 @@ namespace Squared.Render.Resources {
             public object Data;
         }
 
-        protected readonly Dictionary<CacheKey, CacheEntry> Cache;
+        protected readonly CacheKeyComparer Comparer;
+        protected readonly Dictionary<string, SecondLevelCache> FirstLevelCache = 
+            new Dictionary<string, SecondLevelCache>(StringComparer.Ordinal);
         protected object DefaultOptions;
 
         protected WorkQueue<PreloadWorkItem> PreloadQueue { get; private set; }
@@ -346,11 +411,9 @@ namespace Squared.Render.Resources {
                     break;
             }
 
+            Comparer = new CacheKeyComparer(this);
             PreloadQueue = coordinator.ThreadGroup.GetQueueForType<PreloadWorkItem>(forMainThread: !EnableThreadedPreload);
             CreateQueue = coordinator.ThreadGroup.GetQueueForType<CreateWorkItem>(forMainThread: !EnableThreadedCreate);
-            Cache = new Dictionary<CacheKey, CacheEntry>(
-                new CacheKeyComparer(this)
-            );
         }
 
         protected virtual CacheKey MakeKey (string name, object data) {
@@ -362,24 +425,6 @@ namespace Squared.Render.Resources {
         /// </summary>
         protected virtual bool AreKeysEqual (ref CacheKey lhs, ref CacheKey rhs) {
             return lhs.Name.Equals(rhs.Name);
-        }
-
-        protected bool Evict (string name, object data) {
-            CacheEntry ce;
-            lock (Cache) {
-                // FIXME
-                var key = MakeKey(name, data);
-                if (!Cache.TryGetValue(key, out ce)) {
-                    name = StreamSource.FixupName(name, true);
-                    key = MakeKey(name, data);
-                    if (!Cache.TryGetValue(key, out ce))
-                        return false;
-                }
-
-                Cache.Remove(key);
-            }
-            // FIXME: Release the resource? Dispose the future?
-            return true;
         }
 
         public void SetStreamSource (IResourceProviderStreamSource source, bool clearCache) {
@@ -458,19 +503,35 @@ namespace Squared.Render.Resources {
             };
         }
 
+        protected SecondLevelCache GetSecondLevelCache (string name, bool createIfMissing) {
+            SecondLevelCache slc;
+            lock (FirstLevelCache) {
+                if (!FirstLevelCache.TryGetValue(name, out slc)) {
+                    if (createIfMissing)
+                        FirstLevelCache[name] = slc = new SecondLevelCache(this);
+                }
+            }
+            return slc;
+        }
+
         private Future<T> GetFutureForResource (string name, object data, bool cached, bool createIfMissing, out bool performLoad) {
             name = StreamSource.FixupName(name, true);
             performLoad = false;
             var key = MakeKey(name, data);
             CacheEntry entry;
             if (cached) {
-                lock (Cache) {
-                    if (!Cache.TryGetValue(key, out entry)) {
-                        if (createIfMissing)
-                            Cache[key] = entry = MakeCacheEntry(name, data);
-
-                        performLoad = true;
+                var slc = GetSecondLevelCache(name, createIfMissing);
+                if (slc != null) {
+                    lock (slc) {
+                        if (!slc.TryGetValue(key, out entry)) {
+                            if (createIfMissing)
+                                slc[key] = entry = MakeCacheEntry(name, data);
+                            performLoad = true;
+                        }
                     }
+                } else {
+                    entry = MakeCacheEntry(name, data);
+                    performLoad = true;
                 }
             } else {
                 entry = MakeCacheEntry(name, data);
@@ -562,12 +623,14 @@ namespace Squared.Render.Resources {
             return LoadSync(name, DefaultOptions, cached, optional);
         }
 
+        protected EntryEnumerator Entries () {
+            return new EntryEnumerator(this);
+        }
+
         public virtual void AddAllInstancesTo (ICollection<T> result) {
-            lock (Cache)
-                foreach (var entry in Cache.Values) {
+            lock (FirstLevelCache)
+                foreach (var entry in Entries()) {
                     if (!entry.Future.GetResult(out var instance))
-                        continue;
-                    if (instance == null)
                         continue;
                     result.Add(instance);
                 }
@@ -575,8 +638,8 @@ namespace Squared.Render.Resources {
 
         public U Reduce<U> (Func<U, string, T, object, U> f, U initialValue = default(U)) {
             var result = initialValue;
-            lock (Cache)
-                foreach (var entry in Cache.Values) {
+            lock (FirstLevelCache)
+                foreach (var entry in Entries()) {
                     if (!entry.Future.CompletedSuccessfully)
                         continue;
                     result = f(result, entry.Name, entry.Future.Result, entry.Data);
@@ -585,8 +648,8 @@ namespace Squared.Render.Resources {
         }
 
         public void ClearCache () {
-            lock (Cache) {
-                foreach (var entry in Cache.Values) {
+            lock (FirstLevelCache) {
+                foreach (var entry in Entries()) {
                     entry.Future.RegisterOnComplete((f) => {
                         try {
                             if (f.CompletedSuccessfully)
@@ -596,7 +659,7 @@ namespace Squared.Render.Resources {
                     });
                 }
 
-                Cache.Clear();
+                FirstLevelCache.Clear();
             }
         }
 
