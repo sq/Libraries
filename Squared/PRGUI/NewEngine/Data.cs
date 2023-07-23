@@ -477,8 +477,8 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         internal void ConvertProportionsToMaximums (float parentWidth, float parentHeight, out ControlDimension width, out ControlDimension height) {
-            width = Width.ConvertProportionToMaximum(parentWidth);
-            height = Height.ConvertProportionToMaximum(parentHeight);
+            width = Width.ConvertPercentageToMaximum(parentWidth);
+            height = Height.ConvertPercentageToMaximum(parentHeight);
         }
     }
 

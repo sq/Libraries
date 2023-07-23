@@ -182,7 +182,7 @@ namespace Squared.PRGUI.Controls {
             height.Minimum = Math.Max(Math.Max(height.Minimum ?? 0, ControlMinimumHeight * sizeScale.Y), (glyphSource?.LineSpacing ?? 0) * 0.6f);
             width.Minimum = Math.Max(width.Minimum ?? 0, ControlMinimumWidth * sizeScale.X);
 
-            if ((RowSibling != null) && (RowSibling != this)) {
+            if ((RowSibling != null) && (RowSibling != this) && !(RowSibling is Slider s)) {
                 GetSizeConstraints(RowSibling, ref context, out _, out var siblingHeight);
                 height = height.Intersection(ref siblingHeight);
             }

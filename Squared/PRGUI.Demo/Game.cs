@@ -876,7 +876,7 @@ namespace PRGUI.Demo {
                         AutoSizeWidth = false,
                         Appearance = propAppearance,
                         Width = {
-                            Proportion = 33.33333f,
+                            Percentage = 33.33333f,
                         }
                     },
                     new StaticText {
@@ -884,7 +884,7 @@ namespace PRGUI.Demo {
                         AutoSizeWidth = false,
                         Appearance = propAppearance,
                         Width = {
-                            Proportion = 66.66666f,
+                            Percentage = 66.66666f,
                         }
                     },
                     new StaticText {
@@ -895,7 +895,7 @@ namespace PRGUI.Demo {
                             ForceBreak = true,
                         },
                         Width = {
-                            Proportion = 20f,
+                            Percentage = 20f,
                         }
                     },
                     new StaticText {
@@ -903,7 +903,7 @@ namespace PRGUI.Demo {
                         AutoSizeIsMaximum = false,
                         Appearance = propAppearance,
                         Width = {
-                            Proportion = 20f,
+                            Percentage = 20f,
                         }
                     },
                     new StaticText {
@@ -919,7 +919,7 @@ namespace PRGUI.Demo {
                         },
                         */
                         Width = {
-                            Proportion = 40f,
+                            Percentage = 40f,
                         }
                     },
                     new Spacer {

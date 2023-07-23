@@ -277,7 +277,7 @@ namespace Squared.PRGUI.Controls {
                 // FIXME: This is how it previously worked, but it might make sense for autosize to override Fixed
                 if (AutoSizeIsMaximum && !width.HasMaximum && !width.HasFixed) {
                     // FIXME: Union with explicit maximum
-                    if (width.HasProportion)
+                    if (width.HasPercentage)
                         width.Maximum = AutoSizeComputedWidth ?? width.Maximum;
                     else
                         width.Fixed = AutoSizeComputedWidth ?? width.Maximum;

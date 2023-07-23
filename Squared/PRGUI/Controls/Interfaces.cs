@@ -153,4 +153,7 @@ namespace Squared.PRGUI {
     public interface IValueControl<T> {
         T Value { get; set; }
     }
+
+    public interface IIgnoresScrollingControl {
+    }
 }

@@ -624,7 +624,7 @@ namespace Squared.PRGUI {
             Minimum      = 0b1,
             Maximum      = 0b10,
             Fixed        = 0b100,
-            Proportional = 0b1000,
+            FPercentage   = 0b1000,
         }
 
         private float _Minimum, _Maximum, _Fixed;
@@ -690,42 +690,42 @@ namespace Squared.PRGUI {
                 if (value == null) {
                     Flags &= ~Flag.Fixed;
                 } else {
-                    Flags &= ~Flag.Proportional;
+                    Flags &= ~Flag.FPercentage;
                     Flags |= Flag.Fixed;
                     _Fixed = value.Value;
                 }
             }
         }
 
-        public bool HasProportion {
+        public bool HasPercentage {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (Flags & Flag.Proportional) == Flag.Proportional;
+            get => (Flags & Flag.FPercentage) == Flag.FPercentage;
         }
 
-        public float? Proportion {
+        public float? Percentage {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => HasProportion ? _Fixed : (float?)null;
+            get => HasPercentage ? _Fixed : (float?)null;
             set {
                 if (value == null) {
-                    Flags &= ~Flag.Proportional;
+                    Flags &= ~Flag.FPercentage;
                 } else {
                     Flags &= ~Flag.Fixed;
-                    Flags |= Flag.Proportional;
+                    Flags |= Flag.FPercentage;
                     _Fixed = value.Value;
                 }
             }
         }
 
         private (float value, Flag flags)? FixedOrProportion {
-            get => (Flags & (Flag.Fixed | Flag.Proportional)) != default
-                ? (_Fixed, Flags & (Flag.Fixed | Flag.Proportional))
+            get => (Flags & (Flag.Fixed | Flag.FPercentage)) != default
+                ? (_Fixed, Flags & (Flag.Fixed | Flag.FPercentage))
                 : ((float value, Flag flags)?)null;
             set {
                 if (value == null) {
-                    Flags = Flags & ~(Flag.Fixed | Flag.Proportional);
+                    Flags = Flags & ~(Flag.Fixed | Flag.FPercentage);
                 } else {
                     _Fixed = value.Value.value;
-                    Flags = Flags & ~(Flag.Fixed | Flag.Proportional) | value.Value.flags;
+                    Flags = Flags & ~(Flag.Fixed | Flag.FPercentage) | value.Value.flags;
                 }
             }
         }
@@ -760,7 +760,7 @@ namespace Squared.PRGUI {
         public static void Scale (ref ControlDimension value, float scale) {
             value._Minimum *= scale;
             value._Maximum *= scale;
-            if (!value.HasProportion)
+            if (!value.HasPercentage)
                 value._Fixed *= scale;
         }
 
@@ -768,7 +768,7 @@ namespace Squared.PRGUI {
             return new ControlDimension {
                 Minimum = Minimum * scale,
                 Maximum = Maximum * scale,
-                _Fixed = _Fixed * (HasProportion ? 1 : scale),
+                _Fixed = _Fixed * (HasPercentage ? 1 : scale),
             };
         }
 
@@ -885,8 +885,8 @@ namespace Squared.PRGUI {
                 return $"Clamp({Fixed?.ToString() ?? "<null>"}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
         }
 
-        public ControlDimension ConvertProportionToMaximum (float total) {
-            if (!HasProportion)
+        public ControlDimension ConvertPercentageToMaximum (float total) {
+            if (!HasPercentage)
                 return this;
             var result = this;
             var value = total * _Fixed / 100;

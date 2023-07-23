@@ -10,7 +10,7 @@ using Squared.Render;
 using Squared.Render.Convenience;
 
 namespace Squared.PRGUI.Controls {
-    public class UserResizeWidget : Control {
+    public class UserResizeWidget : Control, IIgnoresScrollingControl {
         public const float MinimumWidth = 16, MinimumHeight = 16;
 
         public bool AllowHorizontal = true,
@@ -107,8 +107,10 @@ namespace Squared.PRGUI.Controls {
                 delta.X = 0;
             if (!AllowVertical || Math.Abs(delta.Y) < 2)
                 delta.Y = 0;
+            
+            // FIXME: Use Control.GetSizeConstraints somehow
 
-            ControlDimension w = InitialWidth, h = InitialHeight;
+            ControlDimension w = ResizeStartWidth, h = ResizeStartHeight;
             if (delta.X != 0) {
                 if (w.HasFixed)
                     w.Fixed = w.Constrain(w.Fixed + delta.X, false);
