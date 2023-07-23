@@ -78,7 +78,7 @@ namespace Squared.PRGUI.NewEngine {
                                 childResult.Rect.Position += alignment;
                             }
                         } else {
-                            var stackSpace = contentSizeExpanded - childOuterSize;
+                            var stackSpace = (childConfig.AlignToParentBox ? contentSpace : contentSizeExpanded) - childOuterSize;
                             // If the control is stacked and aligned but did not fill the container (size constraints, etc)
                             //  then try to align it
                             stackSpace.X = Math.Max(stackSpace.X, 0f) * xChildAlign;

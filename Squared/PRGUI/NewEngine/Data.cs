@@ -226,6 +226,12 @@ namespace Squared.PRGUI.NewEngine {
             get => (_BoxFlags & BoxFlag.NoMeasurement) == BoxFlag.NoMeasurement;
             set => _BoxFlags = (_BoxFlags & ~BoxFlag.NoMeasurement) | (value ? BoxFlag.NoMeasurement : default);
         }
+        [Unserialized]
+        public bool AlignToParentBox {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_BoxFlags & BoxFlag.AlignToParentBox) == BoxFlag.AlignToParentBox;
+            set => _BoxFlags = (_BoxFlags & ~BoxFlag.AlignToParentBox) | (value ? BoxFlag.AlignToParentBox : default);
+        }
 
         // TODO: Consider making these public and add setters
         [Unserialized]

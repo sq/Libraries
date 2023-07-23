@@ -132,25 +132,31 @@ namespace Squared.PRGUI.NewEngine.Enums {
         /// <summary>
         /// Forces the box to occupy a new run
         /// </summary>
-        Break           = 0b10000,
+        Break            = 0b10000,
         /// <summary>
         /// The box will be laid out inside the entire container instead of occupying a run
         /// </summary>
-        Stacked         = 0b100000,
+        Stacked          = 0b100000,
         /// <summary>
         /// The box will be laid out inside the entire container and will also not influence the container's content size
         /// </summary>
-        Floating        = 0b1000000 | Stacked,
+        Floating         = 0b1000000 | Stacked,
 
         /// <summary>
         /// The box's margins will be allowed to overlap with its container's padding.
         /// </summary>
-        CollapseMargins = 0b10000000,
+        CollapseMargins  = 0b10000000,
 
         /// <summary>
         /// The box will not be included in its parent's content size calculations (for spacers)
         /// </summary>
-        NoMeasurement   = 0b100000000,
+        NoMeasurement    = 0b100000000,
+
+        /// <summary>
+        /// If the box is being aligned (as a stacked/floated box) it will align to its parent's box,
+        ///  instead of to the box of its parent's content
+        /// </summary>
+        AlignToParentBox = 0b1000000000,
 
         // No anchor = centered
         DEFAULT       = Fill_Row 

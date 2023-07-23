@@ -541,7 +541,8 @@ namespace PRGUI.Demo {
                     Layout = {
                         ForceBreak = true
                     }
-                }
+                },
+                new UserResizeWidget()
             );
 
             FloatingWindow = (Window)window.Container;
@@ -861,6 +862,14 @@ namespace PRGUI.Demo {
                 SuppressDecorationMargins = true,
             };
             var proportionalTab = new ControlGroup {
+                Width = {
+                    Minimum = 64,
+                    Maximum = 1000,
+                },
+                Height = {
+                    Minimum = 128,
+                    Maximum = 400,
+                },
                 Children = {
                     new StaticText {
                         Text = "33.3~%",
@@ -917,7 +926,8 @@ namespace PRGUI.Demo {
                         Layout = {
                             ForceBreak = true,
                         }
-                    }
+                    },
+                    new UserResizeWidget()
                 }
             };
 

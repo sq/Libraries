@@ -833,7 +833,7 @@ namespace Squared.PRGUI {
 
             GetSizeConstraints(this, ref context, out var width, out var height);
 
-            var actualLayoutFlags = ComputeLayoutFlags(width.HasFixed, height.HasFixed);
+            var actualLayoutFlags = (LayoutFlags & Layout.Mask) | Layout;
 
             result.OldFlags = actualLayoutFlags;
             result.FloatingPosition = Layout.FloatingPosition;
@@ -846,20 +846,6 @@ namespace Squared.PRGUI {
                 context.Engine.InsertAtEnd(parent, result.Key);
 
             return result.Key;
-        }
-
-        protected ControlFlags ComputeLayoutFlags (bool hasFixedWidth, bool hasFixedHeight) {
-            var result = (LayoutFlags & Layout.Mask) | Layout;
-            // HACK: Clearing the fill flag is necessary for fixed sizes to work,
-            //  but clearing both anchors causes the control to end up centered...
-            //  and if we only clear one anchor then wrapping breaks. Awesome
-            /*
-            if (hasFixedWidth && result.IsFlagged(ControlFlags.Layout_Fill_Row))
-                result &= ~ControlFlags.Layout_Fill_Row;
-            if (hasFixedHeight && result.IsFlagged(ControlFlags.Layout_Fill_Column))
-                result &= ~ControlFlags.Layout_Fill_Column;
-            */
-            return result;
         }
 
         protected virtual IDecorator GetDefaultDecorator (IDecorationProvider provider) {
