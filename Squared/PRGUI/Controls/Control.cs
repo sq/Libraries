@@ -27,6 +27,34 @@ namespace Squared.PRGUI {
     }
     
     public abstract partial class Control {
+        public sealed class Comparer : IEqualityComparer<Control>, IComparer<Control> {
+            public static readonly Comparer Instance = new Comparer();
+
+            int IComparer<Control>.Compare (Control x, Control y) {
+                if (x == null) {
+                    if (y == null)
+                        return 0;
+                    else
+                        return -1;
+                } else if (y == null)
+                    return 1;
+                else
+                    return x.ControlIndex.CompareTo(y);
+            }
+
+            bool IEqualityComparer<Control>.Equals (Control x, Control y) {
+                if (x == null)
+                    return (y == null);
+                else if (y == null)
+                    return false;
+                return x.ControlIndex == y.ControlIndex;
+            }
+
+            int IEqualityComparer<Control>.GetHashCode (Control obj) {
+                return obj.ControlIndex;
+            }
+        }
+
         [Flags]
         protected enum InternalStateFlags : ushort {
             Visible                     = 0b1,
@@ -731,8 +759,7 @@ namespace Squared.PRGUI {
 
         protected void ComputeEffectiveScaleRatios (IDecorationProvider decorations, out Vector2 padding, out Vector2 margins, out Vector2 size) {
             if (Appearance.AutoScaleSpacing) {
-                margins = decorations.SpacingScaleRatio * decorations.MarginScaleRatio;
-                padding = decorations.SpacingScaleRatio * decorations.PaddingScaleRatio;
+                decorations.ComputeScaleRatios(out margins, out padding);
             } else {
                 margins = padding = Vector2.One;
             }
@@ -791,14 +818,14 @@ namespace Squared.PRGUI {
             return decorator.GetGlyphSource(ref settings);
         }
 
+        static DecorationSettings GetGlyphSourceScratchSettings;
+
         protected IGlyphSource GetGlyphSource (ref UIOperationContext context, IDecorator decorator) {
             if (decorator == null)
                 return null;
 
-            var tempBox = default(RectF);
-            // Build an incomplete decorationsettings that omits colors and box since we just need enough state to get the glyph source
-            MakeDecorationSettings(ref tempBox, ref tempBox, GetCurrentState(ref context), false, true, out var settings);
-            return decorator.GetGlyphSource(ref settings);
+            MakeDecorationSettingsFast(GetCurrentState(ref context), ref GetGlyphSourceScratchSettings);
+            return decorator.GetGlyphSource(ref GetGlyphSourceScratchSettings);
         }
 
         protected virtual void ComputeSizeConstraints (

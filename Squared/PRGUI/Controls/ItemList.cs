@@ -450,7 +450,7 @@ namespace Squared.PRGUI.Controls {
         private IEqualityComparer<T> Comparer;
         private List<T> Items = new List<T>();
         private readonly Dictionary<T, Control> ControlForValue;
-        private HashSet<Control> InvalidatedControls = new HashSet<Control>(new ReferenceComparer<Control>());
+        private HashSet<Control> InvalidatedControls = new HashSet<Control>(Control.Comparer.Instance);
         private DenseList<Control> ResultBuffer = new DenseList<Control>(),
             SpareBuffer = new DenseList<Control>();
 

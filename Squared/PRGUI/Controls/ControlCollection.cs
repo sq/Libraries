@@ -23,7 +23,7 @@ namespace Squared.PRGUI {
         private DenseList<IndexedControl> TabOrderedItems = new DenseList<IndexedControl>();
         private DenseList<Control> Items = new DenseList<Control>();
         private Dictionary<Control, int> IndexTable = 
-            new Dictionary<Control, int>(new ReferenceComparer<Control>());
+            new Dictionary<Control, int>(Control.Comparer.Instance);
         private DenseList<Control> DeadControlScratchBuffer = new DenseList<Control>();
 
         public int Count => Items.Count;

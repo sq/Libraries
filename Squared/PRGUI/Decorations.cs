@@ -119,18 +119,6 @@ namespace Squared.PRGUI.Decorations {
         /// </summary>
         Vector2 SizeScaleRatio { get; }
         /// <summary>
-        /// Scale factor for both control padding and control margins
-        /// </summary>
-        Vector2 SpacingScaleRatio { get; }
-        /// <summary>
-        /// Scale factor for control padding
-        /// </summary>
-        Vector2 PaddingScaleRatio { get; }
-        /// <summary>
-        /// Scale factor for control margins
-        /// </summary>
-        Vector2 MarginScaleRatio { get; }
-        /// <summary>
         /// Scale factor for decoration outlines
         /// </summary>
         float OutlineScaleRatio { get; }
@@ -177,6 +165,11 @@ namespace Squared.PRGUI.Decorations {
         /// Allows reacting to control events to play feedback animations or sound effects
         /// </summary>
         void OnEvent<T> (Control control, string name, T args);
+
+        /// <summary>
+        /// Computes the effective margin and padding scale ratios
+        /// </summary>
+        void ComputeScaleRatios (out Vector2 margins, out Vector2 padding);
     }
 
     public delegate bool TextSettingsGetter (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData);

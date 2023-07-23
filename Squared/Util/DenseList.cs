@@ -899,6 +899,26 @@ namespace Squared.Util {
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void OverwriteWith (ref DenseList<T> source, bool unsafeFastClear) {
+            if (source.Count == 0) {
+                if (unsafeFastClear)
+                    UnsafeFastClear();
+                else
+                    Clear();
+                return;
+            }
+
+            if (source.HasList) {
+                if (unsafeFastClear)
+                    UnsafeFastClear();
+                else
+                    Clear();
+                source.CopyTo(ref this);
+            } else
+                this = source;
+        }
+
         public void OverwriteWith (T[] data) {
             OverwriteWith(data, 0, data.Length);
         }

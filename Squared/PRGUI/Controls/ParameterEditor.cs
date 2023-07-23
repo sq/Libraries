@@ -532,7 +532,8 @@ namespace Squared.PRGUI.Controls {
 
             var box = contentBox;
             // Compensate for padding
-            var padding = ArrowPadding * Context.Decorations.SpacingScaleRatio.X * Context.Decorations.PaddingScaleRatio.X;
+            Context.Decorations.ComputeScaleRatios(out _, out var paddingScale);
+            var padding = ArrowPadding * paddingScale.X;
             box.Left -= padding;
             box.Width -= (padding * 2);
 

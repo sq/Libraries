@@ -178,7 +178,7 @@ namespace Squared.PRGUI.Controls {
                 return false;
 
             GetRects(out RectF box, out RectF contentBox);
-            MakeDecorationSettings(ref box, ref contentBox, default(ControlStates), false, false, out settings);
+            MakeDecorationSettings(ref box, ref contentBox, default(ControlStates), false, out settings);
 
             // Ensure the scrollbar state is up-to-date if someone modified our offset
             HScrollbar.Position = ScrollOffset.X;

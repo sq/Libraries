@@ -162,7 +162,7 @@ namespace Squared.PRGUI {
         /// </summary>
         public Control CurrentImplicitScrollTarget { get; private set; }
 
-        internal readonly HashSet<Control> FocusChain = new HashSet<Control>(new ReferenceComparer<Control>());
+        internal readonly HashSet<Control> FocusChain = new HashSet<Control>(Control.Comparer.Instance);
 
         private readonly List<IInputSource> ScratchInputSources = new List<IInputSource>();
         private readonly List<InputID> InputIDs = new List<InputID>();

@@ -56,28 +56,25 @@ namespace Squared.PRGUI {
         protected virtual void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
         }
 
-        // fast=true omits boxes and colors
-        protected virtual void MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state, bool compositing, bool fast, out DecorationSettings result) {
-            if (fast)
-                result = new DecorationSettings {
-                    State = state,
-                    BackgroundImage = Appearance.BackgroundImage,
-                    Traits = Appearance.DecorationTraits,
-                    IsCompositing = compositing,
-                    UniqueId = ControlIndex
-                };
-            else
-                result = new DecorationSettings {
-                    Box = box,
-                    ContentBox = contentBox,
-                    State = state,
-                    BackgroundColor = GetBackgroundColor(Context.NowL),
-                    TextColor = GetTextColor(Context.NowL),
-                    BackgroundImage = Appearance.BackgroundImage,
-                    Traits = Appearance.DecorationTraits,
-                    IsCompositing = compositing,
-                    UniqueId = ControlIndex
-                };
+        protected virtual void MakeDecorationSettingsFast (ControlStates state, ref DecorationSettings result) {
+            result.State = state;
+            result.Traits.OverwriteWith(ref Appearance.DecorationTraits, true);
+            result.UniqueId = ControlIndex;
+        }
+
+        // fast=true omits boxes, images and colors
+        protected virtual void MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state, bool compositing, out DecorationSettings result) {
+            result = new DecorationSettings {
+                Box = box,
+                ContentBox = contentBox,
+                State = state,
+                BackgroundColor = GetBackgroundColor(Context.NowL),
+                TextColor = GetTextColor(Context.NowL),
+                BackgroundImage = Appearance.BackgroundImage,
+                IsCompositing = compositing,
+                UniqueId = ControlIndex
+            };
+            Appearance.DecorationTraits.Clone(ref result.Traits, true);
         }
 
         private void UpdateVisibleRegion (ref UIOperationContext context, ref RectF box) {
@@ -235,7 +232,7 @@ namespace Squared.PRGUI {
                 var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
                 var contentBox = GetRect(contentRect: true);
                 var state = GetCurrentState(ref context);
-                MakeDecorationSettings(ref box, ref contentBox, state, compositing, false, out var settings);
+                MakeDecorationSettings(ref box, ref contentBox, state, compositing, out var settings);
                 if (!IsPassDisabled(RasterizePasses.Below, decorations))
                     RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
                 if (!IsPassDisabled(RasterizePasses.Content, decorations))
@@ -469,7 +466,7 @@ namespace Squared.PRGUI {
 
             var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
             var state = GetCurrentState(ref context) | ControlStates.Invisible;
-            MakeDecorationSettings(ref box, ref box, state, false, false, out var settings);
+            MakeDecorationSettings(ref box, ref box, state, false, out var settings);
             var tempRenderer = default(ImperativeRenderer);
             OnPreRasterize(ref context, ref tempRenderer, ref settings, decorations);
         }

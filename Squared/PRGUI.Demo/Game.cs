@@ -1288,7 +1288,8 @@ namespace PRGUI.Demo {
             var st = existingControl as StaticText;
             if (st == null)
                 existingControl = st = new StaticText {
-                    AutoSizeIsMaximum = false
+                    AutoSizeIsMaximum = false,
+                    AutoSizeWidth = false,
                 };
 
             st.SetText(value, true);

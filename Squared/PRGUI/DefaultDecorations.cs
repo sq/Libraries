@@ -127,15 +127,15 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Sets a global scale factor for both padding and margins
         /// </summary>
-        public Vector2 SpacingScaleRatio { get; set; }
+        public Vector2 SpacingScaleRatio;
         /// <summary>
         /// Sets an additional scale factor for padding
         /// </summary>
-        public Vector2 PaddingScaleRatio { get; set; }
+        public Vector2 PaddingScaleRatio;
         /// <summary>
         /// Sets an additional scale factor for margins
         /// </summary>
-        public Vector2 MarginScaleRatio { get; set; }
+        public Vector2 MarginScaleRatio;
         /// <summary>
         /// Sets a scale factor for outline thickness
         /// </summary>
@@ -2022,6 +2022,11 @@ namespace Squared.PRGUI {
             GetTextSettings(ref context, state, out material, ref color, out userData, TextStyle.Selected);
             color = ColorScheme.SelectedText;
             return true;
+        }
+
+        public void ComputeScaleRatios (out Vector2 margins, out Vector2 padding) {
+            margins = SpacingScaleRatio * MarginScaleRatio;
+            padding = SpacingScaleRatio * PaddingScaleRatio;
         }
     }
 

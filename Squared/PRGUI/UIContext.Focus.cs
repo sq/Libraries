@@ -13,7 +13,7 @@ using Squared.Util;
 namespace Squared.PRGUI {
     public sealed partial class UIContext : IDisposable {
         private readonly Dictionary<Control, Control> InvalidFocusTargets = 
-            new Dictionary<Control, Control>(new ReferenceComparer<Control>());
+            new Dictionary<Control, Control>(Control.Comparer.Instance);
 
         private HashSet<Control> FocusSearchHistory = new HashSet<Control>();
         private (Control value, bool force, bool isUserInitiated, bool? suppressAnimations) QueuedFocus;
