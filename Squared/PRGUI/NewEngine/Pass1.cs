@@ -21,10 +21,10 @@ namespace Squared.PRGUI.NewEngine {
 
             bool expandX = (config.ChildFlags & ContainerFlags.ExpandForContent_X) != default,
                 expandY = (config.ChildFlags & ContainerFlags.ExpandForContent_Y) != default,
-                grid = control.GridColumnCount > 0;
+                grid = config.GridColumnCount > 0;
 
-            int* columns = stackalloc int[control.GridColumnCount];
-            for (int i = 0; i < control.GridColumnCount; i++) {
+            int* columns = stackalloc int[config.GridColumnCount];
+            for (int i = 0; i < config.GridColumnCount; i++) {
                 ref var run = ref PushRun(out columns[i], false);
                 // FIXME: It shouldn't be necessary to do all this
                 run.NextRunIndex = -1;
@@ -63,7 +63,7 @@ namespace Squared.PRGUI.NewEngine {
                     );
                     // HACK: Clear margins of grid children because we don't fully implement them.
                     child.Margins = default;
-                    currentColumnIndex = (currentColumnIndex + 1) % control.GridColumnCount;
+                    currentColumnIndex = (currentColumnIndex + 1) % config.GridColumnCount;
 
                     result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
                     // result.Rect.Width = Math.Max(result.Rect.Width, (run.TotalWidth + padX));

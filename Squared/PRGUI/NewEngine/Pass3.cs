@@ -36,9 +36,9 @@ namespace Squared.PRGUI.NewEngine {
                 h = Math.Max(0, result.Rect.Height - control.Padding.Y),
                 x = 0, y = 0;
 
-            if (control.GridColumnCount > 0) {
-                var columns = stackalloc Pass3Column[control.GridColumnCount];
-                float columnWidth = w / control.GridColumnCount;
+            if (config.GridColumnCount > 0) {
+                var columns = stackalloc Pass3Column[config.GridColumnCount];
+                float columnWidth = w / config.GridColumnCount;
                 int columnIndex = 0;
                 foreach (var run in Runs(control.Key)) {
                     columns[columnIndex] = new Pass3Column {
@@ -66,7 +66,7 @@ namespace Squared.PRGUI.NewEngine {
                         xAlign, yAlign, ckey
                     );
 
-                    columnIndex = (columnIndex + 1) % control.GridColumnCount;
+                    columnIndex = (columnIndex + 1) % config.GridColumnCount;
                 }
             } else {
                 foreach (var runIndex in Runs(control.Key)) {

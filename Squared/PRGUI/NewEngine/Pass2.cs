@@ -21,7 +21,7 @@ namespace Squared.PRGUI.NewEngine {
 
             ref readonly var config = ref control.Config;
 
-            if (control.GridColumnCount > 0) {
+            if (config.GridColumnCount > 0) {
                 return Pass2_Grid(ref control, ref result, depth);
             } else {
                 var oldSize = result.Rect.Size;
@@ -54,11 +54,11 @@ namespace Squared.PRGUI.NewEngine {
 
             float cw = result.Rect.Width - control.Padding.X,
                 ch = result.Rect.Height - control.Padding.Y,
-                columnWidth = cw / control.GridColumnCount;
+                columnWidth = cw / config.GridColumnCount;
 
             // FIXME: Stackalloc
             int columnIndex = 0;
-            int* columns = stackalloc int[control.GridColumnCount];
+            int* columns = stackalloc int[config.GridColumnCount];
             foreach (var run in Runs(control.Key))
                 columns[columnIndex++] = run;
 
@@ -83,7 +83,7 @@ namespace Squared.PRGUI.NewEngine {
                 childResult.Rect.Height = run.MaxOuterHeight;
                 childHeight.Constrain(ref childResult.Rect.Height, true);
 
-                columnIndex = (columnIndex + 1) % control.GridColumnCount;
+                columnIndex = (columnIndex + 1) % config.GridColumnCount;
             }                
 
             var needRecalc = false;

@@ -20,7 +20,7 @@ namespace Squared.PRGUI.NewEngine {
         };
 
         private int Version, _Count, _RunCount;
-        private const int Capacity = 32767;
+        private const int Capacity = 65536;
 
         // TODO: Much better sizing implementation
         // We need to make sure that once we hand out a reference to Records[n], we never transition that item

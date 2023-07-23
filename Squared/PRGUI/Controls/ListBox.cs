@@ -385,7 +385,8 @@ namespace Squared.PRGUI.Controls {
                 return result;
 
             ref var record = ref Record(ref context);
-            record.GridColumnCount = ColumnCount;
+            // FIXME: Bounds check
+            record.Config.GridColumnCount = (ushort)ColumnCount;
             record.Tag = LayoutTags.ListBox;
 
             var hasPushedDecorator = false;

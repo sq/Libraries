@@ -93,6 +93,10 @@ namespace Squared.PRGUI.NewEngine {
         internal ContainerFlag _ContainerFlags;
         [Unserialized]
         internal BoxFlag _BoxFlags;
+        /// <summary>
+        /// If set, the control's children will be arranged in a grid with fixed-width columns
+        /// </summary>
+        public ushort GridColumnCount;
 
         public ControlConfiguration (ControlFlags value) : this() {
             {
@@ -423,8 +427,6 @@ namespace Squared.PRGUI.NewEngine {
         public ControlDimension Width, Height;
         // TODO: Add a scroll offset value so that Control doesn't need a display offset anymore
         public Vector2? FloatingPosition;
-        // If nonzero, the control is laid out in grid mode
-        public int GridColumnCount;
         public Layout.LayoutTags Tag;
 
 #if DEBUG
