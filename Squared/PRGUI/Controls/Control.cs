@@ -839,12 +839,11 @@ namespace Squared.PRGUI {
             result.FloatingPosition = Layout.FloatingPosition;
             result.Margins = computedMargins;
             result.Padding = computedPadding;
-            context.Engine.SetSizeConstraints(ref result, in width, in height);
+            result.Width = width;
+            result.Height = height;
 
             if (!parent.IsInvalid && !existingKey.HasValue)
                 context.Engine.InsertAtEnd(parent, result.Key);
-
-            
 
             return result.Key;
         }

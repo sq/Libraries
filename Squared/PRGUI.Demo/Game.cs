@@ -856,14 +856,80 @@ namespace PRGUI.Demo {
                 SpinningText, SpinningImage
             };
 
+            var propAppearance = new ControlAppearance {
+                BackgroundColor = Color.Black * 0.75f,
+                SuppressDecorationMargins = true,
+            };
+            var proportionalTab = new ControlGroup {
+                Children = {
+                    new StaticText {
+                        Text = "33.3~%",
+                        AutoSizeWidth = false,
+                        Appearance = propAppearance,
+                        Width = {
+                            Proportion = 33.33333f,
+                        }
+                    },
+                    new StaticText {
+                        Text = "66.6~%",
+                        AutoSizeWidth = false,
+                        Appearance = propAppearance,
+                        Width = {
+                            Proportion = 66.66666f,
+                        }
+                    },
+                    new StaticText {
+                        Text = "20%",
+                        AutoSizeIsMaximum = false,
+                        Appearance = propAppearance,
+                        Layout = {
+                            ForceBreak = true,
+                        },
+                        Width = {
+                            Proportion = 20f,
+                        }
+                    },
+                    new StaticText {
+                        Text = "20%",
+                        AutoSizeIsMaximum = false,
+                        Appearance = propAppearance,
+                        Width = {
+                            Proportion = 20f,
+                        }
+                    },
+                    new StaticText {
+                        Text = "40%",
+                        AutoSizeIsMaximum = false,
+                        Appearance = propAppearance,
+                        // FIXME: This doesn't work
+                        /*
+                        Layout = {
+                            Anchor = {
+                                Right = true,
+                            }
+                        },
+                        */
+                        Width = {
+                            Proportion = 40f,
+                        }
+                    },
+                    new Spacer {
+                        Layout = {
+                            ForceBreak = true,
+                        }
+                    }
+                }
+            };
+
             var tabs = new TabContainer {
                 { scrollableClipTest, "Scroll" },
                 { listboxContainer, "List" },
                 { canvas, "Canvas" },
                 { displayOrdering, "Z-Order" },
-                { rich, "Rich Text" },
-                { textTab, "Text Size" },
+                { rich, "Rich\nText" },
+                { textTab, "Text\nSize" },
                 { transformTab, "Xform" },
+                { proportionalTab, "%" },
             };
             tabs.SelectedIndex = 6;
             tabs.TabsOnLeft = false;

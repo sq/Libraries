@@ -469,6 +469,11 @@ namespace Squared.PRGUI.NewEngine {
         public override string ToString () {
             return $"#{Key.ID} {Tag} {Config}";
         }
+
+        internal void ConvertProportionsToMaximums (float parentWidth, float parentHeight, out ControlDimension width, out ControlDimension height) {
+            width = Width.ConvertProportionToMaximum(parentWidth);
+            height = Height.ConvertProportionToMaximum(parentHeight);
+        }
     }
 
     /// <summary>

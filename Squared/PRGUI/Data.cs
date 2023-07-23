@@ -621,9 +621,10 @@ namespace Squared.PRGUI {
     public struct ControlDimension {
         [Flags]
         private enum Flag : byte {
-            Minimum = 0b1,
-            Maximum = 0b10,
-            Fixed   = 0b100
+            Minimum      = 0b1,
+            Maximum      = 0b10,
+            Fixed        = 0b100,
+            Proportional = 0b1000,
         }
 
         private float _Minimum, _Maximum, _Fixed;
@@ -688,10 +689,43 @@ namespace Squared.PRGUI {
             set {
                 if (value == null) {
                     Flags &= ~Flag.Fixed;
-                    _Fixed = float.NaN;
                 } else {
+                    Flags &= ~Flag.Proportional;
                     Flags |= Flag.Fixed;
                     _Fixed = value.Value;
+                }
+            }
+        }
+
+        public bool HasProportion {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (Flags & Flag.Proportional) == Flag.Proportional;
+        }
+
+        public float? Proportion {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => HasProportion ? _Fixed : (float?)null;
+            set {
+                if (value == null) {
+                    Flags &= ~Flag.Proportional;
+                } else {
+                    Flags &= ~Flag.Fixed;
+                    Flags |= Flag.Proportional;
+                    _Fixed = value.Value;
+                }
+            }
+        }
+
+        private (float value, Flag flags)? FixedOrProportion {
+            get => (Flags & (Flag.Fixed | Flag.Proportional)) != default
+                ? (_Fixed, Flags & (Flag.Fixed | Flag.Proportional))
+                : ((float value, Flag flags)?)null;
+            set {
+                if (value == null) {
+                    Flags = Flags & ~(Flag.Fixed | Flag.Proportional);
+                } else {
+                    _Fixed = value.Value.value;
+                    Flags = Flags & ~(Flag.Fixed | Flag.Proportional) | value.Value.flags;
                 }
             }
         }
@@ -726,14 +760,15 @@ namespace Squared.PRGUI {
         public static void Scale (ref ControlDimension value, float scale) {
             value._Minimum *= scale;
             value._Maximum *= scale;
-            value._Fixed *= scale;
+            if (!value.HasProportion)
+                value._Fixed *= scale;
         }
 
         public ControlDimension Scale (float scale) {
             return new ControlDimension {
                 Minimum = Minimum * scale,
                 Maximum = Maximum * scale,
-                Fixed = Fixed * scale
+                _Fixed = _Fixed * (HasProportion ? 1 : scale),
             };
         }
 
@@ -763,7 +798,7 @@ namespace Squared.PRGUI {
                 Minimum = Min(Minimum, rhs.Minimum),
                 Maximum = Max(Maximum, rhs.Maximum),
                 // FIXME
-                Fixed = Fixed ?? rhs.Fixed
+                FixedOrProportion = FixedOrProportion ?? rhs.FixedOrProportion
             };
         }
 
@@ -776,7 +811,7 @@ namespace Squared.PRGUI {
                 Minimum = Max(Minimum, rhs.Minimum),
                 Maximum = Min(Maximum, rhs.Maximum),
                 // FIXME
-                Fixed = Fixed ?? rhs.Fixed
+                FixedOrProportion = FixedOrProportion ?? rhs.FixedOrProportion
             };
         }
 
@@ -848,6 +883,18 @@ namespace Squared.PRGUI {
                 return "<unconstrained>";
             else
                 return $"Clamp({Fixed?.ToString() ?? "<null>"}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
+        }
+
+        public ControlDimension ConvertProportionToMaximum (float total) {
+            if (!HasProportion)
+                return this;
+            var result = this;
+            var value = total * _Fixed / 100;
+            if (HasMaximum)
+                result._Maximum = Math.Min(_Maximum, value);
+            else
+                result.Maximum = value;
+            return result;
         }
     }
 }

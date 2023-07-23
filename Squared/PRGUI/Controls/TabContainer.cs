@@ -173,7 +173,7 @@ namespace Squared.PRGUI.Controls {
                     ScaleToFit = true,
                     LayoutFlags = TabsOnLeft
                         ? ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
-                        : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
+                        : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Bottom,
                     Scale = _TabScale,
                     Margins = new Margins(0, 0, TabsOnLeft ? 0 : 1, TabsOnLeft ? 1 : 0),
                 };

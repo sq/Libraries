@@ -211,6 +211,7 @@ namespace Squared.PRGUI.NewEngine {
                     foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                         ref var child = ref this[ckey];
                         ref var childResult = ref Result(ckey);
+                        child.ConvertProportionsToMaximums(cw, ch, out var childWidth, out var childHeight);
                         // HACK: The floating run and non-floating run potentially walk us through the same controls,
                         //  so skip anything we shouldn't be processing in this run. Yuck.
                         if (child.Config.IsStackedOrFloating != run.IsFloating)
@@ -220,8 +221,8 @@ namespace Squared.PRGUI.NewEngine {
                             throw new Exception();
                         var margins = child.Margins;
                         ref readonly var childConfig = ref child.Config;
-                        bool expandChildX = childConfig.FillRow && !child.Width.HasFixed,
-                            expandChildY = childConfig.FillColumn && !child.Height.HasFixed;
+                        bool expandChildX = childConfig.FillRow && !childWidth.HasFixed,
+                            expandChildY = childConfig.FillColumn && !childHeight.HasFixed;
                         float amountX = countX > 0 ? xSpace / countX : 0, amountY = countY > 0 ? ySpace / countY : 0;
 
                         // If a control's parent has a size constraint set, it may be too small to hold all of its children,
@@ -237,9 +238,9 @@ namespace Squared.PRGUI.NewEngine {
                             // Maybe I should rethink this :)
                             // if ((childConfig._BoxFlags & BoxFlag.Floating) != BoxFlag.Floating) {
                                 if (expandChildX)
-                                    childResult.Rect.Width = child.Width.Constrain(cw - child.Margins.X, true);
+                                    childResult.Rect.Width = childWidth.Constrain(cw - child.Margins.X, true);
                                 if (expandChildY)
-                                    childResult.Rect.Height = child.Height.Constrain(ch - child.Margins.Y, true);
+                                    childResult.Rect.Height = childHeight.Constrain(ch - child.Margins.Y, true);
                             // }
                         } else {
                             float childOuterW = childResult.Rect.Width + margins.X,
@@ -259,7 +260,7 @@ namespace Squared.PRGUI.NewEngine {
                                 run.TotalWidth -= childOuterW;
                                 var newChildW = Math.Max(childOuterW + amountX, minOuterWidth);
                                 childResult.AvailableSpace.X = Math.Max(childResult.AvailableSpace.X, newChildW);
-                                newChildW = child.Width.Constrain(newChildW - margins.X, true) + margins.X;
+                                newChildW = childWidth.Constrain(newChildW - margins.X, true) + margins.X;
                                 if (config.Clip || (config.ConstrainGrowth && (newChildW > childOuterW)))
                                     newChildW = Math.Min(newChildW, config.IsVertical ? cw : cw - p);
                                 float expanded = newChildW - childOuterW;
@@ -277,7 +278,7 @@ namespace Squared.PRGUI.NewEngine {
                                 if (config.Clip || (config.ConstrainGrowth && (newChildH > childOuterH)))
                                     newChildH = Math.Min(newChildH, config.IsVertical ? ch - p : ch); 
                                 childResult.AvailableSpace.Y = Math.Max(childResult.AvailableSpace.Y, newChildH);
-                                newChildH = child.Height.Constrain(newChildH - margins.Y, true) + margins.Y;
+                                newChildH = childHeight.Constrain(newChildH - margins.Y, true) + margins.Y;
                                 float expanded = childOuterH - childResult.Rect.Height;
                                 if (expanded < Math.Max(0, amountY - 1))
                                     newCountY--;

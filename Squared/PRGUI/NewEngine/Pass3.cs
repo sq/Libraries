@@ -143,10 +143,5 @@ namespace Squared.PRGUI.NewEngine {
                 Assert(lastProcessed == control.LastChild);
             }
         }
-
-        public void SetSizeConstraints (ref BoxRecord result, in ControlDimension width, in ControlDimension height) {
-            result.Width = width;
-            result.Height = height;
-        }
     }
 }
