@@ -163,13 +163,9 @@ namespace Squared.PRGUI.Controls {
         public bool AutoSize = true;
 
         new public int ColumnCount {
-            get => base.ColumnCount;
-            set {
-                if (value < 1)
-                    throw new ArgumentOutOfRangeException("value");
-                base.ColumnCount = value;
-            }
-        }
+            get;
+            set;
+        } = 1;
 
         public ListBox ()
             : this (null) {
@@ -282,6 +278,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             bool scrollOffsetChanged = false;
+            base.ColumnCount = 1;
             ContainerFlags = (
                     (ColumnCount == 1) 
                     ? ControlFlags.Container_Column
@@ -388,14 +385,8 @@ namespace Squared.PRGUI.Controls {
                 return result;
 
             ref var record = ref Record(ref context);
+            record.GridColumnCount = ColumnCount;
             record.Tag = LayoutTags.ListBox;
-
-            var rowMode = (ContainerFlags & ControlFlags.Container_Column) != ControlFlags.Container_Column;
-            if (!existingKey.HasValue && rowMode) {
-                ref var expandSpacer = ref context.Engine.Create(LayoutTags.Spacer, parent: result);
-                expandSpacer.OldFlags = ControlFlags.Layout_ForceBreak | ControlFlags.Layout_Fill;
-                expandSpacer.Config.NoMeasurement = true;
-            }
 
             var hasPushedDecorator = false;
             var children = Children;
@@ -794,7 +785,7 @@ namespace Squared.PRGUI.Controls {
                 var oldPass = context.Pass;
                 context.Pass = RasterizePasses.Content;
 
-                RectF parentBox, selectionBox;
+                RectF selectionBox;
                 foreach (var index in Manager._SelectedIndices) {
                     if (index >= Items.Count)
                         continue;
@@ -805,13 +796,11 @@ namespace Squared.PRGUI.Controls {
                     if (selectedControl == null)
                         continue;
 
-                    var parentColumn = context.Engine[selectedControl.LayoutKey].Parent;
-                    parentBox = context.Engine.Result(parentColumn).ContentRect;
                     selectionBox = selectedControl.GetRect();
                     selectionBox.Top += selectionDecorator.Margins.Top;
-                    selectionBox.Left = parentBox.Left + selectionDecorator.Margins.Left;
+                    selectionBox.Left += selectionDecorator.Margins.Left;
                     selectionBox.Height -= selectionDecorator.Margins.Y;
-                    selectionBox.Width = parentBox.Width - selectionDecorator.Margins.X;
+                    selectionBox.Width -= selectionDecorator.Margins.X;
 
                     // HACK: Selection boxes are normally rasterized on the content layer, but we want to rasterize
                     //  the selection on the Below layer beneath items' decorations and content.

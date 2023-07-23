@@ -423,6 +423,8 @@ namespace Squared.PRGUI.NewEngine {
         public ControlDimension Width, Height;
         // TODO: Add a scroll offset value so that Control doesn't need a display offset anymore
         public Vector2? FloatingPosition;
+        // If nonzero, the control is laid out in grid mode
+        public int GridColumnCount;
         public Layout.LayoutTags Tag;
 
 #if DEBUG

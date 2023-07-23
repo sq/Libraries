@@ -9,7 +9,7 @@ using Squared.PRGUI.NewEngine.Enums;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private void Pass1_ComputeSizesAndBuildRuns (
+        private unsafe void Pass1_ComputeSizesAndBuildRuns (
             ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
             ref readonly var config = ref control.Config;
@@ -20,7 +20,19 @@ namespace Squared.PRGUI.NewEngine {
             result.Pass1Processed = true;
 
             bool expandX = (config.ChildFlags & ContainerFlags.ExpandForContent_X) != default,
-                expandY = (config.ChildFlags & ContainerFlags.ExpandForContent_Y) != default;
+                expandY = (config.ChildFlags & ContainerFlags.ExpandForContent_Y) != default,
+                grid = control.GridColumnCount > 0;
+
+            int* columns = stackalloc int[control.GridColumnCount];
+            for (int i = 0; i < control.GridColumnCount; i++) {
+                ref var run = ref PushRun(out columns[i], false);
+                // FIXME: It shouldn't be necessary to do all this
+                run.NextRunIndex = -1;
+                if (i == 0)
+                    result.FirstRunIndex = columns[i];
+                else
+                    Run(columns[i - 1]).NextRunIndex = columns[i];
+            }
 
             // During this pass, result.Rect contains our minimum size:
             // Size constraints, largest of all our children, etc
@@ -29,7 +41,7 @@ namespace Squared.PRGUI.NewEngine {
             result.Rect.Height = control.Size(LayoutDimensions.Y).EffectiveMinimum;
 
             float padX = control.Padding.X, padY = control.Padding.Y, p = 0;
-            var currentRunIndex = -1;
+            int currentRunIndex = -1, currentColumnIndex = 0;
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
@@ -41,40 +53,51 @@ namespace Squared.PRGUI.NewEngine {
 
                 float outerW = childResult.Rect.Width + child.Margins.X,
                     outerH = childResult.Rect.Height + child.Margins.Y;
-                ref var run = ref Pass1_UpdateRun(
-                    ref control, ref result, 
-                    ref child, ref childResult, 
-                    ref currentRunIndex
-                );
 
-                if (!child.Config.IsFloating) {
-                    p += config.IsVertical ? outerW : outerH;
+                if (grid) {
+                    var column = columns[currentColumnIndex];
+                    ref var run = ref Pass1_UpdateRun(
+                        ref control, ref result,
+                        ref child, ref childResult,
+                        ref column
+                    );
+                    currentColumnIndex = (currentColumnIndex + 1) % control.GridColumnCount;
+                } else {
+                    ref var run = ref Pass1_UpdateRun(
+                        ref control, ref result, 
+                        ref child, ref childResult, 
+                        ref currentRunIndex
+                    );
 
-                    // At a minimum we should be able to hold all our children if they were stacked on each other
-                    if (expandX)
-                        result.Rect.Width = Math.Max(
-                            result.Rect.Width, 
-                            (child.Config.Flags & BoxFlags.CollapseMargins) != default 
-                                ? Math.Max(outerW, childResult.Rect.Width + padX)
-                                : outerW + padX
-                        );
+                    if (!child.Config.IsFloating) {
+                        p += config.IsVertical ? outerW : outerH;
 
-                    if (expandY)
-                        result.Rect.Height = Math.Max(
-                            result.Rect.Height, 
-                            (child.Config.Flags & BoxFlags.CollapseMargins) != default 
-                                ? Math.Max(outerH, childResult.Rect.Height + padY)
-                                : outerH + padY
-                        );
+                        // At a minimum we should be able to hold all our children if they were stacked on each other
+                        if (expandX)
+                            result.Rect.Width = Math.Max(
+                                result.Rect.Width, 
+                                (child.Config.Flags & BoxFlags.CollapseMargins) != default 
+                                    ? Math.Max(outerW, childResult.Rect.Width + padX)
+                                    : outerW + padX
+                            );
 
-                    // If we're not in wrapped mode, we will try to expand to hold our largest run
-                    // FIXME: Collapse margins
-                    if (!config.IsWrap || child.Config.IsStacked) {
-                        if (child.Config.IsStacked || (config.IsVertical && expandY))
-                            result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
+                        if (expandY)
+                            result.Rect.Height = Math.Max(
+                                result.Rect.Height, 
+                                (child.Config.Flags & BoxFlags.CollapseMargins) != default 
+                                    ? Math.Max(outerH, childResult.Rect.Height + padY)
+                                    : outerH + padY
+                            );
 
-                        if (child.Config.IsStacked || (!config.IsVertical && expandX))
-                            result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
+                        // If we're not in wrapped mode, we will try to expand to hold our largest run
+                        // FIXME: Collapse margins
+                        if (!config.IsWrap || child.Config.IsStacked) {
+                            if (child.Config.IsStacked || (config.IsVertical && expandY))
+                                result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
+
+                            if (child.Config.IsStacked || (!config.IsVertical && expandX))
+                                result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
+                        }
                     }
                 }
             }

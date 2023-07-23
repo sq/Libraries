@@ -608,6 +608,7 @@ namespace PRGUI.Demo {
                 MaxSelectedCount = multiselectCheckbox.Checked ? 10 : 1,
                 DefaultToggleOnClick = toggleCheckbox.Checked,
                 ColumnCount = columnCount.SelectedItem,
+                CreateControlForValue = BigList_ControlForValue
             };
             for (var i = 0; i < itemCount; i++)
                 listBox.Items.Add($"# {i}");
@@ -941,7 +942,7 @@ namespace PRGUI.Demo {
                 { transformTab, "Xform" },
                 { proportionalTab, "%" },
             };
-            tabs.SelectedIndex = 6;
+            tabs.SelectedIndex = 1;
             tabs.TabsOnLeft = false;
             tabs.ExpandToHoldAllTabs = true;
             tabs.LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top;
@@ -1140,8 +1141,6 @@ namespace PRGUI.Demo {
                 },
             };
 
-            tabs.SelectedIndex = 0;
-
             Context.Controls.Add(topLevelContainer);
             Context.Controls.Add(window.Control);
             Context.Controls.Add(SpinTest);
@@ -1283,6 +1282,24 @@ namespace PRGUI.Demo {
                 DisplayOrder = 10,
             };
             // Context.Controls.Add(floatingWindowWithText);
+        }
+
+        private Control BigList_ControlForValue (ref string value, Control existingControl) {
+            var st = existingControl as StaticText;
+            if (st == null)
+                existingControl = st = new StaticText {
+                    AutoSizeIsMaximum = false
+                };
+
+            st.SetText(value, true);
+            Color c = default;
+            unchecked {
+                c.PackedValue = (uint)value.GetHashCode();
+            }
+            c.A = 255;
+            // FIXME: The text decorator won't automatically change since there's a background color (thanks ListBox)
+            st.Appearance.BackgroundColor = c * 0.5f;
+            return st;
         }
 
         private void MakeScrollingTest (out Button increaseGaugeButton, out Gauge gauge, out Container scrollableClipTest) {

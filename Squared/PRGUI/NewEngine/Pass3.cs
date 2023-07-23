@@ -8,7 +8,13 @@ using Squared.PRGUI.Layout;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private void Pass3_Arrange (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
+        private struct Pass3Column {
+            public LayoutRun Run;
+            public int RunIndex;
+            public float X, Y;
+        }
+
+        private unsafe void Pass3_Arrange (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
             ref readonly var config = ref control.Config;
 
             // HACK to fix layout starting with a floating control as the root
@@ -30,105 +36,84 @@ namespace Squared.PRGUI.NewEngine {
                 h = Math.Max(0, result.Rect.Height - control.Padding.Y),
                 x = 0, y = 0;
 
-            foreach (var runIndex in Runs(control.Key)) {
-                ref var run = ref Run(runIndex);
-                bool isLastRun = run.NextRunIndex < 0;
-                float rw = config.IsVertical ? run.MaxOuterWidth : run.TotalWidth,
-                    rh = config.IsVertical ? run.TotalHeight : run.MaxOuterHeight;
-                if (config.Clip) {
-                    rw = Math.Min(rw, contentSpace.X);
-                    rh = Math.Min(rh, contentSpace.Y);
+            if (control.GridColumnCount > 0) {
+                var columns = stackalloc Pass3Column[control.GridColumnCount];
+                float columnWidth = w / control.GridColumnCount;
+                int columnIndex = 0;
+                foreach (var run in Runs(control.Key)) {
+                    columns[columnIndex] = new Pass3Column {
+                        RunIndex = run, X = columnWidth * columnIndex,
+                        // Make a copy, it's fine, it won't change
+                        Run = Run(run)
+                    };
+                    columnIndex++;
                 }
-                float space = Math.Max(config.IsVertical ? h - rh : w - rw, 0),
-                    baseline = config.IsVertical
-                        // HACK: The last run needs to have its baseline expanded to our outer edge
-                        //  so that anchor bottom/right will hit the edges of our content rect
-                        ? (isLastRun ? contentSpace.X - x : run.MaxOuterWidth)
-                        : (isLastRun ? contentSpace.Y - y : run.MaxOuterHeight);
 
                 config.GetRunAlignmentF(out float xAlign, out float yAlign);
 
-                if (config.IsVertical)
-                    y = space * yAlign;
-                else
-                    x = space * xAlign;
+                columnIndex = 0;
+                foreach (var ckey in Children(control.Key)) {
+                    ref var column = ref columns[columnIndex];
+                    ref var run = ref column.Run;
 
-                foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
-                    if (firstProcessed.IsInvalid)
-                        firstProcessed = ckey;
-                    lastProcessed = ckey;
-                    ref var child = ref this[ckey];
-                    ref var childResult = ref Result(ckey);
-                    ref readonly var childConfig = ref child.Config;
-                    var childMargins = child.Margins;
-                    var childOuterSize = childResult.Rect.Size + childMargins.Size;
+                    float baseline = 0; // FIXME
 
-                    childConfig.GetAlignmentF(xAlign, yAlign, out float xChildAlign, out float yChildAlign);
+                    x = column.X;
+                    Pass3_Arrange_OneChild(
+                        control, ref result, depth, config, 
+                        contentPosition, contentSpace, contentExtent, 
+                        contentSizeExpanded, ref x, ref column.Y, baseline, 
+                        xAlign, yAlign, ckey
+                    );
 
-                    if (childConfig.IsStackedOrFloating) {
-                        if (childConfig.IsFloating) {
-                            childResult.Rect.Position = contentPosition + (child.FloatingPosition ?? Vector2.Zero) + child.Margins.TopLeft;
-                            childResult.AvailableSpace = contentExtent - childResult.Rect.Position - new Vector2(childMargins.Right, childMargins.Bottom);
+                    columnIndex = (columnIndex + 1) % control.GridColumnCount;
+                }
+            } else {
+                foreach (var runIndex in Runs(control.Key)) {
+                    ref var run = ref Run(runIndex);
+                    bool isLastRun = run.NextRunIndex < 0;
+                    float rw = config.IsVertical ? run.MaxOuterWidth : run.TotalWidth,
+                        rh = config.IsVertical ? run.TotalHeight : run.MaxOuterHeight;
+                    if (config.Clip) {
+                        rw = Math.Min(rw, contentSpace.X);
+                        rh = Math.Min(rh, contentSpace.Y);
+                    }
+                    float space = Math.Max(config.IsVertical ? h - rh : w - rw, 0),
+                        baseline = config.IsVertical
+                            // HACK: The last run needs to have its baseline expanded to our outer edge
+                            //  so that anchor bottom/right will hit the edges of our content rect
+                            ? (isLastRun ? contentSpace.X - x : run.MaxOuterWidth)
+                            : (isLastRun ? contentSpace.Y - y : run.MaxOuterHeight);
 
-                            // Unless the floating child has an explicit position, we want to align it within the available space we just calculated
-                            if (!child.FloatingPosition.HasValue) {
-                                var alignment = (childResult.AvailableSpace - childResult.Rect.Size) * new Vector2(xChildAlign, yChildAlign);
-                                alignment.X = Math.Max(alignment.X, 0);
-                                alignment.Y = Math.Max(alignment.Y, 0);
-                                childResult.Rect.Position += alignment;
-                            }
-                        } else {
-                            var stackSpace = (childConfig.AlignToParentBox ? contentSpace : contentSizeExpanded) - childOuterSize;
-                            // If the control is stacked and aligned but did not fill the container (size constraints, etc)
-                            //  then try to align it
-                            stackSpace.X = Math.Max(stackSpace.X, 0f) * xChildAlign;
-                            stackSpace.Y = Math.Max(stackSpace.Y, 0f) * yChildAlign;
-                            childResult.Rect.Position = contentPosition +
-                                new Vector2(stackSpace.X + childMargins.Left, stackSpace.Y + childMargins.Top);
-                        }
-                    } else {
-                        childResult.Rect.Left = contentPosition.X + childMargins.Left + x;
-                        childResult.Rect.Top = contentPosition.Y + childMargins.Top + y;
+                    config.GetRunAlignmentF(out float xAlign, out float yAlign);
 
-                        if (config.IsVertical) {
-                            var alignment = (xChildAlign * Math.Max(0, baseline - childOuterSize.X));
-                            if (alignment != 0)
-                                childResult.Rect.Left += alignment;
-                            y += childOuterSize.Y;
-                        } else {
-                            var alignment = (yChildAlign * Math.Max(0, baseline - childOuterSize.Y));
-                            if (alignment != 0)
-                                childResult.Rect.Top += alignment;
-                            x += childOuterSize.X;
-                        }
+                    if (config.IsVertical)
+                        y = space * yAlign;
+                    else
+                        x = space * xAlign;
 
-                        if (!child.Config.NoMeasurement) {
-                            result.ContentSize.X = Math.Max(result.ContentSize.X, childResult.Rect.Right - contentPosition.X);
-                            result.ContentSize.Y = Math.Max(result.ContentSize.Y, childResult.Rect.Bottom - contentPosition.Y);
-                        }
-
-                        // TODO: Clip left/top edges as well?
-                        // TODO: Separate x/y
-                        if ((config._ContainerFlags & Enums.ContainerFlag.Boxes_Clip) != default) {
-                            var rightEdge = result.Rect.Right - control.Padding.Right - childMargins.Right;
-                            childResult.Rect.Width = Math.Max(0, Math.Min(childResult.Rect.Width, rightEdge - childResult.Rect.Left));
-                            var bottomEdge = result.Rect.Bottom - control.Padding.Bottom - childMargins.Bottom;
-                            childResult.Rect.Height = Math.Max(0, Math.Min(childResult.Rect.Height, bottomEdge - childResult.Rect.Top));
-                        }
+                    foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
+                        if (firstProcessed.IsInvalid)
+                            firstProcessed = ckey;
+                        lastProcessed = ckey;
+                        Pass3_Arrange_OneChild(
+                            control, ref result, depth, config, 
+                            contentPosition, contentSpace, contentExtent, 
+                            contentSizeExpanded, ref x, ref y, baseline, 
+                            xAlign, yAlign, ckey
+                        );
                     }
 
-                    Pass3_Arrange(ref child, ref childResult, depth + 1);
-                }
-
-                // HACK: The floating run's contents should not change the position of other controls
-                if (runIndex == result.FloatingRunIndex)
-                    ;
-                else if (config.IsVertical) {
-                    x += run.MaxOuterWidth;
-                    y = 0;
-                } else {
-                    x = 0;
-                    y += run.MaxOuterHeight;
+                    // HACK: The floating run's contents should not change the position of other controls
+                    if (runIndex == result.FloatingRunIndex)
+                        ;
+                    else if (config.IsVertical) {
+                        x += run.MaxOuterWidth;
+                        y = 0;
+                    } else {
+                        x = 0;
+                        y += run.MaxOuterHeight;
+                    }
                 }
             }
 
@@ -142,6 +127,70 @@ namespace Squared.PRGUI.NewEngine {
                 Assert(firstProcessed == control.FirstChild);
                 Assert(lastProcessed == control.LastChild);
             }
+        }
+
+        private void Pass3_Arrange_OneChild (BoxRecord control, ref BoxLayoutResult result, int depth, ControlConfiguration config, Vector2 contentPosition, Vector2 contentSpace, Vector2 contentExtent, Vector2 contentSizeExpanded, ref float x, ref float y, float baseline, float xAlign, float yAlign, ControlKey ckey) {
+            ref var child = ref this[ckey];
+            ref var childResult = ref Result(ckey);
+            ref readonly var childConfig = ref child.Config;
+            var childMargins = child.Margins;
+            var childOuterSize = childResult.Rect.Size + childMargins.Size;
+
+            childConfig.GetAlignmentF(xAlign, yAlign, out float xChildAlign, out float yChildAlign);
+
+            if (childConfig.IsStackedOrFloating) {
+                if (childConfig.IsFloating) {
+                    childResult.Rect.Position = contentPosition + (child.FloatingPosition ?? Vector2.Zero) + child.Margins.TopLeft;
+                    childResult.AvailableSpace = contentExtent - childResult.Rect.Position - new Vector2(childMargins.Right, childMargins.Bottom);
+
+                    // Unless the floating child has an explicit position, we want to align it within the available space we just calculated
+                    if (!child.FloatingPosition.HasValue) {
+                        var alignment = (childResult.AvailableSpace - childResult.Rect.Size) * new Vector2(xChildAlign, yChildAlign);
+                        alignment.X = Math.Max(alignment.X, 0);
+                        alignment.Y = Math.Max(alignment.Y, 0);
+                        childResult.Rect.Position += alignment;
+                    }
+                } else {
+                    var stackSpace = (childConfig.AlignToParentBox ? contentSpace : contentSizeExpanded) - childOuterSize;
+                    // If the control is stacked and aligned but did not fill the container (size constraints, etc)
+                    //  then try to align it
+                    stackSpace.X = Math.Max(stackSpace.X, 0f) * xChildAlign;
+                    stackSpace.Y = Math.Max(stackSpace.Y, 0f) * yChildAlign;
+                    childResult.Rect.Position = contentPosition +
+                        new Vector2(stackSpace.X + childMargins.Left, stackSpace.Y + childMargins.Top);
+                }
+            } else {
+                childResult.Rect.Left = contentPosition.X + childMargins.Left + x;
+                childResult.Rect.Top = contentPosition.Y + childMargins.Top + y;
+
+                if (config.IsVertical) {
+                    var alignment = (xChildAlign * Math.Max(0, baseline - childOuterSize.X));
+                    if (alignment != 0)
+                        childResult.Rect.Left += alignment;
+                    y += childOuterSize.Y;
+                } else {
+                    var alignment = (yChildAlign * Math.Max(0, baseline - childOuterSize.Y));
+                    if (alignment != 0)
+                        childResult.Rect.Top += alignment;
+                    x += childOuterSize.X;
+                }
+
+                if (!child.Config.NoMeasurement) {
+                    result.ContentSize.X = Math.Max(result.ContentSize.X, childResult.Rect.Right - contentPosition.X);
+                    result.ContentSize.Y = Math.Max(result.ContentSize.Y, childResult.Rect.Bottom - contentPosition.Y);
+                }
+
+                // TODO: Clip left/top edges as well?
+                // TODO: Separate x/y
+                if ((config._ContainerFlags & Enums.ContainerFlag.Boxes_Clip) != default) {
+                    var rightEdge = result.Rect.Right - control.Padding.Right - childMargins.Right;
+                    childResult.Rect.Width = Math.Max(0, Math.Min(childResult.Rect.Width, rightEdge - childResult.Rect.Left));
+                    var bottomEdge = result.Rect.Bottom - control.Padding.Bottom - childMargins.Bottom;
+                    childResult.Rect.Height = Math.Max(0, Math.Min(childResult.Rect.Height, bottomEdge - childResult.Rect.Top));
+                }
+            }
+
+            Pass3_Arrange(ref child, ref childResult, depth + 1);
         }
     }
 }

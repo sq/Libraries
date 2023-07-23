@@ -21,23 +21,78 @@ namespace Squared.PRGUI.NewEngine {
 
             ref readonly var config = ref control.Config;
 
+            if (control.GridColumnCount > 0) {
+                return Pass2_Grid(ref control, ref result, depth);
+            } else {
+                var oldSize = result.Rect.Size;
+
+                var needRecalc = false;
+                if (config.IsWrap)
+                    needRecalc = Pass2a_PerformWrapping(ref control, ref result, depth);
+
+                Pass2b_ExpandChildren(ref control, ref result, depth);
+
+                foreach (var ckey in Children(control.Key)) {
+                    ref var child = ref this[ckey];
+                    ref var childResult = ref UnsafeResult(ckey);
+                    if (Pass2(ref child, ref childResult, depth + 1))
+                        needRecalc = true;
+                }
+
+                if (needRecalc)
+                    RecalcSizeQueue.Add(control.Key);
+                return needRecalc;
+            }
+        }
+
+        private unsafe bool Pass2_Grid (
+            ref BoxRecord control, ref BoxLayoutResult result, int depth
+        ) {
+            ref readonly var config = ref control.Config;
+
             var oldSize = result.Rect.Size;
 
+            float cw = result.Rect.Width - control.Padding.X,
+                ch = result.Rect.Height - control.Padding.Y,
+                columnWidth = cw / control.GridColumnCount;
+
+            // FIXME: Stackalloc
+            int columnIndex = 0;
+            int* columns = stackalloc int[control.GridColumnCount];
+            foreach (var run in Runs(control.Key))
+                columns[columnIndex++] = run;
+
+            columnIndex = 0;
+
+            foreach (var ckey in Children(control.Key)) {
+                ref var child = ref this[ckey];
+                ref var childResult = ref Result(ckey);
+                child.ConvertProportionsToMaximums(cw, ch, out var childWidth, out var childHeight);
+
+                var margins = child.Margins;
+                ref readonly var childConfig = ref child.Config;
+                bool expandChildX = childConfig.FillRow && !childWidth.HasFixed,
+                    expandChildY = childConfig.FillColumn && !childHeight.HasFixed;
+                float childOuterW = childResult.Rect.Width + margins.X,
+                    childOuterH = childResult.Rect.Height + margins.Y;
+
+                ref var run = ref Run(columns[columnIndex]);
+
+                childResult.Rect.Width = columnWidth;
+                childWidth.Constrain(ref childResult.Rect.Width, true);
+                childResult.Rect.Height = run.MaxOuterHeight;
+                childHeight.Constrain(ref childResult.Rect.Height, true);
+
+                columnIndex = (columnIndex + 1) % control.GridColumnCount;
+            }                
+
             var needRecalc = false;
-            if (config.IsWrap)
-                needRecalc = Pass2a_PerformWrapping(ref control, ref result, depth);
-
-            Pass2b_ExpandChildren(ref control, ref result, depth);
-
             foreach (var ckey in Children(control.Key)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
                 if (Pass2(ref child, ref childResult, depth + 1))
                     needRecalc = true;
             }
-
-            if (needRecalc)
-                RecalcSizeQueue.Add(control.Key);
             return needRecalc;
         }
 
