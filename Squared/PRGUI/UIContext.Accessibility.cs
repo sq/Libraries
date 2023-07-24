@@ -49,12 +49,25 @@ namespace Squared.PRGUI.Accessibility {
         void FormatValueInto (StringBuilder sb);
     }
 
+    public static class TTSPriority {
+        public const int TopLevel = 3,
+            Control = 2,
+            Content = 1,
+            Highlight = 0;
+    }
+
     public sealed class TTS {
+
+        public struct QueueEntry {
+            public int Priority;
+            public Prompt Instance;
+        }
+
         public readonly UIContext Context;
 
         public static TimeSpan StopOnTransitionThreshold = TimeSpan.FromSeconds(0.3);
 
-        private readonly List<Prompt> SpeechQueue = new List<Prompt>();
+        private readonly List<QueueEntry> SpeechQueue = new List<QueueEntry>();
         private SpeechSynthesizer _SpeechSynthesizer;
         public Control CurrentlyReading { get; private set; }
         private Control CurrentlyReadingTopLevel;
@@ -84,7 +97,7 @@ namespace Squared.PRGUI.Accessibility {
         }
 
         public bool IsSpeaking {
-            get => SpeechQueue.Any(p => !p.IsCompleted);
+            get => SpeechQueue.Any(p => !p.Instance.IsCompleted);
         }
 
         private int _Volume = 100;
@@ -97,18 +110,24 @@ namespace Squared.PRGUI.Accessibility {
             }
         }
 
-        public void Speak (string text, int? rate = null) {
+        public void Speak (string text, int priority = 0, int? rate = null) {
             if (rate != null)
                 SpeechSynthesizer.Rate = rate.Value;
 
             var result = SpeechSynthesizer.SpeakAsync(text);
-            SpeechQueue.Add(result);
+            SpeechQueue.Add(new QueueEntry {
+                Priority = priority,
+                Instance = result
+            });
         }
 
-        public void Stop () {
-            if (IsSpeaking)
-                SpeechSynthesizer.SpeakAsyncCancelAll();
-            SpeechQueue.Clear();
+        public void Stop (int priority = 99) {
+            if (IsSpeaking) {
+                foreach (var qe in SpeechQueue)
+                    if (!qe.Instance.IsCompleted && (qe.Priority <= priority))
+                        SpeechSynthesizer.SpeakAsyncCancel(qe.Instance);
+            }
+            SpeechQueue.RemoveAll(qe => qe.Instance.IsCompleted);
         }
 
         public void BeginReading (Control control, string prefix = null, bool force = false) {
@@ -120,7 +139,7 @@ namespace Squared.PRGUI.Accessibility {
             return control?.DelegatedReadingTarget ?? (control as IReadingTarget);
         }
 
-        private void SpeakControl (Control control, string prefix = null) {
+        private void SpeakControl (Control control, string prefix = null, int priority = 0) {
             var customTarget = FindReadingTarget(control);
             var text = customTarget?.Text.ToString();
             if ((text == null) && control.TooltipContent)
@@ -129,7 +148,7 @@ namespace Squared.PRGUI.Accessibility {
                 text = control.ToString();
 
             if (text != null)
-                Speak((prefix ?? "") + text.ToString(), Context.TTSDescriptionReadingSpeed);
+                Speak((prefix ?? "") + text.ToString(), priority, Context.TTSDescriptionReadingSpeed);
         }
 
         private void BeginReading (Control topLevel, Control control, string prefix = null, bool force = false) {
@@ -146,10 +165,10 @@ namespace Squared.PRGUI.Accessibility {
             StartedReadingControlWhen = Context.NowL;
             ShouldStopBeforeReadingValue = false;
 
-            Stop();
+            Stop(prefixed ? TTSPriority.TopLevel : TTSPriority.Control);
             if (prefixed)
-                SpeakControl(topLevel, "Inside");
-            SpeakControl(control, prefix ?? (prefixed ? ", " : null));
+                SpeakControl(topLevel, "Inside", TTSPriority.TopLevel);
+            SpeakControl(control, prefix ?? (prefixed ? ", " : null), TTSPriority.Control);
         }
 
         private void Control_OnSelectionChanged (IEventInfo e) {
@@ -200,9 +219,9 @@ namespace Squared.PRGUI.Accessibility {
                     ShouldStopBeforeReadingValue || 
                     ((Context.NowL - StartedReadingControlWhen) >= StopOnTransitionThreshold.Ticks)
                 )
-                    Stop();
+                    Stop(TTSPriority.Content);
 
-                Speak(ValueStringBuilder.ToString(), Context.TTSValueReadingSpeed);
+                Speak(ValueStringBuilder.ToString(), TTSPriority.Content, Context.TTSValueReadingSpeed);
                 ShouldStopBeforeReadingValue = true;
             }
         }
@@ -210,7 +229,7 @@ namespace Squared.PRGUI.Accessibility {
         internal void FixatedControlChanged (Control current) {
             if (Context.ReadAloudOnFixation) {
                 if (current == null)
-                    Stop();
+                    Stop(TTSPriority.Control);
                 else
                     BeginReading(current);
             }
@@ -226,7 +245,7 @@ namespace Squared.PRGUI.Accessibility {
         internal void FocusedControlChanged (Control currentTopLevel, Control current) {
             if (Context.ReadAloudOnFocus) {
                 if (current == null)
-                    Stop();
+                    Stop(TTSPriority.Control);
                 else
                     BeginReading(currentTopLevel, current);
             }
