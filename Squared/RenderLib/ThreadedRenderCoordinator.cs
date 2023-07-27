@@ -118,6 +118,7 @@ namespace Squared.Render {
 
         public event EventHandler<string> OnLogMessage;
 
+        private readonly Func<GameWindow> GetWindow;
         private readonly Func<bool> _SyncBeginDraw;
         private readonly Action _SyncEndDraw;
         private readonly Action<Frame> _ThreadedDraw;
@@ -245,7 +246,7 @@ namespace Squared.Render {
         /// <param name="synchronousBeginDraw">The function responsible for synchronously beginning a rendering operation. This will be invoked on the rendering thread.</param>
         /// <param name="synchronousEndDraw">The function responsible for synchronously ending a rendering operation and presenting it to the screen. This will be invoked on the rendering thread.</param>
         public RenderCoordinator (
-            RenderManager manager, 
+            RenderManager manager, Func<GameWindow> getWindow,
             Func<bool> synchronousBeginDraw, Action synchronousEndDraw
         ) {
             Manager = manager;
@@ -253,6 +254,7 @@ namespace Squared.Render {
             UseResourceLock = manager.UseResourceLock;
             CreateResourceLock = manager.CreateResourceLock;
 
+            GetWindow = getWindow;
             _SyncBeginDraw = synchronousBeginDraw;
             _SyncEndDraw = synchronousEndDraw;
             _ThreadedDraw = ThreadedDraw;
@@ -271,7 +273,7 @@ namespace Squared.Render {
         /// <param name="deviceService"></param>
         public RenderCoordinator (
             IGraphicsDeviceService deviceService, Thread mainThread, ThreadGroup threadGroup,
-            Func<bool> synchronousBeginDraw = null, Action synchronousEndDraw = null
+            Func<GameWindow> getWindow, Func<bool> synchronousBeginDraw = null, Action synchronousEndDraw = null
         ) {
             DeviceService = deviceService;
             ThreadGroup = threadGroup;
@@ -279,6 +281,7 @@ namespace Squared.Render {
             UseResourceLock = Manager.UseResourceLock;
             CreateResourceLock = Manager.CreateResourceLock;
 
+            GetWindow = getWindow;
             _SyncBeginDraw = synchronousBeginDraw ?? DefaultBeginDraw;
             _SyncEndDraw = synchronousEndDraw ?? DefaultEndDraw;
             _ThreadedDraw = ThreadedDraw;
@@ -672,6 +675,18 @@ namespace Squared.Render {
             Interlocked.Increment(ref _InsideDrawOperation);
             try {
                 _ActualEnableThreading = EnableThreading;
+
+                // HACK: Fix problem where if the game is minimized, explorer.exe cannot dispatch a restore event successfully
+                //  because we tend to be blocked waiting on a signal when windows expects us to be pumping messages instead.
+                var gw = GetWindow();
+                if (gw != null) {
+                    var wflags = (SDL2.SDL.SDL_WindowFlags)SDL2.SDL.SDL_GetWindowFlags(gw.Handle);
+                    if (
+                        ((wflags & SDL2.SDL.SDL_WindowFlags.SDL_WINDOW_MINIMIZED) != default) ||
+                        ((wflags & SDL2.SDL.SDL_WindowFlags.SDL_WINDOW_HIDDEN) != default)
+                    )
+                        _ActualEnableThreading = false;
+                }
 
                 PresentBegunSignal.Reset();
 

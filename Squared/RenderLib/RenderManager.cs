@@ -941,7 +941,11 @@ namespace Squared.Render {
             public static WorkItemConfiguration Configuration =>
                 new WorkItemConfiguration {
                     Priority = 1,
-                    ConcurrencyPadding = 0
+                    ConcurrencyPadding = 1,
+                    // This concurrency limit provides a small but measurable performance increase,
+                    //  likely because of lock contention between prepare tasks for shared resources
+                    //  like the buffer generator
+                    MaxConcurrency = 4
                 };
 
             public Batch Batch;
