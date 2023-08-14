@@ -49,6 +49,7 @@ namespace Squared.PRGUI.NewEngine {
             ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
             ref readonly var config = ref control.Config;
+            var normalizeHeight = (control.Config.ChildFlags & ContainerFlags.GridNoNormalization) == default;
 
             var oldSize = result.Rect.Size;
 
@@ -56,7 +57,6 @@ namespace Squared.PRGUI.NewEngine {
                 ch = result.Rect.Height - control.Padding.Y,
                 columnWidth = cw / config.GridColumnCount;
 
-            // FIXME: Stackalloc
             int columnIndex = 0;
             int* columns = stackalloc int[config.GridColumnCount];
             foreach (var run in Runs(control.Key))
@@ -80,8 +80,10 @@ namespace Squared.PRGUI.NewEngine {
 
                 childResult.Rect.Width = columnWidth;
                 childWidth.Constrain(ref childResult.Rect.Width, true);
-                childResult.Rect.Height = run.MaxOuterHeight;
-                childHeight.Constrain(ref childResult.Rect.Height, true);
+                if (normalizeHeight) {
+                    childResult.Rect.Height = run.MaxOuterHeight;
+                    childHeight.Constrain(ref childResult.Rect.Height, true);
+                }
 
                 columnIndex = (columnIndex + 1) % config.GridColumnCount;
             }                

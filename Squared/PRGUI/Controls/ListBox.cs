@@ -385,8 +385,9 @@ namespace Squared.PRGUI.Controls {
                 return result;
 
             ref var record = ref Record(ref context);
-            // FIXME: Bounds check
             record.Config.GridColumnCount = (ushort)ColumnCount;
+            // HACK: Don't normalize height of items
+            record.Config.ChildFlags |= NewEngine.Enums.ContainerFlags.GridNoNormalization;
             record.Tag = LayoutTags.ListBox;
 
             var hasPushedDecorator = false;

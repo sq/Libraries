@@ -160,9 +160,9 @@ namespace Squared.PRGUI.Layout {
         Container_Break_Auto      = 0b1000000000000000000000 | 0b100,
 
         /// <summary>
-        /// Indicates that FloatingPosition has a user-provided value and alignment should be suppressed.
+        /// Disables height normalization when in grid mode
         /// </summary>
-        Internal_Has_Position     = 0b10000000000000000000000,
+        Container_Grid_NoNormalization = 0b10000000000000000000000,
     }
 
     public static class ControlFlagMask {
@@ -179,7 +179,8 @@ namespace Squared.PRGUI.Layout {
                 ControlFlags.Container_Clip_Children |
                 ControlFlags.Container_Prevent_Crush |
                 ControlFlags.Container_No_Expansion |
-                ControlFlags.Container_Break_Auto,
+                ControlFlags.Container_Break_Auto | 
+                ControlFlags.Container_Grid_NoNormalization,
             Layout = ControlFlags.Layout_Fill |
                 ControlFlags.Layout_ForceBreak |
                 ControlFlags.Layout_Floating |

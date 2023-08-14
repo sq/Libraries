@@ -151,6 +151,8 @@ namespace Squared.PRGUI.NewEngine {
             var index = _Count++;
             ref var result = ref Records[index];
             result._Key = new ControlKey(index);
+            // FIXME
+            result.Config.GridColumnCount = 0;
             result.OldFlags = flags;
             result.Tag = tag;
             if (parent.HasValue)

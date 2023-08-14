@@ -150,6 +150,8 @@ namespace Squared.PRGUI.NewEngine {
                     _ContainerFlags |= ContainerFlag.Size_PreventCrush_X;
                 if (value.IsFlagged(ControlFlags.Container_Prevent_Crush_Y))
                     _ContainerFlags |= ContainerFlag.Size_PreventCrush_Y;
+                if (value.IsFlagged(ControlFlags.Container_Grid_NoNormalization))
+                    _ContainerFlags |= ContainerFlag.Boxes_Grid_NoNormalization;
             }
 
             if (value.IsFlagged(ControlFlags.Container_Column))
@@ -436,6 +438,7 @@ namespace Squared.PRGUI.NewEngine {
         [Unserialized]
         internal ControlFlags _OldFlags;
 
+        [Unserialized]
         public ControlFlags OldFlags {
 #if DEBUG
             get => _OldFlags;
@@ -444,7 +447,9 @@ namespace Squared.PRGUI.NewEngine {
 #endif
             set {
                 _OldFlags = value;
+                var gcc = Config.GridColumnCount;
                 Config = new ControlConfiguration(value);
+                Config.GridColumnCount = gcc;
             }
         }
 

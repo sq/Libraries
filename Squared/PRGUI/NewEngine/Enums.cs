@@ -13,58 +13,47 @@ namespace Squared.PRGUI.NewEngine.Enums {
         /// <summary>
         /// Arrange child elements left-to-right
         /// </summary>
-        Layout_Row              = 0b1,
+        Layout_Row                 = 0b1,
         /// <summary>
         /// Arrange child elements top-to-bottom
         /// </summary>
-        Layout_Column           = 0b10,
+        Layout_Column              = 0b10,
         /// <summary>
         /// Arrange child elements right-to-left/bottom-to-top
         /// </summary>
-        Layout_Reverse          = 0b100,
+        Layout_Reverse             = 0b100,
 
         /// <summary>
         /// Align each run to the bottom/right of container
         /// </summary>
-        Align_End               = 0b1000,
+        Align_End                  = 0b1000,
         /// <summary>
         /// Align each run to the center of the container
         /// </summary>
-        Align_Center            = 0b10000,
+        Align_Center               = 0b10000,
         /// <summary>
         /// Spread the child elements across each run by distributing whitespace
         /// </summary>
-        Align_Justify           = 0b100000,
+        Align_Justify              = 0b100000,
 
         /// <summary>
         /// If a child will not fit in available space, wrap it to a new run
         /// </summary>
-        Arrange_Wrap            = 0b1000000,
+        Arrange_Wrap               = 0b1000000,
 
         /// <summary>
         /// Child rects will be clipped to our content box
         /// </summary>
-        Boxes_Clip              = 0b10000000,
+        Boxes_Clip                 = 0b10000000,
         /// <summary>
         /// Child boxes will not automatically grow beyond our content box even if they have huge
         ///  siblings, but they will not be clipped
         /// </summary>
-        Boxes_Constrain_Growth  = 0b100000000,
+        Boxes_Constrain_Growth     = 0b100000000,
         /// <summary>
-        /// If child boxes would overflow our content box, all of our children will be scaled down
-        ///  horizontally in order to fit into available space
+        /// In grid mode, boxes will not have their height normalized
         /// </summary>
-        Boxes_Squish_X          = 0b1000000000,
-        /// <summary>
-        /// If child boxes would overflow our content box, all of our children will be scaled down
-        ///  vertically in order to fit into available space
-        /// </summary>
-        Boxes_Squish_Y          = 0b10000000000,
-        /// <summary>
-        /// If child boxes would overflow our content box, all of our children will be scaled down
-        ///  in order to fit into available space
-        /// </summary>
-        Boxes_Squish            = Boxes_Squish_X | Boxes_Squish_Y,
+        Boxes_Grid_NoNormalization = 0b1000000000,
 
         /// <summary>
         /// Will expand automatically beyond default width to hold children
@@ -198,22 +187,10 @@ namespace Squared.PRGUI.NewEngine.Enums {
         ///  siblings, but they will not be clipped unless OverflowHidden is set
         /// </summary>
         ConstrainGrowth = ContainerFlag.Boxes_Constrain_Growth,
-
         /// <summary>
-        /// If child boxes would overflow our content box, all of our children will be scaled down
-        ///  horizontally in order to fit into available space
+        /// In grid mode, boxes will not have their height normalized
         /// </summary>
-        Squish_X = ContainerFlag.Boxes_Squish_X,
-        /// <summary>
-        /// If child boxes would overflow our content box, all of our children will be scaled down
-        ///  vertically in order to fit into available space
-        /// </summary>
-        Squish_Y = ContainerFlag.Boxes_Squish_Y,
-        /// <summary>
-        /// If child boxes would overflow our content box, all of our children will be scaled down
-        ///  in order to fit into available space
-        /// </summary>
-        Squish = ContainerFlag.Boxes_Squish,
+        GridNoNormalization = ContainerFlag.Boxes_Grid_NoNormalization,
 
         /// <summary>
         /// Will expand automatically beyond default width to hold children
@@ -242,7 +219,7 @@ namespace Squared.PRGUI.NewEngine.Enums {
         PreventCrush = PreventCrush_X | PreventCrush_Y,
 
         [Obsolete]
-        MASK = Wrap | OverflowHidden | ConstrainGrowth | ExpandForContent | PreventCrush | Squish,
+        MASK = Wrap | OverflowHidden | ConstrainGrowth | ExpandForContent | PreventCrush | GridNoNormalization,
     }
 
     public enum BoxAnchorMode : ushort {
