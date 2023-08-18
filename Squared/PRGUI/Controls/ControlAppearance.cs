@@ -467,14 +467,16 @@ namespace Squared.PRGUI {
         }
 
         public bool GetTransform (out Matrix matrix, out Vector2 origin, long now) {
-            if (!HasTransformMatrix) {
+            // Thread safety: We could lose a race and have our transform changed while rendering
+            var tm = _TransformMatrix;
+            if (tm?.HasValue != true) {
                 matrix = ControlMatrixInfo.IdentityMatrix;
                 origin = DefaultTransformOrigin;
                 return false;
             }
 
-            _TransformMatrix.Matrix.Get(now, out matrix);
-            origin = _TransformMatrix.TransformOriginMinusOneHalf + new Vector2(0.5f);
+            tm.Matrix.Get(now, out matrix);
+            origin = tm.TransformOriginMinusOneHalf + new Vector2(0.5f);
             return true;
         }
 

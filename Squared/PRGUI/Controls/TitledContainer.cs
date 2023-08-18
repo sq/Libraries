@@ -378,7 +378,7 @@ namespace Squared.PRGUI.Controls {
                     renderer.Layer += 1;
                     titleDecorator.Rasterize(ref context, ref renderer, ref subSettings);
 
-                    var textPosition = new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top);
+                    var textPosition = new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top + (titleContentBox.Height - layout.Size.Y) * 0.3f);
 
                     renderer.Layer += 1;
                     renderer.DrawMultiple(
