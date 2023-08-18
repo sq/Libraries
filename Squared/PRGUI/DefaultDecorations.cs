@@ -525,7 +525,7 @@ namespace Squared.PRGUI {
             TooltipFont,
             AcceleratorFont;
 
-        public const float MenuShowDuration = 0.1f,
+        public float MenuShowDuration = 0.1f,
             MenuHideDuration = 0.25f,
             ModalDialogShowDuration = 0.1f,
             ModalDialogHideDuration = 0.25f;
@@ -569,7 +569,7 @@ namespace Squared.PRGUI {
             GaugeShadow,
             GaugeValueShadow;
 
-        public const float DropdownArrowWidth = 16, DropdownArrowHeight = 11, DropdownArrowPadding = 4;
+        public float DropdownArrowWidth = 16, DropdownArrowHeight = 11, DropdownArrowPadding = 4;
         public float ScaledCheckboxSize => CheckboxSize * (SizeScaleRatio.Length() / 1.41421354f);
         public float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
@@ -675,14 +675,67 @@ namespace Squared.PRGUI {
             }
         }
 
-        protected virtual void ConfigureTexture (
-            string type, ref DecorationSettings settings, out Texture2D texture, out Bounds textureRegion, out RasterTextureSettings textureSettings
+        protected void ConfigureFill (
+            string type, ref DecorationSettings settings, 
+            out Texture2D texture, out Bounds textureRegion, out RasterTextureSettings textureSettings, 
+            out RasterFillSettings fillSettings
+        ) {
+            ConfigureFill(type, ref settings, out texture, out textureRegion, out textureSettings, out _, out _, out fillSettings);
+        }
+
+        protected virtual void ConfigureFill (
+            string type, ref DecorationSettings settings, 
+            out Texture2D texture, out Bounds textureRegion, out RasterTextureSettings textureSettings, 
+            out pSRGBColor? fillColor1, out pSRGBColor? fillColor2, out RasterFillSettings fillSettings
         ) {
             texture = settings.GetTexture();
             textureRegion = settings.GetTextureRegion();
             textureSettings = settings.GetTextureSettings();
             if (settings.HasStateFlag(ControlStates.Disabled))
                 textureSettings.Saturation *= 0.5f;
+
+            switch (type) {
+                case "ListSelection":
+                    fillSettings = RasterFillMode.Horizontal;
+                    break;
+                case "MenuSelection":
+                    fillSettings = RasterFillMode.RadialEnclosing;
+                    break;
+                case "Title": {
+                    fillSettings = RasterFillMode.Vertical;
+                    var containsFocus = settings.HasStateFlag(ControlStates.ContainsFocus);
+                    // FIXME: Should we draw the outline in Above?
+                    var fc1 = (containsFocus ? ColorScheme.TitleFill : ColorScheme.TitleFill.ToGrayscale(0.85f));
+                    var fc2 = fc1.ToVector4() * 0.8f;
+                    fc2.W = 1;
+                    fillColor1 = fc1;
+                    fillColor2 = fc2;
+                    return;
+                }
+                case "Tab":
+                    fillSettings = new RasterFillSettings {
+                        Mode = RasterFillMode.RadialEnclosing,
+                        Size = 0.95f,
+                    };
+                    break;
+                case "TabPage":
+                    fillSettings = new RasterFillSettings {
+                        Mode = RasterFillMode.RadialEnclosing,
+                        Size = 0.95f,
+                    };
+                    break;
+                case "Button":
+                    fillSettings = new RasterFillSettings {
+                        Mode = RasterFillMode.RadialEnclosing,
+                        Size = 0.95f,
+                    };
+                    break;
+                default:
+                    fillSettings = default;
+                    break;
+            }
+
+            fillColor1 = fillColor2 = settings.BackgroundColor;
         }
 
         protected virtual void Button_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
@@ -697,7 +750,7 @@ namespace Squared.PRGUI {
             var color1 = baseColor;
             var color2 = baseColor;
 
-            ConfigureTexture("Button", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill("Button", ref settings, out var texture, out var textureRegion, out var textureSettings, out var fillSettings);
 
             float base1 = 0.85f, base2 = 0.35f;
             if (settings.BackgroundColor.HasValue) {
@@ -721,9 +774,7 @@ namespace Squared.PRGUI {
                 radius: InteractableCornerRadius,
                 outlineRadius: Button_GetOutlineSize(thickness), outlineColor: outlineColor * alpha,
                 innerColor: color1 * fillAlpha1, outerColor: color2 * fillAlpha2,
-                fill: new RasterFillSettings {
-                    Mode = RasterFillMode.RadialEnclosing, Size = 0.95f,
-                },
+                fill: fillSettings,
                 shadow: InteractableShadow,
                 texture: texture,
                 textureRegion: textureRegion,
@@ -770,7 +821,7 @@ namespace Squared.PRGUI {
             var color1 = Color.Transparent;
             var color2 = color1;
 
-            ConfigureTexture("TabPage", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill("TabPage", ref settings, out var texture, out var textureRegion, out var textureSettings, out var fillSettings);
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
@@ -778,10 +829,7 @@ namespace Squared.PRGUI {
                 radiusCW: radiusCW,
                 outlineRadius: Button_GetOutlineSize(thickness), outlineColor: outlineColor * alpha,
                 innerColor: color1, outerColor: color2,
-                fill: new RasterFillSettings {
-                    Mode = RasterFillMode.RadialEnclosing,
-                    Size = 0.95f,
-                },
+                fill: fillSettings,
                 shadow: InteractableShadow,
                 texture: texture,
                 textureRegion: textureRegion,
@@ -823,7 +871,7 @@ namespace Squared.PRGUI {
 
             var radiusCW = GetTabRadius(ref settings);
 
-            ConfigureTexture("Tab", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill("Tab", ref settings, out var texture, out var textureRegion, out var textureSettings, out var fillSettings);
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
@@ -831,10 +879,7 @@ namespace Squared.PRGUI {
                 radiusCW: radiusCW,
                 outlineRadius: Button_GetOutlineSize(thickness), outlineColor: outlineColor * alpha,
                 innerColor: color1 * fillAlpha1, outerColor: color2 * fillAlpha2,
-                fill: new RasterFillSettings {
-                    Mode = RasterFillMode.RadialEnclosing,
-                    Size = 0.95f,
-                },
+                fill: fillSettings,
                 shadow: InteractableShadow,
                 texture: texture,
                 textureRegion: textureRegion,
@@ -892,16 +937,20 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void Slider_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            ConfigureTexture("Slider", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill(
+                "Slider", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                out var color1, out var color2, out var fillSettings
+            );
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SliderCornerRadius,
                 outlineRadius: Button_GetOutlineSize(InertOutlineThickness), outlineColor: Color.Transparent,
-                innerColor: settings.BackgroundColor ?? ColorScheme.SliderFill, 
-                outerColor: settings.BackgroundColor ?? ColorScheme.SliderFill,
+                innerColor: color1 ?? ColorScheme.SliderFill, 
+                outerColor: color2 ?? ColorScheme.SliderFill,
                 shadow: SliderShadow,
+                fill: fillSettings,
                 texture: texture,
                 textureRegion: textureRegion,
                 textureSettings: textureSettings
@@ -909,7 +958,10 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void Gauge_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            ConfigureTexture("Gauge_Below", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill(
+                "Gauge_Below", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                out var color1, out var color2, out var fillSettings
+            );
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             var direction = settings.Traits.FirstOrDefault();
@@ -920,9 +972,10 @@ namespace Squared.PRGUI {
                     startAngleDegrees: 0f, sizeDegrees: 360f,
                     ringRadius: settings.ContentBox.Width, fillRadius: settings.ContentBox.Height,
                     outlineRadius: Button_GetOutlineSize(InertOutlineThickness), outlineColor: Color.Transparent,
-                    innerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill, 
-                    outerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill,
+                    innerColor: color1 ?? ColorScheme.GaugeFill, 
+                    outerColor: color2 ?? ColorScheme.GaugeFill,
                     shadow: GaugeShadow,
+                    fill: fillSettings,
                     texture: texture,
                     textureRegion: textureRegion,
                     textureSettings: textureSettings
@@ -932,9 +985,10 @@ namespace Squared.PRGUI {
                     a, b,
                     radius: SliderCornerRadius,
                     outlineRadius: Button_GetOutlineSize(InertOutlineThickness), outlineColor: Color.Transparent,
-                    innerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill, 
-                    outerColor: settings.BackgroundColor ?? ColorScheme.GaugeFill,
+                    innerColor: color1 ?? ColorScheme.GaugeFill, 
+                    outerColor: color2 ?? ColorScheme.GaugeFill,
                     shadow: GaugeShadow,
+                    fill: fillSettings,
                     texture: texture,
                     textureRegion: textureRegion,
                     textureSettings: textureSettings
@@ -1053,7 +1107,8 @@ namespace Squared.PRGUI {
                 out pSRGBColor outlineColor, out RasterFillMode fillMode
             );
 
-            ConfigureTexture("Gauge_Content", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            // FIXME: fillSettings
+            ConfigureFill("Gauge_Content", ref settings, out var texture, out var textureRegion, out var textureSettings, out _);
 
             if (isCircular) {
                 // HACK: Ensure that the alpha values equalize as we approach a full circle, otherwise the 
@@ -1282,7 +1337,10 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void Container_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            ConfigureTexture("Container", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill(
+                "Container", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                out var color1, out var color2, out var fillSettings
+            );
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
@@ -1290,9 +1348,10 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: ContainerCornerRadius,
                 outlineRadius: Button_GetOutlineSize(InertOutlineThickness), outlineColor: ColorScheme.ContainerOutline,
-                innerColor: settings.BackgroundColor ?? ColorScheme.ContainerFill, 
-                outerColor: settings.BackgroundColor ?? ColorScheme.ContainerFill,
+                innerColor: color1 ?? ColorScheme.ContainerFill, 
+                outerColor: color2 ?? ColorScheme.ContainerFill,
                 shadow: ContainerShadow,
+                fill: fillSettings,
                 texture: texture,
                 textureRegion: textureRegion,
                 textureSettings: textureSettings
@@ -1300,7 +1359,10 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void FloatingContainer_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            ConfigureTexture("FloatingContainer", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill(
+                "FloatingContainer", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                out var color1, out var color2, out var fillSettings
+            );
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
@@ -1308,9 +1370,10 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: FloatingContainerCornerRadius ?? ContainerCornerRadius,
                 outlineRadius: Button_GetOutlineSize(InertOutlineThickness), outlineColor: ColorScheme.FloatingContainerOutline ?? ColorScheme.ContainerOutline,
-                innerColor: settings.BackgroundColor ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill, 
-                outerColor: settings.BackgroundColor ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill,
+                innerColor: color1 ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill, 
+                outerColor: color2 ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill,
                 shadow: FloatingContainerShadow ?? ContainerShadow,
+                fill: fillSettings,
                 texture: texture,
                 textureRegion: textureRegion,
                 textureSettings: textureSettings
@@ -1318,11 +1381,14 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void Window_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            ConfigureTexture("Window", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill(
+                "Window", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                out var _color1, out var _color2, out var fillSettings
+            );
 
             // HACK: Handle having composition disabled for windows, since in some cases it's desirable to do that
-            var fillColor = (pSRGBColor)(settings.BackgroundColor ?? ColorScheme.WindowFill ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill)
-                * context.Opacity;
+            var color1 = (_color1 ?? ColorScheme.WindowFill ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill) * context.Opacity;
+            var color2 = (_color2 ?? ColorScheme.WindowFill ?? ColorScheme.FloatingContainerFill ?? ColorScheme.ContainerFill) * context.Opacity;
             var shadow = FloatingContainerShadow ?? ContainerShadow;
             if (shadow.HasValue) {
                 var _ = shadow.Value;
@@ -1337,9 +1403,10 @@ namespace Squared.PRGUI {
                 radius: FloatingContainerCornerRadius ?? ContainerCornerRadius,
                 outlineRadius: Button_GetOutlineSize(InertOutlineThickness), 
                 outlineColor: (ColorScheme.FloatingContainerOutline ?? ColorScheme.ContainerOutline) * context.Opacity,
-                innerColor: fillColor, 
-                outerColor: fillColor,
+                innerColor: color1, 
+                outerColor: color2,
                 shadow: shadow,
+                fill: fillSettings,
                 texture: texture,
                 textureRegion: textureRegion,
                 textureSettings: textureSettings
@@ -1347,12 +1414,15 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void Tooltip_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            ConfigureTexture("Tooltip", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill(
+                "Tooltip", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                out var _color1, out var _color2, out var fillSettings
+            );
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
-            var color1 = settings.BackgroundColor ?? ColorScheme.TooltipFill;
-            var color2 = (color1.ToVector4() * 1.25f);
+            var color1 = _color1 ?? ColorScheme.TooltipFill;
+            var color2 = _color2?.ToVector4() ?? (color1.ToVector4() * 1.25f);
             color2.W = 1;
             renderer.RasterizeRectangle(
                 a, b,
@@ -1361,6 +1431,7 @@ namespace Squared.PRGUI {
                 innerColor: color2, 
                 outerColor: color1,
                 shadow: TooltipShadow ?? FloatingContainerShadow,
+                fill: fillSettings,
                 texture: texture,
                 textureRegion: textureRegion,
                 textureSettings: textureSettings
@@ -1368,12 +1439,15 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void Menu_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            ConfigureTexture("Menu", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill(
+                "Menu", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                out var _color1, out var _color2, out var fillSettings
+            );
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
-            var color1 = settings.BackgroundColor ?? ColorScheme.TooltipFill;
-            var color2 = (color1.ToVector4() * 1.25f);
+            var color1 = _color1 ?? ColorScheme.TooltipFill;
+            var color2 = _color2?.ToVector4() ?? (color1.ToVector4() * 1.25f);
             float outlineRadius = Button_GetOutlineSize(InertOutlineThickness),
                 radius = TooltipCornerRadius ?? FloatingContainerCornerRadius ?? ContainerCornerRadius;
             // For any corners that are aligned with our anchor (if we have one), we make that corner
@@ -1391,9 +1465,10 @@ namespace Squared.PRGUI {
                 radiusCW: radiusCw,
                 outlineRadius: outlineRadius, 
                 outlineColor: ColorScheme.TooltipOutline,
-                innerColor: color2, 
-                outerColor: color1,
+                innerColor: color1, 
+                outerColor: color2,
                 shadow: TooltipShadow ?? FloatingContainerShadow,
+                fill: fillSettings,
                 texture: texture,
                 textureRegion: textureRegion,
                 textureSettings: textureSettings
@@ -1401,9 +1476,12 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void StaticText_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            ConfigureTexture("StaticText", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill(
+                "StaticText", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                out var color1, out var color2, out var fillSettings
+            );
 
-            if (!settings.BackgroundColor.HasValue && (texture == null))
+            if (!color1.HasValue && !color2.HasValue && (texture == null))
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
@@ -1412,7 +1490,8 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: InertCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: settings.BackgroundColor.Value, outerColor: settings.BackgroundColor.Value,
+                innerColor: color1 ?? color2.Value, outerColor: color2 ?? color1.Value,
+                fill: fillSettings,
                 texture: texture,
                 textureRegion: textureRegion,
                 textureSettings: textureSettings
@@ -1420,7 +1499,10 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void EditableText_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            ConfigureTexture("EditableText", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill(
+                "EditableText", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                out var fillColor1, out var fillColor2, out var fillSettings
+            );
 
             var focusedAlpha = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
@@ -1432,10 +1514,10 @@ namespace Squared.PRGUI {
                     ? EditableFocusedOutlineThickness 
                     : InactiveOutlineThickness), 
                 outlineColor: pSRGBColor.Lerp(ColorScheme.ContainerOutline, ColorScheme.Focused, focusedAlpha),
-                // FIXME: Separate textarea fill color?
-                innerColor: (settings.BackgroundColor ?? ColorScheme.ContainerFill), 
-                outerColor: (settings.BackgroundColor ?? ColorScheme.ContainerFill),
+                innerColor: (fillColor1 ?? ColorScheme.ContainerFill), 
+                outerColor: (fillColor2 ?? ColorScheme.ContainerFill),
                 shadow: EditableShadow,
+                fill: fillSettings,
                 texture: texture,
                 textureRegion: textureRegion,
                 textureSettings: textureSettings
@@ -1657,21 +1739,20 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void TitleCommon_Below (ref ImperativeRenderer renderer, DecorationSettings settings, float cornerRadius, float cornerRadius2) {
-            var containsFocus = settings.HasStateFlag(ControlStates.ContainsFocus);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
-            // FIXME: Should we draw the outline in Above?
-            var color1 = (pSRGBColor)(containsFocus ? ColorScheme.TitleFill : ColorScheme.TitleFill.ToGrayscale(0.85f));
-            var color2 = color1.ToVector4() * 0.8f;
-            color2.W = 1;
 
-            ConfigureTexture("Title", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill(
+                "Title", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                out var color1, out var color2, out var fillSettings
+            );
 
             renderer.RasterizeRectangle(
                 a, b,
                 radiusCW: new Vector4(cornerRadius, cornerRadius, cornerRadius2, cornerRadius2),
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: color1, outerColor: color2,
-                fill: RasterFillMode.Vertical,
+                // FIXME: Defaults?
+                innerColor: color1 ?? pSRGBColor.Transparent, outerColor: color2 ?? pSRGBColor.Transparent,
+                fill: fillSettings,
                 shadow: TitleShadow,
                 texture: texture,
                 textureSettings: textureSettings,
@@ -1693,7 +1774,7 @@ namespace Squared.PRGUI {
                 : 0f;
             var outlineColor = Color.Lerp(Color.Transparent, Color.White, outlineAlpha);
 
-            ConfigureTexture("Selection", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill("Selection", ref settings, out var texture, out var textureRegion, out var textureSettings, out var fillSettings);
 
             renderer.RasterizeRectangle(
                 a, b,
@@ -1702,6 +1783,7 @@ namespace Squared.PRGUI {
                 outlineColor: outlineColor,
                 innerColor: fillColor, outerColor: fillColor,
                 shadow: SelectionShadow,
+                fill: fillSettings,
                 texture: texture,
                 textureSettings: textureSettings,
                 textureRegion: textureRegion
@@ -1713,7 +1795,7 @@ namespace Squared.PRGUI {
             var isFocused = settings.HasStateFlag(ControlStates.Focused) ||
                 settings.HasStateFlag(ControlStates.ContainsFocus);
 
-            ConfigureTexture("MenuSelection", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill("MenuSelection", ref settings, out var texture, out var textureRegion, out var textureSettings, out var fillSettings);
 
             var fillColor = (
                 isFocused || (texture != null)
@@ -1732,7 +1814,7 @@ namespace Squared.PRGUI {
                 radius: MenuSelectionCornerRadius,
                 outlineRadius: 0.9f, outlineColor: fillColor,
                 innerColor: fillColor, outerColor: fillColor * 0.75f,
-                fill: RasterFillMode.RadialEnclosing,
+                fill: fillSettings,
                 texture: texture,
                 textureSettings: textureSettings,
                 textureRegion: textureRegion
@@ -1743,7 +1825,7 @@ namespace Squared.PRGUI {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isFocused = settings.HasStateFlag(ControlStates.Focused) ||
                 settings.HasStateFlag(ControlStates.ContainsFocus);
-            ConfigureTexture("ListSelection", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill("ListSelection", ref settings, out var texture, out var textureRegion, out var textureSettings, out var fillSettings);
 
             var fillColor = (
                 isFocused || (texture != null)
@@ -1764,7 +1846,7 @@ namespace Squared.PRGUI {
                 radius: ListSelectionCornerRadius,
                 outlineRadius: 0.9f, outlineColor: outlineColor,
                 innerColor: fillColor, outerColor: fillColor,
-                fill: RasterFillMode.Horizontal,
+                fill: fillSettings,
                 texture: texture,
                 textureSettings: textureSettings,
                 textureRegion: textureRegion
@@ -1787,7 +1869,7 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void AcceleratorLabel_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            ConfigureTexture("AcceleratorLabel", ref settings, out var texture, out var textureRegion, out var textureSettings);
+            ConfigureFill("AcceleratorLabel", ref settings, out var texture, out var textureRegion, out var textureSettings, out var fillSettings);
 
             // HACK
             Vector4 radius;
@@ -1814,6 +1896,7 @@ namespace Squared.PRGUI {
                 outlineRadius: Button_GetOutlineSize(1f), outlineColor: ColorScheme.AcceleratorOutline,
                 innerColor: ColorScheme.AcceleratorFill, outerColor: ColorScheme.AcceleratorFill,
                 shadow: null,
+                fill: fillSettings,
                 texture: texture,
                 textureRegion: textureRegion,
                 textureSettings: textureSettings

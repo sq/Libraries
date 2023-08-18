@@ -131,7 +131,7 @@ namespace Squared.PRGUI.Controls {
             }
             set {
                 if (!TrySetSelectedIndex(value, true))
-                    throw new Exception("Failed to set selected index");
+                    System.Diagnostics.Debug.WriteLine("Failed to set selected index");
             }
         }
 

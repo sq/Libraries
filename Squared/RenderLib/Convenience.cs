@@ -159,6 +159,15 @@ namespace Squared.Render.Convenience {
             ColorSourceBlend = Blend.DestinationAlpha
         };
 
+        public static readonly BlendState DestinationAlphaMaskAdditive = new BlendState {
+            Name = "DestinationAlphaMaskAdditive",
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.Zero,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.DestinationAlpha
+        };
 
         public static readonly BlendState RasterShapeAlphaBlend = PorterDuffNonPremultipliedOver;
 
