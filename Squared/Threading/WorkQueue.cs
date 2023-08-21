@@ -257,8 +257,7 @@ namespace Squared.Threading {
         private volatile int HasAnyListeners = 0;
         private readonly List<WorkQueueDrainListener> DrainListeners = new List<WorkQueueDrainListener>();
         private volatile int NumWaitingForDrain = 0;
-        private readonly ManualResetEventSlim DrainedSignal = new ManualResetEventSlim(false),
-            FinishedProcessingSignal = new ManualResetEventSlim(false);
+        private readonly ManualResetEventSlim FinishedProcessingSignal = new ManualResetEventSlim(false);
 
         private readonly object ItemsLock = new object();
         private InternalWorkItem<T>[] _Items;
@@ -299,6 +298,10 @@ namespace Squared.Threading {
             AssertCanEnqueue();
             var result = Interlocked.Increment(ref ItemsQueued);
             lock (ItemsLock) {
+                // HACK: Clear the 'finished processing' signal because we have work items now
+                if (_Count <= 1)
+                    FinishedProcessingSignal.Reset();
+
                 // Any existing read operations are irrelevant, we're inside the lock so we own the semilock state
                 Volatile.Write(ref _Semilock, Semilock_Adding);
                 EnsureCapacityLocked(_Count + 1);
@@ -496,7 +499,7 @@ namespace Squared.Threading {
 
             InternalWorkItem<T> item = default(InternalWorkItem<T>);
             int numProcessed = 0;
-            bool running = true, signalDrained = false;
+            bool running = true;
 
             var padded = Owner.Count - (Configuration.ConcurrencyPadding ?? Owner.DefaultConcurrencyPadding);
             var lesser = Math.Min(Configuration.MaxConcurrency ?? 9999, padded);
@@ -519,10 +522,8 @@ namespace Squared.Threading {
                         (numProcessed < actualMaximumCount) &&
                         TryDequeue(ref item, out empty);
 
-                    if (empty) {
-                        signalDrained = true;
+                    if (empty)
                         exhausted = true;
-                    }
 
                     if (running) {
                         try {
@@ -535,7 +536,6 @@ namespace Squared.Threading {
                     }
                 } catch (Exception exc) {
                     UnhandledException = ExceptionDispatchInfo.Capture(exc);
-                    signalDrained = true;
                     break;
                 }
             } while (running);
@@ -549,13 +549,7 @@ namespace Squared.Threading {
             var signalDone = wasLast && (Volatile.Read(ref ItemsQueued) <= processedCounter);
             */
 
-            if (signalDrained) {
-                // FIXME: Should we do this first? Assumption is that in a very bad case, the future's
-                //  complete handler might begin waiting
-                DrainedSignal.Set();
-            }
-
-            if (wasLast)
+            if (wasLast && Volatile.Read(ref _Count) == 0)
                 FinishedProcessingSignal.Set();
         }
 
@@ -602,6 +596,7 @@ namespace Squared.Threading {
                 return true;
 
             var resultCount = Interlocked.Increment(ref NumWaitingForDrain);
+            const int actualMaxWaitBecauseSomethingAboutTheseThreadingPrimitivesIsBroken = 1000;
             long endWhen =
                 timeoutMs >= 0
                     ? Time.Ticks + (Time.MillisecondInTicks * timeoutMs)
@@ -624,24 +619,14 @@ namespace Squared.Threading {
                         if (now > endWhen)
                             break;
                         var maxWait = (timeoutMs <= 0)
-                            ? timeoutMs
+                            ? actualMaxWaitBecauseSomethingAboutTheseThreadingPrimitivesIsBroken
                             : (int)(Math.Max(0, endWhen - now) / Time.MillisecondInTicks);
                         NotifyChanged();
 
-                        if (DrainedSignal.Wait(maxWait)) {
-                            // We successfully got the drain signal, now wait for the 'processing is probably done' signal
-                            now = Time.Ticks;
-                            maxWait = (timeoutMs <= 0)
-                                ? timeoutMs
-                                : (int)(Math.Max(0, endWhen - now) / Time.MillisecondInTicks);
-                            if (now > endWhen)
-                                break;
-                            // Note that we may still spin after getting this signal because it will fire when all the workers
-                            //  stop running, but that doesn't necessarily mean all the work is done
-                            if (FinishedProcessingSignal.Wait(maxWait)) {
-                                FinishedProcessingSignal.Reset();
-                                DrainedSignal.Reset();
-                            }
+                        // Note that we may still spin after getting this signal because threading is hard
+                        if (!FinishedProcessingSignal.Wait(maxWait)) {
+                            if (ItemsProcessed >= ItemsQueued)
+                                System.Diagnostics.Debug.WriteLine($"WARNING: FinishedProcessingSignal wait timed out even though work is done for {typeof(T)}");
                         }
                     } else {
 #if DEBUG
