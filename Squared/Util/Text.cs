@@ -363,6 +363,85 @@ namespace Squared.Util.Text {
         public static implicit operator ImmutableAbstractString (AbstractString astr) => new ImmutableAbstractString(astr);
     }
 
+    public class ImmutableAbstractStringLookup<TValue> : IEnumerable<KeyValuePair<ImmutableAbstractString, TValue>> {
+        protected readonly Dictionary<ImmutableAbstractString, TValue> Dict;
+        public readonly bool IgnoreCase;
+
+        public ImmutableAbstractStringLookup (bool ignoreCase = false) {
+            IgnoreCase = ignoreCase;
+            Dict = new Dictionary<ImmutableAbstractString, TValue>(
+                ignoreCase
+                    ? ImmutableAbstractString.Comparer.OrdinalIgnoreCase
+                    : ImmutableAbstractString.Comparer.Ordinal
+            );
+        }
+
+        public ImmutableAbstractStringLookup (int capacity, bool ignoreCase = false) {
+            IgnoreCase = ignoreCase;
+            Dict = new Dictionary<ImmutableAbstractString, TValue>(
+                capacity, ignoreCase
+                    ? ImmutableAbstractString.Comparer.OrdinalIgnoreCase
+                    : ImmutableAbstractString.Comparer.Ordinal
+            );
+        }
+
+        public int Count => Dict.Count;
+        public void Clear () => Dict.Clear();
+
+        public void Add (string key, TValue value) => Add((ImmutableAbstractString)key, value);
+        public void Add (ImmutableAbstractString key, TValue value) {
+            key.GetHashCode();
+            Dict.Add(key, value);
+        }
+
+        public bool Contains (string key) => Contains((ImmutableAbstractString)key);
+        public bool Contains (ImmutableAbstractString key) {
+            key.GetHashCode();
+            return Dict.ContainsKey(key);
+        }
+
+        public bool Remove (string key) => Remove((ImmutableAbstractString)key);
+        public bool Remove (ImmutableAbstractString key) {
+            key.GetHashCode();
+            return Dict.Remove(key);
+        }
+
+        public bool TryGetValue (string key, out TValue result) => TryGetValue((ImmutableAbstractString)key, out result);
+        public bool TryGetValue (ImmutableAbstractString key, out TValue result) {
+            key.GetHashCode();
+            return Dict.TryGetValue(key, out result);
+        }
+
+        public Dictionary<ImmutableAbstractString, TValue>.KeyCollection Keys =>
+            Dict.Keys;
+
+        public Dictionary<ImmutableAbstractString, TValue>.Enumerator GetEnumerator () =>
+            Dict.GetEnumerator();
+
+        IEnumerator<KeyValuePair<ImmutableAbstractString, TValue>> IEnumerable<KeyValuePair<ImmutableAbstractString, TValue>>.GetEnumerator () {
+            return Dict.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return Dict.GetEnumerator();
+        }
+
+        public TValue this [string key] {
+            get => this[(ImmutableAbstractString)key];
+            set => this[(ImmutableAbstractString)key] = value;
+        }
+        public TValue this [ImmutableAbstractString key] {
+            get {
+                key.GetHashCode();
+                return Dict[key];
+            }
+            set {
+                key.GetHashCode();
+                Dict[key] = value;
+            }
+        }
+    }
+
     public readonly struct AbstractString : IEquatable<AbstractString> {
         public static readonly AbstractString Empty;
 

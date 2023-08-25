@@ -463,10 +463,10 @@ namespace Squared.Render.Text {
         public event Action<RichTextConfiguration, RichParseError> OnParseError;
 
         private int Version;
-        public Dictionary<ImmutableAbstractString, GlyphSourceEntry> GlyphSources;
-        public Dictionary<ImmutableAbstractString, Color> NamedColors;
-        public Dictionary<ImmutableAbstractString, RichStyle> Styles;
-        public Dictionary<ImmutableAbstractString, RichImage> Images;
+        public ImmutableAbstractStringLookup<GlyphSourceEntry> GlyphSources;
+        public ImmutableAbstractStringLookup<Color> NamedColors;
+        public ImmutableAbstractStringLookup<RichStyle> Styles;
+        public ImmutableAbstractStringLookup<RichImage> Images;
         public Func<AbstractString, RichTextConfiguration, AsyncRichImage> ImageProvider;
         public Dictionary<char, KerningAdjustment> KerningAdjustments;
         public MarkedStringProcessor MarkedStringProcessor;
@@ -520,35 +520,35 @@ namespace Squared.Render.Text {
         public void DefineColor (ImmutableAbstractString key, Color color) {
             key.GetHashCode();
             if (NamedColors == null)
-                NamedColors = new Dictionary<ImmutableAbstractString, Color>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
+                NamedColors = new ImmutableAbstractStringLookup<Color>(true);
             NamedColors[key] = color;
         }
 
         public void DefineGlyphSource (ImmutableAbstractString key, IGlyphSource gs) {
             key.GetHashCode();
             if (GlyphSources == null)
-                GlyphSources = new Dictionary<ImmutableAbstractString, GlyphSourceEntry>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
+                GlyphSources = new ImmutableAbstractStringLookup<GlyphSourceEntry>(true);
             GlyphSources[key] = new GlyphSourceEntry(gs);
         }
 
         public void DefineGlyphSource (ImmutableAbstractString key, Func<IGlyphSource> getter) {
             key.GetHashCode();
             if (GlyphSources == null)
-                GlyphSources = new Dictionary<ImmutableAbstractString, GlyphSourceEntry>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
+                GlyphSources = new ImmutableAbstractStringLookup<GlyphSourceEntry>(true);
             GlyphSources[key] = new GlyphSourceEntry(getter);
         }
 
         public void DefineStyle (ImmutableAbstractString key, RichStyle style) {
             key.GetHashCode();
             if (Styles == null)
-                Styles = new Dictionary<ImmutableAbstractString, RichStyle>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
+                Styles = new ImmutableAbstractStringLookup<RichStyle>(true);
             Styles[key] = style;
         }
 
         public void DefineImage (ImmutableAbstractString key, RichImage image) {
             key.GetHashCode();
             if (Images == null)
-                Images = new Dictionary<ImmutableAbstractString, RichImage>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
+                Images = new ImmutableAbstractStringLookup<RichImage>(true);
             Images[key] = image;
         }
 
@@ -579,8 +579,8 @@ namespace Squared.Render.Text {
             LineSpacing
         }
 
-        private static readonly Dictionary<ImmutableAbstractString, RichRuleId> RuleNameTable =
-            new Dictionary<ImmutableAbstractString, RichRuleId>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase) {
+        private static readonly ImmutableAbstractStringLookup<RichRuleId> RuleNameTable =
+            new ImmutableAbstractStringLookup<RichRuleId>(true) {
                 { "color", RichRuleId.Color },
                 { "c", RichRuleId.Color },
                 { "scale", RichRuleId.Scale },
@@ -875,6 +875,18 @@ namespace Squared.Render.Text {
                 return value;
 
             var result = new Dictionary<K, V>(value.Count, value.Comparer);
+            foreach (var kvp in value)
+                result.Add(kvp.Key, kvp.Value);
+            return result;
+        }
+
+        private static ImmutableAbstractStringLookup<V> CloneDictionary<V> (bool deep, ImmutableAbstractStringLookup<V> value) {
+            if (deep == false)
+                return value;
+            else if (value == null)
+                return value;
+
+            var result = new ImmutableAbstractStringLookup<V>(value.Count, value.IgnoreCase);
             foreach (var kvp in value)
                 result.Add(kvp.Key, kvp.Value);
             return result;

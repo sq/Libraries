@@ -40,8 +40,8 @@ namespace Squared.Render {
         private static KeyValuePair<string, Color>[] _All;
         private static Dictionary<uint, string> _ByValue;
 
-        private static readonly Dictionary<ImmutableAbstractString, Color?> SystemNamedColorCache = 
-            new Dictionary<ImmutableAbstractString, Color?>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
+        private static readonly ImmutableAbstractStringLookup<Color?> SystemNamedColorCache = 
+            new ImmutableAbstractStringLookup<Color?>(true);
 
         private static void EnsureLookupsPopulated () {
             lock (SystemNamedColorCache) {
