@@ -163,13 +163,13 @@ namespace FontTest {
                 HideOverflow = true,
                 RichTextConfiguration = new RichTextConfiguration {
                     MarkedStringProcessor = ProcessMarkedString,
-                    Styles = new Dictionary<ImmutableAbstractString, RichStyle> {
+                    Styles = new ImmutableAbstractStringLookup<RichStyle> {
                         {"quick", new RichStyle { Color = Color.Yellow } },
                         {"brown", new RichStyle { Color = Color.Brown, Scale = 2 } }
                     },
-                    GlyphSources = new Dictionary<ImmutableAbstractString, IGlyphSource> {
+                    GlyphSources = new RichTextConfiguration.GlyphSourceCollection {
                         {"large", LatinFont },
-                        {"small", SmallLatinFont}
+                        {"small", SmallLatinFont }
                     },
                     ImageProvider = Text_ImageProvider 
                 },

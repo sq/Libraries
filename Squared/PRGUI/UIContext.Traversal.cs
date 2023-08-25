@@ -488,12 +488,38 @@ namespace Squared.PRGUI {
             return TraverseChildren(collection, ref settings).FirstOrDefault().Control;
         }
 
-        public IEnumerable<Control> FindFocusableChildren (Control container, int direction = 1) {
+        public DenseList<Control> FindFocusableChildren (Control container, int direction = 1, int limit = int.MaxValue) {
             var settings = MakeSettingsForPick(container, direction);
             // FIXME: Handle cases where the control isn't a container
             var collection = ((container as IControlContainer)?.Children) ?? Controls;
             // DebugLog($"Finding focusable child in {container} in direction {direction}");
-            return TraverseChildren(collection, ref settings).Controls;
+            var result = new DenseList<Control>();
+            foreach (var ti in TraverseChildren(collection, ref settings)) {
+                if (limit-- <= 0)
+                    break;
+                result.Add(ti.Control);
+            }
+            return result;
+        }
+
+        public DenseList<T> FindFocusableChildrenOfType<T> (Control container, int direction = 1, int limit = int.MaxValue)
+            where T : Control
+        {
+            var settings = MakeSettingsForPick(container, direction);
+            // FIXME: Handle cases where the control isn't a container
+            var collection = ((container as IControlContainer)?.Children) ?? Controls;
+            // DebugLog($"Finding focusable child in {container} in direction {direction}");
+            var result = new DenseList<T>();
+            foreach (var ti in TraverseChildren(collection, ref settings)) {
+                if (limit <= 0)
+                    break;
+
+                if (ti.Control is T tc) {
+                    result.Add(tc);
+                    limit--;
+                }
+            }
+            return result;
         }
 
         public Control PickFocusableChild (Control container, int direction = 1) {

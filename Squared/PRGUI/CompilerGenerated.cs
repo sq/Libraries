@@ -178,13 +178,6 @@ namespace Squared.PRGUI {
                 return this;
             }
 
-            public IEnumerable<Control> Controls {
-                get {
-                    // FIXME: Optimize this
-                    return this.Select(ti => ti.Control);
-                }
-            }
-
             public TraversalInfo FirstOrDefault () {
                 this.state = 0;
                 var ok = MoveNext();

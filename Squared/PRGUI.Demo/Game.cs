@@ -221,7 +221,7 @@ namespace PRGUI.Demo {
                     Mouse, Keyboard, GamePad
                 },
                 RichTextConfiguration = {
-                    Images = new Dictionary<ImmutableAbstractString, RichImage> {
+                    Images = new ImmutableAbstractStringLookup<RichImage> {
                         {
                             "ghost", new RichImage {
                                 Texture = TextureLoader.Load("ghost"),

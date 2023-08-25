@@ -361,8 +361,8 @@ namespace Squared.Render.Text {
     }
 
     public struct RichTextLayoutState : IDisposable {
-        private static readonly ThreadLocal<List<ImmutableAbstractString>> MarkedStringLists =
-            new ThreadLocal<List<ImmutableAbstractString>>();
+        private static readonly ThreadLocal<List<AbstractString>> MarkedStringLists =
+            new ThreadLocal<List<AbstractString>>();
 
         public IGlyphSource DefaultGlyphSource, GlyphSource;
         public readonly Color? InitialColor;
@@ -370,7 +370,7 @@ namespace Squared.Render.Text {
         public readonly float InitialSpacing;
         public readonly float InitialLineSpacing;
         public DenseList<string> Tags;
-        public List<ImmutableAbstractString> MarkedStrings;
+        public List<AbstractString> MarkedStrings;
 
         public RichTextLayoutState (ref StringLayoutEngine engine, IGlyphSource defaultGlyphSource) {
             InitialColor = engine.overrideColor;
@@ -435,6 +435,19 @@ namespace Squared.Render.Text {
     public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, ref string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
 
     public sealed class RichTextConfiguration : IEquatable<RichTextConfiguration> {
+        public class GlyphSourceCollection : ImmutableAbstractStringLookup<GlyphSourceEntry> {
+            public GlyphSourceCollection (bool ignoreCase = false)
+                : base (ignoreCase) {
+            }
+
+            public GlyphSourceCollection (int capacity, bool ignoreCase = false)
+                : base (capacity, ignoreCase) {
+            }
+
+            public void Add (ImmutableAbstractString key, IGlyphSource value) => Add(key, new GlyphSourceEntry(value));
+            public void Add (ImmutableAbstractString key, Func<IGlyphSource> value) => Add(key, new GlyphSourceEntry(value));
+        }
+
         public struct GlyphSourceEntry {
             private object _Value;
 
@@ -463,7 +476,7 @@ namespace Squared.Render.Text {
         public event Action<RichTextConfiguration, RichParseError> OnParseError;
 
         private int Version;
-        public ImmutableAbstractStringLookup<GlyphSourceEntry> GlyphSources;
+        public GlyphSourceCollection GlyphSources;
         public ImmutableAbstractStringLookup<Color> NamedColors;
         public ImmutableAbstractStringLookup<RichStyle> Styles;
         public ImmutableAbstractStringLookup<RichImage> Images;
@@ -527,14 +540,14 @@ namespace Squared.Render.Text {
         public void DefineGlyphSource (ImmutableAbstractString key, IGlyphSource gs) {
             key.GetHashCode();
             if (GlyphSources == null)
-                GlyphSources = new ImmutableAbstractStringLookup<GlyphSourceEntry>(true);
+                GlyphSources = new GlyphSourceCollection(true);
             GlyphSources[key] = new GlyphSourceEntry(gs);
         }
 
         public void DefineGlyphSource (ImmutableAbstractString key, Func<IGlyphSource> getter) {
             key.GetHashCode();
             if (GlyphSources == null)
-                GlyphSources = new ImmutableAbstractStringLookup<GlyphSourceEntry>(true);
+                GlyphSources = new GlyphSourceCollection(true);
             GlyphSources[key] = new GlyphSourceEntry(getter);
         }
 
@@ -730,7 +743,7 @@ namespace Squared.Render.Text {
                         int pipeIndex = astr.IndexOf('|');
                         if (pipeIndex >= 0) {
                             id = astr.Substring(0, pipeIndex);
-                            bracketed = new AbstractString(astr, pipeIndex + 1);
+                            bracketed = new ImmutableAbstractString(new AbstractString(astr, pipeIndex + 1), true);
                             astr = bracketed.Value;
                         }
 
@@ -756,8 +769,8 @@ namespace Squared.Render.Text {
                                 // FIXME: Omit this too?
                                 // TODO: Store an AbstractString instead?
                                 if (state.MarkedStrings == null)
-                                    state.MarkedStrings = new List<ImmutableAbstractString>();
-                                state.MarkedStrings.Add(bracketed);
+                                    state.MarkedStrings = new List<AbstractString>();
+                                state.MarkedStrings.Add(bracketed.Value);
                                 if (action == MarkedStringAction.RichText)
                                     AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref referencedImages, ref parseErrors);
                                 else if (action != MarkedStringAction.PlainText) {
@@ -877,6 +890,18 @@ namespace Squared.Render.Text {
                 return value;
 
             var result = new Dictionary<K, V>(value.Count, value.Comparer);
+            foreach (var kvp in value)
+                result.Add(kvp.Key, kvp.Value);
+            return result;
+        }
+
+        private static GlyphSourceCollection CloneDictionary (bool deep, GlyphSourceCollection value) {
+            if (deep == false)
+                return value;
+            else if (value == null)
+                return value;
+
+            var result = new GlyphSourceCollection(value.Count, value.IgnoreCase);
             foreach (var kvp in value)
                 result.Add(kvp.Key, kvp.Value);
             return result;

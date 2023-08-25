@@ -418,6 +418,9 @@ namespace Squared.Util.Text {
         public Dictionary<ImmutableAbstractString, TValue>.KeyCollection Keys =>
             Dict.Keys;
 
+        public Dictionary<ImmutableAbstractString, TValue>.ValueCollection Values =>
+            Dict.Values;
+
         public Dictionary<ImmutableAbstractString, TValue>.Enumerator GetEnumerator () =>
             Dict.GetEnumerator();
 
@@ -522,14 +525,8 @@ namespace Squared.Util.Text {
             ArraySegment = array;
         }
 
-        public AbstractString (in AbstractString text, int start) {
-            this = text;
-            SubstringOffset += start;
-            if (SubstringLength > 0) {
-                SubstringLength -= start;
-                if (SubstringLength < 0)
-                    throw new ArgumentOutOfRangeException(nameof(start));
-            }
+        public AbstractString (in AbstractString text, int start) 
+            : this(in text, start, text.Length - start) {
         }
 
         public AbstractString (in AbstractString text, int start, int length) {
@@ -542,8 +539,13 @@ namespace Squared.Util.Text {
             // FIXME: Check offset + length too
             if (length > (text.Length - start))
                 throw new ArgumentOutOfRangeException(nameof(length));
-            SubstringOffset += start;
-            SubstringLength = length;
+
+            if (IsArraySegment) {
+                ArraySegment = new ArraySegment<char>(ArraySegment.Array, ArraySegment.Offset + start, length);
+            } else {
+                SubstringOffset += start;
+                SubstringLength = length;
+            }
         }
 
         public unsafe uint ComputeTextHash (bool ignoreCase = false) {
@@ -796,6 +798,9 @@ namespace Squared.Util.Text {
             if (string.IsNullOrEmpty(s))
                 return 0;
 
+            if (s.Length == 1)
+                return IndexOf(s[0]);
+
             if (String != null)
                 return String.IndexOf(s, SubstringOffset, Length) - SubstringOffset;
 
@@ -849,9 +854,12 @@ namespace Squared.Util.Text {
         }
 
         public void CopyTo (StringBuilder output) {
-            if (String != null)
-                output.Append(ConvertStringInternal());
-            else if (StringBuilder != null) {
+            if (String != null) {
+                if ((SubstringOffset <= 0) && (SubstringLength <= 0))
+                    output.Append(String);
+                else
+                    output.Append(String, SubstringOffset, SubstringLength);
+            } else if (StringBuilder != null) {
                 if ((SubstringOffset <= 0) && (SubstringLength <= 0))
                     StringBuilder.CopyTo(output);
                 else
