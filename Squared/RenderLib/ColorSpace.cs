@@ -58,7 +58,6 @@ namespace Squared.Render {
                         continue;
                     var c = (Color)v;
                     var key = new ImmutableAbstractString(prop.Name);
-                    key.GetHashCode();
                     SystemNamedColorCache[key] = c;
                     result.Add(new KeyValuePair<string, Color>(prop.Name, c));
                     _ByValue[c.PackedValue] = prop.Name;

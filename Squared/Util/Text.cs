@@ -394,19 +394,22 @@ namespace Squared.Util.Text {
             Dict.Add(key, value);
         }
 
-        public bool Contains (string key) => Contains((ImmutableAbstractString)key);
+        public bool Contains (string key) => Contains(new ImmutableAbstractString(key));
+        public bool Contains (AbstractString key) => Contains(new ImmutableAbstractString(key, true));
         public bool Contains (ImmutableAbstractString key) {
             key.GetHashCode();
             return Dict.ContainsKey(key);
         }
 
-        public bool Remove (string key) => Remove((ImmutableAbstractString)key);
+        public bool Remove (string key) => Remove(new ImmutableAbstractString(key));
+        public bool Remove (AbstractString key) => Remove(new ImmutableAbstractString(key, true));
         public bool Remove (ImmutableAbstractString key) {
             key.GetHashCode();
             return Dict.Remove(key);
         }
 
-        public bool TryGetValue (string key, out TValue result) => TryGetValue((ImmutableAbstractString)key, out result);
+        public bool TryGetValue (string key, out TValue result) => TryGetValue(new ImmutableAbstractString(key), out result);
+        public bool TryGetValue (AbstractString key, out TValue result) => TryGetValue(new ImmutableAbstractString(key, true), out result);
         public bool TryGetValue (ImmutableAbstractString key, out TValue result) {
             key.GetHashCode();
             return Dict.TryGetValue(key, out result);
@@ -428,6 +431,10 @@ namespace Squared.Util.Text {
 
         public TValue this [string key] {
             get => this[(ImmutableAbstractString)key];
+            set => this[(ImmutableAbstractString)key] = value;
+        }
+        public TValue this [AbstractString key] {
+            get => this[new ImmutableAbstractString(key, true)];
             set => this[(ImmutableAbstractString)key] = value;
         }
         public TValue this [ImmutableAbstractString key] {
@@ -597,14 +604,22 @@ namespace Squared.Util.Text {
         }
 
         private bool AllCodepointsEqual (AbstractString other, StringComparison comparison) {
-            if (comparison != StringComparison.Ordinal)
+            if (comparison == StringComparison.Ordinal) {
+                for (int i = 0; i < Length; i++) {
+                    var lhs = this[i];
+                    var rhs = other[i];
+                    if (lhs != rhs)
+                        return false;
+                }
+            } else if (comparison == StringComparison.OrdinalIgnoreCase) {
+                for (int i = 0; i < Length; i++) {
+                    var lhs = char.ToUpperInvariant(this[i]);
+                    var rhs = char.ToUpperInvariant(other[i]);
+                    if (lhs != rhs)
+                        return false;
+                }
+            } else {
                 return string.Equals(ToString(), other.ToString(), comparison);
-
-            for (int i = 0; i < Length; i++) {
-                var lhs = this[i];
-                var rhs = other[i];
-                if (lhs != rhs)
-                    return false;
             }
 
             return true;

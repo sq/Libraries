@@ -33,7 +33,7 @@ namespace Squared.Render.Text {
                             var pipeOffset = markedText.IndexOf('|');
                             if (pipeOffset >= 0)
                                 markedText = new AbstractString(markedText, pipeOffset);
-                            result.Append(markedText.ToString());
+                            markedText.CopyTo(result);
                         }
                         closer = null;
                     }
@@ -857,7 +857,9 @@ namespace Squared.Render.Text {
                 var ch = text[i];
                 if (ch == close) {
                     currentRangeStart = i + 1;
-                    return new AbstractString(in text, start, i - start);
+                    // HACK: Say the value is immutable since we're only using this temporarily.
+                    // This avoids an allocation.
+                    return new ImmutableAbstractString(new AbstractString(in text, start, i - start), true);
                 } else if (terminators.Contains(ch) || (ch < ' ')) {
                     i = start;
                     return default;
