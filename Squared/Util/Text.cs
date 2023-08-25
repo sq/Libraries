@@ -276,7 +276,7 @@ namespace Squared.Util.Text {
         }
 
         public readonly AbstractString Value;
-        private bool _HasHashCode;
+        private bool _HasHashCode, _HashCodeIsIgnoreCase;
         private int _HashCode;
 
         /// <summary>
@@ -292,6 +292,7 @@ namespace Squared.Util.Text {
         /// <param name="iPromiseItsImmutable">Suppresses copying of the value. You shouldn't do this.</param>
         public ImmutableAbstractString (AbstractString s, bool iPromiseItsImmutable) {
             _HasHashCode = false;
+            _HashCodeIsIgnoreCase = false;
             _HashCode = 0;
             if (!iPromiseItsImmutable && !s.IsImmutable)
                 Value = s.ToString();
@@ -304,10 +305,11 @@ namespace Squared.Util.Text {
 
         // FIXME: This is expensive
         public int GetHashCode (bool ignoreCase) {
-            if (!_HasHashCode) {
+            if (!_HasHashCode || (_HashCodeIsIgnoreCase != ignoreCase)) {
                 unchecked {
                     _HashCode = (int)Value.ComputeTextHash(ignoreCase);
                 }
+                _HashCodeIsIgnoreCase = ignoreCase;
                 _HasHashCode = true;
             }
             return _HashCode;

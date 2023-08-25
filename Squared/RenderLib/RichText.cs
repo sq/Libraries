@@ -435,11 +435,36 @@ namespace Squared.Render.Text {
     public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, ref string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
 
     public sealed class RichTextConfiguration : IEquatable<RichTextConfiguration> {
+        public struct GlyphSourceEntry {
+            private object _Value;
+
+            public GlyphSourceEntry (IGlyphSource instance) {
+                _Value = instance;
+            }
+
+            public GlyphSourceEntry (Func<IGlyphSource> getter) {
+                _Value = getter;
+            }
+
+            public IGlyphSource Value {
+                get {
+                    if (_Value is IGlyphSource instance)
+                        return instance;
+                    else if (_Value is Func<IGlyphSource> getter)
+                        return getter();
+                    else if (_Value == null)
+                        return null;
+                    else
+                        throw new Exception("Corrupt GlyphSourceEntry");
+                }
+            }
+        }
+
         public event Action<RichTextConfiguration, RichParseError> OnParseError;
 
         private int Version;
+        public Dictionary<ImmutableAbstractString, GlyphSourceEntry> GlyphSources;
         public Dictionary<ImmutableAbstractString, Color> NamedColors;
-        public Dictionary<ImmutableAbstractString, IGlyphSource> GlyphSources;
         public Dictionary<ImmutableAbstractString, RichStyle> Styles;
         public Dictionary<ImmutableAbstractString, RichImage> Images;
         public Func<AbstractString, RichTextConfiguration, AsyncRichImage> ImageProvider;
@@ -490,6 +515,41 @@ namespace Squared.Render.Text {
                     result = null;
                 return AutoConvert(result);
             }
+        }
+
+        public void DefineColor (ImmutableAbstractString key, Color color) {
+            key.GetHashCode();
+            if (NamedColors == null)
+                NamedColors = new Dictionary<ImmutableAbstractString, Color>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
+            NamedColors[key] = color;
+        }
+
+        public void DefineGlyphSource (ImmutableAbstractString key, IGlyphSource gs) {
+            key.GetHashCode();
+            if (GlyphSources == null)
+                GlyphSources = new Dictionary<ImmutableAbstractString, GlyphSourceEntry>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
+            GlyphSources[key] = new GlyphSourceEntry(gs);
+        }
+
+        public void DefineGlyphSource (ImmutableAbstractString key, Func<IGlyphSource> getter) {
+            key.GetHashCode();
+            if (GlyphSources == null)
+                GlyphSources = new Dictionary<ImmutableAbstractString, GlyphSourceEntry>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
+            GlyphSources[key] = new GlyphSourceEntry(getter);
+        }
+
+        public void DefineStyle (ImmutableAbstractString key, RichStyle style) {
+            key.GetHashCode();
+            if (Styles == null)
+                Styles = new Dictionary<ImmutableAbstractString, RichStyle>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
+            Styles[key] = style;
+        }
+
+        public void DefineImage (ImmutableAbstractString key, RichImage image) {
+            key.GetHashCode();
+            if (Images == null)
+                Images = new Dictionary<ImmutableAbstractString, RichImage>(ImmutableAbstractString.Comparer.OrdinalIgnoreCase);
+            Images[key] = image;
         }
 
         /// <returns>a list of rich images that were referenced</returns>
@@ -650,8 +710,8 @@ namespace Squared.Render.Text {
                                         layoutEngine.additionalLineSpacing = newLineSpacing;
                                     break;
                                 case RichRuleId.Font:
-                                    if (GlyphSources != null)
-                                        GlyphSources.TryGetValue(value, out state.GlyphSource);
+                                    if ((GlyphSources != null) && GlyphSources.TryGetValue(value, out var gse))
+                                        state.GlyphSource = gse.Value;
                                     else
                                         state.GlyphSource = null;
                                     break;

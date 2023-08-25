@@ -81,14 +81,14 @@ namespace Squared.Util {
                     var pdb = Assembly.GetManifestResourceStream(name.Replace(".dll", ".pdb"));
                     if (pdb != null) {
                         using (pdb)
-                        using (var dest = File.OpenWrite(path.Replace(".dll", ".pdb")))
+                        using (var dest = File.Open(path.Replace(".dll", ".pdb"), FileMode.Create))
                             pdb.CopyTo(dest);
                     }
                 } catch {
                 }
 
                 try {
-                    using (var dest = File.OpenWrite(path))
+                    using (var dest = File.Open(path, FileMode.Create))
                         src.CopyTo(dest);
                 } catch (IOException exc) {
                     // File is locked. Attempt to see if it matches ours and if so, who cares
