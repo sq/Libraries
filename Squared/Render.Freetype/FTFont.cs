@@ -408,10 +408,8 @@ namespace Squared.Render.Text {
 
                 var sizeMetrics = size.Metrics;
 
+                Font.Face.RenderGlyphEXT(ActualSDF ? RenderMode.VerticalLcd + 1 : RenderMode.Normal);
                 var ftgs = Font.Face.Glyph;
-                ftgs.RenderGlyph(ActualSDF ? RenderMode.VerticalLcd + 1 : RenderMode.Normal);
-                // HACK: This trashcan of a library does not update the glyph slot after you render to it. Okay.
-                ftgs = Font.Face.Glyph;
 
                 var scaleX = sizeMetrics.ScaleX;
                 var scaleY = sizeMetrics.ScaleY;

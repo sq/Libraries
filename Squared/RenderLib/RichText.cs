@@ -29,10 +29,10 @@ namespace Squared.Render.Text {
                 if (closer != null) {
                     if (ch == closer) {
                         if (closer == ')') {
-                            var markedText = new AbstractString(richText, rangeStarted, i - rangeStarted);
+                            var markedText = richText.Substring(rangeStarted, i - rangeStarted);
                             var pipeOffset = markedText.IndexOf('|');
                             if (pipeOffset >= 0)
-                                markedText = new AbstractString(markedText, pipeOffset);
+                                markedText = markedText.Substring(pipeOffset);
                             markedText.CopyTo(result);
                         }
                         closer = null;
@@ -64,10 +64,10 @@ namespace Squared.Render.Text {
                 if (closer != null) {
                     if (ch == closer) {
                         if (closer == ')') {
-                            var markedText = new AbstractString(richText, rangeStarted, i - rangeStarted);
+                            var markedText = richText.Substring(rangeStarted, i - rangeStarted);
                             var pipeOffset = markedText.IndexOf('|');
                             if (pipeOffset >= 0)
-                                markedText = new AbstractString(markedText, pipeOffset);
+                                markedText = markedText.Substring(pipeOffset);
 
                             if (!includeWhitespace)
                                 result += PlainTextLength_Slow(markedText, 0, false);
@@ -152,8 +152,8 @@ namespace Squared.Render.Text {
                                 });
                         } else {
                             result.Add(new RichRule {
-                                Key = new AbstractString(in text, keyStart, keyEnd.Value - keyStart),
-                                Value = new AbstractString(in text, valueStart.Value, i - valueStart.Value),
+                                Key = text.Substring(keyStart, keyEnd.Value - keyStart),
+                                Value = text.Substring(valueStart.Value, i - valueStart.Value),
                             });
                             keyStart = i + 1;
                             keyEnd = valueStart = null;
@@ -509,7 +509,7 @@ namespace Squared.Render.Text {
 
             if (
                 text.StartsWith("#") && 
-                uint.TryParse(text.Substring(1), NumberStyles.HexNumber, null, out uint decoded)
+                uint.TryParse(text.SubstringCopy(1), NumberStyles.HexNumber, null, out uint decoded)
             ) {
                 var result = new Color { PackedValue = decoded };
                 var temp = result.R;
@@ -636,7 +636,7 @@ namespace Squared.Render.Text {
                     } else if (
                         commandMode && (Styles != null) && 
                         bracketed.Value.StartsWith(".") && 
-                        Styles.TryGetValue(new AbstractString(bracketed.Value, 1), out style)
+                        Styles.TryGetValue(bracketed.Value.Substring(1).AsImmutable(true), out style)
                     ) {
                         ApplyStyle(ref layoutEngine, ref state, in style);
                     } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
@@ -742,8 +742,8 @@ namespace Squared.Render.Text {
                         string id = null;
                         int pipeIndex = astr.IndexOf('|');
                         if (pipeIndex >= 0) {
-                            id = astr.Substring(0, pipeIndex);
-                            bracketed = new ImmutableAbstractString(new AbstractString(astr, pipeIndex + 1), true);
+                            id = astr.SubstringCopy(0, pipeIndex);
+                            bracketed = astr.Substring(pipeIndex + 1).AsImmutable(true);
                             astr = bracketed.Value;
                         }
 
@@ -767,7 +767,6 @@ namespace Squared.Render.Text {
                             if (action != MarkedStringAction.Omit) {
                                 var l = astr.Length;
                                 // FIXME: Omit this too?
-                                // TODO: Store an AbstractString instead?
                                 if (state.MarkedStrings == null)
                                     state.MarkedStrings = new List<AbstractString>();
                                 state.MarkedStrings.Add(bracketed.Value);
@@ -872,7 +871,7 @@ namespace Squared.Render.Text {
                     currentRangeStart = i + 1;
                     // HACK: Say the value is immutable since we're only using this temporarily.
                     // This avoids an allocation.
-                    return new ImmutableAbstractString(new AbstractString(in text, start, i - start), true);
+                    return text.Substring(start, i - start).AsImmutable(true);
                 } else if (terminators.Contains(ch) || (ch < ' ')) {
                     i = start;
                     return default;

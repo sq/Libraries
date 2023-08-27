@@ -548,6 +548,9 @@ namespace Squared.Util.Text {
             }
         }
 
+        public ImmutableAbstractString AsImmutable (bool iPromiseThisStringIsImmutable = false) =>
+            new ImmutableAbstractString(this, iPromiseThisStringIsImmutable);
+
         public unsafe uint ComputeTextHash (bool ignoreCase = false) {
             var hasher = HashProvider.Value;
             var hashBuffer = HashBuffer.Value;
@@ -838,17 +841,19 @@ namespace Squared.Util.Text {
             return IndexOf(ch) > -1;
         }
 
-        public string Substring (int start) {
-            return Substring(start, Length - start);
-        }
+        public AbstractString Substring (int start) => Substring(start, Length - start);
 
-        public string Substring (int start, int count) {
+        public AbstractString Substring (int start, int count) => new AbstractString(this, start, count);
+
+        public string SubstringCopy (int start) => SubstringCopy(start, Length - start);
+
+        public string SubstringCopy (int start, int count) {
             if (String != null)
-                return String.Substring(SubstringOffset + start, count);
+                return String.Substring(SubstringOffset + start, Math.Min(count, Length));
             else if (StringBuilder != null)
-                return StringBuilder.ToString(SubstringOffset + start, count);
+                return StringBuilder.ToString(SubstringOffset + start, Math.Min(count, Length));
             else if (ArraySegment.Array != null)
-                return new string(ArraySegment.Array, ArraySegment.Offset + SubstringOffset + start, count);
+                return new string(ArraySegment.Array, ArraySegment.Offset + SubstringOffset + start, Math.Min(count, Length));
             else
                 throw new ArgumentNullException("this");
         }
