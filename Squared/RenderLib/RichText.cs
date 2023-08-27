@@ -432,7 +432,7 @@ namespace Squared.Render.Text {
     /// <param name="state">A state snapshot that can be used to examine or restore the current state of the layout engine.</param>
     /// <param name="layoutEngine">The layout engine that will be used to append the text (after this method returns).</param>
     /// <returns>true if the string should be laid out, false if it should be omitted from the output entirely.</returns>
-    public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, ref string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
+    public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
 
     public sealed class RichTextConfiguration : IEquatable<RichTextConfiguration> {
         public class GlyphSourceCollection : ImmutableAbstractStringLookup<GlyphSourceEntry> {
@@ -739,10 +739,10 @@ namespace Squared.Render.Text {
                         }
                     } else if (!commandMode) {
                         AbstractString astr = bracketed.Value;
-                        string id = null;
+                        AbstractString id = default;
                         int pipeIndex = astr.IndexOf('|');
                         if (pipeIndex >= 0) {
-                            id = astr.SubstringCopy(0, pipeIndex);
+                            id = astr.Substring(0, pipeIndex);
                             bracketed = astr.Substring(pipeIndex + 1).AsImmutable(true);
                             astr = bracketed.Value;
                         }
@@ -776,7 +776,7 @@ namespace Squared.Render.Text {
                                     var initialIndex = layoutEngine.currentCharacterIndex;
                                     var m = new LayoutMarker(initialIndex, initialIndex + l - 1) {
                                         MarkedString = bracketed.Value,
-                                        MarkedID = id,
+                                        MarkedID = id.ToString(),
                                         MarkedStringActualText = astr
                                     };
                                     layoutEngine.Markers.Add(m);

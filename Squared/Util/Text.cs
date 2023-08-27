@@ -642,6 +642,8 @@ namespace Squared.Util.Text {
                 return AllCodepointsEqual((AbstractString)other, comparison);
         }
 
+        public bool TextEquals (AbstractString other) => TextEquals(other, StringComparison.Ordinal);
+
         public bool TextEquals (AbstractString other, StringComparison comparison) {
             if ((Length == 0) && (other.Length == 0))
                 return true;
