@@ -132,7 +132,7 @@ namespace Squared.Threading {
         /// </summary>
         void RegisterDrainListener (WorkQueueDrainListener listener);
         void AssertEmpty ();
-        bool IsEmpty { get; }
+        bool IsDrained { get; }
         int Priority { get; }
     }
 
@@ -253,7 +253,14 @@ namespace Squared.Threading {
         // For debugging
         internal bool IsMainThreadQueue = false;
 
-        private volatile int ItemsQueued = 0, ItemsProcessed = 0;
+        /// <summary>
+        /// This counter increases the moment an item is queued, and decreases any time an item finishes
+        ///  being processed (successfully or unsuccessfully).
+        /// Contrast with _Count, which is the number of items waiting to be dequeued.
+        /// If (_Count <= 0) && (ItemsWaitingForProcessing > 0) then one or more workers are currently
+        ///  processing items but the queue contains no additional work.
+        /// </summary>
+        private volatile int ItemsWaitingForProcessing = 0;
         private volatile int HasAnyListeners = 0;
         private readonly List<WorkQueueDrainListener> DrainListeners = new List<WorkQueueDrainListener>();
         private volatile int NumWaitingForDrain = 0;
@@ -281,6 +288,9 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AssertCanEnqueue () {
+            if (IsMainThreadWorkItem && !IsMainThreadQueue)
+                throw new InvalidOperationException("This work item must be queued on the main thread");
+
             if (BlockEnqueuesWhileDraining && (NumWaitingForDrain > 0))
                 throw new WorkQueueException(this, "Cannot enqueue items while the queue is draining");
         }
@@ -290,13 +300,11 @@ namespace Squared.Threading {
         const int Semilock_Dequeuing = 2;
         const int Semilock_Adding = 3;
 
+        /// <summary>
+        /// Caller is responsible for AssertCanEnqueue and updating ItemsWaitingForProcessing!
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int AddInternal (ref InternalWorkItem<T> item) {
-            if (IsMainThreadWorkItem && !IsMainThreadQueue)
-                throw new ArgumentException("Cannot queue main-thread work item to non-main-thread queue");
-
-            AssertCanEnqueue();
-            var result = Interlocked.Increment(ref ItemsQueued);
             lock (ItemsLock) {
                 // HACK: Clear the 'finished processing' signal because we have work items now
                 if (_Count <= 1)
@@ -309,8 +317,9 @@ namespace Squared.Threading {
                 AdvanceLocked(ref _Tail);
                 _Count++;
                 Interlocked.CompareExchange(ref _Semilock, Semilock_Open, Semilock_Adding);
+
+                return _Count;
             }
-            return result;
         }
 
 #if INSTRUMENT_FAST_PATH
@@ -443,11 +452,8 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null, WorkQueueNotifyMode notifyChanged = WorkQueueNotifyMode.Always) {
-#if DEBUG
-            if (IsMainThreadWorkItem && !IsMainThreadQueue)
-                throw new InvalidOperationException("This work item must be queued on the main thread");
-#endif
-
+            AssertCanEnqueue();
+            Interlocked.Increment(ref ItemsWaitingForProcessing);
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
             var newCount = AddInternal(ref wi);
             NotifyChanged(notifyChanged, newCount, wakeAll: false);
@@ -455,29 +461,21 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null, WorkQueueNotifyMode notifyChanged = WorkQueueNotifyMode.Always) {
-#if DEBUG
-            if (IsMainThreadWorkItem && !IsMainThreadQueue)
-                throw new InvalidOperationException("This work item must be queued on the main thread");
-#endif
-
+            AssertCanEnqueue();
+            Interlocked.Increment(ref ItemsWaitingForProcessing);
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
             var newCount = AddInternal(ref wi);
             NotifyChanged(notifyChanged, newCount, wakeAll: false);
         }
 
         public void EnqueueMany (ArraySegment<T> data, bool notifyChanged = true) {
-#if DEBUG
-            if (IsMainThreadWorkItem && !IsMainThreadQueue)
-                throw new InvalidOperationException("This work item must be queued on the main thread");
-#endif
+            AssertCanEnqueue();
+            Interlocked.Add(ref ItemsWaitingForProcessing, data.Count);
+            var wi = new InternalWorkItem<T>();
+            wi.Queue = this;
+            wi.OnComplete = null;
 
             lock (ItemsLock) {
-                AssertCanEnqueue();
-                Interlocked.Add(ref ItemsQueued, data.Count);
-
-                var wi = new InternalWorkItem<T>();
-                wi.Queue = this;
-                wi.OnComplete = null;
                 for (var i = 0; i < data.Count; i++) {
                     wi.Data = data.Array[data.Offset + i];
                     AddInternal(ref wi);
@@ -489,9 +487,8 @@ namespace Squared.Threading {
         }
 
         private void StepInternal (out int result, out bool exhausted, int actualMaximumCount) {
-            // We eat an extra lock acquisition this way, but it skips a lot of extra work
-            // FIXME: Optimize this out since in profiles it eats like 2% of CPU, probably not worth it anymore
-            if (IsEmpty) {
+            // This skips a lot of unnecessary work, though it is kind of a race condition
+            if (!IsWorkPossiblyWaiting) {
                 result = 0;
                 exhausted = true;
                 return;
@@ -513,8 +510,6 @@ namespace Squared.Threading {
                 return;
             }
 
-            int processedCounter = -1;
-
             do {
                 try {
                     bool empty = false;
@@ -531,7 +526,7 @@ namespace Squared.Threading {
                             InternalWorkItem<T>.Execute(Owner, ref item);
                             result++;
                         } finally {
-                            processedCounter = Interlocked.Increment(ref ItemsProcessed);
+                            Interlocked.Decrement(ref ItemsWaitingForProcessing);
                         }
                     }
                 } catch (Exception exc) {
@@ -572,17 +567,22 @@ namespace Squared.Threading {
 
         int IWorkQueue.Priority => Configuration.Priority;
 
-        public bool IsEmpty {
+        public bool IsDrained {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 lock (ItemsLock)
-                    return (_Count <= 0) && (ItemsProcessed >= ItemsQueued);
+                    return (_Count <= 0) && (ItemsWaitingForProcessing <= 0);
             }
+        }
+
+        private bool IsWorkPossiblyWaiting {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (ItemsWaitingForProcessing > 0);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AssertEmpty () {
-            if (IsEmpty)
+            if (IsDrained)
                 return;
 #if DEBUG
             throw new WorkQueueException(this, "Queue is not fully drained");
@@ -592,7 +592,7 @@ namespace Squared.Threading {
         }
 
         public bool WaitUntilDrained (int timeoutMs = -1) {
-            if (IsEmpty)
+            if (IsDrained)
                 return true;
 
             var resultCount = Interlocked.Increment(ref NumWaitingForDrain);
@@ -603,19 +603,16 @@ namespace Squared.Threading {
                     : long.MaxValue - 1;
 
             bool doWait = false;
-            var waterMark = ItemsQueued;
             try {
                 do {
                     lock (ItemsLock) {
                         // Read these first and read the queued count last so that if we lose a race
                         //  we will lose it in the 'there's extra work' fashion instead of 'we're done
                         //  but not really' fashion
-                        var processed = Volatile.Read(ref ItemsProcessed);
-                        var queued = Volatile.Read(ref ItemsQueued);
-                        doWait = (processed < queued) || (_Count > 0);
+                        doWait = (ItemsWaitingForProcessing > 0) || (_Count > 0);
                     }
+                    var now = Time.Ticks;
                     if (doWait) {
-                        var now = Time.Ticks;
                         if (now > endWhen)
                             break;
                         var maxWait = (timeoutMs <= 0)
@@ -625,20 +622,18 @@ namespace Squared.Threading {
 
                         // Note that we may still spin after getting this signal because threading is hard
                         if (!FinishedProcessingSignal.Wait(maxWait)) {
-                            if (ItemsProcessed >= ItemsQueued)
+                            if (ItemsWaitingForProcessing <= 0)
                                 System.Diagnostics.Debug.WriteLine($"WARNING: FinishedProcessingSignal wait timed out even though work is done for {typeof(T)}");
                         }
                     } else {
+                        // FIXME: This is a race condition!
 #if DEBUG
-                        if (!IsEmpty)
-                            throw new WorkQueueException(this, "Queue is not empty");
-                        Thread.Yield();
-                        if (!IsEmpty)
-                            throw new WorkQueueException(this, "Queue is not empty");
-                        if (ItemsProcessed < waterMark)
-                            throw new WorkQueueException(this, "AssertDrained returned before reaching watermark");
+                        if (ItemsWaitingForProcessing > 0)
+                            Thread.Yield();
+                        if (ItemsWaitingForProcessing > 0)
+                            throw new WorkQueueException(this, "AssertDrained returned without waiting even though work was left");
 #endif
-                        return (ItemsProcessed >= waterMark);
+                        return (ItemsWaitingForProcessing <= 0);
                     }
                 } while (true);
             } finally {
@@ -653,7 +648,7 @@ namespace Squared.Threading {
         }
 
         public override string ToString () {
-            var result = $"WorkQueue<{typeof(T).Name}> {ItemsQueued} queued {ItemsProcessed} processed {ItemsInFlight} in-flight";
+            var result = $"WorkQueue<{typeof(T).Name}> {ItemsWaitingForProcessing} waiting {ItemsInFlight} in-flight";
 #if INSTRUMENT_FAST_PATH
             result += $"early out x{EarlyOutCount / (double)(EarlyOutCount + SlowOutCount)}";
 #endif

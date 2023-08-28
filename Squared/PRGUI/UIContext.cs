@@ -440,9 +440,6 @@ namespace Squared.PRGUI {
 
             _CurrentInput.AreAnyKeysHeld = _CurrentInput.HeldKeys.Count > 0;
 
-            if (!processEvents)
-                return;
-
             foreach (var mea in PurgatoryMouseEventArgs) {
                 if (SpareMouseEventArgs.Count >= 32)
                     break;
@@ -454,13 +451,16 @@ namespace Squared.PRGUI {
                 PurgatoryMouseEventArgs.Add(mea);
             UsedMouseEventArgs.Clear();
 
-            var mousePosition = _CurrentInput.CursorPosition;
-
             PreviousUnhandledEvents.Clear();
             foreach (var evt in UnhandledEvents)
                 PreviousUnhandledEvents.Add(evt);
             UnhandledEvents.Clear();
 
+            // We need to make sure we only exit after clearing lists like UnhandledEvents, otherwise we can leak memory.
+            if (!processEvents)
+                return;
+
+            var mousePosition = _CurrentInput.CursorPosition;
             var queuedFocus = QueuedFocus;
             Control queuedFocusResult = null;
             var activeModal = ActiveModal;
