@@ -288,7 +288,7 @@ namespace PRGUI.Demo {
             UseSavedTree = false;
         }
 
-        private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
+        private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
             layoutEngine.overrideColor = Color.Teal;
             return default;
         }

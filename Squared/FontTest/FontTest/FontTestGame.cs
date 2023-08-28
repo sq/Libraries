@@ -218,7 +218,7 @@ namespace FontTest {
             return new AsyncRichImage(ref ri);
         }
 
-        private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref string id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
+        private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
             if (text.TextEquals("quick")) {
                 layoutEngine.overrideColor = Color.GreenYellow;
                 text = "slow";

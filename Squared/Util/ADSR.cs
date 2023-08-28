@@ -116,6 +116,13 @@ namespace Squared.Util {
         private double RampExponentMinus2;
 
         public ADSR (
+            double attack, double decay, 
+            ADSRRampMode mode = ADSRRampMode.Linear, double exponent = 2.0,
+            ADSRInvert inverse = default
+        ) : this(attack, decay, 0, 0, (ADSRModes)mode, exponent, inverse) {
+        }
+
+        public ADSR (
             double attack, double decay, double sustain, double release, 
             ADSRRampMode mode = ADSRRampMode.Linear, double exponent = 2.0,
             ADSRInvert inverse = default
