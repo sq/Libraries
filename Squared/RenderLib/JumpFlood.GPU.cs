@@ -85,7 +85,7 @@ namespace Squared.Render.DistanceField {
 
             var group = renderer.MakeSubgroup(layer: layer);
             var initGroup = group.ForRenderTarget(scratchSurfaces.InBuffer, viewTransform: vt);
-            initGroup.Clear(layer: -1, value: new Vector4(MaxDistance, MaxDistance, MaxDistance * MaxDistance, 0f));
+            initGroup.Clear(layer: -1, value: new Vector4(MaxDistance, MaxDistance, MaxDistance, 0f));
             var initMaterial = renderer.Materials.JumpFloodInit;
             initGroup.Parameters.Add("Smoothing", smoothingLevel > 0.01f);
             initGroup.Draw(

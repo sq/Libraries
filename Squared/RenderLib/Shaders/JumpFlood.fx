@@ -4,7 +4,7 @@
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
 
-#define MaxDistance 8192
+#define MaxDistance 2048
 
 uniform const bool Smoothing;
 

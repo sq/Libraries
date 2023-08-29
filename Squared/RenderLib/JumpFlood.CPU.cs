@@ -38,7 +38,7 @@ namespace Squared.Render.DistanceField {
     }
 
     public static partial class JumpFlood {
-        const float MaxDistance = 10240;
+        const float MaxDistance = 2048;
 
         private static int GetStepCount (int width, int height) {
             int l2x = BitOperations.Log2Ceiling((uint)width),
