@@ -337,6 +337,8 @@ namespace Squared.Render {
         /// Queues an operation to occur on the main thread immediately before prepare operations begin.
         /// </summary>
         public void BeforePrepare (Action action) {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
             BeforePrepareQueue.Enqueue(action);
         }
 
@@ -344,6 +346,8 @@ namespace Squared.Render {
         /// Queues an operation to occur on the render thread immediately before drawing operations begin.
         /// </summary>
         public void BeforeIssue (Action action) {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
             BeforeIssueQueue.Enqueue(action);
         }
 
@@ -352,6 +356,8 @@ namespace Squared.Render {
         ///  commands have been issued.
         /// </summary>
         public void BeforePresent (Action action) {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
             BeforePresentQueue.Enqueue(action);
         }
 
@@ -359,6 +365,8 @@ namespace Squared.Render {
         /// Queues an operation to occur immediately after Present.
         /// </summary>
         public void AfterPresent (Action action) {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
             AfterPresentQueue.Enqueue(action);
         }
 

@@ -119,8 +119,7 @@ namespace Squared.PRGUI {
             bool compositing, ref RasterizePassSet passSet, 
             ref ImperativeRenderer renderer, RasterizePasses pass
         ) {
-            UIOperationContext passContext;
-            context.Clone(out passContext);
+            context.Clone(out var passContext);
             passContext.Pass = pass;
             var hasNestedContext = (pass == RasterizePasses.Content) && 
                 (ShouldClipContent || (HasChildren && CreateNestedContextForChildren));
@@ -208,7 +207,7 @@ namespace Squared.PRGUI {
 
             var crLayer = contentRenderer.Layer;
             contentRenderer.Layer = -999;
-            settings.State = default(ControlStates);
+            settings.State = default;
             decorations?.Rasterize(ref contentContext, ref contentRenderer, ref temp);
 
             contentRenderer.Layer = crLayer;
@@ -564,8 +563,7 @@ namespace Squared.PRGUI {
             Texture2D compositingSurface, ref ImperativeRenderer compositingRenderer, 
             bool enableCompositor
         ) {
-            UIOperationContext compositionContext;
-            context.Clone(out compositionContext);
+            context.Clone(out var compositionContext);
             compositionContext.Opacity = 1.0f;
             UpdateVisibleRegion(ref compositionContext, ref box);
 

@@ -980,6 +980,7 @@ namespace Squared.Render.Text {
             this.DesiredWidth = source.DesiredWidth;
             this.MaxExpansionPerSpace = source.MaxExpansionPerSpace;
             this.DisableMarkers = source.DisableMarkers;
+            this.AdditionalLineSpacing = source.AdditionalLineSpacing;
             SetFlag(InternalFlags.AwaitingDependencies, false);
         }
 

@@ -659,10 +659,14 @@ namespace Squared.Util {
             return result;
         }
 
-        public void CopyTo (UnorderedList<T> output) {
-            output.EnsureCapacity(output.Count + Count);
+        public void CopyTo (IList<T> output) {
             for (int i = 0; i < _Count; i++)
-                output.Add(ref _Items[_BufferOffset + i]);
+                output.Add(_Items[_BufferOffset + i]);
+        }
+
+        public void CopyTo (UnorderedList<T> output) {
+            var segment = output.ReserveSpace(_Count);
+            Array.Copy(_Items, _BufferOffset, segment.Array, segment.Offset, _Count);
         }
 
         public void CopyTo (T[] buffer, int offset, int count) {
