@@ -1,4 +1,5 @@
 #pragma warning ( disable: 3571 )
+#define PI 3.14159265358979323846
 
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
@@ -130,4 +131,27 @@ float4 OkLabToPSRGB (float4 oklab) {
     return float4(srgb * oklab.a, oklab.a);
 }
 
+float4 OkLabToOkLCh(float4 oklab) {
+    float C = sqrt((oklab.y * oklab.y) + (oklab.z * oklab.z));
+    float h = atan2(oklab.z, oklab.y) * 180 / PI;
+    if (!isfinite(C))
+        C = 0;
+    
+    if (!isfinite(h))
+        h = 0;
+    else if (h < 0)
+        h += 360;
+    
+    return float4(oklab.x, C, h, oklab.w);
+}
+
+float OkLChToOkLab(float4 oklch) {
+    float h = oklch.z * PI / 180;
+    return float4(
+        oklch.x,
+        oklch.y * cos(h),
+        oklch.y * sin(h),
+        oklch.w
+    );
+}
 // end oklab

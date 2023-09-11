@@ -36,9 +36,13 @@ namespace Squared.Render.Text {
 
         public class FontSize : IGlyphSource, IDisposable {
             public const int LowCacheSize = 256;
+            // HACK: The first atlas we create for a font should be smaller as long as the font size itself is small enough
             public const int FirstAtlasWidth = 512, FirstAtlasHeight = 512;
-            // FIXME: Randomly selected value, probably too small or too big
-            public static float SmallFirstAtlasThreshold = 22;
+            // FIXME: Randomly selected value, probably too small or too big. This is after DPI is applied (so 200% -> 2x the input DPI)
+            // If a font's size is bigger than this we double the size of all of its atlases (i.e. first is 1024, the rest are 2048)
+            public static float LargeAtlasThreshold = 36,
+                // If a font's size is bigger than THIS, we skip having a small first atlas, since it probably won't be big enough.
+                SkipFirstAtlasThreshold = 60;
             public const int AtlasWidth = 1024, AtlasHeight = 1024;
 
             internal List<IDynamicAtlas> Atlases = new List<IDynamicAtlas>();
@@ -149,15 +153,23 @@ namespace Squared.Render.Text {
                     : (Font.sRGB ? Evil.TextureUtils.ColorSrgbEXT : SurfaceFormat.Color);
 
                 if (!foundRoom) {
-                    var isFirstAtlas = (Atlases.Count == 0) && (_SizePoints < SmallFirstAtlasThreshold);
+                    bool isFirstAtlas = (Atlases.Count == 0) && ((_SizePoints * Font.DPIPercent / 100) <= SkipFirstAtlasThreshold),
+                        isLargeAtlas = (_SizePoints * Font.DPIPercent / 100) >= LargeAtlasThreshold;
+                    int newAtlasWidth = isFirstAtlas ? FirstAtlasWidth : AtlasWidth,
+                        newAtlasHeight = isFirstAtlas ? FirstAtlasHeight : AtlasHeight;
+                    if (isLargeAtlas) {
+                        newAtlasWidth *= 2;
+                        newAtlasHeight *= 2;
+                    }
+
                     IDynamicAtlas newAtlas = ActualSDF
                         ? (IDynamicAtlas)(new DynamicAtlas<float>(
-                            Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight,
-                            surfaceFormat, spacing, Font.SDFMipMapping ? MipGenerator.Get(MipFormat.Single) : null, tag: $"{Font.Face.FamilyName} {SizePoints}pt"
+                            Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
+                            surfaceFormat, spacing, Font.SDFMipMapping ? MipGenerator.Get(MipFormat.Single) : null, tag: $"{Font.Face.FamilyName} {SizePoints}pt #{Atlases.Count + 1}"
                         ) { ClearValue = 1024f })
                         : new DynamicAtlas<Color>(
-                            Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight,
-                            surfaceFormat, spacing, Font.MipMapping ? PickMipGenerator(Font, ContainsColorGlyphs) : null, tag: $"{Font.Face.FamilyName} {SizePoints}pt"
+                            Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
+                            surfaceFormat, spacing, Font.MipMapping ? PickMipGenerator(Font, ContainsColorGlyphs) : null, tag: $"{Font.Face.FamilyName} {SizePoints}pt #{Atlases.Count + 1}"
                         );
                     Atlases.Add(newAtlas);
                     if (!newAtlas.TryReserve(widthW, heightW, out result))
@@ -346,10 +358,10 @@ namespace Squared.Render.Text {
                 }
 
                 if (ch < LowCacheSize) {
-                    if (NeedNormalization)
-                        ApplyWidthNormalization(Font.EqualizeNumberWidths);
-
                     if (LowCache[ch].Texture.IsInitialized) {
+                        if (NeedNormalization)
+                            ApplyWidthNormalization(Font.EqualizeNumberWidths);
+
                         glyph = LowCache[ch];
                         return true;
                     }
@@ -465,6 +477,9 @@ namespace Squared.Render.Text {
                 if (ch < LowCacheSize)
                     LowCache[ch] = glyph;
                 Cache[ch] = glyph;
+
+                if (NeedNormalization)
+                    ApplyWidthNormalization(Font.EqualizeNumberWidths);
 
                 return true;
             }

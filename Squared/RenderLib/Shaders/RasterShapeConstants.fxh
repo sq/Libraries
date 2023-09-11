@@ -1,7 +1,7 @@
 // HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
 #define OutlineSizeCompensation 2.1
 
-#define PI 3.1415926535897931
+#define PI 3.14159265358979323846
 #define DEG_TO_RAD (PI / 180.0)
 
 #define TYPE_Ellipse 0
