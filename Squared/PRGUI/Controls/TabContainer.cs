@@ -32,12 +32,19 @@ namespace Squared.PRGUI.Controls {
 
         public bool ExpandTabsX = true, ExpandTabsY = true;
 
-        float _TabScale = 1;
+        float _TabScale = 1, _TabMargin = 1;
         public float TabScale {
             get => _TabScale;
             set {
                 value = Arithmetic.Clamp(value, 0.1f, 2.0f);
                 _TabScale = value;
+                TabStripIsInvalid = true;
+            }
+        }
+        public float TabMargin {
+            get => _TabMargin;
+            set {
+                _TabMargin = value;
                 TabStripIsInvalid = true;
             }
         }
@@ -50,6 +57,22 @@ namespace Squared.PRGUI.Controls {
                     return;
                 _TabsOnLeft = value;
                 InvalidateLayout();
+            }
+        }
+
+        float? _TabMinimumWidth, _TabMinimumHeight;
+        public float? TabMinimumWidth {
+            get => _TabMinimumWidth;
+            set {
+                _TabMinimumWidth = value;
+                TabStripIsInvalid = true;
+            }
+        }
+        public float? TabMinimumHeight {
+            get => _TabMinimumHeight;
+            set {
+                _TabMinimumHeight = value;
+                TabStripIsInvalid = true;
             }
         }
 
@@ -175,7 +198,13 @@ namespace Squared.PRGUI.Controls {
                         ? ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
                         : ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Bottom,
                     Scale = _TabScale,
-                    Margins = new Margins(0, 0, TabsOnLeft ? 0 : 1, TabsOnLeft ? 1 : 0),
+                    Margins = new Margins(0, 0, TabsOnLeft ? 0 : TabMargin, TabsOnLeft ? TabMargin : 0),
+                    Width = {
+                        Minimum = _TabMinimumWidth,
+                    },
+                    Height = {
+                        Minimum = _TabMinimumHeight,
+                    },
                 };
                     
                 btn.Checked = c;

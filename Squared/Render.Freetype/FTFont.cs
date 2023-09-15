@@ -40,9 +40,9 @@ namespace Squared.Render.Text {
             public const int FirstAtlasWidth = 512, FirstAtlasHeight = 512;
             // FIXME: Randomly selected value, probably too small or too big. This is after DPI is applied (so 200% -> 2x the input DPI)
             // If a font's size is bigger than this we double the size of all of its atlases (i.e. first is 1024, the rest are 2048)
-            public static float LargeAtlasThreshold = 36,
+            public static float LargeAtlasThreshold = 42,
                 // If a font's size is bigger than THIS, we skip having a small first atlas, since it probably won't be big enough.
-                SkipFirstAtlasThreshold = 60;
+                SkipFirstAtlasThreshold = 72;
             public const int AtlasWidth = 1024, AtlasHeight = 1024;
 
             internal List<IDynamicAtlas> Atlases = new List<IDynamicAtlas>();
