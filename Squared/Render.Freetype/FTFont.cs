@@ -624,13 +624,30 @@ namespace Squared.Render.Text {
         /// <summary>
         /// If enabled, the 0-9 digits will have padding added to make them the same width
         /// </summary>
-        public bool EqualizeNumberWidths { get; set; }
+        public bool EqualizeNumberWidths {
+            get => _EqualizeNumberWidths;
+            set {
+                if (value == _EqualizeNumberWidths)
+                    return;
+                _EqualizeNumberWidths = value;
+                Invalidate();
+            }
+        }
         /// <summary>
         /// Enables OpenType kerning (if the font contains a GPOS table).
         /// This adds significant overhead to text layout!
         /// </summary>
-        public bool EnableKerning { get; set; }
+        public bool EnableKerning {
+            get => _EnableKerning;
+            set {
+                if (value == _EnableKerning)
+                    return;
+                _EnableKerning = value;
+                Invalidate();
+            }
+        }
 
+        private bool _EnableKerning, _EqualizeNumberWidths;
         private double _Gamma;
         private GammaRamp GammaRamp;
         private MipGenerator.WithGammaRamp MipGen;
