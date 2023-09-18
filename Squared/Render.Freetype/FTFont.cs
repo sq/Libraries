@@ -42,7 +42,7 @@ namespace Squared.Render.Text {
             // If a font's size is bigger than this we double the size of all of its atlases (i.e. first is 1024, the rest are 2048)
             public static float LargeAtlasThreshold = 42,
                 // If a font's size is bigger than THIS, we skip having a small first atlas, since it probably won't be big enough.
-                SkipFirstAtlasThreshold = 72;
+                SkipFirstAtlasThreshold = 82;
             public const int AtlasWidth = 1024, AtlasHeight = 1024;
 
             internal List<IDynamicAtlas> Atlases = new List<IDynamicAtlas>();
@@ -445,6 +445,7 @@ namespace Squared.Render.Text {
                 var rect = texRegion.Rectangle;
 
                 glyph = new SrGlyph {
+                    GlyphId = index,
                     Character = ch,
                     Width = widthMetric,
                     LeftSideBearing = bearingXMetric,
@@ -608,6 +609,9 @@ namespace Squared.Render.Text {
         public Dictionary<uint, Color> DefaultGlyphColors = new Dictionary<uint, Color>();
 
         public float VerticalOffset;
+        public GPOSTable GPOS {
+            get; private set;
+        } 
 
         public double Gamma {
             get {
@@ -633,8 +637,8 @@ namespace Squared.Render.Text {
 
         public FreeTypeFont (RenderCoordinator rc, string filename, int faceIndex = 0) {
             RenderCoordinator = rc;
-            ReadTables(File.ReadAllBytes(filename));
             Face = new Face(new Library(), filename, faceIndex);
+            ReadTables();
             Initialize();
         }
 
@@ -642,19 +646,26 @@ namespace Squared.Render.Text {
             RenderCoordinator = rc;
             var buffer = new byte[stream.Length];
             stream.Read(buffer, 0, (int)stream.Length);
-            ReadTables(buffer);
             Face = new Face(new Library(), buffer, faceIndex);
+            ReadTables();
             Initialize();
         }
 
         public FreeTypeFont (RenderCoordinator rc, byte[] buffer, int faceIndex = 0) {
             RenderCoordinator = rc;
-            ReadTables(buffer);
             Face = new Face(new Library(), buffer, faceIndex);
+            ReadTables();
             Initialize();
         }
 
-        private void ReadTables (byte[] buffer) {
+        private void ReadTables () {
+            var err = FT.FT_OpenType_Validate(Face.Handle, OpenTypeValidationFlags.Gpos, out _, out _, out var gposTable, out _, out _);
+            if ((err == 0) && (gposTable != null)) {
+                GPOS = new GPOSTable(this, gposTable);
+                ;
+            } else {
+                GPOS = null;
+            }
         }
 
         private void Initialize () {
@@ -739,6 +750,7 @@ namespace Squared.Render.Text {
             foreach (var size in Sizes)
                 size.Dispose();
 
+            GPOS?.Dispose();
             Sizes.Clear();
             Face.Dispose();
         }

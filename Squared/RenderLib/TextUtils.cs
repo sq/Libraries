@@ -1372,6 +1372,7 @@ namespace Squared.Render.Text {
             scale *= glyph.Scale;
 
             result = new Glyph {
+                GlyphId = (uint)(glyph.Index ?? 0),
                 Texture = Atlas.Texture,
                 BoundsInTexture = cell.Bounds,
                 Character = glyph.Character,
@@ -1503,6 +1504,7 @@ namespace Squared.Render.Text {
             var rect = Fields.GlyphRectangles[characterIndex];
 
             glyph = new Glyph {
+                GlyphId = (uint)characterIndex,
                 Character = ch,
                 Texture = Texture,
                 BoundsInTexture = Texture.BoundsFromRectangle(in rect),
@@ -1552,6 +1554,7 @@ namespace Squared.Render.Text {
     }
 
     public struct Glyph {
+        public uint GlyphId;
         public AbstractTextureReference Texture;
         public uint Character;
         public Bounds BoundsInTexture;

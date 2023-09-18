@@ -719,6 +719,11 @@ namespace Squared.PRGUI.Controls {
                 textOffset.Y += (settings.ContentBox.Height - scaledSize.Y) * VerticalAlignment;
             }
 
+            // HACK: Somehow we can get a layout bigger than our bounds sometimes, in that case we never want to overflow the top
+            // FIXME: Why is this possible?
+            if (textOffset.Y < 0)
+                textOffset.Y = 0;
+
             var cpx = computedPadding.X;
             var centeringWidth = (layout.LineCount > 1) 
                 ? scaledSize.X

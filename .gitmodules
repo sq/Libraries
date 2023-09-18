@@ -1,6 +1,3 @@
-[submodule "Ext/SharpFont"]
-	path = Ext/SharpFont
-	url = https://github.com/Robmaister/SharpFont.git
 [submodule "Ext/Dependencies"]
 	path = Ext/Dependencies
 	url = https://github.com/sq/SquaredDependencies.git

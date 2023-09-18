@@ -74,7 +74,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PRGUI.Demo", "PRGUI.Demo\PR
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiscTests", "MiscTests\MiscTests.csproj", "{89D360AB-513D-405F-B985-AAEE422BA1A2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpFont", "..\Ext\SharpFont\Source\SharpFont\SharpFont.csproj", "{ECD55E3B-1139-4F0D-AF63-3F471AAF6E91}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpFont", "..\Ext\SharpFontFork\Source\SharpFont\SharpFont.csproj", "{ECD55E3B-1139-4F0D-AF63-3F471AAF6E91}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
