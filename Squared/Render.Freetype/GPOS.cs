@@ -108,7 +108,7 @@ namespace Squared.Render.Text {
 
         internal abstract void DecodeSubtable (UInt16 format, Coverage coverage, FTUInt16* subtable, FTUInt16* data);
 
-        internal abstract bool TryGetValue (int glyphId, int nextGlyphId, out ValueRecord thisGlyph, out ValueRecord nextGlyph);
+        internal abstract bool TryGetValue (int glyphId, int nextGlyphId, ref ValueRecord thisGlyph, ref ValueRecord nextGlyph);
     }
 
     public unsafe class GPOSSubtable<TItem> {
@@ -120,12 +120,11 @@ namespace Squared.Render.Text {
             Values = values;
         }   
 
-        public bool TryGetValue (int glyphId, out TItem result) {
+        public bool TryGetValue (int glyphId, ref TItem result) {
             if (
                 !Coverage.TryGetIndex(glyphId, out var coverageIndex) ||
                 (coverageIndex >= Values.Length)
             ) {
-                result = default;
                 return false;
             }
 
@@ -170,14 +169,11 @@ namespace Squared.Render.Text {
             TempSubTables.Add(new GPOSSubtable<ValueRecord>(coverage, values));
         }
 
-        internal override bool TryGetValue (int glyphId, int nextGlyphId, out ValueRecord thisGlyph, out ValueRecord nextGlyph) {
-            nextGlyph = default;
-
+        internal override bool TryGetValue (int glyphId, int nextGlyphId, ref ValueRecord thisGlyph, ref ValueRecord nextGlyph) {
             foreach (var subtable in SubTables)
-                if (subtable.TryGetValue(glyphId, out thisGlyph))
+                if (subtable.TryGetValue(glyphId, ref thisGlyph))
                     return true;
 
-            thisGlyph = default;
             return false;
         }
     }
@@ -228,22 +224,39 @@ namespace Squared.Render.Text {
             TempSubTables.Add(new GPOSSubtable<PairValueRecord[]>(coverage, values));
         }
 
-        internal override bool TryGetValue (int glyphId, int nextGlyphId, out ValueRecord thisGlyph, out ValueRecord nextGlyph) {
+        internal override bool TryGetValue (int glyphId, int nextGlyphId, ref ValueRecord thisGlyph, ref ValueRecord nextGlyph) {
+            PairValueRecord[] pairs = null;
             foreach (var subtable in SubTables) {
-                if (subtable.TryGetValue(glyphId, out var pairs)) {
-                    // FIXME: Binary search
-                    foreach (var pair in pairs) {
-                        if (pair.SecondGlyph == nextGlyphId) {
-                            thisGlyph = pair.Value1;
-                            nextGlyph = pair.Value2;
-                            return true;
-                        }
-                    }
+                if (subtable.TryGetValue(glyphId, ref pairs)) {
+                    if (FindPair(pairs, nextGlyphId, ref thisGlyph, ref nextGlyph))
+                        return true;
                 }
             }
 
-            thisGlyph = nextGlyph = default;
             return false;
+        }
+
+        private bool FindPair (PairValueRecord[] pairs, int nextGlyphId, ref ValueRecord thisGlyph, ref ValueRecord nextGlyph) {
+            uint low = 0, high = (uint)(pairs.Length - 1);
+            unchecked {
+                while (low <= high) {
+                    uint i = (high + low) >> 1;
+                    ref var pair = ref pairs[i];
+                    int c = nextGlyphId - pair.SecondGlyph;
+                    if (c == 0) {
+                        thisGlyph = pair.Value1;
+                        nextGlyph = pair.Value2;
+                        return true;
+                    } else if (c > 0) {
+                        low = i + 1;
+                    } else if (i > 0) {
+                        high = i - 1;
+                    } else
+                        break;
+                }
+
+                return false;
+            }
         }
 
         private PairValueRecord[] ReadPairSetTable (FTUInt16* subtable, UInt16 offset, ValueFormats vf1, ValueFormats vf2) {
@@ -333,33 +346,36 @@ namespace Squared.Render.Text {
                     return (result >= 0);
                 }
                 case CoverageFormats.Ranges: {
-                    var ranges = Ranges;
-
                     // First, binary search to locate any range that might contain this character
                     int count = Count, scanFrom = -1;
                     uint low = 0, high = (uint)(count - 1);
-                    while (low <= high) {
-                        uint i = (high + low) >> 1;
-                        int c = glyphId - ranges[i].StartGlyphId;
-                        if (c == 0) {
-                            scanFrom = (int)i;
-                            break;
-                        } else if (c > 0) {
-                            low = i + 1;
-                        } else if (i > 0) {
-                            high = i - 1;
-                        } else {
-                            break;
+                    unchecked {
+                        fixed (RangeRecord *ranges = Ranges) {
+                            while (low <= high) {
+                                uint i = (high + low) >> 1;
+                                int c = glyphId - ranges[i].StartGlyphId;
+                                if (c == 0) {
+                                    scanFrom = (int)i;
+                                    break;
+                                } else if (c > 0) {
+                                    low = i + 1;
+                                } else if (i > 0) {
+                                    high = i - 1;
+                                } else {
+                                    break;
+                                }
+                            }
+
+                            if (scanFrom < 0)
+                                scanFrom = (int)Math.Min(low, high);
+                            // The closest range we found is the one that will contain the character,
+                            //  because ranges are required to be sorted by start id and non-overlapping
+                            if (scanFrom < count)
+                                return ranges[scanFrom].Check(glyphId, out result);
+                            else
+                                return false;
                         }
                     }
-                    if (scanFrom < 0)
-                        scanFrom = (int)Math.Min(low, high);
-                    // The closest range we found is the one that will contain the character,
-                    //  because ranges are required to be sorted by start id and non-overlapping
-                    if (scanFrom < count)
-                        return ranges[scanFrom].Check(glyphId, out result);
-                    else
-                        return false;
                 }
             }
             return false;

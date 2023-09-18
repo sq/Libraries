@@ -539,7 +539,7 @@ namespace Squared.Render.Text {
                 bool found = false;
                 ValueRecord value1 = default, value2 = default;
                 foreach (var table in Font.GPOS.Lookups) {
-                    if (table.TryGetValue((int)glyphId, (int)nextGlyphId, out value1, out value2)) {
+                    if (table.TryGetValue((int)glyphId, (int)nextGlyphId, ref value1, ref value2)) {
                         found = true;
                         break;
                     }
