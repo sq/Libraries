@@ -306,10 +306,6 @@ namespace Squared.Threading {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int AddInternal (ref InternalWorkItem<T> item) {
             lock (ItemsLock) {
-                // HACK: Clear the 'finished processing' signal because we have work items now
-                if (_Count <= 1)
-                    FinishedProcessingSignal.Reset();
-
                 // Any existing read operations are irrelevant, we're inside the lock so we own the semilock state
                 Volatile.Write(ref _Semilock, Semilock_Adding);
                 EnsureCapacityLocked(_Count + 1);
@@ -453,7 +449,8 @@ namespace Squared.Threading {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null, WorkQueueNotifyMode notifyChanged = WorkQueueNotifyMode.Always) {
             AssertCanEnqueue();
-            Interlocked.Increment(ref ItemsWaitingForProcessing);
+            if (Interlocked.Increment(ref ItemsWaitingForProcessing) <= 2)
+                FinishedProcessingSignal.Reset();
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
             var newCount = AddInternal(ref wi);
             NotifyChanged(notifyChanged, newCount, wakeAll: false);
@@ -462,7 +459,8 @@ namespace Squared.Threading {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null, WorkQueueNotifyMode notifyChanged = WorkQueueNotifyMode.Always) {
             AssertCanEnqueue();
-            Interlocked.Increment(ref ItemsWaitingForProcessing);
+            if (Interlocked.Increment(ref ItemsWaitingForProcessing) <= 2)
+                FinishedProcessingSignal.Reset();
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
             var newCount = AddInternal(ref wi);
             NotifyChanged(notifyChanged, newCount, wakeAll: false);
@@ -471,6 +469,7 @@ namespace Squared.Threading {
         public void EnqueueMany (ArraySegment<T> data, bool notifyChanged = true) {
             AssertCanEnqueue();
             Interlocked.Add(ref ItemsWaitingForProcessing, data.Count);
+            FinishedProcessingSignal.Reset();
             var wi = new InternalWorkItem<T>();
             wi.Queue = this;
             wi.OnComplete = null;
@@ -496,7 +495,7 @@ namespace Squared.Threading {
 
             InternalWorkItem<T> item = default(InternalWorkItem<T>);
             int numProcessed = 0;
-            bool running = true;
+            bool running = true, wasLast = false;
 
             var padded = Owner.Count - (Configuration.ConcurrencyPadding ?? Owner.DefaultConcurrencyPadding);
             var lesser = Math.Min(Configuration.MaxConcurrency ?? 9999, padded);
@@ -526,7 +525,7 @@ namespace Squared.Threading {
                             InternalWorkItem<T>.Execute(Owner, ref item);
                             result++;
                         } finally {
-                            Interlocked.Decrement(ref ItemsWaitingForProcessing);
+                            wasLast = Interlocked.Decrement(ref ItemsWaitingForProcessing) <= 0;
                         }
                     }
                 } catch (Exception exc) {
@@ -536,7 +535,7 @@ namespace Squared.Threading {
             } while (running);
 
             actualMaximumCount -= numProcessed;
-            var wasLast = Interlocked.Decrement(ref _NumProcessing) == 0;
+            Interlocked.Decrement(ref _NumProcessing);
             // The following would be ideal but I think it could produce a hang in some cases
             /*
             // This is a race, but that's probably OK since anyone waiting for the queue to drain will verify and spin if
@@ -544,8 +543,15 @@ namespace Squared.Threading {
             var signalDone = wasLast && (Volatile.Read(ref ItemsQueued) <= processedCounter);
             */
 
-            if (wasLast && Volatile.Read(ref _Count) == 0)
-                FinishedProcessingSignal.Set();
+            // HACK: Acquire the lock temporarily to see if we're really done, and if we are, 
+            //  set the finished processing signal. We need to acquire the lock so that we
+            //  properly synchronize with Reset
+            if (wasLast) {
+                lock (ItemsLock) {
+                    if (_Count <= 0)
+                        FinishedProcessingSignal.Set();
+                }
+            }
         }
 
         public int Step (out bool exhausted, int? maximumCount = null) {

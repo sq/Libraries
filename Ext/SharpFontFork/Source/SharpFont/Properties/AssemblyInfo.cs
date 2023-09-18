@@ -60,8 +60,8 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("9.1.1.000")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("32.0.0.0")]
+[assembly: AssemblyFileVersion("32.0.0.0")]
 
 //The SemVer version
-[assembly: AssemblyInformationalVersion("9.1.1")]
+[assembly: AssemblyInformationalVersion("32.0.0")]
