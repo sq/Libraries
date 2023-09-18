@@ -108,7 +108,7 @@ namespace Squared.Render.Text {
 
         internal abstract void DecodeSubtable (UInt16 format, Coverage coverage, FTUInt16* subtable, FTUInt16* data);
 
-        internal abstract bool TryGetValue (int previousGlyphId, int glyphId, out ValueRecord value1);
+        internal abstract bool TryGetValue (int glyphId, int nextGlyphId, out ValueRecord thisGlyph, out ValueRecord nextGlyph);
     }
 
     public unsafe class GPOSSubtable<TItem> {
@@ -170,17 +170,16 @@ namespace Squared.Render.Text {
             TempSubTables.Add(new GPOSSubtable<ValueRecord>(coverage, values));
         }
 
-        internal bool TryGetValue (int glyphId, out ValueRecord result) {
+        internal override bool TryGetValue (int glyphId, int nextGlyphId, out ValueRecord thisGlyph, out ValueRecord nextGlyph) {
+            nextGlyph = default;
+
             foreach (var subtable in SubTables)
-                if (subtable.TryGetValue(glyphId, out result))
+                if (subtable.TryGetValue(glyphId, out thisGlyph))
                     return true;
 
-            result = default;
+            thisGlyph = default;
             return false;
         }
-
-        internal override bool TryGetValue (int previousGlyphId, int glyphId, out ValueRecord value1) =>
-            TryGetValue(glyphId, out value1);
     }
 
     public struct PairValueRecord {
@@ -229,30 +228,21 @@ namespace Squared.Render.Text {
             TempSubTables.Add(new GPOSSubtable<PairValueRecord[]>(coverage, values));
         }
 
-        internal bool TryGetValue (int previousGlyphId, int glyphId, out PairValueRecord result) {
+        internal override bool TryGetValue (int glyphId, int nextGlyphId, out ValueRecord thisGlyph, out ValueRecord nextGlyph) {
             foreach (var subtable in SubTables) {
-                if (subtable.TryGetValue(previousGlyphId, out var pairs)) {
+                if (subtable.TryGetValue(glyphId, out var pairs)) {
                     // FIXME: Binary search
                     foreach (var pair in pairs) {
-                        if (pair.SecondGlyph == glyphId) {
-                            result = pair;
+                        if (pair.SecondGlyph == nextGlyphId) {
+                            thisGlyph = pair.Value1;
+                            nextGlyph = pair.Value2;
                             return true;
                         }
                     }
                 }
             }
 
-            result = default;
-            return false;
-        }
-
-        internal override bool TryGetValue (int previousGlyphId, int glyphId, out ValueRecord value1) {
-            if (TryGetValue(previousGlyphId, glyphId, out var pair)) {
-                value1 = pair.Value1;
-                return true;
-            }
-
-            value1 = default;
+            thisGlyph = nextGlyph = default;
             return false;
         }
 

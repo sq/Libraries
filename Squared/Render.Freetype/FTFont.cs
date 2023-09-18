@@ -535,11 +535,11 @@ namespace Squared.Render.Text {
                 Atlases.Clear();
             }
 
-            void IKerningProvider.Apply (ref Glyph glyph, uint previousGlyphId, uint glyphId) {
+            bool IKerningProvider.TryGetKerning (uint glyphId, uint nextGlyphId, ref KerningData thisGlyph, ref KerningData nextGlyph) {
                 bool found = false;
-                ValueRecord value = default;
+                ValueRecord value1 = default, value2 = default;
                 foreach (var table in Font.GPOS.Lookups) {
-                    if (table.TryGetValue((int)previousGlyphId, (int)glyphId, out value)) {
+                    if (table.TryGetValue((int)glyphId, (int)nextGlyphId, out value1, out value2)) {
                         found = true;
                         break;
                     }
@@ -547,14 +547,16 @@ namespace Squared.Render.Text {
 
                 if (found) {
                     float scaleX = _CachedMetrics.ScaleX.ToSingle() / 64f,
-                        scaleY = _CachedMetrics.ScaleY.ToSingle() / 64f,
-                        xa = value.XAdvance * scaleX,
-                        xp = value.XPlacement * scaleX,
-                        yp = value.YPlacement * scaleY;
-                    glyph.RightSideBearing += xa;
-                    glyph.XOffset += xp;
-                    glyph.YOffset += yp;
+                        scaleY = _CachedMetrics.ScaleY.ToSingle() / 64f;
+                    thisGlyph.RightSideBearing = value1.XAdvance * scaleX;
+                    thisGlyph.XOffset = value1.XPlacement * scaleX;
+                    thisGlyph.YOffset = value1.YPlacement * scaleY;
+                    nextGlyph.RightSideBearing = value2.XAdvance * scaleX;
+                    nextGlyph.XOffset = value2.XPlacement * scaleX;
+                    nextGlyph.YOffset = value2.YPlacement * scaleY;
                 }
+
+                return found;
             }
         }
 

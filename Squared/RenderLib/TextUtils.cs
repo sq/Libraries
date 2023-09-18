@@ -1232,8 +1232,12 @@ namespace Squared.Render.Text {
         void RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener);
     }
 
+    public struct KerningData {
+        public float XOffset, YOffset, LeftSideBearing, RightSideBearing;
+    }
+
     public interface IKerningProvider {
-        void Apply (ref Glyph glyph, uint previousGlyphId, uint glyphId);
+        bool TryGetKerning (uint glyphId, uint nextGlyphId, ref KerningData thisGlyph, ref KerningData nextGlyph);
     }
 
     public static class TextUtils {

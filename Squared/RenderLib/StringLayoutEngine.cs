@@ -842,6 +842,7 @@ namespace Squared.Render.Text {
 
             var effectiveScale = scale / Math.Max(0.0001f, font.DPIScaleFactor);
             var effectiveSpacing = spacing;
+            KerningData thisKerning = default, nextKerning = default;
 
             var drawCall = new BitmapDrawCall {
                 MultiplyColor = defaultColor,
@@ -851,7 +852,7 @@ namespace Squared.Render.Text {
             };
 
             float x = 0;
-            bool hasBoxes = boxes.Count > 0;
+            bool hasBoxes = boxes.Count > 0, hasKerningNow = false, hasKerningNext = false;
 
             for (int i = start ?? 0, l = Math.Min(end ?? text.Length, text.Length); i < l; i++) {
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
@@ -893,9 +894,24 @@ namespace Squared.Render.Text {
                     DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
                     // FIXME: Also do adjustment for next glyph!
                     // FIXME: Cache the result of this GetGlyph call and use it next iteration to reduce CPU usage
-                    if (font.GetGlyph(codepoint2, out var glyph2) && glyph2.KerningProvider == glyph.KerningProvider)
-                        glyph.KerningProvider.Apply(ref glyph, glyph.GlyphId, glyph2.GlyphId);
+                    if (
+                        font.GetGlyph(codepoint2, out var glyph2) &&
+                        (glyph2.KerningProvider == glyph.KerningProvider)
+                    ) {
+                        hasKerningNow = hasKerningNext = glyph.KerningProvider.TryGetKerning(glyph.GlyphId, glyph2.GlyphId, ref thisKerning, ref nextKerning);
+                    }
                 }
+
+                if (hasKerningNow) {
+                    glyph.XOffset += thisKerning.XOffset;
+                    glyph.YOffset += thisKerning.YOffset;
+                    glyph.RightSideBearing += thisKerning.RightSideBearing;
+                }
+
+                if (hasKerningNext)
+                    thisKerning = nextKerning;
+                hasKerningNow = hasKerningNext;
+                hasKerningNext = false;
 
                 x =
                     characterOffset.X +
