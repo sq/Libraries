@@ -270,11 +270,29 @@ namespace Squared.Render.Text {
             StartCoverageIndex = *ptr++;
         }
 
-        public readonly bool Contains (int glyphId) =>
-            (StartGlyphId <= glyphId) && (EndGlyphId >= glyphId);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly bool Check (int glyphId, out int result) {
+            if ((StartGlyphId <= glyphId) && (EndGlyphId >= glyphId)) {
+                result = glyphId - StartGlyphId + StartCoverageIndex;
+                return true;
+            }
+
+            result = default;
+            return false;
+        }
     }
 
     internal unsafe class Coverage {
+        private sealed class UshortComparer : IComparer<ushort> {
+            public static readonly UshortComparer Instance = new UshortComparer();
+
+            public int Compare (ushort x, ushort y) {
+                unchecked {
+                    return (int)x - (int)y;
+                }
+            }
+        }
+
         public readonly CoverageFormats Format;
         public readonly int Count;
         public readonly UInt16[] Values;
@@ -311,15 +329,8 @@ namespace Squared.Render.Text {
             // FIXME
             switch (Format) {
                 case CoverageFormats.Values: {
-                    var glyphIds = Values;
-                    for (int i = 0, c = Count; i < c; i++) {
-                        if (glyphIds[i] != glyphId)
-                            continue;
-
-                        result = i;
-                        return true;
-                    }
-                    break;
+                    result = Array.BinarySearch(Values, (ushort)glyphId, UshortComparer.Instance);
+                    return (result >= 0);
                 }
                 case CoverageFormats.Ranges: {
                     var ranges = Ranges;
@@ -329,7 +340,7 @@ namespace Squared.Render.Text {
                     uint low = 0, high = (uint)(count - 1);
                     while (low <= high) {
                         uint i = (high + low) >> 1;
-                        int c = ranges[i].StartGlyphId - glyphId;
+                        int c = glyphId - ranges[i].StartGlyphId;
                         if (c == 0) {
                             scanFrom = (int)i;
                             break;
@@ -343,39 +354,14 @@ namespace Squared.Render.Text {
                     }
                     if (scanFrom < 0)
                         scanFrom = (int)Math.Min(low, high);
-                    if ((scanFrom > count) || (scanFrom < 0))
+                    // The closest range we found is the one that will contain the character,
+                    //  because ranges are required to be sorted by start id and non-overlapping
+                    if (scanFrom < count)
+                        return ranges[scanFrom].Check(glyphId, out result);
+                    else
                         return false;
-                    // Now scan bidirectionally from the starting point we found
-                    return ScanBidi(ranges, count, scanFrom, glyphId, out result);
                 }
             }
-            return false;
-        }
-
-        private static bool ScanBidi (RangeRecord[] ranges, int count, int scanFrom, int glyphId, out int result) {
-            int a = scanFrom, b = scanFrom + 1;
-            bool run = true;
-            while (run) {
-                run = false;
-                if (a > 0) {
-                    if (ranges[a].Contains(glyphId)) {
-                        result = ranges[a].StartCoverageIndex + a;
-                        return true;
-                    }
-                    run = true;
-                }
-                if (b < count) {
-                    if (ranges[b].Contains(glyphId)) {
-                        result = ranges[b].StartCoverageIndex + b;
-                        return true;
-                    }
-                    run = true;
-                }
-                a--;
-                b++;
-            }
-
-            result = default;
             return false;
         }
     }
