@@ -888,8 +888,8 @@ namespace Squared.Render.Text {
                     out float glyphLineSpacing, out float glyphBaseline
                 );
 
-                if (glyph.KerningProvider != null) {
-                    var temp = i;
+                if ((glyph.KerningProvider != null) && (i < l - 2)) {
+                    var temp = i + 1;
                     DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
                     // FIXME: Also do adjustment for next glyph!
                     // FIXME: Cache the result of this GetGlyph call and use it next iteration to reduce CPU usage

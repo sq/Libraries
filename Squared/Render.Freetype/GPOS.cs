@@ -341,16 +341,19 @@ namespace Squared.Render.Text {
                         uint i = (high + low) >> 1;
                         int c = ranges[i].StartGlyphId - glyphId;
                         if (c == 0) {
-                            scanFrom = c;
+                            scanFrom = (int)i;
                             break;
                         } else if (c > 0) {
                             low = i + 1;
                         } else if (i > 0) {
                             high = i - 1;
-                        } else
+                        } else {
                             break;
+                        }
                     }
                     if (scanFrom < 0)
+                        scanFrom = (int)Math.Min(low, high);
+                    if ((scanFrom > count) || (scanFrom < 0))
                         return false;
                     // Now scan bidirectionally from the starting point we found
                     return ScanBidi(ranges, count, scanFrom, glyphId, out result);
@@ -358,6 +361,7 @@ namespace Squared.Render.Text {
             }
             return false;
         }
+
         private static bool ScanBidi (RangeRecord[] ranges, int count, int scanFrom, int glyphId, out int result) {
             int a = scanFrom, b = scanFrom + 1;
             bool run = true;
