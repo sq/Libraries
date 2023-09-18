@@ -13,6 +13,16 @@ using Squared.Util.Text;
 
 namespace Squared.Render.Text {
     public struct StringLayoutEngine : IDisposable {
+        private sealed class UintComparer : IComparer<uint> {
+            public static readonly UintComparer Instance = new UintComparer();
+
+            public int Compare (uint x, uint y) {
+                unchecked {
+                    return (int)x - (int)y;
+                }
+            }
+        }
+
         public DenseList<LayoutMarker> Markers;
         public DenseList<LayoutHitTest> HitTests;
         public DenseList<uint> WordWrapCharacters;
@@ -418,7 +428,7 @@ namespace Squared.Render.Text {
             int firstIndex, int lastIndex, float originalMaxX
         ) {
             Bounds firstDc = default(Bounds), endDc = default(Bounds);
-            int firstWord = 999999, lastWord = 0;
+            int firstWord = 999999, lastWord = 0, firstValidIndex = -1, lastValidIndex = -1;
             for (int i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
                 firstWord = Math.Min(firstWord, dc.LocalData1);
@@ -426,11 +436,15 @@ namespace Squared.Render.Text {
                 if (dc.UserData.X > 0)
                     continue;
 
-                if (firstDc == default(Bounds))
-                    firstDc = dc.EstimateDrawBounds();
-
-                endDc = dc.EstimateDrawBounds();
+                if (firstValidIndex < 0)
+                    firstValidIndex = i;
+                lastValidIndex = i;
             }
+
+            if (firstValidIndex >= 0)
+                firstDc = buffer.Array[buffer.Offset + firstValidIndex].EstimateDrawBounds();
+            if (lastValidIndex >= 0)
+                endDc = buffer.Array[buffer.Offset + lastValidIndex].EstimateDrawBounds();
 
             int wordCountMinusOne = (firstWord < lastWord)
                 ? lastWord - firstWord
@@ -878,6 +892,7 @@ namespace Squared.Render.Text {
                     var temp = i;
                     DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
                     // FIXME: Also do adjustment for next glyph!
+                    // FIXME: Cache the result of this GetGlyph call and use it next iteration to reduce CPU usage
                     if (font.GetGlyph(codepoint2, out var glyph2) && glyph2.KerningProvider == glyph.KerningProvider)
                         glyph.KerningProvider.Apply(ref glyph, glyph.GlyphId, glyph2.GlyphId);
                 }
@@ -1015,11 +1030,12 @@ namespace Squared.Render.Text {
             lineBreak = false;
             deadGlyph = false;
             didWrapWord = false;
+
             if (splitAtWrapCharactersOnly)
-                isWordWrapPoint = (WordWrapCharacters.IndexOf(codepoint) >= 0);
+                isWordWrapPoint = WordWrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
             else
                 isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1) ||
-                    replacementCodepoint.HasValue || (WordWrapCharacters.IndexOf(codepoint) >= 0);
+                    replacementCodepoint.HasValue || WordWrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
 
             if (codepoint > 255) {
                 // HACK: Attempt to word-wrap at "other" punctuation in non-western character sets, which will include things like commas

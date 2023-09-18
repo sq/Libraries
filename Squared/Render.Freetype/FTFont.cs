@@ -539,17 +539,9 @@ namespace Squared.Render.Text {
                 bool found = false;
                 ValueRecord value = default;
                 foreach (var table in Font.GPOS.Lookups) {
-                    if (table is GPOSSingleLookup single) {
-                        if (single.TryGetValue(glyphId, out value)) {
-                            found = true;
-                            break;
-                        }
-                    } else if (table is GPOSPairLookup pair) {
-                        if (pair.TryGetValue(previousGlyphId, glyphId, out var result)) {
-                            value = result.Value1;
-                            found = true;
-                            break;
-                        }
+                    if (table.TryGetValue((int)previousGlyphId, (int)glyphId, out value)) {
+                        found = true;
+                        break;
                     }
                 }
 

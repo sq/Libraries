@@ -501,6 +501,50 @@ namespace Squared.Util {
             return -1;
         }
 
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int BinarySearchNonRef (in T value) {
+            return BinarySearchNonRef(in value, Comparer<T>.Default);
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int BinarySearchNonRef<TComparer> (in T value, TComparer comparer)
+            where TComparer : IComparer<T>
+        {
+            int low = 0, high = Count - 1;
+            while (low <= high) {
+                int i = (int)(((uint)high + (uint)low) >> 1);
+                int c = comparer.Compare(value, Ext.Item(ref this, i));
+                if (c == 0)
+                    return i;
+                else if (c > 0)
+                    low = i + 1;
+                else
+                    high = i - 1;
+            }
+            return ~low;
+        }
+
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int BinarySearch<TComparer> (ref T value, TComparer comparer)
+            where TComparer : IRefComparer<T>
+        {
+            int low = 0, high = Count - 1;
+            while (low <= high) {
+                int i = (int)(((uint)high + (uint)low) >> 1);
+                int c = comparer.Compare(ref value, ref Ext.Item(ref this, i));
+                if (c == 0)
+                    return i;
+                else if (c > 0)
+                    low = i + 1;
+                else
+                    high = i - 1;
+            }
+            return ~low;
+        }
+
         public unsafe T this [int index] {
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

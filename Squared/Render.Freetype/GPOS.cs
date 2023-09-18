@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Text;
@@ -98,26 +100,29 @@ namespace Squared.Render.Text {
                 var ptr = (FTUInt16*)((byte*)Table + subTableOffset);
                 var format = ptr[0];
                 var coverageOffset = ptr[1];
-                var coverage = ((byte*)ptr) + coverageOffset;
-                DecodeSubtable(format, (Coverage*)coverage, ptr, ptr + 2);
+                var coverageData = ((byte*)ptr) + coverageOffset;
+                var decodedCoverage = new Coverage((FTUInt16*)coverageData);
+                DecodeSubtable(format, decodedCoverage, ptr, ptr + 2);
             }
         }
 
-        internal abstract void DecodeSubtable (UInt16 format, Coverage* coverage, FTUInt16* subtable, FTUInt16* data);
+        internal abstract void DecodeSubtable (UInt16 format, Coverage coverage, FTUInt16* subtable, FTUInt16* data);
+
+        internal abstract bool TryGetValue (int previousGlyphId, int glyphId, out ValueRecord value1);
     }
 
     public unsafe class GPOSSubtable<TItem> {
-        internal readonly Coverage* Coverage;
+        internal readonly Coverage Coverage;
         public readonly TItem[] Values;
 
-        internal GPOSSubtable (Coverage* coverage, TItem[] values) {
+        internal GPOSSubtable (Coverage coverage, TItem[] values) {
             Coverage = coverage;
             Values = values;
         }   
 
-        public bool TryGetValue (uint glyphId, out TItem result) {
+        public bool TryGetValue (int glyphId, out TItem result) {
             if (
-                !Text.Coverage.TryGetIndex(Coverage, glyphId, out var coverageIndex) ||
+                !Coverage.TryGetIndex(glyphId, out var coverageIndex) ||
                 (coverageIndex >= Values.Length)
             ) {
                 result = default;
@@ -130,15 +135,18 @@ namespace Squared.Render.Text {
     }
 
     public unsafe class GPOSSingleLookup : GPOSLookup {
-        public readonly List<GPOSSubtable<ValueRecord>> SubTables;
+        private List<GPOSSubtable<ValueRecord>> TempSubTables;
+        public readonly GPOSSubtable<ValueRecord>[] SubTables;
 
         internal GPOSSingleLookup (LookupTable * table)
             : base(table) {
-            SubTables = new List<GPOSSubtable<ValueRecord>>(table->SubTableCount);
+            TempSubTables = new List<GPOSSubtable<ValueRecord>>(table->SubTableCount);
             DecodeSubtables();
+            SubTables = TempSubTables.ToArray();
+            TempSubTables = null;
         }
 
-        internal unsafe override void DecodeSubtable (UInt16 format, Coverage* coverage, FTUInt16 *subtable, FTUInt16* data) {
+        internal unsafe override void DecodeSubtable (UInt16 format, Coverage coverage, FTUInt16 *subtable, FTUInt16* data) {
             ValueRecord[] values;
             switch (format) {
                 case 1: {
@@ -159,10 +167,10 @@ namespace Squared.Render.Text {
                     throw new NotImplementedException();
             }
 
-            SubTables.Add(new GPOSSubtable<ValueRecord>(coverage, values));
+            TempSubTables.Add(new GPOSSubtable<ValueRecord>(coverage, values));
         }
 
-        internal bool TryGetValue (uint glyphId, out ValueRecord result) {
+        internal bool TryGetValue (int glyphId, out ValueRecord result) {
             foreach (var subtable in SubTables)
                 if (subtable.TryGetValue(glyphId, out result))
                     return true;
@@ -170,6 +178,9 @@ namespace Squared.Render.Text {
             result = default;
             return false;
         }
+
+        internal override bool TryGetValue (int previousGlyphId, int glyphId, out ValueRecord value1) =>
+            TryGetValue(glyphId, out value1);
     }
 
     public struct PairValueRecord {
@@ -178,15 +189,17 @@ namespace Squared.Render.Text {
     }
 
     public unsafe class GPOSPairLookup : GPOSLookup {
-        public readonly List<GPOSSubtable<PairValueRecord[]>> SubTables;
+        private List<GPOSSubtable<PairValueRecord[]>> TempSubTables = new List<GPOSSubtable<PairValueRecord[]>>();
+        public readonly GPOSSubtable<PairValueRecord[]>[] SubTables;
 
         internal GPOSPairLookup (LookupTable * table)
             : base(table) {
-            SubTables = new List<GPOSSubtable<PairValueRecord[]>>(table->SubTableCount);
             DecodeSubtables();
+            SubTables = TempSubTables.ToArray();
+            TempSubTables = null;
         }
 
-        internal unsafe override void DecodeSubtable (UInt16 format, Coverage* coverage, FTUInt16 *subtable, FTUInt16* data) {
+        internal unsafe override void DecodeSubtable (UInt16 format, Coverage coverage, FTUInt16 *subtable, FTUInt16* data) {
             PairValueRecord[][] values;
             switch (format) {
                 case 1: {
@@ -213,10 +226,10 @@ namespace Squared.Render.Text {
                     throw new NotImplementedException();
             }
 
-            SubTables.Add(new GPOSSubtable<PairValueRecord[]>(coverage, values));
+            TempSubTables.Add(new GPOSSubtable<PairValueRecord[]>(coverage, values));
         }
 
-        internal bool TryGetValue (uint previousGlyphId, uint glyphId, out PairValueRecord result) {
+        internal bool TryGetValue (int previousGlyphId, int glyphId, out PairValueRecord result) {
             foreach (var subtable in SubTables) {
                 if (subtable.TryGetValue(previousGlyphId, out var pairs)) {
                     // FIXME: Binary search
@@ -230,6 +243,16 @@ namespace Squared.Render.Text {
             }
 
             result = default;
+            return false;
+        }
+
+        internal override bool TryGetValue (int previousGlyphId, int glyphId, out ValueRecord value1) {
+            if (TryGetValue(previousGlyphId, glyphId, out var pair)) {
+                value1 = pair.Value1;
+                return true;
+            }
+
+            value1 = default;
             return false;
         }
 
@@ -248,26 +271,59 @@ namespace Squared.Render.Text {
         }
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct RangeRecord {
-        public readonly FTUInt16 StartGlyphId, EndGlyphId, StartCoverageIndex;
+    internal unsafe struct RangeRecord {
+        public readonly UInt16 StartGlyphId, EndGlyphId, StartCoverageIndex;
+
+        public RangeRecord (ref FTUInt16* ptr) {
+            StartGlyphId = *ptr++;
+            EndGlyphId = *ptr++;
+            StartCoverageIndex = *ptr++;
+        }
+
+        public readonly bool Contains (int glyphId) =>
+            (StartGlyphId <= glyphId) && (EndGlyphId >= glyphId);
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe struct Coverage {
-        private readonly FTUInt16 _CoverageFormat;
-        public CoverageFormats Format => (CoverageFormats)_CoverageFormat.Value;
-        public readonly FTUInt16 Count;
-        public readonly FTUInt16 Data;
+    internal unsafe class Coverage {
+        public readonly CoverageFormats Format;
+        public readonly int Count;
+        public readonly UInt16[] Values;
+        public readonly RangeRecord[] Ranges;
 
-        public static bool TryGetIndex (Coverage *coverage, uint glyphIndex, out int result) {
-            result = default;
-            // FIXME
-            switch (coverage->Format) {
+        public Coverage (FTUInt16 * ptr) {
+            Format = (CoverageFormats)(*ptr++).Value;
+            Count = (*ptr++).Value;
+            switch (Format) {
                 case CoverageFormats.Values: {
-                    var glyphIds = &coverage->Data;
-                    for (int i = 0, c = coverage->Count; i < c; i++) {
-                        if (glyphIds[i] != glyphIndex)
+                    Values = new UInt16[Count];
+                    for (int i = 0; i < Count; i++)
+                        Values[i] = (*ptr++).Value;
+                    Ranges = null;
+                    return;
+                }
+                case CoverageFormats.Ranges: {
+                    Ranges = new RangeRecord[Count];
+                    for (int i = 0; i < Count; i++)
+                        Ranges[i] = new RangeRecord(ref ptr);
+                    Values = null;
+                    return;
+                }
+                default:
+                    throw new InvalidDataException($"Invalid coverage format {Format}");
+            }
+        }
+
+        public bool TryGetIndex (int glyphId, out int result) {
+            result = default;
+            if (Count == 0)
+                return false;
+
+            // FIXME
+            switch (Format) {
+                case CoverageFormats.Values: {
+                    var glyphIds = Values;
+                    for (int i = 0, c = Count; i < c; i++) {
+                        if (glyphIds[i] != glyphId)
                             continue;
 
                         result = i;
@@ -276,19 +332,56 @@ namespace Squared.Render.Text {
                     break;
                 }
                 case CoverageFormats.Ranges: {
-                    var ranges = (RangeRecord *)&coverage->Data;
-                    for (int i = 0, c = coverage->Count; i < c; i++) {
-                        if (ranges[i].StartGlyphId > glyphIndex)
-                            continue;
-                        else if (ranges[i].EndGlyphId < glyphIndex)
-                            continue;
+                    var ranges = Ranges;
 
-                        result = ranges[i].StartCoverageIndex + i;
-                        return true;
+                    // First, binary search to locate any range that might contain this character
+                    int count = Count, scanFrom = -1;
+                    uint low = 0, high = (uint)(count - 1);
+                    while (low <= high) {
+                        uint i = (high + low) >> 1;
+                        int c = ranges[i].StartGlyphId - glyphId;
+                        if (c == 0) {
+                            scanFrom = c;
+                            break;
+                        } else if (c > 0) {
+                            low = i + 1;
+                        } else if (i > 0) {
+                            high = i - 1;
+                        } else
+                            break;
                     }
-                    break;
+                    if (scanFrom < 0)
+                        return false;
+                    // Now scan bidirectionally from the starting point we found
+                    return ScanBidi(ranges, count, scanFrom, glyphId, out result);
                 }
             }
+            return false;
+        }
+        private static bool ScanBidi (RangeRecord[] ranges, int count, int scanFrom, int glyphId, out int result) {
+            int a = scanFrom, b = scanFrom + 1;
+            bool run = true;
+            while (run) {
+                run = false;
+                if (a > 0) {
+                    if (ranges[a].Contains(glyphId)) {
+                        result = ranges[a].StartCoverageIndex + a;
+                        return true;
+                    }
+                    run = true;
+                }
+                if (b < count) {
+                    if (ranges[b].Contains(glyphId)) {
+                        result = ranges[b].StartCoverageIndex + b;
+                        return true;
+                    }
+                    run = true;
+                }
+                a--;
+                b++;
+            }
+
+            result = default;
             return false;
         }
     }
@@ -371,6 +464,7 @@ namespace Squared.Render.Text {
         public readonly UInt16 RawValue;
 
         public UInt16 Value {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (!BitConverter.IsLittleEndian)
                     return RawValue;
@@ -384,6 +478,7 @@ namespace Squared.Render.Text {
         public override bool Equals (object obj) => Value.Equals(obj);
         public override int GetHashCode () => Value.GetHashCode();
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator UInt16 (FTUInt16 value) => value.Value;
     }
 
@@ -392,6 +487,7 @@ namespace Squared.Render.Text {
         public readonly UInt16 RawValue;
 
         public unsafe Int16 Value {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 var temp = !BitConverter.IsLittleEndian
                     ? RawValue
@@ -405,6 +501,7 @@ namespace Squared.Render.Text {
         public override bool Equals (object obj) => Value.Equals(obj);
         public override int GetHashCode () => Value.GetHashCode();
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator Int16 (FTInt16 value) => value.Value;
     }
 }

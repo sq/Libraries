@@ -84,6 +84,7 @@ namespace Squared.Render.Text {
         private int _LineBreakLimit;
         private char? _ReplacementCharacter;
         private uint[] _WordWrapCharacters;
+        private DenseList<uint> _WordWrapCharacterTable;
         private Vector4? _UserData;
         private Vector4? _ImageUserData;
 
@@ -253,7 +254,19 @@ namespace Squared.Render.Text {
                 return _WordWrapCharacters;
             }
             set {
-                InvalidatingReferenceAssignment(ref _WordWrapCharacters, value);
+                if (value == _WordWrapCharacters)
+                    return;
+
+                if (value != null) {
+                    _WordWrapCharacterTable.Clear();
+                    _WordWrapCharacterTable.AddRange(value);
+                    _WordWrapCharacterTable.SortNonRef(Comparer<uint>.Default);
+                    Invalidate();
+                } else if (_WordWrapCharacterTable.Count != 0) {
+                    _WordWrapCharacterTable.Clear();
+                    Invalidate();
+                }
+                _WordWrapCharacters = value;
             }
         }
 
@@ -923,11 +936,8 @@ namespace Squared.Render.Text {
                 userData = _UserData ?? Vector4.Zero,
                 imageUserData = _ImageUserData ?? _UserData ?? Vector4.Zero,
                 clearUserData = _UserData.HasValue,
+                WordWrapCharacters = _WordWrapCharacterTable,
             };
-
-            if (_WordWrapCharacters != null)
-                foreach (var cp in _WordWrapCharacters)
-                    result.WordWrapCharacters.Add(cp);
 
             if (_Markers != null)
                 foreach (var kvp in _Markers)
