@@ -6,6 +6,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using SharpFont;
+using Squared.Util;
 
 namespace Squared.Render.Text {
     public unsafe class GPOSTable : IDisposable {
@@ -28,21 +29,24 @@ namespace Squared.Render.Text {
             HeaderSize = (Header->MajorVersion > 1) || (Header->MinorVersion >= 1)
                 ? 12 : 10;
             LookupList = (LookupList*)(Data + Header->LookupListOffset);
-            Lookups = new GPOSLookup[LookupList->LookupCount];
-            for (int i = 0; i < LookupList->LookupCount; i++) {
+
+            var temp = new List<GPOSLookup>(LookupList->LookupCount);
+            for (int i = 0, c = LookupList->LookupCount; i < c; i++) {
                 var offset = (&LookupList->FirstLookupOffset)[i];
                 var table = (LookupTable*)(((byte*)LookupList) + offset);
                 switch (table->LookupType) {
                     case LookupTypes.Single:
-                        Lookups[i] = new GPOSSingleLookup(table);
-                        break;
+                        temp.Add(new GPOSSingleLookup(table));
+                        continue;
                     case LookupTypes.Pair:
-                        Lookups[i] = new GPOSPairLookup(table);
-                        break;
+                        temp.Add(new GPOSPairLookup(table));
+                        continue;
                     default:
                         continue;
                 }
             }
+
+            Lookups = temp.ToArray();
         }
 
         public void Dispose () {
@@ -89,7 +93,7 @@ namespace Squared.Render.Text {
         }
 
         internal void DecodeSubtables () {
-            for (int i = 0; i < Table->SubTableCount; i++) {
+            for (int i = 0, c = Table->SubTableCount; i < c; i++) {
                 var subTableOffset = (&Table->FirstSubTableOffset)[i];
                 var ptr = (FTUInt16*)((byte*)Table + subTableOffset);
                 var format = ptr[0];
@@ -111,9 +115,9 @@ namespace Squared.Render.Text {
             Values = values;
         }   
 
-        public bool TryGetValue (uint glyphIndex, out TItem result) {
+        public bool TryGetValue (uint glyphId, out TItem result) {
             if (
-                !Text.Coverage.TryGetIndex(Coverage, glyphIndex, out var coverageIndex) ||
+                !Text.Coverage.TryGetIndex(Coverage, glyphId, out var coverageIndex) ||
                 (coverageIndex >= Values.Length)
             ) {
                 result = default;
@@ -156,6 +160,15 @@ namespace Squared.Render.Text {
             }
 
             SubTables.Add(new GPOSSubtable<ValueRecord>(coverage, values));
+        }
+
+        internal bool TryGetValue (uint glyphId, out ValueRecord result) {
+            foreach (var subtable in SubTables)
+                if (subtable.TryGetValue(glyphId, out result))
+                    return true;
+
+            result = default;
+            return false;
         }
     }
 
@@ -203,9 +216,26 @@ namespace Squared.Render.Text {
             SubTables.Add(new GPOSSubtable<PairValueRecord[]>(coverage, values));
         }
 
+        internal bool TryGetValue (uint previousGlyphId, uint glyphId, out PairValueRecord result) {
+            foreach (var subtable in SubTables) {
+                if (subtable.TryGetValue(previousGlyphId, out var pairs)) {
+                    // FIXME: Binary search
+                    foreach (var pair in pairs) {
+                        if (pair.SecondGlyph == glyphId) {
+                            result = pair;
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            result = default;
+            return false;
+        }
+
         private PairValueRecord[] ReadPairSetTable (FTUInt16* subtable, UInt16 offset, ValueFormats vf1, ValueFormats vf2) {
             var data = (FTUInt16*)(((byte*)subtable) + offset);
-            var count = *data++;
+            var count = (*data++).Value;
             var result = new PairValueRecord[count];
             for (int i = 0; i < count; i++) {
                 result[i] = new PairValueRecord {
@@ -230,15 +260,32 @@ namespace Squared.Render.Text {
         public readonly FTUInt16 Count;
         public readonly FTUInt16 Data;
 
-        public static bool TryGetIndex (Coverage *coverage, uint glyphIndex, out uint result) {
+        public static bool TryGetIndex (Coverage *coverage, uint glyphIndex, out int result) {
             result = default;
+            // FIXME
             switch (coverage->Format) {
                 case CoverageFormats.Values: {
                     var glyphIds = &coverage->Data;
+                    for (int i = 0, c = coverage->Count; i < c; i++) {
+                        if (glyphIds[i] != glyphIndex)
+                            continue;
+
+                        result = i;
+                        return true;
+                    }
                     break;
                 }
                 case CoverageFormats.Ranges: {
                     var ranges = (RangeRecord *)&coverage->Data;
+                    for (int i = 0, c = coverage->Count; i < c; i++) {
+                        if (ranges[i].StartGlyphId > glyphIndex)
+                            continue;
+                        else if (ranges[i].EndGlyphId < glyphIndex)
+                            continue;
+
+                        result = ranges[i].StartCoverageIndex + i;
+                        return true;
+                    }
                     break;
                 }
             }

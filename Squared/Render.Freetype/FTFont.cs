@@ -34,7 +34,7 @@ namespace Squared.Render.Text {
 
         public static uint BaseDPI = 96;
 
-        public class FontSize : IGlyphSource, IDisposable {
+        public class FontSize : IGlyphSource, IKerningProvider, IDisposable {
             public const int LowCacheSize = 256;
             // HACK: The first atlas we create for a font should be smaller as long as the font size itself is small enough
             public const int FirstAtlasWidth = 512, FirstAtlasHeight = 512;
@@ -312,6 +312,7 @@ namespace Squared.Render.Text {
 
             const uint FirstDigit = '0', LastDigit = '9';
             private bool NeedNormalization = true;
+            private SizeMetrics _CachedMetrics;
 
             private void ApplyWidthNormalization (bool normalizeNumberWidths) {
                 NeedNormalization = false;
@@ -418,13 +419,11 @@ namespace Squared.Render.Text {
                     index, flags, target
                 );
 
-                var sizeMetrics = size.Metrics;
+                var sizeMetrics = _CachedMetrics = size.Metrics;
 
                 Font.Face.RenderGlyphEXT(ActualSDF ? RenderMode.VerticalLcd + 1 : RenderMode.Normal);
                 var ftgs = Font.Face.Glyph;
 
-                var scaleX = sizeMetrics.ScaleX;
-                var scaleY = sizeMetrics.ScaleY;
                 var bitmap = ftgs.Bitmap;
 
                 DynamicAtlasReservation texRegion = default;
@@ -443,8 +442,12 @@ namespace Squared.Render.Text {
                 var bearingXMetric = glyphMetrics.HorizontalBearingX.ToSingle();
 
                 var rect = texRegion.Rectangle;
+                var isNumber = (ch >= '0' && ch <= '9');
 
                 glyph = new SrGlyph {
+                    KerningProvider = (Font.EnableKerning && (Font.GPOS != null) && (!isNumber || !Font.EqualizeNumberWidths)) 
+                        ? this 
+                        : null,
                     GlyphId = index,
                     Character = ch,
                     Width = widthMetric,
@@ -531,6 +534,36 @@ namespace Squared.Render.Text {
                     atlas.Dispose();
                 Atlases.Clear();
             }
+
+            void IKerningProvider.Apply (ref Glyph glyph, uint previousGlyphId, uint glyphId) {
+                bool found = false;
+                ValueRecord value = default;
+                foreach (var table in Font.GPOS.Lookups) {
+                    if (table is GPOSSingleLookup single) {
+                        if (single.TryGetValue(glyphId, out value)) {
+                            found = true;
+                            break;
+                        }
+                    } else if (table is GPOSPairLookup pair) {
+                        if (pair.TryGetValue(previousGlyphId, glyphId, out var result)) {
+                            value = result.Value1;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (found) {
+                    float scaleX = _CachedMetrics.ScaleX.ToSingle() / 64f,
+                        scaleY = _CachedMetrics.ScaleY.ToSingle() / 64f,
+                        xa = value.XAdvance * scaleX,
+                        xp = value.XPlacement * scaleX,
+                        yp = value.YPlacement * scaleY;
+                    glyph.RightSideBearing += xa;
+                    glyph.XOffset += xp;
+                    glyph.YOffset += yp;
+                }
+            }
         }
 
         private float _CachedSizePoints;
@@ -600,6 +633,11 @@ namespace Squared.Render.Text {
         /// If enabled, the 0-9 digits will have padding added to make them the same width
         /// </summary>
         public bool EqualizeNumberWidths { get; set; }
+        /// <summary>
+        /// Enables OpenType kerning (if the font contains a GPOS table).
+        /// This adds significant overhead to text layout!
+        /// </summary>
+        public bool EnableKerning { get; set; }
 
         private double _Gamma;
         private GammaRamp GammaRamp;
@@ -660,7 +698,7 @@ namespace Squared.Render.Text {
 
         private void ReadTables () {
             var err = FT.FT_OpenType_Validate(Face.Handle, OpenTypeValidationFlags.Gpos, out _, out _, out var gposTable, out _, out _);
-            if ((err == 0) && (gposTable != null)) {
+            if ((err == 0) && (gposTable != default)) {
                 GPOS = new GPOSTable(this, gposTable);
                 ;
             } else {

@@ -1222,6 +1222,10 @@ namespace Squared.Render.Text {
         void RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener);
     }
 
+    public interface IKerningProvider {
+        void Apply (ref Glyph glyph, uint previousGlyphId, uint glyphId);
+    }
+
     public static class TextUtils {
         public struct FontFields {
             public Texture2D Texture;
@@ -1571,6 +1575,7 @@ namespace Squared.Render.Text {
             set => RenderScaleMinusOne = value - 1;
         }
         public Color? DefaultColor;
+        public IKerningProvider KerningProvider;
 
         public float WidthIncludingBearing {
             get {

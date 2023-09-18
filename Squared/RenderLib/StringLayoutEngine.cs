@@ -874,6 +874,14 @@ namespace Squared.Render.Text {
                     out float glyphLineSpacing, out float glyphBaseline
                 );
 
+                if (glyph.KerningProvider != null) {
+                    var temp = i;
+                    DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
+                    // FIXME: Also do adjustment for next glyph!
+                    if (font.GetGlyph(codepoint2, out var glyph2) && glyph2.KerningProvider == glyph.KerningProvider)
+                        glyph.KerningProvider.Apply(ref glyph, glyph.GlyphId, glyph2.GlyphId);
+                }
+
                 x =
                     characterOffset.X +
                     ((

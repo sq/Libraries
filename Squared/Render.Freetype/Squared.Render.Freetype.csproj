@@ -104,18 +104,23 @@
     <Compile Include="OpenType.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
+  <ItemGroup Condition="'$(Platform)' == 'x86'">
+    <EmbeddedResource Include="..\..\Ext\Dependencies\Freetype\x86\freetype6.dll">
+      <LogicalName>freetype6.dll</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
   <ItemGroup Condition="'$(Platform)' == 'FNA-x64'">
     <EmbeddedResource Include="..\..\Ext\Dependencies\Freetype\x64\freetype6.dll">
       <LogicalName>freetype6.dll</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
-  <ItemGroup Condition="'$(Platform)' != 'FNA-x64'">
+  <ItemGroup Condition="'$(Platform)' == 'FNA'">
     <EmbeddedResource Include="..\..\Ext\Dependencies\Freetype\x86\freetype6.dll">
       <LogicalName>freetype6.dll</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Ext\SharpFont\Source\SharpFont\SharpFont.csproj">
+    <ProjectReference Include="..\..\Ext\SharpFontFork\Source\SharpFont\SharpFont.csproj">
       <Project>{ecd55e3b-1139-4f0d-af63-3f471aaf6e91}</Project>
       <Name>SharpFont</Name>
     </ProjectReference>
