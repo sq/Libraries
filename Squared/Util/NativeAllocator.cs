@@ -7,6 +7,17 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace Squared.Util {
+    public static unsafe class MemoryUtil {
+        public static void Memset (byte* ptr, byte value, int count) {
+#if !NOSPAN
+            System.Runtime.CompilerServices.Unsafe.InitBlock(ptr, value, (uint)count);
+#else
+            for (int i = 0; i < count; i++)
+                ptr[i] = value;
+#endif
+        }
+    }
+
     public class NativeAllocator {
         internal long _TotalBytesAllocated;
         internal volatile int _BytesInUse;
@@ -46,13 +57,7 @@ namespace Squared.Util {
             _RefCount = 1;
             _Data = (void*)Marshal.AllocHGlobal(size);
             GC.AddMemoryPressure(size);
-#if !NOSPAN
-            System.Runtime.CompilerServices.Unsafe.InitBlock(_Data, 0, (uint)size);
-#else
-            var temp = (byte*)_Data;
-            for (int i = 0; i < size; i++)
-                temp[i] = 0;
-#endif
+            MemoryUtil.Memset((byte*)_Data, 0, size);
             Size = size;
         }
 

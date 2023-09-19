@@ -23,6 +23,7 @@ namespace Squared.Render {
     }
 
     public interface IDynamicAtlas : IDisposable, IDynamicTexture {
+        IntPtr Data { get; }
         bool TryReserve (int widthW, int heightW, out DynamicAtlasReservation result);
         void Invalidate (Rectangle rectangle);
         void Clear ();
@@ -41,25 +42,28 @@ namespace Squared.Render {
             Height = h;
         }
 
-        public T[] GetPixels<T> ()
+        public unsafe void Upload<T> (T[] pixels)
             where T : unmanaged
         {
-            if (!(Atlas is DynamicAtlas<T> atlas))
-                throw new ArgumentException($"Expected DynamicAtlas<{typeof(T)}> but was {Atlas.GetType()}");
-
-            return atlas.Pixels;
+            fixed (T* pPixels = pixels)
+                Upload(pPixels, pixels.Length);
         }
 
-        public void Upload<T> (T[] pixels)
+        public unsafe void Upload<T> (T *data, int elementCount)
             where T : unmanaged
         {
+            var elementSize = Marshal.SizeOf<T>();
             if (!(Atlas is DynamicAtlas<T> atlas))
                 throw new ArgumentException($"Expected DynamicAtlas<{typeof(T)}> but was {Atlas.GetType()}");
 
-            for (var y = 0; y < Height; y++) {
+            var atlasPixels = atlas.Data;
+            var atlasSize = atlas.PixelBuffer.Size;
+            var strideBytes = Width * elementSize;
+            var height = Math.Min(Height, elementCount / Width);
+            for (var y = 0; y < height; y++) {
                 var dest = ((Y + y) * Atlas.Width) + X;
                 var src = y * Width;
-                Array.Copy(pixels, src, atlas.Pixels, dest, Width);
+                Buffer.MemoryCopy(data + src, atlasPixels + dest, atlasSize - (dest * elementSize), strideBytes);
             }
 
             Atlas.Invalidate(new Rectangle(X, Y, Width, Height));
@@ -76,7 +80,7 @@ namespace Squared.Render {
         }
     }
 
-    public sealed class DynamicAtlas<T> : IDynamicAtlas
+    public unsafe sealed class DynamicAtlas<T> : IDynamicAtlas
         where T : unmanaged
     {
         public readonly object Tag = null;
@@ -107,7 +111,8 @@ namespace Squared.Render {
         public int Height { get; private set; }
         public SurfaceFormat Format { get; private set; }
         public Texture2D Texture { get; private set; }
-        public T[] Pixels { get; private set; }
+        public T* Data => (T*)PixelBuffer.Data;
+        IntPtr IDynamicAtlas.Data => (IntPtr)PixelBuffer.Data;
         public bool IsDirty => (DirtyMipsRegion.Width + DirtyUploadRegion.Width + DirtyMipsRegion.Height + DirtyUploadRegion.Height) > 0;
         public int Spacing { get; private set; }
         public T? ClearValue;
@@ -116,6 +121,7 @@ namespace Squared.Render {
         private object Lock = new object();
         private Action _BeforeIssue, _BeforePrepare;
         private bool _NeedClear, _IsQueued, _NeedRequeue;
+        internal NativeAllocation PixelBuffer;
         private NativeAllocation MipBuffer;
         private int MipLevelCount;
         private Rectangle DirtyMipsRegion, DirtyUploadRegion;
@@ -144,7 +150,7 @@ namespace Squared.Render {
             EnsureValidResource();
 
             _NeedClear = true;
-            Pixels = new T[width * height];
+            PixelBuffer = coordinator.AtlasAllocator.Allocate<T>(width * height);
             if (mipGenerator != null) {
                 var totalMipSize = 4;
                 var currentMipSizePixels = (width / 2) * (height / 2);
@@ -156,11 +162,11 @@ namespace Squared.Render {
             }
             
             if (DebugColors) {
-                var p = Pixels as Color[];
+                var p = (Color*)(void*)Data;
                 if (p != null) {
                     var w = 4096 * 4;
-                    for (int i = 0, l = p.Length; i < l; i++)
-                        p[i] = (Color)new Color(i % 255, (Id * 64) % 255, (Id * 192) % 255, 255);
+                    for (int i = 0, l = PixelBuffer.Size / 4; i < l; i++)
+                        p[i] = new Color(i % 255, (Id * 64) % 255, (Id * 192) % 255, 255);
                 }
             }
 
@@ -281,12 +287,12 @@ namespace Squared.Render {
             if (Texture == null)
                 return;
 
-            var hSrc = GCHandle.Alloc(Pixels, GCHandleType.Pinned);
             var dr = DirtyUploadRegion;
+            PixelBuffer.AddReference();
             try {
                 DirtyUploadRegion = default;
-                UploadRect(hSrc.AddrOfPinnedObject(), Width, Height, 0, dr);
-                UploadMipsLocked(hSrc, dr);
+                UploadRect((IntPtr)PixelBuffer.Data, Width, Height, 0, dr);
+                UploadMipsLocked(PixelBuffer, dr);
             } catch (ObjectDisposedException ode) {
                 if (isRetrying)
                     throw;
@@ -296,7 +302,7 @@ namespace Squared.Render {
                 DirtyUploadRegion = dr;
                 FlushLocked(true);
             } finally {
-                hSrc.Free();
+                PixelBuffer.ReleaseReference();
             }
         }
 
@@ -316,16 +322,15 @@ namespace Squared.Render {
                 );
         }
 
-        private unsafe void UploadMipsLocked (GCHandle hSrc, Rectangle region) {
+        private unsafe void UploadMipsLocked (NativeAllocation src, Rectangle region) {
             if (MipLevelCount <= 1)
                 return;
 
-            var srcBuffer = Pixels;
             var srcWidth = Width;
             var srcHeight = Height;
 
             try {
-                var pSrcBuffer = hSrc.AddrOfPinnedObject().ToPointer();
+                var pSrcBuffer = src.Data;
                 var pSrc = pSrcBuffer;
                 MipBuffer.AddReference();
                 var pDest = (byte*)MipBuffer.Data;
@@ -359,29 +364,28 @@ namespace Squared.Render {
                 if (IsDisposed)
                     return;
 
-                var hSrc = GCHandle.Alloc(Pixels, GCHandleType.Pinned);
+                PixelBuffer.AddReference();
                 try {
-                    GenerateMipsLocked(hSrc, region);
+                    GenerateMipsLocked(PixelBuffer, region);
                 } finally {
-                    hSrc.Free();
+                    PixelBuffer.ReleaseReference();
                 }
             }
         }
 
         // FIXME: Deduplicate?
-        private unsafe void GenerateMipsLocked (GCHandle hSrc, Rectangle region) {
+        private unsafe void GenerateMipsLocked (NativeAllocation src, Rectangle region) {
             if (MipLevelCount <= 1) {
                 DirtyUploadRegion = Rectangle.Union(DirtyUploadRegion, region);
                 return;
             }
 
-            var srcBuffer = Pixels;
             var srcWidth = Width;
             var srcHeight = Height;
             var started = Stopwatch.GetTimestamp();
             
             try {
-                var pSrcBuffer = hSrc.AddrOfPinnedObject().ToPointer();
+                var pSrcBuffer = src.Data;
                 var pSrc = (byte*)pSrcBuffer;
                 MipBuffer.AddReference();
                 var pDest = (byte*)MipBuffer.Data;
@@ -468,13 +472,10 @@ namespace Squared.Render {
                 _NeedClear = false;
             }
 
-            if (ClearValue.HasValue) {
-                var cv = ClearValue.Value;
-                // FIXME: Optimized implementation
-                for (int i = 0; i < Pixels.Length; i++)
-                    Pixels[i] = cv;
-            } else {                
-                Array.Clear(Pixels, 0, Pixels.Length);
+            if (!ClearValue.HasValue || ClearValue.Value.Equals(default(T))) {
+                MemoryUtil.Memset((byte*)Data, 0, PixelBuffer.Size);
+            } else {
+                throw new NotImplementedException("Non-zero ClearValue");
             }
         }
 
@@ -503,8 +504,8 @@ namespace Squared.Render {
 
                 Coordinator.DisposeResource(Texture);
                 MipBuffer?.ReleaseReference();
+                PixelBuffer?.ReleaseReference();
                 Texture = null;
-                Pixels = null;
             }
         }
 

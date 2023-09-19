@@ -179,114 +179,111 @@ namespace Squared.Render.Text {
                 var pSrc = (byte*)bitmap.Buffer;
 
                 if (ActualSDF) {
-                    fixed (float* pPixels = result.GetPixels<float>()) {
-                        switch (bitmap.PixelMode) {
-                            case PixelMode.Gray:
-                                float valueScale = -(new Vector2(bitmap.Width, bitmap.Rows)).Length() / 2f;
-                                for (var y = 0; y < rows; y++) {
-                                    var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
-                                    var pDestRow = pPixels + rowOffset;
-                                    int yPitch = y * pitch;
+                    var pPixels = (float*)result.Atlas.Data;
+                    switch (bitmap.PixelMode) {
+                        case PixelMode.Gray:
+                            float valueScale = -(new Vector2(bitmap.Width, bitmap.Rows)).Length() / 2f;
+                            for (var y = 0; y < rows; y++) {
+                                var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                                var pDestRow = pPixels + rowOffset;
+                                int yPitch = y * pitch;
 
-                                    for (var x = 0; x < width; x++) {
-                                        var a = pSrc[x + yPitch] - 128f;
-                                        a = (a / 128f) * valueScale;
+                                for (var x = 0; x < width; x++) {
+                                    var a = pSrc[x + yPitch] - 128f;
+                                    a = (a / 128f) * valueScale;
                                     
-                                        *pDestRow++ = a;
-                                    }
+                                    *pDestRow++ = a;
                                 }
-                                break;
+                            }
+                            break;
 
-                            default:
-                                throw new NotImplementedException("Unsupported pixel mode: " + bitmap.PixelMode);
-                        }
+                        default:
+                            throw new NotImplementedException("Unsupported pixel mode: " + bitmap.PixelMode);
                     }
                 } else {
                     var srgb = (surfaceFormat != SurfaceFormat.Color);
                     var table = Font.GammaRamp?.GammaTable;
-                    fixed (Color* pPixels = result.GetPixels<Color>()) {
+                    var pPixels = (Color*)result.Atlas.Data;
+                    var pDest = (byte*)pPixels;
+                    switch (bitmap.PixelMode) {
+                        case PixelMode.Bgra:
+                            for (var y = 0; y < rows; y++) {
+                                var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                                var pDestRow = pDest + (rowOffset * 4);
+                                int yPitch = y * pitch;
 
-                        var pDest = (byte*)pPixels;
-                        switch (bitmap.PixelMode) {
-                            case PixelMode.Bgra:
-                                for (var y = 0; y < rows; y++) {
-                                    var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
-                                    var pDestRow = pDest + (rowOffset * 4);
-                                    int yPitch = y * pitch;
-
-                                    // FIXME: Implement gamma table somehow? Because the glyphs are already premultiplied, I'm not sure how
-                                    // FIXME: SRGB
-                                    for (var x = 0; x < width; x++) {
-                                        var ppSrc = pSrc + (x * 4) + yPitch;
+                                // FIXME: Implement gamma table somehow? Because the glyphs are already premultiplied, I'm not sure how
+                                // FIXME: SRGB
+                                for (var x = 0; x < width; x++) {
+                                    var ppSrc = pSrc + (x * 4) + yPitch;
                                     
-                                        pDestRow[3] = ppSrc[3];
-                                        pDestRow[2] = ppSrc[0];
-                                        pDestRow[1] = ppSrc[1];
-                                        pDestRow[0] = ppSrc[2];
+                                    pDestRow[3] = ppSrc[3];
+                                    pDestRow[2] = ppSrc[0];
+                                    pDestRow[1] = ppSrc[1];
+                                    pDestRow[0] = ppSrc[2];
+                                    pDestRow += 4;
+                                }
+                            }
+                            break;
+
+                        case PixelMode.Gray:
+                            for (var y = 0; y < rows; y++) {
+                                var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                                var pDestRow = pDest + (rowOffset * 4);
+                                int yPitch = y * pitch;
+
+                                if (ActualSDF) {
+                                    for (var x = 0; x < width; x++) {
+                                        var a = pSrc[x + yPitch];
+                                    
+                                        pDestRow[0] = pDestRow[1] = pDestRow[2] = pDestRow[3] = a;
                                         pDestRow += 4;
                                     }
-                                }
-                                break;
-
-                            case PixelMode.Gray:
-                                for (var y = 0; y < rows; y++) {
-                                    var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
-                                    var pDestRow = pDest + (rowOffset * 4);
-                                    int yPitch = y * pitch;
-
-                                    if (ActualSDF) {
+                                } else {
+                                    if (table == null) {
                                         for (var x = 0; x < width; x++) {
                                             var a = pSrc[x + yPitch];
+                                            var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
                                     
-                                            pDestRow[0] = pDestRow[1] = pDestRow[2] = pDestRow[3] = a;
+                                            pDestRow[3] = a;
+                                            pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
                                             pDestRow += 4;
                                         }
                                     } else {
-                                        if (table == null) {
-                                            for (var x = 0; x < width; x++) {
-                                                var a = pSrc[x + yPitch];
-                                                var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
+                                        for (var x = 0; x < width; x++) {
+                                            var a = table[pSrc[x + yPitch]];
+                                            var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
                                     
-                                                pDestRow[3] = a;
-                                                pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
-                                                pDestRow += 4;
-                                            }
-                                        } else {
-                                            for (var x = 0; x < width; x++) {
-                                                var a = table[pSrc[x + yPitch]];
-                                                var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
-                                    
-                                                pDestRow[3] = a;
-                                                pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
-                                                pDestRow += 4;
-                                            }
+                                            pDestRow[3] = a;
+                                            pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
+                                            pDestRow += 4;
                                         }
                                     }
                                 }
-                                break;
+                            }
+                            break;
 
-                            case PixelMode.Mono:
-                                for (var y = 0; y < rows; y++) {
-                                    var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
-                                    var pDestRow = pDest + (rowOffset * 4);
-                                    int yPitch = y * pitch;
+                        case PixelMode.Mono:
+                            for (var y = 0; y < rows; y++) {
+                                var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                                var pDestRow = pDest + (rowOffset * 4);
+                                int yPitch = y * pitch;
 
-                                    for (int x = 0; x < pitch; x++, pDestRow += (8 * 4)) {
-                                        var bits = pSrc[x + yPitch];
+                                for (int x = 0; x < pitch; x++, pDestRow += (8 * 4)) {
+                                    var bits = pSrc[x + yPitch];
 
-                                        for (int i = 0; i < 8; i++) {
-                                            int iy = 7 - i;
-                                            byte g = ((bits & (1 << iy)) != 0) ? (byte)255 : (byte)0;
-                                            var pElt = pDestRow + (i * 4);
-                                            pElt[3] = pElt[2] = pElt[1] = pElt[0] = g;
-                                        }
+                                    for (int i = 0; i < 8; i++) {
+                                        int iy = 7 - i;
+                                        byte g = ((bits & (1 << iy)) != 0) ? (byte)255 : (byte)0;
+                                        var pElt = pDestRow + (i * 4);
+                                        pElt[3] = pElt[2] = pElt[1] = pElt[0] = g;
                                     }
                                 }
-                                break;
+                            }
+                            break;
 
-                            default:
-                                throw new NotImplementedException("Unsupported pixel mode: " + bitmap.PixelMode);
-                        }
+                        default:
+                            throw new NotImplementedException("Unsupported pixel mode: " + bitmap.PixelMode);
                     }
                 }
 
