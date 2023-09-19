@@ -245,7 +245,7 @@ namespace Squared.PRGUI.Controls {
         private bool _Checked, _SubscriptionPending;
         public string GroupId;
 
-        private EventSubscription Subscription;
+        private TypedEventSubscription<string> Subscription;
 
         new public DynamicStringLayout Content => base.Content;
         new public AbstractString Text {
@@ -322,7 +322,7 @@ namespace Squared.PRGUI.Controls {
                 _SubscriptionPending = true;
                 return;
             }
-            Subscription = Context.EventBus.Subscribe<string>(null, UIEvents.RadioButtonSelected, OnRadioButtonSelected);
+            Subscription = Context.EventBus.Subscribe<string>(null, UIEvents.RadioButtonSelected, OnRadioButtonSelected, weak: true);
         }
 
         private void Unsubscribe () {

@@ -19,14 +19,14 @@ namespace Squared.PRGUI {
             context = control.Context ?? context;
             if (context == null)
                 throw new NullReferenceException("Control has no context, pass the 'context' argument explicitly");
-            return context.EventBus.Subscribe(control, eventName, listener);
+            return context.EventBus.Subscribe(control, eventName, listener, weak: true);
         }
 
-        public static EventSubscription AddEventListener<T> (this Control control, string eventName, TypedEventSubscriber<T> listener, UIContext context = null) {
+        public static TypedEventSubscription<T> AddEventListener<T> (this Control control, string eventName, TypedEventSubscriber<T> listener, UIContext context = null) {
             context = control.Context ?? context;
             if (context == null)
                 throw new NullReferenceException("Control has no context, pass the 'context' argument explicitly");
-            return context.EventBus.Subscribe(control, eventName, listener);
+            return context.EventBus.Subscribe(control, eventName, listener, weak: true);
         }
 
         public static void GetAlignmentF (this ControlFlags flags, out float x, out float y) {

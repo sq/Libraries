@@ -418,19 +418,19 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
-        public ControlBuilder<TControl> Subscribe (string eventName, EventSubscriber subscriber) {
+        public ControlBuilder<TControl> Subscribe (string eventName, EventSubscriber subscriber, bool weak = true) {
             if ((eventName == null) || (subscriber == null))
                 throw new ArgumentNullException();
-            Context.EventBus.Subscribe(Control, eventName, subscriber);
+            Context.EventBus.Subscribe(Control, eventName, subscriber, weak: weak);
             return this;
         }
 
-        public ControlBuilder<TControl> Subscribe<T> (string eventName, TypedEventSubscriber<T> subscriber)
+        public ControlBuilder<TControl> Subscribe<T> (string eventName, TypedEventSubscriber<T> subscriber, bool weak = true)
             where T : class 
         {
             if ((eventName == null) || (subscriber == null))
                 throw new ArgumentNullException();
-            Context.EventBus.Subscribe<T>(Control, eventName, subscriber);
+            Context.EventBus.Subscribe<T>(Control, eventName, subscriber, weak: weak);
             return this;
         }
 

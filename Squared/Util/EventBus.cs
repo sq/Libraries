@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Squared.Util.Event {
@@ -128,7 +129,67 @@ namespace Squared.Util.Event {
     public delegate void EventSubscriber (IEventInfo e);
     public delegate void TypedEventSubscriber<in T> (IEventInfo<T> e, T arguments);
 
-    public sealed class EventSubscriberList : List<EventSubscriber> {
+    internal struct EventSubscriberEntry {
+        public object StrongReference;
+        public WeakReference WeakReference;
+
+        public object Value {
+            get {
+                if (StrongReference != null)
+                    return StrongReference;
+                else if (WeakReference != null)
+                    return WeakReference.Target;
+                else
+                    return null;
+            }
+        }
+    }
+
+    internal sealed class EventSubscriberList {
+        public DenseList<EventSubscriberEntry> Entries;
+
+        internal void Add (object subscriber, bool weak) {
+            // FIXME: Throw?
+            if (subscriber == null)
+                return;
+
+            if (Entries.Count > 3)
+                CollectGarbage();
+
+            if (weak)
+                Entries.Add(new EventSubscriberEntry {
+                    WeakReference = new WeakReference(subscriber)
+                });
+            else
+                Entries.Add(new EventSubscriberEntry {
+                    StrongReference = subscriber
+                });
+        }
+
+        internal bool Remove (object subscriber) {
+            if (subscriber == null)
+                return false;
+
+            bool result = false;
+            for (int i = Entries.Count - 1; i >= 0; i--) {
+                if (Entries[i].Value == subscriber) {
+                    Entries.RemoveAt(i);
+                    result = true;
+                }
+            }
+
+            if (Entries.Count > 3)
+                CollectGarbage();
+
+            return result;
+        }
+
+        internal void CollectGarbage () {
+            for (int i = Entries.Count - 1; i >= 0; i--) {
+                if (Entries[i].Value == null)
+                    Entries.RemoveAt(i);
+            }
+        }
     }
 
     public struct EventSubscription : IDisposable {
@@ -172,6 +233,47 @@ namespace Squared.Util.Event {
         }
     }
 
+    public struct TypedEventSubscription<T> : IDisposable {
+        public EventBus EventBus { get; private set; }
+        public TypedEventSubscriber<T> EventSubscriber { get; private set; }
+
+        private EventFilter _EventFilter;
+        public EventFilter EventFilter => _EventFilter;
+
+        public TypedEventSubscription (EventBus eventBus, in EventFilter eventFilter, TypedEventSubscriber<T> subscriber) {
+            EventBus = eventBus;
+            _EventFilter = eventFilter;
+            EventSubscriber = subscriber;
+        }
+
+        public override int GetHashCode () {
+            return EventBus.GetHashCode() ^ EventSubscriber.GetHashCode() ^ _EventFilter.GetHashCode();
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is EventSubscription) {
+                var es = (EventSubscription)obj;
+                return this.Equals(es);
+            } else
+                return base.Equals(obj);
+        }
+
+        public bool Equals (TypedEventSubscription<T> rhs) {
+            return (EventBus == rhs.EventBus) &&
+                (EventSubscriber == rhs.EventSubscriber) &&
+                (_EventFilter.Equals(rhs._EventFilter));
+        }
+
+        public void Dispose () {
+            if ((EventBus != null) && (EventSubscriber != null)) {
+                EventBus.Unsubscribe(ref _EventFilter, EventSubscriber);
+                _EventFilter = default;
+                EventSubscriber = null;
+                EventBus = null;
+            }
+        }
+    }
+
     public struct EventThunk {
         public readonly EventBus EventBus;
         public readonly object Source;
@@ -191,13 +293,13 @@ namespace Squared.Util.Event {
             EventBus.Broadcast(Source, Type, null);
         }
 
-        public EventSubscription Subscribe (EventSubscriber subscriber) {
-            return EventBus.Subscribe(Source, Type, subscriber);
+        public EventSubscription Subscribe (EventSubscriber subscriber, bool weak = false) {
+            return EventBus.Subscribe(Source, Type, subscriber, weak);
         }
 
-        public EventSubscription Subscribe<T> (TypedEventSubscriber<T> subscriber)
+        public TypedEventSubscription<T> Subscribe<T> (TypedEventSubscriber<T> subscriber, bool weak = false)
             where T : class {
-            return EventBus.Subscribe<T>(Source, Type, subscriber);
+            return EventBus.Subscribe<T>(Source, Type, subscriber, weak);
         }
     }
 
@@ -255,8 +357,7 @@ namespace Squared.Util.Event {
         private static void CreateFilter (object source, string type, out EventFilter filter, bool weak) {
             filter = new EventFilter(source ?? AnySource, type ?? AnyType, weak);
         }
-
-        public EventSubscription Subscribe (object source, string type, EventSubscriber subscriber) {
+        public EventSubscription Subscribe (object source, string type, EventSubscriber subscriber, bool weak = false) {
             EventFilter filter;
             CreateFilter(source, type, out filter, true);
 
@@ -268,7 +369,7 @@ namespace Squared.Util.Event {
             }
 
             lock (subscribers)
-                subscribers.Add(subscriber);
+                subscribers.Add(subscriber, weak);
 
             return new EventSubscription(this, in filter, subscriber);
         }
@@ -291,12 +392,21 @@ namespace Squared.Util.Event {
             }
         }
 
-        public EventSubscription Subscribe<T> (object source, string type, TypedEventSubscriber<T> subscriber) {
-            return Subscribe(source, type, (e) => {
-                var info = e as IEventInfo<T>;
-                if (info != null)
-                    subscriber(info, info.Arguments);
-            });
+        public TypedEventSubscription<T> Subscribe<T> (object source, string type, TypedEventSubscriber<T> subscriber, bool weak = false) {
+            EventFilter filter;
+            CreateFilter(source, type, out filter, true);
+
+            EventSubscriberList subscribers;
+            lock (_Subscribers)
+            if (!_Subscribers.TryGetValue(filter, out subscribers)) {
+                subscribers = new EventSubscriberList();
+                _Subscribers[filter] = subscribers;
+            }
+
+            lock (subscribers)
+                subscribers.Add(subscriber, weak);
+
+            return new TypedEventSubscription<T>(this, in filter, subscriber);
         }
 
         public bool Unsubscribe (object source, string type, EventSubscriber subscriber) {
@@ -305,7 +415,23 @@ namespace Squared.Util.Event {
             return Unsubscribe(ref filter, subscriber);
         }
 
+        public bool Unsubscribe<T> (object source, string type, TypedEventSubscriber<T> subscriber) {
+            EventFilter filter;
+            CreateFilter(source, type, out filter, false);
+            return Unsubscribe(ref filter, subscriber);
+        }
+
         public bool Unsubscribe (ref EventFilter filter, EventSubscriber subscriber) {
+            EventSubscriberList subscribers;
+            lock (_Subscribers)
+                if (!_Subscribers.TryGetValue(filter, out subscribers))
+                    return false;
+
+            lock (subscribers)
+                return subscribers.Remove(subscriber);
+        }
+
+        public bool Unsubscribe<T> (ref EventFilter filter, TypedEventSubscriber<T> subscriber) {
             EventSubscriberList subscribers;
             lock (_Subscribers)
                 if (!_Subscribers.TryGetValue(filter, out subscribers))
@@ -361,27 +487,26 @@ namespace Squared.Util.Event {
                         continue;
 
                 lock (subscribers)
-                    if (subscribers.Count <= 0)
+                    if (subscribers.Entries.Count <= 0)
                         continue;
 
                 if (info == null)
                     info = new EventInfo<T>(this, source, categoryToken, categoryName, type, arguments);
 
                 int count;
-                BufferPool<EventSubscriber>.Buffer b;
+                BufferPool<EventSubscriberEntry>.Buffer b;
                 lock (subscribers) {
-                    count = subscribers.Count;
-                    b = BufferPool<EventSubscriber>.Allocate();
-                    subscribers.CopyTo(b.Data);
+                    count = subscribers.Entries.Count;
+                    b = BufferPool<EventSubscriberEntry>.Allocate();
+                    subscribers.Entries.CopyTo(b.Data);
                 }
 
                 using (b) {
                     for (int j = count - 1; j >= 0; j--) {
-                        var es = b.Data[j];
-                        var ts = es as TypedEventSubscriber<T>;
-                        if (ts != null)
+                        var d = b.Data[j].Value;
+                        if (d is TypedEventSubscriber<T> ts)
                             ts(info, arguments);
-                        else if (es != null)
+                        else if (d is EventSubscriber es)
                             es(info);
                         else // HACK: This shouldn't be possible
                             ;

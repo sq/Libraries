@@ -878,7 +878,7 @@ namespace Squared.Task {
             return eventBus.Subscribe(source, type, TaskEventSubscriber.New(scheduler, task));
         }
 
-        public static EventSubscription Subscribe<T> (this EventBus eventBus, object source, string type, TaskScheduler scheduler, Func<IEventInfo<T>, T, IEnumerator<object>> task)
+        public static TypedEventSubscription<T> Subscribe<T> (this EventBus eventBus, object source, string type, TaskScheduler scheduler, Func<IEventInfo<T>, T, IEnumerator<object>> task)
             where T : class {
             return eventBus.Subscribe<T>(source, type, TaskEventSubscriber.New<T>(scheduler, task));
         }

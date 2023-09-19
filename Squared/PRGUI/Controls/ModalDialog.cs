@@ -175,7 +175,7 @@ namespace Squared.PRGUI.Controls {
             if (target == null)
                 return;
 
-            subscription = Context.EventBus.Subscribe(target, UIEvents.Click, handler);
+            subscription = Context.EventBus.Subscribe(target, UIEvents.Click, handler, weak: true);
         }
 
         protected virtual void OnAcceptClick (IEventInfo e) {
@@ -289,6 +289,11 @@ namespace Squared.PRGUI.Controls {
 
             if (!AllowCancel && (reason == ModalCloseReason.UserCancelled))
                 return false;
+
+            // Release our event listeners to avoid a cycle
+            AcceptHandlerRegistered.Dispose();
+            CancelHandlerRegistered.Dispose();
+            AcceptHandlerRegistered = CancelHandlerRegistered = default;
 
             IsActive = false;
             NextResultFuture?.SetResult(result, null);
