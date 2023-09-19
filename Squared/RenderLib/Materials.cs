@@ -399,6 +399,7 @@ namespace Squared.Render {
         public readonly EffectParameter BitmapTraits, BitmapTraits2;
         public readonly EffectParameter ShadowColor, ShadowOffset, ShadowMipBias, ShadowedTopMipBias, LightmapUVOffset;
         public readonly EffectParameter Time, FrameIndex, DitherStrength;
+        public readonly EffectParameter HalfPixelOffset;
         public readonly EffectParameter RenderTargetDimensions;
         public readonly EffectParameter Palette, PaletteSize;
 
@@ -433,6 +434,7 @@ namespace Squared.Render {
             ShadowedTopMipBias = this["ShadowedTopMipBias"];
             LightmapUVOffset = this["LightmapUVOffset"];
             DitherStrength = this["DitherStrength"];
+            HalfPixelOffset = this["HalfPixelOffset"];
             RenderTargetDimensions = this["__RenderTargetDimensions__"];
             Palette = this["Palette"];
             PaletteSize = this["PaletteSize"];

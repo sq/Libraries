@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -65,18 +66,32 @@ namespace Squared.PRGUI {
         /// If set, alignment will be relative to this control. Otherwise, the screen will be used.
         /// </summary>
         public Control Anchor {
-            get => _Anchor;
+            get {
+                if (_WeakAnchor.IsAllocated)
+                    return _WeakAnchor.Target as Control;
+                else
+                    return null;
+            }
             set {
-                if (_Anchor != value)
+                var oldAnchor = Anchor;
+                if (value == null) {
+                    if (_WeakAnchor.IsAllocated)
+                        _WeakAnchor.Free();
+                    _WeakAnchor = default;
+                } else if (oldAnchor != value) {
+                    if (_WeakAnchor.IsAllocated)
+                        _WeakAnchor.Free();
+                    _WeakAnchor = GCHandle.Alloc(value, GCHandleType.Weak);
+                }
+                if (oldAnchor != value)
                     AlignmentPending = true;
-                _Anchor = value;
                 _LastAnchorRect = default;
                 _LastParentRect = default;
                 _LastSize = default;
             }
         }
 
-        Control _Anchor;
+        GCHandle _WeakAnchor;
         Vector2 _LastSize;
         RectF _LastAnchorRect, _LastParentRect;
 

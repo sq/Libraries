@@ -675,6 +675,9 @@ namespace Squared.PRGUI {
             Arithmetic.MinMax(tlX.Y, trX.Y, brX.Y, blX.Y, out float minY, out float maxY);
             result.Position = new Vector2(minX, minY);
             result.Size = new Vector2(maxX - minX, maxY - minY);
+
+            // Avoid leaking references
+            stack.Clear();
         }
 
         /// <summary>

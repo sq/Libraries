@@ -22,9 +22,8 @@ namespace Squared.PRGUI {
             TabOrderedItemsResult = new DenseList<Control>();
         private DenseList<IndexedControl> TabOrderedItems = new DenseList<IndexedControl>();
         private DenseList<Control> Items = new DenseList<Control>();
-        private Dictionary<Control, int> IndexTable = 
-            new Dictionary<Control, int>(Control.Comparer.Instance);
-        private DenseList<Control> DeadControlScratchBuffer = new DenseList<Control>();
+        private Dictionary<int, int> IndexTable = new Dictionary<int, int>();
+        private HashSet<Control> DeadControlScratchBuffer = new HashSet<Control>(ReferenceComparer<Control>.Instance);
 
         public int Count => Items.Count;
         public Control Host { get; private set; }
@@ -105,7 +104,7 @@ namespace Squared.PRGUI {
         public void Insert (int index, Control control) {
             if (control == null)
                 throw new ArgumentNullException("control");
-            if (IndexTable.ContainsKey(control))
+            if (IndexTable.ContainsKey(control.ControlIndex))
                 throw new InvalidOperationException("Control already in collection");
 
             if (Host != null)
@@ -129,7 +128,7 @@ namespace Squared.PRGUI {
         public void Add (Control control) {
             if (control == null)
                 throw new ArgumentNullException("control");
-            if (IndexTable.ContainsKey(control))
+            if (IndexTable.ContainsKey(control.ControlIndex))
                 throw new InvalidOperationException("Control already in collection");
 
             if (Host != null)
@@ -139,7 +138,7 @@ namespace Squared.PRGUI {
 
             var newIndex = Items.Count;
             Items.Add(control);
-            IndexTable[control] = newIndex;
+            IndexTable[control.ControlIndex] = newIndex;
             Invalidate();
         }
 
@@ -149,7 +148,7 @@ namespace Squared.PRGUI {
 
             while (startIndex < Items.Count) {
                 var control = Items[startIndex];
-                IndexTable[control] = startIndex;
+                IndexTable[control.ControlIndex] = startIndex;
                 startIndex++;
             }
         }
@@ -163,12 +162,12 @@ namespace Squared.PRGUI {
             if (control == null)
                 return;
 
-            if (IndexTable.TryGetValue(control, out int deleteAtIndex)) {
+            if (IndexTable.TryGetValue(control.ControlIndex, out int deleteAtIndex)) {
                 InvalidateOrderedItems();
                 if (Items[deleteAtIndex] != control)
                     throw new Exception("Corrupt internal state");
                 Items.RemoveAt(deleteAtIndex);
-                IndexTable.Remove(control);
+                IndexTable.Remove(control.ControlIndex);
                 UpdateIndexTable(Math.Max(0, deleteAtIndex - 1));
                 FireControlRemoveEvents(control);
             }
@@ -181,7 +180,7 @@ namespace Squared.PRGUI {
             InvalidateOrderedItems();
             FireControlRemoveEvents(control);
             Items.RemoveAt(index);
-            IndexTable.Remove(control);
+            IndexTable.Remove(control.ControlIndex);
             UpdateIndexTable(index);
             Invalidate();
         }
@@ -189,7 +188,7 @@ namespace Squared.PRGUI {
         public int IndexOf (Control control) {
             if (control == null)
                 return -1;
-            if (!IndexTable.TryGetValue(control, out int result))
+            if (!IndexTable.TryGetValue(control.ControlIndex, out int result))
                 return -1;
             return result;
         }
@@ -224,7 +223,7 @@ namespace Squared.PRGUI {
             if (control == null)
                 return false;
 
-            return IndexTable.ContainsKey(control);
+            return IndexTable.ContainsKey(control.ControlIndex);
         }
 
         public Control this[int index] {
@@ -238,10 +237,10 @@ namespace Squared.PRGUI {
                     return;
 
                 var previous = Items[index];
-                IndexTable.Remove(previous);
+                IndexTable.Remove(previous.ControlIndex);
                 Items[index].UnsetParent(Host);
                 value.SetParent(WeakHost);
-                IndexTable[value] = index;
+                IndexTable[value.ControlIndex] = index;
                 Items[index] = value;
             }
         }
@@ -339,6 +338,8 @@ namespace Squared.PRGUI {
         }
 
         public void ReplaceWith (ref DenseList<Control> newControls) {
+            DeadControlScratchBuffer.Clear();
+
             for (int i = 0; i < newControls.Count; i++) {
                 var newControl = newControls[i];
                 if (newControl == null)
@@ -349,7 +350,8 @@ namespace Squared.PRGUI {
                 var newControl = newControls[i];
                 if (newControl == null)
                     throw new ArgumentNullException($"newControls[{i}]");
-                var isNew = !IndexTable.TryGetValue(newControl, out int oldIndex);
+
+                var isNew = !IndexTable.TryGetValue(newControl.ControlIndex, out int oldIndex);
                 if (!isNew) {
                     if (oldIndex == i)
                         continue;
@@ -362,23 +364,21 @@ namespace Squared.PRGUI {
                 if (i < Count) {
                     var oldControl = Items[i];
                     // HACK: Flag this control as potentially dead
-                    if (oldControl != null)
-                        IndexTable[oldControl] = -1;
+                    if (oldControl != null) {
+                        IndexTable[oldControl.ControlIndex] = -1;
+                        DeadControlScratchBuffer.Add(oldControl);
+                    }
 
+                    DeadControlScratchBuffer.Remove(newControl);
                     Items[i] = newControl;
                 } else {
+                    DeadControlScratchBuffer.Remove(newControl);
                     Items.Add(newControl);
                 }
 
-                IndexTable[newControl] = i;
+                IndexTable[newControl.ControlIndex] = i;
                 if (isNew)
                     newControl.SetParent(WeakHost);
-            }
-
-            // Find dead controls that we removed and never re-added
-            foreach (var kvp in IndexTable) {
-                if (kvp.Value <= -1)
-                    DeadControlScratchBuffer.Add(kvp.Key);
             }
 
             while (Count > newControls.Count) {
@@ -387,7 +387,7 @@ namespace Squared.PRGUI {
 
                 // We may have moved this extra control, in which case we don't want to go through
                 //  the remove path that fires events.
-                if ((extraControl != null) && (IndexTable[extraControl] == i))
+                if ((extraControl != null) && (IndexTable[extraControl.ControlIndex] == i))
                     DeadControlScratchBuffer.Add(extraControl);
 
                 // We moved it, so we just need to remove whatever's at this location
@@ -403,7 +403,7 @@ namespace Squared.PRGUI {
 
             // Fire the relevant notifications for the dead controls and purge them from the table
             foreach (var deadControl in DeadControlScratchBuffer) {
-                IndexTable.Remove(deadControl);
+                IndexTable.Remove(deadControl.ControlIndex);
                 FireControlRemoveEvents(deadControl);
             }
 

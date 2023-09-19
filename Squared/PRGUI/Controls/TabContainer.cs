@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -16,7 +17,7 @@ namespace Squared.PRGUI.Controls {
         private static int NextGroupId = 1;
 
         private readonly ControlGroup TabStrip;
-        private readonly Dictionary<Control, string> Labels = new Dictionary<Control, string>();
+        private readonly ConditionalWeakTable<Control, string> Labels = new ConditionalWeakTable<Control, string>();
         private int? SelectedTabIndex = 0;
         private string GroupId;
 
@@ -144,7 +145,8 @@ namespace Squared.PRGUI.Controls {
 
         public void Add (Control tab, string label = null) {
             Children.Add(tab);
-            Labels[tab] = label;
+            Labels.Remove(tab);
+            Labels.Add(tab, label);
         }
 
         public override void InvalidateLayout () {

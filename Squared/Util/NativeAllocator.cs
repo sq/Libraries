@@ -31,11 +31,21 @@ namespace Squared.Util {
         public readonly NativeAllocator Allocator;
 
         internal NativeAllocation (NativeAllocator allocator, int size) {
+            if (size < 0)
+                throw new ArgumentOutOfRangeException(nameof(size));
+
             Allocator = allocator;
             Interlocked.Add(ref allocator._TotalBytesAllocated, (long)size);
             Interlocked.Add(ref allocator._BytesInUse, size);
             _RefCount = 1;
             _Data = (void*)Marshal.AllocHGlobal(size);
+#if !NOSPAN
+            System.Runtime.CompilerServices.Unsafe.InitBlock(_Data, 0, (uint)size);
+#else
+            var temp = (byte*)_Data;
+            for (int i = 0; i < size; i++)
+                temp[i] = 0;
+#endif
             Size = size;
         }
 

@@ -172,7 +172,7 @@ namespace Squared.Render {
         public event EventHandler DeviceReset, DeviceChanged;
 
         public bool IsDisposed { get; private set; }
-        public bool IsFNA { get; private set; }
+        public bool IsOpenGL { get; private set; }
 
         private long TimeOfLastResetOrDeviceChange = 0;
 
@@ -298,9 +298,9 @@ namespace Squared.Render {
 
         private void UpdateGraphicsBackend (GraphicsDevice device) {
             var f = device.GetType().GetField("GLDevice", BindingFlags.Instance | BindingFlags.NonPublic);
-            IsFNA = (f != null);
+            IsOpenGL = (f != null);
 
-            if (IsFNA) {
+            if (IsOpenGL) {
                 try {
                     // HACK: This is necessary to disable threaded issue/present in OpenGL, since it deadlocks
 #if FNA

@@ -43,6 +43,7 @@ sampler NoiseSampler : register(s1) {
 };
 
 uniform const bool BlendInLinearSpace, OutputInLinearSpace, UsesNoise;
+uniform const float HalfPixelOffset;
 
 // Count x, count y, base size for lod calculation, angle from degrees ? 1 : 0
 uniform const float4 NozzleParams;
@@ -127,9 +128,11 @@ float evaluateDynamics2(
     return lerp(result, result * taper, abs(dynamics.x));
 }
 
-float4 TransformPosition(float4 position, bool unused) {
+float4 TransformPosition(float4 position, bool halfPixelOffset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
     float4 modelViewPos = mul(position, Viewport.ModelView);
+    if (halfPixelOffset && HalfPixelOffset)
+        modelViewPos.xy -= 0.5;
     // Finally project after offsetting
     return mul(modelViewPos, Viewport.Projection);
 }
