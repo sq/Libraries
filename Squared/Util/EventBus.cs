@@ -151,7 +151,7 @@ namespace Squared.Util.Event {
         internal void Add (object subscriber, bool weak) {
             // FIXME: Throw?
             if (subscriber == null)
-                return;
+                throw new ArgumentNullException(nameof(subscriber));
 
             if (Entries.Count > 3)
                 CollectGarbage();

@@ -15,18 +15,18 @@ namespace Squared.PRGUI {
         //  though the oui default seems to have been to center both horizontally and vertically
         const float DefaultXAlignment = 0f, DefaultYAlignment = 0.5f;
 
-        public static EventSubscription AddEventListener (this Control control, string eventName, EventSubscriber listener, UIContext context = null) {
+        public static EventSubscription AddEventListener (this Control control, string eventName, EventSubscriber listener, UIContext context = null, bool weak = false) {
             context = control.Context ?? context;
             if (context == null)
                 throw new NullReferenceException("Control has no context, pass the 'context' argument explicitly");
-            return context.EventBus.Subscribe(control, eventName, listener, weak: true);
+            return context.EventBus.Subscribe(control, eventName, listener, weak: weak);
         }
 
-        public static TypedEventSubscription<T> AddEventListener<T> (this Control control, string eventName, TypedEventSubscriber<T> listener, UIContext context = null) {
+        public static TypedEventSubscription<T> AddEventListener<T> (this Control control, string eventName, TypedEventSubscriber<T> listener, UIContext context = null, bool weak = false) {
             context = control.Context ?? context;
             if (context == null)
                 throw new NullReferenceException("Control has no context, pass the 'context' argument explicitly");
-            return context.EventBus.Subscribe(control, eventName, listener, weak: true);
+            return context.EventBus.Subscribe(control, eventName, listener, weak: weak);
         }
 
         public static void GetAlignmentF (this ControlFlags flags, out float x, out float y) {

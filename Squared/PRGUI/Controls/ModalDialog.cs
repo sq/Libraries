@@ -58,7 +58,7 @@ namespace Squared.PRGUI.Controls {
                 if (_AcceptControl != null)
                     AcceptHandlerRegistered.Dispose();
                 _AcceptControl = value;
-                RegisterHandler(_AcceptControl, OnAcceptClick, ref AcceptHandlerRegistered);
+                RegisterWeakHandler(_AcceptControl, _OnAcceptClick, ref AcceptHandlerRegistered);
             }
         }
 
@@ -70,7 +70,7 @@ namespace Squared.PRGUI.Controls {
                 if (_CancelControl != null)
                     CancelHandlerRegistered.Dispose();
                 _CancelControl = value;
-                RegisterHandler(_CancelControl, OnCancelClick, ref CancelHandlerRegistered);
+                RegisterWeakHandler(_CancelControl, _OnCancelClick, ref CancelHandlerRegistered);
             }
         }
 
@@ -162,14 +162,17 @@ namespace Squared.PRGUI.Controls {
         private bool IsFadingOut;
 
         private Future<TResult> NextResultFuture = null;
+        private EventSubscriber _OnAcceptClick, _OnCancelClick;
 
         public ModalDialog (TParameters parameters)
             : base () {
             Parameters = parameters;
             // Appearance.Opacity = 0f;
+            _OnAcceptClick = OnAcceptClick;
+            _OnCancelClick = OnCancelClick;
         }
 
-        private void RegisterHandler (Control target, EventSubscriber handler, ref EventSubscription subscription) {
+        private void RegisterWeakHandler (Control target, EventSubscriber handler, ref EventSubscription subscription) {
             if (Context == null)
                 return;
             if (target == null)
@@ -244,9 +247,9 @@ namespace Squared.PRGUI.Controls {
             context.ShowModal(this, false);
             // HACK: Ensure event handlers are registered if they weren't already
             if (AcceptHandlerRegistered.EventFilter.Source != AcceptControl)
-                RegisterHandler(AcceptControl, OnAcceptClick, ref AcceptHandlerRegistered);
+                RegisterWeakHandler(AcceptControl, _OnAcceptClick, ref AcceptHandlerRegistered);
             if (CancelHandlerRegistered.EventFilter.Source != CancelControl)
-                RegisterHandler(CancelControl, OnCancelClick, ref CancelHandlerRegistered);
+                RegisterWeakHandler(CancelControl, _OnCancelClick, ref CancelHandlerRegistered);
             Elevate();
             if (Shown != null)
                 Shown(this);

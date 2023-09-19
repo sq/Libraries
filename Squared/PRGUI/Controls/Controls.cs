@@ -245,7 +245,7 @@ namespace Squared.PRGUI.Controls {
         private bool _Checked, _SubscriptionPending;
         public string GroupId;
 
-        private TypedEventSubscription<string> Subscription;
+        private TypedEventSubscriber<string> OnRadioButtonSelected;
 
         new public DynamicStringLayout Content => base.Content;
         new public AbstractString Text {
@@ -267,6 +267,7 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = true;
             AcceptsFocus = true;
             Wrap = false;
+            OnRadioButtonSelected = _OnRadioButtonSelected;
         }
 
         public void SetValue (bool value, bool forUserInput) {
@@ -307,7 +308,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private void OnRadioButtonSelected (IEventInfo<string> e, string groupId) {
+        private void _OnRadioButtonSelected (IEventInfo<string> e, string groupId) {
             if (e.Source == this)
                 return;
             if (GroupId != groupId)
@@ -317,16 +318,18 @@ namespace Squared.PRGUI.Controls {
 
         private void Subscribe () {
             _SubscriptionPending = false;
-            Subscription.Dispose();
             if (Context == null) {
                 _SubscriptionPending = true;
                 return;
             }
-            Subscription = Context.EventBus.Subscribe<string>(null, UIEvents.RadioButtonSelected, OnRadioButtonSelected, weak: true);
+            Context.EventBus.Unsubscribe(null, UIEvents.RadioButtonSelected, OnRadioButtonSelected);
+            Context.EventBus.Subscribe(null, UIEvents.RadioButtonSelected, OnRadioButtonSelected, weak: true);
         }
 
         private void Unsubscribe () {
-            Subscription.Dispose();
+            if (Context == null)
+                return;
+            Context.EventBus.Unsubscribe(null, UIEvents.RadioButtonSelected, OnRadioButtonSelected);
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
