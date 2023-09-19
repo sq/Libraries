@@ -116,7 +116,7 @@ namespace Squared.Render {
         private object Lock = new object();
         private Action _BeforeIssue, _BeforePrepare;
         private bool _NeedClear, _IsQueued, _NeedRequeue;
-        private T[] MipBuffer;
+        private NativeAllocation MipBuffer;
         private int MipLevelCount;
         private Rectangle DirtyMipsRegion, DirtyUploadRegion;
         private MipGeneratorFn GenerateMip;
@@ -152,7 +152,7 @@ namespace Squared.Render {
                     totalMipSize += (currentMipSizePixels + 1);
                     currentMipSizePixels /= 2;
                 }
-                MipBuffer = new T[totalMipSize];
+                MipBuffer = Coordinator.AtlasAllocator.Allocate<T>(totalMipSize);
             }
             
             if (DebugColors) {
@@ -324,12 +324,11 @@ namespace Squared.Render {
             var srcWidth = Width;
             var srcHeight = Height;
 
-            var hMips = GCHandle.Alloc(MipBuffer, GCHandleType.Pinned);
-
             try {
                 var pSrcBuffer = hSrc.AddrOfPinnedObject().ToPointer();
                 var pSrc = pSrcBuffer;
-                var pDest = (byte*)(hMips.AddrOfPinnedObject().ToPointer());
+                MipBuffer.AddReference();
+                var pDest = (byte*)MipBuffer.Data;
                 var mipRect = region;
 
                 for (var i = 1; i < MipLevelCount; i++) {
@@ -351,7 +350,7 @@ namespace Squared.Render {
                     srcHeight = destHeight;
                 }
             } finally {
-                hMips.Free();
+                MipBuffer.ReleaseReference();
             }
         }
 
@@ -380,13 +379,12 @@ namespace Squared.Render {
             var srcWidth = Width;
             var srcHeight = Height;
             var started = Stopwatch.GetTimestamp();
-
-            var hMips = GCHandle.Alloc(MipBuffer, GCHandleType.Pinned);
             
             try {
                 var pSrcBuffer = hSrc.AddrOfPinnedObject().ToPointer();
                 var pSrc = (byte*)pSrcBuffer;
-                var pDest = (byte*)(hMips.AddrOfPinnedObject().ToPointer());
+                MipBuffer.AddReference();
+                var pDest = (byte*)MipBuffer.Data;
                 int x1 = region.Left, y1 = region.Top, x2 = region.Width, y2 = region.Height;
                 var srcRect = new Rectangle(x1, y1, x2, y2);
                 var destRect = new Rectangle(x1 / 2, y1 / 2, (x2 + 1) / 2, (y2 + 1) / 2);
@@ -425,7 +423,7 @@ namespace Squared.Render {
                 }
             } finally {
                 DirtyUploadRegion = Rectangle.Union(DirtyUploadRegion, region);
-                hMips.Free();
+                MipBuffer.ReleaseReference();
                 var elapsedMs = (Stopwatch.GetTimestamp() - started) / (double)(Stopwatch.Frequency / 1000);
                 if (elapsedMs >= 3)
                     Debug.WriteLine($"Generating mips took {elapsedMs}ms for {region.Width}x{region.Height} region");
@@ -504,6 +502,7 @@ namespace Squared.Render {
                 IsDisposed = true;
 
                 Coordinator.DisposeResource(Texture);
+                MipBuffer?.ReleaseReference();
                 Texture = null;
                 Pixels = null;
             }

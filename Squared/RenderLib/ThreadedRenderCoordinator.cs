@@ -98,6 +98,8 @@ namespace Squared.Render {
         /// </summary>
         public readonly object PrepareLock = new object();
 
+        public readonly NativeAllocator AtlasAllocator = new NativeAllocator();
+
         // Held during paint
         private readonly object DrawLock = new object();
 

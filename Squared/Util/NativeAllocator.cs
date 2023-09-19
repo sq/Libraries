@@ -14,8 +14,14 @@ namespace Squared.Util {
         public long TotalBytesAllocated => _TotalBytesAllocated;
         public int BytesInUse => _BytesInUse;
 
-        public NativeAllocation Allocate (int size) =>
-            new NativeAllocation(this, size);
+        public NativeAllocation Allocate (int bytes) =>
+            new NativeAllocation(this, bytes);
+
+        public NativeAllocation Allocate<T> (int elements)
+            where T : unmanaged 
+        {
+            return Allocate(elements * Marshal.SizeOf<T>());
+        }
     }
 
     public unsafe sealed class NativeAllocation : IDisposable {
@@ -39,6 +45,7 @@ namespace Squared.Util {
             Interlocked.Add(ref allocator._BytesInUse, size);
             _RefCount = 1;
             _Data = (void*)Marshal.AllocHGlobal(size);
+            GC.AddMemoryPressure(size);
 #if !NOSPAN
             System.Runtime.CompilerServices.Unsafe.InitBlock(_Data, 0, (uint)size);
 #else
@@ -69,6 +76,7 @@ namespace Squared.Util {
 
             _Released = true;
             Marshal.FreeHGlobal((IntPtr)_Data);
+            GC.RemoveMemoryPressure(Size);
             Interlocked.Add(ref Allocator._BytesInUse, -Size);
         }
 
