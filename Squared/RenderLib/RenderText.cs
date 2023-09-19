@@ -16,9 +16,6 @@ using System.Globalization;
 
 namespace Squared.Render.Text {
     public struct StringLayout {
-        private static readonly ConditionalWeakTable<object, Dictionary<char, KerningAdjustment>> _DefaultKerningAdjustments =
-            new ConditionalWeakTable<object, Dictionary<char, KerningAdjustment>>(); 
-
         public readonly Vector2 Position;
         /// <summary>
         /// The size of the layout's visible characters in their wrapped positions.
@@ -87,33 +84,6 @@ namespace Squared.Render.Text {
 
         public static implicit operator ArraySegment<BitmapDrawCall> (StringLayout layout) {
             return layout.DrawCalls;
-        }
-
-        public static Dictionary<char, KerningAdjustment> GetDefaultKerningAdjustments<TGlyphSource> (TGlyphSource font)
-            where TGlyphSource : IGlyphSource
-        {
-            var key = font.UniqueKey;
-            if (key == null)
-                return null;
-
-            Dictionary<char, KerningAdjustment> result;
-            _DefaultKerningAdjustments.TryGetValue(key, out result);
-            return result;
-        }
-
-        public static void SetDefaultKerningAdjustments (SpriteFont font, Dictionary<char, KerningAdjustment> adjustments) {
-            _DefaultKerningAdjustments.Remove(font);
-            _DefaultKerningAdjustments.Add(font, adjustments);
-        }
-    }
-
-    public struct KerningAdjustment {
-        public float LeftSideBearing, RightSideBearing, Width;
-
-        public KerningAdjustment (float leftSide = 0f, float rightSide = 0f, float width = 0f) {
-            LeftSideBearing = leftSide;
-            RightSideBearing = rightSide;
-            Width = width;
         }
     }
 
@@ -211,7 +181,6 @@ namespace Squared.Render {
             int characterSkipCount = 0, int? characterLimit = null,
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
             GlyphPixelAlignment alignToPixels = default(GlyphPixelAlignment),
-            Dictionary<char, KerningAdjustment> kerningAdjustments = null,
             bool wordWrap = false,
             bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null,
             Color? addColor = null
@@ -242,7 +211,7 @@ namespace Squared.Render {
 
             using (state) {
                 var segment = state.AppendText(
-                    gs, text, kerningAdjustments
+                    gs, text
                 );
 
                 return state.Finish();
@@ -257,7 +226,6 @@ namespace Squared.Render {
             int characterSkipCount = 0, int? characterLimit = null,
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
             bool alignToPixels = false,
-            Dictionary<char, KerningAdjustment> kerningAdjustments = null,
             bool wordWrap = false,
             bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null,
             Color? addColor = null
@@ -287,7 +255,7 @@ namespace Squared.Render {
 
             using (state) {
                 var segment = state.AppendText(
-                    glyphSource, text, kerningAdjustments
+                    glyphSource, text
                 );
 
                 return state.Finish();

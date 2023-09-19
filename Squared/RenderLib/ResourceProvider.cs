@@ -7,12 +7,14 @@ using System.IO.Compression;
 using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Evil;
+using Squared.Task;
 using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Ini;
@@ -677,6 +679,9 @@ namespace Squared.Render.Resources {
     }
 
     public class FileStreamProvider : IResourceProviderStreamSource {
+        private static readonly ConditionalWeakTable<Stream, string> StreamPaths = 
+            new ConditionalWeakTable<Stream, string>();
+
         public string Path;
         public string Prefix { get; set; }
         public string[] Extensions { get; protected set; }
@@ -724,14 +729,21 @@ namespace Squared.Render.Resources {
             return name;
         }
 
+        public static bool TryGetStreamPath (Stream stream, out string path) =>
+            StreamPaths.TryGetValue(stream, out path);
+
         private Stream OpenFile (string path) {
+            var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            Stream result;
             if (UseMmap) {
-                var mmf = MemoryMappedFile.CreateFromFile(path, FileMode.Open, null, 0, MemoryMappedFileAccess.ReadWrite);
+                var mmf = MemoryMappedFile.CreateFromFile(stream, null, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, false);
                 // FIXME: Dispose the mmap when disposing the stream?
-                return mmf.CreateViewStream(0, 0, MemoryMappedFileAccess.ReadWrite);
+                result = mmf.CreateViewStream(0, 0, MemoryMappedFileAccess.Read);
             } else {
-                return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                result = stream;
             }
+            StreamPaths.Add(result, path);
+            return result;
         }
 
         public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception, bool exactName = false) {

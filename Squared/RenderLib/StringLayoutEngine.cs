@@ -821,7 +821,6 @@ namespace Squared.Render.Text {
 
         public ArraySegment<BitmapDrawCall> AppendText<TGlyphSource> (
             TGlyphSource font, in AbstractString text,
-            Dictionary<char, KerningAdjustment> kerningAdjustments = null,
             int? start = null, int? end = null, bool? overrideSuppress = null
         ) where TGlyphSource : IGlyphSource {
             if (!IsInitialized)
@@ -836,9 +835,6 @@ namespace Squared.Render.Text {
 
             if (!measureOnly)
                 EnsureBufferCapacity(bufferWritePosition + text.Length);
-
-            if (kerningAdjustments == null)
-                kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
 
             var effectiveScale = scale / Math.Max(0.0001f, font.DPIScaleFactor);
             var effectiveSpacing = spacing;
@@ -884,9 +880,8 @@ namespace Squared.Render.Text {
                 }
 
                 BuildGlyphInformation(
-                    font, kerningAdjustments, effectiveScale, effectiveSpacing, ch1, codepoint,
-                    out deadGlyph, out Glyph glyph, out KerningAdjustment kerningAdjustment,
-                    out float glyphLineSpacing, out float glyphBaseline
+                    font, effectiveScale, effectiveSpacing, ch1, codepoint,
+                    out deadGlyph, out Glyph glyph, out float glyphLineSpacing, out float glyphBaseline
                 );
 
                 if ((glyph.KerningProvider != null) && (i < l - 2)) {
@@ -1108,8 +1103,8 @@ namespace Squared.Render.Text {
         }
 
         private void BuildGlyphInformation<TGlyphSource> (
-            in TGlyphSource font, Dictionary<char, KerningAdjustment> kerningAdjustments, float effectiveScale, float effectiveSpacing, 
-            char ch1, uint codepoint, out bool deadGlyph, out Glyph glyph, out KerningAdjustment kerningAdjustment, out float glyphLineSpacing, out float glyphBaseline
+            in TGlyphSource font, float effectiveScale, float effectiveSpacing, 
+            char ch1, uint codepoint, out bool deadGlyph, out Glyph glyph, out float glyphLineSpacing, out float glyphBaseline
         ) where TGlyphSource : IGlyphSource {
             deadGlyph = !font.GetGlyph(codepoint, out glyph);
 
@@ -1142,17 +1137,6 @@ namespace Squared.Render.Text {
             if (initialLineSpacing <= 0)
                 initialLineSpacing = glyphLineSpacing;
             ProcessLineSpacingChange(buffer, glyphLineSpacing, glyphBaseline);
-
-            // FIXME: Don't key kerning adjustments off 'char'
-            if (kerningAdjustments != null) {
-                if (kerningAdjustments.TryGetValue(ch1, out kerningAdjustment)) {
-                    glyph.LeftSideBearing += kerningAdjustment.LeftSideBearing;
-                    glyph.Width += kerningAdjustment.Width;
-                    glyph.RightSideBearing += kerningAdjustment.RightSideBearing;
-                }
-            } else {
-                kerningAdjustment = default;
-            }
 
             // MonoGame#1355 rears its ugly head: If a character with negative left-side bearing is at the start of a line,
             //  we need to compensate for the bearing to prevent the character from extending outside of the layout bounds

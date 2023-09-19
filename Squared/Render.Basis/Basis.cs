@@ -390,7 +390,7 @@ namespace Squared.Render.Basis {
         }
 
         public bool TryTranscode (
-            TranscoderTextureFormats format, ArraySegment<byte> output, DecodeFlags decodeFlags, out ImageLevelInfo levelInfo,
+            TranscoderTextureFormats format, IntPtr output, int outputSize, DecodeFlags decodeFlags, out ImageLevelInfo levelInfo,
             uint outputRowPitch = 0, uint outputHeightInPixels = 0
         ) {
             lock (File) {
@@ -406,17 +406,14 @@ namespace Squared.Render.Basis {
                     return false;
 
                 var blockSize = Transcoder.GetBytesPerBlockOrPixel(format);
-                var numBlocks = (uint)(output.Count / blockSize);
+                var numBlocks = (uint)(outputSize / blockSize);
 
-                fixed (byte* pBuffer = output.Array) {
-                    var pOutput = pBuffer + output.Offset;
-                    if (Transcoder.TranscodeImageLevel(
-                        File.pTranscoder, File.pData, File.DataSize,
-                        Image.Index, Index, pOutput, numBlocks,
-                        format, decodeFlags, outputRowPitch, outputHeightInPixels
-                    ) == 0)
-                        return false;
-                }
+                if (Transcoder.TranscodeImageLevel(
+                    File.pTranscoder, File.pData, File.DataSize,
+                    Image.Index, Index, (void*)output, numBlocks,
+                    format, decodeFlags, outputRowPitch, outputHeightInPixels
+                ) == 0)
+                    return false;
             }
 
             return true;

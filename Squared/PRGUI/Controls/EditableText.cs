@@ -1270,7 +1270,7 @@ namespace Squared.PRGUI.Controls {
                 DescriptionLayout.GlyphSourceProvider = Appearance.GlyphSourceProvider;
             else
                 DescriptionLayout.GlyphSource = font;
-            DescriptionLayout.SetText(Description, true, true);
+            DescriptionLayout.SetText(Description, true);
 
             var descriptionLayout = DescriptionLayout.Get();
             var width = descriptionLayout.Size.X;

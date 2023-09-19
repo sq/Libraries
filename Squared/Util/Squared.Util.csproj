@@ -73,6 +73,7 @@
     <Compile Include="Interpolators.cs" />
     <Compile Include="IO.cs" />
     <Compile Include="LRUCache.cs" />
+    <Compile Include="NativeAllocator.cs" />
     <Compile Include="PriorityQueue.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Sort.cs" />

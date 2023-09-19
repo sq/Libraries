@@ -481,7 +481,6 @@ namespace Squared.Render.Text {
         public ImmutableAbstractStringLookup<RichStyle> Styles;
         public ImmutableAbstractStringLookup<RichImage> Images;
         public Func<AbstractString, RichTextConfiguration, AsyncRichImage> ImageProvider;
-        public Dictionary<char, KerningAdjustment> KerningAdjustments;
         public MarkedStringProcessor MarkedStringProcessor;
         public ColorConversionMode ColorMode;
         /// <summary>
@@ -858,7 +857,7 @@ namespace Squared.Render.Text {
         ) {
             if (rangeEnd <= rangeStart)
                 return;
-            layoutEngine.AppendText(glyphSource, text, KerningAdjustments, start: rangeStart, end: rangeEnd, overrideSuppress: overrideSuppress);
+            layoutEngine.AppendText(glyphSource, text, start: rangeStart, end: rangeEnd, overrideSuppress: overrideSuppress);
         }
 
         private ImmutableAbstractString ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart, HashSet<char> terminators, char close) {
@@ -925,7 +924,6 @@ namespace Squared.Render.Text {
                 Styles = CloneDictionary(deep, Styles),
                 Images = CloneDictionary(deep, Images),
                 ImageProvider = ImageProvider,
-                KerningAdjustments = CloneDictionary(deep, KerningAdjustments),
                 MarkedStringProcessor = MarkedStringProcessor,
                 DefaultStyle = DefaultStyle,
                 ColorMode = ColorMode,
@@ -945,12 +943,19 @@ namespace Squared.Render.Text {
         }
 
         public bool Equals (RichTextConfiguration other) {
+            if (ReferenceEquals(this, other))
+                return true;
+
             return (NamedColors == other.NamedColors) &&
                 (GlyphSources == other.GlyphSources) &&
                 (Styles == other.Styles) &&
                 (Images == other.Images) &&
-                (KerningAdjustments == other.KerningAdjustments) &&
-                (Version == other.Version);
+                (MarkedStringProcessor == other.MarkedStringProcessor) &&
+                Tags.SequenceEqual(ref other.Tags) &&
+                (DefaultStyle == other.DefaultStyle) &&
+                (ColorMode == other.ColorMode) &&
+                (DisableImages == other.DisableImages) &&
+                (ImageProvider == other.ImageProvider);
         }
 
         public override bool Equals (object obj) {

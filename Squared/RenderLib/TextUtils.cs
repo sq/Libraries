@@ -34,20 +34,6 @@ namespace Squared.Render.Text {
             DisableMarkers                 = 0b1000000000000
         }
 
-        /// <summary>
-        /// Strings under this length will have a hash computed and stored in order to allow
-        ///  layout.Text = value to avoid invalidating if the text has not changed even if
-        ///  value is a StringBuilder or ArraySegment. This threshold is applied to avoid
-        ///  wasting CPU to hash very long strings - it's your responsibility to not invalidate
-        ///  yourself constantly by setting Text in this case.
-        /// You can disable this entirely by setting the threshold to 0.
-        /// </summary>
-        public static int TextHashLimit = 2048;
-        /// <summary>
-        /// Hashing small strings is a waste of time.
-        /// </summary>
-        public static int TextHashMinimum = 64;
-
         private ArraySegment<BitmapDrawCall> _Buffer; 
         private StringLayout _CachedStringLayout;
         private int _CachedGlyphVersion = -1, _TextVersion = -1;
@@ -55,10 +41,8 @@ namespace Squared.Render.Text {
 
         private RichTextConfiguration _RichTextConfiguration;
         private string _StyleName;
-        private Dictionary<char, KerningAdjustment> _KerningAdjustments;
         private Func<IGlyphSource> _GlyphSourceProvider;
         private IGlyphSource _GlyphSource;
-        private uint? _TextHash;
         private AbstractString _Text, _TruncatedIndicator;
         private Vector2 _Position;
         private Color _DefaultColor;
@@ -141,7 +125,6 @@ namespace Squared.Render.Text {
         public void Reset () {
             RichTextConfiguration = default;
             _StyleName = null;
-            KerningAdjustments = default;
             TruncatedIndicator = default;
             Position = Vector2.Zero;
             DefaultColor = Microsoft.Xna.Framework.Color.White;
@@ -358,12 +341,8 @@ namespace Squared.Render.Text {
         /// If true, the new and existing strings will have their content 
         /// compared (if possible) to skip invalidating the layout.
         /// </param>
-        /// <param name="useHash">
-        /// If true, a hash will be computed for the existing and new strings,
-        /// and if the hashes match invalidation will be skipped.
-        /// </param>
         /// <returns>true if the text was updated and the layout was invalidated.</returns>
-        public bool SetText (AbstractString newText, bool compareText = true, bool useHash = false) {
+        public bool SetText (AbstractString newText, bool compareText = true) {
             uint? newHash = null;
             if (
                 compareText && 
@@ -371,23 +350,11 @@ namespace Squared.Render.Text {
                 newText.IsImmutable &&
                 (_Text.Length == newText.Length)
             ) {
-                if (useHash && 
-                    newText.Length > TextHashMinimum &&
-                    newText.Length < TextHashLimit
-                ) {
-                    newHash = newText.ComputeTextHash();
-                    if (newHash == _TextHash)
-                        return false;
-                }
-                if (_Text.TextEquals(newText, StringComparison.Ordinal)) {
-                    if (newHash.HasValue)
-                        _TextHash = newHash;
+                if (_Text.TextEquals(newText, StringComparison.Ordinal))
                     return false;
-                }
             }
 
             _Text = newText;
-            _TextHash = newHash;
             _TextVersion++;
             Invalidate();
             return true;
@@ -398,7 +365,7 @@ namespace Squared.Render.Text {
                 return _Text;
             }
             set {
-                SetText(value, true, false);
+                SetText(value, true);
             }
         }
 
@@ -783,15 +750,6 @@ namespace Squared.Render.Text {
             }
         }
 
-        public Dictionary<char, KerningAdjustment> KerningAdjustments {
-            get {
-                return _KerningAdjustments;
-            }
-            set {
-                InvalidatingReferenceAssignment(ref _KerningAdjustments, value);
-            }
-        }
-
         public bool ReverseOrder {
             get => GetFlag(InternalFlags.ReverseOrder);
             set => InvalidatingFlagAssignment(InternalFlags.ReverseOrder, value);
@@ -959,7 +917,6 @@ namespace Squared.Render.Text {
             this.CharacterWrap = source.CharacterWrap;
             this.Color = source.Color;
             this.GlyphSource = source.GlyphSource;
-            this.KerningAdjustments = source.KerningAdjustments;
             this.LineBreakAtX = source.LineBreakAtX;
             this.StopAtY = source.StopAtY;
             this.LineLimit = source.LineLimit;
@@ -970,7 +927,6 @@ namespace Squared.Render.Text {
             this.Spacing = source.Spacing;
             this.SortKey = source.SortKey;
             this.SetText(source.Text, true);
-            this._TextHash = source._TextHash;
             this.TruncatedIndicator = source.TruncatedIndicator;
             this.WordWrap = source.WordWrap;
             this.WrapCharacter = source.WrapCharacter;
@@ -1050,8 +1006,6 @@ namespace Squared.Render.Text {
                 try {
                     le.Initialize();
                     if (RichText) {
-                        var ka = _RichTextConfiguration.KerningAdjustments;
-                        _RichTextConfiguration.KerningAdjustments = _KerningAdjustments ?? ka;
                         rls = new RichTextLayoutState(ref le, glyphSource);
                         rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
                         var dependencies = _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
@@ -1072,12 +1026,11 @@ namespace Squared.Render.Text {
 
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             _RichTextConfiguration.Append(ref le, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
-                        _RichTextConfiguration.KerningAdjustments = ka;
                     } else {
                         SetFlag(InternalFlags.AwaitingDependencies, false);
-                        le.AppendText(glyphSource, _Text, _KerningAdjustments);
+                        le.AppendText(glyphSource, _Text);
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
-                            le.AppendText(glyphSource, TruncatedIndicator, _KerningAdjustments, overrideSuppress: false);
+                            le.AppendText(glyphSource, TruncatedIndicator, overrideSuppress: false);
                     }
 
                     _CachedGlyphVersion = glyphSource.Version;

@@ -260,7 +260,7 @@ namespace Squared.PRGUI.Controls {
         protected bool SetText (AbstractString value, bool? onlyIfTextChanged = null) {
             // Don't perform a text compare for long strings
             var compareText = (onlyIfTextChanged ?? true) && (value.Length < 10240) && value.IsString;
-            Content.SetText(value, compareText, false);
+            Content.SetText(value, compareText);
             if (!compareText)
                 Content.Invalidate();
             return true;

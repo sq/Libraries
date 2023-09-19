@@ -10,6 +10,7 @@ using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Mips;
+using Squared.Render.Resources;
 using Squared.Threading;
 using Squared.Util;
 
@@ -67,6 +68,8 @@ namespace Squared.Render.STB {
 
             _RefCount = 1;
             Name = (stream as FileStream)?.Name;
+            if (Name == null)
+                FileStreamProvider.TryGetStreamPath(stream, out Name);
 
             if (!stream.CanSeek)
                 throw new ArgumentException("Stream must be seekable");
@@ -386,6 +389,7 @@ namespace Squared.Render.STB {
                     throw new ObjectDisposedException("Image");
 
                 if (level > 0) {
+                    // FIXME: Use NativeAllocator
                     var levelBuf = new byte[levelWidth * levelHeight * SizeofPixel];
                     MipChain[level - 1] = levelBuf;
                     var pin = GCHandle.Alloc(levelBuf, GCHandleType.Pinned);
