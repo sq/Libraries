@@ -201,7 +201,7 @@ namespace Squared.Render {
 
             lock (Coordinator.CreateResourceLock) {
                 Texture = new Texture2D(Coordinator.Device, Width, Height, GenerateMip != null, Format) {
-                    Tag = $"DynamicAtlas<{typeof(T).Name}> {Tag ?? GetHashCode().ToString("X8")}"
+                    Tag = $"Atlas<{typeof(T).Name}> {Tag ?? GetHashCode().ToString("X8")}"
                 };
                 Coordinator.AutoAllocatedTextureResources.Add(Texture);
             }
@@ -475,7 +475,10 @@ namespace Squared.Render {
             if (!ClearValue.HasValue || ClearValue.Value.Equals(default(T))) {
                 MemoryUtil.Memset((byte*)Data, 0, PixelBuffer.Size);
             } else {
-                throw new NotImplementedException("Non-zero ClearValue");
+                var ptr = Data;
+                var cvalue = ClearValue.Value;
+                for (int i = 0, c = Width * Height; i < c; i++)
+                    ptr[i] = cvalue;
             }
         }
 

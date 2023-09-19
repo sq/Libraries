@@ -115,6 +115,10 @@ namespace Squared.Render.Text {
 
             internal bool ActualSDF => SDF ?? Font.SDF;
 
+            public override string ToString () =>
+                $"{Font} {SizePoints}pt";
+
+
             private unsafe static MipGeneratorFn PickMipGenerator (FreeTypeFont font, bool rgba) {
                 if (rgba)
                     return MipGenerator.Get(MipFormat.pRGBA);
@@ -153,8 +157,9 @@ namespace Squared.Render.Text {
                     : (Font.sRGB ? Evil.TextureUtils.ColorSrgbEXT : SurfaceFormat.Color);
 
                 if (!foundRoom) {
-                    bool isFirstAtlas = (Atlases.Count == 0) && ((_SizePoints * Font.DPIPercent / 100) <= SkipFirstAtlasThreshold),
-                        isLargeAtlas = (_SizePoints * Font.DPIPercent / 100) >= LargeAtlasThreshold;
+                    bool isIconFont = Font.IsIconFont,
+                        isFirstAtlas = (Atlases.Count == 0) && (isIconFont || ((_SizePoints * Font.DPIPercent / 100) <= SkipFirstAtlasThreshold)),
+                        isLargeAtlas = !isIconFont && ((_SizePoints * Font.DPIPercent / 100) >= LargeAtlasThreshold);
                     int newAtlasWidth = isFirstAtlas ? FirstAtlasWidth : AtlasWidth,
                         newAtlasHeight = isFirstAtlas ? FirstAtlasHeight : AtlasHeight;
                     if (isLargeAtlas) {
@@ -162,14 +167,16 @@ namespace Squared.Render.Text {
                         newAtlasHeight *= 2;
                     }
 
+                    var tag = $"{Font.Face.FamilyName} {Font.Face.StyleName} {SizePoints}pt #{Atlases.Count + 1}";
+
                     IDynamicAtlas newAtlas = ActualSDF
                         ? (IDynamicAtlas)(new DynamicAtlas<float>(
                             Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
-                            surfaceFormat, spacing, Font.SDFMipMapping ? MipGenerator.Get(MipFormat.Single) : null, tag: $"{Font.Face.FamilyName} {SizePoints}pt #{Atlases.Count + 1}"
+                            surfaceFormat, spacing, Font.SDFMipMapping ? MipGenerator.Get(MipFormat.Single) : null, tag: tag
                         ) { ClearValue = 1024f })
                         : new DynamicAtlas<Color>(
                             Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
-                            surfaceFormat, spacing, Font.MipMapping ? PickMipGenerator(Font, ContainsColorGlyphs) : null, tag: $"{Font.Face.FamilyName} {SizePoints}pt #{Atlases.Count + 1}"
+                            surfaceFormat, spacing, Font.MipMapping ? PickMipGenerator(Font, ContainsColorGlyphs) : null, tag: tag
                         );
                     Atlases.Add(newAtlas);
                     if (!newAtlas.TryReserve(widthW, heightW, out result))
@@ -655,6 +662,10 @@ namespace Squared.Render.Text {
         public Dictionary<uint, Color> DefaultGlyphColors = new Dictionary<uint, Color>();
 
         public float VerticalOffset;
+
+        public override string ToString () =>
+            $"Font '{Face?.FamilyName}' ({Face?.StyleName})";
+
         public GPOSTable GPOS {
             get; private set;
         } 
@@ -781,6 +792,15 @@ namespace Squared.Render.Text {
             get {
                 return DefaultSize._Version;
             }
+        }
+
+        public bool IsIconFont =>
+            !GetGlyphId((uint)'0', out _) && !GetGlyphId((uint)'9', out _) &&
+            !GetGlyphId((uint)'a', out _) && !GetGlyphId((uint)'A', out _);
+
+        public bool GetGlyphId (uint codepoint, out int glyphId) {
+            glyphId = (int)Face.GetCharIndex(codepoint);
+            return (glyphId > 0);
         }
 
         public bool GetGlyph (uint ch, out SrGlyph glyph) {
