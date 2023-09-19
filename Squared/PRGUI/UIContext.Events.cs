@@ -191,8 +191,11 @@ namespace Squared.PRGUI {
         ) {
             var topLevelParent = FindTopLevelAncestor(target);
             if (topLevelParent != null) {
-                TopLevelFocusMemory.Remove(topLevelParent);
-                TopLevelFocusMemory.Add(topLevelParent, target);
+                if (!TopLevelFocusMemory.TryGetValue(topLevelParent, out var cell)) {
+                    cell = new FocusMemoryCell();
+                    TopLevelFocusMemory.Add(topLevelParent, cell);
+                }
+                cell.Value = target;
             }
 
             if (target?.AcceptsTextInput ?? false) {

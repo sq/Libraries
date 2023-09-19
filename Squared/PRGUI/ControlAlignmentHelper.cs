@@ -78,13 +78,13 @@ namespace Squared.PRGUI {
                     if (_WeakAnchor.IsAllocated)
                         _WeakAnchor.Free();
                     _WeakAnchor = default;
+                    AlignmentPending = true;
                 } else if (oldAnchor != value) {
                     if (_WeakAnchor.IsAllocated)
                         _WeakAnchor.Free();
                     _WeakAnchor = GCHandle.Alloc(value, GCHandleType.Weak);
-                }
-                if (oldAnchor != value)
                     AlignmentPending = true;
+                }
                 _LastAnchorRect = default;
                 _LastParentRect = default;
                 _LastSize = default;
@@ -112,6 +112,11 @@ namespace Squared.PRGUI {
 
         public ControlAlignmentHelper (TControl host) {
             Control = host;
+        }
+
+        ~ControlAlignmentHelper () {
+            if (_WeakAnchor.IsAllocated)
+                _WeakAnchor.Free();
         }
 
         public bool SetPosition (Vector2 value, bool updateDesiredPosition) {

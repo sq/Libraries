@@ -47,11 +47,13 @@ namespace Squared.PRGUI {
         }
 
         private void RemoveFromFocusMemory (Control control) {
+            TopLevelFocusMemory.Remove(control);
+
             foreach (var topLevel in Controls) {
-                if (!TopLevelFocusMemory.TryGetValue(topLevel, out Control memory))
+                if (!TopLevelFocusMemory.TryGetValue(topLevel, out var cell))
                     continue;
-                if (control == memory)
-                    TopLevelFocusMemory.Remove(topLevel);
+                if (control == cell.Value)
+                    cell.Value = null;
             }
         }
 
@@ -300,9 +302,12 @@ namespace Squared.PRGUI {
 
             // Top-level controls should pass focus on to their children if possible
             if (Controls.Contains(value)) {
-                Control childTarget;
+                Control childTarget = null;
+                if (TopLevelFocusMemory.TryGetValue(value, out var cell))
+                    childTarget = cell.Value;
+
                 if (
-                    !TopLevelFocusMemory.TryGetValue(value, out childTarget) ||
+                    (childTarget == null) ||
                     (FindTopLevelAncestor(childTarget) == null) ||
                     Control.IsRecursivelyTransparent(childTarget)
                 ) {

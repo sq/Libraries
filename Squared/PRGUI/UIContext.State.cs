@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +22,30 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI {
     public sealed partial class UIContext : IDisposable {
+        private class FocusMemoryCell {
+            public GCHandle Handle;
+
+            public Control Value {
+                get => Handle.IsAllocated ? Handle.Target as Control : null;
+                set {
+                    var existingValue = Value;
+                    if (existingValue == value)
+                        return;
+                    if (Handle.IsAllocated)
+                        Handle.Free();
+                    if (value != null)
+                        Handle = GCHandle.Alloc(value, GCHandleType.Weak);
+                    else
+                        Handle = default;
+                }
+            }
+
+            ~FocusMemoryCell() {
+                if (Handle.IsAllocated)
+                    Handle.Free();
+            }
+        }
+
         internal List<UnhandledEvent> UnhandledEvents = new List<UnhandledEvent>();
         internal List<UnhandledEvent> PreviousUnhandledEvents = new List<UnhandledEvent>();
 
@@ -135,17 +160,20 @@ namespace Squared.PRGUI {
         /// The control that most recently held focus before the current control, if any.
         /// Note that if focus was acquired from a focus donor, the focus donor will not be recorded in this property.
         /// </summary>
+        // FIXME: This can cause a reference leak
         public Control PreviousFocused { get; private set; }
         /// <summary>
         /// The control that was most recently being hovered over before the current control, if any.
         /// Note that this will rarely become null.
         /// </summary>
+        // FIXME: This can cause a reference leak
         public Control PreviousHovering { get; private set; }
+        // FIXME: This can cause a reference leak
         public Control PreviousTopLevelFocused { get; private set; }
 
         private Control PreviousMouseDownTarget = null, FocusedAtStartOfUpdate = null;
 
-        private ConditionalWeakTable<Control, Control> TopLevelFocusMemory = new ConditionalWeakTable<Control, Control>();
+        private ConditionalWeakTable<Control, FocusMemoryCell> TopLevelFocusMemory = new ConditionalWeakTable<Control, FocusMemoryCell>();
 
         public Control CurrentTooltipAnchor => (IsTooltipActive && IsTooltipVisible) ? PreviousTooltipAnchor : null;
 
