@@ -203,12 +203,12 @@ namespace Squared.Render.Resources {
                     Provider.SetFutureResult2(Future, default, ExceptionDispatchInfo.Capture(exc));
                     if (!StreamIsDisposed) {
                         StreamIsDisposed = true;
-                        Stream?.Dispose();
+                        Provider.StreamSource.DisposeStream(Stream);
                     }
                 } finally {
                     if (!LoadInfo.Async && !StreamIsDisposed) {
                         StreamIsDisposed = true;
-                        Stream?.Dispose();
+                        Provider.StreamSource.DisposeStream(Stream);
                     }
                 }
 
@@ -226,7 +226,7 @@ namespace Squared.Render.Resources {
                             Provider.NotifyLoadCompleted(LoadInfo, value);
                         if (!StreamIsDisposed) {
                             StreamIsDisposed = true;
-                            Stream?.Dispose();
+                            Provider.StreamSource.DisposeStream(Stream);
                         }
                     }
                 }
@@ -279,8 +279,7 @@ namespace Squared.Render.Resources {
                     LoadInfo.AsyncOperationQueued = true;
                     Provider.CreateQueue.Enqueue(ref item);
                 } catch (Exception exc) {
-                    if (stream != null)
-                        stream.Dispose();
+                    Provider.StreamSource.DisposeStream(stream);
                     Provider.SetFutureResult2(Future, default, ExceptionDispatchInfo.Capture(exc));
                 }
             }
@@ -676,17 +675,23 @@ namespace Squared.Render.Resources {
         string FixupName (string name, bool stripExtension);
         string[] GetNames (bool asFullPaths = false);
         bool TryGetStream (string name, bool optional, out Stream result, out Exception error, bool exactName = false);
+        void DisposeStream (Stream stream);
     }
 
     public class FileStreamProvider : IResourceProviderStreamSource {
         private static readonly ConditionalWeakTable<Stream, string> StreamPaths = 
             new ConditionalWeakTable<Stream, string>();
+        private readonly ConditionalWeakTable<Stream, IDisposable> StreamParents = 
+            new ConditionalWeakTable<Stream, IDisposable>();
 
         public string Path;
         public string Prefix { get; set; }
         public string[] Extensions { get; protected set; }
         public SearchOption Options;
         public bool UseMmap;
+
+        private volatile int _StreamsOpen;
+        public int StreamsOpen => _StreamsOpen;
 
         public FileStreamProvider (string path, string prefix = null, string[] extensions = null, bool recursive = false, bool mmap = false) {
             Path = path;
@@ -729,8 +734,29 @@ namespace Squared.Render.Resources {
             return name;
         }
 
-        public static bool TryGetStreamPath (Stream stream, out string path) =>
-            StreamPaths.TryGetValue(stream, out path);
+        public static bool TryGetStreamPath (Stream stream, out string path) {
+            lock (StreamPaths)
+                return StreamPaths.TryGetValue(stream, out path);
+        }
+
+        /// <summary>
+        /// Disposes the stream along with any additional resources associated with the stream.
+        /// </summary>
+        /// <param name="stream"></param>
+        public void DisposeStream (Stream stream) {
+            if (stream == null)
+                return;
+
+            stream.Dispose();
+            if (StreamParents.TryGetValue(stream, out var parent)) {
+                Interlocked.Decrement(ref _StreamsOpen);
+                parent?.Dispose();
+                StreamParents.Remove(stream);
+            }
+
+            lock (StreamPaths)
+                StreamPaths.Remove(stream);
+        }
 
         private Stream OpenFile (string path) {
             var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -739,6 +765,8 @@ namespace Squared.Render.Resources {
                 var mmf = MemoryMappedFile.CreateFromFile(stream, null, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, false);
                 // FIXME: Dispose the mmap when disposing the stream?
                 result = mmf.CreateViewStream(0, 0, MemoryMappedFileAccess.Read);
+                StreamParents.Add(result, mmf);
+                Interlocked.Increment(ref _StreamsOpen);
             } else {
                 result = stream;
             }
@@ -823,6 +851,9 @@ namespace Squared.Render.Resources {
             return name;
         }
 
+        public void DisposeStream (Stream stream) {
+        }
+
         public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception, bool exactName = false) {
             var streamName = FixupName(exactName ? name : (Prefix ?? "") + name + Suffix, false);
             exception = null;
@@ -876,6 +907,9 @@ namespace Squared.Render.Resources {
             return name;
         }
 
+        public void DisposeStream (Stream stream) {
+        }
+
         public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception, bool exactName = false) {
             var streamName = FixupName(exactName ? name : (Prefix ?? "") + name + Suffix, false);
             exception = null;
@@ -916,6 +950,11 @@ namespace Squared.Render.Resources {
                     return result;
             }
             return null;
+        }
+
+        public void DisposeStream (Stream stream) {
+            foreach (var provider in Sources)
+                provider.DisposeStream(stream);
         }
 
         public bool TryGetStream (string name, bool optional, out Stream result, out Exception error, bool exactName = false) {

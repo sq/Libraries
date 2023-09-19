@@ -243,17 +243,19 @@ namespace Squared.Render.Basis {
         internal IntPtr pTranscoder;
         protected MemoryMappedFile MappedFile { get; private set; }
         protected MemoryMappedViewAccessor MappedView { get; private set; }
+        protected MemoryMappedViewStream MappedViewStream { get; private set; }
         protected byte[] Data { get; private set; }
         public uint DataSize { get; private set; }
         public void* pData { get; private set; }
         public bool IsDisposed { get; private set; }
+        public bool OwnsStream { get; private set; }
 
         internal bool IsStarted;
 
         public readonly ImageCollection Images;
 
         public BasisFile (string filename)
-            : this(File.OpenRead(filename), true) {
+            : this(File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete), true) {
         }
 
         public BasisFile (Stream stream, bool ownsStream) {
@@ -263,10 +265,16 @@ namespace Squared.Render.Basis {
 
             if (stream is FileStream fs) {
                 // FIXME: Does this inherit the stream position? Does it matter?
-                MappedFile = MemoryMappedFile.CreateFromFile(fs, null, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, false);
+                MappedFile = MemoryMappedFile.CreateFromFile(fs, null, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, !ownsStream);
                 MappedView = MappedFile.CreateViewAccessor(0, fs.Length, MemoryMappedFileAccess.Read);
                 byte* _pData = null;
                 MappedView.SafeMemoryMappedViewHandle.AcquirePointer(ref _pData);
+                pData = _pData;
+            } else if (stream is MemoryMappedViewStream mmvs) {
+                OwnsStream = ownsStream;
+                MappedViewStream = mmvs;
+                byte* _pData = null;
+                mmvs.SafeMemoryMappedViewHandle.AcquirePointer(ref _pData);
                 pData = _pData;
             } else {
                 Data = new byte[stream.Length];
@@ -312,6 +320,8 @@ namespace Squared.Render.Basis {
 
             IsDisposed = true;
             pData = null;
+            if (OwnsStream)
+                MappedViewStream?.Dispose();
             MappedView?.Dispose();
             MappedFile?.Dispose();
             Transcoder.Delete(pTranscoder);
