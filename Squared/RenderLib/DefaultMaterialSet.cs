@@ -1256,10 +1256,10 @@ namespace Squared.Render {
 
             if (!LastAppliedFrameParams.HasValue ||
                 !LastAppliedFrameParams.Value.Equals(@params) ||
-                LastIsOpenGL != Coordinator.IsOpenGL
+                LastIsOpenGL != Coordinator.IsFNA
             ) {
                 LastAppliedFrameParams = @params;
-                LastIsOpenGL = Coordinator.IsOpenGL;
+                LastIsOpenGL = Coordinator.IsFNA;
                 ForEachMaterial(_ApplyParamsDelegate, ref @params);
             }
 
@@ -1363,8 +1363,6 @@ namespace Squared.Render {
             m.Parameters.Time?.SetValue(@params.Seconds);
             if (@params.FrameIndex.HasValue)
                 m.Parameters.FrameIndex?.SetValue((float)@params.FrameIndex.Value);
-
-            m.Parameters.HalfPixelOffset?.SetValue(!Coordinator.IsOpenGL ? 1f : 0f);
 
             if (!m.Parameters.DitheringInitialized) {
                 m.Parameters.DitheringInitialized = true;

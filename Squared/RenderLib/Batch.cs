@@ -200,7 +200,6 @@ namespace Squared.Render {
         public int Layer;
         public Material Material;
         public MaterialParameterValues MaterialParameters;
-        public Func<bool> GetEnabled;
 
         internal long InstanceId;
         internal bool Released;

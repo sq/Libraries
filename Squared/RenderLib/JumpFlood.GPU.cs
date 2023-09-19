@@ -84,6 +84,8 @@ namespace Squared.Render.DistanceField {
             var vt = ViewTransform.CreateOrthographic(scratchSurfaces.InBuffer.Width, scratchSurfaces.InBuffer.Height);
 
             var group = renderer.MakeSubgroup(layer: layer);
+            group.Parameters.Clear();
+
             var initGroup = group.ForRenderTarget(scratchSurfaces.InBuffer, viewTransform: vt);
             initGroup.Clear(layer: -1, value: new Vector4(MaxDistance, MaxDistance, MaxDistance, 0f));
             var initMaterial = renderer.Materials.JumpFloodInit;

@@ -84,6 +84,10 @@ namespace Squared.PRGUI {
         }
 
         public static bool From<TSource> (ref TSource source, out MouseEventArgs result) => Evil.TryCoerce(ref source, out result);
+
+        internal void Clear () {
+            MouseOver = MouseOverLoose = MouseCaptured = Hovering = Focused = null;
+        }
     }
 
     public struct KeyEventArgs {

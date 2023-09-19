@@ -318,6 +318,11 @@ namespace Squared.Render {
             _DrawCalls.Clear();
 
             base.OnReleaseResources();
+
+            // Avoid retaining objects while sitting in the pool
+            _Before = _After = null;
+            _UserData = null;
+            ViewTransformModifier = null;
         }
 
         public override string ToString () {
@@ -380,6 +385,15 @@ namespace Squared.Render {
             } finally {
                 manager.PopRenderTarget();
             }
+        }
+
+        protected override void OnReleaseResources () {
+            base.OnReleaseResources();
+
+            // Avoid retaining objects while sitting in the pool
+            Single = null;
+            SingleAuto = null;
+            Multiple = null;
         }
     }
 }

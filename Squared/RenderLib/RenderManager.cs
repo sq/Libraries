@@ -1114,9 +1114,6 @@ namespace Squared.Render {
             else if (!isPrepared)
                 throw new BatchIssueFailedException(batch, new Exception("Batch not prepared"));
 
-            if ((batch.GetEnabled != null) && !batch.GetEnabled())
-                return;
-
 #if DEBUG
             if (batch.TimesIssued > 0)
                 throw new InvalidOperationException("Batch was issued multiple times");

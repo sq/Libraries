@@ -199,6 +199,12 @@ namespace Squared.PRGUI {
             PaintOrderLastValidFrame = -1;
         }
 
+        internal void EraseOrderedItems () {
+            InvalidateOrderedItems();
+            TabOrderedItems.Clear();
+            PaintOrderedItems.Clear();
+        }
+
         public void Clear () {
             IndexTable.Clear();
 

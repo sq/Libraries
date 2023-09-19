@@ -410,6 +410,9 @@ namespace Squared.PRGUI {
             NowL = TimeProvider.Ticks;
             FocusedAtStartOfUpdate = Focused;
 
+            // HACK: Suppress persistent leaks of top level controls
+            Controls.EraseOrderedItems();
+
             if ((_CurrentInput.CursorPosition.X < -999) ||
                 (_CurrentInput.CursorPosition.Y < -999))
                 _CurrentInput.CursorPosition = CanvasSize / 2f;
@@ -441,6 +444,7 @@ namespace Squared.PRGUI {
             _CurrentInput.AreAnyKeysHeld = _CurrentInput.HeldKeys.Count > 0;
 
             foreach (var mea in PurgatoryMouseEventArgs) {
+                mea.Clear();
                 if (SpareMouseEventArgs.Count >= 32)
                     break;
                 SpareMouseEventArgs.Add(mea);
