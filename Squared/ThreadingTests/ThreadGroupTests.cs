@@ -136,7 +136,7 @@ namespace Squared.Threading {
                 var afterEnqueue = timeProvider.Ticks;
 
                 var beforeWait = timeProvider.Ticks;
-                while (!queue.IsEmpty)
+                while (!queue.IsDrained)
                     group.StepMainThread();
                 var afterWait = timeProvider.Ticks;
                 var perItem = (afterWait - beforeWait) / (double)count / Time.MillisecondInTicks;

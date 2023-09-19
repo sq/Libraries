@@ -195,8 +195,6 @@ namespace Squared.Util.Event {
             GC.Collect();
 
             Assert.IsFalse(senderWr.IsAlive);
-
-            Assert.AreEqual(1, Bus.Compact());
         }
 
         class BasicSender : IEventSource {

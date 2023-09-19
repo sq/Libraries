@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -62,6 +63,8 @@ namespace Squared.Util.Event {
     }
 
     public sealed class EventFilterComparer : IEqualityComparer<EventFilter> {
+        public static readonly EventFilterComparer Instance = new EventFilterComparer();
+
         public bool Equals (EventFilter x, EventFilter y) {
             if ((x.SourceHashCode != y.SourceHashCode) || (x.TypeHashCode != y.TypeHashCode) || (x.Type != y.Type))
                 return false;
@@ -342,8 +345,10 @@ namespace Squared.Util.Event {
         private readonly Dictionary<string, EventCategoryToken> _Categories = 
             new Dictionary<string, EventCategoryToken>();
 
-        private readonly Dictionary<EventFilter, EventSubscriberList> _Subscribers =
-            new Dictionary<EventFilter, EventSubscriberList>(new EventFilterComparer());
+        private readonly Dictionary<EventFilter, EventSubscriberList> _UnsourcedSubscribers =
+            new Dictionary<EventFilter, EventSubscriberList>(EventFilterComparer.Instance);
+        private ConditionalWeakTable<object, Dictionary<EventFilter, EventSubscriberList>> _SourcedSubscribers =
+            new ConditionalWeakTable<object, Dictionary<EventFilter, EventSubscriberList>>();
 
         /// <summary>
         /// Return false to suppress broadcast of this event
@@ -357,19 +362,40 @@ namespace Squared.Util.Event {
         private static void CreateFilter (object source, string type, out EventFilter filter, bool weak) {
             filter = new EventFilter(source ?? AnySource, type ?? AnyType, weak);
         }
+
+        private Dictionary<EventFilter, EventSubscriberList> GetTableForFilter (ref EventFilter filter, bool createIfMissing) {
+            var src = filter.Source;
+            if (src == null)
+                return _UnsourcedSubscribers;
+
+            if (_SourcedSubscribers == null)
+                return null;
+
+            lock (_SourcedSubscribers) {
+                _SourcedSubscribers.TryGetValue(src, out var result);
+                if (createIfMissing && (result == null)) {
+                    result = new Dictionary<EventFilter, EventSubscriberList>(EventFilterComparer.Instance);
+                    _SourcedSubscribers.Add(src, result);
+                }
+                return result;
+            }
+        }
+
         public EventSubscription Subscribe (object source, string type, EventSubscriber subscriber, bool weak = false) {
             EventFilter filter;
             CreateFilter(source, type, out filter, true);
 
-            EventSubscriberList subscribers;
-            lock (_Subscribers)
-            if (!_Subscribers.TryGetValue(filter, out subscribers)) {
-                subscribers = new EventSubscriberList();
-                _Subscribers[filter] = subscribers;
-            }
+            var table = GetTableForFilter(ref filter, true);
 
-            lock (subscribers)
-                subscribers.Add(subscriber, weak);
+            lock (table) {
+                if (!table.TryGetValue(filter, out var subscribers)) {
+                    subscribers = new EventSubscriberList();
+                    table[filter] = subscribers;
+                }
+
+                lock (subscribers)
+                    subscribers.Add(subscriber, weak);
+            }
 
             return new EventSubscription(this, in filter, subscriber);
         }
@@ -396,15 +422,16 @@ namespace Squared.Util.Event {
             EventFilter filter;
             CreateFilter(source, type, out filter, true);
 
-            EventSubscriberList subscribers;
-            lock (_Subscribers)
-            if (!_Subscribers.TryGetValue(filter, out subscribers)) {
-                subscribers = new EventSubscriberList();
-                _Subscribers[filter] = subscribers;
-            }
+            var table = GetTableForFilter(ref filter, true);
+            lock (table) {
+                if (!table.TryGetValue(filter, out var subscribers)) {
+                    subscribers = new EventSubscriberList();
+                    table[filter] = subscribers;
+                }
 
-            lock (subscribers)
-                subscribers.Add(subscriber, weak);
+                lock (subscribers)
+                    subscribers.Add(subscriber, weak);
+            }
 
             return new TypedEventSubscription<T>(this, in filter, subscriber);
         }
@@ -422,23 +449,35 @@ namespace Squared.Util.Event {
         }
 
         public bool Unsubscribe (ref EventFilter filter, EventSubscriber subscriber) {
-            EventSubscriberList subscribers;
-            lock (_Subscribers)
-                if (!_Subscribers.TryGetValue(filter, out subscribers))
-                    return false;
+            var table = GetTableForFilter(ref filter, false);
+            if (table == null)
+                return false;
 
-            lock (subscribers)
-                return subscribers.Remove(subscriber);
+            lock (table) {
+                EventSubscriberList subscribers;
+                lock (table)
+                    if (!table.TryGetValue(filter, out subscribers))
+                        return false;
+
+                lock (subscribers)
+                    return subscribers.Remove(subscriber);
+            }
         }
 
         public bool Unsubscribe<T> (ref EventFilter filter, TypedEventSubscriber<T> subscriber) {
-            EventSubscriberList subscribers;
-            lock (_Subscribers)
-                if (!_Subscribers.TryGetValue(filter, out subscribers))
-                    return false;
+            var table = GetTableForFilter(ref filter, false);
+            if (table == null)
+                return false;
 
-            lock (subscribers)
-                return subscribers.Remove(subscriber);
+            lock (table) {
+                EventSubscriberList subscribers;
+                lock (table)
+                    if (!table.TryGetValue(filter, out subscribers))
+                        return false;
+
+                lock (subscribers)
+                    return subscribers.Remove(subscriber);
+            }
         }
 
         private bool BroadcastToSubscribers<T> (object source, string type, T arguments) {
@@ -482,8 +521,12 @@ namespace Squared.Util.Event {
                     false
                 );
 
-                lock (_Subscribers)
-                    if (!_Subscribers.TryGetValue(filter, out subscribers))
+                var table = GetTableForFilter(ref filter, false);
+                if (table == null)
+                    continue;
+
+                lock (table)
+                    if (!table.TryGetValue(filter, out subscribers))
                         continue;
 
                 lock (subscribers)
@@ -552,29 +595,14 @@ namespace Squared.Util.Event {
             return result;
         }
 
-        public int Compact () {
-            int result = 0;
-            lock (_Subscribers) {
-                var keys = new EventFilter[_Subscribers.Count];
-                _Subscribers.Keys.CopyTo(keys, 0);
-                foreach (var ef in keys) {
-                    if (!ef.WeakSource.IsAlive) {
-                        _Subscribers.Remove(ef);
-                        result += 1;
-                    }
-                }
-            }
-
-            return result;
-        }
-
         public EventThunk GetThunk (object sender, string type) {
             return new EventThunk(this, sender, type);
         }
 
         public void Dispose () {
-            lock (_Subscribers)
-                _Subscribers.Clear();
+            lock (_UnsourcedSubscribers)
+                _UnsourcedSubscribers.Clear();
+            _SourcedSubscribers = null;
         }
     }
 }

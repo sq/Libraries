@@ -284,7 +284,7 @@ namespace Squared.Render.Text {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly bool Check (int glyphId, out int result) {
+        public bool Check (int glyphId, out int result) {
             if ((StartGlyphId <= glyphId) && (EndGlyphId >= glyphId)) {
                 result = glyphId - StartGlyphId + StartCoverageIndex;
                 return true;
