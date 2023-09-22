@@ -399,20 +399,6 @@ namespace Squared.Render {
                         srcStrideBytes = srcWidth * BytesPerPixel, 
                         destStrideBytes = destWidth * BytesPerPixel;
 
-                    // FIXME
-                    /*
-                    var pSrcOffset = pSrc + (srcStrideBytes * srcRect.Y) + (BytesPerPixel * srcRect.X);
-                    var pDestOffset = pDest + (destStrideBytes * destRect.Y) + (BytesPerPixel * destRect.X);
-                    int srcGap = srcWidth - srcRect.Width,
-                        destGap = destWidth / destRect.Width,
-                        srcOffsetStride = srcStrideBytes + (srcGap * BytesPerPixel),
-                        destOffsetStride = destStrideBytes + (destGap * BytesPerPixel);
-
-                    GenerateMip(
-                        pSrcOffset, srcRect.Width, srcRect.Height, srcOffsetStride,
-                        pDestOffset, destRect.Width, destRect.Height, destOffsetStride
-                    );
-                    */
                     GenerateMip(
                         pSrc, srcWidth, srcHeight, srcStrideBytes,
                         pDest, destWidth, destHeight, destStrideBytes
