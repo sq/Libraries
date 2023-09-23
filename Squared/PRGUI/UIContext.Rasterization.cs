@@ -297,7 +297,7 @@ namespace Squared.PRGUI {
                     var fadeForKeyboardFocusVisibility = AcceleratorOverlayVisible ||
                     // HACK: Also do this if gamepad input is active so that it's easier to tell what's going on
                     //  when the dpad is used to move focus around
-                        ((InputSources[0] is GamepadVirtualKeyboardAndCursor) && (KeyboardSelection != null));
+                        ((InputSources[0] is GamepadVirtualKeyboardAndCursor gvkac) && (KeyboardSelection != null) && gvkac.EnableFading);
 
                     var opacityModifier = (fadeForKeyboardFocusVisibility && (topLevelFocusIndex >= 0))
                         ? (

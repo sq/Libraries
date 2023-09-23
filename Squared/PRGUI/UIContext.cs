@@ -59,8 +59,10 @@ namespace Squared.PRGUI {
             }
             if (control == _KeyboardSelection)
                 return;
+            var previousControl = _KeyboardSelection;
             _KeyboardSelection = control;
             MousePositionWhenKeyboardSelectionWasLastUpdated = LastMousePosition;
+            FireEvent(UIEvents.KeyboardSelectionChanged, control, previousControl);
         }
 
         /// <summary>
@@ -476,7 +478,7 @@ namespace Squared.PRGUI {
                     Control.IsEqualOrAncestor(queuedFocus.value, (Control)activeModal)
                 ) {
                     var oldFocus = Focused;
-                    var queuedOk = TrySetFocus(queuedFocus.value, queuedFocus.force, queuedFocus.isUserInitiated, queuedFocus.suppressAnimations);
+                    var queuedOk = TrySetFocus(queuedFocus.value, queuedFocus.force, queuedFocus.isUserInitiated, queuedFocus.suppressAnimations, queuedFocus.overrideKeyboardSelection);
                     queuedFocusResult = Focused;
                     // TrySetFocus may have failed but changed the current focus. Treat that as equivalent and clear the queued focus.
                     if (queuedOk || (queuedFocusResult != oldFocus))

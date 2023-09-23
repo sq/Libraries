@@ -43,7 +43,8 @@ namespace Squared.PRGUI {
             ControlFixated = "ControlFixated",
             HotspotClick = "HotspotClick",
             SelectedTabChanged = "SelectedTabChanged",
-            TooltipShown = "TooltipShown";
+            TooltipShown = "TooltipShown",
+            KeyboardSelectionChanged = "KeyboardSelectionChanged";
     }
 
     public sealed class MouseEventArgs {

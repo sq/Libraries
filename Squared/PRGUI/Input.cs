@@ -372,7 +372,7 @@ namespace Squared.PRGUI.Input {
                 UpArrow, LeftArrow, RightArrow, DownArrow;
         }
 
-        public bool ShowFuzzyRects = false;
+        public bool ShowFuzzyRects = false, EnableFading = false;
 
         public float FuzzyHitTestDistance = 24f;
         public float SlowPxPerSecond = 64f,

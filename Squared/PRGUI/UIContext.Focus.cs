@@ -16,7 +16,7 @@ namespace Squared.PRGUI {
             new Dictionary<Control, Control>(Control.Comparer.Instance);
 
         private HashSet<Control> FocusSearchHistory = new HashSet<Control>();
-        private (Control value, bool force, bool isUserInitiated, bool? suppressAnimations) QueuedFocus;
+        private (Control value, bool force, bool isUserInitiated, bool? suppressAnimations, bool overrideKeyboardSelection) QueuedFocus;
 
         private void AutomaticallyTransferFocusOnTopLevelChange (Control target) {
             if (target.AcceptsFocus)
@@ -247,10 +247,11 @@ namespace Squared.PRGUI {
             Control value, 
             bool force = false, 
             bool isUserInitiated = true,
-            bool? suppressAnimations = null
+            bool? suppressAnimations = null,
+            bool overrideKeyboardSelection = false
         ) {
             var result = QueuedFocus.value;
-            QueuedFocus = (value, force, isUserInitiated, suppressAnimations);
+            QueuedFocus = (value, force, isUserInitiated, suppressAnimations, overrideKeyboardSelection);
             return result;
         }
 
@@ -263,10 +264,11 @@ namespace Squared.PRGUI {
             Control value, 
             bool force = false, 
             bool isUserInitiated = true,
-            bool? suppressAnimations = null
+            bool? suppressAnimations = null,
+            bool overrideKeyboardSelection = false
         ) {
-            if (!TrySetFocus(value, force, isUserInitiated, suppressAnimations)) {
-                QueueFocus(value, force, isUserInitiated, suppressAnimations);
+            if (!TrySetFocus(value, force, isUserInitiated, suppressAnimations, overrideKeyboardSelection)) {
+                QueueFocus(value, force, isUserInitiated, suppressAnimations, overrideKeyboardSelection);
                 return false;
             }
             return true;
@@ -280,7 +282,8 @@ namespace Squared.PRGUI {
             Control value, 
             bool force = false, 
             bool isUserInitiated = true,
-            bool? suppressAnimations = null
+            bool? suppressAnimations = null,
+            bool overrideKeyboardSelection = false
         ) {
             var newFocusTarget = value;
 
@@ -429,6 +432,8 @@ namespace Squared.PRGUI {
             if ((_Focused != null) && (previous != newFocusTarget) && (_Focused == newFocusTarget))
                 FireEvent(UIEvents.GotFocus, newFocusTarget, previous);
 
+            if (overrideKeyboardSelection)
+                OverrideKeyboardSelection(_Focused, isUserInitiated);
             return true;
         }
 

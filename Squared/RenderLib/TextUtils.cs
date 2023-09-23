@@ -910,6 +910,8 @@ namespace Squared.Render.Text {
         /// Copies all of source's configuration
         /// </summary>
         public void Copy (DynamicStringLayout source) {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
             this.Alignment = source.Alignment;
             this.AlignToPixels = source.AlignToPixels;
             this.CharacterLimit = source.CharacterLimit;
