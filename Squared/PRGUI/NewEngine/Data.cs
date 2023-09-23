@@ -310,7 +310,8 @@ namespace Squared.PRGUI.NewEngine {
         
         internal void GetAlignmentF (
             float runXAlign, float runYAlign, 
-            out float xAlign, out float yAlign
+            out float xAlign, out float yAlign,
+            bool stacked
         ) {
             switch (_BoxFlags & BoxFlag.Fill_Row) {
                 case BoxFlag.Anchor_Left:
@@ -321,7 +322,7 @@ namespace Squared.PRGUI.NewEngine {
                     break;
                 case BoxFlag.Fill_Row:
                     // HACK: Flush menu items left
-                    xAlign = runXAlign;
+                    xAlign = stacked ? 0.5f : runXAlign;
                     break;
                 default:
                     xAlign = 0.5f;
@@ -336,7 +337,7 @@ namespace Squared.PRGUI.NewEngine {
                     yAlign = 1f;
                     break;
                 case BoxFlag.Fill_Column:
-                    yAlign = runYAlign;
+                    yAlign = stacked ? 0.5f : runYAlign;
                     break;
                 default:
                     yAlign = 0.5f;

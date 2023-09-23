@@ -135,10 +135,11 @@ namespace Squared.PRGUI.NewEngine {
             ref readonly var childConfig = ref child.Config;
             var childMargins = child.Margins;
             var childOuterSize = childResult.Rect.Size + childMargins.Size;
+            var stackedOrFloating = childConfig.IsStackedOrFloating;
 
-            childConfig.GetAlignmentF(xAlign, yAlign, out float xChildAlign, out float yChildAlign);
+            childConfig.GetAlignmentF(xAlign, yAlign, out float xChildAlign, out float yChildAlign, stackedOrFloating);
 
-            if (childConfig.IsStackedOrFloating) {
+            if (stackedOrFloating) {
                 if (childConfig.IsFloating) {
                     childResult.Rect.Position = contentPosition + (child.FloatingPosition ?? Vector2.Zero) + child.Margins.TopLeft;
                     childResult.AvailableSpace = contentExtent - childResult.Rect.Position - new Vector2(childMargins.Right, childMargins.Bottom);

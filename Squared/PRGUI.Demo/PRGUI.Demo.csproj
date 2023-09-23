@@ -45,9 +45,6 @@
     <Reference Include="mscorlib">
       <Private>False</Private>
     </Reference>
-    <Reference Include="SharpFont, Version=4.0.1.200, Culture=neutral, PublicKeyToken=48add4c483071cdf, processorArchitecture=MSIL">
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System">
       <Private>False</Private>
     </Reference>
@@ -79,6 +76,10 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Ext\SharpFontFork\Source\SharpFont\SharpFont.csproj">
+      <Project>{ecd55e3b-1139-4f0d-af63-3f471aaf6e91}</Project>
+      <Name>SharpFont</Name>
+    </ProjectReference>
     <ProjectReference Include="..\PRGUI\PRGUI.csproj">
       <Project>{36463aee-e309-43a6-bcfa-a69944390aa7}</Project>
       <Name>PRGUI</Name>
