@@ -998,12 +998,9 @@ namespace Squared.Render.Text {
                 StringLayoutEngine le;
                 var rls = default(RichTextLayoutState);
                 MakeLayoutEngine(out le);
-                if (_RichMarkers != null)
-                    _RichMarkers.Clear();
-                if (_Boxes != null)
-                    _Boxes.Clear();
-                if (_Dependencies != null)
-                    _Dependencies.Clear();
+                _RichMarkers?.Clear();
+                _Boxes?.Clear();
+                _Dependencies?.Clear();
 
                 try {
                     le.Initialize();
@@ -1038,7 +1035,7 @@ namespace Squared.Render.Text {
                     _CachedGlyphVersion = glyphSource.Version;
                     _CachedStringLayout = le.Finish();
 
-                    if (le.Markers.Count > 0) {
+                    if (!GetFlag(InternalFlags.DisableMarkers) && (le.Markers.Count > 0)) {
                         var m = GetMarkers();
                         foreach (var kvp in le.Markers) {
                             if ((rls.MarkedStrings != null) && (rls.MarkedStrings.Count > 0) && (kvp.MarkedString != default)) {

@@ -381,6 +381,9 @@ namespace Squared.PRGUI.Input {
             Deadzone = 0.1f;
         public float? FixedTimeStep = null;
 
+        // Force feedback
+        public Tween<float> LeftMotor, RightMotor;
+
         private InputBindings _Bindings = InputBindings.Default;
         public InputBindings Bindings {
             get => _Bindings;
@@ -503,6 +506,10 @@ namespace Squared.PRGUI.Input {
 
         public void Update (ref InputState previous, ref InputState current) {
             PreviousState = CurrentState;
+
+            GamePad.SetVibration(
+                PlayerIndex, LeftMotor.Get(Context.NowL), RightMotor.Get(Context.NowL)
+            );
 
             // If we're not the priority input source, we should just sync our unsnapped position with the cursor
             var isPriority = Context.IsPriorityInputSource(this);

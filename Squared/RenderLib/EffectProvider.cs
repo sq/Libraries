@@ -26,7 +26,7 @@ namespace Squared.Render.Resources {
 
         public readonly List<Entry> Entries = new List<Entry>();
 
-        public EffectManifest (Stream stream) {
+        public EffectManifest (Stream stream, bool includeFxcParams = false) {
             using (var reader = new IniReader(stream, false)) {
                 Entry entry = null;
                 foreach (var line in reader) {
@@ -36,6 +36,8 @@ namespace Squared.Render.Resources {
                             Entries.Add(entry);
                             break;
                         case IniLineType.Value:
+                            if (!includeFxcParams && line.Key.Equals("FxcParams", StringComparison.OrdinalIgnoreCase))
+                                continue;
                             entry.Dict[line.Key] = line.Value;
                             break;
                     }

@@ -80,7 +80,7 @@ namespace Squared.Util {
             }
         }
 
-        public static int DefaultSize = 128;
+        public static int DefaultSize = 16;
 
         /// <summary>
         /// This value will be incremented every time the underlying buffer is re-allocated
