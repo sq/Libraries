@@ -171,7 +171,7 @@ namespace Squared.PRGUI {
         /// <param name="hasOpacity">The control's opacity is not 1.0</param>
         /// <param name="hasTransform">The control has a transform matrix</param>
         protected virtual bool NeedsComposition (bool hasOpacity, bool hasTransform) {            
-            return hasOpacity || hasTransform || (Appearance.CompositeMaterial != null) || Appearance.Overlay;
+            return hasOpacity || hasTransform || (Appearance.CompositeMaterial != null);
         }
 
         /// <summary>

@@ -33,7 +33,6 @@ namespace Squared.PRGUI {
 
         private bool WasBackgroundFaded = false;
         private Tween<float> BackgroundFadeTween = new Tween<float>(0f);
-        private UnorderedList<BitmapDrawCall> OverlayQueue = new UnorderedList<BitmapDrawCall>();
 
         private List<ScratchRenderTarget> TopoSortTable = new List<ScratchRenderTarget>();
 
@@ -91,15 +90,6 @@ namespace Squared.PRGUI {
                 result = f(result, tex);
             }
             return result;
-        }
-
-        private void FlushOverlayQueue (ref ImperativeRenderer renderer) {
-            foreach (var dc in OverlayQueue) {
-                renderer.Draw(dc);
-                renderer.Layer += 1;
-            }
-
-            OverlayQueue.Clear();
         }
 
         internal ScratchRenderTarget GetScratchRenderTarget (BatchGroup prepass, ref RectF rectangle) {
@@ -259,8 +249,6 @@ namespace Squared.PRGUI {
 
                 var topLevelHovering = FindTopLevelAncestor(Hovering);
 
-                OverlayQueue.Clear();
-
                 context.Prepass = prepassContainer;
                 var renderer = new ImperativeRenderer(container, Materials) {
                     BlendState = BlendState.AlphaBlend,
@@ -288,8 +276,6 @@ namespace Squared.PRGUI {
                     }
 
                     var m = control as IModal;
-                    if ((m != null) && ModalStack.Contains(m))
-                        FlushOverlayQueue(ref renderer);
 
                     // When the accelerator overlay is visible, fade out any top-level controls
                     //  that cover the currently focused top-level control so that the user can see
@@ -322,14 +308,12 @@ namespace Squared.PRGUI {
                         : 1.0f;
                     // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
                     //  overlap each other, at the cost of more draw calls.
-                    var passSet = new RasterizePassSet(ref renderer, control, 0, OverlayQueue);
+                    var passSet = new RasterizePassSet(ref renderer, control, 0);
                     passSet.Below.DepthStencilState =
                         passSet.Content.DepthStencilState =
                         passSet.Above.DepthStencilState = DepthStencilState.None;
                     control.Rasterize(ref context, ref passSet, opacityModifier);
                 }
-
-                FlushOverlayQueue(ref renderer);
 
                 LastPassCount = prepassContainer.Count + 1;
 
@@ -502,7 +486,6 @@ namespace Squared.PRGUI {
 
     public struct RasterizePassSet {
         public ImperativeRenderer Below, Content, Above;
-        public UnorderedList<BitmapDrawCall> OverlayQueue;
         public int StackDepth;
 
         public RasterizePassSet (ref RasterizePassSet parent, Control control, ViewTransformModifier viewTransformModifier) {
@@ -510,27 +493,24 @@ namespace Squared.PRGUI {
             parent.Content.MakeSubgroup(out Content, name: "Content {userData} (Nested)", userData: control);
             parent.Above.MakeSubgroup(out Above, name: "Above {userData} (Nested)", userData: control);
             StackDepth = parent.StackDepth + 1;
-            OverlayQueue = parent.OverlayQueue;
             ((BatchGroup)Below.Container).SetViewTransform(viewTransformModifier);
             ((BatchGroup)Content.Container).SetViewTransform(viewTransformModifier);
             ((BatchGroup)Above.Container).SetViewTransform(viewTransformModifier);
         }
 
-        public RasterizePassSet (ref ImperativeRenderer container, Control control, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue) {
+        public RasterizePassSet (ref ImperativeRenderer container, Control control, int stackDepth) {
             // FIXME: Order them?
             container.MakeSubgroup(out Below, name: "Below {userData}", userData: control);
             container.MakeSubgroup(out Content, name: "Content {userData}", userData: control);
             container.MakeSubgroup(out Above, name: "Above {userData}", userData: control);
             StackDepth = stackDepth;
-            OverlayQueue = overlayQueue;
         }
 
-        public RasterizePassSet (ref ImperativeRenderer container, Control control, int stackDepth, UnorderedList<BitmapDrawCall> overlayQueue, ref int layer) {
+        public RasterizePassSet (ref ImperativeRenderer container, Control control, int stackDepth, ref int layer) {
             container.MakeSubgroup(out Below, name: "Below {userData}", layer: layer, userData: control);
             container.MakeSubgroup(out Content, name: "Content {userData}", layer: layer + 1, userData: control);
             container.MakeSubgroup(out Above, name: "Above {userData}", layer: layer + 2, userData: control);
             StackDepth = stackDepth;
-            OverlayQueue = overlayQueue;
             layer = layer + 3;
         }
     }

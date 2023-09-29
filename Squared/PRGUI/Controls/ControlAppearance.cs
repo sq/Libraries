@@ -240,16 +240,6 @@ namespace Squared.PRGUI {
         }
 
         /// <summary>
-        /// Suppresses clipping of the control and causes it to be rendered above everything
-        ///  up until the next modal. You can use this to highlight the control responsible for
-        ///  summoning a modal.
-        /// </summary>
-        public bool Overlay {
-            get => GetAppearanceFlag(AppearanceFlags.Overlay);
-            set => SetAppearanceFlag(AppearanceFlags.Overlay, value);
-        }
-
-        /// <summary>
         /// Forces the Decorator to be None
         /// </summary>
         public bool Undecorated {

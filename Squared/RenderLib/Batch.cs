@@ -240,6 +240,24 @@ namespace Squared.Render {
 #endif
 
         /// <summary>
+        /// Debugging property that renders the nesting hierarchy that leads to this batch
+        /// </summary>
+        public string Hierarchy {
+            get {
+                var sb = new StringBuilder();
+                var b = this;
+                while (b != null) {
+                    if (sb.Length > 0)
+                        sb.Append(" <- ");
+                    sb.Append(b.ToString());
+                    b = b.Container as Batch;
+                }
+                return sb.ToString();
+            }
+        }
+
+
+        /// <summary>
         /// You can manually generate different values for this in order to automatically sort specific batches against each other
         /// For example, a depth pre-pass.
         /// </summary>

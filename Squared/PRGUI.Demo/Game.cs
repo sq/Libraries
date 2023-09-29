@@ -1471,9 +1471,7 @@ namespace PRGUI.Demo {
                 ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap | ControlFlags.Container_Row,
             };
             var fUsername = (dialog).Show(Context, LoginButton);
-            LoginButton.Appearance.Overlay = true;
             fUsername.RegisterOnComplete((f) => {
-                LoginButton.Appearance.Overlay = false;
                 Console.WriteLine(
                     (f.Result != null)
                         ? "Login with username " + fUsername.Result

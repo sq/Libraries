@@ -389,6 +389,13 @@ namespace Squared.PRGUI.Controls {
             RasterizeChildrenInOrder(ref context, ref passSet);
         }
 
+        internal static ref RasterizePassSet PickPassSet (bool cond, ref RasterizePassSet t, ref RasterizePassSet f) {
+            if (cond)
+                return ref t;
+            else
+                return ref f;
+        }
+
         protected virtual void RasterizeChildrenInOrder (
             ref UIOperationContext context, ref RasterizePassSet passSet
         ) {
@@ -396,12 +403,10 @@ namespace Squared.PRGUI.Controls {
             if (sequence.Count <= 0)
                 return;
 
+            int firstSplitPlaneLayer = passSet.Content.Layer;
             int layerB = passSet.Below.Layer,
                 layerC = passSet.Content.Layer,
-                layerA = passSet.Above.Layer,
-                maxB = layerB,
-                maxC = layerC,
-                maxA = layerA;
+                layerA = passSet.Above.Layer;
 
 #if !NOSPAN
             RasterizePassSet currentLayerContext;
@@ -410,8 +415,11 @@ namespace Squared.PRGUI.Controls {
             var currentLayerContext = default(RasterizePassSet);
 #endif
             
-            var currentContextOrder = range.Min;
+            var currentContextOrder = int.MinValue;
             var hasSplitPlane = false;
+            // FIXME: In rare circumstances a container could try to paint overlay content into its Above pass,
+            //  but that content would inconsistently cover children's Above passes depending on whether this
+            //  per-layer-context mode is true or not
             var isUsingPerLayerContext = (range.Min != range.Max);
 
             foreach (var item in sequence) {
@@ -421,30 +429,33 @@ namespace Squared.PRGUI.Controls {
 
                 if (
                     isUsingPerLayerContext && 
-                    // HACK: We only want to perform a plane split after we finish with the initial layer (displayorder = min),
-                    //  so that the vast majority of controls on that layer can all share their below/content/above groups and
-                    //  get efficient batching between neighbors.
-                    (currentContextOrder != item.DisplayOrder)
+                    (currentContextOrder != item.DisplayOrder) ||
+                    // HACK: If we are ever going to split a plane, we need to split once right away at the start.
+                    // This ensures that the 'above' layer of a control with DisplayOrder 0 cannot paint over the 
+                    //  'above' layer of a control with DisplayOrder 1. The old behavior (only splitting after the
+                    //  first plane is done) would have placed the split entirely in the Content layer, below the
+                    //  Above content of the first layer.
+                    !hasSplitPlane
                 ) {
-                    var newBaseLayer = ++maxC;
-                    currentLayerContext = new RasterizePassSet(ref passSet.Content, this, passSet.StackDepth, passSet.OverlayQueue, ref newBaseLayer);
-                    maxC = newBaseLayer;
-                    // FIXME: Update .Content layer?
+                    var newBaseLayer = firstSplitPlaneLayer++;
+                    // FIXME: In the case where we have a nested hierarchy like:
+                    // A { B { C D } E { F G } }
+                    // we want to put B+E in the same contexts, along with putting C+F and D+G into the same contexts
+                    // this would require us to find the batch containers we generated for C/D when constructing them for F and G.
+                    // FIXME: Should we use the constructor that nests the new Below/Content/Above inside of the outer
+                    //  Below/Content/Above?
+                    currentLayerContext = new RasterizePassSet(ref passSet.Content, this, passSet.StackDepth, ref newBaseLayer);
                     currentContextOrder = item.DisplayOrder;
                     hasSplitPlane = true;
+                    layerB = layerC = layerA = 0;
                 }
 
-                if (hasSplitPlane) {
-                    RasterizeChild(ref context, item, ref currentLayerContext);
-                } else {
-                    passSet.Below.Layer = layerB;
-                    passSet.Content.Layer = layerC;
-                    passSet.Above.Layer = layerA;
-                    RasterizeChild(ref context, item, ref passSet);
-                    maxB = Math.Max(maxB, passSet.Below.Layer);
-                    maxC = Math.Max(maxC, passSet.Content.Layer);
-                    maxA = Math.Max(maxA, passSet.Above.Layer);
-                }
+                ref var targetPassSet = ref PickPassSet(hasSplitPlane, ref currentLayerContext, ref passSet);
+
+                targetPassSet.Below.Layer = layerB;
+                targetPassSet.Content.Layer = layerC;
+                targetPassSet.Above.Layer = layerA;
+                RasterizeChild(ref context, item, ref targetPassSet);
             }
         }
 

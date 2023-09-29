@@ -171,13 +171,13 @@ namespace Squared.PRGUI {
             if (ShouldClipContent) {
                 newStackDepth = previousStackDepth + 1;
                 contentRenderer.DepthStencilState = context.UIContext.GetStencilTest(newStackDepth);
-                childrenPassSet = new RasterizePassSet(ref contentRenderer, this, newStackDepth, passSet.OverlayQueue);
+                childrenPassSet = new RasterizePassSet(ref contentRenderer, this, newStackDepth);
             } else {
                 contentRenderer.DepthStencilState =
                     (previousStackDepth <= 0)
                     ? DepthStencilState.None
                     : context.UIContext.GetStencilTest(previousStackDepth);
-                childrenPassSet = new RasterizePassSet(ref contentRenderer, this, newStackDepth, passSet.OverlayQueue);
+                childrenPassSet = new RasterizePassSet(ref contentRenderer, this, newStackDepth);
             }
             renderer.Layer += 1;
         }
@@ -416,7 +416,7 @@ namespace Squared.PRGUI {
                 hidden = true;
 
             // Only visibility cull controls that have a parent and aren't overlaid.
-            if (isOutOfView && (WeakParent != null) && !Appearance.Overlay && !transformActive)
+            if (isOutOfView && (WeakParent != null) && !transformActive)
                 hidden = true;
 
             if (hidden) {
@@ -567,7 +567,7 @@ namespace Squared.PRGUI {
             compositionContext.Opacity = 1.0f;
             UpdateVisibleRegion(ref compositionContext, ref box);
 
-            var newPassSet = new RasterizePassSet(ref compositingRenderer, this, 0, passSet.OverlayQueue);
+            var newPassSet = new RasterizePassSet(ref compositingRenderer, this, 0);
             // newPassSet.Above.RasterizeEllipse(box.Center, Vector2.One * 6f, Color.White * 0.7f);
             RasterizeAllPasses(ref compositionContext, ref box, ref newPassSet, true);
             compositingRenderer.Layer += 1;
@@ -588,8 +588,6 @@ namespace Squared.PRGUI {
             if (Appearance.HasTransformMatrix || enableCompositor) {
                 GetMaterialAndBlendStateForCompositing(out _, out BlendState compositeBlendState);
                 RasterizeIntoPrepassComposited(ref passSet, ref compositeBox, ref dc, enableCompositor, effectiveOpacity, compositeBlendState);
-            } else if (Appearance.Overlay) {
-                passSet.OverlayQueue.Add(ref dc);
             } else {
                 GetMaterialAndBlendStateForCompositing(out Material compositeMaterial, out BlendState compositeBlendState);
                 passSet.Above.Draw(

@@ -1110,6 +1110,14 @@ namespace Squared.Render.Convenience {
                 copy.Cache.Count = 0;
         }
 
+        public void CloneInto (out ImperativeRenderer result, bool nextLayer = true) {
+            result = this;
+            PrepareCopyForUse(ref result, false);
+
+            if (nextLayer)
+                Layer += 1;
+        }
+
         public ImperativeRenderer Clone (bool nextLayer = true) {
             var result = this;
             PrepareCopyForUse(ref result, false);
