@@ -1070,7 +1070,8 @@ namespace Squared.Render {
         }
 
         internal void CleanupTextureCache () {
-            AbstractTextureReference.Cache.RemoveDeadEntries();
+            if (AbstractTextureReference.Cache.RemoveDeadEntries())
+                _TextureCache.RemoveDeadEntries();
         }
     }
 

@@ -325,7 +325,7 @@ namespace Squared.Render {
                     if (((int)vtf) < 32) {
                         lock (coordinator.CreateResourceLock) {
                             tempTexture = new Texture2D(deviceManager.Device, 1, 1, false, vtf);
-                            coordinator.AutoAllocatedTextureResources.Add(tempTexture);
+                            coordinator.RegisterAutoAllocatedTextureResource(tempTexture);
                         }
                         deviceManager.Device.VertexSamplerStates[i] = SamplerState.PointClamp;
                     } else {

@@ -46,6 +46,19 @@ namespace Squared.Threading {
 
                 return ReferenceEquals(o1, o2);
             }
+
+            public override int GetHashCode () {
+                return HashCode;
+            }
+
+            public override string ToString () {
+                if (Weak == null)
+                    return "default";
+                else if (Weak.TryGetTarget(out var o))
+                    return o.ToString ();
+                else
+                    return string.Concat("dead ", HashCode.ToString());
+            }
         }
         
         public sealed class Table {
@@ -139,14 +152,18 @@ namespace Squared.Threading {
             return new Table(Comparer);
         }
 
-        public void RemoveDeadEntries () {
+        public bool RemoveDeadEntries () {
             SharedCacheLock.EnterWriteLock();
-            var removed = SharedCache.RemoveDeadEntries();
-            if (removed > 0) {
-                foreach (var table in LocalCache.Values)
-                    table.RemoveDeadEntries();
+            try {
+                var removed = SharedCache.RemoveDeadEntries();
+                if (removed > 0) {
+                    foreach (var table in LocalCache.Values)
+                        table.RemoveDeadEntries();
+                }
+                return removed > 0;
+            } finally {
+                SharedCacheLock.ExitWriteLock();
             }
-            SharedCacheLock.ExitWriteLock();
         }
 
         /// <summary>
@@ -260,6 +277,10 @@ namespace Squared.Threading {
                 return null;
         }
 
+        public bool RemoveDeadEntries () {
+            return Table.RemoveDeadEntries() > 0;
+        }
+
         public bool TryGetValue (Id id, out TObject result) {
             if (id <= 0) {
                 result = null;
@@ -291,8 +312,8 @@ namespace Squared.Threading {
             Cache = new LocallyReplicatedCache();
         }
 
-        public void RemoveDeadEntries () {
-            Cache.RemoveDeadEntries();
+        public bool RemoveDeadEntries () {
+            return Cache.RemoveDeadEntries();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

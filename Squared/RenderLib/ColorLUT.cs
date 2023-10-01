@@ -182,7 +182,7 @@ namespace Squared.Render {
                 else
                     tex = new Texture2D(coordinator.Device, width, height, false, surfaceFormat);
                 tex.Tag = $"ColorLUT";
-                coordinator.AutoAllocatedTextureResources.Add(tex);
+                coordinator.RegisterAutoAllocatedTextureResource(tex);
             }
 
             var _matrix = colorMatrix.HasValue ? colorMatrix.Value : default(Matrix);

@@ -83,7 +83,7 @@ namespace Squared.Render {
                 ) {
                     Name = $"AutoRenderTarget {GetHashCode().ToString("X8")}"
                 };
-                Coordinator.AutoAllocatedTextureResources.Add(result);
+                Coordinator.RegisterAutoAllocatedTextureResource(result);
                 return result;
             }
         }
@@ -208,10 +208,6 @@ namespace Squared.Render {
         }
 
         protected override void OnDispose () {
-            // FIXME: Why is this necessary?
-            lock (Coordinator.CreateResourceLock)
-                Coordinator.AutoAllocatedTextureResources.Remove(CurrentInstance);
-
             if (IsInstanceValid)
                 Coordinator.DisposeResource(CurrentInstance);
         }

@@ -204,7 +204,7 @@ namespace Squared.Render {
                     Name = $"Atlas<{typeof(T).Name}> {Tag ?? GetHashCode().ToString("X8")}",
                     Tag = Tag,
                 };
-                Coordinator.AutoAllocatedTextureResources.Add(Texture);
+                Coordinator.RegisterAutoAllocatedTextureResource(Texture);
             }
         }
 

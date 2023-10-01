@@ -124,6 +124,7 @@ namespace Squared.Render {
         private readonly Func<bool> _SyncBeginDraw;
         private readonly Action _SyncEndDraw;
         private readonly Action<Frame> _ThreadedDraw;
+        private readonly EventHandler<EventArgs> _OnAutoAllocatedTextureDisposed;
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
         private readonly ManualResetEvent _SynchronousDrawFinishedSignal = new ManualResetEvent(true);
 
@@ -182,7 +183,7 @@ namespace Squared.Render {
 
         public string GraphicsBackendName { get; private set; }
 
-        public readonly HashSet<Texture2D> AutoAllocatedTextureResources = 
+        private readonly HashSet<Texture2D> AutoAllocatedTextureResources = 
             new HashSet<Texture2D>(ReferenceComparer<Texture2D>.Instance);
 
         internal void LogPrint (string text) {
@@ -261,6 +262,7 @@ namespace Squared.Render {
             _SyncBeginDraw = synchronousBeginDraw;
             _SyncEndDraw = synchronousEndDraw;
             _ThreadedDraw = ThreadedDraw;
+            _OnAutoAllocatedTextureDisposed = OnAutoAllocatedTextureDisposed;
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
@@ -288,6 +290,7 @@ namespace Squared.Render {
             _SyncBeginDraw = synchronousBeginDraw ?? DefaultBeginDraw;
             _SyncEndDraw = synchronousEndDraw ?? DefaultEndDraw;
             _ThreadedDraw = ThreadedDraw;
+            _OnAutoAllocatedTextureDisposed = OnAutoAllocatedTextureDisposed;
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
@@ -297,6 +300,33 @@ namespace Squared.Render {
             deviceService.DeviceCreated += DeviceService_DeviceCreated;
             for (int i = 0; i < Stopwatches.Length; i++)
                 Stopwatches[i] = new Stopwatch();
+        }
+
+        private void OnAutoAllocatedTextureDisposed (object sender, EventArgs e) {
+            if (sender is Texture2D tex)
+                lock (AutoAllocatedTextureResources)
+                    AutoAllocatedTextureResources.Remove(tex);
+        }
+
+        public void RegisterAutoAllocatedTextureResource (Texture2D texture) {
+            lock (AutoAllocatedTextureResources)
+                AutoAllocatedTextureResources.Add(texture);
+
+            texture.Disposing += _OnAutoAllocatedTextureDisposed;
+        }
+
+        public void ForEachAutoAllocatedTextureResource (Action<Texture2D> callback) {
+            lock (AutoAllocatedTextureResources)
+                foreach (var tex in AutoAllocatedTextureResources)
+                    if (tex?.IsDisposed == false)
+                        callback(tex);
+        }
+
+        public void ForEachAutoAllocatedTextureResource (Action<Texture2D, object> callback, object userData) {
+            lock (AutoAllocatedTextureResources)
+                foreach (var tex in AutoAllocatedTextureResources)
+                    if (tex?.IsDisposed == false)
+                        callback(tex, userData);
         }
 
         private void UpdateGraphicsBackend (GraphicsDevice device) {
@@ -1230,24 +1260,12 @@ namespace Squared.Render {
             }
         }
 
-        private List<Texture2D> _AutoAllocatedFlushList = new List<Texture2D>();
-
         private void FlushPendingDisposes () {
             lock (UseResourceLock)
             lock (CreateResourceLock) {
                 FlushDisposeList(_PendingDisposes, ref IsDisposingResources);
 
                 Manager.FlushPendingDisposes();
-
-                // Purge dead textures from the auto-allocated list.
-                // This allows their object references to get GCed and finalized,
-                //  since otherwise they can pile up in the list
-                foreach (var tex in AutoAllocatedTextureResources)
-                    if (tex?.IsDisposed == true)
-                        _AutoAllocatedFlushList.Add(tex);
-                foreach (var tex in _AutoAllocatedFlushList)
-                    AutoAllocatedTextureResources.Remove(tex);
-                _AutoAllocatedFlushList.Clear();
             }
         }
 

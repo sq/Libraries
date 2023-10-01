@@ -297,7 +297,7 @@ namespace Squared.Render.STB {
                     Tag = "STB.Image",
                     Name = name,
                 };
-                coordinator.AutoAllocatedTextureResources.Add(result);
+                coordinator.RegisterAutoAllocatedTextureResource(result);
             }
 
             if (MipChain != null)
@@ -322,7 +322,7 @@ namespace Squared.Render.STB {
                     Tag = "STB.Image",
                     Name = name,
                 };
-                coordinator.AutoAllocatedTextureResources.Add(tex);
+                coordinator.RegisterAutoAllocatedTextureResource(tex);
             }
 
             Future<Texture2D> result;

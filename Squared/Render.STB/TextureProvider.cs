@@ -55,6 +55,7 @@ namespace Squared.Render {
         private readonly ConditionalWeakTable<Texture2D, Texture2D> DistanceFields = 
             new ConditionalWeakTable<Texture2D, Texture2D>();
 
+        private EventHandler<EventArgs> OnTextureWithDistanceFieldDisposed;
         private OnFutureResolvedWithData _DisposeHandler, _GenerateDistanceFieldThenDispose;
 
         new public TextureLoadOptions DefaultOptions {
@@ -79,6 +80,7 @@ namespace Squared.Render {
         ) {
             _DisposeHandler = DisposeHandler;
             _GenerateDistanceFieldThenDispose = GenerateDistanceFieldThenDispose;
+            OnTextureWithDistanceFieldDisposed = _OnTextureWithDistanceFieldDisposed;
         }
 
         public Texture2D Load (string name, TextureLoadOptions options, bool cached = true, bool optional = false) {
@@ -225,8 +227,14 @@ namespace Squared.Render {
         }
 
         public void SetDistanceField (Texture2D texture, Texture2D distanceField) {
+            texture.Disposing += OnTextureWithDistanceFieldDisposed;
             lock (DistanceFields)
                 DistanceFields.Add(texture, distanceField);
+        }
+
+        private void _OnTextureWithDistanceFieldDisposed (object sender, EventArgs e) {
+            if (sender is Texture2D tex)
+                DisposeDistanceField(tex);
         }
 
         public override void AddAllInstancesTo (ICollection<Texture2D> result) {
