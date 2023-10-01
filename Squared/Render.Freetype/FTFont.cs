@@ -390,9 +390,6 @@ namespace Squared.Render.Text {
             }
 
             private bool PopulateGlyphCache (uint ch, out Glyph glyph, Color? defaultColor) {
-                var resolution = (uint)(BaseDPI * Font.DPIPercent / 100);
-                var size = Font.GetFTSize(_SizePoints, resolution);
-
                 uint index;
 
                 if (ch == '\t')
@@ -404,6 +401,9 @@ namespace Squared.Render.Text {
                     glyph = default(Glyph);
                     return false;
                 }
+
+                var resolution = (uint)(BaseDPI * Font.DPIPercent / 100);
+                var size = Font.GetFTSize(_SizePoints, resolution);
 
                 LoadFlags flags = default;
                 if (!Font.EnableBitmaps)
@@ -575,6 +575,8 @@ namespace Squared.Render.Text {
                 (_CachedResolution != resolution) ||
                 (_CachedFace != Face)
             ) {
+                _CachedSize?.Dispose();
+
                 Face.SetCharSize(0, sizePoints, resolution, resolution);
                 _CachedSizePoints = sizePoints;
                 _CachedResolution = resolution;
@@ -812,6 +814,8 @@ namespace Squared.Render.Text {
                 return;
 
             IsDisposed = true;
+
+            _CachedSize?.Dispose();
 
             foreach (var size in Sizes)
                 size.Dispose();
