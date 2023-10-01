@@ -182,7 +182,8 @@ namespace Squared.Render {
 
         public string GraphicsBackendName { get; private set; }
 
-        public readonly HashSet<Texture2D> AutoAllocatedTextureResources = new HashSet<Texture2D>(new ReferenceComparer<Texture2D>());
+        public readonly HashSet<Texture2D> AutoAllocatedTextureResources = 
+            new HashSet<Texture2D>(ReferenceComparer<Texture2D>.Instance);
 
         internal void LogPrint (string text) {
             if (OnLogMessage != null)
@@ -1229,12 +1230,24 @@ namespace Squared.Render {
             }
         }
 
+        private List<Texture2D> _AutoAllocatedFlushList = new List<Texture2D>();
+
         private void FlushPendingDisposes () {
             lock (UseResourceLock)
             lock (CreateResourceLock) {
                 FlushDisposeList(_PendingDisposes, ref IsDisposingResources);
 
                 Manager.FlushPendingDisposes();
+
+                // Purge dead textures from the auto-allocated list.
+                // This allows their object references to get GCed and finalized,
+                //  since otherwise they can pile up in the list
+                foreach (var tex in AutoAllocatedTextureResources)
+                    if (tex?.IsDisposed == true)
+                        _AutoAllocatedFlushList.Add(tex);
+                foreach (var tex in _AutoAllocatedFlushList)
+                    AutoAllocatedTextureResources.Remove(tex);
+                _AutoAllocatedFlushList.Clear();
             }
         }
 

@@ -463,8 +463,11 @@ namespace Squared.PRGUI {
             UnhandledEvents.Clear();
 
             // We need to make sure we only exit after clearing lists like UnhandledEvents, otherwise we can leak memory.
-            if (!processEvents)
+            if (!processEvents) {
+                // This purges the InvalidFocusTargets dictionary, which prevents an unbounded memory leak while inactive
+                EnsureValidFocus();
                 return;
+            }
 
             var mousePosition = _CurrentInput.CursorPosition;
             var queuedFocus = QueuedFocus;

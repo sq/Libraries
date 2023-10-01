@@ -208,6 +208,10 @@ namespace Squared.Render {
         }
 
         protected override void OnDispose () {
+            // FIXME: Why is this necessary?
+            lock (Coordinator.CreateResourceLock)
+                Coordinator.AutoAllocatedTextureResources.Remove(CurrentInstance);
+
             if (IsInstanceValid)
                 Coordinator.DisposeResource(CurrentInstance);
         }
