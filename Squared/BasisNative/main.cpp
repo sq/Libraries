@@ -236,10 +236,12 @@ extern "C" {
         if (!pTranscoder)
             return;
 
-        if (pTranscoder->isKtx2)
+        if (pTranscoder->isKtx2) {
+            pTranscoder->pKtx2->clear();
             delete pTranscoder->pKtx2;
-        else
+        } else {
             delete pTranscoder->pBasis;
+        }
         delete pTranscoder;
     }
 }

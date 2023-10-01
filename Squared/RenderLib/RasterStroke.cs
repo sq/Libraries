@@ -549,7 +549,9 @@ namespace Squared.Render.RasterStroke {
 
             CachedNoiseTexture = null;
             lock (renderManager.CreateResourceLock)
-                result = new Texture2D(renderManager.DeviceManager.Device, NoiseTextureSize, NoiseTextureSize, false, SurfaceFormat.Vector4);
+                result = new Texture2D(renderManager.DeviceManager.Device, NoiseTextureSize, NoiseTextureSize, false, SurfaceFormat.Vector4) {
+                    Name = "RasterStrokeBatch.CachedNoiseTexture"
+                };
 
             // FIXME: Do this on a worker thread?
             var rng = new CoreCLR.Xoshiro(null);

@@ -38,7 +38,9 @@ namespace Squared.Render {
 
                 if ((Texture == null) || (Texture.Width < w) || (Texture.Height < h)) {
                     dm.DisposeResource(Texture);
-                    Texture = new Texture2D(dm.Device, w, h, false, SurfaceFormat.Vector4);
+                    Texture = new Texture2D(dm.Device, w, h, false, SurfaceFormat.Vector4) {
+                        Name = "PolygonBuffer",
+                    };
                     FlushRequired = true;
                 }
 
