@@ -201,7 +201,8 @@ namespace Squared.Render {
 
             lock (Coordinator.CreateResourceLock) {
                 Texture = new Texture2D(Coordinator.Device, Width, Height, GenerateMip != null, Format) {
-                    Tag = $"Atlas<{typeof(T).Name}> {Tag ?? GetHashCode().ToString("X8")}"
+                    Name = $"Atlas<{typeof(T).Name}> {Tag ?? GetHashCode().ToString("X8")}",
+                    Tag = Tag,
                 };
                 Coordinator.AutoAllocatedTextureResources.Add(Texture);
             }

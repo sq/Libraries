@@ -1068,6 +1068,10 @@ namespace Squared.Render {
         internal void UpdateTextureCache () {
             AbstractTextureReference.Cache.GetShareableSnapshot(ref _TextureCache);
         }
+
+        internal void CleanupTextureCache () {
+            AbstractTextureReference.Cache.RemoveDeadEntries();
+        }
     }
 
     public class BatchIssueFailedException : Exception {

@@ -285,8 +285,8 @@ namespace Squared.Render.Resources {
             }
         }
 
-        private List<ResourceLoadInfo> PendingLoads = new List<ResourceLoadInfo>(),
-            CompletedLoads = new List<ResourceLoadInfo>();
+        private List<ResourceLoadInfo> PendingLoads = new List<ResourceLoadInfo>();
+
         public int PendingLoadCount {
             get {
                 lock (PendingLoads)
@@ -365,8 +365,6 @@ namespace Squared.Render.Resources {
         internal void NotifyLoadCompleted (ResourceLoadInfo info, object resource) {
             lock (PendingLoads)
                 PendingLoads.Remove(info);
-            lock (CompletedLoads)
-                CompletedLoads.Add(info);
 
             info.FailureReason = null;
             if (info.SetStatus(ResourceLoadStatus.Finished, Now))

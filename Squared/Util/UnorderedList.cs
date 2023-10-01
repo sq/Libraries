@@ -182,6 +182,14 @@ namespace Squared.Util {
                 }
             }
 
+            public bool ReplaceCurrent (ref T newValue) {
+                if (_Index >= _Count)
+                    return false;
+
+                _List.DangerousSetItem(_Index + _Offset, ref newValue);
+                return false;
+            }
+
             public bool RemoveCurrentOrdered () {
                 if (_Index >= _Count)
                     return false;

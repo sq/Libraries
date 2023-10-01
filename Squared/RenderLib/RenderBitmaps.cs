@@ -665,29 +665,27 @@ namespace Squared.Render {
             }
         }
 
-        private void PerformNativeBatchTextureTransition (
+        private bool PerformNativeBatchTextureTransition (
             DeviceManager manager,
             ref NativeBatch nb, ref CurrentNativeBatchState cnbs,
             bool force, LocalObjectCache<object> textureCache
         ) {
-            var changedTextures = false;
             if (!nb.TextureSet.Equals(in cnbs.Textures) || force) {
-                changedTextures = true;
                 cnbs.Textures = nb.TextureSet;
                 var tex1 = nb.TextureSet.Texture1;
                 var tex2 = nb.TextureSet.Texture2;
 
-#if !FNA
-                cnbs.Texture1?.SetValue((Texture2D)null);
-#endif
-                if (tex1.IsInitialized)
-                    cnbs.Texture1?.SetValue(tex1.GetInstance(textureCache));
+                var instance1 = tex1.GetInstance(textureCache);
+                var instance2 = tex2.GetInstance(textureCache);
 
-#if !FNA
-                cnbs.Texture2?.SetValue((Texture2D)null);
-#endif
-                if (tex2.IsInitialized)
-                    cnbs.Texture2?.SetValue(tex2.GetInstance(textureCache));
+                if ((instance1?.IsDisposed == true) || (instance2?.IsDisposed == true)) {
+                    cnbs.Texture1?.SetValue((Texture2D)null);
+                    cnbs.Texture2?.SetValue((Texture2D)null);
+                    return false;
+                } else {
+                    cnbs.Texture1?.SetValue(instance1);
+                    cnbs.Texture2?.SetValue(instance2);
+                }
 
                 cnbs.Parameters.BitmapTextureSize?.SetValue(nb.Texture1Size);
                 cnbs.Parameters.BitmapTextureSize2?.SetValue(nb.Texture2Size);
@@ -703,6 +701,8 @@ namespace Squared.Render {
                 manager.Device.SamplerStates[0] = cnbs.SamplerState1;
             if (cnbs.SamplerState2 != null)
                 manager.Device.SamplerStates[1] = cnbs.SamplerState2;
+
+            return true;
         }
 
         private bool PerformNativeBatchTransition (
@@ -798,7 +798,9 @@ namespace Squared.Render {
                             ref var nb = ref _NativeBatches.Item(n);
 
                             var forceTextureTransition = PerformNativeBatchTransition(manager, ref nb, ref cnbs);
-                            PerformNativeBatchTextureTransition(manager, ref nb, ref cnbs, forceTextureTransition, textureCache);
+                            // If one or both of the textures are disposed/GCed this will return false, we should skip issuing this native batch if so
+                            if (!PerformNativeBatchTextureTransition(manager, ref nb, ref cnbs, forceTextureTransition, textureCache))
+                                continue;
 
                             var actualUseZBuffer = UseZBuffer;
 

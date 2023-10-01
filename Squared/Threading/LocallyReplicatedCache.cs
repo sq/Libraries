@@ -11,15 +11,52 @@ using Squared.Util;
 using Id = System.Int32;
 
 namespace Squared.Threading {
-    public sealed class LocallyReplicatedCache<TValue> {
-        public sealed class Table {
-            private UnorderedList<TValue> ValuesById;
-            private Dictionary<TValue, Id> IdsByValue;
+    public sealed class LocallyReplicatedCache {
+        public sealed class EntryComparer : IEqualityComparer<Entry> {
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool Equals (Entry x, Entry y) {
+                return x.Equals(y);
+            }
 
-            internal Table (IEqualityComparer<TValue> comparer) {
-                ValuesById = new UnorderedList<TValue>(1024);
-                ValuesById.Add(default(TValue));
-                IdsByValue = new Dictionary<TValue, Id>(comparer);
+            [TargetedPatchingOptOut("")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public int GetHashCode (Entry obj) {
+                return obj.HashCode;
+            }
+        }
+
+        public readonly struct Entry {
+            public readonly int HashCode;
+            public readonly WeakReference<object> Weak;
+
+            public Entry (object obj, int hashCode) {
+                HashCode = hashCode;
+                Weak = new WeakReference<object>(obj, false);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool Equals (Entry rhs) {
+                if (HashCode != rhs.HashCode)
+                    return false;
+
+                object o1 = null, o2 = null;
+                Weak?.TryGetTarget(out o1);
+                rhs.Weak?.TryGetTarget(out o2);
+
+                return ReferenceEquals(o1, o2);
+            }
+        }
+        
+        public sealed class Table {
+            private UnorderedList<Entry> ValuesById;
+            private Dictionary<Entry, Id> IdsByValue;
+
+            internal Table (EntryComparer comparer) {
+                ValuesById = new UnorderedList<Entry>(1024) {
+                    default
+                };
+                IdsByValue = new Dictionary<Entry, Id>(comparer);
             }
 
             public void ReplicateFrom (Table source) {
@@ -40,7 +77,7 @@ namespace Squared.Threading {
                 }
             }
 
-            public void Set (Id id, TValue value) {
+            public void Set (Id id, Entry value) {
                 var count = ValuesById.Count;
                 if (count == id) {
                     ValuesById.Add(value);
@@ -50,40 +87,66 @@ namespace Squared.Threading {
                 IdsByValue[value] = id;
             }
 
-            public TValue GetValue (Id id) {
+            public Entry GetValue (Id id) {
                 return ValuesById.DangerousGetItem(id);
             }
 
-            public bool TryGetValue (Id id, out TValue value) {
+            public bool TryGetValue (Id id, out Entry value) {
                 return ValuesById.DangerousTryGetItem(id, out value);
             }
 
-            public bool TryGetId (TValue value, out Id id) {
+            public bool TryGetId (Entry value, out Id id) {
                 return IdsByValue.TryGetValue(value, out id) && (id > 0);
+            }
+
+            internal int RemoveDeadEntries () {
+                var result = 0;
+                var dead = default(Entry);
+
+                using (var e = ValuesById.GetEnumerator())
+                while (e.GetNext(out var entry)) {
+                    // HACK: Preserve #0 == null
+                    if (entry.Weak == null)
+                        continue;
+
+                    if (entry.Weak.TryGetTarget(out _))
+                        continue;
+
+                    IdsByValue.Remove(entry);
+                    e.ReplaceCurrent(ref dead);
+                    result++;
+                }
+
+                return result;
             }
         }
 
         public int Count { get; private set; }
 
-        public readonly IEqualityComparer<TValue> Comparer;
-        private readonly Func<TValue, TValue> PrepareValueForStorage;
+        public readonly EntryComparer Comparer;
         private ReaderWriterLockSlim SharedCacheLock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
         private int NextId = 1;
         private Table SharedCache;
         private ThreadLocal<Table> LocalCache;
 
-        public LocallyReplicatedCache (
-            IEqualityComparer<TValue> comparer, 
-            Func<TValue, TValue> prepareValueForStorage
-        ) {
-            Comparer = comparer;
-            PrepareValueForStorage = prepareValueForStorage;
+        public LocallyReplicatedCache () {
+            Comparer = new EntryComparer();
             SharedCache = AllocateTable();
-            LocalCache = new ThreadLocal<Table>(AllocateTable);
+            LocalCache = new ThreadLocal<Table>(AllocateTable, true);
         }
 
         internal Table AllocateTable () {
             return new Table(Comparer);
+        }
+
+        public void RemoveDeadEntries () {
+            SharedCacheLock.EnterWriteLock();
+            var removed = SharedCache.RemoveDeadEntries();
+            if (removed > 0) {
+                foreach (var table in LocalCache.Values)
+                    table.RemoveDeadEntries();
+            }
+            SharedCacheLock.ExitWriteLock();
         }
 
         /// <summary>
@@ -100,7 +163,7 @@ namespace Squared.Threading {
             }
         }
 
-        public Id GetOrAssignId (TValue value) {
+        public Id GetOrAssignId (Entry value) {
             Id id;
             var lc = LocalCache.Value;
             if (lc.TryGetId(value, out id))
@@ -114,11 +177,10 @@ namespace Squared.Threading {
                 }
 
                 {
-                    var storageValue = PrepareValueForStorage(value);
                     try {
                         SharedCacheLock.EnterWriteLock();
                         id = NextId++;
-                        SharedCache.Set(id, storageValue);
+                        SharedCache.Set(id, value);
                         Count++;
                         lc.ReplicateFrom(SharedCache);
                     } finally {
@@ -132,7 +194,7 @@ namespace Squared.Threading {
             }
         }
 
-        public bool TryGetId (TValue value, out Id id) {
+        public bool TryGetId (Entry value, out Id id) {
             var lc = LocalCache.Value;
             if (!lc.TryGetId(value, out id)) {
                 try {
@@ -150,7 +212,7 @@ namespace Squared.Threading {
             return true;
         }
 
-        public bool TryGetValue (Id id, out TValue value) {
+        public bool TryGetValue (Id id, out Entry value) {
             var lc = LocalCache.Value;
             if (!lc.TryGetValue(id, out value)) {
                 try {
@@ -181,9 +243,9 @@ namespace Squared.Threading {
     public readonly struct LocalObjectCache<TObject>
         where TObject : class
     {
-        internal readonly LocallyReplicatedCache<LocallyReplicatedObjectCache<TObject>.Entry>.Table Table;
+        internal readonly LocallyReplicatedCache.Table Table;
 
-        internal LocalObjectCache (LocallyReplicatedCache<LocallyReplicatedObjectCache<TObject>.Entry>.Table table) {
+        internal LocalObjectCache (LocallyReplicatedCache.Table table) {
             Table = table;
         }
 
@@ -192,11 +254,10 @@ namespace Squared.Threading {
                 return null;
 
             var entry = Table.GetValue(id);
-            if (entry.Object != null)
-                return entry.Object;
-
-            entry.Weak.TryGetTarget(out var result);
-            return result;
+            if (entry.Weak?.TryGetTarget(out var result) == true)
+                return (TObject)result;
+            else
+                return null;
         }
 
         public bool TryGetValue (Id id, out TObject result) {
@@ -205,72 +266,33 @@ namespace Squared.Threading {
                 return true;
             }
 
-            LocallyReplicatedObjectCache<TObject>.Entry entry;
+            LocallyReplicatedCache.Entry entry;
             if (!Table.TryGetValue(id, out entry)) {
                 result = null;
                 return false;
             }
 
-            result = entry.Object;
-            if (result != null)
+            if (entry.Weak?.TryGetTarget(out var obj) == true) {
+                result = obj as TObject;
                 return true;
+            }
 
-            return entry.Weak.TryGetTarget(out result);
+            result = null;
+            return false;
         }
     }
 
     public sealed class LocallyReplicatedObjectCache<TObject>
         where TObject : class
     {
-        public sealed class EntryComparer : IEqualityComparer<Entry> {
-            [TargetedPatchingOptOut("")]
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool Equals (Entry x, Entry y) {
-                return x.Equals(y);
-            }
-
-            [TargetedPatchingOptOut("")]
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public int GetHashCode (Entry obj) {
-                return obj.HashCode;
-            }
-        }
-
-        public readonly struct Entry {
-            public readonly int HashCode;
-            public readonly WeakReference<TObject> Weak;
-            public readonly TObject Object;
-
-            public Entry (TObject obj, int hashCode, bool strong) {
-                HashCode = hashCode;
-                Object = strong ? obj : null;
-                Weak = strong ? null : new WeakReference<TObject>(obj, false);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool Equals (Entry rhs) {
-                if (HashCode != rhs.HashCode)
-                    return false;
-
-                TObject o1, o2;
-                if (Weak == null)
-                    o1 = Object;
-                else
-                    Weak.TryGetTarget(out o1);
-
-                if (rhs.Weak == null)
-                    o2 = rhs.Object;
-                else
-                    rhs.Weak.TryGetTarget(out o2);
-
-                return ReferenceEquals(o1, o2);
-            }
-        }
-
-        private LocallyReplicatedCache<Entry> Cache;
+        private LocallyReplicatedCache Cache;
 
         public LocallyReplicatedObjectCache () {
-            Cache = new LocallyReplicatedCache<Entry>(new EntryComparer(), PrepareValueForStorage_Impl);
+            Cache = new LocallyReplicatedCache();
+        }
+
+        public void RemoveDeadEntries () {
+            Cache.RemoveDeadEntries();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -292,13 +314,13 @@ namespace Squared.Threading {
             if (id <= 0)
                 return null;
 
-            if (!Cache.TryGetValue(id, out Entry entry))
+            if (!Cache.TryGetValue(id, out var entry))
                 return null;
 
-            if (entry.Object != null)
-                return entry.Object;
-            entry.Weak.TryGetTarget(out var result);
-            return result;
+            if (entry.Weak?.TryGetTarget(out var result) == true)
+                return (TObject)result;
+            else
+                return null;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -306,15 +328,8 @@ namespace Squared.Threading {
             if (obj == null)
                 return 0;
 
-            var key = new Entry(obj, obj.GetHashCode(), true);
+            var key = new LocallyReplicatedCache.Entry(obj, obj.GetHashCode());
             return Cache.GetOrAssignId(key);
-        }
-
-        private static Entry PrepareValueForStorage_Impl (Entry e) {
-            if (e.Object != null) {
-                return new Entry(e.Object, e.HashCode, false);
-            } else
-                return e;
         }
     }
 }

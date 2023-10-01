@@ -81,7 +81,7 @@ namespace Squared.Render {
                     PreferredFormat, PreferredDepthFormat,
                     PreferredMultiSampleCount, RenderTargetUsage.PreserveContents
                 ) {
-                    Tag = $"AutoRenderTarget {GetHashCode().ToString("X8")}"
+                    Name = $"AutoRenderTarget {GetHashCode().ToString("X8")}"
                 };
                 Coordinator.AutoAllocatedTextureResources.Add(result);
                 return result;

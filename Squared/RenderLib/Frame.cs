@@ -168,6 +168,8 @@ namespace Squared.Render {
 
             dm.Finish();
 
+            RenderManager.PrepareManager.CleanupTextureCache();
+
             if (Tracing.RenderTrace.EnableTracing)
                 Tracing.RenderTrace.ImmediateMarker(device, "Frame {0:0000} : End Draw", Index);
 
