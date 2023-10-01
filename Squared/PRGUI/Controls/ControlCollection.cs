@@ -125,11 +125,24 @@ namespace Squared.PRGUI {
             return Items.Count - 1;
         }
 
+        public bool TryAdd (Control control) => Add_Impl(control, false);
+
         public void Add (Control control) {
-            if (control == null)
-                throw new ArgumentNullException("control");
-            if (IndexTable.ContainsKey(control.ControlIndex))
-                throw new InvalidOperationException("Control already in collection");
+            Add_Impl(control, true);
+        }
+
+        private bool Add_Impl (Control control, bool throwOnFailure) {
+            if (control == null) {
+                if (throwOnFailure)
+                    throw new ArgumentNullException("control");
+                else
+                    return false;
+            } else if (IndexTable.ContainsKey(control.ControlIndex)) {
+                if (throwOnFailure)
+                    throw new InvalidOperationException("Control already in collection");
+                else
+                    return false;
+            }
 
             if (Host != null)
                 control.SetParent(WeakHost);
@@ -140,6 +153,7 @@ namespace Squared.PRGUI {
             Items.Add(control);
             IndexTable[control.ControlIndex] = newIndex;
             Invalidate();
+            return true;
         }
 
         private void UpdateIndexTable (int startIndex) {
