@@ -434,7 +434,7 @@ namespace Squared.Game {
         // FIXME: Optimize this
         static readonly Regex VectorRegex = new Regex(
             @"{\s*(X:)?\s*(?<x>[0-9,\-]*[0-9](.[0-9]+)?)\s*(Y:|,)?\s*(?<y>[0-9,\-]*[0-9](.[0-9]+)?)\s*((Z:|,)?\s*(?<z>[0-9,\-]*[0-9](.[0-9]+)?))?(\s*(W:|,)?\s*(?<w>[0-9,\-]*[0-9](.[0-9]+)?))?\s*}", 
-            RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase
+            RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase
         );
 
         static ThreadLocal<StringBuilder> VectorBuilders = new ThreadLocal<StringBuilder>(() => new StringBuilder());

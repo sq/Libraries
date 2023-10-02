@@ -166,11 +166,11 @@ namespace Squared.Render.Text {
         }
 
         public void ResetMarkersAndHitTests () {
-            if ((_Satellite != null) && (_Satellite.Markers.Count > 0)) {
+            if ((_Satellite?.Markers != null) && (_Satellite.Markers.Count > 0)) {
                 _Satellite.Markers.Clear();
                 Invalidate();
             }
-            if ((_Satellite != null) && (_Satellite.HitTests.Count > 0)) {
+            if ((_Satellite?.HitTests != null) && (_Satellite.HitTests.Count > 0)) {
                 _Satellite.HitTests.Clear();
                 Invalidate();
             }

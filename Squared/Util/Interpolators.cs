@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Threading;
@@ -20,20 +21,21 @@ namespace Squared.Util {
 
         public delegate T LinearFn (T a, T b, float x);
         public delegate T CosineFn (T a, T b, float x);
-        public delegate T CubicPFn (T a, T b, T c, T d);
-        public delegate T CubicRFn (T a, T b, T c, T d, T p, float x, float x2, float x3);
+        public delegate T CubicFn (T a, T b, T c, T d, float x);
         public delegate T HermiteFn (T a, T u, T d, T v, float t, float t2, float tSquared, float s, float s2, float sSquared);
 
         internal static LinearFn _Linear = null;
         internal static CosineFn _Cosine = null;
-        internal static CubicPFn _CubicP = null;
-        internal static CubicRFn _CubicR = null;
+        internal static CubicFn _Cubic = null;
         internal static HermiteFn _Hermite = null;
 
         static Interpolators () {
             FindPrecompiledExpressions(typeof(T));
             FindPrecompiledExpressions(typeof(DefaultInterpolators));
-            CompileNativeExpressions();
+            try {
+                CompileNativeExpressions();
+            } catch {
+            }
             CompileFallbackExpressions();
         }
 
@@ -61,11 +63,8 @@ namespace Squared.Util {
             if (_Cosine == null)
                 FindPrecompiledExpression(out _Cosine, type, "Cosine", basicSignature);
 
-            if (_CubicP == null)
-                FindPrecompiledExpression(out _CubicP, type, "CubicP", typeof(CubicPFn).GetMethod("Invoke").GetParameters().Select(p => p.ParameterType).ToArray());
-
-            if (_CubicR == null)
-                FindPrecompiledExpression(out _CubicR, type, "CubicR", typeof(CubicRFn).GetMethod("Invoke").GetParameters().Select(p => p.ParameterType).ToArray());
+            if (_Cubic == null)
+                FindPrecompiledExpression(out _Cubic, type, "Cubic", typeof(CubicFn).GetMethod("Invoke").GetParameters().Select(p => p.ParameterType).ToArray());
         }
 
         private static void CompileFallbackExpressions () {
@@ -91,15 +90,13 @@ namespace Squared.Util {
                     };
             }
 
-            if ((_CubicP == null) && (m_sub != null))
-                _CubicP = (a, b, c, d) => {
-                    return m_sub(m_sub(d, c), m_sub(a, b));
-                };
-
-            if ((_CubicR == null) && (m_add != null) &&
+            if ((_Cubic == null) && (m_add != null) &&
                 (m_mul_float != null) && (m_sub != null)
             )
-                _CubicR = (a, b, c, d, p, x, x2, x3) => {
+                _Cubic = (a, b, c, d, x) => {
+                    var x2 = x * x;
+                    var x3 = x2 * x;
+                    var p = m_sub(m_sub(d, c), m_sub(a, b));
                     return m_add(
                         m_add(
                             m_mul_float(p, x3),
@@ -137,36 +134,112 @@ namespace Squared.Util {
                 };
         }
 
+        private static void CompileExpressionTree<TDelegate> (ParameterExpression[] parameters, Expression body, out TDelegate result)
+            where TDelegate : class
+        {
+            var lambda = Expression.Lambda(typeof(TDelegate), body, parameters);
+            result = (TDelegate)(object)lambda.Compile();
+        }
+
         private static void CompileNativeExpressions () {
 #if !NODYNAMICMETHOD
+            var t = typeof(T);
+
+            ParameterExpression a = Expression.Parameter(t, "a"),
+                b = Expression.Parameter(t, "b"),
+                c = Expression.Parameter(t, "c"),
+                d = Expression.Parameter(t, "d"),
+                p = Expression.Parameter(t, "p"),
+                x = Expression.Parameter(typeof(float), "x"),
+                x2 = Expression.Parameter(typeof(float), "x2");
+
+            var flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+            MethodInfo addOperator = t.GetMethod("op_Addition", flags, null, new[] { t, t }, null),
+                subtractOperator = t.GetMethod("op_Subtraction", flags, null, new[] { t, t }, null),
+                scaleOperator = t.GetMethod("op_Multiply", flags, null, new[] { t, typeof(float) }, null);
+
+            // If the basic operations we need aren't present, we can't use LINQ to compile the interpolators
+            if ((addOperator == null) || (subtractOperator == null) || (scaleOperator == null)) {
+                // These will also be missing for primitive types. That's fine, we implemented the key
+                //  ones down below in DefaultInterpolators.
+                return;
+            }
+
             if (_Linear == null)
-                Arithmetic.CompileExpression(
-                    (a, b, x) =>
-                        a + ((b - a) * x),
+                CompileExpressionTree(
+                    // a + ((b - a) * x)
+                    new[] { a, b, x },
+                    Expression.Add(a, Expression.Multiply(Expression.Subtract(b, a), x)),
                     out _Linear
                 );
 
             // FIXME: This is the best we can do
             if (_Cosine == null)
-                Arithmetic.CompileExpression(
-                    (a, b, x) =>
-                        a + ((b - a) * ((1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f)),
+                CompileExpressionTree(
+                    /* a + (
+                        (b - a) * 
+                        (1.0f - (float)Math.Cos(x * Math.PI)) *
+                        0.5f
+                    ) */
+                    new[] { a, b, x },
+                    Expression.Add(a,
+                        Expression.Multiply(
+                            Expression.Subtract(b, a),
+                            Expression.Multiply(
+                                Expression.Constant(0.5f),
+                                Expression.Subtract(
+                                    Expression.Constant(1.0f), 
+                                    Expression.Convert(
+                                        Expression.Call(
+                                            ((Delegate)Math.Cos).Method, 
+                                            Expression.Multiply(Expression.Convert(x, typeof(double)), Expression.Constant(Math.PI))
+                                        ),
+                                        typeof(float)
+                                    )
+                                )
+                            )
+                        )
+                    ),
                     out _Cosine
                 );
 
-            if (_CubicP == null)
-                Arithmetic.CompileExpression(
-                    (a, b, c, d) =>
-                        (d - c) - (a - b),
-                    out _CubicP
+            if (_Cubic == null) {
+                var x3 = Expression.Multiply(x2, x);
+                CompileExpressionTree(
+                    new[] { a, b, c, d, x },
+                    Expression.Block(
+                        new [] { p, x2 },
+                        Expression.Assign(
+                            x2, Expression.Multiply(x, x)
+                        ),
+                        // (d - c) - (a - b)
+                        Expression.Assign(
+                            p, 
+                            Expression.Subtract(
+                                Expression.Subtract(d, c),
+                                Expression.Subtract(a, b)
+                            )
+                        ),
+                        /*
+                            (p * x3) +
+                            ((a - b - p) * x2) + 
+                            ((c - a) * x) + 
+                            b
+                        */
+                        Expression.Add(
+                            Expression.Add(
+                                Expression.Add(
+                                    Expression.Multiply(p, x3),
+                                    Expression.Multiply(Expression.Subtract(Expression.Subtract(a, b), p), x2)
+                                ),
+                                Expression.Multiply(Expression.Subtract(c, a), x)
+                            ),
+                            b
+                        )
+                    ),
+                    out _Cubic
                 );
-
-            if (_CubicR == null)
-                Arithmetic.CompileExpression(
-                    (a, b, c, d, p, x, x2, x3) =>
-                        (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b,
-                    out _CubicR
-                );
+            }
 #endif
         }
 
@@ -192,24 +265,6 @@ namespace Squared.Util {
             );
         }
 
-        // FIXME: This doesn't work but seems like it should
-        /*
-        public static T Quadratic (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
-            if (positionInWindow < 0) {
-                var n = Math.Ceiling(Math.Abs(positionInWindow));
-                positionInWindow += (float)n;
-                dataOffset -= (int)n;
-            }
-
-            T a = data(dataOffset),
-                b = data(dataOffset + 1),
-                c = data(dataOffset + 2),
-                ab = _Linear(a, b, positionInWindow),
-                bc = _Linear(b, c, positionInWindow);
-            return _Linear(ab, bc, positionInWindow);
-        }
-        */
-
         public static T Cubic (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
             if (positionInWindow < 0) {
                 var n = Math.Ceiling(Math.Abs(positionInWindow));
@@ -221,10 +276,7 @@ namespace Squared.Util {
             T b = data(dataOffset);
             T c = data(dataOffset + 1);
             T d = data(dataOffset + 2);
-            T p = _CubicP(a, b, c, d);
-            float x2 = positionInWindow * positionInWindow;
-            float x3 = positionInWindow * x2;
-            return _CubicR(a, b, c, d, p, positionInWindow, x2, x3);
+            return _Cubic(a, b, c, d, positionInWindow);
         }
 
         public static T Hermite (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
@@ -443,10 +495,7 @@ namespace Squared.Util {
             T b = data(in obj, dataOffset);
             T c = data(in obj, dataOffset + 1);
             T d = data(in obj, dataOffset + 2);
-            T p = _CubicP(a, b, c, d);
-            float x2 = positionInWindow * positionInWindow;
-            float x3 = positionInWindow * x2;
-            return _CubicR(a, b, c, d, p, positionInWindow, x2, x3);
+            return _Cubic(a, b, c, d, positionInWindow);
         }
 
         public static T Hermite<U> (BoundInterpolatorSource<T, U> data, in U obj, int dataOffset, float positionInWindow) {
@@ -672,10 +721,12 @@ namespace Squared.Util {
         public static float Cosine (float a, float b, float t) =>
             a + ((b - a) * ((1.0f - (float)Math.Cos(t * Math.PI)) * 0.5f));
 
-        public static float CubicP (float a, float b, float c, float d) => (d - c) - (a - b);
-
-        public static float CubicR (float a, float b, float c, float d, float p, float x, float x2, float x3) => 
-            (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b;
+        public static float Cubic (float a, float b, float c, float d, float x) {
+            var p = (d - c) - (a - b);
+            var x2 = x * x;
+            var x3 = x2 * x;
+            return (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b;
+        }
 
         public static double Linear (double a, double b, float t) =>
             a + ((b - a) * t);
@@ -683,9 +734,11 @@ namespace Squared.Util {
         public static double Cosine (double a, double b, float t) =>
             a + ((b - a) * ((1.0 - Math.Cos(t * Math.PI)) * 0.5));
 
-        public static double CubicP (double a, double b, double c, double d) => (d - c) - (a - b);
-
-        public static double CubicR (double a, double b, double c, double d, double p, float x, float x2, float x3) => 
-            (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b;
+        public static double Cubic (double a, double b, double c, double d, float x) {
+            var p = (d - c) - (a - b);
+            var x2 = x * x;
+            var x3 = x2 * x;
+            return (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b;
+        }
     }
 }
