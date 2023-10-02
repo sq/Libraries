@@ -29,10 +29,32 @@ namespace Squared.Threading {
         public readonly struct Entry {
             public readonly int HashCode;
             public readonly WeakReference<object> Weak;
+            public readonly object Strong;
 
-            public Entry (object obj, int hashCode) {
+            public Entry (object obj, int hashCode, bool strong) {
                 HashCode = hashCode;
-                Weak = new WeakReference<object>(obj, false);
+                if (strong)
+                    Strong = obj;
+                else
+                    Weak = new WeakReference<object>(obj, false);
+            }
+
+            public object Instance {
+                get {
+                    if (Weak != null) {
+                        Weak.TryGetTarget(out var result);
+                        return result;
+                    }
+                    return Strong;
+                }
+            }
+
+            public Entry ConvertToWeak () {
+                if (Weak != null)
+                    return this;
+                if (Strong == null)
+                    return this;
+                return new Entry(Strong, HashCode, false);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -40,11 +62,7 @@ namespace Squared.Threading {
                 if (HashCode != rhs.HashCode)
                     return false;
 
-                object o1 = null, o2 = null;
-                Weak?.TryGetTarget(out o1);
-                rhs.Weak?.TryGetTarget(out o2);
-
-                return ReferenceEquals(o1, o2);
+                return ReferenceEquals(Instance, rhs.Instance);
             }
 
             public override int GetHashCode () {
@@ -52,12 +70,14 @@ namespace Squared.Threading {
             }
 
             public override string ToString () {
-                if (Weak == null)
-                    return "default";
-                else if (Weak.TryGetTarget(out var o))
-                    return o.ToString ();
-                else
-                    return string.Concat("dead ", HashCode.ToString());
+                var instance = Instance;
+                if (instance == null) {
+                    if (Weak == null)
+                        return "null";
+                    else
+                        return string.Concat("dead ", HashCode.ToString());
+                } else
+                    return instance.ToString();
             }
         }
         
@@ -92,6 +112,9 @@ namespace Squared.Threading {
 
             public void Set (Id id, Entry value) {
                 var count = ValuesById.Count;
+                // We convert the entry's strong reference (if present) into a weak reference,
+                //  so that the table does not prevent its values from being collected.
+                value = value.ConvertToWeak();
                 if (count == id) {
                     ValuesById.Add(value);
                 } else {
@@ -338,10 +361,7 @@ namespace Squared.Threading {
             if (!Cache.TryGetValue(id, out var entry))
                 return null;
 
-            if (entry.Weak?.TryGetTarget(out var result) == true)
-                return (TObject)result;
-            else
-                return null;
+            return (TObject)entry.Instance;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -349,7 +369,9 @@ namespace Squared.Threading {
             if (obj == null)
                 return 0;
 
-            var key = new LocallyReplicatedCache.Entry(obj, obj.GetHashCode());
+            // We create a strong-reference entry for the purposes of performing cache lookup.
+            // Otherwise, every lookup would create a temporary weakref that gets destroyed.
+            var key = new LocallyReplicatedCache.Entry(obj, obj.GetHashCode(), true);
             return Cache.GetOrAssignId(key);
         }
     }
