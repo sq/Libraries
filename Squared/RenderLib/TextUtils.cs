@@ -17,6 +17,15 @@ using Squared.Util.Text;
 
 namespace Squared.Render.Text {
     public sealed class DynamicStringLayout {
+        private class Satellite {
+            public DenseList<AbstractTextureReference> UsedTextures;
+            public DenseList<AsyncRichImage> Dependencies;
+            public Dictionary<Pair<int>, LayoutMarker> Markers = null;
+            public Dictionary<Vector2, LayoutHitTest> HitTests = null;
+            public DenseList<LayoutMarker> RichMarkers;
+            public DenseList<Bounds> Boxes;
+        }
+
         [Flags]
         private enum InternalFlags : ushort {
             HasCachedStringLayout          = 0b1,
@@ -72,15 +81,7 @@ namespace Squared.Render.Text {
         private Vector4? _UserData;
         private Vector4? _ImageUserData;
 
-        // TODO: Move all of these to a single allocated-on-demand class, then make UsedTextures 
-        //  a DenseList again? Maybe Dependencies too?
-        // Would save ~36 bytes, which adds up to ~72 bytes per StaticTextBase instance
-        private List<AbstractTextureReference> _UsedTextures = null;
-        private List<AsyncRichImage> _Dependencies = null;
-        private Dictionary<Pair<int>, LayoutMarker> _Markers = null;
-        private Dictionary<Vector2, LayoutHitTest> _HitTests = null;
-        private List<LayoutMarker> _RichMarkers = null;
-        private List<Bounds> _Boxes = null;
+        private Satellite _Satellite;
 
         public int TextVersion => _TextVersion;
 
@@ -159,34 +160,38 @@ namespace Squared.Render.Text {
             WordWrapCharacters = default;
             DisableMarkers = false;
             SetFlag(InternalFlags.AwaitingDependencies, false);
-            _Dependencies?.Clear();
-            _RichMarkers?.Clear();
-            _Boxes?.Clear();
+            _Satellite?.Dependencies.Clear();
+            _Satellite?.RichMarkers.Clear();
+            _Satellite?.Boxes.Clear();
         }
 
         public void ResetMarkersAndHitTests () {
-            if ((_Markers != null) && (_Markers.Count > 0)) {
-                _Markers.Clear();
+            if ((_Satellite != null) && (_Satellite.Markers.Count > 0)) {
+                _Satellite.Markers.Clear();
                 Invalidate();
             }
-            if ((_HitTests != null) && (_HitTests.Count > 0)) {
-                _HitTests.Clear();
+            if ((_Satellite != null) && (_Satellite.HitTests.Count > 0)) {
+                _Satellite.HitTests.Clear();
                 Invalidate();
             }
+        }
+
+        private Satellite AutoAllocateSatellite () {
+            if (_Satellite == null)
+                _Satellite = new Satellite();
+            return _Satellite;
         }
 
         private Dictionary<Pair<int>, LayoutMarker> GetMarkers () {
-            if (_Markers == null)
-                return _Markers = new Dictionary<Pair<int>, LayoutMarker>();
-            else
-                return _Markers;
+            var satellite = AutoAllocateSatellite();
+            satellite.Markers ??= new ();
+            return satellite.Markers;
         }
 
         private Dictionary<Vector2, LayoutHitTest> GetHitTests () {
-            if (_HitTests == null)
-                return _HitTests = new Dictionary<Vector2, LayoutHitTest>();
-            else
-                return _HitTests;
+            var satellite = AutoAllocateSatellite();
+            satellite.HitTests ??= new ();
+            return satellite.HitTests;
         }
 
         public LayoutMarker? Mark (int characterIndex) {
@@ -255,22 +260,13 @@ namespace Squared.Render.Text {
 
         private static readonly Dictionary<Pair<int>, LayoutMarker> EmptyMarkers = new Dictionary<Pair<int>, LayoutMarker>();
         private static readonly Dictionary<Vector2, LayoutHitTest> EmptyHitTests = new Dictionary<Vector2, LayoutHitTest>();
-        private static readonly List<LayoutMarker> EmptyRichMarkers = new List<LayoutMarker>();
-        private static readonly List<Bounds> EmptyBoxes = new List<Bounds>();
-        private static readonly List<AsyncRichImage> EmptyDependencies = new List<AsyncRichImage>();
 
-        // FIXME: Garbage
-        // Unfortunately DenseList is a bad choice here because these values are all REALLY big
-        //  so it would increase the size of every DynamicStringLayout instance considerably
-        // Maybe create a single 'DynamicStringLayoutRichState' class that holds dense lists
-        //  for all of these and allocate it on demand? Then in the ideal case it's one
-        //  allocation instead of dozens
-        // Unfortunately also enumerating over ReadOnlyList and ReadOnlyDictionary boxes their enumerators :(
-        public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Markers ?? EmptyMarkers;
-        public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _HitTests ?? EmptyHitTests;
-        public IReadOnlyList<LayoutMarker> RichMarkers => _RichMarkers ?? EmptyRichMarkers;
-        public IReadOnlyList<Bounds> Boxes => _Boxes ?? EmptyBoxes;
-        public IReadOnlyList<AsyncRichImage> Dependencies => _Dependencies ?? EmptyDependencies;
+        // Unfortunately enumerating over ReadOnlyDictionary boxes their enumerators :(
+        public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Satellite?.Markers ?? EmptyMarkers;
+        public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _Satellite?.HitTests ?? EmptyHitTests;
+        public DenseList<LayoutMarker> RichMarkers => _Satellite?.RichMarkers ?? default;
+        public DenseList<Bounds> Boxes => _Satellite?.Boxes ?? default;
+        public DenseList<AsyncRichImage> Dependencies => _Satellite?.Dependencies ?? default;
 
         public LayoutHitTest? HitTest (Vector2 position) {
             var ht = GetHitTests();
@@ -839,8 +835,8 @@ namespace Squared.Render.Text {
             // Hey, you're the boss
             SetFlag(InternalFlags.HasCachedStringLayout, false);
             _CachedStringLayout = default;
-            _UsedTextures?.Clear();
-            _RichMarkers?.Clear();
+            _Satellite?.UsedTextures.Clear();
+            _Satellite?.RichMarkers.Clear();
         }
 
         /// <summary>
@@ -850,10 +846,7 @@ namespace Squared.Render.Text {
             if (_GlyphSource == null)
                 throw new ArgumentNullException("GlyphSource");
 
-            if (RecordUsedTextures && (_UsedTextures == null))
-                _UsedTextures = new List<AbstractTextureReference>(4);
-            else
-                _UsedTextures?.Clear();
+            _Satellite?.UsedTextures.Clear();
 
             result = new StringLayoutEngine {
                 allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
@@ -887,7 +880,7 @@ namespace Squared.Render.Text {
                 disableMarkers = DisableMarkers,
                 replacementCodepoint = _ReplacementCharacter,
                 recordUsedTextures = RecordUsedTextures,
-                usedTextures = _UsedTextures,
+                usedTextures = _Satellite?.UsedTextures ?? default,
                 expandHorizontallyWhenAligning = ExpandHorizontallyWhenAligning,
                 splitAtWrapCharactersOnly = SplitAtWrapCharactersOnly,
                 includeTrailingWhitespace = IncludeTrailingWhitespace,
@@ -897,12 +890,12 @@ namespace Squared.Render.Text {
                 WordWrapCharacters = _WordWrapCharacterTable,
             };
 
-            if (_Markers != null)
-                foreach (var kvp in _Markers)
+            if ((_Satellite?.Markers?.Count ?? 0) > 0)
+                foreach (var kvp in _Satellite.Markers)
                     result.Markers.Add(kvp.Value);
 
-            if (_HitTests != null)
-                foreach (var kvp in _HitTests)
+            if ((_Satellite?.HitTests?.Count ?? 0) > 0)
+                foreach (var kvp in _Satellite.HitTests)
                     result.HitTests.Add(new LayoutHitTest { Position = kvp.Key });
         }
 
@@ -962,10 +955,12 @@ namespace Squared.Render.Text {
 
             if (GetFlag(InternalFlags.AwaitingDependencies)) {
                 bool stillWaiting = false;
-                foreach (var d in _Dependencies) {
-                    if (!d.HasValue && !d.Dead) {
-                        stillWaiting = true;
-                        break;
+                if (_Satellite != null) {
+                    foreach (var d in _Satellite.Dependencies) {
+                        if (!d.HasValue && !d.Dead) {
+                            stillWaiting = true;
+                            break;
+                        }
                     }
                 }
 
@@ -998,9 +993,9 @@ namespace Squared.Render.Text {
                 StringLayoutEngine le;
                 var rls = default(RichTextLayoutState);
                 MakeLayoutEngine(out le);
-                _RichMarkers?.Clear();
-                _Boxes?.Clear();
-                _Dependencies?.Clear();
+                _Satellite?.RichMarkers.Clear();
+                _Satellite?.Boxes.Clear();
+                _Satellite?.Dependencies.Clear();
 
                 try {
                     le.Initialize();
@@ -1009,16 +1004,13 @@ namespace Squared.Render.Text {
                         rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
                         var dependencies = _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
                         if (dependencies.Count > 0) {
-                            if (_Dependencies == null)
-                                _Dependencies = new List<AsyncRichImage>();
-
                             SetFlag(InternalFlags.AwaitingDependencies, false);
 
                             for (int i = 0, c = dependencies.Count; i < c; i++) {
                                 var d = dependencies[i];
                                 if (!d.HasValue && !d.Dead)
                                     SetFlag(InternalFlags.AwaitingDependencies, true);
-                                _Dependencies.Add(d);
+                                AutoAllocateSatellite().Dependencies.Add(d);
                             }
                         } else
                             SetFlag(InternalFlags.AwaitingDependencies, false);
@@ -1035,13 +1027,16 @@ namespace Squared.Render.Text {
                     _CachedGlyphVersion = glyphSource.Version;
                     _CachedStringLayout = le.Finish();
 
+                    // Copy the storage back in case it grew.
+                    // This ensures we don't allocate more temporary backing storage every time we layout our text.
+                    if (le.usedTextures.HasList)
+                        AutoAllocateSatellite().UsedTextures = le.usedTextures;
+
                     if (!GetFlag(InternalFlags.DisableMarkers) && (le.Markers.Count > 0)) {
                         var m = GetMarkers();
                         foreach (var kvp in le.Markers) {
                             if ((rls.MarkedStrings != null) && (rls.MarkedStrings.Count > 0) && (kvp.MarkedString != default)) {
-                                if (_RichMarkers == null)
-                                    _RichMarkers = new List<LayoutMarker>();
-                                _RichMarkers.Add(kvp);
+                                AutoAllocateSatellite().RichMarkers.Add(kvp);
                             } else {
                                 m[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp;
                             }
@@ -1063,10 +1058,10 @@ namespace Squared.Render.Text {
 
             result = _CachedStringLayout;
             if (result.Boxes.Count > 0) {
-                if (_Boxes == null)
-                    _Boxes = new List<Bounds>(result.Boxes.Count);
+                var satellite = AutoAllocateSatellite();
+                satellite.Boxes.EnsureCapacity(result.Boxes.Count);
                 for (int i = 0, c = result.Boxes.Count; i < c; i++)
-                    _Boxes.Add(result.Boxes[i]);
+                    satellite.Boxes.Add(result.Boxes[i]);
             }
             return true;
         }

@@ -160,10 +160,10 @@ namespace Squared.Render {
 
         private readonly UnorderedList<PendingDraw> PendingDrawQueue = new UnorderedList<PendingDraw>();
         private readonly UnorderedList<CompletedPendingDraw> CompletedPendingDrawQueue = new UnorderedList<CompletedPendingDraw>();
-        private readonly ConcurrentQueue<Action> BeforePrepareQueue = new ConcurrentQueue<Action>();
-        private readonly ConcurrentQueue<Action> BeforeIssueQueue = new ConcurrentQueue<Action>();
-        private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
-        private readonly ConcurrentQueue<Action> AfterPresentQueue = new ConcurrentQueue<Action>();
+        private readonly Queue<Action> BeforePrepareQueue = new Queue<Action>();
+        private readonly Queue<Action> BeforeIssueQueue = new Queue<Action>();
+        private readonly Queue<Action> BeforePresentQueue = new Queue<Action>();
+        private readonly Queue<Action> AfterPresentQueue = new Queue<Action>();
 
         private readonly ManualResetEvent PresentBegunSignal = new ManualResetEvent(false),
             PresentEndedSignal = new ManualResetEvent(false);
@@ -372,7 +372,9 @@ namespace Squared.Render {
         public void BeforePrepare (Action action) {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
-            BeforePrepareQueue.Enqueue(action);
+
+            lock (BeforePrepareQueue)
+                BeforePrepareQueue.Enqueue(action);
         }
 
         /// <summary>
@@ -381,7 +383,9 @@ namespace Squared.Render {
         public void BeforeIssue (Action action) {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
-            BeforeIssueQueue.Enqueue(action);
+
+            lock (BeforeIssueQueue)
+                BeforeIssueQueue.Enqueue(action);
         }
 
         /// <summary>
@@ -391,7 +395,9 @@ namespace Squared.Render {
         public void BeforePresent (Action action) {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
-            BeforePresentQueue.Enqueue(action);
+
+            lock (BeforePresentQueue)
+                BeforePresentQueue.Enqueue(action);
         }
 
         /// <summary>
@@ -400,7 +406,9 @@ namespace Squared.Render {
         public void AfterPresent (Action action) {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
-            AfterPresentQueue.Enqueue(action);
+
+            lock (AfterPresentQueue)
+                AfterPresentQueue.Enqueue(action);
         }
 
         private void RegisterForDeviceEvents () {
@@ -883,46 +891,37 @@ namespace Squared.Render {
             _DeviceLost |= IsDeviceLost;
         }
 
-        protected void RunBeforePrepareHandlers () {
-            while (BeforePrepareQueue.Count > 0) {
-                Action beforePrepare;
-                if (!BeforePrepareQueue.TryDequeue(out beforePrepare))
-                    continue;
+        private void DrainHandlerQueue (Queue<Action> queue) {
+            while (true) {
+                Action handler;
 
-                beforePrepare();
+                lock (queue) {
+                    if (queue.Count <= 0)
+                        return;
+
+                    handler = queue.Dequeue();
+                }
+
+                handler();
             }
         }
 
-        protected void RunBeforeIssueHandlers () {
-            while (BeforeIssueQueue.Count > 0) {
-                Action beforeIssue;
-                if (!BeforeIssueQueue.TryDequeue(out beforeIssue))
-                    continue;
-
-                beforeIssue();
-            }
+        private void RunBeforePrepareHandlers () {
+            DrainHandlerQueue(BeforePrepareQueue);
         }
 
-        protected void RunBeforePresentHandlers () {
-            while (BeforePresentQueue.Count > 0) {
-                Action beforePresent;
-                if (!BeforePresentQueue.TryDequeue(out beforePresent))
-                    continue;
-
-                beforePresent();
-            }
+        private void RunBeforeIssueHandlers () {
+            DrainHandlerQueue(BeforeIssueQueue);
         }
 
-        protected void RunAfterPresentHandlers () {
+        private void RunBeforePresentHandlers () {
+            DrainHandlerQueue(BeforePresentQueue);
+        }
+
+        private void RunAfterPresentHandlers () {
             NotifyPendingDrawCompletions();
 
-            while (AfterPresentQueue.Count > 0) {
-                Action afterPresent;
-                if (!AfterPresentQueue.TryDequeue(out afterPresent))
-                    continue;
-
-                afterPresent();
-            }
+            DrainHandlerQueue(AfterPresentQueue);
         }
 
         public bool TryWaitForPresentToStart (int millisecondsTimeout, out bool didPresentEnd, float delayMs = 1) {

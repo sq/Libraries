@@ -69,7 +69,7 @@ namespace Squared.Render.Text {
         public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
         public Vector4             userData;
         public Vector4             imageUserData;
-        public List<AbstractTextureReference> usedTextures;
+        public DenseList<AbstractTextureReference> usedTextures;
 
         public float spacing {
             get {
@@ -1306,9 +1306,6 @@ namespace Squared.Render.Text {
                 (drawCall.Textures.Texture1 != lastUsedTexture) && 
                 (drawCall.Textures.Texture1 != null)
             ) {
-                if (usedTextures == null)
-                    throw new NullReferenceException("usedTextures must be set if recordUsedTextures is set");
-
                 lastUsedTexture = drawCall.Textures.Texture1;
                 int existingIndex = -1;
                 for (int i = 0; i < usedTextures.Count; i++) {

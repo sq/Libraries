@@ -520,6 +520,12 @@ namespace Squared.PRGUI.Controls {
             Invalidate();
         }
 
+        public void AddRange (DenseList<T> list) {
+            for (int i = 0; i < list.Count; i++)
+                Items.Add(list[i]);
+            Invalidate();
+        }
+
         public void AddRange (IList<T> collection) {
             for (int i = 0; i < collection.Count; i++)
                 Items.Add(collection[i]);
