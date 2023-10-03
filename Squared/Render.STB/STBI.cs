@@ -518,7 +518,16 @@ namespace Squared.Render.STB {
                 MipChain = null;
                 if (data != null)
                     Native.API.stbi_image_free(data);
+
+                GC.SuppressFinalize(this);
             }
+        }
+
+        ~Image () {
+            var data = Data;
+            _Data = null;
+            if (data != null)
+                Native.API.stbi_image_free(data);
         }
 
         private unsafe struct UploadMipWorkItem : IWorkItem {

@@ -324,7 +324,16 @@ namespace Squared.Render.Basis {
                 MappedViewStream?.Dispose();
             MappedView?.Dispose();
             MappedFile?.Dispose();
-            Transcoder.Delete(pTranscoder);
+            if (pTranscoder != default)
+                Transcoder.Delete(pTranscoder);
+            pTranscoder = default;
+
+            GC.SuppressFinalize(this);
+        }
+
+        ~BasisFile () {
+            if (pTranscoder != default)
+                Transcoder.Delete(pTranscoder);
         }
     }
 
