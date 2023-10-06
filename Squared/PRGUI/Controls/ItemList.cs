@@ -417,6 +417,12 @@ namespace Squared.PRGUI.Controls {
             return true;
         }
 
+        /// <summary>
+        /// Attempts to change the currently selected item.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="fireEvent">If true, change events will be fired.</param>
+        /// <returns>Whether the selected item was changed. It may not have changed because value was already selected, or because value is not in the list of items.</returns>
         public bool TrySetSelectedItem (ref T value, bool fireEvent) {
             var indexOf = Items.IndexOf(ref value, Comparer);
             if (indexOf < 0)
@@ -424,10 +430,10 @@ namespace Squared.PRGUI.Controls {
 
             if (
                 (indexOf >= 0) &&
-                (indexOf == SelectedIndex) && 
-                (_SelectedIndices.Count == 1)
+                (_SelectedIndices.Count == 1) &&
+                (indexOf == SelectedIndex)
             )
-                return true;
+                return false;
 
             return TrySetSelectedIndex(indexOf, fireEvent);
         }

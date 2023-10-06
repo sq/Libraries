@@ -33,6 +33,8 @@ namespace Squared.Util {
         internal DenseList<DenseList<T>.PredicateBox> PrePredicates;
         internal DenseList<DenseList<TResult>.PredicateBox> PostPredicates;
         internal Func<T, TResult> Selector;
+        internal Func<T, object, TResult> Selector2;
+        internal object SelectorUserData;
 
         public TResult Current => _Current;
         object IEnumerator.Current => _Current;
@@ -42,10 +44,25 @@ namespace Squared.Util {
         ) {
             _IsNullSelector = isNullSelector;
             Selector = selector;
+            Selector2 = null;
+            SelectorUserData = null;
             _Enumerator = enumerator;
             PrePredicates = default;
             PostPredicates = default;
-            Selector = selector;
+            _Current = default;
+            _HasMoved = false;
+        }
+
+        internal DenseQuery (
+            in TEnumerator enumerator, Func<T, object, TResult> selector, object selectorUserData
+        ) {
+            _IsNullSelector = false;
+            Selector = null;
+            Selector2 = selector;
+            SelectorUserData = selectorUserData;
+            _Enumerator = enumerator;
+            PrePredicates = default;
+            PostPredicates = default;
             _Current = default;
             _HasMoved = false;
         }
@@ -107,7 +124,10 @@ namespace Squared.Util {
                 if (predicateRejected)
                     continue;
 
-                _Current = Selector(input);
+                if (Selector != null)
+                    _Current = Selector(input);
+                else
+                    _Current = Selector2(input, SelectorUserData);
 
                 foreach (var post in PostPredicates) {
                     if (!post.Eval(ref _Current)) {
@@ -130,7 +150,9 @@ namespace Squared.Util {
 
         public void CloneInto (out DenseQuery<T, TEnumerator, TResult> result) {
             result = new DenseQuery<T, TEnumerator, TResult> {
-                Selector = Selector
+                Selector = Selector,
+                Selector2 = Selector2,
+                SelectorUserData = SelectorUserData,
             };
             _Enumerator.CloneInto(out result._Enumerator);
             PrePredicates.Clone(out result.PrePredicates);
@@ -141,6 +163,16 @@ namespace Squared.Util {
             var source = GetEnumerator();
             var result = new DenseQuery<TResult, DenseQuery<T, TEnumerator, TResult>, V>(
                 in source, selector, false
+            );
+            if (where != null)
+                result.PostPredicates.Add(new DenseList<V>.PredicateBox { Predicate = where });
+            return result;
+        }
+
+        public DenseQuery<TResult, DenseQuery<T, TEnumerator, TResult>, V> Select<V> (Func<TResult, object, V> selector, object selectorUserData, Func<V, bool> where = null) {
+            var source = GetEnumerator();
+            var result = new DenseQuery<TResult, DenseQuery<T, TEnumerator, TResult>, V>(
+                in source, selector, selectorUserData
             );
             if (where != null)
                 result.PostPredicates.Add(new DenseList<V>.PredicateBox { Predicate = where });

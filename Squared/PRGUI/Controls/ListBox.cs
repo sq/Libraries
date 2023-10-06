@@ -232,8 +232,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         public bool SetSelectedItem (T value, bool fireEvent) {
+            // NOTE: If value was already selected, this will return false, which skips firing events.
             if (!Manager.TrySetSelectedItem(ref value, fireEvent))
                 return false;
+
             OnSelectionChanged(fireEvent);
             return true;
         }

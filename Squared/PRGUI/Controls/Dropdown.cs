@@ -85,8 +85,11 @@ namespace Squared.PRGUI.Controls {
         public bool HasSelectedItem => Manager.HasSelectedItem;
 
         public void SetSelectedItem (T value, bool forUserInput) {
+            // NOTE: If the current selected item is 'value', this will return false,
+            //  which skips firing the change events and invalidating the dropdown.
             if (!Manager.TrySetSelectedItem(ref value, forUserInput))
                 return;
+
             Invalidate();
             NeedsUpdate = true;
             FireEvent(UIEvents.ValueChanged, SelectedItem);

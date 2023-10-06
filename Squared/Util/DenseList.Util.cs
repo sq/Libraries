@@ -533,8 +533,17 @@ namespace Squared.Util {
             if (Count == 0)
                 return default;
 
-            var e = GetEnumerator();
-            var result = new DenseQuery<T, Enumerator, U>(in e, selector, false);
+            var result = new DenseQuery<T, Enumerator, U>(GetEnumerator(), selector, false);
+            if (where != null)
+                result.PostPredicates.Add(new DenseList<U>.PredicateBox { Predicate = where });
+            return result;
+        }
+
+        public DenseQuery<T, Enumerator, U> Select<U> (Func<T, object, U> selector, object selectorUserData, Func<U, bool> where = null) {
+            if (Count == 0)
+                return default;
+
+            var result = new DenseQuery<T, Enumerator, U>(GetEnumerator(), selector, selectorUserData);
             if (where != null)
                 result.PostPredicates.Add(new DenseList<U>.PredicateBox { Predicate = where });
             return result;
