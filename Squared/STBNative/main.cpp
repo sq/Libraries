@@ -24,7 +24,7 @@
 
 #include "stb_image.h"
 #include "stb_image_write.h"
-#include "stb_image_resize.h"
+#include "stb_image_resize2.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -32,7 +32,7 @@
 
 #include "stb_image.h"
 #include "stb_image_write.h"
-#include "stb_image_resize.h"
+#include "stb_image_resize2.h"
 
 STBIWDEF int get_stbi_write_png_compression_level () {
     return stbi_write_png_compression_level;
