@@ -32,9 +32,15 @@ namespace Squared.Render.Mips {
         SinglePseudoMin = 8,
         // Grayscale float using Minimum instead of Average value
         SingleMax = 9,
+        // 16-bit grayscale float
+        HalfSingle = 10,
+        // 8 byte RGBA where each channel is a half float
+        HalfVector4 = 11,
+        // 8 byte premultiplied RGBA where each channel is a half float
+        pHalfVector4 = 12,
 
         // If set, the RGB channels are sRGB. Not valid for Gray1.
-        sRGB = 0x10,
+        sRGB = 0x100,
     }
 
     public static class MipGenerator {
@@ -132,6 +138,7 @@ namespace Squared.Render.Mips {
                     return _SinglePseudoMin;
                 case MipFormat.SingleMax:
                     return _SingleMax;
+                // FIXME: Add the new half float formats
                 default:
                     return null;
             }

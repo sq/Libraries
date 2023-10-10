@@ -15,9 +15,9 @@ namespace Squared.Render {
                 MipFormat.RGBA | MipFormat.sRGB,
                 MipFormat.pGray4 | MipFormat.sRGB,
                 MipFormat.Vector4,
-                MipFormat.Vector4 | MipFormat.sRGB,
                 MipFormat.pVector4,
-                MipFormat.pVector4 | MipFormat.sRGB,
+                MipFormat.HalfSingle,
+                MipFormat.HalfVector4,
             };
 
             foreach (var format in formats)
@@ -26,27 +26,62 @@ namespace Squared.Render {
 
         public static unsafe MipGeneratorFn Get (
             MipFormat format, 
-            stbir_filter filter_horizontal = stbir_filter.DEFAULT,
-            stbir_filter filter_vertical = stbir_filter.DEFAULT,
-            stbir_edge edge_horizontal = stbir_edge.CLAMP,
-            stbir_edge edge_vertical = stbir_edge.CLAMP
+            stbir_filter filter = stbir_filter.DEFAULT,
+            stbir_edge edge = stbir_edge.CLAMP
         ) {
+            stbir_pixel_layout pixelLayout;
+            stbir_datatype dataType;
             var masked = (format & ~MipFormat.sRGB);
-            var datatype = (masked == MipFormat.Vector4) || 
-                (masked == MipFormat.pVector4) ||
-                (masked == MipFormat.Single)
-                ? stbir_datatype.FLOAT
-                : stbir_datatype.UINT8;
-            var colorspace = (format & MipFormat.sRGB) == MipFormat.sRGB
-                ? stbir_colorspace.SRGB
-                : stbir_colorspace.LINEAR;
-            var channels = (masked == MipFormat.Gray1) || (masked == MipFormat.Single) ? 1 : 4;
-            var flags = (masked == MipFormat.pRGBA) || 
-                (masked == MipFormat.pGray4) ||
-                (masked == MipFormat.pVector4)
-                ? stbir_flags.ALPHA_PREMULTIPLIED
-                : default;
-            var alpha_channel = channels == 1 ? -1 : 3;
+            var sRGB = (format & MipFormat.sRGB) == MipFormat.sRGB;
+
+            switch (masked) {
+                case MipFormat.pRGBA:
+                    pixelLayout = stbir_pixel_layout.RGBA_PM;
+                    dataType = sRGB ? stbir_datatype.UINT8_SRGB : stbir_datatype.UINT8;
+                    break;
+                case MipFormat.pGray4:
+                    pixelLayout = stbir_pixel_layout._4CHANNEL;
+                    dataType = sRGB ? stbir_datatype.UINT8_SRGB : stbir_datatype.UINT8;
+                    break;
+                case MipFormat.RGBA:
+                    pixelLayout = stbir_pixel_layout.RGBA;
+                    dataType = sRGB ? stbir_datatype.UINT8_SRGB : stbir_datatype.UINT8;
+                    break;
+                case MipFormat.Gray1:
+                    pixelLayout = stbir_pixel_layout._1CHANNEL;
+                    dataType = sRGB ? stbir_datatype.UINT8_SRGB : stbir_datatype.UINT8;
+                    break;
+                case MipFormat.Single:
+                    pixelLayout = stbir_pixel_layout._1CHANNEL;
+                    dataType = stbir_datatype.FLOAT;
+                    break;
+                case MipFormat.HalfSingle:
+                    pixelLayout = stbir_pixel_layout._1CHANNEL;
+                    dataType = stbir_datatype.HALF_FLOAT;
+                    break;
+                case MipFormat.Vector4:
+                    pixelLayout = stbir_pixel_layout.RGBA;
+                    dataType = stbir_datatype.FLOAT;
+                    break;
+                case MipFormat.pVector4:
+                    pixelLayout = stbir_pixel_layout.RGBA_PM;
+                    dataType = stbir_datatype.FLOAT;
+                    break;
+                case MipFormat.HalfVector4:
+                    pixelLayout = stbir_pixel_layout.RGBA;
+                    dataType = stbir_datatype.HALF_FLOAT;
+                    break;
+                case MipFormat.pHalfVector4:
+                    pixelLayout = stbir_pixel_layout.RGBA_PM;
+                    dataType = stbir_datatype.HALF_FLOAT;
+                    break;
+
+                default:
+                case MipFormat.SingleMin:
+                case MipFormat.SinglePseudoMin:
+                case MipFormat.SingleMax:
+                    return null;
+            }
 
             unsafe void Implementation (
                 void* src, int srcWidth, int srcHeight, int srcStrideBytes, 
@@ -55,12 +90,9 @@ namespace Squared.Render {
                 var result = API.stbir_resize(
                     src, srcWidth, srcHeight, srcStrideBytes,
                     dest, destWidth, destHeight, destStrideBytes,
-                    datatype, channels, alpha_channel, (int)flags,
-                    edge_horizontal, edge_vertical,
-                    filter_horizontal, filter_vertical, 
-                    colorspace, null
+                    pixelLayout, dataType, edge, filter
                 );
-                if (result != 1)
+                if (result == default)
                     throw new Exception("An error occurred in stb_image_resize");
             }
 
