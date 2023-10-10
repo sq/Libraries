@@ -512,7 +512,7 @@ namespace Squared.Render {
         private readonly Dictionary<Type, IArrayPoolAllocator> _ArrayAllocators = 
             new Dictionary<Type, IArrayPoolAllocator>(new ReferenceComparer<Type>());
         private readonly List<IBatchPool> _BatchAllocators;
-        private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
+        internal readonly DisposalQueue PendingDisposes = new DisposalQueue();
 
         /// <summary>
         /// You must acquire this lock before applying changes to the device, creating objects, or loading content.
@@ -527,8 +527,6 @@ namespace Squared.Render {
         private static readonly object ListPoolLock = new object();
 
         public event EventHandler<DeviceManager> DeviceChanged;
-
-        private int IsDisposingResources;
 
         public RenderManager (GraphicsDevice device, Thread mainThread, ThreadGroup threadGroup) {
             if (mainThread == null)
@@ -878,10 +876,6 @@ namespace Squared.Render {
                 kvp.Value.Flush(frameIndex);
         }
 
-        internal void FlushPendingDisposes () {
-            RenderCoordinator.FlushDisposeList(_PendingDisposes, ref IsDisposingResources);
-        }
-
         public void DisposeResource (IDisposable resource) {
             if (resource == null)
                 return;
@@ -889,13 +883,7 @@ namespace Squared.Render {
             var tcd = resource as ITraceCapturingDisposable;
             tcd?.AutoCaptureTraceback();
 
-            if (IsDisposingResources > 0) {
-                resource.Dispose();
-                return;
-            }
-
-            lock (_PendingDisposes)
-                _PendingDisposes.Add(resource);
+            PendingDisposes.Enqueue(resource);
         }
     }
 

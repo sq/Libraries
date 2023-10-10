@@ -125,7 +125,7 @@ namespace Squared.Render {
         private readonly Action _SyncEndDraw;
         private readonly Action<Frame> _ThreadedDraw;
         private readonly EventHandler<EventArgs> _OnAutoAllocatedTextureDisposed;
-        private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
+        private readonly DisposalQueue PendingDisposes = new DisposalQueue();
         private readonly ManualResetEvent _SynchronousDrawFinishedSignal = new ManualResetEvent(true);
 
         internal enum WorkPhases : int {
@@ -853,8 +853,6 @@ namespace Squared.Render {
                         _DeviceLost = IsDeviceLost;
                     }
                 }
-
-                FlushPendingDisposes();
             } finally {
                 NextFrameTiming.SyncEndDraw = EndWorkPhase(WorkPhases.SyncEndDraw);
                 Interlocked.Decrement(ref _InsideDrawOperation);
@@ -1000,6 +998,9 @@ namespace Squared.Render {
         }
 
         protected void ThreadedDraw (Frame frame) {
+            var list = PendingDisposes.FreezeCurrentList();
+            var rmList = Manager.PendingDisposes.FreezeCurrentList();
+
             try {
                 if (!_Running)
                     return;
@@ -1024,6 +1025,12 @@ namespace Squared.Render {
                 }
             } catch (DeviceLostException) {
                 _DeviceLost = true;
+            } finally {
+                lock (UseResourceLock)
+                lock (CreateResourceLock) {
+                    PendingDisposes.DisposeListContents(list);
+                    Manager.PendingDisposes.DisposeListContents(rmList);
+                }
             }
         }
 
@@ -1210,7 +1217,8 @@ namespace Squared.Render {
 
         public void Dispose () {
             if (!_Running) {
-                FlushPendingDisposes();
+                Manager.PendingDisposes.DisposeListContents(Manager.PendingDisposes.FreezeCurrentList());
+                PendingDisposes.DisposeListContents(PendingDisposes.FreezeCurrentList());
                 return;
             }
 
@@ -1226,7 +1234,8 @@ namespace Squared.Render {
             try {
                 WaitForActiveDraws();
 
-                FlushPendingDisposes();
+                Manager.PendingDisposes.DisposeListContents(Manager.PendingDisposes.FreezeCurrentList());
+                PendingDisposes.DisposeListContents(PendingDisposes.FreezeCurrentList());
             } catch (ObjectDisposedException) {
             } catch (DeviceLostException) {
             } catch (DeviceNotResetException) {
@@ -1259,15 +1268,6 @@ namespace Squared.Render {
             }
         }
 
-        private void FlushPendingDisposes () {
-            lock (UseResourceLock)
-            lock (CreateResourceLock) {
-                FlushDisposeList(_PendingDisposes, ref IsDisposingResources);
-
-                Manager.FlushPendingDisposes();
-            }
-        }
-
         /// <summary>
         /// Queues a resource to be disposed after the next draw and then erases its storage.
         /// </summary>
@@ -1290,13 +1290,12 @@ namespace Squared.Render {
             var tcd = resource as ITraceCapturingDisposable;
             tcd?.AutoCaptureTraceback();
 
-            if (IsDisposed || (IsDisposingResources > 0)) {
+            if (IsDisposed) {
                 resource.Dispose();
                 return;
             }
 
-            lock (_PendingDisposes)
-                _PendingDisposes.Add(resource);
+            PendingDisposes.Enqueue(resource);
         }
     }
 }

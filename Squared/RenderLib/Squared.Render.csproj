@@ -67,6 +67,7 @@
     <Compile Include="ColorSpace.cs" />
     <Compile Include="Convenience.cs" />
     <Compile Include="DefaultMaterialSet.cs" />
+    <Compile Include="DisposalQueue.cs" />
     <Compile Include="DynamicAtlas.cs" />
     <Compile Include="EffectProvider.cs" />
     <Compile Include="JumpFlood.GPU.cs" />

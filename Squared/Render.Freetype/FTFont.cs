@@ -677,14 +677,14 @@ namespace Squared.Render.Text {
                 return _Gamma;
             }
             set {
-                _Gamma = value;
                 if (value == 1) {
                     GammaRamp = null;
                     MipGen = null;
-                } else {
+                } else if (_Gamma != value) {
                     GammaRamp = new GammaRamp(value);
                     MipGen = new MipGenerator.WithGammaRamp(GammaRamp);
                 }
+                _Gamma = value;
             }
         }
 
