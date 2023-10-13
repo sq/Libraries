@@ -390,7 +390,7 @@ namespace Squared.Render {
         internal readonly Effect Effect;
         internal readonly Dictionary<string, EffectParameter> Cache = 
             // Higher capacity for faster lookup
-            new Dictionary<string, EffectParameter>(1024, StringComparer.Ordinal);
+            new Dictionary<string, EffectParameter>(512, StringComparer.Ordinal);
 
         public readonly EffectParameter ScaleAndPosition, InputAndOutputZRanges;
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
@@ -448,7 +448,9 @@ namespace Squared.Render {
         public EffectParameter this[string name] {
             get {
                 if (!Cache.TryGetValue(name, out EffectParameter result))
+                    // NOTE: We use the passed-in name instead of result.Name because the passed-in one is more likely to be interned
                     Cache[name] = result = Effect.Parameters[name];
+
                 return result;
             }
         }

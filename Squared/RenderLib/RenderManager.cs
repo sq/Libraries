@@ -62,90 +62,38 @@ namespace Squared.Render {
     }
 
     public sealed class DeviceManager : IDisposable {
-        /// <summary>
-        /// Set this to true if you insist on using Device.SetRenderTarget(s) 
-        ///  instead of using DeviceManager's methods
-        /// </summary>
-        public static bool ParanoidRenderTargetChecks = false;
-
-        /// <summary>
-        /// Set this to true if you wish to record a stack trace on render target transitions.
-        /// </summary>
-        public static bool CaptureRenderTargetTransitionStacks = false;
-
         internal int RenderTargetChangeIndex = 0;
         internal RenderManager RenderManager;
 
-        private struct RenderTargetStackEntry {
-            public static readonly RenderTargetStackEntry None = new RenderTargetStackEntry((RenderTarget2D)null);
-
-            public readonly RenderTargetBinding[] Multiple;
-            public readonly RenderTarget2D Single;
-            public readonly StackTrace StackTrace;
-            public readonly RenderTargetBatchGroup Batch;
-
-            public RenderTarget2D First {
-                get {
-                    return (Multiple != null)
-                        ? (RenderTarget2D)Multiple[0].RenderTarget
-                        : Single;
-                }
+        internal struct RenderTargetStackEntry {
+            private static readonly RenderTargetBinding[][] BindingArrays;
+            static RenderTargetStackEntry () {
+                BindingArrays = new[] {
+                    new RenderTargetBinding[0],
+                    new RenderTargetBinding[1],
+                    new RenderTargetBinding[2],
+                    new RenderTargetBinding[3],
+                    new RenderTargetBinding[4],
+                };
             }
 
-            public RenderTargetStackEntry (RenderTarget2D target, RenderTargetBatchGroup batch = null, StackTrace stackTrace = null) {
-                Multiple = null;
-                Single = target;
-                if (CaptureRenderTargetTransitionStacks)
-                    StackTrace = stackTrace ?? new StackTrace(1, true);
-                else
-                    StackTrace = stackTrace;
-                Batch = batch;
+            public DenseList<RenderTargetBinding> Bindings;
+
+            public RenderTargetStackEntry (RenderTargetBinding[] buffer) {
+                Bindings = new DenseList<RenderTargetBinding>(buffer);
             }
 
-            public RenderTargetStackEntry (RenderTargetBinding[] bindings, RenderTargetBatchGroup batch = null, StackTrace stackTrace = null) {
-                Multiple = bindings;
-                Single = null;
-                if (CaptureRenderTargetTransitionStacks)
-                    StackTrace = stackTrace ?? new StackTrace(1, true);
-                else
-                    StackTrace = stackTrace;
-                Batch = batch;
+            public static RenderTargetStackEntry FromDevice (GraphicsDevice device) {
+                var count = device.GetRenderTargetsNoAllocEXT(null);
+                var buffer = BindingArrays[count];
+                device.GetRenderTargetsNoAllocEXT(buffer);
+                return new RenderTargetStackEntry(buffer);
             }
 
-            public int Count {
-                get {
-                    return Math.Max(
-                        (Multiple != null) ? Multiple.Length : 0,
-                        (Single != null) ? 1 : 0
-                    );
-                }
-            }
-
-            public override int GetHashCode () {
-                if (Multiple != null)
-                    return Multiple.GetHashCode();
-                else if (Single != null)
-                    return Single.GetHashCode();
-                else
-                    return -1;
-            }
-
-            public bool Equals (RenderTargetStackEntry entry) {
-                if (entry.Count != Count)
-                    return false;
-
-                if (Count == 1)
-                    return object.ReferenceEquals(entry.First, First);
-                else
-                    return object.ReferenceEquals(entry.Single, Single) && 
-                        object.ReferenceEquals(entry.Multiple, Multiple);
-            }
-
-            public override bool Equals (object obj) {
-                if (obj is RenderTargetStackEntry)
-                    return Equals((RenderTargetStackEntry)obj);
-                else
-                    return false;
+            public void Apply (GraphicsDevice device) {
+                var buffer = BindingArrays[Bindings.Count];
+                Bindings.CopyTo(buffer);
+                device.SetRenderTargets(buffer);
             }
         }
 
@@ -169,7 +117,8 @@ namespace Squared.Render {
                     deviceManager.CurrentMaterial.End(deviceManager);
                 
                 deviceManager.CurrentMaterial = material;
-                deviceManager.UpdateTargetInfo(null, false, true);
+                var currentTargets = RenderTargetStackEntry.FromDevice(deviceManager.Device);
+                deviceManager.UpdateTargetInfo(ref currentTargets, true);
             
                 if (material != null)
                     material.Begin(deviceManager);
@@ -189,7 +138,8 @@ namespace Squared.Render {
                     deviceManager.CurrentMaterial.End(deviceManager);
                 
                 deviceManager.CurrentMaterial = material;
-                deviceManager.UpdateTargetInfo(null, false, true);
+                var currentTargets = RenderTargetStackEntry.FromDevice(deviceManager.Device);
+                deviceManager.UpdateTargetInfo(ref currentTargets, true);
             
                 if (material != null)
                     material.Begin(deviceManager, ref parameters);
@@ -213,7 +163,6 @@ namespace Squared.Render {
         private static volatile int NextDeviceId;
         public int DeviceId { get; private set; }
 
-        private RenderTargetStackEntry CachedCurrentRenderTarget;
         private bool _IsDisposed;
 
         private bool? _NeedsYFlip;
@@ -259,21 +208,8 @@ namespace Squared.Render {
             DeviceId = ++NextDeviceId;
         }
 
-        internal void UpdateTargetInfo (RenderTarget2D target, bool knownTarget, bool setParams) {
-            if (knownTarget) {
-                // HACK: Don't reconstruct to avoid destroying an existing stack trace
-                if (CachedCurrentRenderTarget.First != target)
-                    CachedCurrentRenderTarget = new RenderTargetStackEntry(target);
-            } else if (ParanoidRenderTargetChecks) {
-                var rts = Device.GetRenderTargets();
-                if ((rts == null) || (rts.Length == 0)) {
-                    CachedCurrentRenderTarget = RenderTargetStackEntry.None;
-                } else {
-                    CachedCurrentRenderTarget = new RenderTargetStackEntry(rts, CachedCurrentRenderTarget.Batch, CachedCurrentRenderTarget.StackTrace);
-                }
-            }
-
-            var target1 = CachedCurrentRenderTarget.First;
+        internal void UpdateTargetInfo (ref RenderTargetStackEntry currentTargets, bool setParams) {
+            var target1 = currentTargets.Bindings.FirstOrDefault().RenderTarget as Texture2D;
             var targetWidth = target1 != null
                 ? target1.Width
                 : Device.PresentationParameters.BackBufferWidth;
@@ -300,7 +236,7 @@ namespace Squared.Render {
                 return;
 
             if (NeedsYFlip)
-                if (CachedCurrentRenderTarget.First == null)
+                if (target1 == null)
                     targetHeight *= -1;
 
             rtd.SetValue(new Vector2(targetWidth, targetHeight));
@@ -330,9 +266,10 @@ namespace Squared.Render {
             // UpdateTargetInfo(null, false, true);
         }
 
-        private void ResetDeviceState (RenderTarget2D firstRenderTarget, bool setParams) {
+        private void ResetDeviceState (ref RenderTargetStackEntry currentTargets, bool setParams) {
             RenderManager.ResetDeviceState(Device);
             int w, h;
+            var firstRenderTarget = currentTargets.Bindings.FirstOrDefault().RenderTarget as RenderTarget2D;
             if (firstRenderTarget != null) {
                 w = firstRenderTarget.Width;
                 h = firstRenderTarget.Height;
@@ -342,26 +279,20 @@ namespace Squared.Render {
             }
             Device.Viewport = new Viewport(0, 0, w, h);
             Device.ScissorRectangle = new Rectangle(0, 0, w, h);
-            UpdateTargetInfo(firstRenderTarget, true, setParams);
+            UpdateTargetInfo(ref currentTargets, setParams);
         }
 
         public void SetRenderTarget (RenderTarget2D newRenderTarget, bool setParams = true, bool isPushPop = false) {
             unchecked { RenderTargetChangeIndex++; }
             Device.SetRenderTarget(newRenderTarget);
-            CachedCurrentRenderTarget = new RenderTargetStackEntry(newRenderTarget);
-            ResetDeviceState(newRenderTarget, setParams);
+            var currentTargets = RenderTargetStackEntry.FromDevice(Device);
+            ResetDeviceState(ref currentTargets, setParams);
         }
 
         private void SetRenderTargets (RenderTargetStackEntry entry, bool setParams = true, bool isPushPop = false) {
             unchecked { RenderTargetChangeIndex++; }
-            CachedCurrentRenderTarget = entry;
-            if (entry.Count <= 1) {
-                Device.SetRenderTarget(entry.First);
-                CachedCurrentRenderTarget = entry;
-            } else {
-                Device.SetRenderTargets(entry.Multiple);
-            }
-            ResetDeviceState(entry.First, setParams);
+            entry.Apply(Device);
+            ResetDeviceState(ref entry, setParams);
         }
 
         public void SetRenderTargets (RenderTargetBinding[] newRenderTargets, bool setParams = true, bool isPushPop = false) {
@@ -370,13 +301,9 @@ namespace Squared.Render {
 
         public void AssertRenderTarget (RenderTarget2D renderTarget) {
 #if DEBUG
-            var currentRenderTargets = Device.GetRenderTargets();
-            var cachedCurrentRenderTarget = CachedCurrentRenderTarget;
-            var actualCurrentRenderTarget = new RenderTargetStackEntry(currentRenderTargets);
-            if (!cachedCurrentRenderTarget.Equals(actualCurrentRenderTarget))
-                throw new Exception("Mismatch between cached and actual render target(s)");
+            var currentRenderTargets = RenderTargetStackEntry.FromDevice(Device);
 
-            foreach (var crt in currentRenderTargets)
+            foreach (var crt in currentRenderTargets.Bindings)
                 if (crt.RenderTarget == renderTarget)
                     return;
             throw new Exception("Render target was not bound.");
@@ -385,7 +312,8 @@ namespace Squared.Render {
 
         public void PushRenderTarget (RenderTarget2D newRenderTarget) {
             PushStates();
-            RenderTargetStack.Push(CachedCurrentRenderTarget);
+            var currentRenderTargets = RenderTargetStackEntry.FromDevice(Device);
+            RenderTargetStack.Push(currentRenderTargets);
             ViewportStack.Push(Device.Viewport);
 
             SetRenderTarget(newRenderTarget, isPushPop: true);
@@ -393,7 +321,8 @@ namespace Squared.Render {
 
         public void PushRenderTargets (RenderTargetBinding[] newRenderTargets) {
             PushStates();
-            RenderTargetStack.Push(CachedCurrentRenderTarget);
+            var currentRenderTargets = RenderTargetStackEntry.FromDevice(Device);
+            RenderTargetStack.Push(currentRenderTargets);
             ViewportStack.Push(Device.Viewport);
 
             SetRenderTargets(newRenderTargets, isPushPop: true);
@@ -407,7 +336,7 @@ namespace Squared.Render {
 
             Device.Viewport = ViewportStack.Pop();
 
-            UpdateTargetInfo(newRenderTargets.First, true, false);
+            UpdateTargetInfo(ref newRenderTargets, false);
         }
 
         public MaterialEffectParameters CurrentParameters {
@@ -418,7 +347,15 @@ namespace Squared.Render {
 
         public RenderTarget2D CurrentRenderTarget {
             get {
-                return CachedCurrentRenderTarget.First;
+                var currentRenderTargets = RenderTargetStackEntry.FromDevice(Device);
+                return currentRenderTargets.Bindings.FirstOrDefault().RenderTarget as RenderTarget2D;
+            }
+        }
+
+        public DenseList<RenderTargetBinding> CurrentRenderTargets {
+            get {
+                var currentRenderTargets = RenderTargetStackEntry.FromDevice(Device);
+                return currentRenderTargets.Bindings;
             }
         }
 
@@ -439,8 +376,10 @@ namespace Squared.Render {
             RenderManager.ResetDeviceState(Device);
             if (changeRenderTargets)
                 SetRenderTargets(null, isPushPop: true);
-            else
-                UpdateTargetInfo(null, false, true);
+            else {
+                var currentRenderTargets = RenderTargetStackEntry.FromDevice(Device);
+                UpdateTargetInfo(ref currentRenderTargets, true);
+            }
 
             Device.SetVertexBuffer(null);
         }

@@ -145,15 +145,17 @@ namespace Squared.Util {
         }
 
         public DenseList (T[] items) 
-            : this (items, 0, items.Length) {
+            : this (items, 0, items?.Length ?? 0) {
         }
 
         public DenseList (T[] items, int offset, int count) : this() {
-            AddRange(items, offset, count);
+            if (items != null)
+                AddRange(items, offset, count);
         }
 
         public DenseList (IEnumerable<T> items) : this() {
-            AddRange(items);
+            if (items != null)
+                AddRange(items);
         }
 
         public UnorderedList<T>.Allocator Allocator =>
