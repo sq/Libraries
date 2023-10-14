@@ -6,6 +6,7 @@ using System.Security;
 using Squared.Util;
 using System.Collections.Concurrent;
 using Squared.Threading;
+using Squared.Threading.CoreCLR;
 
 namespace Squared.Task {
     public class InfiniteStepException : Exception {
@@ -81,8 +82,8 @@ namespace Squared.Task {
         private readonly System.Threading.ManualResetEventSlim _WaiterSignal = new ManualResetEventSlim(false);
         private int _WaiterCount = 0;
 
-        private readonly ConcurrentQueue<WorkItemQueueEntry> _Queue = new ConcurrentQueue<WorkItemQueueEntry>();
-        private readonly ConcurrentQueue<WorkItemQueueEntry> _NextStepQueue = new ConcurrentQueue<WorkItemQueueEntry>();
+        private readonly LowAllocConcurrentQueue<WorkItemQueueEntry> _Queue = new LowAllocConcurrentQueue<WorkItemQueueEntry>();
+        private readonly LowAllocConcurrentQueue<WorkItemQueueEntry> _NextStepQueue = new LowAllocConcurrentQueue<WorkItemQueueEntry>();
 
         public ThreadGroup ThreadGroup;
 

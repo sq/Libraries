@@ -11,6 +11,7 @@ using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Squared.Threading.CoreCLR;
 using Squared.Util;
 
 namespace Squared.Threading {
@@ -238,15 +239,12 @@ namespace Squared.Threading {
 
     public enum WorkQueueNotifyMode : int {
         Never = 0,
-        Always = 1,
-        Stochastically = 2
+        Always = 1
     }
 
     public sealed class WorkQueue<T> : IWorkQueue
         where T : IWorkItem
     {
-        const int DefaultBufferSize = 512;
-
         // For debugging
         public static bool BlockEnqueuesWhileDraining = false;
 
@@ -265,11 +263,9 @@ namespace Squared.Threading {
         private readonly List<WorkQueueDrainListener> DrainListeners = new List<WorkQueueDrainListener>();
         private volatile int NumWaitingForDrain = 0;
         private readonly ManualResetEventSlim FinishedProcessingSignal = new ManualResetEventSlim(false);
+        private object SignalLock = new object();
 
-        private readonly object ItemsLock = new object();
-        private InternalWorkItem<T>[] _Items;
-        private int _Head, _Tail, _Count;
-        private int _Semilock;
+        private LowAllocConcurrentQueue<InternalWorkItem<T>> _Items;
 
         private volatile int _NumProcessing = 0;
         private ExceptionDispatchInfo UnhandledException;
@@ -283,7 +279,7 @@ namespace Squared.Threading {
         public WorkQueue (ThreadGroup owner) {
             Owner = owner;
             Configuration = WorkItemConfigurationForType<T>.Configuration;
-            _Items = new InternalWorkItem<T>[DefaultBufferSize];
+            _Items = new LowAllocConcurrentQueue<InternalWorkItem<T>>();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -304,18 +300,8 @@ namespace Squared.Threading {
         /// Caller is responsible for AssertCanEnqueue and updating ItemsWaitingForProcessing!
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int AddInternal (ref InternalWorkItem<T> item) {
-            lock (ItemsLock) {
-                // Any existing read operations are irrelevant, we're inside the lock so we own the semilock state
-                Volatile.Write(ref _Semilock, Semilock_Adding);
-                EnsureCapacityLocked(_Count + 1);
-                _Items[_Tail] = item;
-                AdvanceLocked(ref _Tail);
-                _Count++;
-                Interlocked.CompareExchange(ref _Semilock, Semilock_Open, Semilock_Adding);
-
-                return _Count;
-            }
+        private void AddInternal (ref InternalWorkItem<T> item) {
+            _Items.Enqueue(ref item);
         }
 
 #if INSTRUMENT_FAST_PATH
@@ -323,74 +309,9 @@ namespace Squared.Threading {
         private static int SlowOutCount = 0;
 #endif
 
-        private bool TryDequeue (ref InternalWorkItem<T> item, out bool empty) {
-            // Attempt to transition the semilock into read mode, and as long as it wasn't in add mode,
-            if (Interlocked.CompareExchange(ref _Semilock, Semilock_Reading, Semilock_Open) != 3) {
-                // Determine whether we can early-out this dequeue operation because we successfully entered
-                //  the semilock either during an enqueue or when it wasn't held at all
-                // FIXME: Is it safe to do this check during a dequeue? I think so
-                empty = Volatile.Read(ref _Count) <= 0;
-                // We may have entered this block without acquiring the semilock in open mode, in which case
-                //  whoever has it (in dequeue mode) will release it when they're done
-                Interlocked.CompareExchange(ref _Semilock, Semilock_Open, Semilock_Reading);
-                if (empty) {
-#if INSTRUMENT_FAST_PATH
-                    Interlocked.Increment(ref EarlyOutCount);
-#endif
-                    return false;
-                }
-            }
-
-            lock (ItemsLock) {
-                // We've successfully acquired the state lock, so we own the semilock state now
-                Volatile.Write(ref _Semilock, Semilock_Dequeuing);
-                if (_Count <= 0) {
-                    empty = true;
-#if INSTRUMENT_FAST_PATH
-                    Interlocked.Increment(ref SlowOutCount);
-#endif
-                    Volatile.Write(ref _Semilock, Semilock_Open);
-                    return false;
-                }
-
-                item = _Items[_Head];
-                _Items[_Head] = default(InternalWorkItem<T>);
-                AdvanceLocked(ref _Head);
-                _Count--;
-                empty = _Count <= 0;
-                Volatile.Write(ref _Semilock, Semilock_Open);
-                return true;
-            }
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void EnsureCapacityLocked (int capacity) {
-            if (_Items.Length < capacity)
-                GrowLocked(capacity);
-        }
-
-        private void GrowLocked (int capacity) {
-            var newSize = UnorderedList<T>.PickGrowthSize(_Items.Length, capacity);
-            var newItems = new InternalWorkItem<T>[newSize];
-            if (_Count > 0) {
-                if (_Head < _Tail) {
-                    Array.Copy(_Items, _Head, newItems, 0, _Count);
-                } else {
-                    Array.Copy(_Items, _Head, newItems, 0, _Items.Length - _Head);
-                    Array.Copy(_Items, 0, newItems, _Items.Length - _Head, _Tail);
-                }
-            }
-            _Items = newItems;
-            _Head = 0;
-            _Tail = (_Count == capacity) ? 0 : _Count;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void AdvanceLocked (ref int index) {
-            var temp = index + 1;
-            if (temp >= _Items.Length)
-                temp = 0;
-            index = temp;
+        private bool TryDequeue (ref InternalWorkItem<T> item) {
+            return _Items.TryDequeue(out item);
         }
 
         public void RegisterDrainListener (WorkQueueDrainListener listener) {
@@ -410,18 +331,13 @@ namespace Squared.Threading {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void NotifyChanged (WorkQueueNotifyMode mode, int newCount, bool wakeAll = true) {
+        private void NotifyChanged (WorkQueueNotifyMode mode, bool wakeAll = true) {
             switch (mode) {
                 case WorkQueueNotifyMode.Never:
                     return;
                 default:
                 case WorkQueueNotifyMode.Always:
                     Owner.NotifyQueuesChanged(wakeAll);
-                    return;
-                case WorkQueueNotifyMode.Stochastically:
-                    if ((newCount % Configuration.StochasticNotifyInterval) == 0)
-                        // We're already only waking the queues intermittently so we always want wakeAll = true here
-                        Owner.NotifyQueuesChanged(true);
                     return;
             }
         }
@@ -450,35 +366,37 @@ namespace Squared.Threading {
         public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null, WorkQueueNotifyMode notifyChanged = WorkQueueNotifyMode.Always) {
             AssertCanEnqueue();
             if (Interlocked.Increment(ref ItemsWaitingForProcessing) <= 2)
-                FinishedProcessingSignal.Reset();
+                lock (SignalLock)
+                    FinishedProcessingSignal.Reset();
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
-            var newCount = AddInternal(ref wi);
-            NotifyChanged(notifyChanged, newCount, wakeAll: false);
+            AddInternal(ref wi);
+            NotifyChanged(notifyChanged, wakeAll: false);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null, WorkQueueNotifyMode notifyChanged = WorkQueueNotifyMode.Always) {
             AssertCanEnqueue();
             if (Interlocked.Increment(ref ItemsWaitingForProcessing) <= 2)
-                FinishedProcessingSignal.Reset();
+                lock (SignalLock)
+                    FinishedProcessingSignal.Reset();
             var wi = new InternalWorkItem<T>(this, ref data, onComplete);
-            var newCount = AddInternal(ref wi);
-            NotifyChanged(notifyChanged, newCount, wakeAll: false);
+            AddInternal(ref wi);
+            NotifyChanged(notifyChanged, wakeAll: false);
         }
 
         public void EnqueueMany (ArraySegment<T> data, bool notifyChanged = true) {
             AssertCanEnqueue();
-            Interlocked.Add(ref ItemsWaitingForProcessing, data.Count);
-            FinishedProcessingSignal.Reset();
+            lock (SignalLock) {
+                Interlocked.Add(ref ItemsWaitingForProcessing, data.Count);
+                FinishedProcessingSignal.Reset();
+            }
             var wi = new InternalWorkItem<T>();
             wi.Queue = this;
             wi.OnComplete = null;
 
-            lock (ItemsLock) {
-                for (var i = 0; i < data.Count; i++) {
-                    wi.Data = data.Array[data.Offset + i];
-                    AddInternal(ref wi);
-                }
+            for (var i = 0; i < data.Count; i++) {
+                wi.Data = data.Array[data.Offset + i];
+                AddInternal(ref wi);
             }
 
             if (notifyChanged)
@@ -511,13 +429,9 @@ namespace Squared.Threading {
 
             do {
                 try {
-                    bool empty = false;
                     running = (actualMaximumCount > 0) &&
                         (numProcessed < actualMaximumCount) &&
-                        TryDequeue(ref item, out empty);
-
-                    if (empty)
-                        exhausted = true;
+                        TryDequeue(ref item);
 
                     if (running) {
                         try {
@@ -534,6 +448,10 @@ namespace Squared.Threading {
                 }
             } while (running);
 
+            // HACK
+            if (numProcessed > 0)
+                exhausted = _Items.IsEmpty;
+
             actualMaximumCount -= numProcessed;
             Interlocked.Decrement(ref _NumProcessing);
             // The following would be ideal but I think it could produce a hang in some cases
@@ -543,14 +461,10 @@ namespace Squared.Threading {
             var signalDone = wasLast && (Volatile.Read(ref ItemsQueued) <= processedCounter);
             */
 
-            // HACK: Acquire the lock temporarily to see if we're really done, and if we are, 
-            //  set the finished processing signal. We need to acquire the lock so that we
-            //  properly synchronize with Reset
             if (wasLast) {
-                lock (ItemsLock) {
-                    if (_Count <= 0)
+                lock (SignalLock)
+                    if (_Items.IsEmpty)
                         FinishedProcessingSignal.Set();
-                }
             }
         }
 
@@ -576,14 +490,13 @@ namespace Squared.Threading {
         public bool IsDrained {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                lock (ItemsLock)
-                    return (_Count <= 0) && (ItemsWaitingForProcessing <= 0);
+                return _Items.IsEmpty && (ItemsWaitingForProcessing <= 0);
             }
         }
 
         private bool IsWorkPossiblyWaiting {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (ItemsWaitingForProcessing > 0);
+            get => (ItemsWaitingForProcessing > 0) || !_Items.IsEmpty;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -611,12 +524,10 @@ namespace Squared.Threading {
             bool doWait = false;
             try {
                 do {
-                    lock (ItemsLock) {
-                        // Read these first and read the queued count last so that if we lose a race
-                        //  we will lose it in the 'there's extra work' fashion instead of 'we're done
-                        //  but not really' fashion
-                        doWait = (ItemsWaitingForProcessing > 0) || (_Count > 0);
-                    }
+                    // Read these first and read the queued count last so that if we lose a race
+                    //  we will lose it in the 'there's extra work' fashion instead of 'we're done
+                    //  but not really' fashion
+                    doWait = (ItemsWaitingForProcessing > 0) || !_Items.IsEmpty;
                     var now = Time.Ticks;
                     if (doWait) {
                         if (now > endWhen)

@@ -1242,32 +1242,6 @@ namespace Squared.Render {
             }
         }
 
-        // TODO: Move this
-        internal static void FlushDisposeList (List<IDisposable> list, ref int isActive) {
-            Interlocked.Increment(ref isActive);
-            try {
-                DenseList<IDisposable> pds = default;
-
-                lock (list) {
-                    if (list.Count == 0)
-                        return;
-
-                    // Prevents a deadlock from recursion
-                    pds.AddRange(list);
-                    list.Clear();
-                }
-
-                foreach (var pd in pds) {
-                    try {
-                        pd.Dispose();
-                    } catch (ObjectDisposedException) {
-                    }
-                }
-            } finally {
-                Interlocked.Decrement(ref isActive);
-            }
-        }
-
         /// <summary>
         /// Queues a resource to be disposed after the next draw and then erases its storage.
         /// </summary>

@@ -11,6 +11,7 @@ using System.Reflection;
 using System.ComponentModel;
 using System.Collections.Concurrent;
 using Squared.Threading;
+using Squared.Threading.CoreCLR;
 
 namespace Squared.Render {
     public abstract class MultithreadedGame : Microsoft.Xna.Framework.Game {
@@ -36,7 +37,7 @@ namespace Squared.Render {
         protected bool IsLoadingContent { get; private set; }
         public bool IsContentLoaded { get; private set; }
 
-        private readonly ConcurrentQueue<Action<GameTime>> BeforeDrawQueue = new ConcurrentQueue<Action<GameTime>>();
+        private readonly LowAllocConcurrentQueue<Action<GameTime>> BeforeDrawQueue = new LowAllocConcurrentQueue<Action<GameTime>>();
 
         public event Action BeginDrawFailed;
 

@@ -221,7 +221,7 @@ namespace Squared.Render {
             _ClearQueue?.WaitUntilDrained(timeoutMs);
         }
 
-        private void ClearAndReturn (UnorderedList<T> list, UnorderedList<UnorderedList<T>> pool, int limit, WorkQueueNotifyMode notifyMode = WorkQueueNotifyMode.Stochastically) {
+        private void ClearAndReturn (UnorderedList<T> list, UnorderedList<UnorderedList<T>> pool, int limit, WorkQueueNotifyMode notifyMode = WorkQueueNotifyMode.Always) {
             if (
                 !FastClearEnabled &&
                 (list.Count > DeferredClearSizeThreshold) && 

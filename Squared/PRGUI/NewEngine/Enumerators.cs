@@ -176,6 +176,7 @@ namespace Squared.PRGUI.NewEngine {
                 Version = -1;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
                 CheckVersion();
 
@@ -183,8 +184,13 @@ namespace Squared.PRGUI.NewEngine {
                     ref var run = ref Engine.Run(_Current);
                     _Current = run.NextRunIndex;
                     // TODO: Loop detection
-                    return (Current >= 0);
-                } else if (
+                    return (_Current >= 0);
+                } else
+                    return MoveNext_Slow();
+            }
+
+            private bool MoveNext_Slow () {
+                if (
                     (_Current != State_NotStarted) &&
                     (_Current != State_FloatingRun)
                 ) {

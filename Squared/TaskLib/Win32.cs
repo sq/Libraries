@@ -9,6 +9,7 @@ using Squared.Util.Event;
 using Squared.Util;
 using System.Collections.Concurrent;
 using Squared.Threading;
+using Squared.Threading.CoreCLR;
 
 namespace Squared.Task {
     public static partial class JobQueue {
@@ -29,8 +30,8 @@ namespace Squared.Task {
         private int WM_RUN_WORK_ITEM;
         private const int WS_EX_NOACTIVATE = 0x08000000;
 
-        private ConcurrentQueue<WorkItemQueueEntry> _Queue = new ConcurrentQueue<WorkItemQueueEntry>();
-        private ConcurrentQueue<WorkItemQueueEntry> _NextStepQueue = new ConcurrentQueue<WorkItemQueueEntry>();
+        private LowAllocConcurrentQueue<WorkItemQueueEntry> _Queue = new LowAllocConcurrentQueue<WorkItemQueueEntry>();
+        private LowAllocConcurrentQueue<WorkItemQueueEntry> _NextStepQueue = new LowAllocConcurrentQueue<WorkItemQueueEntry>();
         private int StepIsPending = 0;
         private int ExecutionDepth = 0;
 

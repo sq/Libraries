@@ -402,7 +402,7 @@ namespace Squared.Render.RasterStroke {
             }
         }
 
-        private class BatchManager : SubBatchManager<RasterStrokeBatch, RasterStrokeDrawCall, SubBatch> {
+        private sealed class BatchManager : SubBatchManager<RasterStrokeBatch, RasterStrokeDrawCall, SubBatch> {
             public static readonly BatchManager Instance = new BatchManager();
 
             protected override bool KeyEquals (

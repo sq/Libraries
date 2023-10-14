@@ -608,7 +608,7 @@ namespace Squared.Render.RasterShape {
             }
         }
 
-        private class BatchManager : SubBatchManager<RasterShapeBatch, RasterShapeDrawCall, SubBatch> {
+        private sealed class BatchManager : SubBatchManager<RasterShapeBatch, RasterShapeDrawCall, SubBatch> {
             public static readonly BatchManager Instance = new BatchManager();
 
             protected override bool KeyEquals (

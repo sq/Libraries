@@ -33,25 +33,32 @@ namespace Squared.Render.DistanceField {
                     var a = InBuffer;
                     var b = OutBuffer;
                     InBuffer = OutBuffer = null;
-                    Coordinator.AfterPresent(() => {
-                        Coordinator.DisposeResource(a);
-                        Coordinator.DisposeResource(b);
-                    });
+                    Coordinator.DisposeResource(a);
+                    Coordinator.DisposeResource(b);
                 }
 
                 if (InBuffer != null)
                     return;
 
                 lock (Coordinator.CreateResourceLock) {
-                    InBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents);
-                    OutBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents);
+                    InBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents) {
+                        Name = "JumpFlood.InBuffer",
+                    };
+                    OutBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents) {
+                        Name = "JumpFlood.OutBuffer",
+                    };
                 }
             }
 
             public void Dispose () {
-                InBuffer?.Dispose();
-                OutBuffer?.Dispose();
-                InBuffer = OutBuffer = null;
+                if (Coordinator != null) {
+                    Coordinator.DisposeResource(ref InBuffer);
+                    Coordinator.DisposeResource(ref OutBuffer);
+                } else {
+                    InBuffer?.Dispose();
+                    OutBuffer?.Dispose();
+                    InBuffer = OutBuffer = null;
+                }
             }
         }
 
@@ -130,9 +137,7 @@ namespace Squared.Render.DistanceField {
             GPUScratchSurfaces scratch = null;
             GenerateDistanceField(ref renderer, input, output, ref scratch, layer, region, minimumAlpha, smoothingLevel);
             var coordinator = renderer.Container.Coordinator;
-            coordinator.AfterPresent(() => {
-                coordinator.DisposeResource(scratch);
-            });
+            coordinator.DisposeResource(scratch);
         }
     }
 }
