@@ -514,13 +514,37 @@ namespace Squared.PRGUI {
             return (float)Math.Round(baseSize * OutlineScaleRatio, 1, MidpointRounding.AwayFromZero);
         }
 
+        private int? CachedWin32CursorSize;
+
+        private int GetWin32CursorSize () {
+            if (!CachedWin32CursorSize.HasValue) {
+                switch (Environment.OSVersion.Platform) {
+                    case PlatformID.Win32NT:
+                    case PlatformID.Win32S:
+                    case PlatformID.Win32Windows:
+                        using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Accessibility")) {
+                            var value = key.GetValue("CursorSize", 1);
+                            CachedWin32CursorSize = Convert.ToInt32(value);
+                        }
+                        break;
+                    default:
+                        CachedWin32CursorSize = 1;
+                        break;
+                }
+            }
+
+            return CachedWin32CursorSize.Value;
+        }
+
         private void UpdateScaledSizes () {
             ((DelegateDecorator)Checkbox).Padding =
                 ((DelegateDecorator)RadioButton).Padding =
                 new Margins(6 + CheckboxSize + 4, 6, 6, 6);
 
-            const float tooltipBaseMargin = 6;
-            float scaledCursorHeightOffset = 6;
+            const float tooltipBaseMargin = 6,
+                // 7 is "correct" but since tooltips have internal padding, we want to use a smaller value so there's less dead space
+                tooltipWin32ScaleFactor = 4; // 7;
+            float scaledCursorHeightOffset = tooltipWin32ScaleFactor * GetWin32CursorSize();
             ((DelegateDecorator)Tooltip).Margins = new Margins(
                 tooltipBaseMargin, tooltipBaseMargin + scaledCursorHeightOffset, tooltipBaseMargin, tooltipBaseMargin
             );
