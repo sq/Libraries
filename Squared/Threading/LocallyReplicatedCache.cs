@@ -32,6 +32,8 @@ namespace Squared.Threading {
             public readonly object Strong;
 
             public Entry (object obj, int hashCode, bool strong) {
+                Weak = null;
+                Strong = null;
                 HashCode = hashCode;
                 if (strong)
                     Strong = obj;
@@ -294,7 +296,8 @@ namespace Squared.Threading {
                 return null;
 
             var entry = Table.GetValue(id);
-            if (entry.Weak?.TryGetTarget(out var result) == true)
+            object result = null;
+            if (entry.Weak?.TryGetTarget(out result) == true)
                 return (TObject)result;
             else
                 return null;
@@ -316,7 +319,8 @@ namespace Squared.Threading {
                 return false;
             }
 
-            if (entry.Weak?.TryGetTarget(out var obj) == true) {
+            object obj = null;
+            if (entry.Weak?.TryGetTarget(out obj) == true) {
                 result = obj as TObject;
                 return true;
             }

@@ -184,13 +184,15 @@ namespace Squared.Render.Text {
 
         private Dictionary<Pair<int>, LayoutMarker> GetMarkers () {
             var satellite = AutoAllocateSatellite();
-            satellite.Markers ??= new ();
+            if (satellite.Markers == null)
+                satellite.Markers = new Dictionary<Pair<int>, LayoutMarker>();
             return satellite.Markers;
         }
 
         private Dictionary<Vector2, LayoutHitTest> GetHitTests () {
             var satellite = AutoAllocateSatellite();
-            satellite.HitTests ??= new ();
+            if (satellite.HitTests == null)
+                satellite.HitTests = new Dictionary<Vector2, LayoutHitTest>();
             return satellite.HitTests;
         }
 

@@ -191,7 +191,7 @@ namespace Squared.Util {
                                     Expression.Constant(1.0f), 
                                     Expression.Convert(
                                         Expression.Call(
-                                            ((Delegate)Math.Cos).Method, 
+                                            ((Func<double, double>)Math.Cos).Method, 
                                             Expression.Multiply(Expression.Convert(x, typeof(double)), Expression.Constant(Math.PI))
                                         ),
                                         typeof(float)
