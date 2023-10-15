@@ -28,7 +28,8 @@ namespace Squared.PRGUI.Controls {
                 ControlAlignmentPoint = DefaultControlAlignmentPoint,
                 ConstrainToParentInsteadOfScreen = true,
                 HideIfNotInsideParent = true,
-                UseTransformedAnchor = true
+                UseTransformedAnchor = true,
+                UseContentRect = true,
             };
             ConfigureDefaultLayout(Content);
             AutoSizeIsMaximum = false;
@@ -53,7 +54,8 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var decorator = GetDefaultDecorator(context.DecorationProvider);
-            Aligner.ExtraMargins = decorator.Margins;
+            // FIXME: Why was this here?
+            // Aligner.ExtraMargins = decorator.Margins;
             var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
             Record(ref context).Tag = LayoutTags.Tooltip;
             return result;

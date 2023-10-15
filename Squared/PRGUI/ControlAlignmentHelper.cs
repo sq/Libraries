@@ -25,13 +25,11 @@ namespace Squared.PRGUI {
     {
         public delegate bool UpdatePositionHandler (in Vector2 newPosition, in RectF parentRect, in RectF rect, bool updateDesiredPosition);
 
-        public bool Enabled = true, UseTransformedAnchor = false;
+        public bool Enabled = true, UseTransformedAnchor = false, UseContentRect = false;
         private bool IsNewInstance = true;
 
         public UpdatePositionHandler UpdatePosition;
         public Func<bool> IsAnimating, IsLocked;
-
-        public Margins ExtraMargins;
 
         private Vector2 _AlignmentPoint = new Vector2(0.5f, 0.5f), _AnchorPoint = new Vector2(0.5f, 0.5f);
 
@@ -154,18 +152,24 @@ namespace Squared.PRGUI {
         }
 
         private bool Align (ref UIOperationContext context, RectF parentRect, RectF rect, bool updateDesiredPosition) {
-            // Computed?
-            var margins = Control.Margins + ExtraMargins;
+            PRGUI.Control.ComputeEffectiveSpacing(Control, ref context, out _, out var margins);
 
             if (Anchor != null) {
                 var actualRect = rect;
                 var trialAnchorPoint = AnchorPoint;
                 var trialAlignmentPoint = ControlAlignmentPoint;
-                // FIXME: Adjust on appropriate sides
+                // HACK: Expand our rect so we don't rub up against the screen edges
                 rect.Size += margins.Size;
-                var anchorRect = Anchor.GetRect(displayRect: UseTransformedAnchor);
+                // FIXME: Should we set contentRect: UseTransformedAnchor to cancel out the effect of the anchor's margins?
+                var anchorRect = Anchor.GetRect(displayRect: UseTransformedAnchor, contentRect: UseContentRect);
                 if (anchorRect == default(RectF))
                     return false;
+                
+                // HACK: Apply *our* margins to the anchor's rect so that our margins apply to our relative positioning
+                anchorRect.Left -= margins.Right;
+                anchorRect.Top -= margins.Bottom;
+                anchorRect.Size += margins.Size;
+
                 var a = AlignmentTrial(ref context, in parentRect, in rect, margins, trialAnchorPoint, trialAlignmentPoint, anchorRect, out Vector2 mrapA);
                 var isectA = GetIntersectionFactor(in anchorRect, in actualRect, a);
                 // HACK: If the specified alignment causes the control to overlap its anchor, attempt to flip the alignment vertically to find it a better spot
@@ -223,9 +227,6 @@ namespace Squared.PRGUI {
                 ClampToConstraintArea(ref context, ref clampedAp, in anchorRect);
                 anchorRect.Position = clampedAp;
             }
-            anchorRect.Left -= margins.Left;
-            anchorRect.Top -= margins.Top;
-            anchorRect.Size += margins.Size;
             // We also need to clamp the final anchor rectangle to the screen when deciding where to place the control
             anchorRect.Intersection(in parentRect, out RectF clampedAnchorRect);
             // FIXME

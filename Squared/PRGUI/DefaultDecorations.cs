@@ -308,7 +308,8 @@ namespace Squared.PRGUI {
             // FIXME: StaticImage
 
             Tooltip = new DelegateDecorator {
-                Margins = new Margins(12),
+                // Set in UpdateScaledSizes
+                // Margins = new Margins(12),
                 Padding = new Margins(10, 10),
                 UnscaledPadding = new Margins(2, 0),
                 GetTextSettings = GetTextSettings_Tooltip,
@@ -517,6 +518,12 @@ namespace Squared.PRGUI {
             ((DelegateDecorator)Checkbox).Padding =
                 ((DelegateDecorator)RadioButton).Padding =
                 new Margins(6 + CheckboxSize + 4, 6, 6, 6);
+
+            const float tooltipBaseMargin = 6;
+            float scaledCursorHeightOffset = 6;
+            ((DelegateDecorator)Tooltip).Margins = new Margins(
+                tooltipBaseMargin, tooltipBaseMargin + scaledCursorHeightOffset, tooltipBaseMargin, tooltipBaseMargin
+            );
         }
 
         public IGlyphSource DefaultFont,

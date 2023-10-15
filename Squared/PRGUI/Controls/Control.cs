@@ -685,7 +685,7 @@ namespace Squared.PRGUI {
         /// </summary>
         /// <param name="applyOffset">Applies the scroll offset of the control's parent(s).</param>
         /// <param name="contentRect">Insets the rectangle by the control's padding.</param>
-        /// <param name="displayRect">Expands the rectangle to include the control's margin and applies its transform (if any).</param>
+        /// <param name="displayRect">Applies any transforms affecting the control to the computed rectangle.</param>
         public RectF GetRect (bool applyOffset = true, bool contentRect = false, bool displayRect = false, UIContext context = null) {
             if (IsLayoutInvalid)
                 return default(RectF);
@@ -695,22 +695,9 @@ namespace Squared.PRGUI {
             ref var res = ref LayoutResult(context);
             result = contentRect ? res.ContentRect : res.Rect;
 
-            if (displayRect) {
-                // FIXME: Is applying the margins correct to begin with?                
-                var margins = MostRecentComputedMargins;
-                result.Left -= margins.Left;
-                result.Top -= margins.Top;
-                result.Width += margins.X;
-                result.Height += margins.Y;
+            // FIXME: This has accuracy issues
+            if (displayRect)
                 ApplyCompleteTransform(ref result);
-                // FIXME: This is extremely inaccurate!!!
-                if (contentRect) {
-                    result.Left += margins.Left;
-                    result.Top += margins.Top;
-                    result.Width -= margins.X;
-                    result.Height -= margins.Y;
-                }
-            }
 
             if (applyOffset) {
                 result.Left += _AbsoluteDisplayOffset.X;
@@ -806,6 +793,11 @@ namespace Squared.PRGUI {
             Margins.Add(in scaledPadding, in unscaledPadding, out padding);
             Margins.Scale(ref scaledMargins, in marginScale);
             margins = scaledMargins;
+        }
+
+        public static void ComputeEffectiveSpacing (Control control, ref UIOperationContext context, out Margins padding, out Margins margins) {
+            var dp = context.DecorationProvider;
+            control.ComputeEffectiveSpacing(ref context, dp, control.GetDecorator(dp, context.DefaultDecorator), out padding, out margins);
         }
 
         protected static void GetSizeConstraints (Control control, ref UIOperationContext context, out ControlDimension width, out ControlDimension height) {

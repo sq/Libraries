@@ -396,6 +396,20 @@ namespace Squared.PRGUI {
             return lhs;
         }
 
+        public static RectF operator + (RectF lhs, Margins rhs) {
+            lhs.Left -= rhs.Left;
+            lhs.Top -= rhs.Top;
+            lhs.Size += rhs.Size;
+            return lhs;
+        }
+
+        public static RectF operator - (RectF lhs, Margins rhs) {
+            lhs.Left += rhs.Left;
+            lhs.Top += rhs.Top;
+            lhs.Size -= rhs.Size;
+            return lhs;
+        }
+
         public override int GetHashCode () {
             return Left.GetHashCode() ^ Top.GetHashCode() ^ Width.GetHashCode() ^ Height.GetHashCode();
         }
