@@ -1193,7 +1193,7 @@ namespace Squared.Render.Convenience {
             }
         }
 
-        public void RasterizeEllipse (
+        public RasterShapeBatch RasterizeEllipse (
             Vector2 center, Vector2 radius, pSRGBColor innerColor, pSRGBColor? outerColor = null,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
@@ -1203,33 +1203,34 @@ namespace Squared.Render.Convenience {
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
             Vector2? rampUVOffset = null, int sortKey = 0, Vector2? gradientCenter = null
         ) {
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Ellipse,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = center,
-                    B = radius,
-                    C = (gradientCenter ?? new Vector2(0.5f, 0.5f)) - new Vector2(0.5f, 0.5f),
-                    Radius = radius,
-                    OutlineSize = 0,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? default,
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.Ellipse,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = center,
+                B = radius,
+                C = (gradientCenter ?? new Vector2(0.5f, 0.5f)) - new Vector2(0.5f, 0.5f),
+                Radius = radius,
+                OutlineSize = 0,
+                InnerColor = innerColor,
+                OuterColor = outerColor.GetValueOrDefault(innerColor),
+                OutlineColor = outerColor.GetValueOrDefault(innerColor),
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow ?? default,
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
-        public void RasterizeEllipse (
+        public RasterShapeBatch RasterizeEllipse (
             Vector2 center, Vector2 radius, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
@@ -1240,33 +1241,34 @@ namespace Squared.Render.Convenience {
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
             Vector2? rampUVOffset = null, int sortKey = 0, Vector2? gradientCenter = null
         ) {
-            using (var eb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                eb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Ellipse,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = center,
-                    B = radius,
-                    C = (gradientCenter ?? new Vector2(0.5f, 0.5f)) - new Vector2(0.5f, 0.5f),
-                    Radius = radius,
-                    OutlineSize = outlineRadius,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor,
-                    OutlineColor = outlineColor,
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? default,
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.Ellipse,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = center,
+                B = radius,
+                C = (gradientCenter ?? new Vector2(0.5f, 0.5f)) - new Vector2(0.5f, 0.5f),
+                Radius = radius,
+                OutlineSize = outlineRadius,
+                InnerColor = innerColor,
+                OuterColor = outerColor,
+                OutlineColor = outlineColor,
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow ?? default,
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
-        public void RasterizeLineSegment (
+        public RasterShapeBatch RasterizeLineSegment (
             Vector2 a, Vector2 b, float radius, pSRGBColor innerColor, pSRGBColor? outerColor = null,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
@@ -1276,32 +1278,33 @@ namespace Squared.Render.Convenience {
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
             Vector2? rampUVOffset = null, int sortKey = 0
         ) {
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.LineSegment,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = a, B = b,
-                    C = Vector2.Zero,
-                    Radius = new Vector2(radius, 0),
-                    OutlineSize = 0,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow ?? default,
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.LineSegment,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = a, B = b,
+                C = Vector2.Zero,
+                Radius = new Vector2(radius, 0),
+                OutlineSize = 0,
+                InnerColor = innerColor,
+                OuterColor = outerColor.GetValueOrDefault(innerColor),
+                OutlineColor = outerColor.GetValueOrDefault(innerColor),
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow ?? default,
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
-        public void RasterizeLineSegment (
+        public RasterShapeBatch RasterizeLineSegment (
             Vector2 a, Vector2 b, float startRadius, float? endRadius, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
@@ -1315,32 +1318,33 @@ namespace Squared.Render.Convenience {
             float _endRadius = endRadius.GetValueOrDefault(startRadius);
             float maxRadius = Math.Max(startRadius, _endRadius);
 
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.LineSegment,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = a, B = b,
-                    C = new Vector2(0, startRadius - maxRadius),
-                    Radius = new Vector2(maxRadius, _endRadius - maxRadius),
-                    OutlineSize = outlineRadius,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor,
-                    OutlineColor = outlineColor,
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow.GetValueOrDefault(),
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.LineSegment,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = a, B = b,
+                C = new Vector2(0, startRadius - maxRadius),
+                Radius = new Vector2(maxRadius, _endRadius - maxRadius),
+                OutlineSize = outlineRadius,
+                InnerColor = innerColor,
+                OuterColor = outerColor,
+                OutlineColor = outlineColor,
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow.GetValueOrDefault(),
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
-        public void RasterizeRectangle (
+        public RasterShapeBatch RasterizeRectangle (
             Vector2 tl, Vector2 br, float radius,
             pSRGBColor innerColor, pSRGBColor? outerColor = null,
             RasterFillSettings fill = default, float? annularRadius = null,
@@ -1351,32 +1355,33 @@ namespace Squared.Render.Convenience {
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
             Vector2? rampUVOffset = null, int sortKey = 0
         ) {
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Rectangle,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = tl, B = br,
-                    C = new Vector2(radius),
-                    Radius = new Vector2(radius),
-                    OutlineSize = 0,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow.GetValueOrDefault(),
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.Rectangle,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = tl, B = br,
+                C = new Vector2(radius),
+                Radius = new Vector2(radius),
+                OutlineSize = 0,
+                InnerColor = innerColor,
+                OuterColor = outerColor.GetValueOrDefault(innerColor),
+                OutlineColor = outerColor.GetValueOrDefault(innerColor),
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow.GetValueOrDefault(),
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
-        public void RasterizeRectangle (
+        public RasterShapeBatch RasterizeRectangle (
             Vector2 tl, Vector2 br, float radius, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
@@ -1387,32 +1392,33 @@ namespace Squared.Render.Convenience {
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
             Vector2? rampUVOffset = null, int sortKey = 0
         ) {
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Rectangle,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = tl, B = br,
-                    C = new Vector2(radius),
-                    Radius = new Vector2(radius),
-                    OutlineSize = outlineRadius,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor,
-                    OutlineColor = outlineColor,
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow.GetValueOrDefault(),
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.Rectangle,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = tl, B = br,
+                C = new Vector2(radius),
+                Radius = new Vector2(radius),
+                OutlineSize = outlineRadius,
+                InnerColor = innerColor,
+                OuterColor = outerColor,
+                OutlineColor = outlineColor,
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow.GetValueOrDefault(),
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
-        public void RasterizeRectangle (
+        public RasterShapeBatch RasterizeRectangle (
             Vector2 tl, Vector2 br, Vector4 radiusCW, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
@@ -1423,32 +1429,33 @@ namespace Squared.Render.Convenience {
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
             Vector2? rampUVOffset = null, int sortKey = 0
         ) {
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Rectangle,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = tl, B = br,
-                    C = new Vector2(radiusCW.X, radiusCW.Y),
-                    Radius = new Vector2(radiusCW.Z, radiusCW.W),
-                    OutlineSize = outlineRadius,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor,
-                    OutlineColor = outlineColor,
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow.GetValueOrDefault(),
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.Rectangle,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = tl, B = br,
+                C = new Vector2(radiusCW.X, radiusCW.Y),
+                Radius = new Vector2(radiusCW.Z, radiusCW.W),
+                OutlineSize = outlineRadius,
+                InnerColor = innerColor,
+                OuterColor = outerColor,
+                OutlineColor = outlineColor,
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow.GetValueOrDefault(),
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
-        public void RasterizeTriangle (
+        public RasterShapeBatch RasterizeTriangle (
             Vector2 a, Vector2 b, Vector2 c, float radius, 
             pSRGBColor innerColor, pSRGBColor? outerColor = null,
             RasterFillSettings fill = default, float? annularRadius = null,
@@ -1459,31 +1466,32 @@ namespace Squared.Render.Convenience {
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
             Vector2? rampUVOffset = null, int sortKey = 0
         ) {
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Triangle,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = a, B = b, C = c,
-                    Radius = new Vector2(radius, fill.Offset),
-                    OutlineSize = 0,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow.GetValueOrDefault(),
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.Triangle,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = a, B = b, C = c,
+                Radius = new Vector2(radius, fill.Offset),
+                OutlineSize = 0,
+                InnerColor = innerColor,
+                OuterColor = outerColor.GetValueOrDefault(innerColor),
+                OutlineColor = outerColor.GetValueOrDefault(innerColor),
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow.GetValueOrDefault(),
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
-        public void RasterizeTriangle (
+        public RasterShapeBatch RasterizeTriangle (
             Vector2 a, Vector2 b, Vector2 c, float radius, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
@@ -1494,31 +1502,32 @@ namespace Squared.Render.Convenience {
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
             Vector2? rampUVOffset = null, int sortKey = 0
         ) {
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Triangle,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = a, B = b, C = c,
-                    Radius = new Vector2(radius, fill.Offset),
-                    OutlineSize = outlineRadius,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor,
-                    OutlineColor = outlineColor,
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow.GetValueOrDefault(),
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.Triangle,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = a, B = b, C = c,
+                Radius = new Vector2(radius, fill.Offset),
+                OutlineSize = outlineRadius,
+                InnerColor = innerColor,
+                OuterColor = outerColor,
+                OutlineColor = outlineColor,
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow.GetValueOrDefault(),
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
-        public void RasterizeQuadraticBezier (
+        public RasterShapeBatch RasterizeQuadraticBezier (
             Vector2 a, Vector2 b, Vector2 c, float radius, pSRGBColor color,
             RasterFillSettings fill = default, float? annularRadius = null,
             RasterShadowSettings? shadow = null,
@@ -1528,31 +1537,32 @@ namespace Squared.Render.Convenience {
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
             Vector2? rampUVOffset = null, int sortKey = 0
         ) {
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.QuadraticBezier,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = a, B = b, C = c,
-                    Radius = new Vector2(radius),
-                    OutlineSize = 0,
-                    InnerColor = color,
-                    OuterColor = color,
-                    OutlineColor = color,
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow.GetValueOrDefault(),
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.QuadraticBezier,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = a, B = b, C = c,
+                Radius = new Vector2(radius),
+                OutlineSize = 0,
+                InnerColor = color,
+                OuterColor = color,
+                OutlineColor = color,
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow.GetValueOrDefault(),
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
-        public bool RasterizePolygon (
+        public RasterShapeBatch RasterizePolygon (
             ArraySegment<RasterPolygonVertex> vertices, bool closed,
             float radius, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
@@ -1566,42 +1576,40 @@ namespace Squared.Render.Convenience {
             Matrix? vertexTransform = null, Func<RasterPolygonVertex, RasterPolygonVertex> vertexModifier = null
         ) {
             if (vertices.Count < 2)
-                return false;
+                return null;
             if (vertices.Count > 255)
                 throw new ArgumentOutOfRangeException("vertices.Count", "Vertex count may not exceed 255");
 
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            )) {
-                rsb.AddPolygonVertices(vertices, out int indexOffset, out int count, closed, vertexTransform, vertexModifier);
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Polygon,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    PolygonIndexOffset = indexOffset,
-                    PolygonVertexCount = count,
-                    B = new Vector2(closed ? 1f : 0f, 0f),
-                    C = offset,
-                    Radius = new Vector2(radius, 0),
-                    OutlineSize = outlineRadius,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor,
-                    OutlineColor = outlineColor,
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow.GetValueOrDefault(),
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
-            }
-
-            return true;
+            );
+            rsb.AddPolygonVertices(vertices, out int indexOffset, out int count, closed, vertexTransform, vertexModifier);
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.Polygon,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                PolygonIndexOffset = indexOffset,
+                PolygonVertexCount = count,
+                B = new Vector2(closed ? 1f : 0f, 0f),
+                C = offset,
+                Radius = new Vector2(radius, 0),
+                OutlineSize = outlineRadius,
+                InnerColor = innerColor,
+                OuterColor = outerColor,
+                OutlineColor = outlineColor,
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow.GetValueOrDefault(),
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
-        public void RasterizeQuadraticBezier (
+        public RasterShapeBatch RasterizeQuadraticBezier (
             Vector2 a, Vector2 b, Vector2 c, float radius, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
             RasterFillSettings fill = default, float? annularRadius = null,
@@ -1612,28 +1620,29 @@ namespace Squared.Render.Convenience {
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
             Vector2? rampUVOffset = null, int sortKey = 0
         ) {
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.QuadraticBezier,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = a, B = b, C = c,
-                    Radius = new Vector2(radius),
-                    OutlineSize = outlineRadius,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor,
-                    OutlineColor = outlineColor,
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow.GetValueOrDefault(),
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.QuadraticBezier,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = a, B = b, C = c,
+                Radius = new Vector2(radius),
+                OutlineSize = outlineRadius,
+                InnerColor = innerColor,
+                OuterColor = outerColor,
+                OutlineColor = outlineColor,
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow.GetValueOrDefault(),
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
         /// <param name="center">The center point of the shape.</param>
@@ -1642,7 +1651,7 @@ namespace Squared.Render.Convenience {
         /// <param name="ringRadius">The distance from the center point at which the ring will be centered.</param>
         /// <param name="fillRadius">The radius of the body of the ring (it will be centered around the circle located at ringRadius).</param>
         /// <param name="outlineRadius">The radius of the outline at the outside of the body of the ring.</param>
-        public void RasterizeArc (
+        public RasterShapeBatch RasterizeArc (
             Vector2 center, float startAngleDegrees, float sizeDegrees, 
             float ringRadius, float fillRadius, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor? outerColor = null, pSRGBColor? outlineColor = null, 
@@ -1680,36 +1689,37 @@ namespace Squared.Render.Convenience {
             if (b.Y >= MathHelper.ToRadians(179.9f))
                 c.Y = 0;
 
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Arc,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = center, B = b, C = c,
-                    // HACK: Inverse order because the shader uses radius.x for bounding box math
-                    Radius = new Vector2(ringRadius, fillRadius),
-                    OutlineSize = outlineRadius,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow.GetValueOrDefault(),
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.Arc,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = center, B = b, C = c,
+                // HACK: Inverse order because the shader uses radius.x for bounding box math
+                Radius = new Vector2(ringRadius, fillRadius),
+                OutlineSize = outlineRadius,
+                InnerColor = innerColor,
+                OuterColor = outerColor.GetValueOrDefault(innerColor),
+                OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow.GetValueOrDefault(),
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
         /// <param name="center">The center point of the shape.</param>
         /// <param name="radius">Radius of the tips of the star.</param>
         /// <param name="count">The number of tips the star has.</param>
         /// <param name="rotationDegrees">The rotation of the star, in degrees. At 0, the star's first tip points up.</param>
-        public void RasterizeStar (
+        public RasterShapeBatch RasterizeStar (
             Vector2 center, float radius, int count, float m, float outlineRadius,
             pSRGBColor innerColor, pSRGBColor? outerColor = null, pSRGBColor? outlineColor = null, 
             float rotationDegrees = 0f, RasterFillSettings fill = default,
@@ -1722,29 +1732,30 @@ namespace Squared.Render.Convenience {
         ) {
             m = Arithmetic.Clamp(m, 2, count);
 
-            using (var rsb = GetRasterShapeBatch(
+            var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
-            ))
-                rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Star,
-                    SortKey = sortKey,
-                    WorldSpace = worldSpace ?? WorldSpace,
-                    A = center, B = new Vector2(count, m),
-                    C = new Vector2(MathHelper.ToRadians(rotationDegrees), 0f),
-                    Radius = new Vector2(radius, 0),
-                    OutlineSize = outlineRadius,
-                    InnerColor = innerColor,
-                    OuterColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
-                    GammaMinusOne = RasterGammaMinusOne,
-                    BlendIn = colorSpace ?? RasterColorSpace,
-                    Fill = fill,
-                    AnnularRadius = annularRadius ?? 0,
-                    Shadow = shadow.GetValueOrDefault(),
-                    TextureBounds = textureRegion ?? Bounds.Unit,
-                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
-                    SoftOutline = RasterSoftOutlines
-                });
+            );
+            rsb.Add(new RasterShapeDrawCall {
+                Type = RasterShapeType.Star,
+                SortKey = sortKey,
+                WorldSpace = worldSpace ?? WorldSpace,
+                A = center, B = new Vector2(count, m),
+                C = new Vector2(MathHelper.ToRadians(rotationDegrees), 0f),
+                Radius = new Vector2(radius, 0),
+                OutlineSize = outlineRadius,
+                InnerColor = innerColor,
+                OuterColor = outerColor.GetValueOrDefault(innerColor),
+                OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
+                GammaMinusOne = RasterGammaMinusOne,
+                BlendIn = colorSpace ?? RasterColorSpace,
+                Fill = fill,
+                AnnularRadius = annularRadius ?? 0,
+                Shadow = shadow.GetValueOrDefault(),
+                TextureBounds = textureRegion ?? Bounds.Unit,
+                TextureSettings = textureSettings ?? default(RasterTextureSettings),
+                SoftOutline = RasterSoftOutlines
+            });
+            return rsb;
         }
 
         public IBitmapBatch GetBitmapBatch (

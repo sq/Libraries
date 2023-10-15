@@ -70,6 +70,7 @@
     <Compile Include="DisposalQueue.cs" />
     <Compile Include="DynamicAtlas.cs" />
     <Compile Include="EffectProvider.cs" />
+    <Compile Include="ImperativeRenderer.cs" />
     <Compile Include="JumpFlood.GPU.cs" />
     <Compile Include="JumpFlood.CPU.cs" />
     <Compile Include="Mips.cs" />
