@@ -23,29 +23,29 @@ namespace Squared.PRGUI.NewEngine {
             return ref RunBuffer[index];
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref LayoutRun PushRun (out int index, bool floating) {
-            return ref InsertRun(out index, -1, floating);
-        }
-
-        private ref LayoutRun InsertRun (out int index, int afterIndex, bool floating) {
+        /// <param name="relativeToIndex">For floating runs: The first non-floating run. For normal runs: The run to insert this one after</param>
+        private ref LayoutRun InsertRun (out int index, int relativeToIndex, bool floating) {
             ref var result = ref RunBuffer.New(out index);
             result.IsFloating = floating;
             result.Index = index;
-            if (afterIndex >= 0) {
-                ref var after = ref Run(afterIndex);
-                var beforeIndex = after.NextRunIndex;
-                after.NextRunIndex = index;
-                result.NextRunIndex = beforeIndex;
+            if (relativeToIndex >= 0) {
+                if (floating) {
+                    result.NextRunIndex = relativeToIndex;
+                } else {
+                    ref var after = ref Run(relativeToIndex);
+                    var beforeIndex = after.NextRunIndex;
+                    after.NextRunIndex = index;
+                    result.NextRunIndex = beforeIndex;
+                }
             } else
                 result.NextRunIndex = -1;
             return ref result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref LayoutRun GetOrPushRun (ref int index, bool floating) {
+        private ref LayoutRun GetOrPushRun (ref int index, int relativeToIndex, bool floating) {
             if (index < 0)
-                return ref PushRun(out index, floating);
+                return ref InsertRun(out index, relativeToIndex, floating);
             else
                 return ref Run(index);
         }

@@ -16,15 +16,13 @@ using System.IO;
 #endif
 
 namespace Squared.PRGUI.NewEngine {
+    public static class InvalidValues {
+        public static BoxRecord Record;
+        public static BoxLayoutResult Result;
+        internal static LayoutRun Run;
+    }
+
     public partial class LayoutEngine {
-        public static BoxRecord Invalid = new BoxRecord {
-            _Key = -1,
-        };
-
-        public static BoxLayoutResult InvalidResult = new BoxLayoutResult {
-            Tag = LayoutTags.Invalid,
-        };
-
         private int Version;
         private const int Capacity = 65536;
 
@@ -66,6 +64,12 @@ namespace Squared.PRGUI.NewEngine {
             root.FixedSize = _CanvasSize;
         }
 
+        static LayoutEngine () {
+            InvalidValues.Record._Key = ControlKey.Invalid;
+            InvalidValues.Result.Tag = LayoutTags.Invalid;
+            InvalidValues.Run.Index = -1;
+        }
+
         public LayoutEngine () {
             Clear();
         }
@@ -97,7 +101,7 @@ namespace Squared.PRGUI.NewEngine {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (key.ID < 0)
-                    return ref Invalid;
+                    return ref InvalidValues.Record;
                 else
                     return ref Records[key.ID];
             }
@@ -110,7 +114,7 @@ namespace Squared.PRGUI.NewEngine {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (index < 0)
-                    return ref Invalid;
+                    return ref InvalidValues.Record;
                 else
                     return ref Records[index];
             }
@@ -147,9 +151,14 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private RunEnumerable Runs (ControlKey parent) {
+        private RunEnumerable Runs (ref BoxLayoutResult parent) {
+            return new RunEnumerable(this, ref parent);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ChildrenEnumerable Children (ref BoxRecord parent, bool reverse = false) {
             Assert(!parent.IsInvalid);
-            return new RunEnumerable(this, parent);
+            return new ChildrenEnumerable(this, ref parent, reverse);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -171,7 +180,7 @@ namespace Squared.PRGUI.NewEngine {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref BoxLayoutResult Result (ControlKey key) {
-            return ref Results.ItemOrDefault(key.ID, ref InvalidResult);
+            return ref Results.ItemOrDefault(key.ID, ref InvalidValues.Result);
         }
 
         #region Diagnostic internals
@@ -341,7 +350,7 @@ namespace Squared.PRGUI.NewEngine {
         }
         #endregion
 
-        internal void Update () {
+        public void UnsafeUpdate () {
             // Now we want to expose the InProgressResults list to any code that is looking for a results record
             Results = InProgressResults;
             PerformLayout(ref Root());

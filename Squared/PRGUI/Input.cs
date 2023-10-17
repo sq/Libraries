@@ -556,7 +556,7 @@ namespace Squared.PRGUI.Input {
             }
 
             var oldFocusedControl = Context.Focused;
-            var focusedModal = Context.Focused as IModal;
+            var focusedModal = Context.FocusedModal;
             var effectiveSnapTarget = SnapToControl;
 
             if (

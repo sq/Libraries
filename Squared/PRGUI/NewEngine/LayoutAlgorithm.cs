@@ -11,14 +11,17 @@ using Squared.PRGUI.NewEngine.Enums;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private void UpdateRunCommon (
+        private bool UpdateRunCommon (
             ref LayoutRun run, 
             ref BoxRecord control, ref BoxLayoutResult result,
             ref BoxRecord child, ref BoxLayoutResult childResult,
             ref int firstRunIndex, int currentRunIndex
         ) {
-            if (firstRunIndex < 0)
+            var isNew = false;
+            if (firstRunIndex < 0) {
                 firstRunIndex = currentRunIndex;
+                isNew = true;
+            }
 
             if (run.First.IsInvalid) {
                 run.First = child.Key;
@@ -54,6 +57,8 @@ namespace Squared.PRGUI.NewEngine {
                     run.TotalHeight += childOuterHeight;
                 }
             }
+
+            return isNew;
         }
 
         public void UpdateSubtree (ControlKey control) {

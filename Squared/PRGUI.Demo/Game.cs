@@ -1597,7 +1597,7 @@ namespace PRGUI.Demo {
             if (IsFirstUpdate || (UpdatesToSkip <= 0)) {
                 IsFirstUpdate = false;
                 if (UseSavedTree && (Context.Engine != null)) {
-                    Context.Engine.Update();
+                    Context.Engine.UnsafeUpdate();
                     // HACK
                     Keyboard.PreviousState = Keyboard.CurrentState;
                     Keyboard.CurrentState = Microsoft.Xna.Framework.Input.Keyboard.GetState();
@@ -1620,7 +1620,7 @@ namespace PRGUI.Demo {
                         } else if ((Mouse.PreviousState.RightButton == ButtonState.Released) && (Mouse.CurrentState.RightButton == ButtonState.Pressed)) {
                             Console.WriteLine($"Deleting {HighlightRecord}");
                             Context.Engine.Remove(HighlightRecord.Value);
-                            Context.Engine.Update();
+                            Context.Engine.UnsafeUpdate();
                         }
                     }
                 } else {

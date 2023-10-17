@@ -58,7 +58,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            return ref LayoutEngine.Invalid;
+            return ref InvalidValues.Record;
         }
 
         public override string ToString () {
@@ -382,7 +382,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            return ref LayoutEngine.Invalid;
+            return ref InvalidValues.Record;
         }
     }
 }

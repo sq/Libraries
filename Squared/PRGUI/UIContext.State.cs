@@ -56,10 +56,10 @@ namespace Squared.PRGUI {
                 ? ModalStack[ModalStack.Count - 1]
                 : null;
 
-        private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection, 
-            _PreviouslyFocusedForTimestampUpdate;
-
-        private Control _PreferredTooltipSource;
+        private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection,
+            _PreviouslyFocusedForTimestampUpdate, _PreferredTooltipSource;
+        
+        private IModal _FocusedModal;
 
         /// <summary>
         /// This tween's value will be applied to the tooltip so you can conditionally hide it based on application state
@@ -105,6 +105,8 @@ namespace Squared.PRGUI {
                     TrySetFocus(null, true);
             }
         }
+
+        public IModal FocusedModal => _FocusedModal;
 
         /// <summary>
         /// The control that currently has the mouse captured (if a button is pressed)

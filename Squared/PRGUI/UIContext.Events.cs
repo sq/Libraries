@@ -665,7 +665,7 @@ namespace Squared.PRGUI {
             var relinquishedHandlers = new HashSet<Control>();
             bool result = false;
 
-            var targetModal = (ActiveModal ?? (Focused as IModal));
+            var targetModal = (ActiveModal ?? FocusedModal);
             // HACK: If the active modal is blocking hit tests, then we frequently won't have
             //  a target for a mouse event. In that case, send it to the modal
             if ((target == null) && (targetModal?.BlockHitTests == true))

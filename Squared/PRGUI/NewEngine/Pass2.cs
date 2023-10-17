@@ -32,7 +32,7 @@ namespace Squared.PRGUI.NewEngine {
 
                 Pass2b_ExpandChildren(ref control, ref result, depth);
 
-                foreach (var ckey in Children(control.Key)) {
+                foreach (var ckey in Children(ref control)) {
                     ref var child = ref this[ckey];
                     ref var childResult = ref UnsafeResult(ckey);
                     if (Pass2(ref child, ref childResult, depth + 1))
@@ -59,12 +59,12 @@ namespace Squared.PRGUI.NewEngine {
 
             int columnIndex = 0;
             int* columns = stackalloc int[config.GridColumnCount];
-            foreach (var run in Runs(control.Key))
+            foreach (var run in Runs(ref result))
                 columns[columnIndex++] = run;
 
             columnIndex = 0;
 
-            foreach (var ckey in Children(control.Key)) {
+            foreach (var ckey in Children(ref control)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref Result(ckey);
                 child.ConvertProportionsToMaximums(cw, ch, out var childWidth, out var childHeight);
@@ -89,7 +89,7 @@ namespace Squared.PRGUI.NewEngine {
             }                
 
             var needRecalc = false;
-            foreach (var ckey in Children(control.Key)) {
+            foreach (var ckey in Children(ref control)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
                 if (Pass2(ref child, ref childResult, depth + 1))
@@ -122,7 +122,7 @@ namespace Squared.PRGUI.NewEngine {
             result.FloatingRunIndex = -1;
 
             // Scan through all our children and wrap them if necessary now that we know our size
-            foreach (var ckey in Children(control.Key)) {
+            foreach (var ckey in Children(ref control)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
                 childResult.ParentRunIndex = -1;
@@ -156,14 +156,17 @@ namespace Squared.PRGUI.NewEngine {
                 // This ensures that you can enumerate all of a control's children by enumerating its runs
                 // We will then skip stacked/floating controls when enumerating runs (as appropriate)
                 ref var run = ref SelectRunForBuildingPass(
-                    ref result.FloatingRunIndex, ref currentRunIndex, 
-                    childConfig.IsStackedOrFloating, isBreak
+                    ref result.FloatingRunIndex, ref result.FirstRunIndex,
+                    ref currentRunIndex, childConfig.IsStackedOrFloating, isBreak
                 );
-                UpdateRunCommon(
+                if (UpdateRunCommon(
                     ref run, ref control, ref result,
                     ref child, ref childResult,
                     ref result.FirstRunIndex, currentRunIndex
-                );
+                )) {
+                    if (result.FloatingRunIndex >= 0)
+                        Run(result.FloatingRunIndex).NextRunIndex = currentRunIndex;
+                }
 
                 if (previousRunIndex != currentRunIndex) {
                     if (previousRunIndex >= 0) {
@@ -206,7 +209,7 @@ namespace Squared.PRGUI.NewEngine {
             // This allows having things like status bars at the bottom of a box without them eating all the expansion space
             var lastExpandableRun = -1;
             var spaceAfterLastExpandableRun = 0f;
-            foreach (var runIndex in Runs(control.Key)) {
+            foreach (var runIndex in Runs(ref result)) {
                 ref var run = ref Run(runIndex);
                 var expand = config.IsVertical ? run.ExpandCountX > 0 : run.ExpandCountY > 0;
                 if (expand) {
@@ -217,7 +220,7 @@ namespace Squared.PRGUI.NewEngine {
                 }
             }
 
-            foreach (var runIndex in Runs(control.Key)) {
+            foreach (var runIndex in Runs(ref result)) {
                 ref var run = ref Run(runIndex);
                 var expandThisRun = (lastExpandableRun == runIndex) || (run.NextRunIndex < 0) || (runIndex == result.FloatingRunIndex);
 
@@ -375,7 +378,7 @@ namespace Squared.PRGUI.NewEngine {
 
             // HACK: We do another pass to recalculate our size if any of our children's sizes 
             //  changed during the wrap/expand pass, since that probably also changed our size
-            foreach (var runIndex in Runs(control.Key)) {
+            foreach (var runIndex in Runs(ref result)) {
                 ref var run = ref Run(runIndex);
 
                 // FIXME: Collapse margins

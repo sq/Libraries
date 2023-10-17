@@ -70,6 +70,7 @@ namespace Squared.PRGUI {
             EventFiredTextColor         = 0b10000000000,
             AcceptsFocusWhenDisabled    = 0b100000000000,
             AcceptsNonLeftClicks        = 0b1000000000000,
+            IsPostLayoutListener        = 0b10000000000000,
             // TODO
             // EventFiredMatrix      = 0b100000000000,
         }
@@ -289,6 +290,8 @@ namespace Squared.PRGUI {
             // HACK: Match default behavior of old engine. Set it to null to override
             Layout.FloatingPosition = Vector2.Zero; // sigh
             TypeID = GetType().GetHashCode();
+            if (this is IPostLayoutListener)
+                SetInternalFlag(InternalStateFlags.IsPostLayoutListener, true);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -569,10 +572,10 @@ namespace Squared.PRGUI {
             try {
                 if (Appearance.DecorationProvider != null)
                     UIOperationContext.PushDecorationProvider(ref context, Appearance.DecorationProvider);
-                var lk = OnGenerateLayoutTree(ref context, parent, existingKey);
-                _LayoutKey = lk;
+                ref var record = ref OnGenerateLayoutTree(ref context, parent, existingKey);
+                _LayoutKey = record.Key;
 
-                if (!lk.IsInvalid) {
+                if (!record.IsInvalid) {
                     if (ChangeInternalFlag(InternalStateFlags.VisibleHasChanged, false))
                         context.RelayoutRequestedForVisibilityChange = true;
                 }
@@ -580,8 +583,8 @@ namespace Squared.PRGUI {
                 // TODO: Only register if the control is explicitly interested, to reduce overhead?
                 // We need to do this even if LayoutKey is invalid, because the post layout listener may reconfigure the control
                 //  and cause a 1-frame glitch
-                if ((this is IPostLayoutListener listener) && (existingKey == null))
-                    context.PostLayoutListeners?.Add(listener);
+                if (GetInternalFlag(InternalStateFlags.IsPostLayoutListener) && (existingKey == null))
+                    context.PostLayoutListeners?.Add((IPostLayoutListener)this);
             } finally {
                 if (Appearance.DecorationProvider != null)
                     UIOperationContext.PopDecorationProvider(ref context);
@@ -840,7 +843,7 @@ namespace Squared.PRGUI {
         protected virtual ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             if (!Visible && !context.UIContext.IsUpdatingSubtreeLayout) {
                 _LayoutKey = ControlKey.Invalid;
-                return ref LayoutEngine.Invalid;
+                return ref InvalidValues.Record;
             }
 
             IsLayoutInvalid = false;
@@ -913,7 +916,7 @@ namespace Squared.PRGUI {
                 //  to be focused.
                 if (
                     (ctx.Focused == this) || 
-                    ((ctx.Focused as IModal)?.FocusDonor == this)
+                    (ctx.FocusedModal?.FocusDonor == this)
                 ) {
                     result |= ControlStates.Focused;
                     result |= ControlStates.ContainsFocus;

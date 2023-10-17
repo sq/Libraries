@@ -190,12 +190,12 @@ namespace Squared.PRGUI {
 
             if (obscuredByFocus)
                 return;
-            foreach (var ckey in Engine.Children(record.Key)) {
+            foreach (var ckey in Engine.Children(ref record)) {
                 ref var child = ref Engine[ckey];
                 RasterizeLayoutTree(ref renderer, font, ref child, focusChain);
             }
 #endif
-                }
+        }
 
         public void Rasterize (BatchGroup container, int layer, BatchGroup prepassContainer, int prepassLayer, Color? clearColor = null) {
             FrameIndex++;

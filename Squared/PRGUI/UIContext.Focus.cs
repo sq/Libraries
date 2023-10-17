@@ -115,7 +115,7 @@ namespace Squared.PRGUI {
         }
 
         private Control PickIdealNewFocusTargetForInvalidFocusTarget (Control control) {
-            var fm = Focused as IModal;
+            var fm = FocusedModal;
             Control idealNewTarget = null;
             // FIXME: TopLevelFocused fixes some behaviors here but breaks others :(
             if ((fm?.FocusDonor != null) && Control.IsEqualOrAncestor(Focused, control))
@@ -403,6 +403,7 @@ namespace Squared.PRGUI {
                 ClearKeyboardSelection();
 
             _Focused = newFocusTarget;
+            _FocusedModal = newFocusTarget as IModal;
 
             var previousTopLevel = TopLevelFocused;
             TopLevelFocused = newTopLevelAncestor;
@@ -411,7 +412,7 @@ namespace Squared.PRGUI {
             if (TopLevelFocused != previousTopLevel)
                 PreviousTopLevelFocused = previousTopLevel;
 
-            var fm = _Focused as IModal ?? TopLevelFocused as IModal;
+            var fm = _FocusedModal ?? TopLevelFocused as IModal;
             ModalFocusDonor = fm?.FocusDonor;
             TopLevelModalFocusDonor = FindTopLevelAncestor(ModalFocusDonor);
 

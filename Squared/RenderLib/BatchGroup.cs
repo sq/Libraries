@@ -16,8 +16,26 @@ namespace Squared.Render {
 
         /// <summary>
         /// A view transform that is pushed for the duration of the batch group.
-        /// </summary>
-        public ViewTransform? ViewTransform;
+        /// </summary>        
+        public ViewTransform? ViewTransform {
+            get {
+                if (_HasViewTransform)
+                    return _ViewTransform;
+                else
+                    return null;
+            }
+            set {
+                if (value == null)
+                    _HasViewTransform = false;
+                else {
+                    _HasViewTransform = true;
+                    _ViewTransform = value.Value;
+                }
+            }
+        }
+
+        private bool _HasViewTransform;
+        private ViewTransform _ViewTransform;
 
         /// <summary>
         /// A function that is called to process and modify the current view transform for the duration of the batch group.
@@ -51,11 +69,12 @@ namespace Squared.Render {
 
             bool pop = false;
 
-            if (ViewTransform.HasValue || ViewTransformModifier != null) {
+            if (_HasViewTransform || ViewTransformModifier != null) {
                 if (MaterialSet == null)
                     throw new NullReferenceException("MaterialSet must be set if ViewTransform or ViewTransformModifier are set");
 
-                ViewTransform oldVt = MaterialSet.ViewTransform, newVt = ViewTransform ?? oldVt;
+                ViewTransform oldVt = MaterialSet.ViewTransform,
+                    newVt = _HasViewTransform ? _ViewTransform : oldVt;
                 if (ViewTransformModifier != null)
                     ViewTransformModifier(ref newVt, _UserData);
 
@@ -236,7 +255,7 @@ namespace Squared.Render {
             _After = after;
             _UserData = userData;
             MaterialSet = materialSet;
-            ViewTransform = default;
+            _HasViewTransform = false;
             ViewTransformModifier = null;
             IsReleased = false;
         }
@@ -247,6 +266,7 @@ namespace Squared.Render {
             if ((modifier != null) && (MaterialSet == null))
                 throw new ArgumentException("No view transform can be applied without a material set");
 
+            _HasViewTransform = false;
             ViewTransformModifier = modifier;
         }
 
@@ -256,7 +276,9 @@ namespace Squared.Render {
             if (MaterialSet == null)
                 throw new ArgumentException("No view transform can be applied without a material set");
 
-            ViewTransform = viewTransform;
+            _HasViewTransform = true;
+            _ViewTransform = viewTransform;
+            ViewTransformModifier = null;
         }
 
         public void SetViewTransform (
@@ -265,7 +287,11 @@ namespace Squared.Render {
             if (viewTransform.HasValue && (MaterialSet == null))
                 throw new ArgumentException("No view transform can be applied without a material set");
 
-            ViewTransform = viewTransform;
+            _HasViewTransform = viewTransform.HasValue;
+            if (viewTransform.HasValue) {
+                _ViewTransform = viewTransform.Value;
+                ViewTransformModifier = null;
+            }
         }
 
         public RenderCoordinator Coordinator {

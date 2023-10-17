@@ -40,7 +40,7 @@ namespace Squared.PRGUI.NewEngine {
                 var columns = stackalloc Pass3Column[config.GridColumnCount];
                 float columnWidth = w / config.GridColumnCount;
                 int columnIndex = 0;
-                foreach (var run in Runs(control.Key)) {
+                foreach (var run in Runs(ref result)) {
                     columns[columnIndex] = new Pass3Column {
                         RunIndex = run, X = columnWidth * columnIndex,
                         // Make a copy, it's fine, it won't change
@@ -52,7 +52,7 @@ namespace Squared.PRGUI.NewEngine {
                 config.GetRunAlignmentF(out float xAlign, out float yAlign);
 
                 columnIndex = 0;
-                foreach (var ckey in Children(control.Key)) {
+                foreach (var ckey in Children(ref control)) {
                     ref var column = ref columns[columnIndex];
                     ref var run = ref column.Run;
 
@@ -69,7 +69,7 @@ namespace Squared.PRGUI.NewEngine {
                     columnIndex = (columnIndex + 1) % config.GridColumnCount;
                 }
             } else {
-                foreach (var runIndex in Runs(control.Key)) {
+                foreach (var runIndex in Runs(ref result)) {
                     ref var run = ref Run(runIndex);
                     bool isLastRun = run.NextRunIndex < 0;
                     float rw = config.IsVertical ? run.MaxOuterWidth : run.TotalWidth,

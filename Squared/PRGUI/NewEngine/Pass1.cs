@@ -25,7 +25,7 @@ namespace Squared.PRGUI.NewEngine {
 
             int* columns = stackalloc int[config.GridColumnCount];
             for (int i = 0; i < config.GridColumnCount; i++) {
-                ref var run = ref PushRun(out columns[i], false);
+                ref var run = ref InsertRun(out columns[i], -1, false);
                 // FIXME: It shouldn't be necessary to do all this
                 run.NextRunIndex = -1;
                 if (i == 0)
@@ -42,7 +42,7 @@ namespace Squared.PRGUI.NewEngine {
 
             float padX = control.Padding.X, padY = control.Padding.Y, p = 0;
             int currentRunIndex = -1, currentColumnIndex = 0;
-            foreach (var ckey in Children(control.Key)) {
+            foreach (var ckey in Children(ref control)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref UnsafeResult(ckey);
 
@@ -123,13 +123,16 @@ namespace Squared.PRGUI.NewEngine {
             result.Pass1Ready = true;
         }
 
-        private ref LayoutRun SelectRunForBuildingPass (ref int floatingRun, ref int currentRunIndex, bool isStackedOrFloating, bool isBreak) {
+        private ref LayoutRun SelectRunForBuildingPass (
+            ref int floatingRun, ref int firstRun,
+            ref int currentRunIndex, bool isStackedOrFloating, bool isBreak
+        ) {
             if (isStackedOrFloating)
-                return ref GetOrPushRun(ref floatingRun, true);
+                return ref GetOrPushRun(ref floatingRun, firstRun, true);
             else if (isBreak)
                 return ref InsertRun(out currentRunIndex, currentRunIndex, false);
             else
-                return ref GetOrPushRun(ref currentRunIndex, false);
+                return ref GetOrPushRun(ref currentRunIndex, -1, false);
         }
 
         private void IncreaseContentSizeForCompletedRun (
@@ -163,17 +166,20 @@ namespace Squared.PRGUI.NewEngine {
             // We will then skip stacked/floating controls when enumerating runs (as appropriate)
             // TODO: Generate a single special run for all stacked/floating controls instead?
             ref var run = ref SelectRunForBuildingPass(
-                ref result.FloatingRunIndex, ref currentRunIndex, 
-                child.Config.IsStackedOrFloating, child.Config.ForceBreak
+                ref result.FloatingRunIndex, ref result.FirstRunIndex, 
+                ref currentRunIndex, child.Config.IsStackedOrFloating, child.Config.ForceBreak
             );
             if (currentRunIndex != previousRunIndex)
                 IncreaseContentSizeForCompletedRun(in control, ref result, previousRunIndex);
 
-            UpdateRunCommon(
+            if (UpdateRunCommon(
                 ref run, ref control, ref result,
                 ref child, ref childResult,
                 ref result.FirstRunIndex, currentRunIndex
-            );
+            )) {
+                if (result.FloatingRunIndex >= 0)
+                    Run(result.FloatingRunIndex).NextRunIndex = currentRunIndex;
+            }
 
             return ref run;
         }
