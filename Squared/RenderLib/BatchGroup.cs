@@ -24,12 +24,12 @@ namespace Squared.Render {
         /// </summary>
         public ViewTransformModifier ViewTransformModifier;
 
-        public OcclusionQuery OcclusionQuery;
-
         public Frame Frame { get; private set;  }
 
         Action<DeviceManager, object> _Before, _After;
         private object _UserData;
+
+        private static readonly int BatchGroupTypeId = IdForType<BatchGroup>.Id;
 
         void IBatchContainer.PrepareChildren (ref PrepareContext context) {
             BatchCombiner.CombineBatches(ref _DrawCalls, ref context.BatchesToRelease);
@@ -48,9 +48,6 @@ namespace Squared.Render {
             // HACK: If the user set a material on us explicitly, apply our parameters to it
             if (Material != null)
                 Material.Flush(manager, ref MaterialParameters);
-
-            if (OcclusionQuery != null)
-                OcclusionQuery.Begin();
 
             bool pop = false;
 
@@ -84,8 +81,6 @@ namespace Squared.Render {
             } finally {
                 if (_After != null)
                     _After(manager, _UserData);
-                if (OcclusionQuery != null)
-                    OcclusionQuery.End();
 
                 if (pop) {
                     MaterialSet.PopViewTransform(force: false);
@@ -217,7 +212,7 @@ namespace Squared.Render {
             if (container == null)
                 throw new ArgumentNullException("container");
 
-            var result = container.RenderManager.AllocateBatch<BatchGroup>();
+            var result = container.RenderManager.AllocateBatch<BatchGroup>(BatchGroupTypeId);
             result.Initialize(container, layer, before, after, userData, materialSet);
             result.Name = name;
             result.CaptureStack(0);
@@ -244,7 +239,6 @@ namespace Squared.Render {
             ViewTransform = default;
             ViewTransformModifier = null;
             IsReleased = false;
-            OcclusionQuery = null;
         }
 
         public void SetViewTransform (
@@ -307,7 +301,6 @@ namespace Squared.Render {
 
         protected override void OnReleaseResources () {
             IsReleased = true;
-            OcclusionQuery = null;
 
             for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
                 var batch = _DrawCalls[i];
@@ -333,7 +326,7 @@ namespace Squared.Render {
         }
     }
 
-    public class RenderTargetBatchGroup : BatchGroup {
+    public sealed class RenderTargetBatchGroup : BatchGroup {
 #if DEBUG
         public bool IgnoreInvalidRenderTargets = false;
 #else

@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 using Squared.PRGUI.Layout;
 using Squared.Util;
 using Squared.PRGUI.NewEngine.Enums;
+using System.Reflection;
 #if DEBUG
 using System.Xml.Serialization;
 using System.IO;
@@ -19,7 +20,7 @@ namespace Squared.PRGUI.NewEngine {
         private static BoxRecord Invalid = new BoxRecord {
         };
 
-        private int Version, _Count, _RunCount;
+        private int Version;
         private const int Capacity = 65536;
 
         // TODO: Much better sizing implementation
@@ -27,45 +28,10 @@ namespace Squared.PRGUI.NewEngine {
         //  into a new array, otherwise a reference to the old array could be persistent on the stack.
         // The obvious solution is a huge buffer, but another option is a chain of smaller buffers so we grow by
         //  allocating a new buffer, which won't invalidate old references.
-        private BoxRecord[] Records = new BoxRecord[Capacity];
-        private BoxLayoutResult[] Results = new BoxLayoutResult[Capacity];
-        // The worst case size is one run per control, but in practice we will usually have a much smaller number
-        //  of runs, which means it might be beneficial to grow this buffer separately
-        private LayoutRun[] RunBuffer = new LayoutRun[Capacity];
-
-        /*
-        private int ProcessingQueueEnd = 0, ProcessingQueueCursor = 0;
-        private ControlKeyDefaultInvalid[] ProcessingQueue = new ControlKeyDefaultInvalid[Capacity];
-
-        private void QueueFrontUnordered (ControlKeyDefaultInvalid key) {
-            if (ProcessingQueue[ProcessingQueueCursor].IndexPlusOne == 0) {
-                ProcessingQueue[ProcessingQueueCursor].IndexPlusOne = key.IndexPlusOne;
-                return;
-            }
-
-            var newCursor = ProcessingQueueCursor--;
-            if (newCursor < 0)
-                newCursor = ProcessingQueue.Length - 1;
-            // FIXME: Detect lapping
-
-            if (ProcessingQueue[newCursor].IndexPlusOne > 0)
-                throw new Exception($"Data already stored in queue at offset {newCursor}: {ProcessingQueue[newCursor]}");
-            ProcessingQueue[newCursor].IndexPlusOne = key.IndexPlusOne;
-        }
-
-        private void QueueBack (ControlKeyDefaultInvalid key) {
-            var newEnd = ProcessingQueueEnd + 1;
-            if (newEnd >= ProcessingQueue.Length)
-                newEnd = 0;
-
-            if (newEnd >= ProcessingQueueCursor)
-                throw new Exception($"Processing queue end lapped the cursor ({newEnd} >= {ProcessingQueueCursor})");
-
-            if (ProcessingQueue[newEnd].IndexPlusOne > 0)
-                throw new Exception($"Data already stored in queue at offset {newEnd}: {ProcessingQueue[newEnd]}");
-            ProcessingQueue[newEnd].IndexPlusOne = key.IndexPlusOne;
-        }
-        */
+        private SegmentedArray<BoxRecord> Records = new SegmentedArray<BoxRecord>(Capacity);
+        private SegmentedArray<BoxLayoutResult> Results = new SegmentedArray<BoxLayoutResult>(Capacity);
+        // The worst case size is one run per control
+        private SegmentedArray<LayoutRun> RunBuffer = new SegmentedArray<LayoutRun>(Capacity);
 
 #if DEBUG
         internal Control[] Controls = new Control[Capacity];
@@ -80,13 +46,11 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-        public int Count => _Count;
+        public int Count => Records.Count;
         public void Clear () {
-            // FIXME: Find some way to optimize this out or do it on a thread,
-            //  it eats a lot of CPU time
-            Array.Clear(Records, 0, _Count + 1);
-            Array.Clear(Results, 0, _Count);
-            _Count = 0;
+            Records.Clear();
+            Results.Clear();
+            RunBuffer.Clear();
             Version++;
             // Initialize root
             ref var root = ref Create(tag: Layout.LayoutTags.Root);
@@ -108,34 +72,23 @@ namespace Squared.PRGUI.NewEngine {
         public ref BoxRecord this [ControlKey key] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                // FIXME: A lot of code assumes it can safely touch invalid indices
-                // That's probably OK though.
-                // if (key.ID < 0 || key.ID >= _Count)
-                //    ThrowKeyOutOfRange();
-                return ref UnsafeItem(key.ID);
+                if (key.ID < 0)
+                    return ref Invalid;
+                else
+                    return ref Records[key.ID];
             }
         }
 
         /// <summary>
-        /// Returns a reference to the item (or an invalid dummy item)
+        /// Returns a reference to the control's configuration. Throws if key is invalid.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ref BoxRecord UnsafeItem (ControlKey key) => ref UnsafeItem(key.ID);
-
-        /// <summary>
-        /// Returns a reference to the item (or an invalid dummy item)
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref BoxRecord UnsafeItem (int index) {
-            // FIXME: Because we are sharing IDs
-            if ((index < 0) || (index >= _Count)) {
-                Invalid = default;
-                return ref Invalid;
-            } else {
-                ref var result = ref Records[index];
-                // FIXME: Why was this here?
-                // result._Key.IndexPlusOne = index + 1;
-                return ref result;
+        public ref BoxRecord this [int index] {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                if (index < 0)
+                    return ref Invalid;
+                else
+                    return ref Records[index];
             }
         }
 
@@ -148,8 +101,7 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         public ref BoxRecord Create (Layout.LayoutTags tag = default, ControlFlags flags = default, ControlKey? parent = null) {
-            var index = _Count++;
-            ref var result = ref Records[index];
+            ref var result = ref Records.New(out int index);
             result._Key = new ControlKey(index);
             // FIXME
             result.Config.GridColumnCount = 0;
@@ -157,13 +109,13 @@ namespace Squared.PRGUI.NewEngine {
             result.Tag = tag;
             if (parent.HasValue)
                 InsertAtEnd(parent.Value, result.Key);
-            return ref result;
+            // HACK: Cannot return 'ref result' in older versions of C#
+            return ref Records[index];
         }
 
         public ref BoxRecord GetOrCreate (ControlKey? existingKey, Layout.LayoutTags tag = default, ControlFlags flags = default) {
             var index = existingKey?.ID ?? -1;
-            // FIXME
-            if ((index < 0) || (index >= _Count))
+            if (index < 0)
                 return ref Create(tag, flags);
 
             ref var result = ref Records[index];
@@ -192,20 +144,12 @@ namespace Squared.PRGUI.NewEngine {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal ref BoxLayoutResult UnsafeResult (ControlKey key) {
-            return ref Results[key.ID];
+            return ref Results.UnsafeItem(key.ID);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref BoxLayoutResult Result (ControlKey key) {
-            if ((key.ID < 0) || (key.ID >= Results.Length))
-                ThrowKeyOutOfRange();
-            ref var result = ref Results[key.ID];
-            // FIXME
-            /*
-            if (result.Version != Version)
-                throw new Exception("Layout has not been performed");
-            */
-            return ref result;
+            return ref Results[key.ID];
         }
 
         #region Diagnostic internals
@@ -284,7 +228,7 @@ namespace Squared.PRGUI.NewEngine {
             ref var pLater = ref this[later];
             ref var pParent = ref this[pLater.Parent];
             ref var pNewItem = ref this[newSibling];
-            ref var pPreviousSibling = ref UnsafeItem(pLater.PreviousSibling);
+            ref var pPreviousSibling = ref this[pLater.PreviousSibling];
 
             pNewItem._NextSibling = later;
             pNewItem._Parent = pLater.Parent;
@@ -307,7 +251,7 @@ namespace Squared.PRGUI.NewEngine {
 
             ref var pEarlier = ref this[earlier];
             ref var pNewItem = ref this[newSibling];
-            ref var pNextSibling = ref UnsafeItem(pEarlier.NextSibling);
+            ref var pNextSibling = ref this[pEarlier.NextSibling];
 
             pNewItem._Parent = pEarlier.Parent;
             pNewItem._PreviousSibling = pEarlier.Key;
@@ -376,10 +320,8 @@ namespace Squared.PRGUI.NewEngine {
         #endregion
 
         public void Update () {
-            // _Count = 0;
-            Array.Clear(Results, 0, _Count);
-            Array.Clear(RunBuffer, 0, _RunCount);
-            _RunCount = 0;
+            Results.Clear();
+            RunBuffer.Clear();
             PerformLayout(ref Root());
         }
 
@@ -388,9 +330,8 @@ namespace Squared.PRGUI.NewEngine {
             var serializer = new XmlSerializer(typeof(BoxRecord[]));
             using (var stream = File.OpenRead(filename)) {
                 var temp = (BoxRecord[])serializer.Deserialize(stream);
-                Array.Clear(Records, 0, _Count);
-                Array.Copy(temp, Records, temp.Length);
-                _Count = temp.Length;
+                Records.Clear();
+                Records.AddRange(temp);
             }
 #else
             throw new NotImplementedException();
@@ -400,8 +341,7 @@ namespace Squared.PRGUI.NewEngine {
         public void SaveRecords (string filename) {
 #if DEBUG
             var serializer = new XmlSerializer(typeof(BoxRecord[]));
-            var temp = new BoxRecord[_Count];
-            Array.Copy(Records, temp, _Count);
+            var temp = Records.ToArray();
             using (var stream = File.Open(filename, FileMode.Create))
                 serializer.Serialize(stream, temp);
 #else
@@ -418,7 +358,7 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         private bool DebugHitTest (in BoxRecord control, Vector2 position, ref BoxRecord record, ref BoxLayoutResult result, bool exhaustive, bool reverse) {
-            ref var testResult = ref UnsafeResult(control.Key);
+            ref var testResult = ref Result(control.Key);
             var inside = testResult.Rect.Contains(position);
 
             if (inside || exhaustive) {

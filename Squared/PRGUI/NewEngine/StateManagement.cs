@@ -20,8 +20,6 @@ namespace Squared.PRGUI.NewEngine {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref LayoutRun Run (int index) {
-            if ((index < 0) || (index >= _RunCount))
-                ThrowIndexOutOfRange();
             return ref RunBuffer[index];
         }
 
@@ -31,10 +29,7 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         private ref LayoutRun InsertRun (out int index, int afterIndex, bool floating) {
-            index = _RunCount++;
-            if (index >= RunBuffer.Length)
-                throw new Exception("Run buffer full");
-            ref var result = ref RunBuffer[index];
+            ref var result = ref RunBuffer.New(out index);
             result.IsFloating = floating;
             result.Index = index;
             if (afterIndex >= 0) {
@@ -72,7 +67,6 @@ namespace Squared.PRGUI.NewEngine {
             result.Pass1Ready = result.Pass1Processed = result.Pass2Processed = false;
             result.SizeSetByParent = false;
             result.Version = Version;
-            _Count = Math.Max(control.Key.ID + 1, _Count);
         }
 
     }

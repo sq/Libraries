@@ -588,7 +588,9 @@ namespace Squared.Render.RasterShape {
         }
     }
 
-    public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
+    public sealed class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
+        private static readonly int RasterShapeBatchTypeId = IdForType<RasterShapeBatch>.Id;
+
         private sealed class RasterShapeDrawCallSorter : IRefComparer<RasterShapeDrawCall>, IComparer<RasterShapeDrawCall> {
             public int Compare (ref RasterShapeDrawCall lhs, ref RasterShapeDrawCall rhs) {
                 unchecked {
@@ -988,7 +990,7 @@ namespace Squared.Render.RasterShape {
             if (materials == null)
                 throw new ArgumentNullException("materials");
 
-            var result = container.RenderManager.AllocateBatch<RasterShapeBatch>();
+            var result = container.RenderManager.AllocateBatch<RasterShapeBatch>(RasterShapeBatchTypeId);
             result.Initialize(container, layer, materials);
             result.RasterizerState = rasterizerState;
             result.DepthStencilState = depthStencilState;

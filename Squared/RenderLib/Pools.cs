@@ -398,7 +398,6 @@ namespace Squared.Render {
             for (int power = 0; power < PowerCount; power++) {
                 var pool = Pools[power];
                 lock (pool) {
-
                     using (var e = pool.LiveAllocations.GetEnumerator())
                         while (e.MoveNext()) {
                             var a = e.Current;

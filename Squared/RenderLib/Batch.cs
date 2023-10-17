@@ -520,6 +520,18 @@ namespace Squared.Render {
             _ListPool.Allocator = allocator ?? UnorderedList<T>.Allocator.Default;
         }
 
+        public T FirstDrawCall {
+            get {
+                return _DrawCalls.FirstOrDefault();
+            }
+        }
+
+        public T LastDrawCall {
+            get {
+                return _DrawCalls.LastOrDefault();
+            }
+        }
+
         protected void Initialize (
             IBatchContainer container, int layer, Material material,
             bool addToContainer, int? capacity = null

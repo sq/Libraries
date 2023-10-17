@@ -160,7 +160,37 @@ namespace Squared.Render.Convenience {
         public RasterizerState RasterizerState;
         public SamplerState SamplerState, SamplerState2;
 
+        public ImperativeRendererFlags Flags;
+
+        /// <summary>
+        /// Overrides the default material used to draw bitmaps if no custom material has been specified.
+        /// </summary>
+        public Material DefaultBitmapMaterial;
+
         private object _BlendStateOrSelector;
+
+        /// <summary>
+        /// Specifies a custom set of declarative sorting rules used to order draw calls.
+        /// </summary>
+        public Sorter<BitmapDrawCall> DeclarativeSorter;
+
+        private DrawCallSortKey NextSortKey;
+        private CachedBatches Cache;
+
+        private float RasterGammaMinusOne;
+
+        /// <summary>
+        /// If set, newly created batches will be expanded to have capacity for this many items once they
+        ///  contain more than a handful of items. If you know you will be drawing large numbers of items this 
+        ///  can reduce overhead, as long as the vast majority of them end up in the same batch (via layer + state sorting).
+        /// </summary>
+        public int? BitmapBatchInitialCapacity;
+
+        /// <summary>
+        /// All batches created by this renderer will have these material parameters applied
+        /// </summary>
+        public MaterialParameterValues Parameters;
+
         public BlendState BlendState {
             get => _BlendStateOrSelector as BlendState;
             set => _BlendStateOrSelector = value;
@@ -169,13 +199,6 @@ namespace Squared.Render.Convenience {
             get => _BlendStateOrSelector as Func<AbstractTextureReference, BlendState>;
             set => _BlendStateOrSelector = value;
         }
-
-        public ImperativeRendererFlags Flags;
-
-        /// <summary>
-        /// Overrides the default material used to draw bitmaps if no custom material has been specified.
-        /// </summary>
-        public Material DefaultBitmapMaterial;
 
         /// <summary>
         /// Uses world-space coordinates.
@@ -276,14 +299,6 @@ namespace Squared.Render.Convenience {
         }
 
         /// <summary>
-        /// Specifies a custom set of declarative sorting rules used to order draw calls.
-        /// </summary>
-        public Sorter<BitmapDrawCall> DeclarativeSorter;
-
-        private DrawCallSortKey NextSortKey;
-        private CachedBatches Cache;
-
-        /// <summary>
         /// Bitmaps will use a shader with discard by default. Discard ensures transparent pixels are not drawn.
         /// </summary>
         public bool UseDiscard {
@@ -294,8 +309,6 @@ namespace Squared.Render.Convenience {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => SetFlag(ImperativeRendererFlags.UseDiscard, value);
         }
-
-        private float RasterGammaMinusOne;
 
         /// <summary>
         /// If set, outlines on raster shapes will be soft instead of hard.
@@ -372,18 +385,6 @@ namespace Squared.Render.Convenience {
                     SetFlag(ImperativeRendererFlags.DisableDithering, true);
             }
         }
-
-        /// <summary>
-        /// If set, newly created batches will be expanded to have capacity for this many items once they
-        ///  contain more than a handful of items. If you know you will be drawing large numbers of items this 
-        ///  can reduce overhead, as long as the vast majority of them end up in the same batch (via layer + state sorting).
-        /// </summary>
-        public int? BitmapBatchInitialCapacity;
-
-        /// <summary>
-        /// All batches created by this renderer will have these material parameters applied
-        /// </summary>
-        public MaterialParameterValues Parameters;
 
         private bool TryGetCachedBatch<T> (
             out CachedBatch result,
@@ -617,7 +618,8 @@ namespace Squared.Render.Convenience {
             if (emptyCache)
                 copy.Cache.Count = 0;
         }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void CloneInto (out ImperativeRenderer result, bool nextLayer = true) {
             result = this;
             PrepareCopyForUse(ref result, false);
@@ -698,14 +700,14 @@ namespace Squared.Render.Convenience {
                 Layer += 1;
         }
 
-        public void Draw (
+        public IBitmapBatch Draw (
             BitmapDrawCall drawCall, 
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null
         ) {
-            Draw(
+            return Draw(
                 ref drawCall, layer, worldSpace, 
                 blendState, samplerState, samplerState2,
                 depthStencilState, rasterizerState, material
@@ -735,7 +737,7 @@ namespace Squared.Render.Convenience {
                 return null;
         }
 
-        public void Draw (
+        public IBitmapBatch Draw (
             ref BitmapDrawCall drawCall, 
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, SamplerState samplerState2 = null,
@@ -776,9 +778,10 @@ namespace Squared.Render.Convenience {
                         batch.Add(ref drawCall);
                 }
             }
+            return batch;
         }
 
-        public void Draw (
+        public IBitmapBatch Draw (
             IDynamicTexture texture, Vector2 position,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, Vector2? scale = null, Vector2 origin = default(Vector2),
@@ -810,14 +813,14 @@ namespace Squared.Render.Convenience {
             if (AutoIncrementSortKey)
                 NextSortKey.Order += 1;
 
-            Draw(
+            return Draw(
                 ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: SamplerState2, 
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
             );
         }
 
-        public void Draw (
+        public IBitmapBatch Draw (
             Texture2D texture, Vector2 position,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, Vector2? scale = null, Vector2 origin = default(Vector2),
@@ -843,14 +846,14 @@ namespace Squared.Render.Convenience {
             if (AutoIncrementSortKey)
                 NextSortKey.Order += 1;
 
-            Draw(
+            return Draw(
                 ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: samplerState2,
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
             );
         }
 
-        public void Draw (
+        public IBitmapBatch Draw (
             Texture2D texture, float x, float y,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, float scaleX = 1, float scaleY = 1, float originX = 0, float originY = 0,
@@ -876,7 +879,7 @@ namespace Squared.Render.Convenience {
             if (AutoIncrementSortKey)
                 NextSortKey.Order += 1;
 
-            Draw(
+            return Draw(
                 ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: samplerState2,
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState,
@@ -884,7 +887,7 @@ namespace Squared.Render.Convenience {
             );
         }
 
-        public void Draw (
+        public IBitmapBatch Draw (
             TextureSet textures, Vector2 position,
             Rectangle? sourceRectangle1 = null, Rectangle? sourceRectangle2 = null,
             Color? multiplyColor = null, Color addColor = default(Color),
@@ -916,7 +919,7 @@ namespace Squared.Render.Convenience {
             if (AutoIncrementSortKey)
                 NextSortKey.Order += 1;
 
-            Draw(
+            return Draw(
                 ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: samplerState2,
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState,
@@ -924,7 +927,7 @@ namespace Squared.Render.Convenience {
             );
         }
 
-        public void Draw (
+        public IBitmapBatch Draw (
             Texture2D texture, Rectangle destRectangle,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, float originX = 0, float originY = 0,
@@ -954,14 +957,14 @@ namespace Squared.Render.Convenience {
             if (AutoIncrementSortKey)
                 NextSortKey.Order += 1;
 
-            Draw(
+            return Draw(
                 ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, 
                 samplerState: samplerState, samplerState2: samplerState2,
                 depthStencilState: depthStencilState, rasterizerState: rasterizerState, material: material
             );
         }
 
-        public void DrawMultiple (
+        public IBitmapBatch DrawMultiple (
             ArraySegment<BitmapDrawCall> drawCalls,
             Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
@@ -998,6 +1001,7 @@ namespace Squared.Render.Convenience {
                     );
                 }
             }
+            return batch;
         }
 
         public void DrawString (

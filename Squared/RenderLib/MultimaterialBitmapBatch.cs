@@ -39,7 +39,7 @@ namespace Squared.Render {
         }
     }
 
-    public class MultimaterialBitmapBatch : BitmapBatchBase<MaterialBitmapDrawCall>, IBitmapBatch  {
+    public sealed class MultimaterialBitmapBatch : BitmapBatchBase<MaterialBitmapDrawCall>, IBitmapBatch  {
         internal sealed class MultimaterialComparer : IRefComparer<MaterialBitmapDrawCall>, IComparer<MaterialBitmapDrawCall> {
             public IRefComparer<BitmapDrawCall> DrawCallComparer;
             public static readonly ReferenceComparer<Material> MaterialComparer = new ReferenceComparer<Material>();
@@ -177,7 +177,6 @@ namespace Squared.Render {
             var rm = container.RenderManager;
             var lp = (ListPool<MaterialBitmapDrawCall>)_DrawCalls.ListPool;
             lp.ThreadGroup = rm.ThreadGroup;
-            rm.AddDrainRequiredListPool(lp);
 
             var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)BitmapBatchPrepareState.NotPrepared);
             if ((prior == BitmapBatchPrepareState.Issuing) || (prior == BitmapBatchPrepareState.Preparing))

@@ -450,7 +450,7 @@ namespace Squared.Render {
 
         private readonly Dictionary<Type, IArrayPoolAllocator> _ArrayAllocators = 
             new Dictionary<Type, IArrayPoolAllocator>(new ReferenceComparer<Type>());
-        private readonly List<IBatchPool> _BatchAllocators;
+        private readonly IBatchPool[] _BatchAllocators;
         internal readonly DisposalQueue PendingDisposes = new DisposalQueue();
 
         /// <summary>
@@ -462,7 +462,6 @@ namespace Squared.Render {
         /// </summary>
         public readonly object UseResourceLock = new object();
 
-        private readonly HashSet<IDrainable> RequiredDrainListPools = new HashSet<IDrainable>();
         private static readonly object ListPoolLock = new object();
 
         public event EventHandler<DeviceManager> DeviceChanged;
@@ -476,10 +475,10 @@ namespace Squared.Render {
             ThreadGroup = threadGroup;
             PrepareManager = new PrepareManager(ThreadGroup);
 
-            // Create most batch allocators up front and put them in a list instead of a dictionary.
+            // Create most batch allocators up front and put them in an array instead of a dictionary.
             // This reduces overhead significantly
-            _BatchAllocators = new List<IBatchPool>(Batch.Types.All.Length + 16);
-            var mCreate = GetType().GetMethod("CreateBatchAllocatorLocked", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            _BatchAllocators = new IBatchPool[Batch.Types.All.Length + 128];
+            var mCreate = GetType().GetMethod("CreateBatchAllocator", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             foreach (var batchType in Batch.Types.All) {
                 var mSpecific = mCreate.MakeGenericMethod(batchType);
                 var id = Batch.Types.IdForType[batchType];
@@ -491,7 +490,7 @@ namespace Squared.Render {
             _Frame = null;
         }
 
-        private void CreateBatchAllocatorLocked<T> (int id)
+        private BatchPool<T> CreateBatchAllocator<T> (int id)
             where T : Batch, new()
         {
             Func<IBatchPool, T> constructFn = (_) =>
@@ -502,13 +501,15 @@ namespace Squared.Render {
             var t = typeof(T);
             if (id < 0)
                 throw new Exception("Batch type has no Id");
+            else if (id > _BatchAllocators.Length)
+                throw new Exception("Batch type ID outside of legal range");
 
             var pool = new BatchPool<T>(constructFn);
-            while (_BatchAllocators.Count <= id)
-                _BatchAllocators.Add(null);
-            if (_BatchAllocators[id] != null)
-                throw new Exception($"Already have an allocator for id {id}: {_BatchAllocators[id]}");
-            _BatchAllocators[id] = pool;
+            var expectedNull = Interlocked.CompareExchange(ref _BatchAllocators[id], pool, null);
+            if (expectedNull != null)
+                return (BatchPool<T>)expectedNull;
+            else
+                return pool;
         }
 
         internal void CreateNewBufferGenerators () {
@@ -682,34 +683,6 @@ namespace Squared.Render {
             lock (_ArrayAllocators)
                 foreach (var allocator in _ArrayAllocators.Values)
                     allocator.Step();
-
-            // Ensure that all the list pools used by the previous frame
-            //  have finished their async clears. This ensures that we don't
-            //  end up leaking lots of lists
-
-            lock (ListPoolLock) {
-                Array.Clear(CollectAllocatorsBuffer, 0, CollectAllocatorsBuffer.Length);
-                // FIXME: Grow it
-                RequiredDrainListPools.CopyTo(CollectAllocatorsBuffer, 0, Math.Min(RequiredDrainListPools.Count, CollectAllocatorsBuffer.Length));
-            }
-
-            const int minWaitTimeMs = 0, maxWaitTimeMs = 3;
-
-            var elapsedTimeMs = 0.0;
-            foreach (var lp in CollectAllocatorsBuffer) {
-                if (lp == null)
-                    break;
-                var waitTime = Math.Max(minWaitTimeMs, (int)(maxWaitTimeMs - elapsedTimeMs));
-                if (waitTime <= 0)
-                    break;
-
-                CollectAllocatorsTimer.Restart();
-                lp.WaitForWorkItems(waitTime);
-                CollectAllocatorsTimer.Stop();
-                elapsedTimeMs += CollectAllocatorsTimer.Elapsed.TotalMilliseconds;
-            }
-            if (elapsedTimeMs >= 5)
-                Debug.Write($"Collecting allocators took {elapsedTimeMs}ms\r\n");
         }
 
         public bool TrySetPoolCapacity<T> (int newCapacity)
@@ -773,16 +746,16 @@ namespace Squared.Render {
         private BatchPool<T> GetBatchAllocator<T> () 
             where T : Batch, new()
         {
-            var id = Batch.IdForType<T>.Id;
-            if (id < 0)
-                throw new Exception($"{typeof(T)} has no type Id");
+            return GetBatchAllocator<T>(Batch.IdForType<T>.Id);
+        }
 
-            lock (_BatchAllocators) {
-                if ((id >= _BatchAllocators.Count) || (_BatchAllocators[id] == null))
-                    CreateBatchAllocatorLocked<T>(id);
-
-                return (BatchPool<T>)_BatchAllocators[id];
-            }
+        private BatchPool<T> GetBatchAllocator<T> (int typeId)
+            where T : Batch, new()            
+        {
+            if (_BatchAllocators[typeId] == null)
+                return CreateBatchAllocator<T>(typeId);
+            else
+                return (BatchPool<T>)_BatchAllocators[typeId];
         }
 
         public T AllocateBatch<T> () 
@@ -792,9 +765,11 @@ namespace Squared.Render {
             return allocator.Allocate();
         }
 
-        internal void AddDrainRequiredListPool (IDrainable listPool) {
-            lock (ListPoolLock)
-                RequiredDrainListPools.Add(listPool);
+        public T AllocateBatch<T> (int typeId) 
+            where T : Batch, new() 
+        {
+            var allocator = GetBatchAllocator<T>(typeId);
+            return allocator.Allocate();
         }
 
         internal void ResetBufferGenerators (int frameIndex) {

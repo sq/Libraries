@@ -130,12 +130,12 @@ namespace Squared.PRGUI {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected ref BoxRecord Record (ref UIOperationContext context) => ref context.Shared.Context.Engine.UnsafeItem(LayoutKey);
+        protected ref BoxRecord Record (ref UIOperationContext context) => ref context.Shared.Context.Engine[LayoutKey];
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected ref BoxLayoutResult LayoutResult (ref UIOperationContext context) => ref context.Shared.Context.Engine.Result(LayoutKey);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected ref BoxRecord Record (UIContext context) => ref context.Engine.UnsafeItem(LayoutKey);
+        protected ref BoxRecord Record (UIContext context) => ref context.Engine[LayoutKey];
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected ref BoxLayoutResult LayoutResult (UIContext context) => ref context.Engine.Result(LayoutKey);
 
@@ -148,6 +148,8 @@ namespace Squared.PRGUI {
             set {
                 if (!ChangeInternalFlag(InternalStateFlags.Visible, value))
                     return;
+                if (!value)
+                    _LayoutKey = ControlKey.Invalid;
                 SetInternalFlag(InternalStateFlags.VisibleHasChanged, true);
                 OnVisibleChange(value);
             }
@@ -567,9 +569,10 @@ namespace Squared.PRGUI {
             try {
                 if (Appearance.DecorationProvider != null)
                     UIOperationContext.PushDecorationProvider(ref context, Appearance.DecorationProvider);
-                LayoutKey = OnGenerateLayoutTree(ref context, parent, existingKey);
+                var lk = OnGenerateLayoutTree(ref context, parent, existingKey);
+                _LayoutKey = lk;
 
-                if (!LayoutKey.IsInvalid) {
+                if (!lk.IsInvalid) {
                     if (ChangeInternalFlag(InternalStateFlags.VisibleHasChanged, false))
                         context.RelayoutRequestedForVisibilityChange = true;
                 }
@@ -835,8 +838,9 @@ namespace Squared.PRGUI {
 #endif
 
         protected virtual ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            if (!Visible && !context.UIContext.IsUpdatingSubtreeLayout)
-                return ControlKey.Invalid;
+            if (!Visible && !context.UIContext.IsUpdatingSubtreeLayout) {
+                return _LayoutKey = ControlKey.Invalid;
+            }
 
             IsLayoutInvalid = false;
 
@@ -845,7 +849,7 @@ namespace Squared.PRGUI {
 #endif
 
             ref var result = ref context.Engine.GetOrCreate(existingKey);
-            LayoutKey = result.Key;
+            _LayoutKey = result.Key;
 
             var decorationProvider = context.DecorationProvider;
             var decorations = GetDecorator(decorationProvider, context.DefaultDecorator);

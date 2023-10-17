@@ -61,7 +61,9 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         internal void PerformLayout (ref BoxRecord root) {
-            ref var result = ref UnsafeResult(root.Key);
+            Results.Grow(Records.Count);
+
+            ref var result = ref Result(root.Key);
             Pass1_ComputeSizesAndBuildRuns(ref root, ref result, 0);
             Pass2(ref root, ref result, 0);
 
@@ -71,7 +73,7 @@ namespace Squared.PRGUI.NewEngine {
             //  since their sizes also changed.
             // FIXME: We probably need to rebuild their runs too, right?
             foreach (var key in RecalcSizeQueue)
-                Pass2c_Recalculate(ref UnsafeItem(key), ref UnsafeResult(key));
+                Pass2c_Recalculate(ref this[key], ref Result(key));
 
             RecalcSizeQueue.UnsafeFastClear();
 

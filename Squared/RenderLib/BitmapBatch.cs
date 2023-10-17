@@ -23,6 +23,7 @@ namespace Squared.Render {
         private static bool WarnedAboutNullMaterial, WarnedAboutFillError;
 
         public static readonly SamplerState DefaultSamplerState = SamplerState.LinearClamp;
+        private static readonly int BitmapBatchTypeId = IdForType<BitmapBatch>.Id;
 
         static BitmapBatch () {
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
@@ -168,7 +169,7 @@ namespace Squared.Render {
             if (material.Effect == null)
                 throw new ArgumentNullException("material.Effect");
 
-            var result = container.RenderManager.AllocateBatch<BitmapBatch>();
+            var result = container.RenderManager.AllocateBatch<BitmapBatch>(BitmapBatchTypeId);
             result.Initialize(
                 container, layer, material, 
                 samplerState, samplerState2 ?? samplerState, 
@@ -206,7 +207,6 @@ namespace Squared.Render {
             var rm = container.RenderManager;
             var lp = (ListPool<BitmapDrawCall>)_DrawCalls.ListPool;
             lp.ThreadGroup = rm.ThreadGroup;
-            rm.AddDrainRequiredListPool(lp);
 
             var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)BitmapBatchPrepareState.NotPrepared);
             if ((prior == BitmapBatchPrepareState.Issuing) || (prior == BitmapBatchPrepareState.Preparing))

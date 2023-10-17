@@ -938,11 +938,13 @@ namespace Squared.PRGUI {
                 return;
             }
 
+            var subtreeKey = subtreeRoot.LayoutKey.ID;
             subtreeRoot.GenerateLayoutTree(
-                ref context, parentKey, 
-                subtreeRoot.LayoutKey.IsInvalid 
-                    ? (ControlKey?)null 
-                    : subtreeRoot.LayoutKey
+                ref context, parentKey,
+                // FIXME: Why is this necessary?
+                (subtreeKey >= 0) && (subtreeKey < Engine.Count)
+                    ? subtreeRoot.LayoutKey
+                    : (ControlKey?)null
             );
 
             Engine.UpdateSubtree(subtreeRoot.LayoutKey);
