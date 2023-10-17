@@ -362,7 +362,7 @@ namespace Squared.PRGUI.Controls {
                 var item = children[i];
                 var columnIndex = i % ColumnCount;
                 // FIXME: We shouldn't need to do this every frame
-                item.AbsoluteDisplayOffset = (item is IIgnoresScrollingControl) ? AbsoluteDisplayOffset : adoc;
+                item.AbsoluteDisplayOffset = DoesIgnoreScrolling(item) ? AbsoluteDisplayOffset : adoc;
 
                 // If we're performing layout again on an existing layout item, attempt to do the same
                 //  for our children
@@ -380,7 +380,7 @@ namespace Squared.PRGUI.Controls {
             var adoc = AbsoluteDisplayOffsetOfChildren;
             var children = Children;
             foreach (var child in children)
-                child.AbsoluteDisplayOffset = (child is IIgnoresScrollingControl) ? AbsoluteDisplayOffset : adoc;
+                child.AbsoluteDisplayOffset = DoesIgnoreScrolling(child) ? AbsoluteDisplayOffset : adoc;
         }
 
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {

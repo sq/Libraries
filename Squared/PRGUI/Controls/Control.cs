@@ -71,6 +71,7 @@ namespace Squared.PRGUI {
             AcceptsFocusWhenDisabled    = 0b100000000000,
             AcceptsNonLeftClicks        = 0b1000000000000,
             IsPostLayoutListener        = 0b10000000000000,
+            IgnoresScrolling            = 0b100000000000000,
             // TODO
             // EventFiredMatrix      = 0b100000000000,
         }
@@ -292,6 +293,8 @@ namespace Squared.PRGUI {
             TypeID = GetType().GetHashCode();
             if (this is IPostLayoutListener)
                 SetInternalFlag(InternalStateFlags.IsPostLayoutListener, true);
+            if (this is IIgnoresScrollingControl)
+                SetInternalFlag(InternalStateFlags.IgnoresScrolling, true);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -321,6 +324,8 @@ namespace Squared.PRGUI {
             SetInternalFlag(flag, newState);
             return true;
         }
+
+        public static bool DoesIgnoreScrolling (Control control) => control.GetInternalFlag(InternalStateFlags.IgnoresScrolling);
 
         /// <summary>
         /// If a control is being composited from a temporary surface, this method will be

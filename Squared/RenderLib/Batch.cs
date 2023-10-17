@@ -516,6 +516,12 @@ namespace Squared.Render {
         protected DenseList<T> _DrawCalls = new DenseList<T>();
         private static bool _CanFastClearDrawCalls = false;
 
+        public ListBatch ()
+            : base () 
+        {
+            _DrawCalls.ListPoolOrAllocator = _ListPool;
+        }
+
         public static void SetAllocator (UnorderedList<T>.Allocator allocator) {
             _ListPool.Allocator = allocator ?? UnorderedList<T>.Allocator.Default;
         }
@@ -536,7 +542,6 @@ namespace Squared.Render {
             IBatchContainer container, int layer, Material material,
             bool addToContainer, int? capacity = null
         ) {
-            _DrawCalls.ListPoolOrAllocator = _ListPool;
             if (_CanFastClearDrawCalls)
                 _DrawCalls.UnsafeFastClear();
             else
