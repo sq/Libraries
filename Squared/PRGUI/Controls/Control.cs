@@ -837,9 +837,10 @@ namespace Squared.PRGUI {
         private bool RasterizeIsPending = false;
 #endif
 
-        protected virtual ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected virtual ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             if (!Visible && !context.UIContext.IsUpdatingSubtreeLayout) {
-                return _LayoutKey = ControlKey.Invalid;
+                _LayoutKey = ControlKey.Invalid;
+                return ref LayoutEngine.Invalid;
             }
 
             IsLayoutInvalid = false;
@@ -871,7 +872,7 @@ namespace Squared.PRGUI {
             if (!parent.IsInvalid && !existingKey.HasValue)
                 context.Engine.InsertAtEnd(parent, result.Key);
 
-            return result.Key;
+            return ref result;
         }
 
         protected virtual IDecorator GetDefaultDecorator (IDecorationProvider provider) {

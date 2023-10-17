@@ -479,6 +479,7 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         public bool IsValid => !Key.IsInvalid;
+        public bool IsInvalid => Key.IsInvalid;
 
         public static implicit operator ControlKey (in BoxRecord rec) => rec.Key;
 

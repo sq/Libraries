@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render;
 using Squared.Render.Convenience;
 
@@ -28,14 +29,14 @@ namespace Squared.PRGUI.Controls {
             TooltipContent = "Drag to resize";
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             Layout.Stacked = true;
             Layout.Anchor.Right = true;
             Layout.Anchor.Bottom = true;
             Layout.Fill = false;
-            var ckey = base.OnGenerateLayoutTree(ref context, parent, existingKey);
-            context.Engine[ckey].Config.AlignToParentBox = true;
-            return ckey;
+            ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            result.Config.AlignToParentBox = true;
+            return ref result;
         }
 
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {

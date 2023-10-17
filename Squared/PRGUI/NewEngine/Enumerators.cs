@@ -46,10 +46,12 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             public bool MoveNext () {
+#if DEBUG
                 if (Version != Engine.Version) {
                     Engine.AssertionFailed("Context was modified");
                     return false;
                 }
+#endif
 
                 if (Current.ID < 0) {
                     if (Started)
@@ -72,10 +74,12 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             void IEnumerator.Reset () {
+#if DEBUG
                 if (Version != Engine.Version) {
                     Engine.AssertionFailed("Context was modified");
-                    throw new Exception("Context was modified");
+                    return;
                 }
+#endif
                 _Current = ControlKey.Invalid;
             }
         }
@@ -158,10 +162,12 @@ namespace Squared.PRGUI.NewEngine {
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private void CheckVersion () {
+#if DEBUG
                 if (Version == Engine.Version)
                     return;
 
                 Engine.AssertionFailed("Context was modified");
+#endif
             }
 
             public int Current {

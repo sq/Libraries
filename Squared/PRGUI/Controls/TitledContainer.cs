@@ -8,6 +8,7 @@ using Squared.Game;
 using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
@@ -222,16 +223,16 @@ namespace Squared.PRGUI.Controls {
             unscaledPadding.Top += height;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             FreezeDynamicContent = _Collapsed;
             SuppressChildLayout = !LayoutChildrenWhenCollapsed 
                 && _Collapsed 
                 && MostRecentFullSize.HasValue
                 && (DisclosureLevel.Get(context.NowL) <= 0);
 
-            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
-                return result;
+                return ref result;
 
             if (Title.Length == 0 && !existingKey.HasValue && Collapsible) {
                 ref var spacer = ref context.Engine.Create();
@@ -239,7 +240,7 @@ namespace Squared.PRGUI.Controls {
                 spacer.FixedSize = new Vector2(DisclosureArrowPadding, MostRecentTitleBox.Height);
                 context.Engine.InsertAtStart(result, spacer.Key);
             }
-            return result;
+            return ref result;
         }
 
         protected override void OnDescendantReceivedFocus (Control control, bool isUserInitiated) {

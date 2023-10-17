@@ -9,6 +9,7 @@ using Squared.Game;
 using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
@@ -478,17 +479,17 @@ namespace Squared.PRGUI.Controls {
             ContentMeasurement?.Invalidate();
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var decorationProvider = context.DecorationProvider;
             var decorations = GetDecorator(decorationProvider, context.DefaultDecorator);
             ComputeEffectiveSpacing(ref context, decorationProvider, decorations, out Margins computedPadding, out Margins computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
             UpdateLineBreak(ref context, decorations, null, ref computedPadding, ref computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
-            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
-                return result;
-            Record(ref context).Tag = LayoutTags.Text;
+                return ref result;
+            result.Tag = LayoutTags.Text;
 
             // HACK: Ensure that we report all the textures we use even if we're not currently being rasterized
             if (Content.IsValid && GetInternalFlag(StaticTextStateFlags.DidUseTextures)) {
@@ -498,7 +499,7 @@ namespace Squared.PRGUI.Controls {
                     context.UIContext.NotifyTextureUsed(this, tex);
             }
 
-            return result;
+            return ref result;
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {

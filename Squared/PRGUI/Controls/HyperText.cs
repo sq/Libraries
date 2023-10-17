@@ -8,6 +8,7 @@ using Squared.Game;
 using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
 using Squared.Util;
@@ -61,7 +62,7 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var children = Children;
 
             if (!Content.IsValid) {
@@ -70,7 +71,7 @@ namespace Squared.PRGUI.Controls {
                     Context.HideTooltip(ht);
             }
 
-            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
             var rm = Content.RichMarkers;
 
             // FIXME: On the first frame our hotspots will be in the wrong place
@@ -125,7 +126,7 @@ namespace Squared.PRGUI.Controls {
                 child.GenerateLayoutTree(ref context, result, childExistingKey);
             }
 
-            return result;
+            return ref result;
         }
 
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {

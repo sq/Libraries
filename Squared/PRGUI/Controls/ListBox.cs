@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render.Convenience;
 using Squared.Threading;
 using Squared.Util;
@@ -278,7 +279,7 @@ namespace Squared.PRGUI.Controls {
         private float VirtualYMultiplier => VirtualItemHeight / ColumnCount;
         private int LastColumnCount = 0;
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             bool scrollOffsetChanged = false;
             base.ColumnCount = 1;
             ContainerFlags = (
@@ -382,9 +383,9 @@ namespace Squared.PRGUI.Controls {
             if (scrollOffsetChanged)
                 OnDisplayOffsetChanged();
 
-            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
-                return result;
+                return ref result;
 
             ref var record = ref Record(ref context);
             record.Config.GridColumnCount = (ushort)ColumnCount;
@@ -420,7 +421,7 @@ namespace Squared.PRGUI.Controls {
                     Context.OverrideKeyboardSelection(newControl, forUser: false);
             }
 
-            return result;
+            return ref result;
         }
 
         private void SetTextDecorator (ref UIOperationContext context, Control child, bool isSelected, ref bool hasPushed) {

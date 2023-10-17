@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.RasterShape;
@@ -117,7 +118,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             try {
                 if (Collapsed)
                     context.HiddenCount++;
@@ -125,9 +126,9 @@ namespace Squared.PRGUI.Controls {
                     ? default(ControlFlags)
                     : ControlFlags.Container_Constrain_Size;
                 Aligner.AlignmentPending = true;
-                var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
-                Record(ref context).Tag = LayoutTags.Window;
-                return result;
+                ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
+                result.Tag = LayoutTags.Window;
+                return ref result;
             } finally {
                 if (Collapsed)
                     context.HiddenCount--;

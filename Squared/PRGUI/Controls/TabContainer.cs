@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render.Convenience;
 using Squared.Util;
 
@@ -227,7 +228,7 @@ namespace Squared.PRGUI.Controls {
             return provider.None;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var children = Children;
             if (TabStrip.Children.Count != children.Count - 1)
                 TabStripIsInvalid = true;
@@ -239,12 +240,12 @@ namespace Squared.PRGUI.Controls {
 
             var st = SelectedTab;
 
-            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid) {
                 foreach (var item in children)
                     item.ClearLayoutKey();
 
-                return result;
+                return ref result;
             } else {
                 foreach (var item in children) {
                     // item.Visible = (item == st) || (item == TabStrip);
@@ -297,7 +298,7 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            return result;
+            return ref result;
         }
 
         private void LayoutItem (ref UIOperationContext context, bool containerHasExistingKey, ControlKey container, Vector2 adoc, Control item) {

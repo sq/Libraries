@@ -10,6 +10,7 @@ using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Flags;
 using Squared.PRGUI.Imperative;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render.Convenience;
 using Squared.Util;
 
@@ -315,9 +316,9 @@ namespace Squared.PRGUI.Controls {
         protected ControlKey[] ColumnKeys;
         protected bool NeedToInvalidateChildLayout;
         
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var wasInvalid = IsLayoutInvalid;
-            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
             ref var rec = ref context.Engine[result];
             rec.Tag = LayoutTags.Container;
 
@@ -325,7 +326,7 @@ namespace Squared.PRGUI.Controls {
             if (result.IsInvalid || SuppressChildLayout) {
                 NeedToInvalidateChildLayout = true;
 
-                return result;
+                return ref result;
             } else if (NeedToInvalidateChildLayout) {
                 NeedToInvalidateChildLayout = false;
                 foreach (var item in children)
@@ -370,9 +371,10 @@ namespace Squared.PRGUI.Controls {
                 if ((existingKey.HasValue) && !item.LayoutKey.IsInvalid)
                     childExistingKey = item.LayoutKey;
 
-                var itemKey = item.GenerateLayoutTree(ref context, ColumnKeys[columnIndex], childExistingKey);
+                item.GenerateLayoutTree(ref context, ColumnKeys[columnIndex], childExistingKey);
             }
-            return result;
+
+            return ref result;
         }
 
         protected override void OnDisplayOffsetChanged () {
@@ -624,10 +626,10 @@ namespace Squared.PRGUI.Controls {
             Children.Add(control);
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
-            Record(ref context).Tag = LayoutTags.Group;
-            return result;
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            result.Tag = LayoutTags.Group;
+            return ref result;
         }
 
         DenseList<Control>.Enumerator GetEnumerator () => Children.GetEnumerator();

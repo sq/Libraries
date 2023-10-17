@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render.Convenience;
 using Squared.Threading;
 using Squared.Util;
@@ -206,15 +207,15 @@ namespace Squared.PRGUI.Controls {
             height.Maximum = context.UIContext.CanvasSize.Y * 0.66f;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             FreezeDynamicContent = Visible;
 
             if (SelectedItem?.Enabled == false)
                 SetSelectedItem(null, true);
 
-            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
-                return result;
+                return ref result;
 
             var hasPushedDecorator = false;
             foreach (var child in Children) {
@@ -230,7 +231,7 @@ namespace Squared.PRGUI.Controls {
             if (hasPushedDecorator)
                 UIOperationContext.PopTextDecorator(ref context);
 
-            return result;
+            return ref result;
         }
 
         private void SetTextDecorator (ref UIOperationContext context, Control child, ref bool hasPushed) {

@@ -9,6 +9,7 @@ using Squared.Game;
 using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
@@ -531,11 +532,11 @@ namespace Squared.PRGUI.Controls {
             height.Minimum = Math.Max(height.Minimum ?? 0, contentMinimumHeight);
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             // HACK: Populate various fields that we will use to compute minimum size
             var temp = new DecorationSettings();
             UpdateLayout(ref context, ref temp, context.DecorationProvider.EditableText, out _);
-            return base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            return ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
         protected LayoutMarker? MarkSelection () {

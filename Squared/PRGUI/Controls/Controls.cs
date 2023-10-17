@@ -11,6 +11,7 @@ using Squared.Game;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
@@ -26,12 +27,12 @@ namespace Squared.PRGUI.Controls {
             Intangible = true;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
             ref var rec = ref Record(ref context);
             rec.Tag = LayoutTags.Spacer;
             rec.Config.NoMeasurement = true;
-            return result;
+            return ref result;
         }
 
         protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) => false;
@@ -57,8 +58,8 @@ namespace Squared.PRGUI.Controls {
             Height.Maximum = 0;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            return ControlKey.Invalid;
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            return ref LayoutEngine.Invalid;
         }
 
         public override string ToString () {
@@ -381,8 +382,8 @@ namespace Squared.PRGUI.Controls {
             return;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            return ControlKey.Invalid;
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            return ref LayoutEngine.Invalid;
         }
     }
 }

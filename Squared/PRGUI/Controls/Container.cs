@@ -9,6 +9,7 @@ using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Imperative;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render.Convenience;
 using Squared.Util;
 
@@ -204,9 +205,9 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
         
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             HasContentBounds = false;
-            return base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            return ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {

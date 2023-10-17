@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render.Convenience;
 using Squared.Util;
 using Squared.Util.Text;
@@ -177,11 +178,11 @@ namespace Squared.PRGUI.Controls {
             return provider.Dropdown;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             if (NeedsUpdate || (Items.Version != _Version))
                 Update();
 
-            return base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            return ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
         protected void Update () {

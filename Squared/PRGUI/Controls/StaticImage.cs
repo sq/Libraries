@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Threading;
@@ -332,11 +333,11 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             context.UIContext.NotifyTextureUsed(this, Image);
             context.UIContext.NotifyTextureUsed(this, Image2);
 
-            return base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            return ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
         protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

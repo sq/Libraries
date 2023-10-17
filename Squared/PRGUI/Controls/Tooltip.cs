@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.PRGUI.NewEngine;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
 using Squared.Util.Text;
@@ -52,13 +53,13 @@ namespace Squared.PRGUI.Controls {
             // FIXME: Do something else here? Invalidate the alignment?
         }
 
-        protected override ControlKey OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+        protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var decorator = GetDefaultDecorator(context.DecorationProvider);
             // FIXME: Why was this here?
             // Aligner.ExtraMargins = decorator.Margins;
-            var result = base.OnGenerateLayoutTree(ref context, parent, existingKey);
-            Record(ref context).Tag = LayoutTags.Tooltip;
-            return result;
+            ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
+            result.Tag = LayoutTags.Tooltip;
+            return ref result;
         }
 
         RichTextConfiguration _RichTextConfiguration;

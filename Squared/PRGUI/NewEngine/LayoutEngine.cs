@@ -17,7 +17,8 @@ using System.IO;
 
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
-        private static BoxRecord Invalid = new BoxRecord {
+        public static BoxRecord Invalid = new BoxRecord {
+            _Key = -1,
         };
 
         private int Version;
