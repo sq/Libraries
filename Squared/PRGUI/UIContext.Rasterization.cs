@@ -325,16 +325,19 @@ namespace Squared.PRGUI {
                 {
                     renderer.MakeSubgroup(out var subRenderer);
                     subRenderer.BlendState = BlendState.NonPremultiplied;
+
                     // HACK
                     context.Pass = RasterizePasses.Below;
                     foreach (var isrc in InputSources) {
                         isrc.SetContext(this);
                         isrc.Rasterize(ref context, ref subRenderer);
                     }
+
                     subRenderer.Layer += 1;
                     context.Pass = RasterizePasses.Content;
                     foreach (var isrc in InputSources)
                         isrc.Rasterize(ref context, ref subRenderer);
+
                     subRenderer.Layer += 1;
                     context.Pass = RasterizePasses.Above;
                     foreach (var isrc in InputSources)

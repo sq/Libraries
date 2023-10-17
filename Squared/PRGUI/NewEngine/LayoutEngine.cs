@@ -21,6 +21,10 @@ namespace Squared.PRGUI.NewEngine {
             _Key = -1,
         };
 
+        public static BoxLayoutResult InvalidResult = new BoxLayoutResult {
+            Tag = LayoutTags.Invalid,
+        };
+
         private int Version;
         private const int Capacity = 65536;
 
@@ -30,7 +34,10 @@ namespace Squared.PRGUI.NewEngine {
         // The obvious solution is a huge buffer, but another option is a chain of smaller buffers so we grow by
         //  allocating a new buffer, which won't invalidate old references.
         private SegmentedArray<BoxRecord> Records = new SegmentedArray<BoxRecord>(Capacity);
-        private SegmentedArray<BoxLayoutResult> Results = new SegmentedArray<BoxLayoutResult>(Capacity);
+        private SegmentedArray<BoxLayoutResult> InProgressResults = new SegmentedArray<BoxLayoutResult>(Capacity),
+            // We keep a spare buffer for the results from the previous full layout, so that they can be fetched
+            PreviousResults = new SegmentedArray<BoxLayoutResult>(Capacity),
+            Results;
         // The worst case size is one run per control
         private SegmentedArray<LayoutRun> RunBuffer = new SegmentedArray<LayoutRun>(Capacity);
 
@@ -50,7 +57,8 @@ namespace Squared.PRGUI.NewEngine {
         public int Count => Records.Count;
         public void Clear () {
             Records.Clear();
-            Results.Clear();
+            PreviousResults.Clear();
+            InProgressResults.Clear();
             RunBuffer.Clear();
             Version++;
             // Initialize root
@@ -60,6 +68,21 @@ namespace Squared.PRGUI.NewEngine {
 
         public LayoutEngine () {
             Clear();
+        }
+
+        internal void PrepareForUpdate (bool clearState) {
+            RunBuffer.Clear();
+            if (clearState) {
+                var temp = PreviousResults;
+                PreviousResults = InProgressResults;
+                InProgressResults = temp;
+                Records.Clear();
+                InProgressResults.Clear();
+                Version++;
+                ref var root = ref Create(tag: Layout.LayoutTags.Root);
+                root.FixedSize = _CanvasSize;
+            }
+            Results = PreviousResults;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -104,8 +127,6 @@ namespace Squared.PRGUI.NewEngine {
         public ref BoxRecord Create (Layout.LayoutTags tag = default, ControlFlags flags = default, ControlKey? parent = null) {
             ref var result = ref Records.New(out int index);
             result._Key = new ControlKey(index);
-            // FIXME
-            result.Config.GridColumnCount = 0;
             result.OldFlags = flags;
             result.Tag = tag;
             if (parent.HasValue)
@@ -150,7 +171,7 @@ namespace Squared.PRGUI.NewEngine {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref BoxLayoutResult Result (ControlKey key) {
-            return ref Results[key.ID];
+            return ref Results.ItemOrDefault(key.ID, ref InvalidResult);
         }
 
         #region Diagnostic internals
@@ -320,9 +341,9 @@ namespace Squared.PRGUI.NewEngine {
         }
         #endregion
 
-        public void Update () {
-            Results.Clear();
-            RunBuffer.Clear();
+        internal void Update () {
+            // Now we want to expose the InProgressResults list to any code that is looking for a results record
+            Results = InProgressResults;
             PerformLayout(ref Root());
         }
 

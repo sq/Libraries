@@ -319,8 +319,7 @@ namespace Squared.PRGUI.Controls {
         protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var wasInvalid = IsLayoutInvalid;
             ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
-            ref var rec = ref context.Engine[result];
-            rec.Tag = LayoutTags.Container;
+            result.Tag = LayoutTags.Container;
 
             var children = Children;
             if (result.IsInvalid || SuppressChildLayout) {
@@ -342,7 +341,7 @@ namespace Squared.PRGUI.Controls {
                 containerFlags |= ControlFlags.Container_Row;
             }
 
-            rec.OldContainerFlags = containerFlags;
+            result.OldContainerFlags = containerFlags;
 
             if ((context.HiddenCount <= 0) && Visible)
                 GenerateDynamicContent(DynamicContentIsInvalid);

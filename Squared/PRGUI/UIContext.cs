@@ -295,8 +295,7 @@ namespace Squared.PRGUI {
 
             IsUpdating = true;
             try {
-                Engine.Clear();
-
+                Engine.PrepareForUpdate(true);
                 DoUpdateLayoutInternal(ref context, false);
                 Engine.Update();
                 // TODO: Perform a pass after this that copies the LayoutResult into all of our controls,
@@ -309,6 +308,7 @@ namespace Squared.PRGUI {
 
                 if (NotifyLayoutListeners(ref context)) {
                     IsPerformingRelayout = true;
+                    Engine.PrepareForUpdate(false);
                     DoUpdateLayoutInternal(ref context, true);
                     Engine.Update();
                     NotifyLayoutListeners(ref context);

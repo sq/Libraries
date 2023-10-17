@@ -99,6 +99,16 @@ namespace Squared.PRGUI.NewEngine {
             return ref Segments[segmentIndex][localIndex];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T ItemOrDefault (int index, ref T @default) {
+            if ((index < 0) || (index >= _Count))
+                return ref @default;
+
+            int segmentIndex = index / SegmentSize,
+                localIndex = index % SegmentSize;
+            return ref Segments[segmentIndex][localIndex];
+        }
+
         private void ThrowIndexOutOfRange () {
             throw new IndexOutOfRangeException("index");
         }

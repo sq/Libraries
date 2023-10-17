@@ -21,7 +21,8 @@ namespace Squared.PRGUI.Layout {
         Column,
         Root,
         Container,
-        Group
+        Group,
+        Invalid = 0xFF
     }
 
     public enum LayoutDimensions : uint {

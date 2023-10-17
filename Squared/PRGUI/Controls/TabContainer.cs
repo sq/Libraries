@@ -253,13 +253,12 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            ref var rec = ref Record(ref context);
-            rec.Tag = LayoutTags.TabContainer;
+            result.Tag = LayoutTags.TabContainer;
             var constrainSize = (Container.ConstrainSize || ContainerFlags.IsFlagged(ControlFlags.Container_Constrain_Size));
             var containerFlags = ContainerFlags | ExtraContainerFlags;
             if (constrainSize)
                 containerFlags |= ControlFlags.Container_Constrain_Size;
-            rec.OldContainerFlags = containerFlags;
+            result.OldContainerFlags = containerFlags;
 
             {
                 var adoc = AbsoluteDisplayOffset; // AbsoluteDisplayOffsetOfChildren;
@@ -267,7 +266,7 @@ namespace Squared.PRGUI.Controls {
                 LayoutItem(ref context, existingKey.HasValue, result, adoc, TabStrip);
                 ControlKey childBox;
                 if (existingKey.HasValue)
-                    childBox = rec.LastChild;
+                    childBox = result.LastChild;
                 else
                     childBox = context.Engine.Create(parent: result).Key;
                 var childBoxFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Column;

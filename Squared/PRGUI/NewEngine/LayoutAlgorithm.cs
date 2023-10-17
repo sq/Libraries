@@ -61,7 +61,7 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         internal void PerformLayout (ref BoxRecord root) {
-            Results.Grow(Records.Count);
+            InProgressResults.Grow(Records.Count);
 
             ref var result = ref Result(root.Key);
             Pass1_ComputeSizesAndBuildRuns(ref root, ref result, 0);
