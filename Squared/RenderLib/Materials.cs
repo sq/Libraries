@@ -662,6 +662,11 @@ namespace Squared.Render {
             }
         }
 
+        public bool IsEmpty {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetInternalFlag(StateFlags.IsCleared) || (Keys.Count < 1);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool FindKey (string name, out int keyIndex, out int valueIndex) {
             var needle = new Key(name);

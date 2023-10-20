@@ -640,16 +640,22 @@ namespace Squared.Render.Convenience {
                 result.Cache = Cache;
             else
                 result.Cache = default;
+
+            if (!Parameters.IsEmpty)
+                result.Parameters = Parameters;
+            else
+                result.Parameters = default;
 #else
             result = default;
             if (preserveCache)
                 result.Cache = Cache;
+            if (!Parameters.IsEmpty)
+                result.Parameters = Parameters;
 #endif
 
             result.Config = Config;
             result.Flags = Flags;
             result.NextSortKey = NextSortKey;
-            result.Parameters = Parameters;
             result.Parameters.AllocateNewStorageOnWrite = true;
 
             if (nextLayer)
