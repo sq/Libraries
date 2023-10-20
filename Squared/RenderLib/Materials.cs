@@ -483,8 +483,7 @@ namespace Squared.Render {
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public int Compare (ref Key lhs, ref Key rhs) {
-                // var result = lhs.HashCode.CompareTo(rhs.HashCode);
-                int result = 0;
+                var result = lhs.HashCode.CompareTo(rhs.HashCode);
                 if (result == 0)
                     result = string.CompareOrdinal(lhs.Name, rhs.Name);
                 return result;

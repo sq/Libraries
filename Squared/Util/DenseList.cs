@@ -191,7 +191,7 @@ namespace Squared.Util {
                 throw new ArgumentOutOfRangeException(nameof(destinationOffset));
 
             if (items != null)
-                _Items.CopyTo(destination, destinationOffset, count);
+                items.CopyTo(destination, destinationOffset, count);
             else {
                 if (count > 0)
                     destination[destinationOffset + 0] = Item1;
@@ -263,8 +263,7 @@ namespace Squared.Util {
             if (lazy && !HasList) {
                 _ListCapacity = (short)Math.Max(Math.Min(capacity, short.MaxValue), _ListCapacity);
             } else {
-                EnsureList(capacity);
-                _Items.EnsureCapacity(capacity);
+                GetList(capacity).EnsureCapacity(capacity);
             }
         }
 
@@ -285,15 +284,24 @@ namespace Squared.Util {
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         // TODO: Make this return the list to avoid extra field reads
-        public void EnsureList (int? capacity = null) {
+        public void EnsureList () {
             if (HasList)
                 return;
 
-            CreateList(capacity);
+            CreateList(null);
         }
 
-        private void CreateList (int? capacity = null) {
-            const int absoluteMinimum = 64;
+        [TargetedPatchingOptOut("")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private UnorderedList<T> GetList (int? capacity = null) {
+            var result = _Items;
+            if (result == null)
+                result = CreateList(capacity);
+            return result;
+        }
+
+        private UnorderedList<T> CreateList (int? capacity = null) {
+            const int absoluteMinimum = 16;
 
             if (capacity.HasValue)
                 capacity = Math.Max(capacity.Value, absoluteMinimum);
@@ -311,18 +319,28 @@ namespace Squared.Util {
             else
                 items = new UnorderedList<T>((UnorderedList<T>.Allocator)_ListPoolOrAllocator);
 
-            _Items = items;
-            if (_Count > 0)
-                items.Add(ref Item1);
-            if (_Count > 1)
-                items.Add(ref Item2);
-            if (_Count > 2)
-                items.Add(ref Item3);
-            if (_Count > 3)
-                items.Add(ref Item4);
-
-            Item1 = Item2 = Item3 = Item4 = default;
+            int count = _Count;
             _Count = 0;
+            _Items = items;
+
+            if (count > 0) {
+                items.Add(ref Item1);
+                Item1 = default;
+            }
+            if (count > 1) {
+                items.Add(ref Item2);
+                Item2 = default;
+            }
+            if (count > 2) {
+                items.Add(ref Item3);
+                Item3 = default;
+            }
+            if (count > 3) {
+                items.Add(ref Item4);
+                Item4 = default;
+            }
+
+            return items;
         }
 
         public int Count {
@@ -361,8 +379,7 @@ namespace Squared.Util {
         }
 
         private void Insert_Slow (int index, ref T item) {
-            EnsureList();
-            _Items.InsertOrdered(index, in item);
+            GetList().InsertOrdered(index, in item);
         }
 
         [TargetedPatchingOptOut("")]
@@ -452,14 +469,15 @@ namespace Squared.Util {
         [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T LastOrDefault (in T defaultValue = default) {
-            if (Count <= 0)
+            var count = Count;
+            if (count <= 0)
                 return defaultValue;
 
             var items = _Items;
             if (items != null)
-                return items.DangerousItem(items.Count - 1);
+                return items.DangerousItem(count - 1);
             else
-                return this[Count - 1];
+                return this[count - 1];
         }
 
         [TargetedPatchingOptOut("")]
@@ -650,8 +668,9 @@ namespace Squared.Util {
 
         public UnorderedList<T> GetStorage (bool ensureList) {
             if (ensureList)
-                EnsureList();
-            return _Items;
+                return GetList();
+            else
+                return _Items;
         }
 
         public void UseExistingStorage (UnorderedList<T> storage) {
@@ -689,8 +708,7 @@ namespace Squared.Util {
         }
 
         private void Add_Slow (ref T item) {
-            EnsureList();
-            _Items.Add(ref item);
+            GetList().Add(ref item);
         }
 
         [TargetedPatchingOptOut("")]
@@ -707,17 +725,17 @@ namespace Squared.Util {
         }
 
         public void ReplaceWith (ref DenseList<T> newItems) {
-            var count = Count;
-            for (int i = 0, c = newItems.Count; i < c; i++) {
+            int count = Count, newCount = newItems.Count;
+            for (int i = 0; i < newCount; i++) {
                 ref var item = ref newItems.Item(i);
                 if (i >= count)
                     Add(ref item);
                 else
                     SetItem(i, ref item);
             }
-            var toRemove = Count - newItems.Count;
+            var toRemove = Count - newCount;
             if (toRemove > 0)
-                RemoveRange(newItems.Count, toRemove);
+                RemoveRange(newCount, toRemove);
 
 #if DEBUG
             if (Count != newItems.Count)
@@ -844,8 +862,7 @@ namespace Squared.Util {
 
         public ArraySegment<T> ReserveSpace (int count) {
             // FIXME: Slow
-            EnsureList(count);
-            return _Items.ReserveSpace(count);
+            return GetList(count).ReserveSpace(count);
         }
 
         public bool Remove<TComparer> (in T item, TComparer comparer)
@@ -891,8 +908,7 @@ namespace Squared.Util {
                 }
                 _Count--;
             } else {
-                EnsureList();
-                _Items.RemoveAtOrdered(index);
+                GetList().RemoveAtOrdered(index);
             }
         }
 
@@ -971,9 +987,9 @@ namespace Squared.Util {
                 throw new ArgumentOutOfRangeException("count");
 
             if ((count > 4) || HasList) {
-                EnsureList(count);
-                _Items.Clear();
-                _Items.AddRange(data, sourceOffset, count);
+                var items = GetList(count);
+                items.Clear();
+                items.AddRange(data, sourceOffset, count);
             } else {
                 _Count = (short)count;
                 for (int i = 0; i < count; i++)
