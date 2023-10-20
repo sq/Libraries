@@ -238,7 +238,6 @@ namespace Squared.Render.DistanceField {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static float ScreenDistanceSquared (float x, float y) {
             return (x * x) + (y * y);

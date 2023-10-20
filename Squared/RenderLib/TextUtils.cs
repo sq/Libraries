@@ -822,7 +822,6 @@ namespace Squared.Render.Text {
         }
 
         public bool IsValid {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return (

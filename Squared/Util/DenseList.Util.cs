@@ -178,13 +178,11 @@ namespace Squared.Util {
         }
 
 #if !NOSPAN
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe ref readonly T ReadItem<T> (this in DenseList<T> list, int index) {
             return ref Item(ref Unsafe.AsRef(in list), index);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe ref T Item<T> (this ref DenseList<T> list, int index) {
             var items = list._Items;
@@ -197,7 +195,6 @@ namespace Squared.Util {
             return ref Unsafe.AddByteOffset(ref list.Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref list.Item2) - (byte*)Unsafe.AsPointer(ref list.Item1)) * index));
         }
 #else
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref readonly T ReadItem<T> (this in DenseList<T> list, int index) {
             var items = list._Items;
@@ -220,7 +217,6 @@ namespace Squared.Util {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T Item<T> (this ref DenseList<T> list, int index) {
             var items = list._Items;
@@ -244,13 +240,11 @@ namespace Squared.Util {
         }
 #endif
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T First<T> (this ref DenseList<T> list) {
             return ref Item(ref list, 0);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T Last<T> (this ref DenseList<T> list) {
             return ref Item(ref list, list.Count - 1);
@@ -323,7 +317,6 @@ namespace Squared.Util {
             // The 'Unsafe.Add' approach used in .Item and .ReadItem doesn't work for some reason
 
             public T Current {
-                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
                     if ((Index < 0) || (Index >= Count))
@@ -346,7 +339,6 @@ namespace Squared.Util {
             }
 
             object IEnumerator.Current {
-                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => Current;
             }
@@ -355,7 +347,6 @@ namespace Squared.Util {
                 Index = -1;
             }
 
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
                 if (Index < Count) {
@@ -365,7 +356,6 @@ namespace Squared.Util {
                 return false;
             }
 
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool TryGetNext (ref T result) {
                 var countMinus1 = Count - 1;

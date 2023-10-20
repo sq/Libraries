@@ -40,7 +40,6 @@ namespace Squared.Util {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref TElement lhs, ref TElement rhs) {
             return _Comparer.Compare(lhs, rhs);

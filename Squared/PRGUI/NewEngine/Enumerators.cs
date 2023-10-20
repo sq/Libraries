@@ -35,7 +35,6 @@ namespace Squared.PRGUI.NewEngine {
 
             private ControlKey _Current;
             public ControlKey Current {
-                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => _Current;
             }
@@ -191,7 +190,6 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             public int Current {
-                [TargetedPatchingOptOut("")]
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => _Current;
             }

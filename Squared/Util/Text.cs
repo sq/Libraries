@@ -11,7 +11,6 @@ using Squared.Util.Hash;
 
 namespace Squared.Util.Text {
     public static class Unicode {
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool DecodeSurrogatePair (char ch1, char ch2, out uint codepoint) {
             codepoint = (uint)ch1;
@@ -26,7 +25,6 @@ namespace Squared.Util.Text {
             return false;
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Next (this AbstractString str, int offset) {
             var ch = str[offset];
@@ -36,7 +34,6 @@ namespace Squared.Util.Text {
                 return offset + 1;
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Previous (this AbstractString str, int offset) {
             var ch = str[offset - 1];
@@ -699,7 +696,6 @@ namespace Squared.Util.Text {
         }
 
         public char this[int index] {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (String != null)
@@ -717,7 +713,6 @@ namespace Squared.Util.Text {
         }
 
         public int Length {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (SubstringLength > 0)

@@ -283,7 +283,6 @@ namespace Squared.Render {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal UniformBinding<T> GetUniformBinding<T> (Material material, TypedUniform<T> uniform)
             where T: unmanaged

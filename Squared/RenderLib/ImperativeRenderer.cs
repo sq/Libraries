@@ -88,14 +88,12 @@ namespace Squared.Render.Convenience {
             public int Count;
             public CachedBatch Batch0, Batch1, Batch2, Batch3;
 
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Clear () {
                 Count = 0;
                 Batch0 = Batch1 = Batch2 = Batch3 = default(CachedBatch);
             }
 
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void InsertAtFront (ref CachedBatch item, int previousIndex) {
                 // No-op
@@ -185,6 +183,8 @@ namespace Squared.Render.Convenience {
         public DefaultMaterialSet Materials {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => Config.Materials;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private set => Config.Materials = value;
         }
 
         public DepthStencilState DepthStencilState {
@@ -252,10 +252,8 @@ namespace Squared.Render.Convenience {
         /// Uses world-space coordinates.
         /// </summary>
         public bool WorldSpace {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.WorldSpace);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => SetFlag(ImperativeRendererFlags.WorldSpace, value);
         }
@@ -277,10 +275,8 @@ namespace Squared.Render.Convenience {
         /// Generates z coordinates so that the z buffer can be used to order draw calls.
         /// </summary>
         public bool UseZBuffer {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.UseZBuffer);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => SetFlag(ImperativeRendererFlags.UseZBuffer, value);
         }
@@ -289,10 +285,8 @@ namespace Squared.Render.Convenience {
         /// Disables draw call sorting and relies on the z buffer to maintain ordering.
         /// </summary>
         public bool ZBufferOnlySorting {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.ZBufferOnlySorting);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => SetFlag(ImperativeRendererFlags.ZBufferOnlySorting, value);
         }
@@ -301,10 +295,8 @@ namespace Squared.Render.Convenience {
         /// If z-buffering is enabled, only a depth buffer generating pass will happen, not color rendering.
         /// </summary>
         public bool DepthPrePass {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.DepthPrePass);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => SetFlag(ImperativeRendererFlags.DepthPrePass, value);
         }
@@ -313,10 +305,8 @@ namespace Squared.Render.Convenience {
         /// Increments the Layer after each drawing operation.
         /// </summary>
         public bool AutoIncrementLayer {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.AutoIncrementLayer);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => SetFlag(ImperativeRendererFlags.AutoIncrementLayer, value);
         }
@@ -325,10 +315,8 @@ namespace Squared.Render.Convenience {
         /// Increments the sorting key's order value after each drawing operation.
         /// </summary>
         public bool AutoIncrementSortKey {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.AutoIncrementSortKey);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => SetFlag(ImperativeRendererFlags.AutoIncrementSortKey, value);
         }
@@ -338,10 +326,8 @@ namespace Squared.Render.Convenience {
         /// This allows precise ordering of bitmaps by sort key, regardless of material.
         /// </summary>
         public bool LowPriorityMaterialOrdering {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.LowPriorityMaterialOrdering);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => SetFlag(ImperativeRendererFlags.LowPriorityMaterialOrdering, value);
         }
@@ -350,10 +336,8 @@ namespace Squared.Render.Convenience {
         /// Bitmaps will use a shader with discard by default. Discard ensures transparent pixels are not drawn.
         /// </summary>
         public bool UseDiscard {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.UseDiscard);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => SetFlag(ImperativeRendererFlags.UseDiscard, value);
         }
@@ -363,10 +347,8 @@ namespace Squared.Render.Convenience {
         /// For shapes with an outline thickness of 0 the fill will always be hard unless gamma is negative.
         /// </summary>
         public bool RasterSoftOutlines {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.RasterSoftOutlines);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => SetFlag(ImperativeRendererFlags.RasterSoftOutlines, value);
         }
@@ -376,10 +358,8 @@ namespace Squared.Render.Convenience {
         /// This is slower for large shapes but produces fewer draw calls.
         /// </summary>
         public bool RasterUseUbershader {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.RasterUseUbershader);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => SetFlag(ImperativeRendererFlags.RasterUseUbershader, value);
         }
@@ -390,10 +370,8 @@ namespace Squared.Render.Convenience {
         /// If false, colors will be directly blended. This might look bad.
         /// </summary>
         public bool RasterBlendInLinearSpace {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 SetFlag(ImperativeRendererFlags.RasterBlendInLinearSpace, value);
@@ -406,10 +384,8 @@ namespace Squared.Render.Convenience {
         ///  blending and then converted back to sRGB for rendering. This is a superset of linear space.
         /// </summary>
         public bool RasterBlendInOkLabSpace {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.RasterBlendInOkLabSpace);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 SetFlag(ImperativeRendererFlags.RasterBlendInOkLabSpace, value);
@@ -422,10 +398,8 @@ namespace Squared.Render.Convenience {
         /// If true, default dithering behavior will be suppressed for raster shaders.
         /// </summary>
         public bool DisableDithering {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetFlag(ImperativeRendererFlags.DisableDithering);
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 SetFlag(ImperativeRendererFlags.DisableDithering, value);
@@ -448,7 +422,7 @@ namespace Squared.Render.Convenience {
         ) {
             result = new CachedBatch {
                 BatchType = cbt,
-                Container = Container,
+                Container = Config.Container,
                 Layer = layer,
                 // FIXME: Mask if multimaterial?
             };
@@ -634,17 +608,17 @@ namespace Squared.Render.Convenience {
             CloneInto(out result, true, false);
 
             var group = BatchGroup.New(
-                Container, layer ?? Layer, before: before, after: after, userData: userData,
-                materialSet: Materials, name: name
+                Config.Container, layer ?? Config.Layer, before: before, after: after, userData: userData,
+                materialSet: Config.Materials, name: name
             );
             if (viewTransformModifier != null)
                 group.SetViewTransform(viewTransformModifier);
             group.Dispose();
-            result.Container = group;
-            result.Layer = 0;
+            result.Config.Container = group;
+            result.Config.Layer = 0;
 
             if (nextLayer)
-                Layer += 1;
+                Config.Layer += 1;
         }
 
         public void MakeSubgroup (
@@ -654,11 +628,13 @@ namespace Squared.Render.Convenience {
             string name = null, int? layer = null
         ) {
             MakeSubgroup(out result, nextLayer, before, after, userData, name, layer);
-            ((BatchGroup)result.Container).SetViewTransform(in viewTransform);
+            ((BatchGroup)result.Config.Container).SetViewTransform(in viewTransform);
         }
         
         public void CloneInto (out ImperativeRenderer result, bool nextLayer = true, bool preserveCache = true) {
 #if !NOSPAN
+            // NOTE: Make sure the library builds even if you comment out the SkipInit! If it doesn't,
+            //  you missed a field!
             Unsafe.SkipInit(out result);
             if (preserveCache)
                 result.Cache = Cache;
@@ -677,15 +653,11 @@ namespace Squared.Render.Convenience {
             result.Parameters.AllocateNewStorageOnWrite = true;
 
             if (nextLayer)
-                Layer += 1;
+                Config.Layer += 1;
         }
 
         public ImperativeRenderer Clone (bool nextLayer = true) {
             CloneInto(out var result, nextLayer, true);
-
-            if (nextLayer)
-                Layer += 1;
-
             return result;
         }
 
@@ -697,15 +669,15 @@ namespace Squared.Render.Convenience {
             CloneInto(out var result, true, false);
 
             var group = BatchGroup.ForRenderTarget(
-                newContainer ?? Container, layer ?? Layer, renderTarget, before, after, userData, name: name, 
-                materialSet: Materials, viewTransform: viewTransform
+                newContainer ?? Config.Container, layer ?? Config.Layer, renderTarget, before, after, userData, name: name, 
+                materialSet: Config.Materials, viewTransform: viewTransform
             );
             group.Dispose();
-            result.Container = group;
+            result.Config.Container = group;
             // FIXME: is this ever correct?
-            result.Layer = 0;
+            result.Config.Layer = 0;
 
-            Layer += 1;
+            Config.Layer += 1;
 
             return result;
         }
@@ -718,15 +690,15 @@ namespace Squared.Render.Convenience {
             CloneInto(out var result, true, false);
 
             var group = BatchGroup.ForRenderTarget(
-                newContainer ?? Container, layer ?? Layer, renderTarget, before, after, userData, name: name, 
-                materialSet: Materials, viewTransform: viewTransform
+                newContainer ?? Config.Container, layer ?? Config.Layer, renderTarget, before, after, userData, name: name, 
+                materialSet: Config.Materials, viewTransform: viewTransform
             );
             group.Dispose();
-            result.Container = group;
+            result.Config.Container = group;
             // FIXME: is this ever correct?
-            result.Layer = 0;
+            result.Config.Layer = 0;
 
-            Layer += 1;
+            Config.Layer += 1;
 
             return result;
         }
@@ -741,12 +713,12 @@ namespace Squared.Render.Convenience {
             int? stencil = null,
             Vector4? value = null
         ) {
-            int _layer = layer.GetValueOrDefault(Layer);
+            int _layer = layer.GetValueOrDefault(Config.Layer);
 
-            ClearBatch.AddNew(Container, _layer, Materials.Clear, color, z, stencil, value);
+            ClearBatch.AddNew(Config.Container, _layer, Config.Materials.Clear, color, z, stencil, value);
 
             if (!layer.HasValue)
-                Layer += 1;
+                Config.Layer += 1;
         }
 
         public IBitmapBatch Draw (
@@ -772,9 +744,9 @@ namespace Squared.Render.Convenience {
                     mb = new MatrixBox();
             mb.Matrix = m;
             mb.Replace = replace;
-            ModifyViewTransformBatch.AddNew(Container, layer ?? Layer, Materials, ImperativeRendererUtil.ChangeMatrixModifier, mb);
+            ModifyViewTransformBatch.AddNew(Config.Container, layer ?? Config.Layer, Config.Materials, ImperativeRendererUtil.ChangeMatrixModifier, mb);
             if (!layer.HasValue)
-                Layer++;
+                Config.Layer++;
         }
 
         private BlendState PickBlendStateForTextures (ref TextureSet textures) {
@@ -793,9 +765,9 @@ namespace Squared.Render.Convenience {
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null
         ) {
-            if (Container == null)
+            if (Config.Container == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
-            else if (Container.IsReleased)
+            else if (Config.Container.IsReleased)
                 throw new ObjectDisposedException("The container this ImperativeRenderer is drawing into has been disposed.");
 
             var batch = GetBitmapBatch(
@@ -807,9 +779,13 @@ namespace Squared.Render.Convenience {
             {
                 if (LowPriorityMaterialOrdering) {
                     if (material != null)
-                        material = Materials.Get(material, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState);
+                        material = Config.Materials.Get(
+                            material, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState
+                        );
                     else
-                        material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState, UseDiscard);
+                        material = Config.Materials.GetBitmapMaterial(
+                            worldSpace ?? WorldSpace, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState, UseDiscard
+                        );
 
                     var mmbb = (MultimaterialBitmapBatch)batch;
                     if (worldSpace.HasValue && (drawCall.WorldSpace != worldSpace)) {
@@ -1030,9 +1006,13 @@ namespace Squared.Render.Convenience {
             {
                 if (LowPriorityMaterialOrdering) {
                     if (material != null)
-                        material = Materials.Get(material, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState);
+                        material = Config.Materials.Get(
+                            material, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState
+                        );
                     else
-                        material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState, UseDiscard);
+                        material = Config.Materials.GetBitmapMaterial(
+                            worldSpace ?? WorldSpace, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState, UseDiscard
+                        );
 
                     var mmbb = (MultimaterialBitmapBatch)batch;
                     mmbb.AddRange(
@@ -1111,17 +1091,17 @@ namespace Squared.Render.Convenience {
         /// <param name="rectangle">The new scissor rectangle (will automatically be clipped to fit into the viewport), or null to reset to default.</param>
         /// <param name="intersect">If true, the new scissor rectangle will be intersected with the current scissor rectangle instead of replacing it.</param>
         public void SetScissor (Rectangle? rectangle, int? layer = null, bool intersect = false) {
-            SetScissorBatch.AddNew(Container, layer.GetValueOrDefault(Layer), Materials.SetScissor, rectangle, intersect);
+            SetScissorBatch.AddNew(Config.Container, layer.GetValueOrDefault(Config.Layer), Config.Materials.SetScissor, rectangle, intersect);
 
             if (AutoIncrementLayer && !layer.HasValue)
-                Layer += 1;
+                Config.Layer += 1;
         }
 
         public void SetViewport (Rectangle? rectangle, bool updateViewTransform, int? layer = null) {
-            SetViewportBatch.AddNew(Container, layer.GetValueOrDefault(Layer), Materials.SetViewport, rectangle, updateViewTransform, Materials);
+            SetViewportBatch.AddNew(Config.Container, layer.GetValueOrDefault(Config.Layer), Config.Materials.SetViewport, rectangle, updateViewTransform, Config.Materials);
 
             if (AutoIncrementLayer && !layer.HasValue)
-                Layer += 1;
+                Config.Layer += 1;
         }
 
         public void FillRectangle (
@@ -1234,7 +1214,7 @@ namespace Squared.Render.Convenience {
         }
 
         private RasterShapeColorSpace RasterColorSpace {
-            [TargetedPatchingOptOut("")]
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (GetFlag(ImperativeRendererFlags.RasterBlendInOkLabSpace))
@@ -1816,14 +1796,14 @@ namespace Squared.Render.Convenience {
             SamplerState samplerState, DepthStencilState depthStencilState = null, 
             RasterizerState rasterizerState = null, Material customMaterial = null, SamplerState samplerState2 = null
         ) {
-            if (Materials == null)
+            if (Config.Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
-            var actualLayer = layer.GetValueOrDefault(Layer);
+            var actualLayer = layer.GetValueOrDefault(Config.Layer);
             var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
             var desiredBlendState = blendState ?? BlendState;
-            var desiredSamplerState1 = samplerState ?? SamplerState;
-            var desiredSamplerState2 = samplerState2 ?? samplerState2;
+            var desiredSamplerState1 = samplerState ?? Config.SamplerState;
+            var desiredSamplerState2 = samplerState2 ?? Config.SamplerState2;
 
             if (LowPriorityMaterialOrdering)
                 desiredSamplerState1 = desiredSamplerState2 = null;
@@ -1844,27 +1824,27 @@ namespace Squared.Render.Convenience {
                 Material material;
 
                 if (customMaterial != null) {
-                    material = Materials.Get(
-                        customMaterial, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, desiredBlendState
+                    material = Config.Materials.Get(
+                        customMaterial, rasterizerState ?? Config.RasterizerState, depthStencilState ?? Config.DepthStencilState, desiredBlendState
                     );
                 } else {
-                    material = Materials.GetBitmapMaterial(
+                    material = Config.Materials.GetBitmapMaterial(
                         actualWorldSpace,
-                        rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, desiredBlendState, UseDiscard
+                        rasterizerState ?? Config.RasterizerState, depthStencilState ?? Config.DepthStencilState, desiredBlendState, UseDiscard
                     );
                 }
 
                 IBitmapBatch bb;
                 if (LowPriorityMaterialOrdering) {
                     var mmbb = MultimaterialBitmapBatch.New(
-                        Container, actualLayer, Material.Null, 
+                        Config.Container, actualLayer, Material.Null, 
                         useZBuffer: UseZBuffer, depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
                     );
                     mmbb.MaterialParameters.ReplaceWith(ref Parameters);
                     bb = mmbb;
                 } else {
                     var _bb = BitmapBatch.New(
-                        Container, actualLayer, material, 
+                        Config.Container, actualLayer, material, 
                         samplerState: desiredSamplerState1, samplerState2: desiredSamplerState2, 
                         useZBuffer: UseZBuffer, zBufferOnlySorting: ZBufferOnlySorting, 
                         depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
@@ -1879,16 +1859,16 @@ namespace Squared.Render.Convenience {
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
-                Layer += 1;
+                Config.Layer += 1;
 
             return (IBitmapBatch)cacheEntry.Batch;
         }
 
         public GeometryBatch GetGeometryBatch (int? layer, bool? worldSpace, BlendState blendState, Material customMaterial = null) {
-            if (Materials == null)
+            if (Config.Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
-            var actualLayer = layer.GetValueOrDefault(Layer);
+            var actualLayer = layer.GetValueOrDefault(Config.Layer);
             var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
             var desiredBlendState = blendState ?? BlendState;
 
@@ -1898,8 +1878,8 @@ namespace Squared.Render.Convenience {
                 CachedBatchType.Geometry,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,
-                rasterizerState: RasterizerState,
-                depthStencilState: DepthStencilState,
+                rasterizerState: Config.RasterizerState,
+                depthStencilState: Config.DepthStencilState,
                 blendState: desiredBlendState,
                 samplerState1: null,
                 samplerState2: null,
@@ -1908,19 +1888,19 @@ namespace Squared.Render.Convenience {
                 Material material;
 
                 if (customMaterial != null) {
-                    material = Materials.Get(
-                        customMaterial, RasterizerState, DepthStencilState, desiredBlendState
+                    material = Config.Materials.Get(
+                        customMaterial, Config.RasterizerState, Config.DepthStencilState, desiredBlendState
                     );
                 } else {
-                    material = Materials.GetGeometryMaterial(
+                    material = Config.Materials.GetGeometryMaterial(
                         actualWorldSpace,
-                        rasterizerState: RasterizerState,
-                        depthStencilState: DepthStencilState,
+                        rasterizerState: Config.RasterizerState,
+                        depthStencilState: Config.DepthStencilState,
                         blendState: desiredBlendState
                     );
                 }
 
-                var b = GeometryBatch.New(Container, actualLayer, material);
+                var b = GeometryBatch.New(Config.Container, actualLayer, material);
                 b.Dispose();
                 b.MaterialParameters.ReplaceWith(ref Parameters);
                 cacheEntry.Batch = b;
@@ -1928,7 +1908,7 @@ namespace Squared.Render.Convenience {
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
-                Layer += 1;
+                Config.Layer += 1;
 
             return (GeometryBatch)cacheEntry.Batch;
         }
@@ -1937,13 +1917,13 @@ namespace Squared.Render.Convenience {
             int? layer, bool? worldSpace, BlendState blendState, Texture2D texture, 
             SamplerState samplerState, Texture2D rampTexture, Vector2? rampUVOffset
         ) {
-            if (Materials == null)
+            if (Config.Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
-            var actualLayer = layer.GetValueOrDefault(Layer);
+            var actualLayer = layer.GetValueOrDefault(Config.Layer);
             var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
             var desiredBlendState = blendState ?? BlendState;
-            var desiredSamplerState = samplerState ?? SamplerState;
+            var desiredSamplerState = samplerState ?? Config.SamplerState;
 
             // HACK: Look, alright, it's complicated
             if (
@@ -1965,8 +1945,8 @@ namespace Squared.Render.Convenience {
                 CachedBatchType.RasterShape,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,
-                rasterizerState: RasterizerState,
-                depthStencilState: DepthStencilState,
+                rasterizerState: Config.RasterizerState,
+                depthStencilState: Config.DepthStencilState,
                 blendState: desiredBlendState,
                 samplerState1: desiredSamplerState,
                 samplerState2: null,
@@ -1978,8 +1958,8 @@ namespace Squared.Render.Convenience {
                 // FIXME: The way this works will cause churn when mixing textured and untextured shape batches
                 //  oh well
                 var batch = RasterShapeBatch.New(
-                    Container, actualLayer, Materials, texture, desiredSamplerState,
-                    RasterizerState, DepthStencilState, desiredBlendState, rampTexture,
+                    Config.Container, actualLayer, Config.Materials, texture, desiredSamplerState,
+                    Config.RasterizerState, Config.DepthStencilState, desiredBlendState, rampTexture,
                     rampUVOffset
                 );
                 batch.Dispose();
@@ -1995,7 +1975,7 @@ namespace Squared.Render.Convenience {
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
-                Layer += 1;
+                Config.Layer += 1;
 
             return (RasterShapeBatch)cacheEntry.Batch;
         }
@@ -2003,10 +1983,10 @@ namespace Squared.Render.Convenience {
         public RasterStrokeBatch GetRasterStrokeBatch (
             int? layer, bool? worldSpace, BlendState blendState, ref RasterBrush brush
         ) {
-            if (Materials == null)
+            if (Config.Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
-            var actualLayer = layer.GetValueOrDefault(Layer);
+            var actualLayer = layer.GetValueOrDefault(Config.Layer);
             var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
             var desiredBlendState = blendState ?? BlendState;
 
@@ -2030,8 +2010,8 @@ namespace Squared.Render.Convenience {
                 CachedBatchType.RasterStroke,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,
-                rasterizerState: RasterizerState,
-                depthStencilState: DepthStencilState,
+                rasterizerState: Config.RasterizerState,
+                depthStencilState: Config.DepthStencilState,
                 blendState: desiredBlendState,
                 samplerState1: brush.NozzleSamplerState,
                 samplerState2: null,
@@ -2040,8 +2020,8 @@ namespace Squared.Render.Convenience {
               || !((RasterStrokeBatch)cacheEntry.Batch).DitheringSettings.HasValue != DisableDithering
             ) {
                 var batch = RasterStrokeBatch.New(
-                    Container, actualLayer, Materials, ref brush,
-                    RasterizerState, DepthStencilState, desiredBlendState
+                    Config.Container, actualLayer, Config.Materials, ref brush,
+                    Config.RasterizerState, Config.DepthStencilState, desiredBlendState
                 );
                 batch.Dispose();
                 if (DisableDithering)
@@ -2055,7 +2035,7 @@ namespace Squared.Render.Convenience {
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
-                Layer += 1;
+                Config.Layer += 1;
 
             return (RasterStrokeBatch)cacheEntry.Batch;
         }
@@ -2154,11 +2134,11 @@ namespace Squared.Render.Convenience {
                 callCount += lb.Count;
             }
 
-            return string.Format("IR @ [c:{0} l:{1}] b: {2} c: {3}", Container, Layer, Cache.Count, callCount);
+            return string.Format("IR @ [c:{0} l:{1}] b: {2} c: {3}", Config.Container, Config.Layer, Cache.Count, callCount);
         }
 
         public void UnsafeCopySomeState (in ImperativeRenderer renderer) {
-            Layer = renderer.Layer;
+            Config.Layer = renderer.Layer;
             NextSortKey = renderer.NextSortKey;
             Cache = renderer.Cache;
         }

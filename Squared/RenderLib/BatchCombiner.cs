@@ -14,7 +14,6 @@ namespace Squared.Render {
     }
 
     public sealed class BatchTypeSorter : IRefComparer<Batch>, IComparer<Batch> {
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref Batch x, ref Batch y) {
             if (x == null)
@@ -31,7 +30,6 @@ namespace Squared.Render {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (Batch x, Batch y) {
             return Compare(ref x, ref y);

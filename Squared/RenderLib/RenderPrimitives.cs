@@ -327,7 +327,7 @@ namespace Squared.Render {
     public sealed class PrimitiveDrawCallComparer<T> : IRefComparer<PrimitiveDrawCall<T>>, IComparer<PrimitiveDrawCall<T>>
         where T : unmanaged
     {
-        [TargetedPatchingOptOut("")]
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref PrimitiveDrawCall<T> x, ref PrimitiveDrawCall<T> y) {
             // FIXME: Tags?
@@ -341,7 +341,6 @@ namespace Squared.Render {
             return result;
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (PrimitiveDrawCall<T> x, PrimitiveDrawCall<T> y) {
             return Compare(ref x, ref y);

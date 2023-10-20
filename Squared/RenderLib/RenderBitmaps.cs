@@ -100,7 +100,6 @@ namespace Squared.Render {
     public sealed class BitmapDrawCallSorterComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
         public Sorter<BitmapDrawCall>.SorterComparer Comparer;
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             var result = Comparer.Compare(x, y);
@@ -111,7 +110,6 @@ namespace Squared.Render {
             return result;
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
             return Compare(ref x, ref y);
@@ -121,7 +119,6 @@ namespace Squared.Render {
     public sealed class BitmapDrawCallOrderAndTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
         private FastMath.U32F32_X2 Buffer = new FastMath.U32F32_X2();
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             unchecked {
@@ -137,7 +134,6 @@ namespace Squared.Render {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
             return Compare(ref x, ref y);
@@ -147,7 +143,6 @@ namespace Squared.Render {
     public sealed class BitmapDrawCallTextureAndReverseOrderComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
         private FastMath.U32F32_X2 Buffer = new FastMath.U32F32_X2();
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             unchecked {
@@ -164,7 +159,6 @@ namespace Squared.Render {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
             return Compare(ref x, ref y);
@@ -172,7 +166,6 @@ namespace Squared.Render {
     }
 
     public sealed class BitmapDrawCallTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             unchecked {
@@ -180,7 +173,6 @@ namespace Squared.Render {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
             return Compare(ref x, ref y);
@@ -635,7 +627,6 @@ namespace Squared.Render {
             return reservation;
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveRange (int index, int count) {
             _DrawCalls.RemoveRange(index, count);
@@ -941,7 +932,6 @@ namespace Squared.Render {
 
         public readonly int Id;
         public object Reference {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return Cache.GetValue(Id);
@@ -952,13 +942,11 @@ namespace Squared.Render {
             Id = id;
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public AbstractTextureReference (Texture2D tex) {
             Id = Cache.GetId(tex);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public AbstractTextureReference (IDynamicTexture tex) {
             Id = Cache.GetId(tex);
@@ -1038,13 +1026,11 @@ namespace Squared.Render {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
             return Id.GetHashCode();
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (AbstractTextureReference rhs) {
             return Id == rhs.Id;
@@ -1057,7 +1043,6 @@ namespace Squared.Render {
                 return Object.ReferenceEquals(Reference, obj);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator == (AbstractTextureReference lhs, object rhs) {
             if (rhs == null)
@@ -1065,7 +1050,6 @@ namespace Squared.Render {
             return lhs.Equals(rhs);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator != (AbstractTextureReference lhs, object rhs) {
             if (rhs == null)
@@ -1073,7 +1057,6 @@ namespace Squared.Render {
             return !lhs.Equals(rhs);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator == (object lhs, AbstractTextureReference rhs) {
             if (lhs == null)
@@ -1081,7 +1064,6 @@ namespace Squared.Render {
             return rhs.Equals(lhs);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator != (object lhs, AbstractTextureReference rhs) {
             if (lhs == null)
@@ -1089,19 +1071,16 @@ namespace Squared.Render {
             return !rhs.Equals(lhs);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator == (AbstractTextureReference lhs, AbstractTextureReference rhs) {
             return lhs.Equals(rhs);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator != (AbstractTextureReference lhs, AbstractTextureReference rhs) {
             return !lhs.Equals(rhs);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator AbstractTextureReference (Texture2D tex) {
             return new AbstractTextureReference(tex);
@@ -1126,28 +1105,24 @@ namespace Squared.Render {
             Invalid = new TextureSet(AbstractTextureReference.Invalid, AbstractTextureReference.Invalid);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (AbstractTextureReference texture1) {
             Texture1 = texture1;
             Texture2 = default(AbstractTextureReference);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (AbstractTextureReference texture1, AbstractTextureReference texture2) {
             Texture1 = texture1;
             Texture2 = texture2;
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1) {
             Texture1 = texture1;
             Texture2 = default(AbstractTextureReference);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1, Texture2D texture2) {
             Texture1 = texture1;
@@ -1165,20 +1140,17 @@ namespace Squared.Render {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator TextureSet (Texture2D texture1) {
             return new TextureSet(texture1);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (in TextureSet rhs) {
             return (Texture1 == rhs.Texture1) && 
                 (Texture2 == rhs.Texture2);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override bool Equals (object obj) {
             if (obj is TextureSet rhs) {
@@ -1188,31 +1160,26 @@ namespace Squared.Render {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator == (TextureSet lhs, TextureSet rhs) {
             return (lhs.Texture1 == rhs.Texture1) && (lhs.Texture2 == rhs.Texture2);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator != (TextureSet lhs, TextureSet rhs) {
             return (lhs.Texture1 != rhs.Texture1) || (lhs.Texture2 != rhs.Texture2);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
             return (Texture1.Id ^ Texture2.Id).GetHashCode();
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int CompareTo (TextureSet rhs) {
             return CompareTo(in rhs);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int CompareTo (in TextureSet rhs) {
             unchecked {

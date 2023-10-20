@@ -13,13 +13,12 @@ using Id = System.Int32;
 namespace Squared.Threading {
     public sealed class LocallyReplicatedCache {
         public sealed class EntryComparer : IEqualityComparer<Entry> {
-            [TargetedPatchingOptOut("")]
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool Equals (Entry x, Entry y) {
                 return x.Equals(y);
             }
 
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public int GetHashCode (Entry obj) {
                 return obj.HashCode;

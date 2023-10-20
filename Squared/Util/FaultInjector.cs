@@ -41,7 +41,6 @@ namespace Squared.Util.Testing {
         /// Decreases the fault injection countdown, and if it reaches 0,
         ///  randomly decides whether to inject a fault in this step.
         /// </summary>
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Step (double chanceScale = 1.0) {
             if (!Enabled || (Countdown-- > 0))
@@ -57,7 +56,6 @@ namespace Squared.Util.Testing {
         ///  randomly decides whether to inject a fault in this step.
         /// If a fault will be injected, the exception is returned so you can throw it.
         /// </summary>
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Exception StepNonThrowing (double chanceScale = 1.0) {
             if (!Enabled || (Countdown-- > 0))

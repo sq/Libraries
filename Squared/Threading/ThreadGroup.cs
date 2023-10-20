@@ -257,7 +257,6 @@ namespace Squared.Threading {
             }
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue<T> (T item, OnWorkItemComplete<T> onComplete = null)
             where T : IWorkItem
@@ -266,7 +265,6 @@ namespace Squared.Threading {
             queue.Enqueue(ref item, onComplete);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue<T> (ref T item, OnWorkItemComplete<T> onComplete = null)
             where T : IWorkItem

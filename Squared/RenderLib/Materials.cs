@@ -656,7 +656,6 @@ namespace Squared.Render {
         }
         
         public int Count {
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return IsCleared ? 0 : Keys.Count;

@@ -41,7 +41,6 @@ namespace Squared.Threading {
             Thread.Start(this);
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Wake () {
             IdleManager.Wake();

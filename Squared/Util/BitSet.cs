@@ -13,7 +13,6 @@ namespace Squared.Util.Containers {
             internal int Index;
             internal UInt64 A, B, C, D;
 
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal IndicesEnumerator (UInt64 a, UInt64 b, UInt64 c, UInt64 d) {
                 A = a;
@@ -26,7 +25,6 @@ namespace Squared.Util.Containers {
             public void Dispose () {
             }
 
-            [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
                 while (++Index < Length) {
@@ -51,7 +49,7 @@ namespace Squared.Util.Containers {
             }
 
             public int Current {
-                [TargetedPatchingOptOut("")]
+
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => Index;
             }
@@ -69,7 +67,6 @@ namespace Squared.Util.Containers {
             throw new ArgumentOutOfRangeException("index");
         }
 
-        [TargetedPatchingOptOut("")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #if !NOSPAN
         internal static ref UInt64 FindBit (ref UInt64 a, int index, out UInt64 mask) {
@@ -97,7 +94,7 @@ namespace Squared.Util.Containers {
         }
 
         public bool this [int index] {
-            [TargetedPatchingOptOut("")]
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
 #if !NOSPAN
@@ -107,7 +104,7 @@ namespace Squared.Util.Containers {
 #endif
                 return (slot & mask) != 0;
             }
-            [TargetedPatchingOptOut("")]
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
 #if !NOSPAN
