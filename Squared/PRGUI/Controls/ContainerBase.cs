@@ -22,9 +22,10 @@ namespace Squared.PRGUI.Controls {
         private ControlCollection _Children;
         protected ControlCollection Children {
             get {
+                var context = Context;
                 if (_Children == null)
-                    _Children = new ControlCollection(this, Context);
-                EnsureChildrenAreValid();
+                    _Children = new ControlCollection(this, context);
+                EnsureChildrenAreValid(context);
                 return _Children;
             }
         }
@@ -99,7 +100,7 @@ namespace Squared.PRGUI.Controls {
 
         bool IControlContainer.IsControlHidden (Control child) => false;
 
-        protected abstract void EnsureChildrenAreValid ();
+        protected abstract void EnsureChildrenAreValid (UIContext context);
         protected abstract void OnDescendantReceivedFocus (Control control, bool isUserInitiated);
 
         /// <summary>
@@ -223,8 +224,8 @@ namespace Squared.PRGUI.Controls {
             : base () {
         }
 
-        protected override void EnsureChildrenAreValid () {
-            if (Context == null)
+        protected override void EnsureChildrenAreValid (UIContext context) {
+            if (context == null)
                 return;
             if (DynamicContentIsInvalid)
                 GenerateDynamicContent(false || DynamicContentIsInvalid);

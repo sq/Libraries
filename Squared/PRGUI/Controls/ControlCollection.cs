@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Squared.Util;
@@ -25,8 +26,17 @@ namespace Squared.PRGUI {
         private Dictionary<int, int> IndexTable = new Dictionary<int, int>();
         private HashSet<Control> DeadControlScratchBuffer = new HashSet<Control>(ReferenceComparer<Control>.Instance);
 
-        public int Count => Items.Count;
-        public Control Host { get; private set; }
+        public int Count {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Items.Count;
+        }        
+
+        public Control Host { 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get; 
+            private set; 
+        }
+
         private WeakReference<Control> _WeakHost;
         private WeakReference<Control> WeakHost {
             get {
@@ -39,7 +49,10 @@ namespace Squared.PRGUI {
         }
 
         UIContext _Context;
-        public UIContext Context => _Context ?? Host?.Context;
+        public UIContext Context {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _Context ?? Host?.Context;
+        }
 
         internal ControlCollection (UIContext parent) {
             Host = null;

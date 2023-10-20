@@ -460,6 +460,44 @@ namespace Squared.Render {
         // TODO: Store Texture and Array separately so we can fit more values more efficiently,
         //  since it's common to have a few textures + a few uniforms
 
+        public struct Storage {
+            internal UnorderedList<Key> Keys;
+            internal UnorderedList<Value> Values;
+
+            public Storage (ref MaterialParameterValues source) {
+                Keys = source.Keys.GetStorage(true);
+                Values = source.Values.GetStorage(true);
+            }
+
+            // FIXME: Is this right?
+            public Storage EnsureUniqueStorage (ref MaterialParameterValues parameters) {
+                if ((Keys != null) && (Values != null))
+                    return this;
+                else
+                    return parameters.GetUniqueStorage();
+            }
+        }
+
+        private sealed class KeyComparer : IRefComparer<Key> {
+            public static readonly KeyComparer Instance = new KeyComparer();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public int Compare (ref Key lhs, ref Key rhs) {
+                // var result = lhs.HashCode.CompareTo(rhs.HashCode);
+                int result = 0;
+                if (result == 0)
+                    result = string.CompareOrdinal(lhs.Name, rhs.Name);
+                return result;
+            }
+        }
+
+        [Flags]
+        internal enum StateFlags {
+            IsCleared = 0b001,
+            CopyOnWrite = 0b010,
+            // SortNeeded = 0b100,
+        }
+
         internal enum EntryValueType : int {
             None,
             Texture,
@@ -491,118 +529,199 @@ namespace Squared.Render {
             public Quaternion Q;
         }
 
-        internal struct Entry {
+        internal struct Key {
+            public int HashCode;
             public string Name;
-            public EntryValueType ValueType;
-            public object ReferenceValue;
-            public EntryUnion PrimitiveValue;
+            public int ValueIndex;
 
-            public static bool Equals (ref Entry lhs, ref Entry rhs) {
-                if (lhs.ValueType != rhs.ValueType)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Key (string name) {
+                HashCode = name.GetHashCode();
+                Name = name;
+                ValueIndex = -1;
+            }
+
+            public override string ToString () =>
+                $"{Name} @{ValueIndex}";
+        }
+
+        internal struct Value {
+            public EntryValueType Type;
+            public object Reference;
+            public EntryUnion Primitive;
+
+            public static bool Equals (ref Value lhs, ref Value rhs) {
+                if (lhs.Type != rhs.Type)
                     return false;
 
-                if (lhs.ReferenceValue != rhs.ReferenceValue)
+                if (!ReferenceEquals(lhs.Reference, rhs.Reference))
                     return false;
 
-                switch (lhs.ValueType) {
+                switch (lhs.Type) {
                     case EntryValueType.B:
-                        return lhs.PrimitiveValue.B == rhs.PrimitiveValue.B;
+                        return lhs.Primitive.B == rhs.Primitive.B;
                     case EntryValueType.F:
-                        return lhs.PrimitiveValue.F == rhs.PrimitiveValue.F;
+                        return lhs.Primitive.F == rhs.Primitive.F;
                     case EntryValueType.I:
-                        return lhs.PrimitiveValue.I == rhs.PrimitiveValue.I;
+                        return lhs.Primitive.I == rhs.Primitive.I;
                     case EntryValueType.V2:
-                        return lhs.PrimitiveValue.V2 == rhs.PrimitiveValue.V2;
+                        return lhs.Primitive.V2 == rhs.Primitive.V2;
                     case EntryValueType.V3:
-                        return lhs.PrimitiveValue.V3 == rhs.PrimitiveValue.V3;
+                        return lhs.Primitive.V3 == rhs.Primitive.V3;
                     case EntryValueType.V4:
-                        return lhs.PrimitiveValue.V4 == rhs.PrimitiveValue.V4;
+                        return lhs.Primitive.V4 == rhs.Primitive.V4;
                     case EntryValueType.Q:
-                        return lhs.PrimitiveValue.Q == rhs.PrimitiveValue.Q;
+                        return lhs.Primitive.Q == rhs.Primitive.Q;
                     case EntryValueType.Texture:
                     case EntryValueType.Array:
-                        return ReferenceEquals(lhs.ReferenceValue, rhs.ReferenceValue);
+                        return true;
                     default:
                         throw new ArgumentOutOfRangeException("lhs.ValueType");
                 }
             }
         }
 
-        public bool AllocateNewStorageOnWrite;
+        private StateFlags State;
+        private DenseList<Key> Keys;
+        private DenseList<Value> Values;
 
-        private bool IsCleared;
-        private DenseList<Entry> Entries;
+        public bool AllocateNewStorageOnWrite {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetInternalFlag(StateFlags.CopyOnWrite);
+            set => SetInternalFlag(StateFlags.CopyOnWrite, value);
+        }
 
-        public object GetListStorage () {
+        public bool IsCleared {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetInternalFlag(StateFlags.IsCleared);
+            private set => SetInternalFlag(StateFlags.IsCleared, value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool GetInternalFlag (StateFlags flag) {
+            return (State & flag) == flag;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool? GetInternalFlag (StateFlags isSetFlag, StateFlags valueFlag) {
+            if ((State & isSetFlag) != isSetFlag)
+                return null;
+            else
+                return (State & valueFlag) == valueFlag;
+        }
+
+        private void SetInternalFlag (StateFlags flag, bool state) {
+            if (state)
+                State |= flag;
+            else
+                State &= ~flag;
+        }
+
+        private bool ChangeInternalFlag (StateFlags flag, bool newState) {
+            if (GetInternalFlag(flag) == newState)
+                return false;
+
+            SetInternalFlag(flag, newState);
+            return true;
+        }
+
+        public Storage GetUniqueStorage () {
+            SetInternalFlag(StateFlags.CopyOnWrite, true);
             FlushCopyOnWrite();
-            return Entries.GetStorage(true);
+            return new Storage(ref this);
         }
 
-        public void UseExistingListStorage (object storage) {
-            AllocateNewStorageOnWrite = false;
-            Entries.UseExistingStorage((UnorderedList<Entry>)storage);
+        public void UseExistingListStorage (Storage storage) {
+            SetInternalFlag(StateFlags.CopyOnWrite, false);
+            Keys.UseExistingStorage(storage.Keys);
+            Values.UseExistingStorage(storage.Values);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void FlushCopyOnWrite () {
             if (!AllocateNewStorageOnWrite)
                 return;
 
             AllocateNewStorageOnWrite = false;
-            if (!Entries.HasList)
+            if (!Keys.HasList && !Values.HasList)
                 return;
 
-            var oldEntries = Entries;
-            Entries = default;
-            oldEntries.CopyTo(ref Entries);
+            FlushCopyOnWrite_Slow();
+        }
+
+        void FlushCopyOnWrite_Slow () {
+            var oldKeys = Keys;
+            var oldValues = Values;
+            oldKeys.Clone(out Keys);
+            oldValues.Clone(out Values);
         }
         
         public int Count {
             [TargetedPatchingOptOut("")]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return IsCleared ? 0 : Entries.Count;
+                return IsCleared ? 0 : Keys.Count;
             }
         }
 
-        private int Find (string name) {
-            if (IsCleared)
-                return -1;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool FindKey (string name, out int keyIndex, out int valueIndex) {
+            var needle = new Key(name);
+            return FindKey(ref needle, out keyIndex, out valueIndex);
+        }
 
-            for (int i = 0, c = Count; i < c; i++)
-                if (Entries[i].Name == name)
-                    return i;
+        private bool FindKey (ref Key needle, out int keyIndex, out int valueIndex) {
+            keyIndex = valueIndex = -1;
+            int count = Count;
+            if (count <= 0)
+                return false;
 
-            return -1;
+            /*
+            if (ChangeInternalFlag(StateFlags.SortNeeded, false))
+                Keys.Sort(KeyComparer.Instance);
+
+            keyIndex = Keys.BinarySearch(ref needle, KeyComparer.Instance);
+            if (keyIndex < 0)
+                return false;
+            */
+
+            for (int i = 0; i < count; i++) {
+                ref var key = ref Keys.Item(i);
+                if (key.HashCode != needle.HashCode)
+                    continue;
+                if (string.CompareOrdinal(needle.Name, key.Name) != 0)
+                    continue;
+
+                keyIndex = i;
+                valueIndex = key.ValueIndex;
+                return true;
+            }
+
+            return false;
         }
 
         public void Clear () {
-            if (Entries.Count > 0)
-                IsCleared = true;
-            // Entries.Clear();
-        }
-
-        public void Clear (string name) {
-            var index = Find(name);
-            if (index < 0)
+            if (Keys.Count <= 0)
                 return;
-            FlushCopyOnWrite();
-            Entries.RemoveAt(index);
+
+            SetInternalFlag(StateFlags.IsCleared, true);
+            // SetInternalFlag(StateFlags.SortNeeded, false);
         }
 
         public void AddRange (ref MaterialParameterValues rhs) {
             for (int i = 0, c = rhs.Count; i < c; i++) {
-                ref var entry = ref rhs.Entries.Item(i);
-                Set(ref entry);
+                ref var key = ref rhs.Keys.Item(i);
+                ref var value = ref rhs.Values.Item(key.ValueIndex);
+                Set(ref key, ref value);
             }
         }
 
-        internal bool TryGet (string name, out Entry result) {
-            var index = Find(name);
-            if (index < 0) {
-                result = default(Entry);
+        internal bool TryGet (string name, out Value result) {
+            if (!FindKey(name, out _, out int valueIndex)) {
+                result = default(Value);
                 return false;
             }
-            Entries.GetItem(index, out result);
+            Values.GetItem(valueIndex, out result);
             return true;
         }
 
@@ -610,124 +729,135 @@ namespace Squared.Render {
         private void AutoClear () {
             if (!IsCleared)
                 return;
-            FlushCopyOnWrite();
-            Entries.Clear();
-            IsCleared = false;
+            if (GetInternalFlag(StateFlags.CopyOnWrite)) {
+                Keys = default;
+                Values = default;
+            } else {
+                Keys.Clear();
+                Values.Clear();
+            }
+            SetInternalFlag(StateFlags.IsCleared, false);
+            // SetInternalFlag(StateFlags.SortNeeded, false);
         }
 
         public void ReplaceWith (ref MaterialParameterValues values) {
-            IsCleared = false;
+            SetInternalFlag(StateFlags.IsCleared, false);
+            // SetInternalFlag(StateFlags.SortNeeded, false);
             FlushCopyOnWrite();
-            Entries.ReplaceWith(ref values.Entries);
+            Keys.ReplaceWith(ref values.Keys);
+            Values.ReplaceWith(ref values.Values);
         }
 
-        private void Set (ref Entry entry) {
+        private void Set (ref Key key, ref Value value) {
             AutoClear();
-            var index = Find(entry.Name);
-            if (index < 0) {
+            if (FindKey(ref key, out _, out int valueIndex)) {
+                ref var existingValue = ref Values.Item(valueIndex);
+                if (Value.Equals(ref existingValue, ref value))
+                    return;
                 FlushCopyOnWrite();
-                Entries.Add(entry);
-            } else if (!Entry.Equals(ref Entries.Item(index), ref entry)) {
-                FlushCopyOnWrite();
-                Entries[index] = entry;
+                Values.SetItem(valueIndex, ref value);
+                return;
             }
+
+            FlushCopyOnWrite();
+            key.ValueIndex = Count;
+
+            /*
+            if (key.ValueIndex > 0)
+                SetInternalFlag(StateFlags.SortNeeded, true);
+            */
+            Keys.Add(ref key);
+            Values.Add(ref value);
         }
 
-        private void Set (Entry entry) => Set(ref entry);
+        private void Set (string name, Value entry) {
+            var key = new Key(name);
+            Set(ref key, ref entry);
+        }
 
         public void Add (string name, int value) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.I,
-                PrimitiveValue = {
+            Set(name, new Value {
+                Type = EntryValueType.I,
+                Primitive = {
                     I = value
                 }
             });
         }
 
         public void Add (string name, float value) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.F,
-                PrimitiveValue = {
+            Set(name, new Value {
+                Type = EntryValueType.F,
+                Primitive = {
                     F = value
                 }
             });
         }
 
         public void Add (string name, Color value) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.V4,
-                PrimitiveValue = {
+            Set(name, new Value {
+                Type = EntryValueType.V4,
+                Primitive = {
                     V4 = value.ToVector4()
                 }
             });
         }
 
         public void Add (string name, bool value) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.B,
-                PrimitiveValue = {
+            Set(name, new Value {
+                Type = EntryValueType.B,
+                Primitive = {
                     B = value
                 }
             });
         }
 
         public void Add (string name, Vector2 value) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.V2,
-                PrimitiveValue = {
+            Set(name, new Value {
+                Type = EntryValueType.V2,
+                Primitive = {
                     V2 = value
                 }
             });
         }
 
         public void Add (string name, Vector3 value) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.V3,
-                PrimitiveValue = {
+            Set(name, new Value {
+                Type = EntryValueType.V3,
+                Primitive = {
                     V3 = value
                 }
             });
         }
 
         public void Add (string name, Vector4 value) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.V4,
-                PrimitiveValue = {
+            Set(name, new Value {
+                Type = EntryValueType.V4,
+                Primitive = {
                     V4 = value
                 }
             });
         }
 
         public void Add (string name, Quaternion value) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.Q,
-                PrimitiveValue = {
+            Set(name, new Value {
+                Type = EntryValueType.Q,
+                Primitive = {
                     Q = value
                 }
             });
         }
 
         public void Add (string name, Texture texture) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.Texture,
-                ReferenceValue = texture
+            Set(name, new Value {
+                Type = EntryValueType.Texture,
+                Reference = texture
             });
         }
 
         public void Add (string name, Array array) {
-            Set(new Entry {
-                Name = name,
-                ValueType = EntryValueType.Array,
-                ReferenceValue = array
+            Set(name, new Value {
+                Type = EntryValueType.Array,
+                Reference = array
             });
         }
 
@@ -739,17 +869,17 @@ namespace Squared.Render {
 
         private void Apply (Effect effect, MaterialEffectParameters cache) {
             for (int i = 0, c = Count; i < c; i++) {
-                ref var entry = ref Entries.Item(i);
-                var p = cache[entry.Name];
+                ref var key = ref Keys.Item(i);
+                var p = cache[key.Name];
                 if (p == null)
                     continue;
-                ApplyEntry(ref entry, p);
+                ApplyEntry(ref Values.Item(key.ValueIndex), p);
             }
         }
 
-        private static void ApplyEntry (ref Entry entry, EffectParameter p) {
-            var r = entry.ReferenceValue;
-            switch (entry.ValueType) {
+        private static void ApplyEntry (ref Value entry, EffectParameter p) {
+            var r = entry.Reference;
+            switch (entry.Type) {
                 case EntryValueType.Texture:
                     p.SetValue((Texture)r);
                     break;
@@ -774,25 +904,25 @@ namespace Squared.Render {
                         throw new ArgumentException("Unsupported array parameter type");
                     break;
                 case EntryValueType.B:
-                    p.SetValue(entry.PrimitiveValue.B);
+                    p.SetValue(entry.Primitive.B);
                     break;
                 case EntryValueType.F:
-                    p.SetValue(entry.PrimitiveValue.F);
+                    p.SetValue(entry.Primitive.F);
                     break;
                 case EntryValueType.I:
-                    p.SetValue(entry.PrimitiveValue.I);
+                    p.SetValue(entry.Primitive.I);
                     break;
                 case EntryValueType.V2:
-                    p.SetValue(entry.PrimitiveValue.V2);
+                    p.SetValue(entry.Primitive.V2);
                     break;
                 case EntryValueType.V3:
-                    p.SetValue(entry.PrimitiveValue.V3);
+                    p.SetValue(entry.Primitive.V3);
                     break;
                 case EntryValueType.V4:
-                    p.SetValue(entry.PrimitiveValue.V4);
+                    p.SetValue(entry.Primitive.V4);
                     break;
                 case EntryValueType.Q:
-                    p.SetValue(entry.PrimitiveValue.Q);
+                    p.SetValue(entry.Primitive.Q);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException("entry.ValueType");
@@ -809,12 +939,10 @@ namespace Squared.Render {
                 return true;
 
             for (int i = 0; i < count; i++) {
-                ref var lhs = ref Entries.Item(i);
-                var j = pRhs.Find(lhs.Name);
-                if (j < 0)
+                ref var lhsKey = ref Keys.Item(i);
+                if (!pRhs.FindKey(ref lhsKey, out _, out int rhsValueIndex))
                     return false;
-                pRhs.Entries.TryGetItem(j, out Entry rhs);
-                if (!Entry.Equals(ref lhs, ref rhs))
+                if (!Value.Equals(ref Values.Item(lhsKey.ValueIndex), ref pRhs.Values.Item(rhsValueIndex)))
                     return false;
             }
 
@@ -841,10 +969,13 @@ namespace Squared.Render {
         }
 
         internal void CopyTo (ref MaterialParameterValues rhs) {
-            if (Count == 0)
+            int count = Count;
+            if (count == 0)
                 return;
-            foreach (var entry in Entries)
-                rhs.Set(entry);
+            for (int i = 0; i < count; i++) {
+                ref var key = ref Keys.Item(i);
+                rhs.Set(ref key, ref Values.Item(key.ValueIndex));
+            }
         }
     }
 }

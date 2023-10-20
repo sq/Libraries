@@ -232,12 +232,7 @@ namespace Squared.Util {
         public void Clone (out DenseList<T> output) {
             if (HasList) {
                 output = default(DenseList<T>);
-                UnorderedList<T> newItems;
-                if (output.HasList) {
-                    newItems = output._Items;
-                } else {
-                    newItems = output._Items = new UnorderedList<T>(_Items.Count);
-                }
+                UnorderedList<T> newItems = output._Items = new UnorderedList<T>(_Items.Count);
                 _Items.CopyTo(newItems);
             } else {
                 output = this;
@@ -685,6 +680,8 @@ namespace Squared.Util {
             } else if (_Count >= 1) {
                 storage.Add(Item1);
             }
+            // Just in case
+            _Count = 0;
 
             oldItems?.Clear();
             if (ListPool != null)

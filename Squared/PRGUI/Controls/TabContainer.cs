@@ -215,7 +215,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void EnsureChildrenAreValid () {
+        protected override void EnsureChildrenAreValid (UIContext context) {
             if (TabStripIsInvalid)
                 GenerateTabs();
         }

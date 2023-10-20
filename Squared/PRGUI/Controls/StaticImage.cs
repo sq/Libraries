@@ -375,7 +375,7 @@ namespace Squared.PRGUI.Controls {
                 pSRGBColor pColor = pSRGBColor.FromPLinear(color4),
                     pAddColor = pSRGBColor.FromPLinear(addColor4);
 
-                // HACK
+                // FIXME: This won't properly restore state if there is a backing list
                 var p = renderer.Parameters;
                 var defaultBlendState = Context.PickDefaultBlendState(instance);
                 var blendState = BlendState ?? (
