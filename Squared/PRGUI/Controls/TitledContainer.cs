@@ -130,8 +130,8 @@ namespace Squared.PRGUI.Controls {
             if (decorations == null) {
                 material = null;
                 return null;
-            }
-            decorations.GetTextSettings(ref context, state, out material, ref color, out Vector4 userData);
+            }            
+            decorations.GetTextSettings(ref context, state, GetBackgroundColor(context.NowL) ?? default, out material, ref color, out Vector4 userData);
             TitleLayout.SetText(Title, true);
             var wasValid = TitleLayout.IsValid;
             TitleLayout.GlyphSource = GetGlyphSource(ref context, decorations);
@@ -214,7 +214,7 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             Color? color = null;
-            titleDecorations.GetTextSettings(ref context, default(ControlStates), out Material temp, ref color, out _);
+            titleDecorations.GetTextSettings(ref context, default(ControlStates), default(pSRGBColor), out Material temp, ref color, out _);
             var gs = GetGlyphSource(ref context, titleDecorations);
             var height = titleDecorations.Margins.Bottom +
                 // FIXME: Scale this?

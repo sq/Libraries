@@ -201,7 +201,7 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             var decorations = GetDefaultDecorator(Context.Decorations);
             Color? color = null;
-            decorations.GetTextSettings(ref UIOperationContext.Default, default(ControlStates), out Render.Material temp, ref color, out _);
+            decorations.GetTextSettings(ref UIOperationContext.Default, default(ControlStates), default, out Render.Material temp, ref color, out _);
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             var temp2 = default(DecorationSettings);
             var gs = decorations.GetGlyphSource(ref temp2);

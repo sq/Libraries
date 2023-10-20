@@ -137,7 +137,8 @@ namespace Squared.PRGUI {
             SuppressSpacing       = SuppressPadding | SuppressMargins,
             HasTransformMatrix    = 0b100000000,
             OpacityIsSet          = 0b1000000000,
-            DoNotAutoScaleSpacing = 0b10000000000
+            DoNotAutoScaleSpacing = 0b10000000000,
+            SuppressSelection     = 0b100000000000,
         }
 
         /// <summary>
@@ -228,6 +229,15 @@ namespace Squared.PRGUI {
                 Flags |= flag;
             else
                 Flags &= ~flag;
+        }
+
+        /// <summary>
+        /// If set, this control's appearance will not be affected by whether it is selected or
+        ///  contained within a selected control.
+        /// </summary>
+        public bool SuppressSelection {
+            get => GetAppearanceFlag(AppearanceFlags.SuppressSelection);
+            set => SetAppearanceFlag(AppearanceFlags.SuppressSelection, value);
         }
 
         /// <summary>

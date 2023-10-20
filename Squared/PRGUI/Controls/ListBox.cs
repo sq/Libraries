@@ -50,8 +50,6 @@ namespace Squared.PRGUI.Controls {
 
         public bool SelectOnMouseDown = false;
 
-        public float ItemSpacing = 1;
-
         public const int MaxItemScrollHeight = 40;
         public const int ControlMinimumHeight = 75, ControlMinimumWidth = 150;
 
@@ -392,7 +390,8 @@ namespace Squared.PRGUI.Controls {
             result.Config.ChildFlags |= NewEngine.Enums.ContainerFlags.GridNoNormalization;
             result.Tag = LayoutTags.ListBox;
 
-            var hasPushedDecorator = false;
+            // FIXME: Why was this here before?
+            /*
             var children = Children;
             // FIXME: This is really slow
             for (int i = 0, c = children.Count; i < c; i++) {
@@ -400,16 +399,12 @@ namespace Squared.PRGUI.Controls {
                 var lk = child.LayoutKey;
                 ref var childRec = ref context.Engine[lk];
                 var childIndex = Manager.IndexOfControl(child);
-                var isSelected = Manager.IsSelectedIndex(childIndex);
-                SetTextDecorator(ref context, child, isSelected, ref hasPushedDecorator);
                 ref var m = ref childRec.Margins;
                 // HACK: Override decorator margins
                 m.Top = child.Margins.Top;
                 m.Bottom = child.Margins.Bottom + ItemSpacing;
             }
-
-            if (hasPushedDecorator)
-                UIOperationContext.PopTextDecorator(ref context);
+            */
 
             // FIXME: This is gross
             if (!existingKey.HasValue && SelectionChangeEventPending) {
@@ -421,17 +416,6 @@ namespace Squared.PRGUI.Controls {
             }
 
             return ref result;
-        }
-
-        private void SetTextDecorator (ref UIOperationContext context, Control child, bool isSelected, ref bool hasPushed) {
-            if (hasPushed) {
-                UIOperationContext.PopTextDecorator(ref context);
-                hasPushed = false;
-            }
-            if (isSelected && !child.Appearance.HasBackgroundColor) {
-                UIOperationContext.PushTextDecorator(ref context, Context?.Decorations.Selection);
-                hasPushed = true;
-            }
         }
 
         protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
@@ -463,7 +447,7 @@ namespace Squared.PRGUI.Controls {
                 // relayoutRequested = true;
             }
             // FIXME: It is beyond me why this is the correct value. What?????
-            var partialItemScrollOffset = GetDecorator(context.DecorationProvider, null)?.Margins.Y ?? 0;
+            var partialItemScrollOffset = GetDecorator(context.DecorationProvider)?.Margins.Y ?? 0;
             VirtualScrollRegion.Y = (EffectiveCount * VirtualYMultiplier);
             if (Virtual)
                 VirtualScrollRegion.Y += partialItemScrollOffset;
@@ -831,14 +815,10 @@ namespace Squared.PRGUI.Controls {
             ref UIOperationContext context, Control control, ref RasterizePassSet passSet
         ) {
             var itemIndex = Manager.IndexOfControl(control);
-            var isSelected = Manager.IsSelectedIndex(itemIndex);
-            bool hasPushed = false;
-            SetTextDecorator(ref context, control, isSelected, ref hasPushed);
+            context.InsideSelectedControl = Manager.IsSelectedIndex(itemIndex);
             var result = base.RasterizeChild(
                 ref context, control, ref passSet
             );
-            if (hasPushed)
-                UIOperationContext.PopTextDecorator(ref context);
             return result;
         }
 

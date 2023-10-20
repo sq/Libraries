@@ -217,33 +217,16 @@ namespace Squared.PRGUI.Controls {
             if (result.IsInvalid)
                 return ref result;
 
-            var hasPushedDecorator = false;
             foreach (var child in Children) {
                 var lk = child.LayoutKey;
                 ref var childRec = ref context.Engine[lk];
-                SetTextDecorator(ref context, child, ref hasPushedDecorator);
                 ref var m = ref childRec.Margins;
                 // HACK: Override decorator margins
                 m.Top = child.Margins.Top;
                 m.Bottom = child.Margins.Bottom + ItemSpacing;
             }
 
-            if (hasPushedDecorator)
-                UIOperationContext.PopTextDecorator(ref context);
-
             return ref result;
-        }
-
-        private void SetTextDecorator (ref UIOperationContext context, Control child, ref bool hasPushed) {
-            var isSelected = SelectedItem == child;
-            if (hasPushed) {
-                UIOperationContext.PopTextDecorator(ref context);
-                hasPushed = false;
-            }
-            if ((isSelected) && !child.Appearance.HasBackgroundColor) {
-                UIOperationContext.PushTextDecorator(ref context, Context?.Decorations.Selection);
-                hasPushed = true;
-            }
         }
 
         private IMenuListener Listener => FocusDonor as IMenuListener;
@@ -562,14 +545,15 @@ namespace Squared.PRGUI.Controls {
         protected override bool RasterizeChild (
             ref UIOperationContext context, Control item, ref RasterizePassSet passSet
         ) {
-            bool temp = false;
-            SetTextDecorator(ref context, item, ref temp);
-            var result = base.RasterizeChild(
-                ref context, item, ref passSet
-            );
-            if (temp)
-                UIOperationContext.PopTextDecorator(ref context);
-            return result;
+            var wasSelected = context.InsideSelectedControl;
+            try {
+                context.InsideSelectedControl = (item == SelectedItem);
+                return base.RasterizeChild(
+                    ref context, item, ref passSet
+                );
+            } finally {
+                context.InsideSelectedControl = wasSelected;
+            }
         }
 
         protected override void RasterizeChildrenInOrder (
@@ -683,7 +667,7 @@ namespace Squared.PRGUI.Controls {
 
         private Vector2 AdjustPosition_Classic (UIContext context, Vector2 desiredPosition) {
             var decorationProvider = context.Decorations;
-            var decorator = GetDecorator(decorationProvider, null);
+            var decorator = GetDecorator(decorationProvider);
 
             // HACK city: Need an operation context to compute margins
             context.MakeOperationContext(out var tempContext);

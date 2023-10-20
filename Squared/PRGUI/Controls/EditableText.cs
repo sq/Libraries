@@ -498,7 +498,7 @@ namespace Squared.PRGUI.Controls {
             var font = Appearance.GlyphSourceProvider != null
                 ? Appearance.GlyphSourceProvider()
                 : decorations.GetGlyphSource(ref settings);
-            decorations.GetTextSettings(ref context, settings.State, out material, ref color, out Vector4 userData);
+            decorations.GetTextSettings(ref context, settings.State, GetBackgroundColor(context.NowL) ?? default, out material, ref color, out Vector4 userData);
             ComputeEffectiveSpacing(ref context, context.DecorationProvider, decorations, out CachedPadding, out Margins computedMargins);
 
             if (Appearance.GlyphSourceProvider != null)
@@ -1129,7 +1129,7 @@ namespace Squared.PRGUI.Controls {
             UIOperationContext context, ControlStates state, IMetricsProvider selectionDecorator
         ) {
             Color? selectedColor = DynamicLayout.Color;
-            selectionDecorator.GetTextSettings(ref context, state, out Material temp, ref selectedColor, out _);
+            selectionDecorator.GetTextSettings(ref context, state, default, out Material temp, ref selectedColor, out _);
             var selectedColorC = context.UIContext.ConvertColor(selectedColor ?? Color.Black);
             var nonSelectedColorC = context.UIContext.ConvertColor(DynamicLayout.Color ?? Color.White);
             var noColorizing = (selection == null) || 
@@ -1259,7 +1259,7 @@ namespace Squared.PRGUI.Controls {
             var font = Appearance.GlyphSourceProvider != null
                 ? Appearance.GlyphSourceProvider()
                 : decorator.GetGlyphSource(ref settings);
-            decorator.GetTextSettings(ref context, settings.State, out Material material, ref color, out _);
+            decorator.GetTextSettings(ref context, settings.State, GetBackgroundColor(context.NowL) ?? default, out Material material, ref color, out _);
             if (material == null)
                 return;
             if (font == null)

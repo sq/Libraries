@@ -793,7 +793,7 @@ namespace Squared.PRGUI {
 
         protected static void ComputeAppearanceSpacing (Control control, ref UIOperationContext context, out Margins scaledMargins, out Margins scaledPadding, out Margins unscaledPadding) {
             // HACK
-            var decorations = control.GetDecorator(context.DecorationProvider, context.DefaultDecorator);
+            var decorations = control.GetDecorator(context.DecorationProvider);
             control.ComputeAppearanceSpacing(ref context, decorations, out scaledMargins, out scaledPadding, out unscaledPadding);
         }
 
@@ -808,7 +808,7 @@ namespace Squared.PRGUI {
 
         public static void ComputeEffectiveSpacing (Control control, ref UIOperationContext context, out Margins padding, out Margins margins) {
             var dp = context.DecorationProvider;
-            control.ComputeEffectiveSpacing(ref context, dp, control.GetDecorator(dp, context.DefaultDecorator), out padding, out margins);
+            control.ComputeEffectiveSpacing(ref context, dp, control.GetDecorator(dp), out padding, out margins);
         }
 
         protected static void GetSizeConstraints (Control control, ref UIOperationContext context, out ControlDimension width, out ControlDimension height) {
@@ -861,7 +861,7 @@ namespace Squared.PRGUI {
             _LayoutKey = result.Key;
 
             var decorationProvider = context.DecorationProvider;
-            var decorations = GetDecorator(decorationProvider, context.DefaultDecorator);
+            var decorations = GetDecorator(decorationProvider);
             ComputeEffectiveSpacing(ref context, decorationProvider, decorations, out Margins computedPadding, out Margins computedMargins);
 
             MostRecentComputedMargins = computedMargins;
@@ -883,27 +883,52 @@ namespace Squared.PRGUI {
             return ref result;
         }
 
+        protected virtual IDecorator GetDefaultTextDecorator (IDecorationProvider provider) {
+            return null;
+        }
+
         protected virtual IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return null;
         }
 
-        protected IDecorator GetDecorator (IDecorationProvider provider, IDecorator over) {
+        protected IDecorator GetDecorator (IDecorationProvider provider) {
             if (Appearance.Undecorated)
-                return (Appearance.Decorator ?? provider.None ?? over);
+                return Appearance.Decorator ?? provider.None;
 
-            return Appearance.Decorator ?? (over ?? GetDefaultDecorator(provider));
+            return Appearance.Decorator ?? GetDefaultDecorator(provider);
         }
 
-        protected IDecorator GetTextDecorator (IDecorationProvider provider, IDecorator over) {
-            if (Appearance.UndecoratedText)
-                return (Appearance.TextDecorator ?? provider.None ?? over);
+        protected IDecorator GetTextDecorator (IDecorationProvider provider, bool selected) {
+            if (Appearance.TextDecorator != null)
+                return Appearance.TextDecorator;
 
-            return Appearance.TextDecorator ?? (over ?? GetDefaultDecorator(provider));
+            if (selected) {
+                IDecorator result = null;
+                // HACK
+                if (TryGetParent(out var parent)) {
+                    if (parent is Controls.Menu)
+                        result = provider.MenuSelection;
+                    else if (parent is Controls.IListBox)
+                        result = provider.ListSelection;
+                }
+                if (result == null)
+                    result = provider.Selection;
+                if (result != null)
+                    return result;
+            }
+
+            if (Appearance.UndecoratedText)
+                return provider.None;
+
+            return GetDefaultTextDecorator(provider);
         }
 
         protected virtual ControlStates GetCurrentState (ref UIOperationContext context) {
             var result = default(ControlStates);
             var ctx = context.UIContext;
+
+            if (context.InsideSelectedControl)
+                result |= ControlStates.Selected;
 
             if (!Enabled) {
                 result |= ControlStates.Disabled;

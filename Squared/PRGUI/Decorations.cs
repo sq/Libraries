@@ -88,7 +88,7 @@ namespace Squared.PRGUI.Decorations {
         Margins UnscaledPadding { get; }
         IGlyphSource GetGlyphSource (ref DecorationSettings settings);
         void GetContentAdjustment (ref UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
-        bool GetTextSettings (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData);
+        bool GetTextSettings (ref UIOperationContext context, ControlStates state, pSRGBColor backgroundColor, out Material material, ref Color? color, out Vector4 userData);
     }
 
     public interface IWidgetDecorator<TData> : IMetricsProvider {
@@ -172,7 +172,7 @@ namespace Squared.PRGUI.Decorations {
         void ComputeScaleRatios (out Vector2 margins, out Vector2 padding);
     }
 
-    public delegate bool TextSettingsGetter (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData);
+    public delegate bool TextSettingsGetter (ref UIOperationContext context, ControlStates state, ref pSRGBColor backgroundColor, out Material material, ref Color? color, out Vector4 userData);
     public delegate void DecoratorDelegate (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings);
     public delegate void ContentAdjustmentGetter (ref UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
     public delegate IGlyphSource DecorationFontGetter (ref DecorationSettings settings);
@@ -209,10 +209,10 @@ namespace Squared.PRGUI.Decorations {
                 return _Font as IGlyphSource;
         }
 
-        bool IMetricsProvider.GetTextSettings (ref UIOperationContext context, ControlStates state, out Material material, ref Color? color, out Vector4 userData) {
+        bool IMetricsProvider.GetTextSettings (ref UIOperationContext context, ControlStates state, pSRGBColor backgroundColor, out Material material, ref Color? color, out Vector4 userData) {
             var ok = false;
             if (GetTextSettings != null) {
-                ok = GetTextSettings(ref context, state, out material, ref color, out userData);
+                ok = GetTextSettings(ref context, state, ref backgroundColor, out material, ref color, out userData);
                 material = TextMaterial ?? material;
             } else {
                 material = TextMaterial;

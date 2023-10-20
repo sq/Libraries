@@ -215,6 +215,7 @@ namespace Squared.PRGUI {
         PreviouslyFocused  = 0b100000000,
         PreviouslyHovering = 0b1000000000,
         MouseOver          = 0b10000000000,
+        Selected           = 0b100000000000,
     }
 
     public enum RasterizePasses {

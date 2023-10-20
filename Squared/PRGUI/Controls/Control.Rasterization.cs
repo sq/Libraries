@@ -228,7 +228,7 @@ namespace Squared.PRGUI {
                 if (Appearance.DecorationProvider != null)
                     UIOperationContext.PushDecorationProvider(ref context, Appearance.DecorationProvider);
 
-                var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
+                var decorations = GetDecorator(context.DecorationProvider);
                 var contentBox = GetRect(contentRect: true);
                 var state = GetCurrentState(ref context);
                 MakeDecorationSettings(ref box, ref contentBox, state, compositing, out var settings);
@@ -463,7 +463,7 @@ namespace Squared.PRGUI {
             if (!HasPreRasterizeHandler)
                 return;
 
-            var decorations = GetDecorator(context.DecorationProvider, context.DefaultDecorator);
+            var decorations = GetDecorator(context.DecorationProvider);
             var state = GetCurrentState(ref context) | ControlStates.Invisible;
             MakeDecorationSettings(ref box, ref box, state, false, out var settings);
             var tempRenderer = default(ImperativeRenderer);

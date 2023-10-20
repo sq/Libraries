@@ -1171,11 +1171,11 @@ namespace Squared.PRGUI {
         public RectF VisibleRegion { get; internal set; }
         public BatchGroup Prepass;
         public AutoRenderTarget CompositingTarget { get; internal set; }
-        private DenseList<IDecorator> DecoratorStack, TextDecoratorStack;
         private DenseList<IDecorationProvider> DecorationProviderStack;
         internal DenseList<UIContext.ScratchRenderTarget> RenderTargetStack;
         internal short HiddenCount, Depth, TransformsActive;
         internal bool RelayoutRequestedForVisibilityChange;
+        public bool InsideSelectedControl;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void StackPush<T> (ref DenseList<T> stack, T value) {
@@ -1195,16 +1195,6 @@ namespace Squared.PRGUI {
             StackPush(ref context.DecorationProviderStack, value);
         public static void PopDecorationProvider (ref UIOperationContext context) => 
             StackPop(ref context.DecorationProviderStack);
-        public IDecorator DefaultDecorator => DecoratorStack.LastOrDefault();
-        public static void PushDecorator (ref UIOperationContext context, IDecorator value) => 
-            StackPush(ref context.DecoratorStack, value);
-        public static void PopDecorator (ref UIOperationContext context) => 
-            StackPop(ref context.DecoratorStack);
-        public IDecorator DefaultTextDecorator => TextDecoratorStack.LastOrDefault();
-        public static void PushTextDecorator (ref UIOperationContext context, IDecorator value) => 
-            StackPush(ref context.TextDecoratorStack, value);
-        public static void PopTextDecorator (ref UIOperationContext context) => 
-            StackPop(ref context.TextDecoratorStack);
 
         public void Log (string text) {
             UIContext.Log(text);
@@ -1226,11 +1216,10 @@ namespace Squared.PRGUI {
                 Prepass = Prepass,
                 RelayoutRequestedForVisibilityChange = RelayoutRequestedForVisibilityChange,
                 CompositingTarget = CompositingTarget,
-                TransformsActive = TransformsActive
+                TransformsActive = TransformsActive,
+                InsideSelectedControl = InsideSelectedControl,
             };
             RenderTargetStack.Clone(ref result.RenderTargetStack, true);
-            DecoratorStack.Clone(ref result.DecoratorStack, true);
-            TextDecoratorStack.Clone(ref result.TextDecoratorStack, true);
             DecorationProviderStack.Clone(ref result.DecorationProviderStack, true);
         }
     }

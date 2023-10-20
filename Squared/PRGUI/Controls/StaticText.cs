@@ -397,8 +397,8 @@ namespace Squared.PRGUI.Controls {
             }
 
             var decorationProvider = context.DecorationProvider;
-            var textDecorations = GetTextDecorator(decorationProvider, context.DefaultTextDecorator);
-            var decorations = GetDecorator(decorationProvider, context.DefaultDecorator);
+            var textDecorations = GetTextDecorator(decorationProvider, context.InsideSelectedControl);
+            var decorations = GetDecorator(decorationProvider);
             var fontChanged = UpdateFont(ref context, textDecorations, decorations);
 
             var contentChanged = (ContentMeasurement?.IsValid == false) || !Content.IsValid;
@@ -481,7 +481,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var decorationProvider = context.DecorationProvider;
-            var decorations = GetDecorator(decorationProvider, context.DefaultDecorator);
+            var decorations = GetDecorator(decorationProvider);
             ComputeEffectiveSpacing(ref context, decorationProvider, decorations, out Margins computedPadding, out Margins computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
             UpdateLineBreak(ref context, decorations, null, ref computedPadding, ref computedMargins);
@@ -668,6 +668,7 @@ namespace Squared.PRGUI.Controls {
             var decorationProvider = context.DecorationProvider;
             ComputeEffectiveSpacing(ref context, decorationProvider, decorations, out Margins computedPadding, out Margins computedMargins);
 
+            var bgColor = GetBackgroundColor(context.NowL) ?? default;
             var overrideColor = GetTextColor(context.NowL);
             Color? defaultColor = 
                 Appearance.TextColorIsDefault
@@ -676,8 +677,8 @@ namespace Squared.PRGUI.Controls {
             if (Appearance.TextColorIsDefault)
                 overrideColor = null;
             Material material;
-            var textDecorations = GetTextDecorator(decorationProvider, context.DefaultTextDecorator);
-            GetTextSettings(ref context, textDecorations, decorations, settings.State, out material, ref defaultColor, out Vector4 userData);
+            var textDecorations = GetTextDecorator(decorationProvider, context.InsideSelectedControl);
+            GetTextSettings(ref context, textDecorations, decorations, settings.State, ref bgColor, out material, ref defaultColor, out Vector4 userData);
             material = Appearance.TextMaterial ?? CustomTextMaterial ?? material;
 
             Content.DefaultColor = defaultColor ?? Color.White;
@@ -842,9 +843,9 @@ namespace Squared.PRGUI.Controls {
 
         protected bool GetTextSettings (
             ref UIOperationContext context, IDecorator textDecorations, IDecorator decorations, ControlStates state, 
-            out Material material, ref Color? color, out Vector4 userData
+            ref pSRGBColor backgroundColor, out Material material, ref Color? color, out Vector4 userData
         ) {
-            (textDecorations ?? decorations).GetTextSettings(ref context, state, out material, ref color, out userData);
+            (textDecorations ?? decorations).GetTextSettings(ref context, state, backgroundColor, out material, ref color, out userData);
             SyncWithCurrentFont(Appearance.GlyphSource ?? GetGlyphSource(ref context, textDecorations) ?? GetGlyphSource(ref context, decorations));
             if (TextMaterial != null)
                 material = TextMaterial;
