@@ -323,7 +323,7 @@ namespace Squared.Util {
             // You can test the heap allocated backing store with 5 items, it ends up being somewhat slower
             var dense = new DenseList<decimal> { 1, 2, 3, 4 };
             var list = new List<decimal> { 1, 2, 3, 4 };
-            // for int64 try something like 32
+            // for int64 try something like 128
             const int count = 1024000 * 32;
 
             var started1 = Stopwatch.GetTimestamp();
@@ -341,10 +341,8 @@ namespace Squared.Util {
             var started2 = Stopwatch.GetTimestamp();
             unchecked {
                 for (int i = 0; i < count; i++) {
-                    for (int j = 0; j < dense.Count; j++) {
-                        ref var item = ref dense.Item(j);
-                        item++;
-                    }
+                    for (int j = 0; j < dense.Count; j++)
+                        dense.Item(j)++;
                 }
             }
 
@@ -360,7 +358,7 @@ namespace Squared.Util {
             var elapsedDense = (double)(ended1 - started1) / Time.MillisecondInTicks;
             var elapsedDenseRef = (double)(started3 - started2) / Time.MillisecondInTicks;
             var elapsedList = (double)(ended - started3) / Time.MillisecondInTicks;
-            // FIXME: for x64 release on my pc the ratio is 4 for int64s, it seems like it could be much lower...
+            // FIXME: for x64 release on my pc the ratio is ~2.8 for int64s, it seems like it could be much lower...
             // It's pretty good for big types like Decimal though
             Console.WriteLine($"dense: {elapsedDense}, dense ref: {elapsedDenseRef}, list: {elapsedList}. ratio={elapsedDense / elapsedList}");
         }
