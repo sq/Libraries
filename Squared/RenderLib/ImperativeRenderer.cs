@@ -152,52 +152,100 @@ namespace Squared.Render.Convenience {
             }
         }
 
-        public IBatchContainer Container;
-        public DefaultMaterialSet Materials;
+        // Most of the IR's data grouped in one blob to make cloning easier/faster
+        private struct Configuration {
+            public IBatchContainer Container;
+            public DefaultMaterialSet Materials;
+            public DepthStencilState DepthStencilState;
+            public RasterizerState RasterizerState;
+            public SamplerState SamplerState, SamplerState2;
+            public Material DefaultBitmapMaterial;
+            public Sorter<BitmapDrawCall> DeclarativeSorter;
+            public int Layer;
+            public float RasterGammaMinusOne;
+            public object BlendStateOrSelector;
+        }
 
-        public int Layer;
-        public DepthStencilState DepthStencilState;
-        public RasterizerState RasterizerState;
-        public SamplerState SamplerState, SamplerState2;
-
-        public ImperativeRendererFlags Flags;
-
-        /// <summary>
-        /// Overrides the default material used to draw bitmaps if no custom material has been specified.
-        /// </summary>
-        public Material DefaultBitmapMaterial;
-
-        private object _BlendStateOrSelector;
-
-        /// <summary>
-        /// Specifies a custom set of declarative sorting rules used to order draw calls.
-        /// </summary>
-        public Sorter<BitmapDrawCall> DeclarativeSorter;
-
-        private DrawCallSortKey NextSortKey;
         private CachedBatches Cache;
-
-        private float RasterGammaMinusOne;
-
-        /// <summary>
-        /// If set, newly created batches will be expanded to have capacity for this many items once they
-        ///  contain more than a handful of items. If you know you will be drawing large numbers of items this 
-        ///  can reduce overhead, as long as the vast majority of them end up in the same batch (via layer + state sorting).
-        /// </summary>
-        public int? BitmapBatchInitialCapacity;
+        private Configuration Config;
+        private DrawCallSortKey NextSortKey;
+        public ImperativeRendererFlags Flags;
 
         /// <summary>
         /// All batches created by this renderer will have these material parameters applied
         /// </summary>
         public MaterialParameterValues Parameters;
 
+        public IBatchContainer Container {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Config.Container;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private set => Config.Container = value;
+        }
+        public DefaultMaterialSet Materials {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Config.Materials;
+        }
+
+        public DepthStencilState DepthStencilState {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Config.DepthStencilState;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => Config.DepthStencilState = value;
+        }
+        public RasterizerState RasterizerState {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Config.RasterizerState;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => Config.RasterizerState = value;
+        }
+        public SamplerState SamplerState {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Config.SamplerState;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => Config.SamplerState = value;
+        }
+        public SamplerState SamplerState2 {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Config.SamplerState2;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => Config.SamplerState2 = value;
+        }
+
+        /// <summary>
+        /// Overrides the default material used to draw bitmaps if no custom material has been specified.
+        /// </summary>
+        public Material DefaultBitmapMaterial {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Config.DefaultBitmapMaterial;
+            set => Config.DefaultBitmapMaterial = value;
+        }
+
+        /// <summary>
+        /// Specifies a custom set of declarative sorting rules used to order draw calls.
+        /// </summary>
+        public Sorter<BitmapDrawCall> DeclarativeSorter {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Config.DeclarativeSorter;
+            set => Config.DeclarativeSorter = value;
+        }
+
+        public int Layer {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Config.Layer;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => Config.Layer = value;
+        }
+
         public BlendState BlendState {
-            get => _BlendStateOrSelector as BlendState;
-            set => _BlendStateOrSelector = value;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Config.BlendStateOrSelector as BlendState;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => Config.BlendStateOrSelector = value;
         }
         public Func<AbstractTextureReference, BlendState> BlendStateSelector {
-            get => _BlendStateOrSelector as Func<AbstractTextureReference, BlendState>;
-            set => _BlendStateOrSelector = value;
+            get => Config.BlendStateOrSelector as Func<AbstractTextureReference, BlendState>;
+            set => Config.BlendStateOrSelector = value;
         }
 
         /// <summary>
@@ -478,19 +526,17 @@ namespace Squared.Render.Convenience {
             if (materials == null)
                 throw new ArgumentNullException("materials");
 
-            Container = container;
-            Materials = materials;
-            Layer = layer;
-            RasterizerState = rasterizerState;
-            DepthStencilState = depthStencilState;
-            _BlendStateOrSelector = blendState;
-            SamplerState = samplerState;
-            SamplerState2 = samplerState2;
-            NextSortKey = new DrawCallSortKey(tags, 0);
-            DeclarativeSorter = declarativeSorter;
-            RasterGammaMinusOne = 0;
-            DefaultBitmapMaterial = null;
-            BitmapBatchInitialCapacity = null;
+            Config.Container = container;
+            Config.Materials = materials;
+            Config.Layer = layer;
+            Config.RasterizerState = rasterizerState;
+            Config.DepthStencilState = depthStencilState;
+            Config.BlendStateOrSelector = blendState;
+            Config.SamplerState = samplerState;
+            Config.SamplerState2 = samplerState2;
+            Config.DeclarativeSorter = declarativeSorter;
+            Config.RasterGammaMinusOne = 0;
+            Config.DefaultBitmapMaterial = null;
             if (worldSpace)
                 flags |= ImperativeRendererFlags.WorldSpace;
             if (autoIncrementSortKey)
@@ -507,10 +553,10 @@ namespace Squared.Render.Convenience {
         /// </summary>
         public float RasterOutlineGamma {
             get {
-                return RasterGammaMinusOne + 1;
+                return Config.RasterGammaMinusOne + 1;
             }
             set {
-                RasterGammaMinusOne = value - 1;
+                Config.RasterGammaMinusOne = value - 1;
             }
         }
 
@@ -519,19 +565,19 @@ namespace Squared.Render.Convenience {
         /// </summary>
         public float RasterGamma {
             get {
-                if (RasterGammaMinusOne < -1)
-                    return -(RasterGammaMinusOne + 1);
+                if (Config.RasterGammaMinusOne < -1)
+                    return -(Config.RasterGammaMinusOne + 1);
                 else
                     return 0;
             }
             set {
                 if (value <= 0) {
-                    if (RasterGammaMinusOne > -1)
+                    if (Config.RasterGammaMinusOne > -1)
                         return;
                     else
-                        RasterGammaMinusOne = 0;
+                        Config.RasterGammaMinusOne = 0;
                 } else {
-                    RasterGammaMinusOne = -value - 1;
+                    Config.RasterGammaMinusOne = -value - 1;
                 }
             }
         }
@@ -585,8 +631,7 @@ namespace Squared.Render.Convenience {
             out ImperativeRenderer result, bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
             string name = null, int? layer = null, ViewTransformModifier viewTransformModifier = null
         ) {
-            result = this;
-            PrepareCopyForUse(ref result, true);
+            CloneInto(out result, true, false);
 
             var group = BatchGroup.New(
                 Container, layer ?? Layer, before: before, after: after, userData: userData,
@@ -611,26 +656,32 @@ namespace Squared.Render.Convenience {
             MakeSubgroup(out result, nextLayer, before, after, userData, name, layer);
             ((BatchGroup)result.Container).SetViewTransform(in viewTransform);
         }
-
-        void PrepareCopyForUse (ref ImperativeRenderer copy, bool emptyCache) {
-            // Ensure that the Parameters list for the result gets its own storage if it is modified
-            copy.Parameters.AllocateNewStorageOnWrite = true;
-            if (emptyCache)
-                copy.Cache.Count = 0;
-        }
         
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void CloneInto (out ImperativeRenderer result, bool nextLayer = true) {
-            result = this;
-            PrepareCopyForUse(ref result, false);
+        public void CloneInto (out ImperativeRenderer result, bool nextLayer = true, bool preserveCache = true) {
+#if !NOSPAN
+            Unsafe.SkipInit(out result);
+            if (preserveCache)
+                result.Cache = Cache;
+            else
+                result.Cache = default;
+#else
+            result = default;
+            if (preserveCache)
+                result.Cache = Cache;
+#endif
+
+            result.Config = Config;
+            result.Flags = Flags;
+            result.NextSortKey = NextSortKey;
+            result.Parameters = Parameters;
+            result.Parameters.AllocateNewStorageOnWrite = true;
 
             if (nextLayer)
                 Layer += 1;
         }
 
         public ImperativeRenderer Clone (bool nextLayer = true) {
-            var result = this;
-            PrepareCopyForUse(ref result, false);
+            CloneInto(out var result, nextLayer, true);
 
             if (nextLayer)
                 Layer += 1;
@@ -643,8 +694,7 @@ namespace Squared.Render.Convenience {
             object userData = null, string name = null, int? layer = null, IBatchContainer newContainer = null, 
             in ViewTransform? viewTransform = null
         ) {
-            var result = this;
-            PrepareCopyForUse(ref result, true);
+            CloneInto(out var result, true, false);
 
             var group = BatchGroup.ForRenderTarget(
                 newContainer ?? Container, layer ?? Layer, renderTarget, before, after, userData, name: name, 
@@ -665,8 +715,7 @@ namespace Squared.Render.Convenience {
             object userData = null, string name = null, int? layer = null, IBatchContainer newContainer = null, 
             in ViewTransform? viewTransform = null
         ) {
-            var result = this;
-            PrepareCopyForUse(ref result, true);
+            CloneInto(out var result, true, false);
 
             var group = BatchGroup.ForRenderTarget(
                 newContainer ?? Container, layer ?? Layer, renderTarget, before, after, userData, name: name, 
@@ -729,9 +778,9 @@ namespace Squared.Render.Convenience {
         }
 
         private BlendState PickBlendStateForTextures (ref TextureSet textures) {
-            if (_BlendStateOrSelector is BlendState bs)
+            if (Config.BlendStateOrSelector is BlendState bs)
                 return bs;
-            else if (_BlendStateOrSelector is Func<AbstractTextureReference, BlendState> selector)
+            else if (Config.BlendStateOrSelector is Func<AbstractTextureReference, BlendState> selector)
                 return selector(textures.Texture1) ?? selector(textures.Texture2);
             else
                 return null;
@@ -1222,7 +1271,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor.GetValueOrDefault(innerColor),
                 OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1260,7 +1309,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor,
                 OutlineColor = outlineColor,
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1296,7 +1345,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor.GetValueOrDefault(innerColor),
                 OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1336,7 +1385,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor,
                 OutlineColor = outlineColor,
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1373,7 +1422,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor.GetValueOrDefault(innerColor),
                 OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1410,7 +1459,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor,
                 OutlineColor = outlineColor,
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1447,7 +1496,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor,
                 OutlineColor = outlineColor,
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1483,7 +1532,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor.GetValueOrDefault(innerColor),
                 OutlineColor = outerColor.GetValueOrDefault(innerColor),
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1519,7 +1568,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor,
                 OutlineColor = outlineColor,
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1554,7 +1603,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = color,
                 OuterColor = color,
                 OutlineColor = color,
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1601,7 +1650,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor,
                 OutlineColor = outlineColor,
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1637,7 +1686,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor,
                 OutlineColor = outlineColor,
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1707,7 +1756,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor.GetValueOrDefault(innerColor),
                 OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1750,7 +1799,7 @@ namespace Squared.Render.Convenience {
                 InnerColor = innerColor,
                 OuterColor = outerColor.GetValueOrDefault(innerColor),
                 OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
-                GammaMinusOne = RasterGammaMinusOne,
+                GammaMinusOne = Config.RasterGammaMinusOne,
                 BlendIn = colorSpace ?? RasterColorSpace,
                 Fill = fill,
                 AnnularRadius = annularRadius ?? 0,
@@ -1821,8 +1870,6 @@ namespace Squared.Render.Convenience {
                         depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
                     );
                     _bb.MaterialParameters.ReplaceWith(ref Parameters);
-                    if (BitmapBatchInitialCapacity.HasValue)
-                        _bb.EnsureCapacity(BitmapBatchInitialCapacity.Value, true);
                     bb = _bb;
                 }
 
