@@ -93,7 +93,7 @@ namespace Squared.Render.DistanceField {
             var group = renderer.MakeSubgroup(layer: layer);
             group.Parameters.Clear();
 
-            var initGroup = group.ForRenderTarget(scratchSurfaces.InBuffer, viewTransform: vt);
+            var initGroup = group.ForRenderTarget(scratchSurfaces.InBuffer, viewTransform: vt, layer: 0);
             initGroup.Clear(layer: -1, value: new Vector4(MaxDistance, MaxDistance, MaxDistance, 0f));
             var initMaterial = renderer.Materials.JumpFloodInit;
             initGroup.Parameters.Add("Smoothing", smoothingLevel > 0.01f);
@@ -108,7 +108,7 @@ namespace Squared.Render.DistanceField {
 
             for (int i = 0, stepCount = GetStepCount(_region.Width, _region.Height); i < stepCount; i++) {
                 result = scratchSurfaces.OutBuffer;
-                var jumpGroup = group.ForRenderTarget(result, viewTransform: vt);
+                var jumpGroup = group.ForRenderTarget(result, viewTransform: vt, layer: i + 1);
 
                 int step = GetStepSize(_region.Width, _region.Height, i);
                 jumpGroup.Clear(layer: -1, color: new Color(step / 32f, 0, 0, 1f));

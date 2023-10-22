@@ -16,6 +16,8 @@ using Squared.Util;
 
 namespace Squared.Render.STB {
     public unsafe sealed class Image : IDisposable {
+        private static readonly NativeAllocator ResizedDataAllocator = new NativeAllocator();
+
         // FIXME: Causes crashes
         public const bool EnableMmap = true;
 
@@ -23,9 +25,11 @@ namespace Squared.Render.STB {
         private volatile int _RefCount;
         public int RefCount => _RefCount;
 
-        public int Width, Height, OriginalChannelCount, ChannelCount;
+        public int OriginalWidth, OriginalHeight, 
+            Width, Height, 
+            OriginalChannelCount, ChannelCount;
         public bool IsDisposed { get; private set; }
-        private volatile void* _Data;
+        private volatile void* _Data, _OriginalData;
         public void* Data => _Data;
         public bool IsPremultiplied { get; set; }
         public bool IsFloatingPoint { get; private set; }
@@ -34,6 +38,8 @@ namespace Squared.Render.STB {
         public int DataLength => Width * Height * ChannelCount;
 
         private byte[][] MipChain = null;
+
+        private NativeAllocation ResizedData;
 
         private static FileStream OpenStream (string path) {
             return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -62,7 +68,7 @@ namespace Squared.Render.STB {
         public Image (
             Stream stream, bool ownsStream, bool premultiply = true, 
             bool asFloatingPoint = false, bool enable16Bit = false, bool generateMips = false,
-            bool sRGB = false, bool enableGrayscale = false
+            bool sRGB = false, bool enableGrayscale = false, int maxWidth = 0, int maxHeight = 0
         ) {
             var length = stream.Length - stream.Position;
 
@@ -78,48 +84,54 @@ namespace Squared.Render.STB {
 
             MemoryMappedFile mappedFile = null;
             MemoryMappedViewAccessor mappedView = null;
-            GCHandle hData = default;
-            byte* pData = null;
+            GCHandle hBuffer = default;
+            byte* pBuffer = null;
             int readOffset;
             if (stream is MemoryStream ms) {
                 var buffer = ms.GetBuffer();
-                hData = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-                pData = (byte*)hData.AddrOfPinnedObject();
+                hBuffer = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+                pBuffer = (byte*)hBuffer.AddrOfPinnedObject();
                 readOffset = (int)ms.Position;
             } else if (EnableMmap && (stream is FileStream fs)) {
                 mappedFile = MemoryMappedFile.CreateFromFile(fs, null, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, false);
                 mappedView = mappedFile.CreateViewAccessor(0, fs.Length, MemoryMappedFileAccess.Read);
-                mappedView.SafeMemoryMappedViewHandle.AcquirePointer(ref pData);
+                mappedView.SafeMemoryMappedViewHandle.AcquirePointer(ref pBuffer);
                 readOffset = 0;
             } else {
                 var buffer = new byte[length];
                 readOffset = 0;
                 stream.Read(buffer, 0, (int)length);
-                hData = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-                pData = (byte*)hData.AddrOfPinnedObject();
+                hBuffer = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+                pBuffer = (byte*)hBuffer.AddrOfPinnedObject();
             }
 
             InitializeFromPointer(
-                pData, readOffset, (int)length, 
+                pBuffer, readOffset, (int)length, 
                 premultiply: premultiply, 
                 asFloatingPoint: asFloatingPoint, 
                 enable16Bit: enable16Bit,
                 generateMips: generateMips,
                 sRGB: sRGB,
-                enableGrayscale: enableGrayscale
+                enableGrayscale: enableGrayscale,
+                maxWidth: maxWidth,
+                maxHeight: maxHeight
             );
 
             if (ownsStream)
                 stream.Dispose();
-            if (hData.IsAllocated)
-                hData.Free();
+            if (hBuffer.IsAllocated)
+                hBuffer.Free();
             if (mappedFile != null) {
                 mappedView.Dispose();
                 mappedFile.Dispose();
             }
         }
 
-        public unsafe Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, bool generateMips = false, bool sRGB = false, bool enableGrayscale = false) {
+        public unsafe Image (
+            ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, 
+            bool generateMips = false, bool sRGB = false, bool enableGrayscale = false,
+            int maxWidth = 0, int maxHeight = 0
+        ) {
             fixed (byte* pBuffer = buffer.Array) {
                 InitializeFromPointer(
                     pBuffer, buffer.Offset, buffer.Count,
@@ -128,7 +140,9 @@ namespace Squared.Render.STB {
                     enable16Bit: false,
                     generateMips: generateMips,
                     sRGB: sRGB,
-                    enableGrayscale: enableGrayscale
+                    enableGrayscale: enableGrayscale,
+                    maxWidth: maxWidth,
+                    maxHeight: maxHeight
                 );
             }
         }
@@ -137,25 +151,26 @@ namespace Squared.Render.STB {
             byte* pBuffer, int offset, int length, 
             bool premultiply = true, bool asFloatingPoint = false, 
             bool enable16Bit = false, bool generateMips = false,
-            bool sRGB = false, bool enableGrayscale = false
+            bool sRGB = false, bool enableGrayscale = false,
+            int maxWidth = 0, int maxHeight = 0
         ) {
             IsFloatingPoint = asFloatingPoint;
-            Native.API.stbi_info_from_memory(pBuffer + offset, length, out int width, out int height, out int components);
+            Native.API.stbi_info_from_memory(pBuffer + offset, length, out _, out _, out int components);
             int desiredChannelCount = !enableGrayscale || (components > 1) ? 4 : 1;
 
             // FIXME: Don't request RGBA?
             Is16Bit = enable16Bit && Native.API.stbi_is_16_bit_from_memory(pBuffer + offset, length) != 0;
 
             if (asFloatingPoint)
-                _Data = Native.API.stbi_loadf_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
+                _OriginalData = Native.API.stbi_loadf_from_memory(pBuffer + offset, length, out OriginalWidth, out OriginalHeight, out OriginalChannelCount, desiredChannelCount);
             else if (Is16Bit)
-                _Data = Native.API.stbi_load_16_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
+                _OriginalData = Native.API.stbi_load_16_from_memory(pBuffer + offset, length, out OriginalWidth, out OriginalHeight, out OriginalChannelCount, desiredChannelCount);
             else
-                _Data = Native.API.stbi_load_from_memory(pBuffer + offset, length, out Width, out Height, out OriginalChannelCount, desiredChannelCount);
+                _OriginalData = Native.API.stbi_load_from_memory(pBuffer + offset, length, out OriginalWidth, out OriginalHeight, out OriginalChannelCount, desiredChannelCount);
 
             ChannelCount = desiredChannelCount;
 
-            if (_Data == null) {
+            if (_OriginalData == null) {
                 var reason = STB.Native.API.stbi_failure_reason();
                 var message = "Failed to load image";
                 if (reason != null)
@@ -163,7 +178,11 @@ namespace Squared.Render.STB {
                 throw new Exception(message);
             }
 
-            SizeofPixel = Evil.TextureUtils.GetBytesPerPixelAndComponents(GetFormat(sRGB, desiredChannelCount), out components);
+            _Data = _OriginalData;
+            Width = OriginalWidth;
+            Height = OriginalHeight;
+
+            SizeofPixel = Evil.TextureUtils.GetBytesPerPixelAndComponents(GetFormat(sRGB, desiredChannelCount), out _);
 
             if (asFloatingPoint)
                 ConvertFPData(premultiply);
@@ -174,8 +193,44 @@ namespace Squared.Render.STB {
 
             IsPremultiplied = premultiply;
 
+            double scaleRatio = TextureLoadOptions.ComputeScaleRatio(OriginalWidth, OriginalHeight, maxWidth, maxHeight);
+            if (scaleRatio < 1)
+                Resize(scaleRatio);
+
             if (generateMips)
                 GenerateMips(sRGB);
+        }
+
+        private unsafe void Resize (double scaleRatio) {
+            if (ResizedData != null)
+                throw new InvalidOperationException("Image already resized");
+
+            Width = (int)Math.Round(OriginalWidth * scaleRatio, 0, MidpointRounding.AwayFromZero);
+            Height = (int)Math.Round(OriginalHeight * scaleRatio, 0, MidpointRounding.AwayFromZero);
+            var newSize = SizeofPixel * Width * Height;
+            ResizedData = ResizedDataAllocator.Allocate(newSize);
+            _Data = ResizedData.Data;
+
+            Native.stbir_datatype dataType = Native.stbir_datatype.UINT8;
+            if (Is16Bit)
+                dataType = Native.stbir_datatype.UINT16;
+            else if (IsFloatingPoint)
+                dataType = Native.stbir_datatype.FLOAT;
+
+            Native.stbir_pixel_layout pixelLayout;
+            if (ChannelCount == 4)
+                pixelLayout = IsPremultiplied ? Native.stbir_pixel_layout.RGBA_PM : Native.stbir_pixel_layout.RGBA;
+            else if (ChannelCount == 1)
+                pixelLayout = Native.stbir_pixel_layout._1CHANNEL;
+            else if (ChannelCount == 3)
+                pixelLayout = Native.stbir_pixel_layout.RGB;
+            else
+                throw new ArgumentOutOfRangeException("ChannelCount");
+
+            STB.Native.API.stbir_resize(
+                _OriginalData, OriginalWidth, OriginalHeight, SizeofPixel * OriginalWidth,
+                _Data, Width, Height, SizeofPixel * Width, pixelLayout, dataType, Native.stbir_edge.CLAMP, Native.stbir_filter.DEFAULT
+            );
         }
 
         private unsafe void ConvertFPData (bool premultiply) {
@@ -513,11 +568,11 @@ namespace Squared.Render.STB {
 
             if (RefCount <= 0) {
                 IsDisposed = true;
-                var data = Data;
                 _Data = null;
                 MipChain = null;
-                if (data != null)
-                    Native.API.stbi_image_free(data);
+                if (_OriginalData != null)
+                    Native.API.stbi_image_free(_OriginalData);
+                ResizedData?.ReleaseReference();
 
                 GC.SuppressFinalize(this);
             }

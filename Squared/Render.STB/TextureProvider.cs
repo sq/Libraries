@@ -14,6 +14,13 @@ using Microsoft.Xna.Framework;
 
 namespace Squared.Render {
     public class TextureLoadOptions {
+        public struct ResultData {
+            /// <summary>
+            /// Contains the original dimensions of the loaded image. Populated after loading.
+            /// </summary>
+            public int Width, Height;
+        }
+
         public bool? Premultiply;
         public bool FloatingPoint;
         // If the source image is more than 8 bpp, enable loading it as 16bpp
@@ -24,13 +31,9 @@ namespace Squared.Render {
         public bool GenerateDistanceField;
         /// <summary>
         /// Pads the bottom and right edges of the image so its width and height are a power of two.
-        /// The original width/height are stored in properties of this object.
+        /// The original width/height are stored in <see cref="Result"/>.
         /// </summary>
         public bool PadToPowerOfTwo;
-        /// <summary>
-        /// Contains the original dimensions of the loaded image.
-        /// </summary>
-        public int Width, Height;
         /// <summary>
         /// Performs color-space conversion
         /// </summary>
@@ -39,6 +42,35 @@ namespace Squared.Render {
         /// The texture already contains sRGB data which should not be converted
         /// </summary>
         public bool sRGB;
+        /// <summary>
+        /// If nonzero, specifies a maximum width for the image. If the loaded image is
+        ///  larger than this, it will be shrunk.
+        /// The original width/height are stored in <see cref="Result"/>.
+        /// </summary>
+        public int MaxWidth = 0;
+        /// <summary>
+        /// If nonzero, specifies a maximum height for the image. If the loaded image is
+        ///  larger than this, it will be shrunk.
+        /// The original width/height are stored in <see cref="Result"/>.
+        /// </summary>
+        public int MaxHeight = 0;
+        /// <summary>
+        /// Contains information on the loaded image.
+        /// </summary>
+        public ResultData Result;
+
+        public double ComputeScaleRatio (int width, int height) =>
+            ComputeScaleRatio(width, height, MaxWidth, MaxHeight);
+
+        public static double ComputeScaleRatio (int width, int height, int maxWidth, int maxHeight) {
+            double scaleX = maxWidth > 0 ? (double)maxWidth / width : 1.0,
+                scaleY = maxHeight > 0 ? (double)maxHeight / height : 1.0;
+            var scaleRatio = Math.Min(scaleX, scaleY);
+            if (scaleRatio > 1)
+                return 1;
+            else
+                return scaleRatio;
+        }
 
         public override string ToString () {
             return "TextureLoadOptions {{ Premultiply={Premultiply}, GenerateMips={GenerateMips} }}";
@@ -101,7 +133,7 @@ namespace Squared.Render {
             var image = new STB.Image(
                 stream, false, options.Premultiply ?? true, options.FloatingPoint, 
                 options.Enable16Bit, options.GenerateMips, options.sRGBFromLinear || options.sRGB,
-                options.EnableGrayscale
+                options.EnableGrayscale, options.MaxWidth, options.MaxHeight
             );
             if (options.sRGBFromLinear || options.sRGBToLinear)
                 ApplyColorSpaceConversion(image, options);
