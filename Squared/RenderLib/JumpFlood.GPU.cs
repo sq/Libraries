@@ -68,7 +68,8 @@ namespace Squared.Render.DistanceField {
             var result = new GPUScratchSurfaces(coordinator);
             width = ((width + SizeRoundingMinusOne) / SizeRounding) * SizeRounding;
             height = ((height + SizeRoundingMinusOne) / SizeRounding) * SizeRounding;
-            result.Resize(width, height);
+            // HACK: Pad the surfaces with an extra pixel around the outside
+            result.Resize(width + 2, height + 2);
             return result;
         }
 
@@ -78,15 +79,14 @@ namespace Squared.Render.DistanceField {
         /// <param name="scratchSurfaces">The scratch surfaces used by the generation process. You are responsible for disposing these next frame.</param>
         public static void GenerateDistanceField (
             ref ImperativeRenderer renderer, Texture2D input, RenderTarget2D output, ref GPUScratchSurfaces scratchSurfaces,
-            int? layer = null, Rectangle? region = null, float minimumAlpha = 0.0f, float smoothingLevel = 0.0f
+            int? layer = null, float minimumAlpha = 0.0f, float smoothingLevel = 0.0f
         ) {
-            var _region = region ?? new Rectangle(0, 0, output.Width, output.Height);
-
             var coordinator = renderer.Container.Coordinator;
             scratchSurfaces = scratchSurfaces ?? new GPUScratchSurfaces(coordinator);
-            int width = ((_region.Width + SizeRoundingMinusOne) / SizeRounding) * SizeRounding,
-                height = ((_region.Height + SizeRoundingMinusOne) / SizeRounding) * SizeRounding;
-            scratchSurfaces.Resize(width, height);
+            // HACK: Pad the surfaces with an extra pixel around the outside
+            int width = ((output.Width + SizeRoundingMinusOne) / SizeRounding) * SizeRounding,
+                height = ((output.Height + SizeRoundingMinusOne) / SizeRounding) * SizeRounding;
+            scratchSurfaces.Resize(width + 2, height + 2);
 
             var vt = ViewTransform.CreateOrthographic(scratchSurfaces.InBuffer.Width, scratchSurfaces.InBuffer.Height);
 
@@ -98,22 +98,23 @@ namespace Squared.Render.DistanceField {
             var initMaterial = renderer.Materials.JumpFloodInit;
             initGroup.Parameters.Add("Smoothing", smoothingLevel > 0.01f);
             initGroup.Draw(
-                input, new Vector2(-_region.Left, -_region.Top), material: initMaterial, userData: new Vector4(minimumAlpha, Math.Min(smoothingLevel, 0.99f - minimumAlpha), 0, 0),
+                // HACK: Offset the source image one pixel inward, so that a fully opaque image still has
+                //  correct distance values
+                input, new Vector2(1, 1), material: initMaterial, 
+                userData: new Vector4(minimumAlpha, Math.Min(smoothingLevel, 0.99f - minimumAlpha), 0, 0),
                 layer: 0
             );
 
-            _region = new Rectangle(0, 0, _region.Width, _region.Height);
-
             RenderTarget2D result = null;
 
-            for (int i = 0, stepCount = GetStepCount(_region.Width, _region.Height); i < stepCount; i++) {
+            for (int i = 0, stepCount = GetStepCount(output.Width, output.Height); i < stepCount; i++) {
                 result = scratchSurfaces.OutBuffer;
                 var jumpGroup = group.ForRenderTarget(result, viewTransform: vt, layer: i + 1);
 
-                int step = GetStepSize(_region.Width, _region.Height, i);
+                int step = GetStepSize(output.Width, output.Height, i);
                 jumpGroup.Clear(layer: -1, color: new Color(step / 32f, 0, 0, 1f));
                 jumpGroup.Draw(
-                    scratchSurfaces.InBuffer, Vector2.Zero, sourceRectangle: _region,
+                    scratchSurfaces.InBuffer, Vector2.Zero,
                     userData: new Vector4(step / (float)scratchSurfaces.InBuffer.Width, step / (float)scratchSurfaces.InBuffer.Height, step, 0), 
                     samplerState: SamplerState.PointClamp,
                     material: renderer.Materials.JumpFloodJump,
@@ -127,15 +128,16 @@ namespace Squared.Render.DistanceField {
 
             var resolveGroup = group.ForRenderTarget(output, viewTransform: ViewTransform.CreateOrthographic(output.Width, output.Height));
             resolveGroup.Clear(layer: -1, color: Color.Transparent);
-            resolveGroup.Draw(result, Vector2.Zero, material: renderer.Materials.JumpFloodResolve, layer: 0);
+            // De-offset the image
+            resolveGroup.Draw(result, -Vector2.One, material: renderer.Materials.JumpFloodResolve, layer: 0);
         }
 
         public static void GenerateDistanceField (
             ref ImperativeRenderer renderer, Texture2D input, RenderTarget2D output,
-            int? layer = null, Rectangle? region = null, float minimumAlpha = 0.0f, float smoothingLevel = 0.0f
+            int? layer = null, float minimumAlpha = 0.0f, float smoothingLevel = 0.0f
         ) {
             GPUScratchSurfaces scratch = null;
-            GenerateDistanceField(ref renderer, input, output, ref scratch, layer, region, minimumAlpha, smoothingLevel);
+            GenerateDistanceField(ref renderer, input, output, ref scratch, layer, minimumAlpha, smoothingLevel);
             var coordinator = renderer.Container.Coordinator;
             coordinator.DisposeResource(scratch);
         }
