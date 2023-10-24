@@ -76,15 +76,16 @@ inline float2 ComputeRotatedCorner (
     float2 regionSize = abs(texRgn.zw - texRgn.xy);
 
     corner = abs(corner);
-    corner -= (scaleOrigin.zw * regionSize);
-    float2 sinCos, rotatedCorner;
-    corner *= scaleOrigin.xy;
-    corner *= BitmapTextureSize;
+    corner -= (0.5 * regionSize);
+    float2 sinCos, rotatedCorner, finalScale;
+    finalScale = scaleOrigin.xy * BitmapTextureSize;
+    corner *= finalScale;
     sincos(rotation, sinCos.x, sinCos.y);
-    return float2(
+    rotatedCorner = float2(
         (sinCos.y * corner.x) - (sinCos.x * corner.y),
         (sinCos.x * corner.x) + (sinCos.y * corner.y)
     );
+    return rotatedCorner + ((0.5 - scaleOrigin.zw) * regionSize * finalScale);
 }
 
 void ScreenSpaceVertexShader (

@@ -1232,6 +1232,9 @@ namespace Squared.Render {
         // 24
         public Vector2    Origin;
         // 28
+        /// <summary>
+        /// Angle in radians
+        /// </summary>
         public float      Rotation;
         // 32
         public float      SortOrder;
