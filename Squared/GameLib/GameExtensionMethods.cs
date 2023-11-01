@@ -31,6 +31,10 @@ namespace Squared.Game {
             return new Vector2((float)Math.Ceiling(vector.X), (float)Math.Ceiling(vector.Y));
         }
 
+        public static Vector2 Abs (this in Vector2 vector) {
+            return new Vector2((float)Math.Abs(vector.X), (float)Math.Abs(vector.Y));
+        }
+
         public static Vector2 Round (this in Vector2 vector) {
             return new Vector2((float)Math.Round(vector.X, MidpointRounding.AwayFromZero), (float)Math.Round(vector.Y, MidpointRounding.AwayFromZero));
         }
@@ -40,6 +44,18 @@ namespace Squared.Game {
                 (float)Math.Round(vector.X, decimals, MidpointRounding.AwayFromZero), 
                 (float)Math.Round(vector.Y, decimals, MidpointRounding.AwayFromZero)
             );
+        }
+
+        public static Vector3 Floor (this in Vector3 vector) {
+            return new Vector3((float)Math.Floor(vector.X), (float)Math.Floor(vector.Y), (float)Math.Floor(vector.Z));
+        }
+
+        public static Vector3 Ceiling (this in Vector3 vector) {
+            return new Vector3((float)Math.Ceiling(vector.X), (float)Math.Ceiling(vector.Y), (float)Math.Ceiling(vector.Z));
+        }
+
+        public static Vector3 Abs (this in Vector3 vector) {
+            return new Vector3((float)Math.Abs(vector.X), (float)Math.Abs(vector.Y), (float)Math.Abs(vector.Z));
         }
 
         public static Vector3 Round (this in Vector3 vector) {

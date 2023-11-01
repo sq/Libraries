@@ -549,6 +549,32 @@ namespace Squared.Render {
             public object Reference;
             public EntryUnion Primitive;
 
+            public object BoxedValue {
+                get {
+                    if (Reference != null)
+                        return Reference;
+
+                    switch (Type) {
+                        case EntryValueType.B:
+                            return Primitive.B;
+                        case EntryValueType.F:
+                            return Primitive.F;
+                        case EntryValueType.I:
+                            return Primitive.I;
+                        case EntryValueType.V2:
+                            return Primitive.V2;
+                        case EntryValueType.V3:
+                            return Primitive.V3;
+                        case EntryValueType.V4:
+                            return Primitive.V4;
+                        case EntryValueType.Q:
+                            return Primitive.Q;
+                        default:
+                            return null;
+                    }
+                }
+            }
+
             public static bool Equals (ref Value lhs, ref Value rhs) {
                 if (lhs.Type != rhs.Type)
                     return false;
@@ -963,12 +989,13 @@ namespace Squared.Render {
                 return false;
         }
 
-        IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator () {
-            throw new NotImplementedException();
+        public IEnumerator<KeyValuePair<string, object>> GetEnumerator () {
+            foreach (var key in Keys)
+                yield return new KeyValuePair<string, object>(key.Name, Values[key.ValueIndex].BoxedValue);
         }
 
         IEnumerator IEnumerable.GetEnumerator () {
-            throw new NotImplementedException();
+            return GetEnumerator();
         }
 
         internal void CopyTo (ref MaterialParameterValues rhs) {

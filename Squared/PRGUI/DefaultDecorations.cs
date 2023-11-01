@@ -2139,12 +2139,12 @@ namespace Squared.PRGUI {
         ) {
             GetTextSettings(ref context, state, ref backgroundColor, out material, ref color, out userData, TextStyle.Selected);
             backgroundColor.ToOkLab(out var l, out _, out _, out var o);
-            if ((l < 0.5f) && (o > 0.15f)) {
+            if ((l < 0.45f) && (o > 0.15f)) {
                 color = ColorScheme.SelectedTextLight;
-                userData = new Vector4(0, 0, 0, 4);
+                userData = new Vector4(0, 0, 0, 6);
             } else {
                 color = ColorScheme.SelectedTextDark;
-                userData = new Vector4(1, 1, 1, 4);
+                userData = new Vector4(1, 1, 1, 6);
             }
             return true;
         }

@@ -230,37 +230,35 @@ namespace Squared.Render {
             lock (Coordinator.UseResourceLock)
                 df.SetData(buf);
 
-            lock (DistanceFields)
-                DistanceFields.Add((Texture2D)f.Result, df);
+            DistanceFields.Remove((Texture2D)f.Result);
+            DistanceFields.Add((Texture2D)f.Result, df);
 
             DisposeHandler(f, img);
         }
 
         public void DisposeDistanceField (Texture2D texture) {
-            lock (DistanceFields) {
-                if (!DistanceFields.TryGetValue(texture, out var df))
-                    return;
+            if (!DistanceFields.TryGetValue(texture, out var df))
+                return;
 
-                DistanceFields.Remove(texture);
-                Coordinator.DisposeResource(df);
-            }
+            DistanceFields.Remove(texture);
+            Coordinator.DisposeResource(df);
         }
 
         public Texture2D GetDistanceField (Texture2D texture) {
             if (texture == null)
                 return null;
 
-            lock (DistanceFields) {
-                if (!DistanceFields.TryGetValue(texture, out var result))
-                    return null;
-                else
-                    return result;
-            }
+            if (!DistanceFields.TryGetValue(texture, out var result))
+                return null;
+            else
+                return result;
         }
 
         public void SetDistanceField (Texture2D texture, Texture2D distanceField) {
             texture.Disposing += OnTextureWithDistanceFieldDisposed;
-            lock (DistanceFields)
+            if (distanceField == null)
+                DistanceFields.Remove(texture);
+            else
                 DistanceFields.Add(texture, distanceField);
         }
 
