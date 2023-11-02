@@ -117,6 +117,22 @@ namespace Squared.Render {
             };
         }
 
+        public static ViewTransform CreatePerspective (int x, int y, int width, int height, float zNearPlane = 0.0001f, float zFarPlane = 1) {
+            float offsetX = -0.0f;
+            float offsetY = -0.0f;
+            float offsetX2 = offsetX;
+            float offsetY2 = offsetY;
+            var projection = Matrix.CreatePerspectiveOffCenter(offsetX, width + offsetX2, height + offsetY2, offsetY, zNearPlane, zFarPlane);
+            // FIXME: Why the heck is the default -1????? This makes no sense
+            projection.M33 = 1;
+            return new ViewTransform {
+                Scale = Vector2.One,
+                Position = Vector2.Zero,
+                Projection = projection,
+                ModelView = Matrix.Identity
+            };
+        }
+
         public bool Equals (ref ViewTransform rhs) {
             return (Scale == rhs.Scale) &&
                 (Position == rhs.Position) &&
@@ -1371,6 +1387,17 @@ namespace Squared.Render {
 
         internal void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
             uViewport.TrySet(m, ref viewTransform);
+
+            if (m.Parameters?.InverseModelView != null) {
+                Matrix.Invert(ref viewTransform.ModelView, out var temp);
+                m.Parameters.InverseModelView.SetValue(temp);
+            }
+
+            if (m.Parameters?.InverseProjection != null) {
+                // FIXME: Cache these in the viewtransform
+                Matrix.Invert(ref viewTransform.Projection, out var temp);
+                m.Parameters.InverseProjection.SetValue(temp);
+            }
         }
 
         /// <summary>

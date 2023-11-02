@@ -394,6 +394,7 @@ namespace Squared.Render {
 
         public readonly EffectParameter ScaleAndPosition, InputAndOutputZRanges;
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
+        public readonly EffectParameter InverseProjection, InverseModelView;
         public readonly EffectParameter BitmapTextureSize, HalfTexel;
         public readonly EffectParameter BitmapTextureSize2, HalfTexel2;
         public readonly EffectParameter BitmapTraits, BitmapTraits2;
@@ -438,6 +439,8 @@ namespace Squared.Render {
             PaletteSize = this["PaletteSize"];
             BitmapTexture = this["BitmapTexture"];
             SecondTexture = this["SecondTexture"];
+            InverseModelView = this["InverseModelView"];
+            InverseProjection = this["InverseProjection"];
         }
 
         public void SetPalette (Texture2D palette) {
