@@ -350,7 +350,14 @@ namespace Squared.PRGUI.NewEngine {
         }
         #endregion
 
-        public void UnsafeUpdate () {
+        public void UpdateExisting () {
+            PrepareForUpdate(false);
+            // Now we want to expose the InProgressResults list to any code that is looking for a results record
+            Results = InProgressResults;
+            PerformLayout(ref Root());
+        }
+
+        internal void UnsafeUpdate () {
             // Now we want to expose the InProgressResults list to any code that is looking for a results record
             Results = InProgressResults;
             PerformLayout(ref Root());

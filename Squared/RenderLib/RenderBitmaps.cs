@@ -328,6 +328,7 @@ namespace Squared.Render {
                 }
 
                 Texture1Size = new Vector2(tex1.Width, tex1.Height);
+                // FIXME: Rename this to TexelSize
                 Texture1HalfTexel = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
                 Texture1Traits = Evil.TextureUtils.GetTraits(tex1.Format);
 

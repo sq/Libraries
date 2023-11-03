@@ -126,7 +126,7 @@ float4 ExtractRgba (float4 input, float4 formatTraits) {
 
     // BC7: scale alpha because BC7 produces alpha error
     if (formatTraits.w >= ALPHA_MODE_BC7)
-        result.a *= 254.0 / 255.0;
+        result.a *= 255.0 / 253.0;
 
     // Premultiply
     if (formatTraits.z >= 1)

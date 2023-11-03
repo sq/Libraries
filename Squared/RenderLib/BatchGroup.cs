@@ -44,6 +44,11 @@ namespace Squared.Render {
 
         public Frame Frame { get; private set;  }
 
+        /// <summary>
+        /// If set, contained batches will not have their Issue method called.
+        /// </summary>
+        public bool DisableIssue = false;
+
         Action<DeviceManager, object> _Before, _After;
         private object _UserData;
 
@@ -93,10 +98,11 @@ namespace Squared.Render {
                 _Before(manager, _UserData);
 
             try {
-                for (int i = 0; i < count; i++) {
-                    _DrawCalls.GetItem(i, out var batch);
-                    batch?.IssueAndWrapExceptions(manager);
-                }
+                if (!DisableIssue)
+                    for (int i = 0; i < count; i++) {
+                        _DrawCalls.GetItem(i, out var batch);
+                        batch?.IssueAndWrapExceptions(manager);
+                    }
             } finally {
                 if (_After != null)
                     _After(manager, _UserData);
@@ -258,6 +264,7 @@ namespace Squared.Render {
             _HasViewTransform = false;
             ViewTransformModifier = null;
             IsReleased = false;
+            DisableIssue = false;
         }
 
         public void SetViewTransform (
