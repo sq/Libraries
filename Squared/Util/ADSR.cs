@@ -187,7 +187,7 @@ namespace Squared.Util {
 
             double releaseTime = seconds - duration + Release,
                 // A normal exponential ADSR ramp slopes up slowly and then slopes down fast
-                attack = ((Attack > 0) && enableAttack) ? Ramp(seconds / Attack, Modes.Attack, Inverse.Attack) : 0,
+                attack = ((Attack > 0) && enableAttack) ? Ramp(seconds / Attack, Modes.Attack, Inverse.Attack) : 1,
                 decay = ((Decay > 0) && enableDecay) ? Ramp((seconds - Attack) / Decay, Modes.Decay, Inverse.Decay) : 0,
                 release = ((Release > 0) && enableRelease) ? Ramp(releaseTime / Release, Modes.Release, Inverse.Release) : 0,
                 decayed = Arithmetic.Lerp(1, Sustain, decay),
