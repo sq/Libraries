@@ -395,8 +395,8 @@ namespace Squared.Render {
         public readonly EffectParameter ScaleAndPosition, InputAndOutputZRanges;
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
         public readonly EffectParameter InverseProjection, InverseModelView;
-        public readonly EffectParameter BitmapTextureSize, HalfTexel;
-        public readonly EffectParameter BitmapTextureSize2, HalfTexel2;
+        public readonly EffectParameter BitmapTextureSize, BitmapTexelSize;
+        public readonly EffectParameter BitmapTextureSize2, BitmapTexelSize2;
         public readonly EffectParameter BitmapTraits, BitmapTraits2;
         public readonly EffectParameter ShadowColor, ShadowOffset, ShadowMipBias, ShadowedTopMipBias, LightmapUVOffset;
         public readonly EffectParameter Time, FrameIndex, DitherStrength;
@@ -421,11 +421,11 @@ namespace Squared.Render {
             }
 
             BitmapTextureSize = this["BitmapTextureSize"];
-            HalfTexel = this["HalfTexel"];
+            BitmapTexelSize = this["BitmapTexelSize"];
             BitmapTextureSize2 = this["BitmapTextureSize2"];
             BitmapTraits = this["BitmapTraits"];
             BitmapTraits2 = this["BitmapTraits2"];
-            HalfTexel2 = this["HalfTexel2"];
+            BitmapTexelSize2 = this["BitmapTexelSize2"];
             Time = this["Time"];
             FrameIndex = this["FrameIndex"];
             ShadowColor = this["GlobalShadowColor"];

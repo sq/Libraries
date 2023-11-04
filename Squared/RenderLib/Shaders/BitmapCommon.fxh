@@ -14,7 +14,7 @@ float4 TransformPosition (float4 position, bool unused) {
 
 uniform const float2 BitmapTextureSize, BitmapTextureSize2;
 uniform const float4 BitmapTraits, BitmapTraits2;
-uniform const float2 HalfTexel, HalfTexel2;
+uniform const float2 BitmapTexelSize, BitmapTexelSize2;
 
 Texture2D BitmapTexture : register(t0);
 
@@ -180,30 +180,29 @@ void GenericVertexShader (
 
 // FIXME: region is unused
 float AutoClampAlpha1 (
-    in float value, in float2 uv, in float4 region, in float2 halfTexel, in bool active
+    in float value, in float2 uv, in float4 region, in float2 texelSize, in bool active
 ) {
     if (!active)
         return value;
     // Compute how far out the sample point is from the edges of the texture, then scale it down to
     //  0 alpha as it travels far enough away.
-    // FIXME: Should this be half a texel instead of a full texel?
-    float2 invHalfTexel = rcp(halfTexel * 2);
+    float2 invTexelSize = rcp(texelSize);
     float2 tl = -min(uv, 0), br = max(uv, 1) - 1;
-    float2 a = 1 - saturate(max(tl * invHalfTexel, br * invHalfTexel));
+    float2 a = 1 - saturate(max(tl * invTexelSize, br * invTexelSize));
     return value * min(a.x, a.y);
 }
 
 // FIXME: region is unused
 float4 AutoClampAlpha4 (
-    in float4 value, in float2 uv, in float4 region, in float2 halfTexel, in bool active
+    in float4 value, in float2 uv, in float4 region, in float2 texelSize, in bool active
 ) {
     if (!active)
         return value;
     // Compute how far out the sample point is from the edges of the texture, then scale it down to
     //  0 alpha as it travels far enough away.
     // FIXME: Should this be half a texel instead of a full texel?
-    float2 invHalfTexel = rcp(halfTexel * 2);
+    float2 invTexelSize = rcp(texelSize);
     float2 tl = -min(uv, 0), br = max(uv, 1) - 1;
-    float2 a = 1 - saturate(max(tl * invHalfTexel, br * invHalfTexel));
+    float2 a = 1 - saturate(max(tl * invTexelSize, br * invTexelSize));
     return value * min(a.x, a.y);
 }

@@ -63,7 +63,7 @@ float tapA(
     // FIXME: Use extract value so this works with single channel textures
     // HACK: We can't use tex2dbias here because we're inside a loop and it forces it to unroll
     float4 texColor = tex2Dlod(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, mipBias));
-    return AutoClampAlpha1(ExtractMask(texColor, BitmapTraits), texCoord, texRgn, HalfTexel, TransparentExterior);
+    return AutoClampAlpha1(ExtractMask(texColor, BitmapTraits), texCoord, texRgn, BitmapTexelSize, TransparentExterior);
 }
 
 float4 tap(
@@ -142,7 +142,7 @@ void HorizontalGaussianBlurPixelShader(
     out float4 result : COLOR0
 ) {
     float4 centerTap = tap(texCoord, texRgn);
-    float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(TapSpacingFactor, 0), texCoord, texRgn);
+    float4 sum = gaussianBlur1D(centerTap, BitmapTexelSize * float2(TapSpacingFactor, 0), texCoord, texRgn);
     result = psEpilogue(sum * InverseTapDivisorsAndSigma.x, multiplyColor, addColor);
 }
 
@@ -154,7 +154,7 @@ void VerticalGaussianBlurPixelShader(
     out float4 result : COLOR0
 ) {
     float4 centerTap = tap(texCoord, texRgn);
-    float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(0, TapSpacingFactor), texCoord, texRgn);
+    float4 sum = gaussianBlur1D(centerTap, BitmapTexelSize * float2(0, TapSpacingFactor), texCoord, texRgn);
     result = psEpilogue(sum * InverseTapDivisorsAndSigma.x, multiplyColor, addColor);
 }
 
@@ -165,7 +165,8 @@ void RadialGaussianBlurPixelShader(
     in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
-    float2 innerStepSize = HalfTexel * float2(TapSpacingFactor, 0), outerStepSize = HalfTexel * float2(0, TapSpacingFactor);
+    float2 innerStepSize = BitmapTexelSize * float2(TapSpacingFactor, 0), 
+        outerStepSize = BitmapTexelSize * float2(0, TapSpacingFactor);
 
     float4 centerTap = tap(texCoord, texRgn);
     float4 centerValue = gaussianBlur1D(centerTap, innerStepSize, texCoord, texRgn);
@@ -193,7 +194,8 @@ void RadialMaskSofteningPixelShader(
     in float4 params : COLOR2,
     out float4 result : COLOR0
 ) {
-    float2 innerStepSize = HalfTexel * float2(TapSpacingFactor, 0), outerStepSize = HalfTexel * float2(0, TapSpacingFactor);
+    float2 innerStepSize = BitmapTexelSize * float2(TapSpacingFactor, 0), 
+        outerStepSize = BitmapTexelSize * float2(0, TapSpacingFactor);
 
     float4 traits = BitmapTraits;
     bool needPremul = PremultiplyTexture || (traits.z >= 1) || (traits.w >= ALPHA_MODE_BC);
@@ -255,9 +257,10 @@ void GaussianOutlinedPixelShader(
     // TODO: Factor in the mip bias as well
     float mip = computeMip(texCoord * BitmapTextureSize.xy);
     float spacingFactor = TapSpacingFactor * clamp(mip + 1.5, 1, 8);
-    float2 innerStepSize = HalfTexel * float2(spacingFactor, 0), outerStepSize = HalfTexel * float2(0, spacingFactor);
+    float2 innerStepSize = BitmapTexelSize * float2(spacingFactor, 0), 
+        outerStepSize = BitmapTexelSize * float2(0, spacingFactor);
 
-    texCoord -= ShadowOffset * HalfTexel * 2;
+    texCoord -= ShadowOffset * BitmapTexelSize;
 
     // FIXME: Why is this here and implicitly truncating?
     float centerTap = (length(ShadowOffset) <= 0.001) ? ExtractMask(texColor, traits) : tap(texCoord, texRgn);

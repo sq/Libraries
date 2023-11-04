@@ -289,8 +289,8 @@ namespace Squared.Render {
             public readonly ISoftwareBuffer SoftwareBuffer;
             public readonly TextureSet TextureSet;
 
-            public readonly Vector2 Texture1Size, Texture1HalfTexel;
-            public readonly Vector2 Texture2Size, Texture2HalfTexel;
+            public readonly Vector2 Texture1Size, Texture1TexelSize;
+            public readonly Vector2 Texture2Size, Texture2TexelSize;
             public readonly Vector4 Texture1Traits, Texture2Traits;
 
             public readonly int LocalVertexOffset;
@@ -321,23 +321,22 @@ namespace Squared.Render {
                 var tex2 = textureSet.Texture2.GetInstance(textureCache);
                 if (tex1 == null) {
                     Texture1Size = Texture2Size = default;
-                    Texture1HalfTexel = Texture2HalfTexel = default;
+                    Texture1TexelSize = Texture2TexelSize = default;
                     Texture1Traits = Texture2Traits = default;
                     Invalid = true;
                     return;
                 }
 
                 Texture1Size = new Vector2(tex1.Width, tex1.Height);
-                // FIXME: Rename this to TexelSize
-                Texture1HalfTexel = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
+                Texture1TexelSize = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
                 Texture1Traits = Evil.TextureUtils.GetTraits(tex1.Format);
 
                 if (textureSet.Texture2.IsInitialized) {
                     Texture2Size = new Vector2(tex2.Width, tex2.Height);
-                    Texture2HalfTexel = new Vector2(1.0f / Texture2Size.X, 1.0f / Texture2Size.Y);
+                    Texture2TexelSize = new Vector2(1.0f / Texture2Size.X, 1.0f / Texture2Size.Y);
                     Texture2Traits = Evil.TextureUtils.GetTraits(tex2.Format);
                 } else {
-                    Texture2HalfTexel = Texture2Size = Vector2.Zero;
+                    Texture2TexelSize = Texture2Size = Vector2.Zero;
                     Texture2Traits = default;
                 }
 
@@ -681,8 +680,8 @@ namespace Squared.Render {
 
                 cnbs.Parameters.BitmapTextureSize?.SetValue(nb.Texture1Size);
                 cnbs.Parameters.BitmapTextureSize2?.SetValue(nb.Texture2Size);
-                cnbs.Parameters.HalfTexel?.SetValue(nb.Texture1HalfTexel);
-                cnbs.Parameters.HalfTexel2?.SetValue(nb.Texture2HalfTexel);
+                cnbs.Parameters.BitmapTexelSize?.SetValue(nb.Texture1TexelSize);
+                cnbs.Parameters.BitmapTexelSize2?.SetValue(nb.Texture2TexelSize);
                 cnbs.Parameters.BitmapTraits?.SetValue(nb.Texture1Traits);
                 cnbs.Parameters.BitmapTraits2?.SetValue(nb.Texture2Traits);
             }

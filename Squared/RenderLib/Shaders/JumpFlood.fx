@@ -21,7 +21,7 @@ float tap (float2 texCoord, float4 texRgn) {
 float2 calculateNormal(
     float2 texCoord, float4 texRgn
 ) {
-    float3 spacing = float3(HalfTexel, 0);
+    float3 spacing = float3(BitmapTexelSize, 0);
     float epsilon = 0.001;
 
     float a = tap(texCoord - spacing.xz, texRgn), b = tap(texCoord + spacing.xz, texRgn),

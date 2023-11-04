@@ -102,7 +102,7 @@ void ShadowedPixelShader (
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    float2 shadowTexCoord = clamp2(texCoord - (ShadowOffset * HalfTexel * 2), texRgn.xy, texRgn.zw);
+    float2 shadowTexCoord = clamp2(texCoord - (ShadowOffset * BitmapTexelSize), texRgn.xy, texRgn.zw);
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
     float4 traits = BitmapTraits;
     if ((shadowColorIn.a < 0) || PremultiplyTexture)
@@ -140,7 +140,7 @@ void OutlinedPixelShader(
     shadowColorIn.a = abs(shadowColorIn.a);
 
     float shadowAlpha = texColor.a;
-    float2 offset = (ShadowOffset * HalfTexel * 2);
+    float2 offset = (ShadowOffset * BitmapTexelSize);
     // [unroll]
     for (int i = 0; i < 4; i++) {
         float x = (i % 2) == 0 ? 1 : -1,
@@ -194,12 +194,12 @@ float4 over(float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return top + (bottom * (1 - top.a));
 }
 
-float distanceTapEpilogue(float2 uv, float2 coord, float tap, float2 halfTexel) {
+float distanceTapEpilogue(float2 uv, float2 coord, float tap, float2 texelSize) {
     // For taps outside the texture region, increase the length artificially
     // This allows you to expand the bounds of your image and set TransparentExterior to give
     //  it a satisfactory border even if it lacks whitespace around the outside
     float2 clampedDistancePx = -min(coord, 0) + (max(coord, 1) - 1);
-    clampedDistancePx /= halfTexel;
+    clampedDistancePx /= texelSize;
     // HACK: Ensure that the input tap isn't negative since we know by definition exterior texels can never
     //  be 'inside' the image represented by the distance field, no matter what the corner texel says
     tap = max(0, tap) + length(clampedDistancePx);
@@ -209,13 +209,13 @@ float distanceTapEpilogue(float2 uv, float2 coord, float tap, float2 halfTexel) 
 float distanceTap(float2 coord, float4 texRgn, float bias) {
     float2 uv = clamp2(coord, texRgn.xy, texRgn.zw);
     float tap = tex2Dbias(TextureSampler, float4(uv, 0, bias)).r;
-    return distanceTapEpilogue(uv, coord, tap, HalfTexel);
+    return distanceTapEpilogue(uv, coord, tap, BitmapTexelSize);
 }
 
 float distanceTap2(float2 coord, float4 texRgn, float bias) {
     float2 uv = clamp2(coord, texRgn.xy, texRgn.zw);
     float tap = tex2Dbias(TextureSampler2, float4(uv, 0, bias)).r;
-    return distanceTapEpilogue(uv, coord, tap, HalfTexel2);
+    return distanceTapEpilogue(uv, coord, tap, BitmapTexelSize2);
 }
 
 float computeMip(in float2 texCoordPx) {
@@ -236,12 +236,12 @@ void DistanceFieldTextPixelShader(
     addColor.a = 0;
     shadowColorIn.a = abs(shadowColorIn.a);
 
-    float3 step = float3(HalfTexel * 1, 0);
+    float3 step = float3(BitmapTexelSize, 0);
     // HACK: Use the mip value as an approximation of how much we're being scaled down. If we're being scaled down,
     //  we need to adjust the distance parameters appropriately to maintain smooth edges because the size of a distance
     //  field pixel stays fixed while the size of a screen pixel changes.
     float bias = -0.5,
-        mip = computeMip(texCoord / HalfTexel), 
+        mip = computeMip(texCoord / BitmapTexelSize),
         effectiveScale = TextDistanceScaleOffsetAndPower.x / (1 + abs(mip)),
         effectiveOffset = TextDistanceScaleOffsetAndPower.y; // FIXME: Scale the offset too?
     // HACK: 5 tap averaging because the SDF may be slightly inaccurate, and not at full pixel offsets
@@ -256,7 +256,7 @@ void DistanceFieldTextPixelShader(
     overColor += (addColor * overColor.a);
 
     if (abs(OutlineRadiusSoftnessAndPower.x) + abs(OutlineRadiusSoftnessAndPower.y) > 0) {
-        float2 offset = (ShadowOffset * HalfTexel * 2);
+        float2 offset = (ShadowOffset * BitmapTexelSize);
         // HACK: 5 tap averaging because the SDF may be slightly inaccurate, and not at full pixel offsets
         float shadowDistance = distanceTap(texCoord + offset, texRgn, 0) +
             distanceTap(texCoord + offset - step.xz, texRgn, 0) +
@@ -310,12 +310,12 @@ void DistanceFieldOutlinedPixelShader(
     if ((shadowColorIn.a < 0) || PremultiplyTexture)
         traits.z = 1;
     texColor = ExtractRgba(texColor, traits);
-    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, HalfTexel, TransparentExterior);
+    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
     shadowColorIn.a = abs(shadowColorIn.a);
 
-    float2 offset = (ShadowOffset * HalfTexel2 * 2);
+    float2 offset = (ShadowOffset * BitmapTexelSize2);
     // HACK: 5 tap averaging because the SDF may be slightly inaccurate, and not at full pixel offsets
-    float3 step = float3(HalfTexel2 * 1, 0);
+    float3 step = float3(BitmapTexelSize2, 0);
     float distance = distanceTap2(texCoord2 + offset, texRgn2, 0) + 
         distanceTap2(texCoord2 + offset - step.xz, texRgn2, 0) +
         distanceTap2(texCoord2 + offset + step.zy, texRgn2, 0) +

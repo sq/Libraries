@@ -1504,7 +1504,7 @@ namespace Squared.Render {
         public Matrix    ProjectionMatrix;
         public Matrix    ModelViewMatrix;
         public Vector2   BitmapTextureSize;
-        public Vector2   HalfTexel;
+        public Vector2   TexelSize;
         public Texture2D BitmapTexture;
         public Texture2D SecondTexture;
         public Vector4   ShadowColor;
