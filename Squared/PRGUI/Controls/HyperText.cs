@@ -15,7 +15,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public delegate AbstractTooltipContent GetTooltipForMarkedStringHandler (HyperText control, AbstractString text, string id);
+    public delegate AbstractTooltipContent GetTooltipForMarkedStringHandler (HyperText control, AbstractString text, AbstractString id);
 
     public class HyperText : StaticText, IControlContainer, IControlEventFilter {
         public Action<HyperText, HyperTextHotspot> OnHotSpotClicked;
@@ -174,7 +174,7 @@ namespace Squared.PRGUI.Controls {
 
     public class HyperTextHotspot : Control, ICustomTooltipTarget, IReadingTarget, IPartiallyIntangibleControl {
         public AbstractString MarkedString;
-        public string MarkedID;
+        public AbstractString MarkedID;
         public AbstractString ActualText;
         public Vector2 RectBase;
         public DenseList<Bounds> Rects;

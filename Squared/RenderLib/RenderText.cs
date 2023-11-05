@@ -110,8 +110,7 @@ namespace Squared.Render.Text {
         }
 
         // Inputs
-        public AbstractString MarkedString, MarkedStringActualText;
-        public string MarkedID;
+        public AbstractString MarkedString, MarkedStringActualText, MarkedID;
         public int FirstCharacterIndex, LastCharacterIndex;
 
         // Outputs
@@ -138,7 +137,7 @@ namespace Squared.Render.Text {
         }
 
         public override string ToString () {
-            return $"{MarkedID ?? "marker"} [{FirstCharacterIndex} - {LastCharacterIndex}] -> [{FirstDrawCallIndex} - {LastDrawCallIndex}] {Bounds.FirstOrDefault()}";
+            return $"{(MarkedID.IsNull ? "marker" : MarkedID)} [{FirstCharacterIndex} - {LastCharacterIndex}] -> [{FirstDrawCallIndex} - {LastDrawCallIndex}] {Bounds.FirstOrDefault()}";
         }
     }
 

@@ -775,6 +775,7 @@ namespace Squared.Render.Text {
                                     var initialIndex = layoutEngine.currentCharacterIndex;
                                     var m = new LayoutMarker(initialIndex, initialIndex + l - 1) {
                                         MarkedString = bracketed.Value,
+                                        // FIXME: Change this to AbstractString? Will reduce allocations significantly
                                         MarkedID = id.ToString(),
                                         MarkedStringActualText = astr
                                     };
