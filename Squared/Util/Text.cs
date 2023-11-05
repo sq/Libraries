@@ -450,6 +450,50 @@ namespace Squared.Util.Text {
     }
 
     public readonly struct AbstractString : IEquatable<AbstractString> {
+        // Used by floatscan
+        internal readonly struct Pointer {
+            public readonly AbstractString String;
+            public readonly int Offset;
+
+            public Pointer (AbstractString str, int offset = 0) {
+                String = str;
+                Offset = offset;
+            }
+
+            public Pointer Next (out char c) {
+                if (InBounds)
+                    c = String[Offset];
+                else
+                    c = '\0';
+                return new Pointer(String, Offset + 1);
+            }
+
+            public Pointer Next (out uint codepoint) {
+                if (!InBounds) {
+                    codepoint = 0;
+                    return new Pointer(String, Offset + 1);
+                }
+
+                int o2 = Offset + 1;
+                char ch1 = String[Offset],
+                    ch2 = (o2 < String.Length) ? String[o2] : '\0';
+                if (char.IsSurrogatePair(ch1, ch2)) {
+                    codepoint = (uint)char.ConvertToUtf32(ch1, ch2);
+                    return new Pointer(String, Offset + 2);
+                } else {
+                    codepoint = ch1;
+                    return new Pointer(String, Offset + 1);
+                }
+            }
+
+            public bool InBounds => (Offset >= 0) && (Offset < String.Length);
+            public char Value => String[Offset];
+
+            public static implicit operator bool (Pointer p) => p.InBounds && (p.String != default);
+            public static Pointer operator + (Pointer lhs, int delta) => new Pointer(lhs.String, lhs.Offset + delta);
+            public static Pointer operator - (Pointer lhs, int delta) => new Pointer(lhs.String, lhs.Offset - delta);
+        }
+
         public static readonly AbstractString Empty;
 
         // NOTE: We seed all these hash providers to 0 to ensure we get the same hash no matter what thread we're on
@@ -870,6 +914,18 @@ namespace Squared.Util.Text {
                 output.Append(ArraySegment.Array, ArraySegment.Offset, ArraySegment.Count);
             else
                 throw new ArgumentNullException("this");
+        }
+
+        public bool TryParse (out float result, int offset = 0) {
+            var ptr = new Pointer(this, offset);
+            result = (float)FloatScan.__floatscan(ref ptr, 0, true, out var ok);
+            return ok;
+        }
+
+        public bool TryParse (out double result, int offset = 0) {
+            var ptr = new Pointer(this, offset);
+            result = FloatScan.__floatscan(ref ptr, 1, true, out var ok);
+            return ok;
         }
     }
 

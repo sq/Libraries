@@ -61,6 +61,7 @@
     <Compile Include="DenseList.cs" />
     <Compile Include="EmbeddedDLLLoader.cs" />
     <Compile Include="FaultInjector.cs" />
+    <Compile Include="FloatScan.cs" />
     <Compile Include="IndexedSort.cs" />
     <Compile Include="CLRSort.cs" />
     <Compile Include="DeclarativeSort.cs" />

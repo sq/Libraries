@@ -704,19 +704,19 @@ namespace Squared.Render.Text {
                                     layoutEngine.overrideColor = ParseColor(value) ?? state.InitialColor;
                                     break;
                                 case RichRuleId.Scale:
-                                    if (!float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out float newScale))
+                                    if (!value.TryParse(out float newScale))
                                         layoutEngine.scale = state.InitialScale;
                                     else
                                         layoutEngine.scale = state.InitialScale * newScale;
                                     break;
                                 case RichRuleId.Spacing:
-                                    if (!float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out float newSpacing))
+                                    if (!value.TryParse(out float newSpacing))
                                         layoutEngine.spacing = state.InitialSpacing;
                                     else
                                         layoutEngine.spacing = state.InitialSpacing * newSpacing;
                                     break;
                                 case RichRuleId.LineSpacing:
-                                    if (!float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out float newLineSpacing))
+                                    if (!value.TryParse(out float newLineSpacing))
                                         layoutEngine.additionalLineSpacing = state.InitialLineSpacing;
                                     else
                                         layoutEngine.additionalLineSpacing = newLineSpacing;
