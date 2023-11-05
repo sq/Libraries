@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Squared.Util.Text;
 
@@ -81,6 +83,7 @@ namespace Squared.Util {
             Assert.AreEqual(new Pair<int>(24, 29), Unicode.FindWordBoundary(str, 25));
         }
 
+        // Test cases from RealParserTestsBase.cs in dotnet/runtime
         static readonly ValueTuple<string, ulong>[] FloatInlineData = new[] {
         new ValueTuple<string, ulong>("0.0", 0x00000000),
         // Verify small and large exactly representable integers:
@@ -198,8 +201,27 @@ namespace Squared.Util {
                     "00000000000000000000000000000000000000000000000000000000000000000000" +
                     "00000000000000000000000000000000000000000000000000000000000000000000" +
                     "00000000000000000000000040000", 0x7F800000),
+                    new ValueTuple<string, ulong>("-0", 0x80000000u),
+                    new ValueTuple<string, ulong>("-0.0", 0x80000000u),
+                    new ValueTuple<string, ulong>("-infinity", 0xFF800000u),
+                    new ValueTuple<string, ulong>("-iNfInItY", 0xFF800000u),
+                    new ValueTuple<string, ulong>("-INFINITY", 0xFF800000u),
+                    new ValueTuple<string, ulong>("infinity", 0x7F800000),
+                    new ValueTuple<string, ulong>("InFiNiTy", 0x7F800000),
+                    new ValueTuple<string, ulong>("INFINITY", 0x7F800000),
+                    new ValueTuple<string, ulong>("+infinity", 0x7F800000),
+                    new ValueTuple<string, ulong>("+InFiNiTy", 0x7F800000),
+                    new ValueTuple<string, ulong>("+INFINITY", 0x7F800000),
+                    new ValueTuple<string, ulong>("-nan", 0xFFC00000u),
+                    new ValueTuple<string, ulong>("-nAn", 0xFFC00000u),
+                    new ValueTuple<string, ulong>("-NAN", 0xFFC00000u),
+                    new ValueTuple<string, ulong>("nan", 0xFFC00000u),
+                    new ValueTuple<string, ulong>("Nan", 0xFFC00000u),
+                    new ValueTuple<string, ulong>("NAN", 0xFFC00000u),
+                    new ValueTuple<string, ulong>("+nan", 0xFFC00000u),
+                    new ValueTuple<string, ulong>("+NaN", 0xFFC00000u),
+                    new ValueTuple<string, ulong>("+NAN", 0xFFC00000u),
         };
-
 
         [Test]
         public void TryParseFloat ([ValueSource("FloatInlineData")] ValueTuple<string, ulong> pair) {
@@ -208,6 +230,95 @@ namespace Squared.Util {
             var astr = new AbstractString(pair.Item1);
             Assert.True(astr.TryParse(out float parsed));
             Assert.AreEqual(expected, parsed);
+        }
+
+        [Test]
+        public void TryParseFloat_SpecificRanges () {
+            var tups = new Pair<uint>[] {
+                // Verify the smallest denormals:
+                new Pair<uint>(0x00000001, 0x00000100),
+                // Verify the largest denormals and the smallest normals:
+                new Pair<uint>(0x007fff00, 0x00800100),
+                // Verify the largest normals:
+                new Pair<uint>(0x7f7fff00, 0x7f800000),
+            };
+
+            bool ok = true;
+
+            foreach (var tup in tups) {
+                for (uint i = tup.First; i != tup.Second; i++)
+                    ok = TestRoundTripSingle(i) && ok;
+
+                ok = TestRoundTripSingle((float)int.MaxValue) && ok;
+                ok = TestRoundTripSingle((float)uint.MaxValue) && ok;
+            }
+
+            Assert.IsTrue(ok);
+        }
+
+        // FIXME: "1E-38" and "1E+28" are both broken. I don't know why. I blame musl.
+        [Test]
+        public void TryParseFloat_SpecificPowers () {
+            var tups = new ValueTuple<int, int, int>[] {
+                // Verify all representable powers of two and nearby values:
+                new ValueTuple<int, int, int>(2, -1022, 1024),
+                // Verify all representable powers of ten and nearby values:
+                new ValueTuple<int, int, int>(10, -50, 41),
+            };
+
+            bool ok = true;
+
+            foreach (var tup in tups) {
+                for (int i = tup.Item2; i != tup.Item3; ++i) {
+                    float f = (float)Math.Pow(tup.Item1, i);
+                    uint bits = BitConverter.ToUInt32(BitConverter.GetBytes(f), 0);
+
+                    ok = TestRoundTripSingle(bits - 1) && ok;
+                    ok = TestRoundTripSingle(bits) && ok;
+                    ok = TestRoundTripSingle(bits + 1) && ok;
+                }
+            }
+
+            Assert.IsTrue(ok);
+        }
+
+        bool CheckOneSingle (string s, float expected) {
+            var astr = new AbstractString(s);
+            if (!astr.TryParse(out float result)) {
+                Console.Error.WriteLine("Failed to parse: " + s);
+                return false;
+            }
+            if (expected != result) {
+                // HACK: We're okay with very minor precision differences because this is a different algorithm,
+                //  so if the parsed value round-trips back to the input we should be fine.
+                if (result.ToString(CultureInfo.InvariantCulture) == s)
+                    return true;
+
+                Console.Error.WriteLine("Expected '{0}' to parse to {1} but it was {2} (delta = {3})", s, expected, result, expected - result);
+                return false;
+            }
+            // Console.Out.WriteLine("ok: {0} -> {1}", s, expected);
+            return true;
+        }
+
+        private bool TestRoundTripSingle(float d)
+        {
+            string s = d.ToString(CultureInfo.InvariantCulture);
+            return CheckOneSingle(s, d);
+        }
+
+        private bool TestRoundTripSingle(uint bits)
+        {
+            float d = BitConverter.ToSingle(BitConverter.GetBytes(bits), 0);
+
+            if (Arithmetic.IsFinite(d))
+            {
+                string s = d.ToString(CultureInfo.InvariantCulture);
+                return CheckOneSingle(s, bits);
+            }
+
+            // HACK
+            return true;
         }
     }
 }
