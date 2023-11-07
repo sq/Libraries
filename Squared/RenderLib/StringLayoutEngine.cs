@@ -813,6 +813,7 @@ namespace Squared.Render.Text {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool ComputeSuppress (bool? overrideSuppress) {
             if (suppressUntilNextLine)
                 return true;
@@ -914,12 +915,16 @@ namespace Squared.Render.Text {
                         glyph.WidthIncludingBearing + glyph.CharacterSpacing
                     ) * effectiveScale);
 
-                if (x >= currentLineBreakAtX) {
-                    if (
-                        !deadGlyph &&
-                        (_colIndex > 0) &&
-                        !isWhiteSpace
-                    )
+                if ((x >= currentLineBreakAtX) && (_colIndex > 0)) {
+                    if (deadGlyph || isWhiteSpace) {
+                        // HACK: We're wrapping a dead glyph or whitespace.
+                        // We want to wrap and then suppress it because wrapping a space or tab
+                        //  shouldn't actually indent the next line (it just looks gross if it does).
+                        // The alternative (and old behavior) is to not wrap whitespace,
+                        //  but that produces layouts wider than the break point (which is awful).
+                        // The suppression is done further below.
+                        forcedWrap = true;
+                    } else
                         forcedWrap = true;
                 }
 
@@ -928,6 +933,12 @@ namespace Squared.Render.Text {
 
                 if (lineBreak)
                     PerformLineBreak(forcedWrap);
+
+                // We performed a wrap for a whitespace character. Don't advance x or do anything else.
+                // We want to bail out here *even* if the wrap operation did not produce a line break
+                //  (which will happen if the line break position is almost exactly the same as x)
+                if (forcedWrap && isWhiteSpace)
+                    continue;
 
                 // HACK: Recompute after wrapping
                 x =
@@ -963,7 +974,6 @@ namespace Squared.Render.Text {
                     );
 
                 var testBounds = lastCharacterBounds;
-                var centerX = (characterOffset.X + scaledGlyphSize.X) * 0.5f;
                 // FIXME: boxes
 
                 ProcessHitTests(ref testBounds, testBounds.Center.X);
@@ -1226,7 +1236,10 @@ namespace Squared.Render.Text {
                 // FIXME: If boxes shrink the current line too far, we want to just keep wrapping until we have enough room
                 //  instead of giving up
                 (currentWordSize <= currentLineBreakAtX) &&
-                (wordStartColumn > 0)
+                (wordStartColumn > 0) &&
+                // The first word could be big enough to trigger a wrap, in which case we need to make sure that
+                //  it's actually possible to word wrap it (pro tip: it's not)
+                (wordStartWritePosition >= 0)
             ) {
                 if (lineLimit.HasValue)
                     lineLimit--;
@@ -1256,12 +1269,18 @@ namespace Squared.Render.Text {
 
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
                     suppress = true;
+            } else if (wordStartWritePosition < 0) {
+                // This means we haven't actually rendered any glyphs yet, so there's no reason to start suppressing
+                //  overflow (there is no overflow yet). Without this elseif branch, text would get truncated when
+                //  character wrapping is disabled and the desired width exactly aligns with a whitespace wrap point.
+                ;
             } else if (hideOverflow) {
                 // If wrapping is disabled but we've hit the line break boundary, we want to suppress glyphs from appearing
                 //  until the beginning of the next line (i.e. hard line break), but continue performing layout
                 suppressUntilNextLine = true;
             } else {
                 // Just overflow. Hooray!
+                ;
             }
         }
 

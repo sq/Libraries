@@ -484,7 +484,7 @@ namespace Squared.PRGUI.Controls {
             var decorations = GetDecorator(decorationProvider);
             ComputeEffectiveSpacing(ref context, decorationProvider, decorations, out Margins computedPadding, out Margins computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
-            UpdateLineBreak(ref context, decorations, MostRecentWidth, ref computedPadding, ref computedMargins);
+            UpdateLineBreak(ref context, decorations, MostRecentWidth - computedPadding.X, ref computedPadding, ref computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
             ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)

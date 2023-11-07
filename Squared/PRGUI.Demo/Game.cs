@@ -782,6 +782,7 @@ namespace PRGUI.Demo {
                         TextAlignment = Squared.Render.Text.HorizontalAlignment.Center,
                         Text = "Revenge Capacitor",
                     },
+                    new UserResizeWidget()
                 },
             };
 
