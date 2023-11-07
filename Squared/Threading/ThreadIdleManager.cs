@@ -23,10 +23,11 @@ namespace Squared.Threading {
         /// <returns>true if the thread is allowed to begin running, false if it has been disposed</returns>
         public bool BeginRunning () {
             // FIXME: Is this right?
-            Event.Reset();
             var previousState = Interlocked.Exchange(ref RunState, RunState_Running);
             if (previousState == RunState_Disposed)
                 Volatile.Write(ref RunState, RunState_Disposed);
+            if (previousState != RunState_Running)
+                Event.Reset();
             return (previousState != RunState_Disposed);
         }
 

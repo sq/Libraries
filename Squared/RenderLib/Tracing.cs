@@ -279,6 +279,34 @@ namespace Squared.Render.Tracing {
         public static void BeforeFrame () {
         }
 
+        public static void Marker<T1> (IBatchContainer container, int layer, string format, T1 value1) {
+            if (!EnableTracing)
+                return;
+
+            Marker(container, layer, String.Format(format, value1));
+        }
+
+        public static void Marker<T1, T2> (IBatchContainer container, int layer, string format, T1 value1, T2 value2) {
+            if (!EnableTracing)
+                return;
+
+            Marker(container, layer, String.Format(format, value1, value2));
+        }
+
+        public static void Marker<T1, T2, T3> (IBatchContainer container, int layer, string format, T1 value1, T2 value2, T3 value3) {
+            if (!EnableTracing)
+                return;
+
+            Marker(container, layer, String.Format(format, value1, value2, value3));
+        }
+
+        public static void Marker<T1, T2, T3, T4> (IBatchContainer container, int layer, string format, T1 value1, T2 value2, T3 value3, T4 value4) {
+            if (!EnableTracing)
+                return;
+
+            Marker(container, layer, String.Format(format, value1, value2, value3, value4));
+        }
+
         public static void Marker (IBatchContainer container, int layer, string format, params object[] values) {
             if (!EnableTracing)
                 return;
@@ -292,6 +320,34 @@ namespace Squared.Render.Tracing {
 
             var batch = new MarkerBatch(layer, name);
             container.Add(batch);
+        }
+
+        public static void ImmediateMarker<T1> (Microsoft.Xna.Framework.Graphics.GraphicsDevice device, string format, T1 value1) {
+            if (!EnableTracing)
+                return;
+
+            ImmediateMarker(device, String.Format(format, value1));
+        }
+
+        public static void ImmediateMarker<T1, T2> (Microsoft.Xna.Framework.Graphics.GraphicsDevice device, string format, T1 value1, T2 value2) {
+            if (!EnableTracing)
+                return;
+
+            ImmediateMarker(device, String.Format(format, value1, value2));
+        }
+
+        public static void ImmediateMarker<T1, T2, T3> (Microsoft.Xna.Framework.Graphics.GraphicsDevice device, string format, T1 value1, T2 value2, T3 value3) {
+            if (!EnableTracing)
+                return;
+
+            ImmediateMarker(device, String.Format(format, value1, value2, value3));
+        }
+
+        public static void ImmediateMarker<T1, T2, T3, T4> (Microsoft.Xna.Framework.Graphics.GraphicsDevice device, string format, T1 value1, T2 value2, T3 value3, T4 value4) {
+            if (!EnableTracing)
+                return;
+
+            ImmediateMarker(device, String.Format(format, value1, value2, value3, value4));
         }
 
         public static void ImmediateMarker (Microsoft.Xna.Framework.Graphics.GraphicsDevice device, string format, params object[] values) {

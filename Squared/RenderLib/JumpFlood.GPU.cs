@@ -11,6 +11,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.CoreCLR;
 using Squared.Render.Convenience;
+using Squared.Render.Tracing;
 using Squared.Threading;
 using Squared.Util;
 
@@ -94,6 +95,7 @@ namespace Squared.Render.DistanceField {
             group.Parameters.Clear();
 
             var initGroup = group.ForRenderTarget(scratchSurfaces.InBuffer, viewTransform: vt, layer: 0);
+            RenderTrace.Marker(initGroup.Container, initGroup.Layer, "JumpFlood {0} -> {1} init", input, output);
             initGroup.Clear(layer: -1, value: new Vector4(MaxDistance, MaxDistance, MaxDistance, 0f));
             var initMaterial = renderer.Materials.JumpFloodInit;
             initGroup.Parameters.Add("Smoothing", smoothingLevel > 0.01f);
@@ -110,6 +112,7 @@ namespace Squared.Render.DistanceField {
             for (int i = 0, stepCount = GetStepCount(output.Width, output.Height); i < stepCount; i++) {
                 result = scratchSurfaces.OutBuffer;
                 var jumpGroup = group.ForRenderTarget(result, viewTransform: vt, layer: i + 1);
+                RenderTrace.Marker(jumpGroup.Container, jumpGroup.Layer, "JumpFlood {0} -> {1} jump #{2}", input, output, i);
 
                 int step = GetStepSize(output.Width, output.Height, i);
                 jumpGroup.Clear(layer: -1, color: new Color(step / 32f, 0, 0, 1f));
@@ -127,6 +130,7 @@ namespace Squared.Render.DistanceField {
             }
 
             var resolveGroup = group.ForRenderTarget(output, viewTransform: ViewTransform.CreateOrthographic(output.Width, output.Height));
+            RenderTrace.Marker(resolveGroup.Container, resolveGroup.Layer, "JumpFlood {0} -> {1} resolve", input, output);
             resolveGroup.Clear(layer: -1, color: Color.Transparent);
             // De-offset the image
             resolveGroup.Draw(result, -Vector2.One, material: renderer.Materials.JumpFloodResolve, layer: 0);
