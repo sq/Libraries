@@ -484,7 +484,7 @@ namespace Squared.PRGUI.Controls {
             var decorations = GetDecorator(decorationProvider);
             ComputeEffectiveSpacing(ref context, decorationProvider, decorations, out Margins computedPadding, out Margins computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
-            UpdateLineBreak(ref context, decorations, null, ref computedPadding, ref computedMargins);
+            UpdateLineBreak(ref context, decorations, MostRecentWidth, ref computedPadding, ref computedMargins);
             ComputeAutoSize(ref context, ref computedPadding, ref computedMargins);
             ref var result = ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
             if (result.IsInvalid)
@@ -892,23 +892,40 @@ namespace Squared.PRGUI.Controls {
         AbstractString Accessibility.IReadingTarget.Text => GetReadingText();
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) => FormatValueInto(sb);
 
-        protected virtual void OnLayoutComplete( ref UIOperationContext context, ref bool relayoutRequested) {
+        protected virtual void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
             if (LayoutKey.IsInvalid)
                 return;
 
-            if (ChangeInternalFlag(StaticTextStateFlags.NeedRelayout, false))
+            if (
+                !context.UIContext.IsPerformingRelayout && 
+                ChangeInternalFlag(StaticTextStateFlags.NeedRelayout, false)
+            )
                 relayoutRequested = true;
 
             ref var result = ref LayoutResult(ref context);
+            var widthDelta = result.Rect.Width - (MostRecentWidth ?? 0);
             if (result.Rect.Width != MostRecentWidth) {
                 MostRecentWidth = result.Rect.Width;
-                // HACK: This ensures that if our width changes, we recompute our justified layout to eliminate
-                //  any gutter on the right side.
-                if (
-                    (TextAlignment >= HorizontalAlignment.JustifyCharacters) &&
-                    Content.ExpandHorizontallyWhenAligning
-                ) {
-                    relayoutRequested = true;
+
+                if (Math.Abs(widthDelta) >= 1f) {
+                    // HACK: This ensures that if our width changes, we recompute our justified layout to eliminate
+                    //  any gutter on the right side.
+                    if (
+                        (
+                            (TextAlignment >= HorizontalAlignment.JustifyCharacters) &&
+                            Content.ExpandHorizontallyWhenAligning
+                        ) || (
+                            (Content.CharacterWrap || Content.WordWrap) && !AutoSizeWidth
+                        )
+                    ) {
+                        // FIXME: Is this right?
+                        ResetAutoSize();
+
+                        if (context.UIContext.IsPerformingRelayout)
+                            SetInternalFlag(StaticTextStateFlags.NeedRelayout, true);
+                        else
+                            relayoutRequested = true;
+                    }
                 }
             }
         }
