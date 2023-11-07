@@ -444,9 +444,14 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        public static bool IsRecursivelyTransparent (Control control, bool includeSelf = true) {
-            if (!control.Visible && includeSelf)
-                return true;
+        public static bool IsRecursivelyTransparent (Control control, bool includeSelf = true, long? includeOpacityAsOfTime = null) {
+            if (includeSelf) {
+                if (!control.Visible)
+                    return true;
+
+                if (includeOpacityAsOfTime.HasValue && (control.Appearance.Opacity.Get(includeOpacityAsOfTime.Value) <= 0))
+                    return true;
+            }
 
             var current = control;
             while (true) {
@@ -459,6 +464,9 @@ namespace Squared.PRGUI {
 
                 current = parent;
                 if (!current.Visible)
+                    return true;
+
+                if (includeOpacityAsOfTime.HasValue && (current.Appearance.Opacity.Get(includeOpacityAsOfTime.Value) <= 0))
                     return true;
             }
         }

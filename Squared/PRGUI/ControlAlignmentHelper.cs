@@ -33,6 +33,8 @@ namespace Squared.PRGUI {
 
         private Vector2 _AlignmentPoint = new Vector2(0.5f, 0.5f), _AnchorPoint = new Vector2(0.5f, 0.5f);
 
+        public bool IsInvalid { get; private set; } = true;
+
         /// <summary>
         /// Configures what point on the control [0 - 1] is aligned onto the anchor point
         /// </summary>
@@ -281,19 +283,22 @@ namespace Squared.PRGUI {
 
             GetParentContentRect(out RectF parentRect);
             var rect = Control.GetRect(applyOffset: false);
+            bool needRelayout = false;
+
             if (rect == default(RectF)) {
+                IsInvalid = true;
                 relayoutRequested = true;
                 return;
             }
 
             if (Anchor != null) {
                 if (Anchor is IAlignedControl iac)
-                    iac.EnsureAligned(ref context, ref relayoutRequested);
+                    iac.EnsureAligned(ref context, ref needRelayout);
 
                 var anchorRect = Anchor.GetRect(displayRect: UseTransformedAnchor);
                 if (anchorRect != _LastAnchorRect) {
                     _LastAnchorRect = anchorRect;
-                    relayoutRequested = true;
+                    needRelayout = true;
                 }
             }
 
@@ -305,7 +310,7 @@ namespace Squared.PRGUI {
                 ((_LastSize != rect.Size) && !WasPositionSetByUser) || 
                 (_LastParentRect != parentRect)
             ) {
-                relayoutRequested = true;
+                needRelayout = true;
             }
             _LastSize = rect.Size;
             _LastParentRect = parentRect;
@@ -313,22 +318,37 @@ namespace Squared.PRGUI {
             if (WasPositionSetByUser) {
                 MostRecentAlignedPosition = null;
 
-                if (DoUpdatePosition(DesiredPosition ?? Control.Layout.FloatingPosition ?? Vector2.Zero, in parentRect, in rect, false))
-                    relayoutRequested = true;
+                if (DoUpdatePosition(
+                    DesiredPosition ?? Control.Layout.FloatingPosition ?? Vector2.Zero, 
+                    in parentRect, in rect, 
+                    false, !context.UIContext.IsPerformingRelayout
+                )) {
+                    needRelayout = true;
+                }
 
                 var availableSpace = (parentRect.Size - rect.Size);
                 if (ComputeNewAlignment)
                     ControlAlignmentPoint = ((Control.Layout.FloatingPosition ?? Vector2.Zero) - parentRect.Position) / availableSpace;
-            } else if (((IsAnimating == null) || !IsAnimating()) && (!relayoutRequested || (Anchor != null))) {
-                relayoutRequested |= Align(ref context, parentRect, rect, true);
+            } else if (((IsAnimating == null) || !IsAnimating()) && (!needRelayout || (Anchor != null))) {
+                needRelayout |= Align(ref context, parentRect, rect, true);
             } else if ((IsLocked == null) || !IsLocked()) {
-                relayoutRequested |= Align(ref context, parentRect, rect, false);
+                needRelayout |= Align(ref context, parentRect, rect, false);
             } else {
                 MostRecentAlignedPosition = null;
             }
+
+            if (needRelayout && context.UIContext.IsPerformingRelayout)
+                IsInvalid = true;
+            else
+                IsInvalid = false;
+
+            relayoutRequested = needRelayout || relayoutRequested;
         }
 
-        private bool DoUpdatePosition (Vector2 newPosition, in RectF parentRect, in RectF rect, bool updateDesiredPosition) {
+        private bool DoUpdatePosition (
+            Vector2 newPosition, in RectF parentRect, in RectF rect, 
+            bool updateDesiredPosition, bool updateFloatingPosition
+        ) {
             if (UpdatePosition != null)
                 return UpdatePosition(newPosition, in parentRect, in rect, updateDesiredPosition);
 
@@ -336,7 +356,9 @@ namespace Squared.PRGUI {
                 // FIXME
                 return false;
 
-            Control.Layout.FloatingPosition = newPosition;
+            if (updateFloatingPosition)
+                Control.Layout.FloatingPosition = newPosition;
+
             return true;
         }
     }
