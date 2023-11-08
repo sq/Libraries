@@ -603,9 +603,9 @@ namespace Squared.Render.Convenience {
 
         public void MakeSubgroup (
             out ImperativeRenderer result, bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
-            string name = null, int? layer = null, ViewTransformModifier viewTransformModifier = null
+            string name = null, int? layer = null, ViewTransformModifier viewTransformModifier = null, bool preserveParameters = false
         ) {
-            CloneInto(out result, true, false);
+            CloneInto(out result, true, false, preserveParameters);
 
             var group = BatchGroup.New(
                 Config.Container, layer ?? Config.Layer, before: before, after: after, userData: userData,
@@ -631,7 +631,7 @@ namespace Squared.Render.Convenience {
             ((BatchGroup)result.Config.Container).SetViewTransform(in viewTransform);
         }
         
-        public void CloneInto (out ImperativeRenderer result, bool nextLayer = true, bool preserveCache = true) {
+        public void CloneInto (out ImperativeRenderer result, bool nextLayer = true, bool preserveCache = true, bool preserveParameters = true) {
 #if !NOSPAN
             // NOTE: Make sure the library builds even if you comment out the SkipInit! If it doesn't,
             //  you missed a field!
@@ -641,12 +641,11 @@ namespace Squared.Render.Convenience {
             else
                 result.Cache = default;
 
-            if (!Parameters.IsEmpty) {
+            if (!Parameters.IsEmpty && preserveParameters) {
                 // We need to ensure that both we and our copy will allocate new storage on write
                 //  so that changes made by one don't accidentally trample on the other
                 Parameters.AllocateNewStorageOnWrite = true;
                 result.Parameters = Parameters;
-                result.Parameters.AllocateNewStorageOnWrite = true;
             } else
                 result.Parameters = default;
 #else
@@ -665,17 +664,17 @@ namespace Squared.Render.Convenience {
                 Config.Layer += 1;
         }
 
-        public ImperativeRenderer Clone (bool nextLayer = true) {
-            CloneInto(out var result, nextLayer, true);
+        public ImperativeRenderer Clone (bool nextLayer = true, bool preserveParameters = true) {
+            CloneInto(out var result, nextLayer, true, preserveParameters);
             return result;
         }
 
         public ImperativeRenderer ForRenderTarget (
             AutoRenderTarget renderTarget, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
             object userData = null, string name = null, int? layer = null, IBatchContainer newContainer = null, 
-            in ViewTransform? viewTransform = null
+            in ViewTransform? viewTransform = null, bool preserveParameters = false
         ) {
-            CloneInto(out var result, true, false);
+            CloneInto(out var result, true, false, preserveParameters);
 
             var group = BatchGroup.ForRenderTarget(
                 newContainer ?? Config.Container, layer ?? Config.Layer, renderTarget, before, after, userData, name: name, 
@@ -694,9 +693,9 @@ namespace Squared.Render.Convenience {
         public ImperativeRenderer ForRenderTarget (
             RenderTarget2D renderTarget, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
             object userData = null, string name = null, int? layer = null, IBatchContainer newContainer = null, 
-            in ViewTransform? viewTransform = null
+            in ViewTransform? viewTransform = null, bool preserveParameters = false
         ) {
-            CloneInto(out var result, true, false);
+            CloneInto(out var result, true, false, preserveParameters);
 
             var group = BatchGroup.ForRenderTarget(
                 newContainer ?? Config.Container, layer ?? Config.Layer, renderTarget, before, after, userData, name: name, 
