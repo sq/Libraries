@@ -641,9 +641,13 @@ namespace Squared.Render.Convenience {
             else
                 result.Cache = default;
 
-            if (!Parameters.IsEmpty)
+            if (!Parameters.IsEmpty) {
+                // We need to ensure that both we and our copy will allocate new storage on write
+                //  so that changes made by one don't accidentally trample on the other
+                Parameters.AllocateNewStorageOnWrite = true;
                 result.Parameters = Parameters;
-            else
+                result.Parameters.AllocateNewStorageOnWrite = true;
+            } else
                 result.Parameters = default;
 #else
             result = default;
@@ -656,8 +660,7 @@ namespace Squared.Render.Convenience {
             result.Config = Config;
             result.Flags = Flags;
             result.NextSortKey = NextSortKey;
-            result.Parameters.AllocateNewStorageOnWrite = true;
-
+            
             if (nextLayer)
                 Config.Layer += 1;
         }

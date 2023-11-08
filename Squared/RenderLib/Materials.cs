@@ -611,6 +611,10 @@ namespace Squared.Render {
 
         private StateFlags State;
         private DenseList<Key> Keys;
+        // TODO: Replace this with a few numbered object slots for references,
+        //  and a big pile of UInt64s to pack primitives into. That will make
+        //  it possible to fit more small parameters (bools, floats) into the
+        //  available space before we need to allocate a backing store
         private DenseList<Value> Values;
 
         public bool AllocateNewStorageOnWrite {

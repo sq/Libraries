@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Graphics.PackedVector;
 using Squared.Game;
 using Squared.Render.Internal;
 using Squared.Render.RasterShape;
@@ -491,7 +492,7 @@ namespace Squared.Render.RasterStroke {
             ListBatch<RasterStrokeDrawCall>.AdjustPoolCapacities(smallItemSizeLimit, largeItemSizeLimit, smallPoolCapacity, largePoolCapacity);
         }
 
-        const int NoiseTextureSize = 256;
+        const int NoiseTextureSize = 128;
 
         protected override void Prepare (PrepareManager manager) {
             var count = _DrawCalls.Count;
@@ -549,25 +550,20 @@ namespace Squared.Render.RasterStroke {
 
             CachedNoiseTexture = null;
             lock (renderManager.CreateResourceLock)
-                result = new Texture2D(renderManager.DeviceManager.Device, NoiseTextureSize, NoiseTextureSize, false, SurfaceFormat.Vector4) {
+                result = new Texture2D(renderManager.DeviceManager.Device, NoiseTextureSize, NoiseTextureSize, false, SurfaceFormat.Rgba64) {
                     Name = "RasterStrokeBatch.CachedNoiseTexture"
                 };
 
             // FIXME: Do this on a worker thread?
             var rng = new CoreCLR.Xoshiro(null);
-            int c = NoiseTextureSize * NoiseTextureSize * 4;
-            var buffer = new float[c];
-            for (int i = 0; i < c; i += 4) {
-                buffer[i] = rng.NextSingle();
-                buffer[i + 1] = rng.NextSingle();
-                buffer[i + 2] = rng.NextSingle();
-                buffer[i + 3] = rng.NextSingle();
-            }
+            int c = NoiseTextureSize * NoiseTextureSize * 2;
+            var buffer = new uint[c];
+            for (int i = 0; i < c; i++)
+                buffer[i] = rng.NextUInt32();
 
             lock (renderManager.UseResourceLock) {
-                fixed (float * pData = buffer) {
-                    result.SetDataPointerEXT(0, null, (IntPtr)pData, c * sizeof(float));
-                }
+                fixed (uint * pData = buffer)
+                    result.SetDataPointerEXT(0, null, (IntPtr)pData, c * sizeof(uint));
             }
 
             Interlocked.CompareExchange(ref CachedNoiseTexture, result, null);
