@@ -567,27 +567,27 @@ namespace Squared.Render.Convenience {
 
         public ImperativeRenderer MakeSubgroup (
             bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
-            string name = null, int? layer = null, ViewTransformModifier viewTransformModifier = null
+            string name = null, int? layer = null, ViewTransformModifier viewTransformModifier = null, bool preserveParameters = false
         ) {
             ImperativeRenderer result;
-            MakeSubgroup(out result, nextLayer, before, after, userData, name, layer, viewTransformModifier);
+            MakeSubgroup(out result, nextLayer, before, after, userData, name, layer, viewTransformModifier, preserveParameters);
             return result;
         }
 
         public ImperativeRenderer MakeSubgroup (
             in ViewTransform viewTransform, bool nextLayer = true, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
-            string name = null, int? layer = null
+            string name = null, int? layer = null, bool preserveParameters = false
         ) {
             ImperativeRenderer result;
-            MakeSubgroup(out result, in viewTransform, nextLayer, before, after, userData, name, layer);
+            MakeSubgroup(out result, in viewTransform, nextLayer, before, after, userData, name, layer, preserveParameters);
             return result;
         }
 
         public ImperativeRenderer MakeSubgroup (
             Matrix matrix, bool replace = false, bool nextLayer = true, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null,
-            string name = null, int? layer = null
+            string name = null, int? layer = null, bool preserveParameters = false
         ) {
             ImperativeRenderer result;
             MatrixBox mb;
@@ -597,7 +597,7 @@ namespace Squared.Render.Convenience {
             }
             mb.Matrix = matrix;
             mb.Replace = replace;
-            MakeSubgroup(out result, nextLayer, before, after, mb, name, layer, viewTransformModifier: ImperativeRendererUtil.ChangeMatrixModifier);
+            MakeSubgroup(out result, nextLayer, before, after, mb, name, layer, viewTransformModifier: ImperativeRendererUtil.ChangeMatrixModifier, preserveParameters);
             return result;
         }
 
@@ -625,9 +625,9 @@ namespace Squared.Render.Convenience {
             out ImperativeRenderer result, in ViewTransform viewTransform, 
             bool nextLayer = true, Action<DeviceManager, object> before = null, 
             Action<DeviceManager, object> after = null, object userData = null,
-            string name = null, int? layer = null
+            string name = null, int? layer = null, bool preserveParameters = false
         ) {
-            MakeSubgroup(out result, nextLayer, before, after, userData, name, layer);
+            MakeSubgroup(out result, nextLayer, before, after, userData, name, layer, preserveParameters: preserveParameters);
             ((BatchGroup)result.Config.Container).SetViewTransform(in viewTransform);
         }
         

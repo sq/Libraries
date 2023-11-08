@@ -1022,12 +1022,8 @@ namespace Squared.Render {
                 throw new BatchIssueFailedException(batch, new Exception("Batch not prepared"));
 
 #if DEBUG
-            if (batch.TimesIssued > 0)
-                throw new InvalidOperationException("Batch was issued multiple times");
-
             if (Debugger.IsAttached) {
                 batch.Issue(manager);
-                batch.TimesIssued++;
             } else {
 #endif
                 var bg = batch as BatchGroup;
@@ -1059,7 +1055,6 @@ namespace Squared.Render {
                         IssueBuilder.Append(markerName);
                         manager.Device.SetStringMarkerEXT(IssueBuilder.ToString());
                     }
-                    batch.TimesIssued++;
                 }
 #if DEBUG
             }

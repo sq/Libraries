@@ -203,8 +203,6 @@ namespace Squared.Render {
 
         protected PrepareState State;
 
-        internal int TimesIssued = 0;
-
         public readonly int TypeId;
 
         protected Batch () {
@@ -275,7 +273,6 @@ namespace Squared.Render {
             Layer = layer;
             Material = material;
             MaterialParameters.Clear();
-            TimesIssued = 0;
 
             State.Reset();
             Thread.MemoryBarrier();

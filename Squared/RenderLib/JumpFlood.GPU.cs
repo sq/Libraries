@@ -92,9 +92,8 @@ namespace Squared.Render.DistanceField {
             var vt = ViewTransform.CreateOrthographic(scratchSurfaces.InBuffer.Width, scratchSurfaces.InBuffer.Height);
 
             var group = renderer.MakeSubgroup(layer: layer);
-            group.Parameters.Clear();
 
-            var initGroup = group.ForRenderTarget(scratchSurfaces.InBuffer, viewTransform: vt, layer: 0);
+            var initGroup = group.ForRenderTarget(scratchSurfaces.InBuffer, viewTransform: vt);
             RenderTrace.Marker(initGroup.Container, initGroup.Layer, "JumpFlood {0} -> {1} init", input, output);
             initGroup.Clear(layer: -1, value: new Vector4(MaxDistance, MaxDistance, MaxDistance, 0f));
             var initMaterial = renderer.Materials.JumpFloodInit;
@@ -111,7 +110,7 @@ namespace Squared.Render.DistanceField {
 
             for (int i = 0, stepCount = GetStepCount(output.Width, output.Height); i < stepCount; i++) {
                 result = scratchSurfaces.OutBuffer;
-                var jumpGroup = group.ForRenderTarget(result, viewTransform: vt, layer: i + 1);
+                var jumpGroup = group.ForRenderTarget(result, viewTransform: vt);
                 RenderTrace.Marker(jumpGroup.Container, jumpGroup.Layer, "JumpFlood {0} -> {1} jump #{2}", input, output, i);
 
                 int step = GetStepSize(output.Width, output.Height, i);
