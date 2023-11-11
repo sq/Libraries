@@ -507,8 +507,8 @@ namespace Squared.Render.RasterStroke {
                 var swb = _BufferGenerator.Allocate(vertexCount, 1);
                 _SoftwareBuffer = swb;
 
-                var vb = new Internal.VertexBuffer<RasterStrokeVertex>(swb.Vertices);
-                var vw = vb.GetWriter(count, clear: false);
+                var vb = new Internal.VertexBuffer<RasterStrokeVertex>(swb);
+                var vw = vb.GetWriter(count);
                 var seed = new Vector4(0, 0, 1f / NoiseTextureSize, 0.33f / NoiseTextureSize);
 
                 ref var firstDc = ref _DrawCalls.Item(0);

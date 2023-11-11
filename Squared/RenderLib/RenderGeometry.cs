@@ -198,11 +198,11 @@ namespace Squared.Render {
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<GeometryVertex>>();
 
                 _DrawArguments = _DrawArgumentsListPool.Allocate(null);
-                var swb = _BufferGenerator.Allocate(VertexCount, IndexCount, true);
+                var swb = _BufferGenerator.Allocate(VertexCount, IndexCount);
                 _SoftwareBuffer = swb;
 
-                var vb = new Internal.VertexBuffer<GeometryVertex>(swb.Vertices);
-                var ib = new Internal.IndexBuffer(swb.Indices);
+                var vb = new Internal.VertexBuffer<GeometryVertex>(swb);
+                var ib = new Internal.IndexBuffer(swb);
                 int vertexOffset = 0, indexOffset = 0;
                 int totalPrimCount = 0;
 
@@ -529,8 +529,8 @@ namespace Squared.Render {
             var vertexInner = new GeometryVertex(new Vector3(0, 0, dc.Z), dc.Color0);
             var vertexOuter = new GeometryVertex(new Vector3(0, 0, dc.Z), dc.Color1);
 
-            fixed (GeometryVertex * pVertices = &vw.Storage.Array[vw.Storage.Offset])
-            fixed (ushort * pIndices = &iw.Storage.Array[iw.Storage.Offset])
+            GeometryVertex* pVertices = vw.Storage;
+            ushort* pIndices = iw.Storage;
             for (int i = 0, j = 0, k = 0; i < numPoints; i++, j += vertexStride, k += indexStride) {
                 cos = (float)Math.Cos(a);
                 sin = (float)Math.Sin(a);

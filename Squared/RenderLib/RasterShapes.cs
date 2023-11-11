@@ -736,8 +736,8 @@ namespace Squared.Render.RasterShape {
                 var swb = _BufferGenerator.Allocate(vertexCount, 1);
                 _SoftwareBuffer = swb;
 
-                var vb = new Internal.VertexBuffer<RasterShapeVertex>(swb.Vertices);
-                var vw = vb.GetWriter(count, clear: false);
+                var vb = new Internal.VertexBuffer<RasterShapeVertex>(swb);
+                var vw = vb.GetWriter(count);
 
                 ref var firstDc = ref _DrawCalls.Item(0);
                 BatchManager.Instance.Start(this, ref firstDc, out var state);

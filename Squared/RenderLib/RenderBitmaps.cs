@@ -204,41 +204,32 @@ namespace Squared.Render {
                 CornerBufferNames[i] = string.Intern("QuadCorners" + i);
         }
 
-        public static BufferGenerator<CornerVertex>.SoftwareBuffer CreateCornerBuffer (IBatchContainer container, int repeatCount = 1) {
+        public unsafe static BufferGenerator<CornerVertex>.SoftwareBuffer CreateCornerBuffer (IBatchContainer container, int repeatCount = 1) {
             if ((repeatCount < 1) || (repeatCount >= RepeatLimit))
                 throw new ArgumentOutOfRangeException(nameof(repeatCount));
 
-            BufferGenerator<CornerVertex>.SoftwareBuffer result;
             int vertCount = 4 * repeatCount;
             int indexCount = 6 * repeatCount;
             var cornerGenerator = container.RenderManager.GetBufferGenerator<BufferGenerator<CornerVertex>>();
-            if (!cornerGenerator.TryGetCachedBuffer(CornerBufferNames[repeatCount], vertCount, indexCount, out result)) {
-                // Console.Write($"Alloc corner buffer {bufferName} -> ");
-                result = cornerGenerator.Allocate(vertCount, indexCount, true);
-                // FIXME: For some reason the logic for pruning unused buffers triggers on corner buffers every frame
-                // HACK: So until that's fixed we just disable it for corner buffers
-                result.HardwareBuffer.ProtectedFromDeath = true;
-                // Console.WriteLine(result.ToString());
-                cornerGenerator.SetCachedBuffer(CornerBufferNames[repeatCount], result);
-                // TODO: Can we just skip filling the buffer here?
-            }
+            var result = cornerGenerator.GetOrCreateCachedBuffer(CornerBufferNames[repeatCount], vertCount, indexCount, out bool isNew);
 
-            var verts = result.Vertices;
-            var indices = result.Indices;
-            var vertOffset = verts.Offset;
-            var indexOffset = indices.Offset;
+            if (isNew) {
+                var verts = result.Vertices;
+                var indices = result.Indices;
+                int vertOffset = 0, indexOffset = 0;
 
-            for (int j = 0; j < repeatCount; j++) {
-                verts.Array[vertOffset + 0].CornerWeightsAndIndex = new Vector4(0, 0, 0, j);
-                verts.Array[vertOffset + 1].CornerWeightsAndIndex = new Vector4(1, 0, 0, j);
-                verts.Array[vertOffset + 2].CornerWeightsAndIndex = new Vector4(1, 1, 0, j);
-                verts.Array[vertOffset + 3].CornerWeightsAndIndex = new Vector4(0, 1, 0, j);
+                for (int j = 0; j < repeatCount; j++) {
+                    verts[vertOffset + 0].CornerWeightsAndIndex = new Vector4(0, 0, 0, j);
+                    verts[vertOffset + 1].CornerWeightsAndIndex = new Vector4(1, 0, 0, j);
+                    verts[vertOffset + 2].CornerWeightsAndIndex = new Vector4(1, 1, 0, j);
+                    verts[vertOffset + 3].CornerWeightsAndIndex = new Vector4(0, 1, 0, j);
 
-                for (var i = 0; i < QuadIndices.Length; i++)
-                    indices.Array[indexOffset + i] = (ushort)(QuadIndices[i] + (j * 4));
+                    for (var i = 0; i < QuadIndices.Length; i++)
+                        indices[indexOffset + i] = (ushort)(QuadIndices[i] + (j * 4));
 
-                vertOffset += 4;
-                indexOffset += 6;
+                    vertOffset += 4;
+                    indexOffset += 6;
+                }
             }
 
             return result;
@@ -344,8 +335,8 @@ namespace Squared.Render {
             }
         }
 
-        public const int NativeBatchSize = 4096;
-        protected const int NativeBatchCapacityLimit = 4096;
+        public const int NativeBatchSize = 8192;
+        protected const int NativeBatchCapacityLimit = 8192;
 
         protected int LastReservationID = 0;
 
@@ -511,7 +502,8 @@ namespace Squared.Render {
             var worldSpace = WorldSpace;
 
             unchecked {
-                fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset]) {
+                var pVertices = softwareBuffer.Vertices;
+                {
                     for (int i = drawCallsPrepared; i < count; i++) {
                         if (state.totalVertCount >= nativeBatchSizeLimit) {
                             result = false;
@@ -589,7 +581,7 @@ namespace Squared.Render {
                 }
             }
 
-            if (state.vertexWritePosition > softwareBuffer.Vertices.Count)
+            if (state.vertexWritePosition > softwareBuffer.VertexCount)
                 throw new InvalidOperationException("Wrote too many vertices");
 
             if (state.vertCount > 0) {

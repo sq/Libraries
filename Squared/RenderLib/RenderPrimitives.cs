@@ -17,28 +17,25 @@ namespace Squared.Render.Internal {
     public struct VertexBuffer<T> : IDisposable
         where T : unmanaged {
 
-        public readonly ArraySegment<T> Storage;
+        public readonly ISoftwareBuffer Buffer;
         public int Count;
 
-        public VertexBuffer(ArraySegment<T> storage) {
-            Storage = storage;
+        public VertexBuffer(ISoftwareBuffer buffer) {
+            Buffer = buffer;
             Count = 0;
         }
 
-        public VertexWriter<T> GetWriter (int capacity, bool clear = true) {
+        public unsafe VertexWriter<T> GetWriter (int capacity) {
             var offset = Count;
             var newCount = Count + capacity;
 
-            if (newCount > Storage.Count)
-                throw new InvalidOperationException();
+            Buffer.GetVertexPointer<T>(out var ptr, out int bufferCapacity);
 
-            // FIXME: This shouldn't be needed!
-            var newStorage = new ArraySegment<T>(Storage.Array, Storage.Offset + offset, capacity);
-            if (clear)
-                Array.Clear(newStorage.Array, newStorage.Offset, newStorage.Count);
+            if (newCount > bufferCapacity)
+                throw new Exception("Vertex buffer full");
 
             Count = newCount;
-            return new VertexWriter<T>(newStorage, offset);
+            return new VertexWriter<T>(ptr + offset, capacity, 0);
         }
 
         public void Dispose() {
@@ -46,15 +43,16 @@ namespace Squared.Render.Internal {
         }
     }
 
-    public struct VertexWriter<T>
+    public unsafe struct VertexWriter<T>
         where T : unmanaged {
 
-        public readonly ArraySegment<T> Storage;
         public int IndexOffset;
-        public int Count;
+        public int Count, Capacity;
+        internal T* Storage;
 
-        public VertexWriter(ArraySegment<T> storage, int indexOffset) {
+        internal VertexWriter(T* storage, int capacity, int indexOffset) {
             Storage = storage;
+            Capacity = capacity;
             IndexOffset = indexOffset;
             Count = 0;
         }
@@ -69,55 +67,54 @@ namespace Squared.Render.Internal {
         public ref T NextVertex {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]        
             get {
-                if (Count >= Storage.Count)
+                if (Count >= Capacity)
                     BoundsCheckFailed(false);
 
-                return ref Storage.Array[Storage.Offset + Count++];
+                return ref Storage[Count++];
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]        
         public void Write (T newVertex) {
-            if (Count >= Storage.Count)
+            if (Count >= Capacity)
                 BoundsCheckFailed(false);
 
-            Storage.Array[Storage.Offset + Count] = newVertex;
+            Storage[Count] = newVertex;
             Count += 1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]        
         public void Write (ref T newVertex) {
-            if (Count >= Storage.Count)
+            if (Count >= Capacity)
                 BoundsCheckFailed(false);
 
-            Storage.Array[Storage.Offset + Count] = newVertex;
+            Storage[Count] = newVertex;
             Count += 1;
         }
     }
 
     public struct IndexBuffer : IDisposable {
-        public readonly ArraySegment<ushort> Storage;
+        public readonly ISoftwareBuffer Buffer;
         public int Count;
 
-        public IndexBuffer(ArraySegment<ushort> storage) {
-            Storage = storage;
+        public IndexBuffer(ISoftwareBuffer buffer) {
+            Buffer = buffer;
             Count = 0;
         }
 
-        public IndexWriter GetWriter<T>(int capacity, ref VertexWriter<T> vertexWriter) 
-            where T : unmanaged {
+        public unsafe IndexWriter GetWriter<T> (int capacity, ref VertexWriter<T> vertexWriter)
+            where T : unmanaged
+        {
             var offset = Count;
             var newCount = Count + capacity;
 
-            if (newCount > Storage.Count)
-                throw new InvalidOperationException();
+            Buffer.GetIndexPointer(out var ptr, out int bufferCapacity);
 
-            var newSegment = new ArraySegment<ushort>(Storage.Array, Storage.Offset + offset, capacity);
-            // FIXME: This shouldn't be needed!
-            Array.Clear(newSegment.Array, newSegment.Offset, newSegment.Count);
+            if (newCount > bufferCapacity)
+                throw new Exception("Index buffer full");
 
             Count = newCount;
-            return new IndexWriter(newSegment, vertexWriter.IndexOffset);
+            return new IndexWriter(ptr + offset, capacity, vertexWriter.IndexOffset);
         }
 
         public void Dispose() {
@@ -125,13 +122,14 @@ namespace Squared.Render.Internal {
         }
     }
 
-    public struct IndexWriter {
-        public readonly ArraySegment<ushort> Storage;
-        public readonly int IndexOffset;
-        public int Count;
+    public unsafe struct IndexWriter {
+        public int IndexOffset;
+        public int Count, Capacity;
+        internal ushort* Storage;
 
-        public IndexWriter (ArraySegment<ushort> storage, int indexOffset) {
+        internal IndexWriter (ushort* storage, int capacity, int indexOffset) {
             Storage = storage;
+            Capacity = capacity;
             IndexOffset = indexOffset;
             Count = 0;
         }
@@ -145,21 +143,21 @@ namespace Squared.Render.Internal {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]        
         public void Write (ushort newIndex) {
-            if (Count >= Storage.Count)
+            if (Count >= Capacity)
                 BoundsCheckFailed(false);
 
-            Storage.Array[Storage.Offset + Count] = (ushort)(newIndex + IndexOffset);
+            Storage[Count] = (ushort)(newIndex + IndexOffset);
             Count += 1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]        
         public void Write (ushort[] newIndices) {
             int l = newIndices.Length;
-            if (Count + l - 1 >= Storage.Count)
+            if (Count + l - 1 >= Capacity)
                 BoundsCheckFailed(false);
 
             for (int i = 0; i < l; i++)
-                Storage.Array[Storage.Offset + Count + i] = (ushort)(newIndices[i] + IndexOffset);
+                Storage[Count + i] = (ushort)(newIndices[i] + IndexOffset);
 
             Count += l;
         }
