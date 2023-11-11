@@ -503,7 +503,11 @@ namespace Squared.PRGUI {
                     var vt = ViewTransform.CreateOrthographic((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y);
                     var scratchRenderer =
                         new ImperativeRenderer(context.Prepass, context.Materials).ForRenderTarget(
-                            rt, viewTransform: vt
+                            rt, viewTransform: vt,
+                            // HACK: Scratch render target layers start at -9999 post-sort, ensure that custom
+                            //  composition surfaces come before automatic ones since they don't participate
+                            //  in sorting
+                            layer: -10000
                         );
                     RasterizeIntoPrepass(
                         ref context, passSet, opacity, ref box, ref compositeBox,

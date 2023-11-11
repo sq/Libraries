@@ -357,13 +357,11 @@ namespace Squared.PRGUI {
                     }
 
                     int i = -9999;
-                    if (TopoSortTable.Count > 1) {
-                        foreach (var item in TopoSortTable) {
-                            if (item.UsedRectangles.Count <= 0)
-                                continue;
+                    foreach (var item in TopoSortTable) {
+                        if (item.UsedRectangles.Count <= 0)
+                            continue;
 
-                            ((Batch)item.Renderer.Container).Layer = i++;
-                        }
+                        ((Batch)item.Renderer.Container).Layer = i++;
                     }
 
                     var retainCount = Math.Max(1, ScratchRenderTargetsUsedThisFrame);
