@@ -67,6 +67,7 @@ namespace Squared.PRGUI {
                 UsedRectangles.Clear();
                 Dependencies.Clear();
                 VisitedByTopoSort = false;
+                Renderer = default;
             }
 
             public void Dispose () {
@@ -356,8 +357,13 @@ namespace Squared.PRGUI {
                     }
 
                     int i = -9999;
-                    foreach (var item in TopoSortTable) {
-                        ((Batch)item.Renderer.Container).Layer = i++;
+                    if (TopoSortTable.Count > 1) {
+                        foreach (var item in TopoSortTable) {
+                            if (item.UsedRectangles.Count <= 0)
+                                continue;
+
+                            ((Batch)item.Renderer.Container).Layer = i++;
+                        }
                     }
 
                     var retainCount = Math.Max(1, ScratchRenderTargetsUsedThisFrame);
