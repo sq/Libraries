@@ -55,6 +55,8 @@ namespace Squared.Render.Internal {
 
             public sealed class Bucket : UnorderedList<SoftwareBuffer> {
                 public readonly int Index;
+                public readonly UnorderedList<SoftwareBuffer> AllocatedInstances = 
+                    new UnorderedList<SoftwareBuffer>(256);
 
                 public Bucket (int index)
                     : base (256) {
@@ -123,6 +125,7 @@ namespace Squared.Render.Internal {
                         continue;
 
                     e.RemoveCurrent();
+                    bucket.AllocatedInstances.Add(item);
                     return item;
                 }
 
@@ -130,7 +133,11 @@ namespace Squared.Render.Internal {
             }
 
             private SoftwareBuffer AllocateNew (int vertexCount, int indexCount, int bucketIndex) {
-                return new SoftwareBuffer(BufferGenerator, vertexCount, indexCount, bucketIndex);
+                var result = new SoftwareBuffer(BufferGenerator, vertexCount, indexCount, bucketIndex);
+                var bucket = Buckets[bucketIndex];
+                lock (bucket)
+                    bucket.AllocatedInstances.Add(result);
+                return result;
             }
 
             public void LockAllBuckets () {
@@ -143,9 +150,20 @@ namespace Squared.Render.Internal {
                     Monitor.Exit(Buckets[i]);
             }
 
-            public void ReleaseLocked (SoftwareBuffer swb) {
-                var bucket = Buckets[swb.BucketIndex];
-                bucket.Add(swb);
+            public void FlushLocked () {
+                foreach (var bucket in Buckets)
+                    foreach (var item in bucket.AllocatedInstances)
+                        item.Flush();
+            }
+
+            public void ReleaseAllLocked () {
+                foreach (var bucket in Buckets) {
+                    foreach (var item in bucket.AllocatedInstances) {
+                        item.Uninitialize();
+                        bucket.Add(item);
+                    }
+                    bucket.AllocatedInstances.Clear();
+                }
             }
 
             public void SortAndPurgeLocked (int currentFrameIndex) {
@@ -402,7 +420,6 @@ namespace Squared.Render.Internal {
         private int _LastFrameReset;
 
         readonly SoftwareBufferPool _SoftwareBufferPool;
-        readonly UnorderedList<SoftwareBuffer> _SoftwareBuffers = new UnorderedList<SoftwareBuffer>();
         readonly Dictionary<string, SoftwareBuffer> _BufferCache = new Dictionary<string, SoftwareBuffer>();
 
         public readonly NativeAllocator Allocator = new NativeAllocator();
@@ -431,9 +448,14 @@ namespace Squared.Render.Internal {
 
         public void Flush () {
             // It's important to kick off buffer uploads early so that they're likely to be ready by the time we want to draw with them.
-            lock (_StateLock)
-                foreach (var swb in _SoftwareBuffers)
-                    swb.Flush();
+            lock (_StateLock) {
+                _SoftwareBufferPool.LockAllBuckets();
+                try {
+                    _SoftwareBufferPool.FlushLocked();
+                } finally {
+                    _SoftwareBufferPool.UnlockAllBuckets();
+                }
+            }
         }
 
         public void Reset (int frameIndex) {
@@ -443,27 +465,8 @@ namespace Squared.Render.Internal {
                 _SoftwareBufferPool.LockAllBuckets();
 
                 try {
-                    foreach (var kvp in _BufferCache) {
-                        var swb = kvp.Value;
-                        if (!swb.IsInitialized)
-                            continue;
-
-                        // Console.WriteLine($"Uninit corner buffer {swb}");
-                        swb.Uninitialize();
-                        _SoftwareBufferPool.ReleaseLocked(swb);
-                    }
                     _BufferCache.Clear();
-
-                    foreach (var swb in _SoftwareBuffers) {
-                        if (!swb.IsInitialized)
-                            continue;
-
-                        swb.Uninitialize();
-                        _SoftwareBufferPool.ReleaseLocked(swb);
-                    }
-
-                    _SoftwareBuffers.Clear();
-
+                    _SoftwareBufferPool.ReleaseAllLocked();
                     _SoftwareBufferPool.SortAndPurgeLocked(frameIndex);
                 } finally {
                     _SoftwareBufferPool.UnlockAllBuckets();
@@ -527,8 +530,6 @@ namespace Squared.Render.Internal {
 
             var swb = _SoftwareBufferPool.Allocate(requestedVertexCount, requestedIndexCount);
             swb.Initialize(vertexCount, indexCount, _LastFrameReset);
-            lock (_StateLock)
-                _SoftwareBuffers.Add(swb);
             return swb;
         }
     }
