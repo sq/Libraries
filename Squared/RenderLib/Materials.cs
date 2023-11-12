@@ -663,10 +663,10 @@ namespace Squared.Render {
             return new Storage(ref this);
         }
 
-        public void UseExistingListStorage (Storage storage) {
+        public void UseExistingListStorage (Storage storage, bool preserveContents) {
             SetInternalFlag(StateFlags.CopyOnWrite, false);
-            Keys.UseExistingStorage(storage.Keys);
-            Values.UseExistingStorage(storage.Values);
+            Keys.UseExistingStorage(storage.Keys, preserveContents);
+            Values.UseExistingStorage(storage.Values, preserveContents);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -780,6 +780,7 @@ namespace Squared.Render {
             SetInternalFlag(StateFlags.IsCleared, false);
             // SetInternalFlag(StateFlags.SortNeeded, false);
             FlushCopyOnWrite();
+            // FIXME: Optimize this so it doesn't spend as much time in memcpy/memset
             Keys.ReplaceWith(ref values.Keys);
             Values.ReplaceWith(ref values.Values);
         }

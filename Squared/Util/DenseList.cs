@@ -649,7 +649,7 @@ namespace Squared.Util {
                 return _Items;
         }
 
-        public void UseExistingStorage (UnorderedList<T> storage) {
+        public void UseExistingStorage (UnorderedList<T> storage, bool preserveContents) {
             if (storage == null)
                 return;
             if (_Items == storage)
@@ -658,29 +658,35 @@ namespace Squared.Util {
             var oldItems = _Items;
             _Items = storage;
             storage.Clear();
-            if (oldItems != null)
-                oldItems.CopyTo(storage);
-            else if (_Count >= 4) {
-                storage.Add(Item1);
-                storage.Add(Item2);
-                storage.Add(Item3);
-                storage.Add(Item4);
-            } else if (_Count >= 3) {
-                storage.Add(Item1);
-                storage.Add(Item2);
-                storage.Add(Item3);
-            } else if (_Count >= 2) {
-                storage.Add(Item1);
-                storage.Add(Item2);
-            } else if (_Count >= 1) {
-                storage.Add(Item1);
+
+            if (preserveContents) {
+                if (oldItems != null)
+                    oldItems.CopyTo(storage);
+                else if (_Count >= 4) {
+                    storage.Add(Item1);
+                    storage.Add(Item2);
+                    storage.Add(Item3);
+                    storage.Add(Item4);
+                } else if (_Count >= 3) {
+                    storage.Add(Item1);
+                    storage.Add(Item2);
+                    storage.Add(Item3);
+                } else if (_Count >= 2) {
+                    storage.Add(Item1);
+                    storage.Add(Item2);
+                } else if (_Count >= 1) {
+                    storage.Add(Item1);
+                }
             }
+
             // Just in case
             _Count = 0;
 
-            oldItems?.Clear();
-            if (ListPool != null)
-                ListPool.Release(ref oldItems);
+            if (oldItems != null) {
+                oldItems.Clear();
+                if (ListPool != null)
+                    ListPool.Release(ref oldItems);
+            }
         }
 
         private void Add_Slow (ref T item) {

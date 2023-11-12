@@ -56,7 +56,7 @@ namespace Squared.Render.Internal {
             public sealed class Bucket : UnorderedList<SoftwareBuffer> {
                 public readonly int Index;
                 public readonly UnorderedList<SoftwareBuffer> AllocatedInstances = 
-                    new UnorderedList<SoftwareBuffer>(256);
+                    new UnorderedList<SoftwareBuffer>();
 
                 public Bucket (int index)
                     : base (256) {
@@ -162,7 +162,7 @@ namespace Squared.Render.Internal {
                         item.Uninitialize();
                         bucket.Add(item);
                     }
-                    bucket.AllocatedInstances.Clear();
+                    bucket.AllocatedInstances.UnsafeFastClear();
                 }
             }
 

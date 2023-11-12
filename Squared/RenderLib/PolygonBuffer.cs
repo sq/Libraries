@@ -23,8 +23,6 @@ namespace Squared.Render {
         public void Clear () {
             lock (Lock) {
                 FlushRequired = true;
-                if (VertexBuffer != null)
-                    Array.Clear(VertexBuffer, 0, VertexBuffer.Length);
                 VertexCount = 0;
                 WriteOffset = 0;
             }
