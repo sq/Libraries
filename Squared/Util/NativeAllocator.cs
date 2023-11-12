@@ -101,7 +101,7 @@ namespace Squared.Util {
 #if DEBUG
         ~NativeAllocation () {
             if (!_Released)
-                Debug.WriteLine($"Native allocation leaked from Allocator {Allocator}");
+                Debug.WriteLine($"Native allocation of {Size}b leaked from {Allocator}");
         }
 #endif
     }

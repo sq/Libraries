@@ -17,10 +17,10 @@ namespace Squared.Render.Internal {
     public struct VertexBuffer<T> : IDisposable
         where T : unmanaged {
 
-        public readonly ISoftwareBuffer Buffer;
+        public readonly IGeometryBuffer Buffer;
         public int Count;
 
-        public VertexBuffer(ISoftwareBuffer buffer) {
+        public VertexBuffer(IGeometryBuffer buffer) {
             Buffer = buffer;
             Count = 0;
         }
@@ -94,10 +94,10 @@ namespace Squared.Render.Internal {
     }
 
     public struct IndexBuffer : IDisposable {
-        public readonly ISoftwareBuffer Buffer;
+        public readonly IGeometryBuffer Buffer;
         public int Count;
 
-        public IndexBuffer(ISoftwareBuffer buffer) {
+        public IndexBuffer(IGeometryBuffer buffer) {
             Buffer = buffer;
             Count = 0;
         }

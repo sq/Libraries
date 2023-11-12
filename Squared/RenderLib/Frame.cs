@@ -34,8 +34,8 @@ namespace Squared.Render {
         public int Index;
 
         public sealed class FramePrepareData {
-            private BufferGenerator<CornerVertex>.SoftwareBuffer[] CornerBuffers =
-                new BufferGenerator<CornerVertex>.SoftwareBuffer[8];
+            private BufferGenerator<CornerVertex>.GeometryBuffer[] CornerBuffers =
+                new BufferGenerator<CornerVertex>.GeometryBuffer[8];
             private Lazy<PolygonBuffer> _PolygonBuffer = 
                 new Lazy<PolygonBuffer>(() => new PolygonBuffer(), LazyThreadSafetyMode.ExecutionAndPublication);
 
@@ -48,7 +48,7 @@ namespace Squared.Render {
                 return _PolygonBuffer.Value;
             }
 
-            public BufferGenerator<CornerVertex>.SoftwareBuffer GetCornerBuffer (IBatchContainer container, int repeatCount = 1) {
+            public BufferGenerator<CornerVertex>.GeometryBuffer GetCornerBuffer (IBatchContainer container, int repeatCount = 1) {
                 var result = Volatile.Read(ref CornerBuffers[repeatCount]);
                 if (result == null) {
                     result = QuadUtils.CreateCornerBuffer(container, repeatCount);

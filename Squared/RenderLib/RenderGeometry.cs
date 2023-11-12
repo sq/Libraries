@@ -137,7 +137,7 @@ namespace Squared.Render {
         internal ArrayPoolAllocator<GeometryVertex> VertexAllocator;
         internal ArrayPoolAllocator<short> IndexAllocator;
         internal int VertexCount = 0, IndexCount = 0, Count = 0;
-        internal ISoftwareBuffer _SoftwareBuffer;
+        internal IGeometryBuffer _SoftwareBuffer;
 
         const int MaxVertexCount = 65535;
 
@@ -236,12 +236,12 @@ namespace Squared.Render {
         public override void Issue (DeviceManager manager) {
             base.Issue(manager);
 
-            IHardwareBuffer hwb = null;
+            IGeometryBuffer hwb = null;
             try {
                 if (Count > 0) {
                     manager.ApplyMaterial(Material, ref MaterialParameters);
 
-                    hwb = _SoftwareBuffer.HardwareBuffer;
+                    hwb = _SoftwareBuffer;
                     if (hwb == null)
                         throw new ThreadStateException("Could not get a hardware buffer for this batch");
 

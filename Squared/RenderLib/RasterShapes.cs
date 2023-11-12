@@ -652,14 +652,14 @@ namespace Squared.Render.RasterShape {
         private DenseList<SubBatch> _SubBatches;
 
         private BufferGenerator<RasterShapeVertex> _BufferGenerator = null;
-        private BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
+        private BufferGenerator<CornerVertex>.GeometryBuffer _CornerBuffer = null;
         private PolygonBuffer _PolygonBuffer = null;
 
         protected static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
             new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
 
         internal ArrayPoolAllocator<RasterShapeVertex> VertexAllocator;
-        internal ISoftwareBuffer _SoftwareBuffer;
+        internal IGeometryBuffer _SoftwareBuffer;
 
         public DefaultMaterialSet Materials;
         public Texture2D Texture;
@@ -733,10 +733,10 @@ namespace Squared.Render.RasterShape {
 
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<RasterShapeVertex>>();
                 _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container, CornerBufferRepeatCount);
-                var swb = _BufferGenerator.Allocate(vertexCount, 1);
+                var swb = _BufferGenerator.Allocate(vertexCount, 0);
                 _SoftwareBuffer = swb;
 
-                var vb = new Internal.VertexBuffer<RasterShapeVertex>(swb);
+                var vb = new VertexBuffer<RasterShapeVertex>(swb);
                 var vw = vb.GetWriter(count);
 
                 ref var firstDc = ref _DrawCalls.Item(0);
@@ -813,16 +813,16 @@ namespace Squared.Render.RasterShape {
             // manager.Device.SetStringMarkerEXT(this.ToString());
             var device = manager.Device;
 
-            VertexBuffer vb, cornerVb;
+            DynamicVertexBuffer vb, cornerVb;
             DynamicIndexBuffer ib, cornerIb;
 
-            var cornerHwb = _CornerBuffer.HardwareBuffer;
+            var cornerHwb = _CornerBuffer;
             cornerHwb.SetActive();
             cornerHwb.GetBuffers(out cornerVb, out cornerIb);
             if (device.Indices != cornerIb)
                 device.Indices = cornerIb;
 
-            var hwb = _SoftwareBuffer.HardwareBuffer;
+            var hwb = _SoftwareBuffer;
             if (hwb == null)
                 throw new ThreadStateException("Could not get a hardware buffer for this batch");
 
@@ -933,7 +933,7 @@ namespace Squared.Render.RasterShape {
                 }
 
                 scratchBindings[1] = new VertexBufferBinding(
-                    vb, _SoftwareBuffer.HardwareVertexOffset + sb.InstanceOffset, 1
+                    vb, sb.InstanceOffset, 1
                 );
 
                 device.SetVertexBuffers(scratchBindings);

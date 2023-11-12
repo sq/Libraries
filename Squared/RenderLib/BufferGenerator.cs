@@ -20,23 +20,17 @@ namespace Squared.Render.Internal {
         int BytesAllocated { get; }
     }
 
-    public interface IHardwareBuffer : IDisposable {
-        void SetInactive ();
-        bool TrySetInactive ();
-        IHardwareBuffer SetActive ();
-        void SetInactiveAndUnapply (GraphicsDevice device);
-        IHardwareBuffer SetActiveAndApply (GraphicsDevice device);
-        void GetBuffers (out VertexBuffer vb, out DynamicIndexBuffer ib);
-    }
-
-    public interface ISoftwareBuffer {
-        IHardwareBuffer HardwareBuffer { get; }
-        int HardwareVertexOffset { get; }
-        int HardwareIndexOffset { get; }
+    public interface IGeometryBuffer : IDisposable {
         int Id { get; }
         unsafe void GetVertexPointer<T> (out T* buffer, out int capacity)
             where T : unmanaged;
         unsafe void GetIndexPointer (out TIndex* buffer, out int capacity);
+        void SetInactive ();
+        bool TrySetInactive ();
+        void SetActive ();
+        void SetInactiveAndUnapply (GraphicsDevice device);
+        void SetActiveAndApply (GraphicsDevice device);
+        void GetBuffers (out DynamicVertexBuffer vb, out DynamicIndexBuffer ib);
     }
 
     public sealed class BufferGenerator<TVertex> : IBufferGenerator
@@ -45,18 +39,18 @@ namespace Squared.Render.Internal {
         public static bool Tracing = false;
 
         protected sealed class SoftwareBufferPool {
-            public sealed class BucketComparer : IComparer<SoftwareBuffer> {
+            public sealed class BucketComparer : IComparer<GeometryBuffer> {
                 public static readonly BucketComparer Instance = new BucketComparer();
 
-                public int Compare (SoftwareBuffer x, SoftwareBuffer y) {
+                public int Compare (GeometryBuffer x, GeometryBuffer y) {
                     return x.VertexCapacity - y.VertexCapacity;
                 }
             }
 
-            public sealed class Bucket : UnorderedList<SoftwareBuffer> {
+            public sealed class Bucket : UnorderedList<GeometryBuffer> {
                 public readonly int Index;
-                public readonly UnorderedList<SoftwareBuffer> AllocatedInstances = 
-                    new UnorderedList<SoftwareBuffer>();
+                public readonly UnorderedList<GeometryBuffer> AllocatedInstances = 
+                    new UnorderedList<GeometryBuffer>();
 
                 public Bucket (int index)
                     : base (256) {
@@ -93,7 +87,7 @@ namespace Squared.Render.Internal {
                 return index;
             }
 
-            public SoftwareBuffer Allocate (int vertexCount, int indexCount) {
+            public GeometryBuffer Allocate (int vertexCount, int indexCount) {
                 var bucketIndex = PickBucketIndex(vertexCount, indexCount);
                 var result = AllocateFromBucket(bucketIndex, vertexCount, indexCount);
                 // HACK: Search the next largest bucket, since it might have stuff in it we can use.
@@ -109,7 +103,7 @@ namespace Squared.Render.Internal {
                 return result;
             }
 
-            private SoftwareBuffer AllocateFromBucket (int bucketIndex, int vertexCount, int indexCount) {
+            private GeometryBuffer AllocateFromBucket (int bucketIndex, int vertexCount, int indexCount) {
                 if ((bucketIndex < 0) || (bucketIndex >= BucketCount))
                     return null;
 
@@ -132,8 +126,8 @@ namespace Squared.Render.Internal {
                 return null;
             }
 
-            private SoftwareBuffer AllocateNew (int vertexCount, int indexCount, int bucketIndex) {
-                var result = new SoftwareBuffer(BufferGenerator, vertexCount, indexCount, bucketIndex);
+            private GeometryBuffer AllocateNew (int vertexCount, int indexCount, int bucketIndex) {
+                var result = new GeometryBuffer(BufferGenerator, vertexCount, indexCount, bucketIndex);
                 var bucket = Buckets[bucketIndex];
                 lock (bucket)
                     bucket.AllocatedInstances.Add(result);
@@ -186,7 +180,7 @@ namespace Squared.Render.Internal {
             }
         }
 
-        public sealed unsafe class SoftwareBuffer : ISoftwareBuffer, IHardwareBuffer, IDisposable {
+        public sealed unsafe class GeometryBuffer : IGeometryBuffer, IDisposable {
             private static volatile int NextId;
 
             public readonly BufferGenerator<TVertex> BufferGenerator;
@@ -257,7 +251,6 @@ namespace Squared.Render.Internal {
             internal DynamicVertexBuffer VertexBuffer;
             internal DynamicIndexBuffer IndexBuffer;
 
-            public IHardwareBuffer HardwareBuffer => this;
 
             public readonly int BucketIndex;
 
@@ -266,7 +259,7 @@ namespace Squared.Render.Internal {
                 private set;
             }
 
-            internal SoftwareBuffer (
+            internal GeometryBuffer (
                 BufferGenerator<TVertex> bufferGenerator,
                 int vertexCount, int indexCount,
                 int bucketIndex
@@ -280,16 +273,19 @@ namespace Squared.Render.Internal {
                 VertexCapacity = vertexCount;
                 IndexCapacity = Math.Max(vertexCount, indexCount);
                 VertexAllocation = BufferGenerator.Allocator.Allocate(VertexCapacity * Marshal.SizeOf<TVertex>());
-                IndexAllocation = BufferGenerator.Allocator.Allocate(IndexCapacity * Marshal.SizeOf<TIndex>());
+                if (IndexCapacity > 0)
+                    IndexAllocation = BufferGenerator.Allocator.Allocate(IndexCapacity * Marshal.SizeOf<TIndex>());
             }
 
             public void Dispose () {
                 IsDisposed = true;
                 Uninitialize();
                 VertexAllocation.ReleaseReference();
-                IndexAllocation.ReleaseReference();
                 BufferGenerator.RenderManager.DisposeResource(VertexBuffer);
-                BufferGenerator.RenderManager.DisposeResource(IndexBuffer);
+                if (IndexCapacity > 0) {
+                    IndexAllocation.ReleaseReference();
+                    BufferGenerator.RenderManager.DisposeResource(IndexBuffer);
+                }
             }
 
             public void Initialize (int vertexCount, int indexCount, int frameIndex) {
@@ -327,7 +323,7 @@ namespace Squared.Render.Internal {
                 device.Indices = null;
             }
 
-            public IHardwareBuffer SetActiveAndApply (GraphicsDevice device) {
+            public void SetActiveAndApply (GraphicsDevice device) {
                 if (IsActive)
                     throw new InvalidOperationException("Buffer already active");
                 if (!IsInitialized)
@@ -336,9 +332,8 @@ namespace Squared.Render.Internal {
                 Flush();
                 IsActive = true;
                 device.SetVertexBuffer(VertexBuffer);
-                device.Indices = IndexBuffer;
-
-                return this;
+                if (IndexBuffer != null)
+                    device.Indices = IndexBuffer;
             }
 
             public void SetInactive () {
@@ -358,15 +353,14 @@ namespace Squared.Render.Internal {
                 return true;
             }
 
-            public IHardwareBuffer SetActive () {
+            public void SetActive () {
                 if (IsActive || !IsInitialized)
-                    return null;
+                    return;
 
                 IsActive = true;
-                return this;
             }
 
-            public void GetBuffers (out VertexBuffer vb, out DynamicIndexBuffer ib) {
+            public void GetBuffers (out DynamicVertexBuffer vb, out DynamicIndexBuffer ib) {
                 if (!IsActive || !IsInitialized)
                     throw new InvalidOperationException("Buffer not active");
 
@@ -382,12 +376,13 @@ namespace Squared.Render.Internal {
                 IsFlushed = true;
                 if (VertexBuffer == null)
                     VertexBuffer = new DynamicVertexBuffer(BufferGenerator.RenderManager.DeviceManager.Device, typeof(TVertex), VertexCapacity, BufferUsage.WriteOnly);
-                if (IndexBuffer == null)
+                if ((IndexBuffer == null) && (IndexCount > 0))
                     IndexBuffer = new DynamicIndexBuffer(BufferGenerator.RenderManager.DeviceManager.Device, IndexElementSize.SixteenBits, IndexCapacity, BufferUsage.WriteOnly);
 
                 VertexBuffer.SetDataPointerEXT(0, (IntPtr)VertexAllocation.Data, VertexCount * Marshal.SizeOf<TVertex>(), SetDataOptions.Discard);
-                IndexBuffer.SetDataPointerEXT(0, (IntPtr)IndexAllocation.Data, IndexCount * Marshal.SizeOf<TIndex>(), SetDataOptions.Discard);
+                IndexBuffer?.SetDataPointerEXT(0, (IntPtr)IndexAllocation.Data, IndexCount * Marshal.SizeOf<TIndex>(), SetDataOptions.Discard);
             }
+
             public void GetVertexPointer<T> (out T* buffer, out int capacity)
                 where T : unmanaged {
                 if (typeof(T) != typeof(TVertex))
@@ -398,6 +393,9 @@ namespace Squared.Render.Internal {
             }
 
             public void GetIndexPointer (out TIndex* buffer, out int capacity) {
+                if (IndexCount <= 0)
+                    throw new InvalidOperationException("No indices");
+
                 buffer = Indices;
                 capacity = IndexCapacity;
             }
@@ -420,7 +418,7 @@ namespace Squared.Render.Internal {
         private int _LastFrameReset;
 
         readonly SoftwareBufferPool _SoftwareBufferPool;
-        readonly Dictionary<string, SoftwareBuffer> _BufferCache = new Dictionary<string, SoftwareBuffer>();
+        readonly Dictionary<string, GeometryBuffer> _BufferCache = new Dictionary<string, GeometryBuffer>();
 
         public readonly NativeAllocator Allocator = new NativeAllocator { Name = "Squared.Render.BufferGenerator" };
         public readonly RenderManager RenderManager;
@@ -481,7 +479,7 @@ namespace Squared.Render.Internal {
             }
         }
 
-        public void SetCachedBuffer (string key, SoftwareBuffer buffer) {
+        public void SetCachedBuffer (string key, GeometryBuffer buffer) {
             lock (_BufferCache) {
                 if (_BufferCache.TryGetValue(key, out var old)) {
                     if (old == buffer)
@@ -494,7 +492,7 @@ namespace Squared.Render.Internal {
             }
         }
 
-        public SoftwareBuffer GetOrCreateCachedBuffer (string key, int vertexCount, int indexCount, out bool isNew) {
+        public GeometryBuffer GetOrCreateCachedBuffer (string key, int vertexCount, int indexCount, out bool isNew) {
             // It's unfortunate to do all this in the lock but the alternative is worse.
             lock (_BufferCache) {
                 _BufferCache.TryGetValue(key, out var result);
@@ -522,11 +520,11 @@ namespace Squared.Render.Internal {
         /// <param name="vertexCount">The number of vertices.</param>
         /// <param name="indexCount">The number of indices.</param>
         /// <returns>A software buffer.</returns>
-        public SoftwareBuffer Allocate (int vertexCount, int indexCount) {
+        public GeometryBuffer Allocate (int vertexCount, int indexCount) {
             const int rounding = 16;
 
             var requestedVertexCount = (vertexCount + rounding - 1) / rounding * rounding;
-            var requestedIndexCount = (indexCount + rounding - 1) / rounding * rounding;
+            var requestedIndexCount = indexCount > 0 ? (indexCount + rounding - 1) / rounding * rounding : indexCount;
 
             var swb = _SoftwareBufferPool.Allocate(requestedVertexCount, requestedIndexCount);
             swb.Initialize(vertexCount, indexCount, _LastFrameReset);

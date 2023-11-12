@@ -204,7 +204,7 @@ namespace Squared.Render {
                 CornerBufferNames[i] = string.Intern("QuadCorners" + i);
         }
 
-        public unsafe static BufferGenerator<CornerVertex>.SoftwareBuffer CreateCornerBuffer (IBatchContainer container, int repeatCount = 1) {
+        public unsafe static BufferGenerator<CornerVertex>.GeometryBuffer CreateCornerBuffer (IBatchContainer container, int repeatCount = 1) {
             if ((repeatCount < 1) || (repeatCount >= RepeatLimit))
                 throw new ArgumentOutOfRangeException(nameof(repeatCount));
 
@@ -277,7 +277,7 @@ namespace Squared.Render {
             public SamplerState SamplerState;
             public SamplerState SamplerState2;
 
-            public readonly ISoftwareBuffer SoftwareBuffer;
+            public readonly IGeometryBuffer SoftwareBuffer;
             public readonly TextureSet TextureSet;
 
             public readonly Vector2 Texture1Size, Texture1TexelSize;
@@ -290,7 +290,7 @@ namespace Squared.Render {
             public readonly bool Invalid;
 
             public NativeBatch (
-                ISoftwareBuffer softwareBuffer, TextureSet textureSet, 
+                IGeometryBuffer softwareBuffer, TextureSet textureSet, 
                 int localVertexOffset, int vertexCount, Material material,
                 SamplerState samplerState, SamplerState samplerState2,
                 LocalObjectCache<object> textureCache
@@ -359,7 +359,7 @@ namespace Squared.Render {
         protected UnorderedList<Reservation> RangeReservations = null;
   
         protected BufferGenerator<BitmapVertex> _BufferGenerator = null;
-        protected BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
+        protected BufferGenerator<CornerVertex>.GeometryBuffer _CornerBuffer = null;
 
         protected static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
             new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
@@ -442,7 +442,7 @@ namespace Squared.Render {
         }
 
         protected bool CreateNewNativeBatch (
-            BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, 
+            BufferGenerator<BitmapVertex>.GeometryBuffer softwareBuffer, 
             ref BatchBuilderState state, ref BatchBuilderParameters parameters
         ) {
             if (!state.currentTextures.Texture1.IsInitialized)
@@ -490,7 +490,7 @@ namespace Squared.Render {
             var remainingVertices = remainingDrawCalls;
 
             int allocatedBatchSize = Math.Min(nativeBatchSizeLimit, remainingVertices);
-            var softwareBuffer = _BufferGenerator.Allocate(allocatedBatchSize, 1);
+            var softwareBuffer = _BufferGenerator.Allocate(allocatedBatchSize, 0);
 
             float zBufferFactor = UseZBuffer ? 1.0f : 0.0f;
 
@@ -750,19 +750,19 @@ namespace Squared.Render {
 
                 var device = manager.Device;
 
-                IHardwareBuffer previousHardwareBuffer = null;
+                IGeometryBuffer previousHardwareBuffer = null;
 
                 // if (RenderTrace.EnableTracing)
                 //    RenderTrace.ImmediateMarker("BitmapBatch.Issue(layer={0}, count={1})", Layer, _DrawCalls.Count);
 
-                VertexBuffer vb, cornerVb;
+                DynamicVertexBuffer vb, cornerVb;
                 DynamicIndexBuffer ib, cornerIb;
 
                 var textureCache = manager.RenderManager.TextureCache;
 
                 var totalDraws = 0;
 
-                var cornerHwb = _CornerBuffer.HardwareBuffer;
+                var cornerHwb = _CornerBuffer;
                 try {
                     cornerHwb.SetActive();
                     cornerHwb.GetBuffers(out cornerVb, out cornerIb);
@@ -795,7 +795,7 @@ namespace Squared.Render {
                             }
 
                             var swb = nb.SoftwareBuffer;
-                            var hwb = swb.HardwareBuffer;
+                            var hwb = swb;
                             if (previousHardwareBuffer != hwb) {
                                 if (previousHardwareBuffer != null)
                                     previousHardwareBuffer.SetInactive();
@@ -806,7 +806,7 @@ namespace Squared.Render {
 
                             hwb.GetBuffers(out vb, out ib);
 
-                            var bindOffset = swb.HardwareVertexOffset + nb.LocalVertexOffset;
+                            var bindOffset = nb.LocalVertexOffset;
                             scratchBindings[0] = cornerVb;
                             scratchBindings[1] = new VertexBufferBinding(vb, bindOffset, 1);
 
