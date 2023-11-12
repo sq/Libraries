@@ -14,7 +14,9 @@ using TIndex = System.UInt16;
 
 namespace Squared.Render.Internal {
     public interface IBufferGenerator : IDisposable {
-        void Reset(int frameIndex);
+        void Reset (int frameIndex);
+        void Flush ();
+
         int BytesAllocated { get; }
     }
 
@@ -77,6 +79,8 @@ namespace Squared.Render.Internal {
 
             public SoftwareBufferPool (BufferGenerator<TVertex> bufferGenerator) {
                 BufferGenerator = bufferGenerator;
+                for (int i = 0; i < Buckets.Length; i++)
+                    Buckets[i] = new Bucket(i);
             }
 
             private int PickBucketIndex (int vertexCount, int indexCount) {
@@ -107,17 +111,19 @@ namespace Squared.Render.Internal {
                 if ((bucketIndex < 0) || (bucketIndex >= BucketCount))
                     return null;
 
-                var bucket = Volatile.Read(ref Buckets[bucketIndex]);
-                if (bucket != null) {
-                    lock (bucket)
-                    using (var e = bucket.GetEnumerator())
-                    while (e.GetNext(out var item)) {
-                        if ((item.VertexCapacity < vertexCount) || (item.IndexCapacity < indexCount))
-                            continue;
+                var bucket = Buckets[bucketIndex];
+                // Early out
+                if (bucket.Count == 0)
+                    return null;
 
-                        e.RemoveCurrent();
-                        return item;
-                    }
+                lock (bucket)
+                using (var e = bucket.GetEnumerator())
+                while (e.GetNext(out var item)) {
+                    if ((item.VertexCapacity < vertexCount) || (item.IndexCapacity < indexCount))
+                        continue;
+
+                    e.RemoveCurrent();
+                    return item;
                 }
 
                 return null;
@@ -127,39 +133,37 @@ namespace Squared.Render.Internal {
                 return new SoftwareBuffer(BufferGenerator, vertexCount, indexCount, bucketIndex);
             }
 
-            public void Release (SoftwareBuffer swb) {
-                var bucket = Volatile.Read(ref Buckets[swb.BucketIndex]);
-                if (bucket == null) {
-                    bucket = new Bucket(swb.BucketIndex);
-                    var existing = Interlocked.CompareExchange(ref Buckets[swb.BucketIndex], bucket, null);
-                    bucket = existing ?? bucket;
-                }
-                lock (bucket)
-                    bucket.Add(swb);
+            public void LockAllBuckets () {
+                for (int i = 0; i < Buckets.Length; i++)
+                    Monitor.Enter(Buckets[i]);
             }
 
-            public void SortAndPurge (int currentFrameIndex) {
+            public void UnlockAllBuckets () {
+                for (int i = Buckets.Length - 1; i >= 0; i--)
+                    Monitor.Exit(Buckets[i]);
+            }
+
+            public void ReleaseLocked (SoftwareBuffer swb) {
+                var bucket = Buckets[swb.BucketIndex];
+                bucket.Add(swb);
+            }
+
+            public void SortAndPurgeLocked (int currentFrameIndex) {
                 foreach (var bucket in Buckets) {
-                    if (bucket == null)
-                        continue;
+                    using (var e = bucket.GetEnumerator())
+                    while (e.GetNext(out var item)) {
+                        var age = currentFrameIndex - item.FrameLastUsed;
+                        if (age < MaxItemAge)
+                            continue;
 
-                    lock (bucket) {
-                        using (var e = bucket.GetEnumerator())
-                        while (e.GetNext(out var item)) {
-                            var age = currentFrameIndex - item.FrameLastUsed;
-                            if (age < MaxItemAge)
-                                continue;
+                        if (Tracing)
+                            Debug.WriteLine($"Releasing {item} because it hasn't been used for {age} frames");
 
-                            if (Tracing)
-                                Debug.WriteLine($"Releasing {item} because it hasn't been used for {age} frames");
-
-                            e.RemoveCurrent();
-                            BufferGenerator.RenderManager.DisposeResource(item);
-                        }
-
-                        lock (bucket)
-                            bucket.Sort();
+                        e.RemoveCurrent();
+                        BufferGenerator.RenderManager.DisposeResource(item);
                     }
+
+                    bucket.Sort();
                 }
             }
         }
@@ -425,32 +429,45 @@ namespace Squared.Render.Internal {
             }
         }
 
+        public void Flush () {
+            // It's important to kick off buffer uploads early so that they're likely to be ready by the time we want to draw with them.
+            lock (_StateLock)
+                foreach (var swb in _SoftwareBuffers)
+                    swb.Flush();
+        }
+
         public void Reset (int frameIndex) {
             var id = RenderManager.DeviceManager.DeviceId;
 
             lock (_StateLock) {
-                foreach (var kvp in _BufferCache) {
-                    var swb = kvp.Value;
-                    if (!swb.IsInitialized)
-                        continue;
+                _SoftwareBufferPool.LockAllBuckets();
 
-                    // Console.WriteLine($"Uninit corner buffer {swb}");
-                    swb.Uninitialize();
-                    _SoftwareBufferPool.Release(swb);
+                try {
+                    foreach (var kvp in _BufferCache) {
+                        var swb = kvp.Value;
+                        if (!swb.IsInitialized)
+                            continue;
+
+                        // Console.WriteLine($"Uninit corner buffer {swb}");
+                        swb.Uninitialize();
+                        _SoftwareBufferPool.ReleaseLocked(swb);
+                    }
+                    _BufferCache.Clear();
+
+                    foreach (var swb in _SoftwareBuffers) {
+                        if (!swb.IsInitialized)
+                            continue;
+
+                        swb.Uninitialize();
+                        _SoftwareBufferPool.ReleaseLocked(swb);
+                    }
+
+                    _SoftwareBuffers.Clear();
+
+                    _SoftwareBufferPool.SortAndPurgeLocked(frameIndex);
+                } finally {
+                    _SoftwareBufferPool.UnlockAllBuckets();
                 }
-                _BufferCache.Clear();
-
-                foreach (var swb in _SoftwareBuffers) {
-                    if (!swb.IsInitialized)
-                        continue;
-
-                    swb.Uninitialize();
-                    _SoftwareBufferPool.Release(swb);
-                }
-
-                _SoftwareBuffers.Clear();
-
-                _SoftwareBufferPool.SortAndPurge(frameIndex);
 
                 _LastFrameReset = frameIndex;
 

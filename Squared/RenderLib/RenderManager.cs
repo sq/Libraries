@@ -783,6 +783,10 @@ namespace Squared.Render {
             PrepareManager.Wait();
 
             _AllowCreatingNewGenerators = 0;
+
+            lock (_AllBufferGenerators)
+            foreach (var kvp in _AllBufferGenerators)
+                kvp.Value.Flush();
         }
 
         public void DisposeResource (IDisposable resource) {
