@@ -8,6 +8,7 @@ using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Render.Buffers;
 using Squared.Render.Internal;
 using Squared.Util;
 using GeometryVertex = Microsoft.Xna.Framework.Graphics.VertexPositionColor;

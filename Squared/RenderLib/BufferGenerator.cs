@@ -12,7 +12,89 @@ using Squared.Util;
 
 using TIndex = System.UInt16;
 
-namespace Squared.Render.Internal {
+namespace Squared.Render.Buffers {
+    public struct BufferSlice<TVertex>
+        where TVertex : unmanaged
+    {
+        public readonly int FrameIndex;
+        public readonly IGeometryBuffer Buffer;
+        public readonly int VertexOffset, VertexCount;
+
+        public int RemainingSpace => (Buffer?.VertexCount ?? 0) - VertexOffset;
+
+        public BufferSlice (int frameIndex, IGeometryBuffer buffer) {
+            FrameIndex = frameIndex;
+            Buffer = buffer;
+            VertexOffset = 0;
+            VertexCount = buffer.VertexCount;
+        }
+
+        public BufferSlice (int frameIndex, IGeometryBuffer buffer, int offset, int count) {
+            FrameIndex = frameIndex;
+            Buffer = buffer;
+            VertexOffset = offset;
+            VertexCount = count;
+        }
+
+        public static bool operator == (BufferSlice<TVertex> lhs, BufferSlice<TVertex> rhs) {
+            return (lhs.FrameIndex == rhs.FrameIndex) &&
+                (lhs.Buffer == rhs.Buffer) && 
+                (lhs.VertexOffset == rhs.VertexOffset) &&
+                (lhs.VertexCount == rhs.VertexCount);
+        }
+
+        public static bool operator != (BufferSlice<TVertex> lhs, BufferSlice<TVertex> rhs) => !(lhs == rhs);
+
+        internal unsafe void GetVertexPointer (out BitmapVertex* pVertices, out int vertexCapacity) {
+            Buffer.GetVertexPointer(out pVertices, out vertexCapacity);
+            pVertices += VertexOffset;
+            vertexCapacity -= VertexOffset;
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is BufferSlice<TVertex> s)
+                return s == this;
+            else
+                return false;
+        }
+
+        public override string ToString () {
+            return $"<Slice {VertexOffset}-{VertexOffset + VertexCount} {Buffer}>";
+        }
+    }
+
+    public static class BufferSlicer<TVertex>
+        where TVertex : unmanaged
+    {
+        public const int MinimumBlockSize = 1024;
+
+        public static readonly ThreadLocal<BufferSlice<TVertex>> CurrentBuffer = 
+            new ThreadLocal<BufferSlice<TVertex>>();
+
+        public static BufferSlice<TVertex> GetOrAllocateBuffer (BufferGenerator<TVertex> generator, int numVertices) {
+            var result = CurrentBuffer.Value;
+            var frameIndex = generator.FrameIndex;
+            if ((frameIndex != result.FrameIndex) || (numVertices > result.RemainingSpace)) {
+                result = new BufferSlice<TVertex>(
+                    frameIndex,
+                    generator.Allocate(Math.Max(numVertices, MinimumBlockSize), 0),
+                    0, numVertices
+                );
+            } else {
+                result = new BufferSlice<TVertex>(
+                    frameIndex, result.Buffer, result.VertexOffset, numVertices
+                );
+            }
+
+            if (result.RemainingSpace > 4)
+                CurrentBuffer.Value = new BufferSlice<TVertex>(frameIndex, result.Buffer, result.VertexOffset + result.VertexCount, 0);
+            else
+                CurrentBuffer.Value = default;
+
+            return result;
+        }
+    }
+
     public interface IBufferGenerator : IDisposable {
         void Reset (int frameIndex);
         void Flush ();
@@ -38,7 +120,7 @@ namespace Squared.Render.Internal {
     public sealed class BufferGenerator<TVertex> : IBufferGenerator
         where TVertex : unmanaged
     {
-        public static bool Tracing = false;
+        public static bool Tracing = true;
 
         protected sealed class SoftwareBufferPool {
             public sealed class BucketComparer : IComparer<GeometryBuffer> {

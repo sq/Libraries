@@ -20,6 +20,7 @@ using System.Threading;
 using System.Runtime.CompilerServices;
 using Squared.Threading;
 using System.Runtime;
+using Squared.Render.Buffers;
 
 namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -237,81 +238,6 @@ namespace Squared.Render {
     }
 
     public abstract class BitmapBatchBase<TDrawCall> : ListBatch<TDrawCall> {
-        public struct Slice {
-            public readonly int FrameIndex;
-            public readonly IGeometryBuffer Buffer;
-            public readonly int VertexOffset, VertexCount;
-
-            public int RemainingSpace => (Buffer?.VertexCount ?? 0) - VertexOffset;
-
-            public Slice (int frameIndex, IGeometryBuffer buffer) {
-                FrameIndex = frameIndex;
-                Buffer = buffer;
-                VertexOffset = 0;
-                VertexCount = buffer.VertexCount;
-            }
-
-            public Slice (int frameIndex, IGeometryBuffer buffer, int offset, int count) {
-                FrameIndex = frameIndex;
-                Buffer = buffer;
-                VertexOffset = offset;
-                VertexCount = count;
-            }
-
-            public static bool operator == (Slice lhs, Slice rhs) {
-                return (lhs.FrameIndex == rhs.FrameIndex) &&
-                    (lhs.Buffer == rhs.Buffer) && 
-                    (lhs.VertexOffset == rhs.VertexOffset) &&
-                    (lhs.VertexCount == rhs.VertexCount);
-            }
-
-            public static bool operator != (Slice lhs, Slice rhs) => !(lhs == rhs);
-
-            internal unsafe void GetVertexPointer (out BitmapVertex* pVertices, out int vertexCapacity) {
-                Buffer.GetVertexPointer(out pVertices, out vertexCapacity);
-                pVertices += VertexOffset;
-                vertexCapacity -= VertexOffset;
-            }
-
-            public override bool Equals (object obj) {
-                if (obj is Slice s)
-                    return s == this;
-                else
-                    return false;
-            }
-
-            public override string ToString () {
-                return $"<Slice {VertexOffset}-{VertexOffset + VertexCount} {Buffer}>";
-            }
-        }
-
-        internal static class BufferAllocator {
-            public const int MinimumBlockSize = 1024;
-
-            public static readonly ThreadLocal<Slice> CurrentBuffer = 
-                new ThreadLocal<Slice>();
-
-            public static Slice GetOrAllocateBuffer (BufferGenerator<BitmapVertex> generator, int numVertices) {
-                var result = CurrentBuffer.Value;
-                var frameIndex = generator.FrameIndex;
-                if ((frameIndex != result.FrameIndex) || (numVertices > result.RemainingSpace)) {
-                    result = new Slice(
-                        frameIndex,
-                        generator.Allocate(Math.Max(numVertices, MinimumBlockSize), 0),
-                        0, numVertices
-                    );
-                } else {
-                    result = new Slice(
-                        frameIndex, result.Buffer, result.VertexOffset, numVertices
-                    );
-                }
-
-                CurrentBuffer.Value = new Slice(frameIndex, result.Buffer, result.VertexOffset + result.VertexCount, 0);
-
-                return result;
-            }
-        }
-
         public struct Reservation {
             public readonly BitmapBatchBase<TDrawCall> Batch;
             public readonly int ID;
@@ -352,7 +278,7 @@ namespace Squared.Render {
             public SamplerState SamplerState;
             public SamplerState SamplerState2;
 
-            public readonly Slice Slice;
+            public readonly BufferSlice<BitmapVertex> Slice;
             public readonly TextureSet TextureSet;
 
             public readonly Vector2 Texture1Size, Texture1TexelSize;
@@ -365,7 +291,7 @@ namespace Squared.Render {
             public readonly bool Invalid;
 
             public NativeBatch (
-                Slice softwareBuffer, TextureSet textureSet, 
+                BufferSlice<BitmapVertex> softwareBuffer, TextureSet textureSet, 
                 int localVertexOffset, int vertexCount, Material material,
                 SamplerState samplerState, SamplerState samplerState2,
                 LocalObjectCache<object> textureCache
@@ -517,7 +443,7 @@ namespace Squared.Render {
         }
 
         protected bool CreateNewNativeBatch (
-            Slice softwareBuffer, 
+            BufferSlice<BitmapVertex> softwareBuffer, 
             ref BatchBuilderState state, ref BatchBuilderParameters parameters
         ) {
             if (!state.currentTextures.Texture1.IsInitialized)
@@ -565,7 +491,7 @@ namespace Squared.Render {
             var remainingVertices = remainingDrawCalls;
 
             int allocatedBatchSize = Math.Min(nativeBatchSizeLimit, remainingVertices);
-            var slice = BufferAllocator.GetOrAllocateBuffer(_BufferGenerator, allocatedBatchSize);
+            var slice = BufferSlicer<BitmapVertex>.GetOrAllocateBuffer(_BufferGenerator, allocatedBatchSize);
 
             float zBufferFactor = UseZBuffer ? 1.0f : 0.0f;
 
@@ -825,7 +751,7 @@ namespace Squared.Render {
 
                 var device = manager.Device;
 
-                Slice previousSlice = default;
+                BufferSlice<BitmapVertex> previousSlice = default;
 
                 // if (RenderTrace.EnableTracing)
                 //    RenderTrace.ImmediateMarker("BitmapBatch.Issue(layer={0}, count={1})", Layer, _DrawCalls.Count);

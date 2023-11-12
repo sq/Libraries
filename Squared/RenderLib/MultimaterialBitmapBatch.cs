@@ -17,6 +17,7 @@ using Squared.Util.DeclarativeSort;
 using System.Threading;
 using System.Runtime.CompilerServices;
 using Squared.Threading;
+using Squared.Render.Buffers;
 
 namespace Squared.Render {
     public struct MaterialBitmapDrawCall {

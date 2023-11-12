@@ -17,6 +17,7 @@ using Squared.Render.Internal;
 using Squared.Threading;
 using System.Collections;
 using System.Runtime.CompilerServices;
+using Squared.Render.Buffers;
 
 namespace Squared.Render {
     public static class RenderExtensionMethods {

@@ -12,17 +12,20 @@ using System.Diagnostics;
 using System.Threading;
 using System.Runtime.CompilerServices;
 using System.Runtime;
+using Squared.Render.Buffers;
 
 namespace Squared.Render.Internal {
     public struct VertexBuffer<T> : IDisposable
         where T : unmanaged {
 
         public readonly IGeometryBuffer Buffer;
+        public readonly int VertexOffset;
         public int Count;
 
-        public VertexBuffer(IGeometryBuffer buffer) {
+        public VertexBuffer(IGeometryBuffer buffer, int vertexOffset = 0) {
             Buffer = buffer;
-            Count = 0;
+            VertexOffset = vertexOffset;
+            Count = vertexOffset;
         }
 
         public unsafe VertexWriter<T> GetWriter (int capacity) {
@@ -35,7 +38,7 @@ namespace Squared.Render.Internal {
                 throw new Exception("Vertex buffer full");
 
             Count = newCount;
-            return new VertexWriter<T>(ptr + offset, capacity, 0);
+            return new VertexWriter<T>(ptr + offset, capacity, VertexOffset);
         }
 
         public void Dispose() {

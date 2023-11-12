@@ -17,6 +17,7 @@ using Squared.Util.DeclarativeSort;
 using System.Threading;
 using System.Runtime.CompilerServices;
 using System.Runtime;
+using Squared.Render.Buffers;
 
 namespace Squared.Render {
     public sealed class BitmapBatch : BitmapBatchBase<BitmapDrawCall>, IBitmapBatch {

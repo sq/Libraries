@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Graphics.PackedVector;
 using Squared.Game;
+using Squared.Render.Buffers;
 using Squared.Render.Internal;
 using Squared.Render.RasterShape;
 using Squared.Util;

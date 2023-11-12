@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Squared.Render.Buffers;
 using Squared.Render.Internal;
 using Squared.Util;
 

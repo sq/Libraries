@@ -9,6 +9,7 @@ using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Render.Buffers;
 using Squared.Render.Internal;
 using Squared.Util;
 using GeometryVertex = Microsoft.Xna.Framework.Graphics.VertexPositionColor;
@@ -659,7 +660,7 @@ namespace Squared.Render.RasterShape {
             new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
 
         internal ArrayPoolAllocator<RasterShapeVertex> VertexAllocator;
-        internal IGeometryBuffer _SoftwareBuffer;
+        internal BufferSlice<RasterShapeVertex> _SoftwareBuffer;
 
         public DefaultMaterialSet Materials;
         public Texture2D Texture;
@@ -733,10 +734,10 @@ namespace Squared.Render.RasterShape {
 
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<RasterShapeVertex>>();
                 _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container, CornerBufferRepeatCount);
-                var swb = _BufferGenerator.Allocate(vertexCount, 0);
+                var swb = BufferSlicer<RasterShapeVertex>.GetOrAllocateBuffer(_BufferGenerator, vertexCount);
                 _SoftwareBuffer = swb;
 
-                var vb = new VertexBuffer<RasterShapeVertex>(swb);
+                var vb = new VertexBuffer<RasterShapeVertex>(swb.Buffer, swb.VertexOffset);
                 var vw = vb.GetWriter(count);
 
                 ref var firstDc = ref _DrawCalls.Item(0);
@@ -807,7 +808,7 @@ namespace Squared.Render.RasterShape {
 
             var count = _DrawCalls.Count;
             if (count <= 0) {
-                _SoftwareBuffer = null;
+                _SoftwareBuffer = default;
                 return;
             }
             // manager.Device.SetStringMarkerEXT(this.ToString());
@@ -822,12 +823,8 @@ namespace Squared.Render.RasterShape {
             if (device.Indices != cornerIb)
                 device.Indices = cornerIb;
 
-            var hwb = _SoftwareBuffer;
-            if (hwb == null)
-                throw new ThreadStateException("Could not get a hardware buffer for this batch");
-
-            hwb.SetActive();
-            hwb.GetBuffers(out vb, out ib);
+            _SoftwareBuffer.Buffer.SetActive();
+            _SoftwareBuffer.Buffer.GetBuffers(out vb, out ib);
 
             var scratchBindings = _ScratchBindingArray.Value;
 
@@ -933,7 +930,7 @@ namespace Squared.Render.RasterShape {
                 }
 
                 scratchBindings[1] = new VertexBufferBinding(
-                    vb, sb.InstanceOffset, 1
+                    vb, _SoftwareBuffer.VertexOffset + sb.InstanceOffset, 1
                 );
 
                 device.SetVertexBuffers(scratchBindings);
@@ -957,11 +954,11 @@ namespace Squared.Render.RasterShape {
             }
 
             NativeBatch.RecordCommands(_SubBatches.Count);
-            hwb.SetInactive();
+            _SoftwareBuffer.Buffer.SetInactive();
             cornerHwb.SetInactive();
 
             device.SetVertexBuffer(null);
-            _SoftwareBuffer = null;
+            _SoftwareBuffer = default;
         }
 
         new public void Add (RasterShapeDrawCall dc) => Add(ref dc);
