@@ -22,6 +22,8 @@ namespace Squared.Render.Internal {
 
     public interface IGeometryBuffer : IDisposable {
         int Id { get; }
+        int VertexCount { get; }
+        int IndexCount { get; }
         unsafe void GetVertexPointer<T> (out T* buffer, out int capacity)
             where T : unmanaged;
         unsafe void GetIndexPointer (out TIndex* buffer, out int capacity);
@@ -415,7 +417,10 @@ namespace Squared.Render.Internal {
         }
 
         object _StateLock = new object();
-        private int _LastFrameReset;
+        public int FrameIndex {
+            get;
+            private set;
+        }
 
         readonly SoftwareBufferPool _SoftwareBufferPool;
         readonly Dictionary<string, GeometryBuffer> _BufferCache = new Dictionary<string, GeometryBuffer>();
@@ -470,7 +475,7 @@ namespace Squared.Render.Internal {
                     _SoftwareBufferPool.UnlockAllBuckets();
                 }
 
-                _LastFrameReset = frameIndex;
+                FrameIndex = frameIndex;
 
                 /*
                 Array.Clear(_VertexArray, 0, _VertexArray.Length);
@@ -527,7 +532,7 @@ namespace Squared.Render.Internal {
             var requestedIndexCount = indexCount > 0 ? (indexCount + rounding - 1) / rounding * rounding : indexCount;
 
             var swb = _SoftwareBufferPool.Allocate(requestedVertexCount, requestedIndexCount);
-            swb.Initialize(vertexCount, indexCount, _LastFrameReset);
+            swb.Initialize(vertexCount, indexCount, FrameIndex);
             return swb;
         }
     }
