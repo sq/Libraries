@@ -502,8 +502,9 @@ namespace Squared.Util {
             var newCount = _Count - 1;
 
             if (index < newCount) {
-                _Items[_BufferOffset + index] = _Items[_BufferOffset + newCount];
-                _Items[_BufferOffset + newCount] = default(T);
+                ref var deadSlot = ref _Items[_BufferOffset + newCount];
+                _Items[_BufferOffset + index] = deadSlot;
+                deadSlot = default(T);
             } else {
                 _Items[_BufferOffset + index] = default(T);
             }
@@ -590,15 +591,17 @@ namespace Squared.Util {
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryPopBack (out T result) {
             if (_Count == 0) {
                 result = default(T);
                 return false;
             }
 
-            var index = _Count-- - 1;
-            result = _Items[_BufferOffset + index];
-            _Items[_BufferOffset + index] = default(T);
+            var index = --_Count;
+            ref var slot = ref _Items[_BufferOffset + index];
+            result = slot;
+            slot = default(T);
             return true;
         }
 

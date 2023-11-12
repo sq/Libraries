@@ -72,6 +72,7 @@ namespace Squared.PRGUI {
             AcceptsNonLeftClicks        = 0b1000000000000,
             IsPostLayoutListener        = 0b10000000000000,
             IgnoresScrolling            = 0b100000000000000,
+            LayoutKeyIsInvalid          = 0b1000000000000000,
             // TODO
             // EventFiredMatrix      = 0b100000000000,
         }
@@ -110,13 +111,13 @@ namespace Squared.PRGUI {
         private Control _FocusBeneficiary;
 
         // FIXME
-        private InternalStateFlags InternalState = InternalStateFlags.Visible | InternalStateFlags.Enabled;
+        private InternalStateFlags InternalState = InternalStateFlags.Visible | InternalStateFlags.Enabled | InternalStateFlags.LayoutKeyIsInvalid;
 
         protected bool IsLayoutInvalid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => GetInternalFlag(InternalStateFlags.LayoutInvalid) || _LayoutKey.IsInvalid;
+            get => (InternalState & (InternalStateFlags.LayoutInvalid | InternalStateFlags.LayoutKeyIsInvalid)) != default;
             set {
-                SetInternalFlag(InternalStateFlags.LayoutInvalid, false);
+                SetInternalFlag(InternalStateFlags.LayoutInvalid, value);
             }
         }
 
@@ -128,6 +129,7 @@ namespace Squared.PRGUI {
                 if (value == _LayoutKey)
                     return;
                 _LayoutKey = value;
+                SetInternalFlag(InternalStateFlags.LayoutKeyIsInvalid, _LayoutKey.IsInvalid);
             }
         }
 
@@ -151,7 +153,7 @@ namespace Squared.PRGUI {
                 if (!ChangeInternalFlag(InternalStateFlags.Visible, value))
                     return;
                 if (!value)
-                    _LayoutKey = ControlKey.Invalid;
+                    LayoutKey = ControlKey.Invalid;
                 SetInternalFlag(InternalStateFlags.VisibleHasChanged, true);
                 OnVisibleChange(value);
             }
@@ -586,7 +588,7 @@ namespace Squared.PRGUI {
                 if (Appearance.DecorationProvider != null)
                     UIOperationContext.PushDecorationProvider(ref context, Appearance.DecorationProvider);
                 ref var record = ref OnGenerateLayoutTree(ref context, parent, existingKey);
-                _LayoutKey = record.Key;
+                LayoutKey = record.Key;
 
                 if (!record.IsInvalid) {
                     if (ChangeInternalFlag(InternalStateFlags.VisibleHasChanged, false))
@@ -855,7 +857,7 @@ namespace Squared.PRGUI {
 
         protected virtual ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             if (!Visible && !context.UIContext.IsUpdatingSubtreeLayout) {
-                _LayoutKey = ControlKey.Invalid;
+                LayoutKey = ControlKey.Invalid;
                 return ref InvalidValues.Record;
             }
 
@@ -866,7 +868,7 @@ namespace Squared.PRGUI {
 #endif
 
             ref var result = ref context.Engine.GetOrCreate(existingKey);
-            _LayoutKey = result.Key;
+            LayoutKey = result.Key;
 
             var decorationProvider = context.DecorationProvider;
             var decorations = GetDecorator(decorationProvider);

@@ -392,13 +392,15 @@ namespace Squared.PRGUI {
                     System.Diagnostics.Debug.WriteLine($"WARNING: Control {this} failed to rasterize because it had no valid layout. This likely means it was created after the most recent UIContext.Update.");
                 hidden = true;
             } else {
-                box = GetRect();
-                Vector2 ext = box.Extent,
-                    vext = context.VisibleRegion.Extent;
+                box = context.UIContext.Engine.Result(_LayoutKey).Rect;
+                box.Left += _AbsoluteDisplayOffset.X;
+                box.Top += _AbsoluteDisplayOffset.Y;
+
+                Vector2 vext = context.VisibleRegion.Extent;
                 // HACK: There might be corner cases where you want to rasterize a zero-sized control...
                 isZeroSized = (box.Width <= 0) || (box.Height <= 0);
-                isOutOfView = (ext.X < context.VisibleRegion.Left) ||
-                    (ext.Y < context.VisibleRegion.Top) ||
+                isOutOfView = ((box.Left + box.Width) < context.VisibleRegion.Left) ||
+                    ((box.Top + box.Height) < context.VisibleRegion.Top) ||
                     (box.Left > vext.X) ||
                     (box.Top > vext.Y);
 
