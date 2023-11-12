@@ -422,7 +422,7 @@ namespace Squared.Render.Internal {
         readonly SoftwareBufferPool _SoftwareBufferPool;
         readonly Dictionary<string, SoftwareBuffer> _BufferCache = new Dictionary<string, SoftwareBuffer>();
 
-        public readonly NativeAllocator Allocator = new NativeAllocator();
+        public readonly NativeAllocator Allocator = new NativeAllocator { Name = "Squared.Render.BufferGenerator" };
         public readonly RenderManager RenderManager;
         public readonly object CreateResourceLock;
 

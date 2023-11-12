@@ -98,7 +98,7 @@ namespace Squared.Render {
         /// </summary>
         public readonly object PrepareLock = new object();
 
-        public readonly NativeAllocator AtlasAllocator = new NativeAllocator();
+        public readonly NativeAllocator AtlasAllocator = new NativeAllocator { Name = "Squared.Render.AtlasAllocator" };
 
         // Held during paint
         private readonly object DrawLock = new object();

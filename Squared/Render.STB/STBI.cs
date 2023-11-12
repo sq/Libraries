@@ -16,7 +16,7 @@ using Squared.Util;
 
 namespace Squared.Render.STB {
     public unsafe sealed class Image : IDisposable {
-        private static readonly NativeAllocator ResizedDataAllocator = new NativeAllocator();
+        private static readonly NativeAllocator ResizedDataAllocator = new NativeAllocator { Name = "STB.Image.ResizedData" };
 
         // FIXME: Causes crashes
         public const bool EnableMmap = true;
