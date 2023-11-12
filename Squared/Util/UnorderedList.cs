@@ -9,21 +9,12 @@ using System.Runtime;
 
 namespace Squared.Util {
     public class UnorderedList<T> : IEnumerable<T> {
-        public abstract class Allocator {
-            public static readonly DefaultAllocator Default = new DefaultAllocator();
-
-            public abstract ArraySegment<T> Allocate (int minimumSize);
-            public abstract ArraySegment<T> Resize (ArraySegment<T> buffer, int minimumSize);
-        }
-
-        public class DefaultAllocator : Allocator {
-            public static DefaultAllocator Instance = new DefaultAllocator();
-
-            public override ArraySegment<T> Allocate (int minimumSize) {
+        public static class Allocator {
+            public static ArraySegment<T> Allocate (int minimumSize) {
                 return new ArraySegment<T>(new T[minimumSize]);
             }
 
-            public override ArraySegment<T> Resize (ArraySegment<T> buffer, int minimumSize) {
+            public static ArraySegment<T> Resize (ArraySegment<T> buffer, int minimumSize) {
                 if (minimumSize < buffer.Count)
                     return buffer;
 
@@ -34,52 +25,6 @@ namespace Squared.Util {
             }
         }
 
-        public sealed class BasicSlabAllocator : DefaultAllocator {
-            public int SlabSize = 1024 * 64;
-
-            private T[] PreviousSlab = null, CurrentSlab = null;
-            private int PreviousSlabOffset = -1, CurrentSlabOffset = -1;
-
-            private void AllocateNewSlab () {
-                PreviousSlab = CurrentSlab;
-                PreviousSlabOffset = CurrentSlabOffset;
-                CurrentSlab = new T[SlabSize];
-                CurrentSlabOffset = 0;
-            }
-
-            private bool TryAllocateFromSlab (int minimumSize, T[] slab, ref int slabOffset, out ArraySegment<T> result) {
-                result = default(ArraySegment<T>);
-
-                if (slab == null)
-                    return false;
-
-                var remainingSpace = slab.Length - slabOffset;
-                if (minimumSize > remainingSpace)
-                    return false;
-
-                var offset = slabOffset;
-                slabOffset += minimumSize;
-                result = new ArraySegment<T>(slab, offset, minimumSize);
-                return true;
-            }
-
-            public override ArraySegment<T> Allocate (int minimumSize) {
-                if (minimumSize > SlabSize)
-                    return new ArraySegment<T>(new T[minimumSize]);
-
-                ArraySegment<T> result;
-                if (TryAllocateFromSlab(minimumSize, PreviousSlab, ref PreviousSlabOffset, out result))
-                    return result;
-                else if (TryAllocateFromSlab(minimumSize, CurrentSlab, ref CurrentSlabOffset, out result))
-                    return result;
-
-                AllocateNewSlab();
-                if (!TryAllocateFromSlab(minimumSize, CurrentSlab, ref CurrentSlabOffset, out result))
-                    throw new Exception("Failed to allocate from slab");
-                return result;
-            }
-        }
-
         public static int DefaultSize = 16;
 
         /// <summary>
@@ -87,7 +32,6 @@ namespace Squared.Util {
         /// </summary>
         public int BufferVersion;
 
-        protected Allocator _Allocator;
         protected T[] _Items;
         protected int _BufferOffset, _BufferSize;
         internal int _Count;
@@ -215,7 +159,7 @@ namespace Squared.Util {
         }
 
         private void AllocateNewBuffer (int size) {
-            var buffer = _Allocator.Allocate(size);
+            var buffer = Allocator.Allocate(size);
             BufferVersion++;
             _Items = buffer.Array;
             _BufferOffset = buffer.Offset;
@@ -223,31 +167,16 @@ namespace Squared.Util {
         }
 
         public UnorderedList () {
-            _Allocator = Allocator.Default;
-            _Count = 0;
-            AllocateNewBuffer(DefaultSize);
-        }
-
-        public UnorderedList (Allocator allocator) {
-            _Allocator = allocator ?? Allocator.Default;
             _Count = 0;
             AllocateNewBuffer(DefaultSize);
         }
 
         public UnorderedList (int size) {
-            _Allocator = Allocator.Default;
             _Count = 0;
             AllocateNewBuffer(Math.Max(DefaultSize, size));
         }
 
-        public UnorderedList (int size, Allocator allocator) {
-            _Allocator = allocator ?? Allocator.Default;
-            _Count = 0;
-            AllocateNewBuffer(Math.Max(DefaultSize, size));
-        }
-
-        public UnorderedList (T[] values, Allocator allocator = null) {
-            _Allocator = allocator ?? Allocator.Default;
+        public UnorderedList (T[] values) {
             AllocateNewBuffer(Math.Max(DefaultSize, values.Length));
             _Count = values.Length;
             Array.Copy(values, 0, _Items, _BufferOffset, _Count);
@@ -288,7 +217,7 @@ namespace Squared.Util {
         private void Grow (int targetCapacity) {
             ArraySegment<T> newBuffer, oldBuffer = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
             var newCapacity = PickGrowthSize(_BufferSize, targetCapacity);
-            newBuffer = _Allocator.Resize(oldBuffer,  newCapacity);
+            newBuffer = Allocator.Resize(oldBuffer,  newCapacity);
 
             BufferVersion++;
             _Items = newBuffer.Array;

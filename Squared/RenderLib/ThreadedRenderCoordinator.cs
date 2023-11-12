@@ -776,6 +776,7 @@ namespace Squared.Render {
 
             Squared.Threading.Profiling.Superluminal.BeginEventFormat("Prepare Frame", "SRFrame #{0}", frame.Index, color: 0x10CF10);
             try {
+                // TODO: Perform this asynchronously at the end of the previous draw
                 Manager.ResetBufferGenerators(frame.Index);
                 frame.Prepare(DoThreadedPrepare && threaded);
             } finally {

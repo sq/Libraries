@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -19,6 +20,8 @@ namespace Squared.Util {
     }
 
     public class NativeAllocator {
+        public string Name;
+
         internal long _TotalBytesAllocated;
         internal volatile int _BytesInUse;
 
@@ -32,6 +35,10 @@ namespace Squared.Util {
             where T : unmanaged 
         {
             return Allocate(elements * Marshal.SizeOf<T>());
+        }
+
+        public override string ToString () {
+            return $"<NativeAllocator {Name} {BytesInUse} in use>";
         }
     }
 
@@ -94,7 +101,7 @@ namespace Squared.Util {
 #if DEBUG
         ~NativeAllocation () {
             if (!_Released)
-                throw new Exception("Native allocation leaked");
+                Debug.WriteLine($"Native allocation leaked from Allocator {Allocator}");
         }
 #endif
     }

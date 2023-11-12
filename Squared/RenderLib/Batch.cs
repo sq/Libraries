@@ -505,11 +505,7 @@ namespace Squared.Render {
         public ListBatch ()
             : base () 
         {
-            _DrawCalls.ListPoolOrAllocator = _ListPool;
-        }
-
-        public static void SetAllocator (UnorderedList<T>.Allocator allocator) {
-            _ListPool.Allocator = allocator ?? UnorderedList<T>.Allocator.Default;
+            _DrawCalls.ListPool = _ListPool;
         }
 
         public T FirstDrawCall {
@@ -828,7 +824,7 @@ namespace Squared.Render {
 
         public virtual void Setup (TSelf self, ref DenseList<TSubBatch> items, int count) {
             items.UnsafeFastClear();
-            items.ListPoolOrAllocator = _SubListPool;
+            items.ListPool = _SubListPool;
             items.EnsureCapacity(count, true);
         }
 

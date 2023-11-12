@@ -78,7 +78,7 @@ namespace Squared.Render {
         Frame IBatchContainer.Frame { get { return this; } }
 
         internal void Initialize (RenderCoordinator coordinator, RenderManager renderManager, int index) {
-            Batches.ListPoolOrAllocator = _ListPool;
+            Batches.ListPool = _ListPool;
             Batches.Clear();
             Coordinator = coordinator;
             this.RenderManager = renderManager;

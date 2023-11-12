@@ -850,8 +850,6 @@ namespace Squared.Render.Text {
             _Satellite?.UsedTextures.Clear();
 
             result = new StringLayoutEngine {
-                allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
-                buffer = _Buffer,
                 position = _Position,
                 overrideColor = _Color,
                 defaultColor = _DefaultColor,
@@ -890,6 +888,8 @@ namespace Squared.Render.Text {
                 clearUserData = _UserData.HasValue,
                 WordWrapCharacters = _WordWrapCharacterTable,
             };
+
+            result.SetBuffer(_Buffer, true);
 
             if ((_Satellite?.Markers?.Count ?? 0) > 0)
                 foreach (var kvp in _Satellite.Markers)
@@ -1049,7 +1049,7 @@ namespace Squared.Render.Text {
                             ht[kvp.Position] = kvp;
                     }
 
-                    _Buffer = le.buffer;
+                    le.GetBuffer(out _Buffer);
                     SetFlag(InternalFlags.HasCachedStringLayout, true);
                 } finally {
                     rls.Dispose();

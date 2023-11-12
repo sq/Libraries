@@ -41,8 +41,7 @@ namespace Squared.Render.Text {
         public bool                splitAtWrapCharactersOnly;
         public bool                includeTrailingWhitespace;
         public bool                clearUserData;
-        public UnorderedList<BitmapDrawCall>.Allocator allocator;
-        public ArraySegment<BitmapDrawCall> buffer;
+        private ArraySegment<BitmapDrawCall> buffer;
         public Vector2?            position;
         public Color?              overrideColor;
         public Color               defaultColor;
@@ -98,7 +97,7 @@ namespace Squared.Render.Text {
         private int _rowIndex, _colIndex, _wordIndex;
         private int    wordStartColumn;
         Vector2        wordStartOffset;
-        private bool   ownsBuffer, suppress, suppressUntilNextLine, previousGlyphWasDead, 
+        private bool   allowBufferGrowth, suppress, suppressUntilNextLine, previousGlyphWasDead, 
             newLinePending, wordWrapSuppressed;
         private AbstractTextureReference lastUsedTexture;
         private DenseList<Bounds> boxes;
@@ -153,6 +152,15 @@ namespace Squared.Render.Text {
             ComputeLineBreakAtX();
 
             IsInitialized = true;
+        }
+
+        public void GetBuffer (out ArraySegment<BitmapDrawCall> result) {
+            result = this.buffer;
+        }
+
+        public void SetBuffer (ArraySegment<BitmapDrawCall> buffer, bool allowResize) {
+            this.buffer = buffer;
+            allowBufferGrowth = allowResize;
         }
 
         private void ProcessHitTests (ref Bounds bounds, float centerX) {
@@ -626,21 +634,12 @@ namespace Squared.Render.Text {
             int paddedCount = count + DefaultBufferPadding;
 
             if (buffer.Array == null) {
-                ownsBuffer = true;
-                buffer = allocator?.Allocate(paddedCount) ??
-                    new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[paddedCount]);
+                allowBufferGrowth = true;
+                buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[paddedCount]);
             } else if (buffer.Count < paddedCount) {
-                if (ownsBuffer || (allocator != null)) {
-                    var oldBuffer = buffer;
+                if (allowBufferGrowth) {
                     var newSize = UnorderedList<BitmapDrawCall>.PickGrowthSize(buffer.Count, paddedCount);
-                    if (allocator != null)
-                        buffer = allocator.Resize(buffer, newSize);
-                    else {
-                        buffer = new ArraySegment<BitmapDrawCall>(
-                            new BitmapDrawCall[newSize]
-                        );
-                        Array.Copy(oldBuffer.Array, buffer.Array, oldBuffer.Count);
-                    }
+                    buffer = UnorderedList<BitmapDrawCall>.Allocator.Resize(buffer, newSize);
                 } else if (buffer.Count >= count) {
                     // This is OK, there should be enough room...
                     ;

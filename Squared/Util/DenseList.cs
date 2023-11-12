@@ -53,18 +53,9 @@ namespace Squared.Util {
         internal short _Count, _ListCapacity;
         // Then put these two reference types next to each other because we know they're 4 or 8 bytes each
         internal UnorderedList<T> _Items;
-        private  object _ListPoolOrAllocator;
+        public IListPool<T> ListPool;
         // Finally put all the items at the end since they could be any size and pack weirdly
         internal T Item1, Item2, Item3, Item4;
-
-        public object ListPoolOrAllocator {
-            get => _ListPoolOrAllocator;
-            set {
-                if ((_ListPoolOrAllocator != null) && (Count > 0) && (_ListPoolOrAllocator != value))
-                    throw new InvalidOperationException("A list pool or allocator is already set and this list is not empty");
-                _ListPoolOrAllocator = value;
-            }
-        }
         public short? ListCapacity {
             get => _ListCapacity > 0 ? _ListCapacity : (short?)null;
             set {
@@ -157,11 +148,6 @@ namespace Squared.Util {
             if (items != null)
                 AddRange(items);
         }
-
-        public UnorderedList<T>.Allocator Allocator =>
-            _ListPoolOrAllocator as UnorderedList<T>.Allocator;
-        public IListPool<T> ListPool =>
-            _ListPoolOrAllocator as IListPool<T>;
 
         public bool HasList {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -309,12 +295,13 @@ namespace Squared.Util {
                 ;
 
             UnorderedList<T> items;
-            if (_ListPoolOrAllocator is IListPool<T> lp)
+            var lp = ListPool;
+            if (lp != null)
                 items = lp.Allocate(capacity, false);
             else if (capacity.HasValue)
-                items = new UnorderedList<T>(capacity.Value, (UnorderedList<T>.Allocator)_ListPoolOrAllocator);
+                items = new UnorderedList<T>(capacity.Value);
             else
-                items = new UnorderedList<T>((UnorderedList<T>.Allocator)_ListPoolOrAllocator);
+                items = new UnorderedList<T>();
 
             int count = _Count;
             _Count = 0;

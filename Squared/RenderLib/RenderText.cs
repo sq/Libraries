@@ -185,7 +185,6 @@ namespace Squared.Render {
             Color? addColor = null
         ) {
             var state = new StringLayoutEngine {
-                allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
                 position = position,
                 defaultColor = color ?? Color.White,
                 scale = scale,
@@ -197,10 +196,10 @@ namespace Squared.Render {
                 alignToPixels = alignToPixels,
                 characterWrap = lineBreakAtX.HasValue,
                 wordWrap = wordWrap,
-                buffer = buffer.GetValueOrDefault(default(ArraySegment<BitmapDrawCall>)),
                 reverseOrder = reverseOrder,
                 addColor = addColor ?? Color.Transparent
             };
+            state.SetBuffer(buffer.GetValueOrDefault(default), true);
             var gs = new SpriteFontGlyphSource(font);
 
             if (horizontalAlignment.HasValue)
@@ -230,7 +229,6 @@ namespace Squared.Render {
             Color? addColor = null
         ) where TGlyphSource : IGlyphSource {
             var state = new StringLayoutEngine {
-                allocator = UnorderedList<BitmapDrawCall>.DefaultAllocator.Instance,
                 position = position,
                 defaultColor = color ?? Color.White,
                 scale = scale,
@@ -242,10 +240,10 @@ namespace Squared.Render {
                 alignToPixels = alignToPixels,
                 characterWrap = lineBreakAtX.HasValue,
                 wordWrap = wordWrap,
-                buffer = buffer.GetValueOrDefault(default(ArraySegment<BitmapDrawCall>)),
                 reverseOrder = reverseOrder,
                 addColor = addColor ?? Color.Transparent
             };
+            state.SetBuffer(buffer.GetValueOrDefault(default), true);
 
             if (horizontalAlignment.HasValue)
                 state.alignment = horizontalAlignment.Value;
