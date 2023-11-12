@@ -733,8 +733,7 @@ namespace Squared.Render.Resources {
         }
 
         public static bool TryGetStreamPath (Stream stream, out string path) {
-            lock (StreamPaths)
-                return StreamPaths.TryGetValue(stream, out path);
+            return StreamPaths.TryGetValue(stream, out path);
         }
 
         /// <summary>
@@ -752,8 +751,7 @@ namespace Squared.Render.Resources {
                 StreamParents.Remove(stream);
             }
 
-            lock (StreamPaths)
-                StreamPaths.Remove(stream);
+            StreamPaths.Remove(stream);
         }
 
         private Stream OpenFile (string path) {
@@ -775,7 +773,7 @@ namespace Squared.Render.Resources {
         public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception, bool exactName = false) {
             var pathsSearched = new DenseList<string>();
 
-            result = null;
+            result = null; 
             exception = null;
             string candidateStreamName;
             foreach (var extension in Extensions) {

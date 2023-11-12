@@ -90,5 +90,12 @@ namespace Squared.Util {
 
         public static IntPtr operator + (NativeAllocation lhs, int rhs)
             => (IntPtr)(((byte*)lhs.Data) + rhs);
+
+#if DEBUG
+        ~NativeAllocation () {
+            if (!_Released)
+                throw new Exception("Native allocation leaked");
+        }
+#endif
     }
 }

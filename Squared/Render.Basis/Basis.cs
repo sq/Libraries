@@ -332,8 +332,8 @@ namespace Squared.Render.Basis {
         }
 
         ~BasisFile () {
-            if (pTranscoder != default)
-                Transcoder.Delete(pTranscoder);
+            if (!IsDisposed)
+                Dispose();
         }
     }
 
