@@ -120,7 +120,7 @@ namespace Squared.Render.Buffers {
     public sealed class BufferGenerator<TVertex> : IBufferGenerator
         where TVertex : unmanaged
     {
-        public static bool Tracing = true;
+        public static bool Tracing = false;
 
         protected sealed class SoftwareBufferPool {
             public sealed class BucketComparer : IComparer<GeometryBuffer> {

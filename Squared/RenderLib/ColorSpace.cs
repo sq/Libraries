@@ -308,14 +308,16 @@ namespace Squared.Render {
         public static pSRGBColor Black (float opacity = 1.0f) {
             if (opacity == 1.0f)
                 return _Black;
-            return new pSRGBColor(0, 0, 0, opacity, true);
+            // HACK: Opacities above 1.0 cause bad math problems inside of the RasterStroke shader
+            return new pSRGBColor(0, 0, 0, Arithmetic.Saturate(opacity), true);
         }
 
         public static pSRGBColor White (float opacity = 1.0f) {
             if (opacity == 1.0f)
                 return _White;
             float g = opacity;
-            return new pSRGBColor(g, g, g, opacity, true);
+            // HACK: Opacities above 1.0 cause bad math problems inside of the RasterStroke shader
+            return new pSRGBColor(g, g, g, Arithmetic.Saturate(opacity), true);
         }
 
         public static pSRGBColor Lerp (pSRGBColor a, pSRGBColor b, float t) {
