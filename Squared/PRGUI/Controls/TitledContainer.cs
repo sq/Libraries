@@ -136,7 +136,10 @@ namespace Squared.PRGUI.Controls {
             var wasValid = TitleLayout.IsValid;
             TitleLayout.GlyphSource = GetGlyphSource(ref context, decorations);
             TitleLayout.DefaultColor = color ?? Color.White;
-            TitleLayout.LineBreakAtX = contentBox.Width;
+            var titleSpace = contentBox.Width;
+            if (Collapsible)
+                titleSpace -= DisclosureArrowSize + (DisclosureArrowPadding * 0.5f);
+            TitleLayout.LineBreakAtX = titleSpace;
             TitleLayout.UserData = userData;
             // We don't want to invalidate the height for text changes, but we do want to invalidate it for wrapping or font changes
             if (!TitleLayout.IsValid && wasValid)
