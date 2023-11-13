@@ -97,7 +97,7 @@ namespace Squared.Render.Text {
         private int _rowIndex, _colIndex, _wordIndex;
         private int    wordStartColumn;
         Vector2        wordStartOffset;
-        private bool   allowBufferGrowth, suppress, suppressUntilNextLine, previousGlyphWasDead, 
+        private bool   allowBufferGrowth, suppress, suppressForHorizontalOverflow, previousGlyphWasDead, 
             newLinePending, wordWrapSuppressed;
         private AbstractTextureReference lastUsedTexture;
         private DenseList<Bounds> boxes;
@@ -115,7 +115,7 @@ namespace Squared.Render.Text {
             characterOffsetUnconstrained = characterOffset = new Vector2(xOffsetOfFirstLine, 0);
             initialLineXOffset = characterOffset.X;
 
-            previousGlyphWasDead = suppress = suppressUntilNextLine = false;
+            previousGlyphWasDead = suppress = suppressForHorizontalOverflow = false;
 
             bufferWritePosition = 0;
             drawCallsWritten = 0;
@@ -182,7 +182,7 @@ namespace Squared.Render.Text {
         private void ProcessMarkers (ref Bounds bounds, int currentCodepointSize, int? drawCallIndex, bool splitMarker, bool didWrapWord) {
             if (measureOnly || disableMarkers)
                 return;
-            if (suppress || suppressUntilNextLine)
+            if (suppress || suppressForHorizontalOverflow)
                 return;
 
             var characterIndex1 = currentCharacterIndex - currentCodepointSize + 1;
@@ -814,7 +814,7 @@ namespace Squared.Render.Text {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool ComputeSuppress (bool? overrideSuppress) {
-            if (suppressUntilNextLine)
+            if (suppressForHorizontalOverflow)
                 return true;
             return overrideSuppress ?? suppress;
         }
@@ -925,10 +925,11 @@ namespace Squared.Render.Text {
                         forcedWrap = true;
                     } else
                         forcedWrap = true;
-                }
+                } else if (suppressForHorizontalOverflow && isWordWrapPoint)
+                    forcedWrap = true;
 
                 if (forcedWrap)
-                    PerformForcedWrap(x, ref lineBreak, ref didWrapWord, glyphLineSpacing, glyphBaseline);
+                    PerformForcedWrap(x, isWordWrapPoint, ref lineBreak, ref didWrapWord, glyphLineSpacing, glyphBaseline);
 
                 if (lineBreak)
                     PerformLineBreak(forcedWrap);
@@ -1198,6 +1199,11 @@ namespace Squared.Render.Text {
             if (!forcedWrap) {
                 var spacingForThisLineBreak = currentLineSpacing + extraLineBreakSpacing;
                 if (!suppress) {
+                    // We just wrapped to a new line so disable horizontal suppression. Without this, in 
+                    //  word wrap only (no character wrap) mode, as soon as we hit a word that can't fit
+                    //  onto a line, we suppress the rest of the string.
+                    suppressForHorizontalOverflow = false;
+
                     characterOffset.X = xOffsetOfNewLine;
                     // FIXME: didn't we already do this?
                     characterOffset.Y += spacingForThisLineBreak;
@@ -1213,7 +1219,6 @@ namespace Squared.Render.Text {
                 initialLineSpacing = currentLineSpacing = 0;
                 currentBaseline = 0;
                 baselineAdjustmentStart = bufferWritePosition;
-                suppressUntilNextLine = false;
             }
 
             ComputeLineBreakAtX();
@@ -1227,7 +1232,7 @@ namespace Squared.Render.Text {
             _colIndex = 0;
         }
 
-        private void PerformForcedWrap (float x, ref bool lineBreak, ref bool didWrapWord, float glyphLineSpacing, float glyphBaseline) {
+        private void PerformForcedWrap (float x, bool isWordWrapPoint, ref bool lineBreak, ref bool didWrapWord, float glyphLineSpacing, float glyphBaseline) {
             var currentWordSize = x - wordStartOffset.X;
 
             if (
@@ -1250,7 +1255,12 @@ namespace Squared.Render.Text {
                 // FIXME: While this will abort when the line limit is reached, we need to erase the word we wrapped to the next line
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
                     suppress = true;
-            } else if (characterWrap) {
+            } else if (
+                characterWrap || 
+                // If we previously started suppressing characters for horizontal overflow, the next time
+                //  we hit a word wrap point we need to perform a character wrap
+                (isWordWrapPoint && suppressForHorizontalOverflow)
+            ) {
                 if (lineLimit.HasValue)
                     lineLimit--;
                 characterOffset.X = xOffsetOfWrappedLine;
@@ -1268,6 +1278,8 @@ namespace Squared.Render.Text {
 
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
                     suppress = true;
+
+                suppressForHorizontalOverflow = false;
             } else if (wordStartWritePosition < 0) {
                 // This means we haven't actually rendered any glyphs yet, so there's no reason to start suppressing
                 //  overflow (there is no overflow yet). Without this elseif branch, text would get truncated when
@@ -1276,7 +1288,7 @@ namespace Squared.Render.Text {
             } else if (hideOverflow) {
                 // If wrapping is disabled but we've hit the line break boundary, we want to suppress glyphs from appearing
                 //  until the beginning of the next line (i.e. hard line break), but continue performing layout
-                suppressUntilNextLine = true;
+                suppressForHorizontalOverflow = true;
             } else {
                 // Just overflow. Hooray!
                 ;
