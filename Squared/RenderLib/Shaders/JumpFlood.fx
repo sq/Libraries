@@ -3,10 +3,14 @@
 #include "FormatCommon.fxh"
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
+#include "sRGBCommon.fxh"
 
 #define MaxDistance 2048
 
 uniform const bool Smoothing;
+uniform const float4 ChromaKey1,
+    ChromaKey2,
+    ChromaKey3;
 
 float ScreenDistanceSquared(float2 xy) {
     return dot(xy, xy);
@@ -40,6 +44,17 @@ float2 calculateNormal(
     return result;
 }
 
+#define CHROMA_SCALE_FACTOR 1.0
+#define LUMA_SCALE_FACTOR 0.66
+
+float2 calculateChromaKey(float3 texLab, float4 keyLabAndWindowSize) {
+    if (keyLabAndWindowSize.w <= 0)
+        return 1;
+    float3 labDistance = (texLab.xyz - keyLabAndWindowSize.xyz) * float3(LUMA_SCALE_FACTOR, CHROMA_SCALE_FACTOR, CHROMA_SCALE_FACTOR);
+    float distance = length(labDistance);
+    return saturate(distance / keyLabAndWindowSize.w);
+}
+
 void JumpFloodInitShader(
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
@@ -51,6 +66,12 @@ void JumpFloodInitShader(
     float2 coordClamped = clamp(texCoord, texRgn.xy, texRgn.zw);
     float4 input = tex2D(TextureSampler, coordClamped);
     float alpha = ExtractMask(input, BitmapTraits);
+    float4 texLab = pSRGBToOkLab(input);
+    
+    alpha = min(alpha, calculateChromaKey(texLab.xyz, ChromaKey1));
+    alpha = min(alpha, calculateChromaKey(texLab.xyz, ChromaKey2));
+    alpha = min(alpha, calculateChromaKey(texLab.xyz, ChromaKey3));
+         
     if (Smoothing) {
         if ((alpha > params.x) && (alpha < params.y)) {
             // For pixels with low opacity, we use the opacity as approximate coverage and generate

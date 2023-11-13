@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.CoreCLR;
+using Squared.Game;
 using Squared.Render.Convenience;
 using Squared.Render.Tracing;
 using Squared.Threading;
@@ -74,13 +75,23 @@ namespace Squared.Render.DistanceField {
             return result;
         }
 
+        private static Vector4 ConvertChromaKey (Vector4 rgbW) {
+            if (rgbW.W <= 0)
+                return default;
+
+            var color = new pSRGBColor(rgbW.X, rgbW.Y, rgbW.Z, 1);
+            color.ToOkLab(out var l, out var a, out var b, out _);
+            return new Vector4(l, a, b, rgbW.W);
+        }
+
         /// <summary>
         /// Generates a distance field populated based on the alpha channel of an input image, using the GPU.
         /// </summary>
         /// <param name="scratchSurfaces">The scratch surfaces used by the generation process. You are responsible for disposing these next frame.</param>
         public static void GenerateDistanceField (
             ref ImperativeRenderer renderer, Texture2D input, RenderTarget2D output, ref GPUScratchSurfaces scratchSurfaces,
-            int? layer = null, float minimumAlpha = 0.0f, float smoothingLevel = 0.0f
+            int? layer = null, float minimumAlpha = 0.0f, float smoothingLevel = 0.0f, Vector4 chromaKey1 = default,
+            Vector4 chromaKey2 = default, Vector4 chromaKey3 = default
         ) {
             var coordinator = renderer.Container.Coordinator;
             scratchSurfaces = scratchSurfaces ?? new GPUScratchSurfaces(coordinator);
@@ -98,6 +109,9 @@ namespace Squared.Render.DistanceField {
             initGroup.Clear(layer: -1, value: new Vector4(MaxDistance, MaxDistance, MaxDistance, 0f));
             var initMaterial = renderer.Materials.JumpFloodInit;
             initGroup.Parameters.Add("Smoothing", smoothingLevel > 0.01f);
+            initGroup.Parameters.Add("ChromaKey1", ConvertChromaKey(chromaKey1));
+            initGroup.Parameters.Add("ChromaKey2", ConvertChromaKey(chromaKey2));
+            initGroup.Parameters.Add("ChromaKey3", ConvertChromaKey(chromaKey3));
             initGroup.Draw(
                 // HACK: Offset the source image one pixel inward, so that a fully opaque image still has
                 //  correct distance values
