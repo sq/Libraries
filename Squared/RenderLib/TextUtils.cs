@@ -24,6 +24,8 @@ namespace Squared.Render.Text {
             public Dictionary<Vector2, LayoutHitTest> HitTests = null;
             public DenseList<LayoutMarker> RichMarkers;
             public DenseList<Bounds> Boxes;
+
+            public UnorderedList<LayoutMarker> LayoutEngineMarkerStorage;
         }
 
         [Flags]
@@ -889,6 +891,8 @@ namespace Squared.Render.Text {
                 WordWrapCharacters = _WordWrapCharacterTable,
             };
 
+            result.Markers.UseExistingStorage(_Satellite?.LayoutEngineMarkerStorage, false);
+
             result.SetBuffer(_Buffer, true);
 
             if ((_Satellite?.Markers?.Count ?? 0) > 0)
@@ -1052,6 +1056,9 @@ namespace Squared.Render.Text {
                     le.GetBuffer(out _Buffer);
                     SetFlag(InternalFlags.HasCachedStringLayout, true);
                 } finally {
+                    if (le.Markers.HasList)
+                        AutoAllocateSatellite().LayoutEngineMarkerStorage = le.Markers.GetStorage(false);
+
                     rls.Dispose();
                     le.Dispose();
                 }

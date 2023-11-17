@@ -540,7 +540,7 @@ namespace Squared.Util.Event {
                 BufferPool<EventSubscriberEntry>.Buffer b;
                 lock (subscribers) {
                     count = subscribers.Entries.Count;
-                    b = BufferPool<EventSubscriberEntry>.Allocate();
+                    b = BufferPool<EventSubscriberEntry>.Allocate(count);
                     subscribers.Entries.CopyTo(b.Data);
                 }
 

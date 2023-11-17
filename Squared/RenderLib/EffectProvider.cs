@@ -38,7 +38,7 @@ namespace Squared.Render.Resources {
                         case IniLineType.Value:
                             if (!includeFxcParams && line.Key.Equals("FxcParams", StringComparison.OrdinalIgnoreCase))
                                 continue;
-                            entry.Dict[line.Key] = line.Value;
+                            entry.Dict[string.Intern(line.Key)] = (line.Value.Length <= 2) ? string.Intern(line.Value) : line.Value;
                             break;
                     }
                 }

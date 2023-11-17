@@ -842,7 +842,7 @@ namespace Squared.Render.Resources {
 
         public string FixupName (string name, bool stripExtension) {
             if (stripExtension && name.Contains("."))
-                name = name.Replace(Path.GetExtension(name), "");
+                name = Path.GetFileNameWithoutExtension(name);
             name = name.Replace('/', '\\');
             return name;
         }
