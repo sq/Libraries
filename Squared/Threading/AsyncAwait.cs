@@ -13,7 +13,6 @@ using tTask = System.Threading.Tasks.Task;
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 using IEventInfo = Squared.Util.Event.IEventInfo;
 using Squared.Threading;
-using Squared.Threading.AsyncAwait;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 
@@ -56,7 +55,6 @@ namespace Squared.Threading {
         }
 
         public struct FutureAwaiter<TResult> : ICriticalNotifyCompletion, INotifyCompletion {
-            public readonly CancellationScope.Registration Registration;
             public readonly Future<TResult> Future;
             public readonly bool HasDisposedValue;
             public readonly TResult DisposedValue;
@@ -65,7 +63,6 @@ namespace Squared.Threading {
             public FutureAwaiter (Future<TResult> future, bool throwOnError) {
                 if (future == null)
                     throw new ArgumentNullException(nameof(future));
-                Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
                 HasDisposedValue = false;
                 DisposedValue = default(TResult);
@@ -75,7 +72,6 @@ namespace Squared.Threading {
             public FutureAwaiter (Future<TResult> future, TResult disposedValue, bool throwOnError) {
                 if (future == null)
                     throw new ArgumentNullException(nameof(future));
-                Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
                 HasDisposedValue = true;
                 DisposedValue = disposedValue;
@@ -85,7 +81,7 @@ namespace Squared.Threading {
             public void UnsafeOnCompleted (Action continuation) => OnCompleted(continuation);
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnResolved(Registration.OnCompleteWithUserData(continuation), Registration);
+                ((IFuture)Future).RegisterOnResolved(continuation);
             }
 
             public bool IsCompleted {
@@ -95,8 +91,6 @@ namespace Squared.Threading {
             }
 
             public TResult GetResult () {
-                Registration.ThrowIfCanceled();
-
                 if (Future.Disposed && HasDisposedValue)
                     return DisposedValue;
 
@@ -108,7 +102,6 @@ namespace Squared.Threading {
         }
 
         public struct IFutureAwaiter : ICriticalNotifyCompletion, INotifyCompletion {
-            public readonly CancellationScope.Registration Registration;
             public readonly IFuture Future;
             public readonly bool HasDisposedValue;
             public readonly object DisposedValue;
@@ -117,7 +110,6 @@ namespace Squared.Threading {
             public IFutureAwaiter (IFuture future, bool throwOnError) {
                 if (future == null)
                     throw new ArgumentNullException(nameof(future));
-                Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
                 HasDisposedValue = false;
                 DisposedValue = null;
@@ -127,7 +119,6 @@ namespace Squared.Threading {
             public IFutureAwaiter (IFuture future, object disposedValue, bool throwOnError) {
                 if (future == null)
                     throw new ArgumentNullException(nameof(future));
-                Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
                 HasDisposedValue = true;
                 DisposedValue = disposedValue;
@@ -137,7 +128,7 @@ namespace Squared.Threading {
             public void UnsafeOnCompleted (Action continuation) => OnCompleted(continuation);
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnResolved(Registration.OnCompleteWithUserData(continuation), Registration);
+                Future.RegisterOnResolved(continuation);
             }
 
             public bool IsCompleted {
@@ -147,8 +138,6 @@ namespace Squared.Threading {
             }
 
             public object GetResult () {
-                Registration.ThrowIfCanceled();
-
                 if (Future.Disposed && HasDisposedValue)
                     return DisposedValue;
 
@@ -160,20 +149,18 @@ namespace Squared.Threading {
         }
 
         public struct VoidFutureAwaiter : ICriticalNotifyCompletion, INotifyCompletion {
-            public readonly CancellationScope.Registration Registration;
             public readonly Future<NoneType> Future;
 
             public VoidFutureAwaiter (Future<NoneType> future) {
                 if (future == null)
                     throw new ArgumentNullException(nameof(future));
-                Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
             }
 
             public void UnsafeOnCompleted (Action continuation) => OnCompleted(continuation);
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnResolved(Registration.OnCompleteWithUserData(continuation), Registration);
+                ((IFuture)Future).RegisterOnResolved(continuation);
             }
 
             public bool IsCompleted {
@@ -183,8 +170,6 @@ namespace Squared.Threading {
             }
 
             public void GetResult () {
-                CancellationScope.Current?.ThrowIfCanceled();
-
                 if (!Future.Disposed) {
                     var @void = Future.Result;
                 }
@@ -370,13 +355,6 @@ namespace Squared.Threading {
             return result;
         }
 
-        private static OnFutureResolvedWithData CancelScopeForTask = _CancelScopeForTask;
-
-        private static void _CancelScopeForTask (IFuture future, object _task) {
-            var task = (tTask)_task;
-            task.TryCancelScope();
-        }
-
         public static void BindFuture (this tTask task, IFuture future) {
             if (task.IsCompleted && !task.IsFaulted) {
                 future.Complete();
@@ -391,7 +369,6 @@ namespace Squared.Threading {
                 else
                     future.Complete();
             });
-            future.RegisterOnDispose(CancelScopeForTask, task);
         }
 
         public static void BindFuture<T> (this System.Threading.Tasks.Task<T> task, Future<T> future) {
@@ -404,20 +381,6 @@ namespace Squared.Threading {
             task.GetAwaiter().OnCompleted(() => {
                 future.SetResultFrom(task);
             });
-            future.RegisterOnDispose(CancelScopeForTask, task);
-        }
-
-        public static bool TryCancelScope (this tTask task) {
-            if (task.IsCanceled)
-                return true;
-            else if (task.IsCompleted)
-                return false;
-
-            CancellationScope scope;
-            if (CancellationScope.TryGet(task, out scope))
-                return scope.TryCancel();
-
-            return false;
         }
 
         public static WaitableEvent Event (this EventBus eventBus, object source = null, string type = null) {

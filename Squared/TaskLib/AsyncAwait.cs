@@ -13,26 +13,23 @@ using tTask = System.Threading.Tasks.Task;
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 using IEventInfo = Squared.Util.Event.IEventInfo;
 using Squared.Threading;
-using Squared.Threading.AsyncAwait;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 
 namespace Squared.Task {
     public static class TaskAwaitExtensionMethods {
         public struct ISchedulableAwaiter : INotifyCompletion {
-            public readonly CancellationScope.Registration Registration;
             public readonly ISchedulable  Schedulable;
             public readonly IFuture       Future;
 
             public ISchedulableAwaiter (ISchedulable schedulable) {
-                Registration = new CancellationScope.Registration(TaskScheduler.Current);
                 Schedulable = schedulable;
-                var ts = (TaskScheduler)Registration.Scheduler;
+                var ts = TaskScheduler.Current;
                 Future = ts.Start(schedulable, TaskExecutionPolicy.RunWhileFutureLives);
             }
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnComplete(Registration.OnCompleteWithUserData(continuation), Registration);
+                Future.RegisterOnComplete(continuation);
             }
 
             public bool IsCompleted {
@@ -42,27 +39,23 @@ namespace Squared.Task {
             }
 
             public object GetResult () {
-                CancellationScope.Current?.ThrowIfCanceled();
-
                 return Future.Result;
             }
         }
 
         public struct ISchedulableAwaiter<T> : INotifyCompletion {
-            public readonly CancellationScope.Registration Registration;
             public readonly ISchedulable<T> Schedulable;
             public readonly Future<T>       Future;
 
             public ISchedulableAwaiter (ISchedulable<T> schedulable) {
-                Registration = new CancellationScope.Registration(TaskScheduler.Current);
                 Schedulable = schedulable;
                 Future = new Future<T>();
-                var ts = (TaskScheduler)Registration.Scheduler;
+                var ts = TaskScheduler.Current;
                 ts.Start(Future, schedulable, TaskExecutionPolicy.RunWhileFutureLives);
             }
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnComplete(Registration.OnCompleteWithUserData(continuation), Registration);
+                Future.RegisterOnComplete(continuation);
             }
 
             public bool IsCompleted {
@@ -72,27 +65,22 @@ namespace Squared.Task {
             }
 
             public T GetResult () {
-                CancellationScope.Current?.ThrowIfCanceled();
-
                 return Future.Result;
             }
         }
 
         public struct SequenceAwaiter<T> : INotifyCompletion {
-            public readonly CancellationScope.Registration Registration;
             public readonly Future<T>[]   Futures;
             public readonly IFuture       Ready;
 
             public SequenceAwaiter (ISchedulable<T>[] schedulables) {
-                Registration = new CancellationScope.Registration(TaskScheduler.Current);
-
                 Futures = new Future<T>[schedulables.Length];
                 if (Futures.Length == 0) {
                     Ready = SignalFuture.Signaled;
                     return;
                 }
 
-                var ts = (TaskScheduler)Registration.Scheduler;
+                var ts = TaskScheduler.Current;
                 for (var i = 0; i < Futures.Length; i++)
                     Futures[i] = ts.Start(schedulables[i]);
 
@@ -100,8 +88,6 @@ namespace Squared.Task {
             }
 
             public SequenceAwaiter (Future<T>[] futures) {
-                Registration = new CancellationScope.Registration(TaskScheduler.Current);
-
                 Futures = futures;
                 if (Futures.Length == 0) {
                     Ready = SignalFuture.Signaled;
@@ -113,7 +99,7 @@ namespace Squared.Task {
 
             public void OnCompleted (Action continuation) {
                 // FIXME: Use UserData
-                Ready.RegisterOnComplete(Registration.OnCompleteWithUserData(continuation), Registration);
+                Ready.RegisterOnComplete(continuation);
             }
 
             public bool IsCompleted {
@@ -123,8 +109,6 @@ namespace Squared.Task {
             }
 
             public T[] GetResult () {
-                CancellationScope.Current?.ThrowIfCanceled();
-
                 var result = new T[Futures.Length];
                 for (int i = 0; i < result.Length; i++)
                     result[i] = Futures[i].Result;
@@ -134,15 +118,12 @@ namespace Squared.Task {
         }
 
         public struct QueueToSchedulerTaskAwaiter : ICriticalNotifyCompletion, INotifyCompletion {
-            private TaskAwaiter Awaiter;
+            private ConfiguredTaskAwaitable.ConfiguredTaskAwaiter Awaiter;
             private TaskScheduler Scheduler;
             private bool ForNextStep;
 
-            static MethodInfo QueueMethod = typeof(TaskScheduler).GetMethod("QueueWorkItem", new [] { typeof(Action) }),
-                QueueNextStepMethod = typeof(TaskScheduler).GetMethod("QueueWorkItemForNextStep", new [] { typeof(Action) });
-
             public QueueToSchedulerTaskAwaiter (tTask task, TaskScheduler scheduler, bool forNextStep) {
-                Awaiter = task.GetAwaiter();
+                Awaiter = task.ConfigureAwait(false).GetAwaiter();
                 Scheduler = scheduler;
                 ForNextStep = forNextStep;
             }
@@ -160,15 +141,12 @@ namespace Squared.Task {
         }
 
         public struct QueueToSchedulerTaskAwaiter<T> : ICriticalNotifyCompletion, INotifyCompletion {
-            private TaskAwaiter<T> Awaiter;
+            private ConfiguredTaskAwaitable<T>.ConfiguredTaskAwaiter Awaiter;
             private TaskScheduler Scheduler;
             private bool ForNextStep;
 
-            static MethodInfo QueueMethod = typeof(TaskScheduler).GetMethod("QueueWorkItem", new [] { typeof(Action) }),
-                QueueNextStepMethod = typeof(TaskScheduler).GetMethod("QueueWorkItemForNextStep", new [] { typeof(Action) });
-
             public QueueToSchedulerTaskAwaiter (Task<T> task, TaskScheduler scheduler, bool forNextStep) {
-                Awaiter = task.GetAwaiter();
+                Awaiter = task.ConfigureAwait(false).GetAwaiter();
                 Scheduler = scheduler;
                 ForNextStep = forNextStep;
             }
@@ -236,6 +214,8 @@ namespace Squared.Task {
                     ForNextStep = forNextStep,
                     Continuation = continuation
                 };
+                // This + ConfigureAwait in our caller will prevent the BCL from allocating a continuation wrapper for us.
+                // FIXME: We may need to do OnCompleted here to flow through execution context, I'm really not sure...
                 awaiter.UnsafeOnCompleted(thunk.OnCompleted);
             }
         }
