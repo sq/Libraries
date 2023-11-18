@@ -925,7 +925,7 @@ namespace Squared.Render.Text {
                         forcedWrap = true;
                     } else
                         forcedWrap = true;
-                } else if (suppressForHorizontalOverflow && isWordWrapPoint)
+                } else if (suppressForHorizontalOverflow && isWordWrapPoint && !lineBreak)
                     forcedWrap = true;
 
                 if (forcedWrap)
@@ -1259,7 +1259,7 @@ namespace Squared.Render.Text {
                 characterWrap || 
                 // If we previously started suppressing characters for horizontal overflow, the next time
                 //  we hit a word wrap point we need to perform a character wrap
-                (isWordWrapPoint && suppressForHorizontalOverflow)
+                (isWordWrapPoint && suppressForHorizontalOverflow && wordWrap)
             ) {
                 if (lineLimit.HasValue)
                     lineLimit--;

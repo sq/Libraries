@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime;
 using System.Runtime.CompilerServices;
@@ -357,7 +358,7 @@ namespace Squared.Util.Text {
         public override string ToString () => Value.ToString(); 
 
         public static implicit operator ImmutableAbstractString (string s) => new ImmutableAbstractString(s);
-        public static implicit operator ImmutableAbstractString (AbstractString astr) => new ImmutableAbstractString(astr);
+        public static explicit operator ImmutableAbstractString (AbstractString astr) => new ImmutableAbstractString(astr);
     }
 
     public class ImmutableAbstractStringLookup<TValue> : IEnumerable<KeyValuePair<ImmutableAbstractString, TValue>> {
@@ -935,6 +936,102 @@ namespace Squared.Util.Text {
                 source.CopyTo(0, buffer.Data, 0, source.Length);
                 destination.Append(buffer.Data, 0, source.Length);
             }
+        }
+    }
+
+    public sealed class PathNameComparer : IEqualityComparer<string>, IEqualityComparer<AbstractString>, IEqualityComparer<ImmutableAbstractString> {
+        public static readonly PathNameComparer CaseSensitive = new PathNameComparer(false, false),
+            CaseInsensitive = new PathNameComparer(true, false);
+
+        private static readonly char NotSeparator = Path.DirectorySeparatorChar == '\\' ? '/' : '\\';
+        private static readonly char Separator = Path.DirectorySeparatorChar;
+
+        public readonly bool IgnoreCase;
+        public readonly bool IgnoreExtension;
+
+        public PathNameComparer (bool ignoreCase, bool ignoreExtension) {
+            IgnoreCase = ignoreCase;
+            IgnoreExtension = ignoreExtension;
+        }
+
+        public bool Equals (AbstractString x, AbstractString y) {
+            int l = Length(x);
+            if (l != Length(y))
+                return false;
+
+            for (int i = 0, j = l - 1; i <= j; i++, j--) {
+                var a = Equals(x[i], y[i]);
+                var b = Equals(x[j], y[j]);
+                if (!a || !b) return false;
+            }
+
+            return true;
+        }
+
+        private char Normalize (char ch) {
+            if (ch == NotSeparator)
+                return Separator;
+            else if (IgnoreCase)
+                return char.ToLowerInvariant(ch);
+            else
+                return ch;
+        }
+
+        private bool Equals (char lhs, char rhs) {
+            if (lhs == NotSeparator)
+                lhs = Separator;
+            if (rhs == NotSeparator)
+                rhs = Separator;
+
+            if (IgnoreCase) {
+                lhs = char.ToLowerInvariant(lhs);
+                rhs = char.ToLowerInvariant(rhs);
+            }
+
+            return lhs == rhs;
+        }
+
+        private int Length (AbstractString s) {
+            if (!IgnoreExtension)
+                return s.Length;
+
+            for (int i = s.Length - 1; i >= 0; i--) {
+                var ch = s[i];
+
+                // If we find a path separator before a dot, this path has no extension
+                if ((ch == '/') || (ch == '\\'))
+                    return s.Length;
+
+                if (ch == '.')
+                    return i;
+            }
+
+            return s.Length;
+        }
+
+        public int GetHashCode (AbstractString obj) {
+            // FIXME: There is no efficient way to do a full string hash that normalizes path characters and case
+            //  on-the-fly so we go with this relatively quick hash
+            int l = Length(obj);
+            if (l == 0)
+                return 0;
+            return l ^ Normalize(obj[0]) ^ Normalize(obj[l - 1]);
+        }
+
+        bool IEqualityComparer<string>.Equals (string x, string y) {
+            return Equals((AbstractString)x, (AbstractString)y);
+        }
+
+        bool IEqualityComparer<ImmutableAbstractString>.Equals (ImmutableAbstractString x, ImmutableAbstractString y) {
+            return Equals(x.Value, y.Value);
+        }
+
+        int IEqualityComparer<string>.GetHashCode (string obj) {
+            return GetHashCode((AbstractString)obj);
+        }
+
+        int IEqualityComparer<ImmutableAbstractString>.GetHashCode (ImmutableAbstractString obj) {
+            return GetHashCode(obj.Value);
         }
     }
 }

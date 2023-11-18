@@ -19,6 +19,7 @@ using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Ini;
 using Squared.Util.Testing;
+using Squared.Util.Text;
 
 namespace Squared.Render.Resources {
     public delegate void ResourceLoadStartHandler (ResourceLoadInfo info);
@@ -96,7 +97,7 @@ namespace Squared.Render.Resources {
         protected struct EntryEnumerator : IEnumerator<CacheEntry>, IEnumerable<CacheEntry> {
             public readonly ResourceProvider<T> Provider;
 
-            private Dictionary<string, SecondLevelCache>.ValueCollection.Enumerator FirstLevel;
+            private Dictionary<ImmutableAbstractString, SecondLevelCache>.ValueCollection.Enumerator FirstLevel;
             private SecondLevelCache.ValueCollection.Enumerator SecondLevel;
             private bool IsInitialized;
 
@@ -163,11 +164,14 @@ namespace Squared.Render.Resources {
             }
 
             public bool Equals (CacheKey x, CacheKey y) {
+                if (!Provider.PathComparer.Equals(x.Name.Value, y.Name.Value))
+                    return false;
+
                 return Provider.AreKeysEqual(ref x, ref y);
             }
 
             public int GetHashCode (CacheKey obj) {
-                return obj.Name.GetHashCode();
+                return Provider.PathComparer.GetHashCode(obj.Name.Value);
             }
         }
 
@@ -305,19 +309,19 @@ namespace Squared.Render.Resources {
             EnableThreadedCreate = false;
 
         protected struct CacheKey {
-            public string Name;
+            public ImmutableAbstractString Name;
             public object Data;
         }
 
         protected struct CacheEntry {
-            public string Name;
+            public ImmutableAbstractString Name;
             public Future<T> Future;
             public object Data;
         }
 
         protected readonly CacheKeyComparer Comparer;
-        protected readonly Dictionary<string, SecondLevelCache> FirstLevelCache = 
-            new Dictionary<string, SecondLevelCache>(StringComparer.Ordinal);
+        protected readonly ImmutableAbstractStringLookup<SecondLevelCache> FirstLevelCache = 
+            new ImmutableAbstractStringLookup<SecondLevelCache>(false);
         protected object DefaultOptions;
 
         protected WorkQueue<PreloadWorkItem> PreloadQueue { get; private set; }
@@ -328,20 +332,21 @@ namespace Squared.Render.Resources {
 
         public IResourceProviderStreamSource StreamSource { get; protected set; }
 
+        public PathNameComparer PathComparer = new PathNameComparer(true, true);
         public ITimeProvider TimeProvider = new DotNetTimeProvider();
         public event ResourceLoadStartHandler OnLoadStart;
         public event ResourceLoadCompleteHandler OnLoad;
 
         internal long Now => TimeProvider.Ticks;
 
-        protected void SetFutureResult<T> (Future<T> future, T result, Exception error) {
+        protected void SetFutureResult<U> (Future<U> future, U result, Exception error) {
             if ((CompletionScheduler == null) || (Thread.CurrentThread == CompletionScheduler.MainThread))
                 future.SetResult(result, error);
             else
                 CompletionScheduler.QueueWorkItem(() => future.SetResult(result, error));
         }
 
-        protected void SetFutureResult2<T> (Future<T> future, T result, ExceptionDispatchInfo errorInfo) {
+        protected void SetFutureResult2<U> (Future<U> future, U result, ExceptionDispatchInfo errorInfo) {
             if ((CompletionScheduler == null) || (Thread.CurrentThread == CompletionScheduler.MainThread))
                 future.SetResult2(result, errorInfo);
             else
@@ -415,7 +420,7 @@ namespace Squared.Render.Resources {
             CreateQueue = coordinator.ThreadGroup.GetQueueForType<CreateWorkItem>(forMainThread: !EnableThreadedCreate);
         }
 
-        protected virtual CacheKey MakeKey (string name, object data) {
+        protected virtual CacheKey MakeKey (ImmutableAbstractString name, object data) {
             return new CacheKey { Name = name, Data = data ?? DefaultOptions };
         }
 
@@ -423,7 +428,7 @@ namespace Squared.Render.Resources {
         /// Override this if you wish to take load options into account when looking items up in the cache
         /// </summary>
         protected virtual bool AreKeysEqual (ref CacheKey lhs, ref CacheKey rhs) {
-            return lhs.Name.Equals(rhs.Name);
+            return true;
         }
 
         public void SetStreamSource (IResourceProviderStreamSource source, bool clearCache) {
@@ -439,14 +444,14 @@ namespace Squared.Render.Resources {
         /// <summary>
         /// This method will be called to filter load data that was passed in from the outside before it is passed to PreloadInstance
         /// </summary>
-        protected virtual object FilterData (string name, object data) {
+        protected virtual object FilterData (AbstractString name, object data) {
             return data;
         }
 
-        public T LoadSyncUncached (string name, object data, bool optional, out Exception exception) =>
+        public T LoadSyncUncached (AbstractString name, object data, bool optional, out Exception exception) =>
             LoadSyncUncached(name, data, optional, out exception, false);
 
-        private T LoadSyncUncached (string name, object data, bool optional, out Exception exception, bool dataFiltered) {
+        private T LoadSyncUncached (AbstractString name, object data, bool optional, out Exception exception, bool dataFiltered) {
             FaultInjector?.Step();
 
             try {
@@ -462,12 +467,12 @@ namespace Squared.Render.Resources {
             var info = RecordPendingLoad(name, data, optional, false);
             try {
                 info.SetStatus(ResourceLoadStatus.OpeningStream, Now);
-                if (TryGetStream(name, data, optional, out var stream, out exception)) {
+                if (TryGetStream(info.Name, data, optional, out var stream, out exception)) {
                     info.SetStatus(ResourceLoadStatus.Preloading, Now);
-                    var preloadedData = PreloadInstance(name, stream, data);
+                    var preloadedData = PreloadInstance(info.Name, stream, data);
                     info.SetStatus(ResourceLoadStatus.Preloaded, Now);
                     info.SetStatus(ResourceLoadStatus.Creating, Now);
-                    var future = CreateInstance(name, stream, data, preloadedData, false);
+                    var future = CreateInstance(info.Name, stream, data, preloadedData, false);
                     info.SetStatus(ResourceLoadStatus.Created, Now);
                     NotifyLoadCompleted(info, future.Result);
                     if (IsDisposed && future.CompletedSuccessfully) {
@@ -494,7 +499,7 @@ namespace Squared.Render.Resources {
             return StreamSource.TryGetStream(name, optional, out stream, out exception);
         }
 
-        private CacheEntry MakeCacheEntry (string name, object data) {
+        private CacheEntry MakeCacheEntry (ImmutableAbstractString name, object data) {
             return new CacheEntry {
                 Name = name,
                 Data = data,
@@ -502,7 +507,7 @@ namespace Squared.Render.Resources {
             };
         }
 
-        protected SecondLevelCache GetSecondLevelCache (string name, bool createIfMissing) {
+        protected SecondLevelCache GetSecondLevelCache (AbstractString name, bool createIfMissing) {
             SecondLevelCache slc;
             lock (FirstLevelCache) {
                 if (!FirstLevelCache.TryGetValue(name, out slc)) {
@@ -513,34 +518,37 @@ namespace Squared.Render.Resources {
             return slc;
         }
 
-        private Future<T> GetFutureForResource (string name, object data, bool cached, bool createIfMissing, out bool performLoad) {
-            name = StreamSource.FixupName(name, true);
+        private Future<T> GetFutureForResource (AbstractString name, object data, bool cached, bool createIfMissing, out bool performLoad) {
             performLoad = false;
-            var key = MakeKey(name, data);
+            // HACK: Probe with mutable string
+            var key = MakeKey(name.AsImmutable(true), data);
             CacheEntry entry;
             if (cached) {
                 var slc = GetSecondLevelCache(name, createIfMissing);
                 if (slc != null) {
                     lock (slc) {
                         if (!slc.TryGetValue(key, out entry)) {
-                            if (createIfMissing)
-                                slc[key] = entry = MakeCacheEntry(name, data);
+                            if (createIfMissing) {
+                                // Then store using immutable string
+                                key = MakeKey(name.AsImmutable(), data);
+                                slc[key] = entry = MakeCacheEntry(key.Name, data);
+                            }
                             performLoad = true;
                         }
                     }
                 } else {
-                    entry = MakeCacheEntry(name, data);
+                    entry = MakeCacheEntry(name.AsImmutable(), data);
                     performLoad = true;
                 }
             } else {
-                entry = MakeCacheEntry(name, data);
+                entry = MakeCacheEntry(name.AsImmutable(), data);
                 performLoad = true;
             }
 
             return entry.Future;
         }
 
-        public Future<T> LoadAsync (string name, object data, bool cached = true, bool optional = false) {
+        public Future<T> LoadAsync (AbstractString name, object data, bool cached = true, bool optional = false) {
             var exc = FaultInjector?.StepNonThrowing();
             if (exc != null) {
                 var result = new Future<T>();
@@ -563,14 +571,14 @@ namespace Squared.Render.Resources {
             return future;
         }
 
-        private ResourceLoadInfo RecordPendingLoad (string name, object data, bool optional, bool async) {
-            var result = new ResourceLoadInfo(typeof(T), name, data, Now, optional, async);
+        private ResourceLoadInfo RecordPendingLoad (AbstractString name, object data, bool optional, bool async) {
+            var result = new ResourceLoadInfo(typeof(T), name.ToString(), data, Now, optional, async);
             lock (PendingLoads)
                 PendingLoads.Add(result);
             return result;
         }
 
-        public bool TryGetExisting (string name, object data, out T result) {
+        public bool TryGetExisting (AbstractString name, object data, out T result) {
             data = FilterData(name, data);
             var f = GetFutureForResource(name, data, true, false, out _);
             if (f == null) {
@@ -580,7 +588,7 @@ namespace Squared.Render.Resources {
             return f.GetResult(out result, out _);
         }
 
-        public T LoadSync (string name, object data, bool cached, bool optional) {
+        public T LoadSync (AbstractString name, object data, bool cached, bool optional) {
             try {
                 data = FilterData(name, data);
             } catch (Exception exc) {
@@ -601,24 +609,24 @@ namespace Squared.Render.Resources {
             return future.Result2;
         }
 
-        protected virtual void WaitForLoadSync (Future<T> future, string name, object data) {
+        protected virtual void WaitForLoadSync (Future<T> future, AbstractString name, object data) {
             using (var evt = future.GetCompletionEvent())
                 evt.Wait();
         }
 
-        public Future<T> LoadAsync (string name, bool cached = true, bool optional = false) {
+        public Future<T> LoadAsync (AbstractString name, bool cached = true, bool optional = false) {
             return LoadAsync(name, DefaultOptions, cached, optional);
         }
 
-        public T Load (string name) {
+        public T Load (AbstractString name) {
             return LoadSync(name, DefaultOptions, true, false);
         }
 
-        public T Load (string name, bool cached) {
+        public T Load (AbstractString name, bool cached) {
             return LoadSync(name, DefaultOptions, cached, false);
         }
 
-        public T Load (string name, bool cached, bool optional) {
+        public T Load (AbstractString name, bool cached, bool optional) {
             return LoadSync(name, DefaultOptions, cached, optional);
         }
 
@@ -635,7 +643,7 @@ namespace Squared.Render.Resources {
                 }
         }
 
-        public U Reduce<U> (Func<U, string, T, object, U> f, U initialValue = default(U)) {
+        public U Reduce<U> (Func<U, ImmutableAbstractString, T, object, U> f, U initialValue = default(U)) {
             var result = initialValue;
             lock (FirstLevelCache)
                 foreach (var entry in Entries()) {
@@ -670,7 +678,6 @@ namespace Squared.Render.Resources {
     }
 
     public interface IResourceProviderStreamSource {
-        string FixupName (string name, bool stripExtension);
         string[] GetNames (bool asFullPaths = false);
         bool TryGetStream (string name, bool optional, out Stream result, out Exception error, bool exactName = false);
         void DisposeStream (Stream stream);
@@ -723,12 +730,11 @@ namespace Squared.Render.Resources {
             return result.ToArray();
         }
 
-        public string FixupName (string name, bool stripExtension) {
-            if (stripExtension && name.Contains("."))
-                name = name.Replace(System.IO.Path.GetExtension(name), "");
-            name = name.Replace('/', '\\');
-            if (System.IO.Path.DirectorySeparatorChar != '\\')
-                name = name.Replace('\\', System.IO.Path.DirectorySeparatorChar);
+        // Only used before opening a file now
+        private string FixupName (string name) {
+            var otherSeparator = System.IO.Path.DirectorySeparatorChar == '\\'
+                ? '/' : '\\';
+            name = name.Replace(otherSeparator, System.IO.Path.DirectorySeparatorChar);
             return name;
         }
 
@@ -777,7 +783,7 @@ namespace Squared.Render.Resources {
             exception = null;
             string candidateStreamName;
             foreach (var extension in Extensions) {
-                candidateStreamName = System.IO.Path.Combine(Path, FixupName(exactName ? name : (Prefix ?? "") + name + extension, false));
+                candidateStreamName = System.IO.Path.Combine(Path, FixupName(exactName ? name : (Prefix ?? "") + name + extension));
                 if (File.Exists(candidateStreamName)) {
                     try {
                         result = OpenFile(candidateStreamName);
@@ -790,7 +796,7 @@ namespace Squared.Render.Resources {
             }
 
             if (result == null) {
-                candidateStreamName = System.IO.Path.Combine(Path, FixupName((Prefix ?? "") + name, false));
+                candidateStreamName = System.IO.Path.Combine(Path, FixupName((Prefix ?? "") + name));
                 if (File.Exists(candidateStreamName)) {
                     try {
                         result = OpenFile(candidateStreamName);
@@ -840,18 +846,15 @@ namespace Squared.Render.Resources {
             ).ToArray();
         }
 
-        public string FixupName (string name, bool stripExtension) {
-            if (stripExtension && name.Contains("."))
-                name = Path.GetFileNameWithoutExtension(name);
-            name = name.Replace('/', '\\');
-            return name;
+        private string FixupName (string name) {
+            return name.Replace('/', '\\');
         }
 
         public void DisposeStream (Stream stream) {
         }
 
         public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception, bool exactName = false) {
-            var streamName = FixupName(exactName ? name : (Prefix ?? "") + name + Suffix, false);
+            var streamName = FixupName(exactName ? name : (Prefix ?? "") + name + Suffix);
             exception = null;
             result = Assembly.GetManifestResourceStream(streamName);
             if (result == null) {
@@ -896,18 +899,15 @@ namespace Squared.Render.Resources {
             ).ToArray();
         }
 
-        public string FixupName (string name, bool stripExtension) {
-            if (stripExtension && name.Contains("."))
-                name = name.Replace(Path.GetExtension(name), "");
-            name = name.Replace('/', '\\');
-            return name;
+        private string FixupName (string name) {
+            return name.Replace('/', '\\');
         }
 
         public void DisposeStream (Stream stream) {
         }
 
         public bool TryGetStream (string name, bool optional, out Stream result, out Exception exception, bool exactName = false) {
-            var streamName = FixupName(exactName ? name : (Prefix ?? "") + name + Suffix, false);
+            var streamName = FixupName(exactName ? name : (Prefix ?? "") + name + Suffix);
             exception = null;
             var entry = Archive.GetEntry(streamName);
             result = entry?.Open();
@@ -936,16 +936,6 @@ namespace Squared.Render.Resources {
             foreach (var source in Sources)
                 result.AddRange(source.GetNames(asFullPaths));
             return result.ToArray();
-        }
-
-        public string FixupName (string name, bool stripExtension) {
-            // FIXME
-            foreach (var source in Sources) {
-                var result = source.FixupName(name, stripExtension);
-                if (result != null)
-                    return result;
-            }
-            return null;
         }
 
         public void DisposeStream (Stream stream) {
