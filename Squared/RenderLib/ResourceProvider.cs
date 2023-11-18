@@ -963,7 +963,7 @@ namespace Squared.Render.Resources {
             } else if (errors.Count == 1) {
                 error = errors[0];
             } else {
-                error = new FileNotFoundException($"'{name}' could not be located in {Sources.Length} source(s).", name);
+                error = new FileNotFoundException("The file could not be located in any of the stream sources", name);
             }
             return false;
         }

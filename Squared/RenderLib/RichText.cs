@@ -361,6 +361,8 @@ namespace Squared.Render.Text {
     }
 
     public struct RichTextLayoutState : IDisposable {
+        private static readonly ThreadLocal<UnorderedList<StringBuilder>> ScratchStringBuilders =
+            new ThreadLocal<UnorderedList<StringBuilder>>(() => new UnorderedList<StringBuilder>());
         private static readonly ThreadLocal<List<AbstractString>> MarkedStringLists =
             new ThreadLocal<List<AbstractString>>();
 
@@ -371,6 +373,7 @@ namespace Squared.Render.Text {
         public readonly float InitialLineSpacing;
         public DenseList<string> Tags;
         public List<AbstractString> MarkedStrings;
+        private DenseList<StringBuilder> StringBuildersToReturn;
 
         public RichTextLayoutState (ref StringLayoutEngine engine, IGlyphSource defaultGlyphSource) {
             InitialColor = engine.overrideColor;
@@ -382,6 +385,57 @@ namespace Squared.Render.Text {
             MarkedStrings = MarkedStringLists.Value;
             MarkedStringLists.Value = null;
             Tags = default;
+        }
+
+        /// <summary>
+        /// Allocates a temporary empty stringbuilder from local storage, that will be released after layout is done.
+        /// </summary>
+        public StringBuilder GetStringBuilder () {
+            StringBuilder result;
+            var sbs = ScratchStringBuilders.Value;
+            lock (sbs)
+                sbs.TryPopBack(out result);
+            if (result == null)
+                result = new StringBuilder();
+            else
+                result.Clear();
+
+            // HACK: Avoid allocating a backing store, at the cost of leaking some string builders
+            if (StringBuildersToReturn.Count < 4)
+                StringBuildersToReturn.Add(result);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Allocates a temporary empty stringbuilder from local storage, that will be released after layout is done,
+        ///  then concatenates the provided strings into it and returns the result.
+        /// </summary>
+        public AbstractString ConcatStrings (string s1, string s2, string s3 = null, string s4 = null, string s5 = null) {
+            bool e1 = string.IsNullOrEmpty(s1),
+                e2 = string.IsNullOrEmpty(s2),
+                e3 = string.IsNullOrEmpty(s3),
+                e4 = string.IsNullOrEmpty(s4),
+                e5 = string.IsNullOrEmpty(s5);
+
+            // Fast paths for "hello" + "" and "" + "hello"
+            if (!e1 && e2 && e3 && e4 && e5)
+                return s1;
+            else if (e1 && !e2 && e3 && e4 && e5)
+                return s2;
+
+            var result = GetStringBuilder();
+            if (!e1)
+                result.Append(s1);
+            if (!e2)
+                result.Append(s2);
+            if (!e3)
+                result.Append(s3);
+            if (!e4)
+                result.Append(s4);
+            if (!e5)
+                result.Append(s5);
+            return result;
         }
 
         public void Reset (ref StringLayoutEngine engine) {
@@ -398,6 +452,16 @@ namespace Squared.Render.Text {
                 MarkedStringLists.Value = MarkedStrings;
                 MarkedStrings = null;
             }
+
+            var sbs = ScratchStringBuilders.Value;
+            lock (sbs)
+                foreach (var sb in StringBuildersToReturn)
+                    sbs.Add(sb);
+            StringBuildersToReturn.Clear();
+        }
+
+        public void AppendPlainText (ref StringLayoutEngine layoutEngine, AbstractString text) {
+            layoutEngine.AppendText(GlyphSource ?? DefaultGlyphSource, text);
         }
     }
 
