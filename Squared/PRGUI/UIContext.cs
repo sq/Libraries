@@ -167,6 +167,9 @@ namespace Squared.PRGUI {
                 CachedTooltip = new Tooltip {
                     Appearance = { Opacity = 0 }
                 };
+                // Pre-reserve a big buffer for our tooltip so it can hold lots of characters,
+                //  without repeated growth/re-allocations during execution
+                CachedTooltip.EnsureLayoutBufferCapacity(1280);
                 Controls.Add(CachedTooltip);
             }
 

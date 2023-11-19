@@ -333,6 +333,11 @@ namespace Squared.Render.Text {
             }
         }
 
+        public void EnsureBufferCapacity (int size) {
+            if ((_Buffer.Array == null) || (_Buffer.Count < size))
+                _Buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[size]);
+        }
+
         /// <summary>
         /// Update the text stored in this layout.
         /// </summary>

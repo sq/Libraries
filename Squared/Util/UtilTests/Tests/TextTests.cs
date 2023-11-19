@@ -84,7 +84,7 @@ namespace Squared.Util {
         }
 
         // Test cases from RealParserTestsBase.cs in dotnet/runtime
-        static readonly ValueTuple<string, ulong>[] FloatInlineData = new[] {
+        public static readonly ValueTuple<string, ulong>[] FloatInlineData = new[] {
         new ValueTuple<string, ulong>("0.0", 0x00000000),
         // Verify small and large exactly representable integers:
         new ValueTuple<string, ulong>("1", 0x3f800000),
@@ -319,6 +319,37 @@ namespace Squared.Util {
 
             // HACK
             return true;
+        }
+
+        public static readonly (string lhs, string rhs, bool caseSensitive, bool caseInsensitive, bool ignoreExtensions)[] PathComparerTestCases = new[] {
+            ("a/b/c", "a\\b\\c", true, true, true),
+            ("a/b\\c", "a\\b/c", true, true, true),
+            ("A/b\\c", "a\\B/C", false, true, false),
+            ("folder/test.png", "folder\\test.jpeg", false, false, true),
+            ("folder/subfolder.with.dots/foo.png", "folder/subfolder.other/foo.jpeg", false, false, false),
+            ("folder/subfolder.with.dots/foo.png", "folder/subfolder.other/foo.png", false, false, false),
+            ("folder/subfolder.with.dots/foo.png", "folder/subfolder.with.dots/foo.jpeg", false, false, true),
+        };
+
+        [Test]        
+        public void PathNameComparerTests (
+            [ValueSource("PathComparerTestCases")]
+            (string lhs, string rhs, bool caseSensitive, bool caseInsensitive, bool ignoreExtensions) tuple
+        ) {
+            Check(PathNameComparer.CaseSensitive, tuple, tuple.caseSensitive);
+            Check(PathNameComparer.CaseInsensitive, tuple, tuple.caseInsensitive);
+            Check(new PathNameComparer(false, true), tuple, tuple.ignoreExtensions);
+
+            static void Check (
+                PathNameComparer comparer, 
+                (string lhs, string rhs, bool caseSensitive, bool caseInsensitive, bool ignoreExtensions) tuple,
+                bool expected
+            ) {
+                Assert.AreEqual(expected, comparer.Equals(tuple.lhs, tuple.rhs), "Expected comparison of {0} and {1} to yield {2}", tuple.lhs, tuple.rhs, expected);
+                if (expected)
+                    Assert.AreEqual(comparer.GetHashCode(tuple.lhs), comparer.GetHashCode(tuple.rhs), "Expected {0} and {1} to have the same HashCode", tuple.lhs, tuple.rhs);
+                // Testing the inverse (they must have different hashcodes) isn't possible, and wouldn't be true given how we implement GetHashCode
+            }
         }
     }
 }

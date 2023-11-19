@@ -53,6 +53,13 @@ namespace Squared.PRGUI.Controls {
             // FIXME: Do something else here? Invalidate the alignment?
         }
 
+        /// <summary>
+        /// Pre-allocates space in the tooltip's text layout buffers for a set amount of text.
+        /// </summary>
+        public void EnsureLayoutBufferCapacity (int size) {
+            Content.EnsureBufferCapacity(size);
+        }
+
         protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var decorator = GetDefaultDecorator(context.DecorationProvider);
             // FIXME: Why was this here?

@@ -636,7 +636,7 @@ namespace Squared.Render.Text {
             if (buffer.Array == null) {
                 allowBufferGrowth = true;
                 buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[paddedCount]);
-            } else if (buffer.Count < paddedCount) {
+            } else if (buffer.Count < count) {
                 if (allowBufferGrowth) {
                     var newSize = UnorderedList<BitmapDrawCall>.PickGrowthSize(buffer.Count, paddedCount);
                     buffer = UnorderedList<BitmapDrawCall>.Allocator.Resize(buffer, newSize);
