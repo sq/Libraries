@@ -780,8 +780,9 @@ namespace Squared.Render {
             SetInternalFlag(StateFlags.IsCleared, false);
             // SetInternalFlag(StateFlags.SortNeeded, false);
             FlushCopyOnWrite();
-            // FIXME: Optimize this so it doesn't spend as much time in memcpy/memset
-            Keys.ReplaceWith(ref values.Keys);
+            // HACK: Keys will be interned strings 99% of the time, so leaking them doesn't matter
+            Keys.ReplaceWith(ref values.Keys, false);
+            // FIXME: Split VT and ref values into separate lists so we don't need to clear the VT list
             Values.ReplaceWith(ref values.Values);
         }
 

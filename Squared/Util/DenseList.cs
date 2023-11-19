@@ -692,23 +692,41 @@ namespace Squared.Util {
             list.SetItem(count, ref item);
         }
 
-        public void ReplaceWith (ref DenseList<T> newItems) {
-            int count = Count, newCount = newItems.Count;
-            for (int i = 0; i < newCount; i++) {
-                ref var item = ref newItems.Item(i);
-                if (i >= count)
-                    Add(ref item);
-                else
-                    SetItem(i, ref item);
-            }
-            var toRemove = Count - newCount;
-            if (toRemove > 0)
-                RemoveRange(newCount, toRemove);
+        public void ReplaceWith (ref DenseList<T> newItems, bool clearEmptySpace = true) {
+            if (Unsafe.AreSame(ref this, ref newItems))
+                return;
 
-#if DEBUG
-            if (Count != newItems.Count)
-                throw new Exception();
-#endif
+            int newCount = newItems.Count;
+            EnsureCapacity(newCount, false);
+            var myList = _Items;
+            var theirList = newItems._Items;
+            if (myList != null) {
+                if (theirList != null)
+                    myList.ReplaceWith(theirList, clearEmptySpace);
+                else {
+                    // clearEmptySpace is only necessary when shrinking, not when growing
+                    myList.DangerousSetCount(newCount, clearEmptySpace && (newCount < myList.Count));
+                    var buffer = myList.GetBuffer();
+                    if (newCount > 0) {
+                        buffer.Array[buffer.Offset + 0] = newItems.Item1;
+                        if (newCount > 1) {
+                            buffer.Array[buffer.Offset + 1] = newItems.Item2;
+                            if (newCount > 2) {
+                                buffer.Array[buffer.Offset + 2] = newItems.Item3;
+                                if (newCount > 3)
+                                    buffer.Array[buffer.Offset + 3] = newItems.Item4;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // FIXME: Is it worth skipping the copy for empty slots?
+                Item1 = newItems.Item1;
+                Item2 = newItems.Item2;
+                Item3 = newItems.Item3;
+                Item4 = newItems.Item4;
+                _Count = (short)newCount;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

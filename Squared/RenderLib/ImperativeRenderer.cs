@@ -652,8 +652,10 @@ namespace Squared.Render.Convenience {
             result = default;
             if (preserveCache)
                 result.Cache = Cache;
-            if (!Parameters.IsEmpty)
+            if (!Parameters.IsEmpty && preserveParameters) {
+                Parameters.AllocateNewStorageOnWrite = true;
                 result.Parameters = Parameters;
+            }
 #endif
 
             result.Config = Config;

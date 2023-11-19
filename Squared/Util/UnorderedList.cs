@@ -251,11 +251,24 @@ namespace Squared.Util {
         public void DangerousEnsureSize (int size) {
             if (size <= _Count)
                 return;
-            EnsureCapacity(size);
+            DangerousSetCount(size);
+        }
 
-            var growth = size - _Count;
-            Array.Clear(_Items, _BufferOffset + _Count, growth);
-            _Count = size;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void DangerousSetCount (int count, bool clearEmptySpace = true) {
+            if (count == _Count)
+                return;
+            EnsureCapacity(count);
+
+            if (clearEmptySpace) {
+                // Either clear the space that will be occupied by new items, or clear
+                //  the space that was previously occupied by items and is no longer used
+                if (count > _Count)
+                    Array.Clear(_Items, _BufferOffset + _Count, count - _Count);
+                else
+                    Array.Clear(_Items, _BufferOffset + count, _Count - count);
+            }
+            _Count = count;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -661,6 +674,18 @@ namespace Squared.Util {
             }
 
             return true;
+        }
+
+        public void ReplaceWith (UnorderedList<T> newItems, bool clearEmptySpace = true) {
+            if (newItems == this)
+                return;
+
+            int oldCount = _Count, newCount = newItems._Count;
+            EnsureCapacity(newCount);
+            _Count = newCount;
+            newItems.CopyTo(_Items, _BufferOffset, newCount);
+            if (clearEmptySpace && (newCount < oldCount))
+                Array.Clear(_Items, _BufferOffset + newCount, oldCount - newCount);
         }
     }
 }
