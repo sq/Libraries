@@ -653,9 +653,7 @@ namespace Squared.Util.Text {
         private bool AllCodepointsEqual (AbstractString other, StringComparison comparison) {
             if (comparison == StringComparison.Ordinal) {
                 for (int i = 0; i < Length; i++) {
-                    var lhs = this[i];
-                    var rhs = other[i];
-                    if (lhs != rhs)
+                    if (this[i] != other[i])
                         return false;
                 }
             } else if (comparison == StringComparison.OrdinalIgnoreCase) {
@@ -678,9 +676,13 @@ namespace Squared.Util.Text {
             if (Length != other?.Length)
                 return false;
 
-            if (String != null)
-                return string.Compare(String, SubstringOffset, other, 0, Length, comparison) == 0;
-            else
+            if (String != null) {
+                // HACK: string.Compare is less efficient than string.Equals, so use Equals where possible
+                if ((SubstringOffset == 0) && (Length == String.Length))
+                    return string.Equals(String, other, comparison);
+                else
+                    return string.Compare(String, SubstringOffset, other, 0, Length, comparison) == 0;
+            } else
                 return AllCodepointsEqual((AbstractString)other, comparison);
         }
 
@@ -959,6 +961,7 @@ namespace Squared.Util.Text {
             if (l != Length(y))
                 return false;
 
+            // Scan bidirectionally from both start and end
             for (int i = 0, j = l - 1; i <= j; i++, j--) {
                 var a = Equals(x[i], y[i]);
                 var b = Equals(x[j], y[j]);
@@ -968,11 +971,12 @@ namespace Squared.Util.Text {
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private char Normalize (char ch) {
             if (ch == NotSeparator)
                 return Separator;
             else if (IgnoreCase)
-                return char.ToLowerInvariant(ch);
+                return char.ToUpperInvariant(ch);
             else
                 return ch;
         }
@@ -984,8 +988,8 @@ namespace Squared.Util.Text {
                 rhs = Separator;
 
             if (IgnoreCase) {
-                lhs = char.ToLowerInvariant(lhs);
-                rhs = char.ToLowerInvariant(rhs);
+                lhs = char.ToUpperInvariant(lhs);
+                rhs = char.ToUpperInvariant(rhs);
             }
 
             return lhs == rhs;
@@ -1015,7 +1019,8 @@ namespace Squared.Util.Text {
             int l = Length(obj);
             if (l == 0)
                 return 0;
-            return l ^ Normalize(obj[0]) ^ Normalize(obj[l - 1]);
+            // Sampling the start, middle and end should quickly identify common differences in paths
+            return l ^ Normalize(obj[0]) ^ Normalize(obj[l / 2]) ^ Normalize(obj[l - 1]);
         }
 
         bool IEqualityComparer<string>.Equals (string x, string y) {
