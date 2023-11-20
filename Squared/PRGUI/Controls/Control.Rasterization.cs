@@ -105,7 +105,7 @@ namespace Squared.PRGUI {
                 (!Appearance.BackgroundColor.IsTransparent || Appearance.BackgroundImage != null) &&
                 HasChildren
             ) {
-                passSet.Below.Layer += 1;
+                passSet.BelowLayer += 1;
             }
 
             if (isContentPass && HasChildren)
@@ -233,11 +233,11 @@ namespace Squared.PRGUI {
                 var state = GetCurrentState(ref context);
                 MakeDecorationSettings(ref box, ref contentBox, state, compositing, out var settings);
                 if (!IsPassDisabled(RasterizePasses.Below, decorations))
-                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
+                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below(), RasterizePasses.Below);
                 if (!IsPassDisabled(RasterizePasses.Content, decorations))
-                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Content, RasterizePasses.Content);
+                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Content(), RasterizePasses.Content);
                 if (!IsPassDisabled(RasterizePasses.Above, decorations))
-                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
+                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Above(), RasterizePasses.Above);
             } finally {
                 if (Appearance.DecorationProvider != null)
                     UIOperationContext.PopDecorationProvider(ref context);
@@ -262,14 +262,15 @@ namespace Squared.PRGUI {
             exteriorRect.Width += margins.X * direction;
             exteriorRect.Height += margins.Y * direction;
             var center = rect.Center;
+            ref var above = ref passSet.Above();
 
             if (margins.Left > 0) {
-                passSet.Above.RasterizeRectangle(
+                above.RasterizeRectangle(
                     new Vector2(exteriorRect.Left, center.Y - lineWidth),
                     new Vector2(rect.Left, center.Y + lineWidth),
                     0, color, layer: layer
                 );
-                passSet.Above.RasterizeRectangle(
+                above.RasterizeRectangle(
                     new Vector2(exteriorRect.Left, center.Y - extentLength),
                     new Vector2(exteriorRect.Left + extentThickness, center.Y + extentLength),
                     0, color, layer: layer
@@ -277,12 +278,12 @@ namespace Squared.PRGUI {
             }
 
             if (margins.Top > 0) {
-                passSet.Above.RasterizeRectangle(
+                above.RasterizeRectangle(
                     new Vector2(center.X - lineWidth, exteriorRect.Top),
                     new Vector2(center.X + lineWidth, rect.Top),
                     0, color, layer: layer
                 );
-                passSet.Above.RasterizeRectangle(
+                above.RasterizeRectangle(
                     new Vector2(center.X - extentLength, exteriorRect.Top),
                     new Vector2(center.X + extentLength, exteriorRect.Top + extentThickness),
                     0, color, layer: layer
@@ -290,12 +291,12 @@ namespace Squared.PRGUI {
             }
 
             if (margins.Right > 0) {
-                passSet.Above.RasterizeRectangle(
+                above.RasterizeRectangle(
                     new Vector2(exteriorRect.Extent.X, center.Y - lineWidth),
                     new Vector2(rect.Extent.X, center.Y + lineWidth),
                     0, color, layer: layer
                 );
-                passSet.Above.RasterizeRectangle(
+                above.RasterizeRectangle(
                     new Vector2(exteriorRect.Extent.X, center.Y - extentLength),
                     new Vector2(exteriorRect.Extent.X - extentThickness, center.Y + extentLength),
                     0, color, layer: layer
@@ -303,12 +304,12 @@ namespace Squared.PRGUI {
             }
 
             if (margins.Bottom > 0) {
-                passSet.Above.RasterizeRectangle(
+                above.RasterizeRectangle(
                     new Vector2(center.X - lineWidth, exteriorRect.Extent.Y),
                     new Vector2(center.X + lineWidth, rect.Extent.Y),
                     0, color, layer: layer
                 );
-                passSet.Above.RasterizeRectangle(
+                above.RasterizeRectangle(
                     new Vector2(center.X - extentLength, exteriorRect.Extent.Y),
                     new Vector2(center.X + extentLength, exteriorRect.Extent.Y + extentThickness),
                     0, color, layer: layer
@@ -328,7 +329,7 @@ namespace Squared.PRGUI {
             int? layer = null;
 
             if (ShowDebugBoxes || (ShowDebugBoxesForLeavesOnly && isLeaf))
-                passSet.Above.RasterizeRectangle(
+                passSet.Above().RasterizeRectangle(
                     rect.Position, rect.Extent, 0f, 1f, Color.Transparent, Color.Transparent, 
                     GetDebugBoxColor(context.Depth) * alpha, layer: layer
                 );
@@ -364,7 +365,7 @@ namespace Squared.PRGUI {
 
                 pSRGBColor arrowColor = Color.White;
 
-                passSet.Above.RasterizeTriangle(
+                passSet.Above().RasterizeTriangle(
                     a, b, c, radius: 0f, outlineRadius: 1f,
                     innerColor: arrowColor * alpha, outerColor: arrowColor * alpha, 
                     outlineColor: pSRGBColor.Black(alpha * 0.8f)
@@ -596,11 +597,11 @@ namespace Squared.PRGUI {
                 RasterizeIntoPrepassComposited(ref passSet, ref compositeBox, ref dc, enableCompositor, effectiveOpacity, compositeBlendState);
             } else {
                 GetMaterialAndBlendStateForCompositing(out Material compositeMaterial, out BlendState compositeBlendState);
-                passSet.Above.Draw(
+                passSet.Above().Draw(
                     ref dc, material: compositeMaterial,
                     blendState: compositeBlendState ?? RenderStates.PorterDuffOver
                 );
-                passSet.Above.Layer += 1;
+                passSet.AboveLayer += 1;
             }
         }
 
@@ -612,7 +613,7 @@ namespace Squared.PRGUI {
                 MostRecentCompositeData = new CompositionData();
             MostRecentCompositeData.DrawCall = dc;
             MostRecentCompositeData.Box = compositeBox;
-            passSet.Above.MakeSubgroup(
+            passSet.Above().MakeSubgroup(
                 out var subgroup,
                 before: BeforeComposite,
                 after: AfterComposite,

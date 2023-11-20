@@ -479,10 +479,27 @@ namespace Squared.Render.Convenience {
             return true;
         }
 
+        /// <summary>
+        /// If you already have a default-initialized ImperativeRenderer, you can call this to make it usable
+        /// </summary>
+        public void FastInitialize (
+            IBatchContainer container,
+            DefaultMaterialSet materials
+        ) {
+            if (container == null)
+                throw new ArgumentNullException("container");
+            if (materials == null)
+                throw new ArgumentNullException("materials");
+
+            Config.Container = container;
+            Config.Materials = materials;
+            Flags = ImperativeRendererFlags.RasterBlendInLinearSpace | ImperativeRendererFlags.WorldSpace;
+        }
+
         public ImperativeRenderer (
             IBatchContainer container,
             DefaultMaterialSet materials,
-            int layer = 0, 
+            int layer = 0,
             RasterizerState rasterizerState = null,
             DepthStencilState depthStencilState = null,
             BlendState blendState = null,

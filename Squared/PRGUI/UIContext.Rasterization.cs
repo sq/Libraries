@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -310,9 +311,7 @@ namespace Squared.PRGUI {
                     // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
                     //  overlap each other, at the cost of more draw calls.
                     var passSet = new RasterizePassSet(ref renderer, control, 0);
-                    passSet.Below.DepthStencilState =
-                        passSet.Content.DepthStencilState =
-                        passSet.Above.DepthStencilState = DepthStencilState.None;
+                    passSet.DepthStencilState = DepthStencilState.None;
                     control.Rasterize(ref context, ref passSet, opacityModifier);
                 }
 
@@ -491,34 +490,127 @@ namespace Squared.PRGUI {
         }
     }
 
+    public static class RasterizePassSetExtensions {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref ImperativeRenderer Below (this ref RasterizePassSet set) =>
+            ref set.EnsureInitialized(ref set._Below, set._BelowContainer, set._BelowContainerLayer, "Below {userData}");
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref ImperativeRenderer Content (this ref RasterizePassSet set) =>
+            ref set.EnsureInitialized(ref set._Content, set._ContentContainer, set._ContentContainerLayer, "Content {userData}");
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref ImperativeRenderer Above (this ref RasterizePassSet set) =>
+            ref set.EnsureInitialized(ref set._Above, set._AboveContainer, set._AboveContainerLayer, "Above {userData}");
+    }
+
     public struct RasterizePassSet {
-        public ImperativeRenderer Below, Content, Above;
-        public int StackDepth;
+        public readonly Control Control;
+        public readonly DefaultMaterialSet Materials;
+        public readonly ViewTransformModifier ViewTransformModifier;
+        public readonly int StackDepth;
 
-        public RasterizePassSet (ref RasterizePassSet parent, Control control, ViewTransformModifier viewTransformModifier) {
-            parent.Below.MakeSubgroup(out Below, name: "Below {userData} (Nested)", userData: control);
-            parent.Content.MakeSubgroup(out Content, name: "Content {userData} (Nested)", userData: control);
-            parent.Above.MakeSubgroup(out Above, name: "Above {userData} (Nested)", userData: control);
+        internal DepthStencilState _DepthStencilState;
+        internal readonly IBatchContainer _BelowContainer, _ContentContainer, _AboveContainer;
+        internal readonly int _BelowContainerLayer, _ContentContainerLayer, _AboveContainerLayer;
+        internal ImperativeRenderer _Below, _Content, _Above;
+
+        public DepthStencilState DepthStencilState {
+            get => _DepthStencilState;
+            set {
+                _DepthStencilState = value;
+                _Below.DepthStencilState = value;
+                _Content.DepthStencilState = value;
+                _Above.DepthStencilState = value;
+            }
+        }
+
+        public int BelowLayer {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _Below.Layer;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _Below.Layer = value;
+        }
+
+        public int ContentLayer {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _Content.Layer;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _Content.Layer = value;
+        }
+
+        public int AboveLayer {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _Above.Layer;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _Above.Layer = value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ref ImperativeRenderer EnsureInitialized (
+            ref ImperativeRenderer storage, IBatchContainer container, int layer, string name
+        ) {
+            if (storage.Container == null)
+                EnsureInitialized_Slow(ref storage, container, layer, name);
+            return ref storage;
+        }
+
+        private void EnsureInitialized_Slow (
+            ref ImperativeRenderer storage, IBatchContainer container, int layer, string name
+        ) {
+            var newContainer = BatchGroup.New(container, layer, materialSet: Materials, userData: Control, name: name);
+            newContainer.ViewTransformModifier = ViewTransformModifier;
+
+            // We previously used storage.Layer to store the desired layer even if no renderer had been created
+            //  so now propagate it through to the new renderer
+            // FIXME: Propagate key states inward (rasterizerstate? blendstate?)
+            // Make sure to use the ctor with fewer parameters, it's much cheaper
+            storage.FastInitialize(newContainer, Materials);
+            storage.DepthStencilState = _DepthStencilState;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void Mark (ref ImperativeRenderer inside, out IBatchContainer outContainer, out int outLayer, int offset, bool increment) {
+            outLayer = inside.Layer + offset;
+            outContainer = inside.Container;
+            if (increment)
+                inside.Layer += 1;
+        }
+
+        public RasterizePassSet (ref RasterizePassSet parent, Control control, ViewTransformModifier viewTransformModifier) : this () {
+            Control = control;
+            ViewTransformModifier = viewTransformModifier;
+            _DepthStencilState = parent._DepthStencilState;
+            Materials = parent.Materials;
+            // FIXME: Is there a way to still lazily allocate here?
+            Mark(ref parent.Below(), out _BelowContainer, out _BelowContainerLayer, 0, true);
+            Mark(ref parent.Content(), out _ContentContainer, out _ContentContainerLayer, 0, true);
+            Mark(ref parent.Above(), out _AboveContainer, out _AboveContainerLayer, 0, true);
             StackDepth = parent.StackDepth + 1;
-            ((BatchGroup)Below.Container).SetViewTransform(viewTransformModifier);
-            ((BatchGroup)Content.Container).SetViewTransform(viewTransformModifier);
-            ((BatchGroup)Above.Container).SetViewTransform(viewTransformModifier);
         }
 
-        public RasterizePassSet (ref ImperativeRenderer container, Control control, int stackDepth) {
-            // FIXME: Order them?
-            container.MakeSubgroup(out Below, name: "Below {userData}", userData: control);
-            container.MakeSubgroup(out Content, name: "Content {userData}", userData: control);
-            container.MakeSubgroup(out Above, name: "Above {userData}", userData: control);
+        public RasterizePassSet (ref ImperativeRenderer container, Control control, int stackDepth) : this () {
+            Control = control;
+            _DepthStencilState = container.DepthStencilState;
+            Materials = container.Materials;
+            Mark(ref container, out _BelowContainer, out _BelowContainerLayer, 0, true);
+            Mark(ref container, out _ContentContainer, out _ContentContainerLayer, 0, true);
+            Mark(ref container, out _AboveContainer, out _AboveContainerLayer, 0, true);
             StackDepth = stackDepth;
         }
 
-        public RasterizePassSet (ref ImperativeRenderer container, Control control, int stackDepth, ref int layer) {
-            container.MakeSubgroup(out Below, name: "Below {userData}", layer: layer, userData: control);
-            container.MakeSubgroup(out Content, name: "Content {userData}", layer: layer + 1, userData: control);
-            container.MakeSubgroup(out Above, name: "Above {userData}", layer: layer + 2, userData: control);
+        public RasterizePassSet (ref ImperativeRenderer container, Control control, int stackDepth, ref int layer) : this () {
+            Control = control;
+            _BelowContainerLayer = layer;
+            _ContentContainerLayer = layer + 1;
+            _AboveContainerLayer = layer + 2;
+            _DepthStencilState = container.DepthStencilState;
+            Materials = container.Materials;
+            Mark(ref container, out _BelowContainer, out _, 0, false);
+            Mark(ref container, out _ContentContainer, out _, 0, false);
+            Mark(ref container, out _AboveContainer, out _, 0, false);
             StackDepth = stackDepth;
-            layer = layer + 3;
+            layer += 3;
         }
     }
 }
