@@ -212,7 +212,7 @@ namespace Squared.Render {
         }
     }
 
-    public interface IBitmapBatch : IBatch {
+    public interface IBitmapBatch {
         Sorter<BitmapDrawCall> Sorter {
             get; set;
         }

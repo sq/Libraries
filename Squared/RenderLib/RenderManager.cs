@@ -923,9 +923,8 @@ namespace Squared.Render {
             }
         }
 
-        internal void ValidateBatch (IBatch batch, bool enqueuing) {
-            var b = (Batch)batch;
-            b.GetState(out bool isInitialized, out bool isCombined, out bool isPrepareQueued, out bool isPrepared, out bool isIssued);
+        internal void ValidateBatch (Batch batch, bool enqueuing) {
+            batch.GetState(out bool isInitialized, out bool isCombined, out bool isPrepareQueued, out bool isPrepared, out bool isIssued);
             Thread.MemoryBarrier();
 
             if (!isInitialized)
@@ -946,7 +945,7 @@ namespace Squared.Render {
 
                 Thread.MemoryBarrier();
 
-                b.SetPrepareQueued(true);
+                batch.SetPrepareQueued(true);
             }
         }
 

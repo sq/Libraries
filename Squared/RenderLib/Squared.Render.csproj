@@ -73,6 +73,7 @@
     <Compile Include="ImperativeRenderer.cs" />
     <Compile Include="JumpFlood.GPU.cs" />
     <Compile Include="JumpFlood.CPU.cs" />
+    <Compile Include="MaterialParameterValues.cs" />
     <Compile Include="Mips.cs" />
     <Compile Include="PolygonBuffer.cs" />
     <Compile Include="RasterStroke.cs" />

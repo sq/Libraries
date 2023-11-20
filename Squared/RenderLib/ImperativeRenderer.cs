@@ -26,7 +26,7 @@ namespace Squared.Render.Convenience {
         }
 
         private struct CachedBatch {
-            public IBatch Batch;
+            public Batch Batch;
 
             public CachedBatchType BatchType;
             public IBatchContainer Container;
@@ -1864,7 +1864,7 @@ namespace Squared.Render.Convenience {
                 }
 
                 bb.Sorter = DeclarativeSorter;
-                cacheEntry.Batch = bb;
+                cacheEntry.Batch = (Batch)bb;
                 Cache.InsertAtFront(ref cacheEntry, -1);
             }
 

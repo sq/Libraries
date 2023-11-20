@@ -12,14 +12,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Util;
 
 namespace Squared.Render {
-    public interface IBatch {
-        void Prepare (Batch.PrepareContext context);
-        void Suspend ();
-
-        bool AreParametersEqual (ref MaterialParameterValues rhs);
-    }
-
-    public abstract class Batch : IBatch, IDisposable {
+    public abstract class Batch : IDisposable {
         public static class IdForType<T> where T : Batch {
             public static readonly int Id;
 
@@ -88,7 +81,7 @@ namespace Squared.Render {
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal void Validate (IBatch batch, bool enqueuing) {
+            internal void Validate (Batch batch, bool enqueuing) {
                 Manager.ValidateBatch(batch, enqueuing);
             }
 
@@ -254,7 +247,7 @@ namespace Squared.Render {
             }
         }
 
-        bool IBatch.AreParametersEqual (ref MaterialParameterValues rhs) {
+        internal bool AreParametersEqual (ref MaterialParameterValues rhs) {
             return MaterialParameters.Equals(ref rhs);
         }
 
