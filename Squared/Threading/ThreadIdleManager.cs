@@ -18,7 +18,14 @@ namespace Squared.Threading {
 
         private volatile int RequestState = 0;
         private volatile int RunState = RunState_Sleeping;
-        private ManualResetEventSlim Event = new ManualResetEventSlim(true, 1);
+        private ManualResetEvent Event, WakeAll;
+        private WaitHandle[] WaitHandles;
+
+        public ThreadIdleManager (ManualResetEvent wakeAll) {
+            WakeAll = wakeAll;
+            Event = new ManualResetEvent(true);
+            WaitHandles = new[] { Event, wakeAll };
+        }
 
         /// <returns>true if the thread is allowed to begin running, false if it has been disposed</returns>
         public bool BeginRunning () {
@@ -62,9 +69,9 @@ namespace Squared.Threading {
             if (Interlocked.Exchange(ref RequestState, 0) != 0)
                 return true;
 
-            var result = Event.Wait(timeoutMs);
+            var result = WaitHandle.WaitAny(WaitHandles, timeoutMs);
             Interlocked.CompareExchange(ref RunState, RunState_Running, RunState_Sleeping);
-            return result;
+            return result != WaitHandle.WaitTimeout;
         }
 
         public void Dispose () {

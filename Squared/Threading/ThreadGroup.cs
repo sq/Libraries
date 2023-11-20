@@ -108,6 +108,8 @@ namespace Squared.Threading {
         private readonly UnorderedList<IWorkQueue> MainThreadQueueList = 
             new UnorderedList<IWorkQueue>();
 
+        internal ManualResetEvent WakeAllThreadsEvent = new ManualResetEvent(false);
+
         // This list is immutable and will be swapped out using CompareExchange
         //  when the set of queues changes, so that workers don't need to lock it
         internal volatile PriorityOrderedQueueList QueuesForWorkers = 
@@ -364,11 +366,11 @@ namespace Squared.Threading {
         }
 
         private void WakeAllThreads () {
-            for (int i = 0, l = Threads.Length; i < l; i++) {
-                var thread = Threads[i];
-                // The thread(s) may be null if we were disposed
-                thread?.Wake();
-            }
+            // ManualResetEvent.Set should wake all threads currently waiting on it
+            WakeAllThreadsEvent.Set();
+            // At this point we've woken up any threads that were waiting for work, and any attempts
+            //  to go back to sleep until this point have failed. Turn the wake-all signal back off.
+            WakeAllThreadsEvent.Reset();
         }
 
         public void Dispose () {
