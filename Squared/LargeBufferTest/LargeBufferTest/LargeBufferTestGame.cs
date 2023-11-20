@@ -139,7 +139,9 @@ namespace LargeBufferTest {
                     return bb;
                 },
                 (y, loopState, bb) => {
-                    var drawCall = new BitmapDrawCall(WhitePixel, new Vector2(0, y));
+                    var drawCall = new BitmapDrawCall(WhitePixel, new Vector2(0, y)) {
+                        MultiplyColor = new Color(255, 0, y % 255),
+                    };
                     float fx = 0;
                     var range = bb.ReserveSpace(width);
                     var array = range.Array;
@@ -148,7 +150,7 @@ namespace LargeBufferTest {
                     for (int x = 0; x < width; x++, fx++) {
                         drawCall.Textures = ((x % 2) == 0) ? white : gray;
                         drawCall.Position.X = fx;
-                        drawCall.MultiplyColor = new Color(255, x % 255, y % 255);
+                        drawCall.MultiplyColor.G = (byte)(x % 255);
 
                         array[offset + x] = drawCall;
                     }

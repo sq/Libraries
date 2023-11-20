@@ -277,7 +277,7 @@ namespace Squared.Render {
                 return;
             }
 
-            Vector2 _scale = scale ?? default(Vector2),
+            Vector2 _scale = scale ?? Vector2.One,
                 _offset = offset ?? default(Vector2);
             Color _multiplyColor = multiplyColor ?? default(Color),
                 _addColor = addColor ?? default(Color);

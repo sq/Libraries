@@ -50,16 +50,47 @@ namespace Squared.Render {
         }
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct BitmapVertex : IVertexType {
+    // Used for efficient copying from BitmapDrawCall to BitmapVertex
+    [StructLayout(LayoutKind.Explicit, Pack = 1)]
+    internal struct BitmapBlob {
+        [FieldOffset(0)]
         public Vector4 PositionAndRotation;
+        [FieldOffset(16)]
         public Vector4 Texture1Region;
+        [FieldOffset(32)]
         public Vector4 Texture2Region;
+        [FieldOffset(48)]
         public Vector4 UserData;
+        [FieldOffset(64)]
         public Vector4 ScaleOrigin;
+        [FieldOffset(80)]
         public Color MultiplyColor;
+        [FieldOffset(84)]
         public Color AddColor;
-        public short WorldSpace, TexID; // for debugging
+    }
+
+    [StructLayout(LayoutKind.Explicit, Pack = 1)]
+    public struct BitmapVertex : IVertexType {
+        [FieldOffset(0)]
+        internal BitmapBlob Blob;
+        [FieldOffset(0)]
+        public Vector4 PositionAndRotation;
+        [FieldOffset(16)]
+        public Vector4 Texture1Region;
+        [FieldOffset(32)]
+        public Vector4 Texture2Region;
+        [FieldOffset(48)]
+        public Vector4 UserData;
+        [FieldOffset(64)]
+        public Vector4 ScaleOrigin;
+        [FieldOffset(80)]
+        public Color MultiplyColor;
+        [FieldOffset(84)]
+        public Color AddColor;
+        [FieldOffset(88)]
+        public short WorldSpace;
+        [FieldOffset(90)]
+        public short TexID; // for debugging
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -170,7 +201,8 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             unchecked {
-                return x.Textures.CompareTo(in y.Textures);
+                // HACK: CompareTo doesn't get inlined
+                return (int)(x.Textures.Data - y.Textures.Data);
             }
         }
 
@@ -500,7 +532,7 @@ namespace Squared.Render {
 
             bool result = true;
             failed = false;
-            var worldSpace = WorldSpace;
+            short worldSpace = (short)(WorldSpace ? 1 : 0);
 
             unchecked {
                 slice.GetVertexPointer(out BitmapVertex* pVertices, out int vertexCapacity);
@@ -535,7 +567,7 @@ namespace Squared.Render {
                             continue;
                         }
 
-                        bool texturesEqual = call.Textures.Equals(in state.currentTextures);
+                        bool texturesEqual = call.Textures.Data == state.currentTextures.Data;
 
                         if (!texturesEqual) {
                             if (state.vertCount > 0)
@@ -550,23 +582,20 @@ namespace Squared.Render {
 
                         ref var resultVertex = ref pVertices[state.vertexWritePosition];
 
-                        resultVertex.PositionAndRotation = call.PositionAndRotation;
+                        resultVertex.Blob = call.Blob;
                         // Avoid readback of destination, call.SortOrder should be in cache anyway
                         resultVertex.PositionAndRotation.Z = call.SortOrder * zBufferFactor;
-                        resultVertex.Texture1Region = call.TextureRegionV4;
                         if (!call.TextureRegion2.HasValue)
                             // HACK: We use this as a 'no value' flag so that the vertex shader can
-                            //  just copy Texture1Region
-                            // If we were to copy Texture1Region into Texture2Region it would create
-                            //  a very expensive execution stall and burn memory bandwidth
+                            //  just copy Texture1Region instead of us having to do it
                             resultVertex.Texture2Region.X = -99999f;
+
+                        // HACK: Manually fill this as efficiently as possible, since using the nullable infrastructure
+                        //  adds needless overhead. It would be nice to eliminate this branch entirely, but w/e
+                        if (call._WorldSpace == 0)
+                            resultVertex.WorldSpace = worldSpace;
                         else
-                            resultVertex.Texture2Region = call.TextureRegion2V4;
-                        resultVertex.UserData = call.UserData;
-                        resultVertex.ScaleOrigin = call.ScaleOrigin;
-                        resultVertex.MultiplyColor = call.MultiplyColor;
-                        resultVertex.AddColor = call.AddColor;
-                        resultVertex.WorldSpace = (short)((call.WorldSpace ?? worldSpace) ? 1 : 0);
+                            resultVertex.WorldSpace = (short)(call._WorldSpace - 1);
                         resultVertex.TexID = (short)call.Textures.Texture1.Id;
 
                         state.vertexWritePosition += 1;
@@ -1094,7 +1123,7 @@ namespace Squared.Render {
         [FieldOffset(4)]
         public readonly AbstractTextureReference Texture2;
         [FieldOffset(0)]
-        internal readonly UInt64 Data;
+        internal readonly Int64 Data;
 
         static TextureSet () {
             Invalid = new TextureSet(AbstractTextureReference.Invalid, AbstractTextureReference.Invalid);
@@ -1171,7 +1200,9 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int CompareTo (TextureSet rhs) {
-            return CompareTo(in rhs);
+            unchecked {
+                return (int)(Data - rhs.Data);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1218,6 +1249,8 @@ namespace Squared.Render {
     // HACK: Pack=1 reduces the size of this struct by a decent amount, and so does Pack=4
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct BitmapDrawCall {
+        [FieldOffset(0)]
+        internal BitmapBlob Blob;
         /// <summary>
         /// Position (X, Y), SortOrder/Z, Rotation (Radians)
         /// </summary>
@@ -1234,26 +1267,22 @@ namespace Squared.Render {
         /// <summary>
         /// Scale (X, Y), Origin (X, Y)
         /// </summary>
-        [FieldOffset(16)]
-        public Vector4    ScaleOrigin;
-        [FieldOffset(16)]
-        public Vector2    Scale;
-        [FieldOffset(24)]
-        public Vector2    Origin;
-        [FieldOffset(32)]
-        public Color      MultiplyColor;
-        [FieldOffset(36)]
-        public Color      AddColor;
-        [FieldOffset(40)]
-        public Vector4    UserData;
-        [FieldOffset(56)] // 16 bytes (four floats)
+        [FieldOffset(16)] // 16 bytes (four floats)
         public Bounds     TextureRegion;
-        [FieldOffset(56)]
-        internal Vector4  TextureRegionV4;
-        [FieldOffset(72)] // 16 bytes (four floats)
+        [FieldOffset(32)] // 16 bytes (four floats)
         public Bounds     TextureRegion2;
+        [FieldOffset(48)]
+        public Vector4    UserData;
+        [FieldOffset(64)]
+        public Vector4    ScaleOrigin;
+        [FieldOffset(64)]
+        public Vector2    Scale;
         [FieldOffset(72)]
-        internal Vector4  TextureRegion2V4;
+        public Vector2    Origin;
+        [FieldOffset(80)]
+        public Color      MultiplyColor;
+        [FieldOffset(84)]
+        public Color      AddColor;
         [FieldOffset(88)] // 8 bytes (two ints)
         public TextureSet Textures;
         [FieldOffset(96)] // 4 bytes (one int)
@@ -1264,7 +1293,7 @@ namespace Squared.Render {
         /// </summary>
         public short      LocalData1;
         [FieldOffset(102)]
-        private sbyte     _WorldSpace;
+        internal sbyte     _WorldSpace;
         [FieldOffset(103)]
         /// <summary>
         /// Scratch storage space for user purposes. This data is not forwarded to the GPU
@@ -1278,9 +1307,9 @@ namespace Squared.Render {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 switch (_WorldSpace) {
-                    case 1:
+                    case 2:
                         return true;
-                    case 0:
+                    case 1:
                         return false;
                     default:
                         return null;
@@ -1289,9 +1318,9 @@ namespace Squared.Render {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 if (value.HasValue)
-                    _WorldSpace = value.Value ? (sbyte)1 : (sbyte)0;
+                    _WorldSpace = value.Value ? (sbyte)2 : (sbyte)1;
                 else
-                    _WorldSpace = -1;
+                    _WorldSpace = 0;
             }
         }
 
@@ -1355,7 +1384,9 @@ namespace Squared.Render {
             : this(textures, position, textures.Texture1.Instance.Bounds(), Color.White, Vector2.One, Vector2.Zero, 0f) {
         }
 
-        public BitmapDrawCall (TextureSet textures, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin, float rotation) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public BitmapDrawCall (TextureSet textures, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin, float rotation) 
+            : this () {
             if (!textures.Texture1.IsInitialized)
                 throw new NullReferenceException("texture1");
 #if DEBUG
@@ -1368,18 +1399,10 @@ namespace Squared.Render {
             Textures = textures;
             Position = position;
             TextureRegion = textureRegion;
-            TextureRegion2 = default(Bounds);
             MultiplyColor = color;
-            AddColor = default(Color);
             Scale = scale;
             Origin = origin;
             Rotation = rotation;
-            UserData = default(Vector4);
-            _WorldSpace = -1;
-            SortOrder = 0f;
-            SortTags = default(Tags);
-            LocalData1 = 0;
-            LocalData2 = 0;
         }
 
         public void Mirror (bool x, bool y) {
