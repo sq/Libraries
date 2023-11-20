@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Globalization;
 using System.Threading;
 using System.Text;
+using System.Runtime.InteropServices;
 
 namespace Squared.Game {
     public sealed class Vector2Comparer : IEqualityComparer<Vector2> {
@@ -30,6 +31,7 @@ namespace Squared.Game {
     }
 
     [Serializable]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct Bounds : ISerializable {
         public static readonly Bounds Unit = FromPositionAndSize(Vector2.Zero, Vector2.One);
 

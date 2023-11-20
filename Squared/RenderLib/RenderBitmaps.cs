@@ -550,11 +550,10 @@ namespace Squared.Render {
 
                         ref var resultVertex = ref pVertices[state.vertexWritePosition];
 
-                        resultVertex.PositionAndRotation.X = call.Position.X;
-                        resultVertex.PositionAndRotation.Y = call.Position.Y;
+                        resultVertex.PositionAndRotation = call.PositionAndRotation;
+                        // Avoid readback of destination, call.SortOrder should be in cache anyway
                         resultVertex.PositionAndRotation.Z = call.SortOrder * zBufferFactor;
-                        resultVertex.PositionAndRotation.W = call.Rotation;
-                        resultVertex.Texture1Region = call.TextureRegion.ToVector4();
+                        resultVertex.Texture1Region = call.TextureRegionV4;
                         if (!call.TextureRegion2.HasValue)
                             // HACK: We use this as a 'no value' flag so that the vertex shader can
                             //  just copy Texture1Region
@@ -562,12 +561,9 @@ namespace Squared.Render {
                             //  a very expensive execution stall and burn memory bandwidth
                             resultVertex.Texture2Region.X = -99999f;
                         else
-                            resultVertex.Texture2Region = call.TextureRegion2.ToVector4();
+                            resultVertex.Texture2Region = call.TextureRegion2V4;
                         resultVertex.UserData = call.UserData;
-                        resultVertex.ScaleOrigin.X = call.Scale.X;
-                        resultVertex.ScaleOrigin.Y = call.Scale.Y;
-                        resultVertex.ScaleOrigin.Z = call.Origin.X;
-                        resultVertex.ScaleOrigin.W = call.Origin.Y;
+                        resultVertex.ScaleOrigin = call.ScaleOrigin;
                         resultVertex.MultiplyColor = call.MultiplyColor;
                         resultVertex.AddColor = call.AddColor;
                         resultVertex.WorldSpace = (short)((call.WorldSpace ?? worldSpace) ? 1 : 0);
@@ -894,6 +890,7 @@ namespace Squared.Render {
         }
     }
 
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public readonly struct AbstractTextureReference {
         public sealed class Comparer : IEqualityComparer<AbstractTextureReference>, IComparer<AbstractTextureReference> {
             public static Comparer Instance = new Comparer();
@@ -1088,10 +1085,16 @@ namespace Squared.Render {
         }
     }
 
+    [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public readonly struct TextureSet : IComparable<TextureSet> {
         public static readonly TextureSet Invalid;
 
-        public readonly AbstractTextureReference Texture1, Texture2;
+        [FieldOffset(0)]
+        public readonly AbstractTextureReference Texture1;
+        [FieldOffset(4)]
+        public readonly AbstractTextureReference Texture2;
+        [FieldOffset(0)]
+        internal readonly UInt64 Data;
 
         static TextureSet () {
             Invalid = new TextureSet(AbstractTextureReference.Invalid, AbstractTextureReference.Invalid);
@@ -1139,8 +1142,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (in TextureSet rhs) {
-            return (Texture1 == rhs.Texture1) && 
-                (Texture2 == rhs.Texture2);
+            return Data == rhs.Data;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1154,17 +1156,17 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator == (TextureSet lhs, TextureSet rhs) {
-            return (lhs.Texture1 == rhs.Texture1) && (lhs.Texture2 == rhs.Texture2);
+            return lhs.Data == rhs.Data;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator != (TextureSet lhs, TextureSet rhs) {
-            return (lhs.Texture1 != rhs.Texture1) || (lhs.Texture2 != rhs.Texture2);
+            return lhs.Data != rhs.Data;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
-            return (Texture1.Id ^ Texture2.Id).GetHashCode();
+            return Data.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1175,7 +1177,7 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int CompareTo (in TextureSet rhs) {
             unchecked {
-                return (Texture1.Id | (Texture2.Id << 16)) - (rhs.Texture1.Id | (rhs.Texture2.Id << 16));
+                return (int)(Data - rhs.Data);
             }
         }
     }
@@ -1214,42 +1216,56 @@ namespace Squared.Render {
     }
 
     // HACK: Pack=1 reduces the size of this struct by a decent amount, and so does Pack=4
-    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct BitmapDrawCall {
-        // 8
-        public Vector2    Position;
-        // 16
-        // TODO: ScaleMinusOne
-        public Vector2    Scale;
-        // 24
-        public Vector2    Origin;
-        // 28
         /// <summary>
-        /// Angle in radians
+        /// Position (X, Y), SortOrder/Z, Rotation (Radians)
         /// </summary>
-        public float      Rotation;
-        // 32
+        [FieldOffset(0)]
+        public Vector4    PositionAndRotation;
+        [FieldOffset(0)]
+        public Vector2    Position;
+        [FieldOffset(0)]
+        public Vector3    Position3D;
+        [FieldOffset(8)]
         public float      SortOrder;
-        // 36, 40
-        public Color      MultiplyColor, AddColor;
-        // 56
+        [FieldOffset(12)]
+        public float      Rotation;
+        /// <summary>
+        /// Scale (X, Y), Origin (X, Y)
+        /// </summary>
+        [FieldOffset(16)]
+        public Vector4    ScaleOrigin;
+        [FieldOffset(16)]
+        public Vector2    Scale;
+        [FieldOffset(24)]
+        public Vector2    Origin;
+        [FieldOffset(32)]
+        public Color      MultiplyColor;
+        [FieldOffset(36)]
+        public Color      AddColor;
+        [FieldOffset(40)]
         public Vector4    UserData;
-        // 72
+        [FieldOffset(56)] // 16 bytes (four floats)
         public Bounds     TextureRegion;
-        // 88
+        [FieldOffset(56)]
+        internal Vector4  TextureRegionV4;
+        [FieldOffset(72)] // 16 bytes (four floats)
         public Bounds     TextureRegion2;
-        // 100
+        [FieldOffset(72)]
+        internal Vector4  TextureRegion2V4;
+        [FieldOffset(88)] // 8 bytes (two ints)
         public TextureSet Textures;
-        // 104
+        [FieldOffset(96)] // 4 bytes (one int)
         public Tags       SortTags;
-        // 106
+        [FieldOffset(100)]
         /// <summary>
         /// Scratch storage space for user purposes. This data is not forwarded to the GPU
         /// </summary>
         public short      LocalData1;
-        // 107
+        [FieldOffset(102)]
         private sbyte     _WorldSpace;
-        // 108
+        [FieldOffset(103)]
         /// <summary>
         /// Scratch storage space for user purposes. This data is not forwarded to the GPU
         /// </summary>
