@@ -335,12 +335,6 @@ namespace Squared.Render {
         protected override void OnReleaseResources () {
             IsReleased = true;
 
-            for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
-                var batch = _DrawCalls[i];
-                if (batch != null)
-                    batch.ReleaseResources();
-            }
-
             _DrawCalls.Clear();
 
             base.OnReleaseResources();
@@ -384,7 +378,7 @@ namespace Squared.Render {
 
                 if (!isValid) {
                     if (IgnoreInvalidRenderTargets) {
-                        MarkAsIssued();
+                        MarkAsIssued(manager);
                         return;
                     } else
                         throw new ObjectDisposedException("Invalid render target for batch group " + Name);
@@ -397,7 +391,7 @@ namespace Squared.Render {
 
                 if (!isValid) {
                     if (IgnoreInvalidRenderTargets) {
-                        MarkAsIssued();
+                        MarkAsIssued(manager);
                         return;
                     } else
                         throw new ObjectDisposedException("Invalid render target for batch group " + Name);

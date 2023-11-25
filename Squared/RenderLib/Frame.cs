@@ -158,18 +158,22 @@ namespace Squared.Render {
             RenderManager.PrepareManager.UpdateTextureCache();
 
             dm.Begin(ChangeRenderTargets);
+            if (!Monitor.TryEnter(dm.ReleaseQueue, 1))
+                throw new ThreadStateException("The batch release queue lock was held for too long");
 
-            int c = Batches.Count;
-            var _batches = Batches.GetBuffer(false);
-            for (int i = 0; i < c; i++) {
-                var batch = _batches[i];
-                if (batch != null)
-                    batch.IssueAndWrapExceptions(dm);
+            try {
+                int c = Batches.Count;
+                var _batches = Batches.GetBuffer(false);
+                for (int i = 0; i < c; i++) {
+                    var batch = _batches[i];
+                    if (batch != null)
+                        batch.IssueAndWrapExceptions(dm);
+                }
+            } finally {
+                dm.Finish();
+                Monitor.Exit(dm.ReleaseQueue);
+                RenderManager.PrepareManager.CleanupTextureCache();
             }
-
-            dm.Finish();
-
-            RenderManager.PrepareManager.CleanupTextureCache();
 
             if (Tracing.RenderTrace.EnableTracing)
                 Tracing.RenderTrace.ImmediateMarker(device, "Frame {0:0000} : End Draw", Index);
@@ -186,13 +190,6 @@ namespace Squared.Render {
                 batch.ReleaseResources();
 
             BatchesToRelease.Clear();
-
-            Batch temp;
-            for (int i = 0, c = Batches.Count; i < Batches.Count; i++) {
-                if (Batches.TryGetItem(i, out temp))
-                    temp.ReleaseResources();
-            }
-
             Batches.Dispose();
 
             RenderManager.ReleaseFrame(this);

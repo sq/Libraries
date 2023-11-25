@@ -24,14 +24,14 @@ namespace Squared.Threading {
         //  that a latent bug in our signaling manifests itself
         public static int IdleWaitDurationMs = 500;
 #endif
-        private int NextQueueIndex;
 
+        public int Index { get; private set; }
         public string Name { get; private set; }
         public bool IsDisposed { get; private set; }
 
         internal GroupThread (ThreadGroup owner, int index) {
             Owner = owner;
-            NextQueueIndex = index;
+            Index = index;
             Thread = new Thread(ThreadMain);
             Name = string.Format($"{owner.Name} worker #{index} [ThreadGroup {owner.GetHashCode():X8}]");
             Thread.Name = Name;
@@ -50,11 +50,12 @@ namespace Squared.Threading {
         private static void ThreadMain (object _self) {
             var weakSelf = ThreadMainSetup(ref _self);
 
+            int scv = -1;
             bool running = true;
             while (running) {
                 // HACK: We retain a strong reference to our GroupThread while we're running,
                 //  and if our owner GroupThread has been collected, we abort
-                var idleManager = ThreadMainStep(weakSelf, ref running);
+                var idleManager = ThreadMainStep(weakSelf, ref running, ref scv);
                 if (idleManager != null)
                     idleManager.Wait(IdleWaitDurationMs);
             }
@@ -70,7 +71,7 @@ namespace Squared.Threading {
         }
 
         private static ThreadIdleManager ThreadMainStep (
-            WeakReference<GroupThread> weakSelf, ref bool running
+            WeakReference<GroupThread> weakSelf, ref bool running, ref int scv
         ) {
             // We hold the strong reference at method scope so we can be sure it doesn't get held too long
             GroupThread strongSelf = null;
@@ -79,6 +80,12 @@ namespace Squared.Threading {
             if (!weakSelf.TryGetTarget(out strongSelf) || strongSelf.IsDisposed) {
                 running = false;
                 return null;
+            }
+
+            var currentScv = strongSelf.Owner.SynchronizationContextVersion;
+            if (scv != currentScv) {
+                scv = currentScv;
+                SynchronizationContext.SetSynchronizationContext(strongSelf.Owner.SynchronizationContext);
             }
 
             if (strongSelf.IdleManager.BeginRunning() && strongSelf.PerformWork())
@@ -90,44 +97,34 @@ namespace Squared.Threading {
         private bool PerformWork () {
             var queues = Owner.QueuesForWorkers;
 
-            var gsc = Owner.SynchronizationContext;
-            var sc = SynchronizationContext.Current;
             bool moreWorkRemains = false;
-            try {
-                if (gsc != null)
-                    SynchronizationContext.SetSynchronizationContext(gsc);
-                var nqi = NextQueueIndex++;
-                for (int pi = 0, pc = queues.Items.Count; pi < pc; pi++) {
-                    if (IsDisposed)
-                        return false;
+            for (int pi = 0, pc = queues.Items.Count; pi < pc; pi++) {
+                if (IsDisposed)
+                    return false;
 
-                    var pq = queues.Items.DangerousGetItem(pi);
-                    var processedAnyAtThisLevel = false;
+                var pq = queues.Items.DangerousGetItem(pi);
+                var processedAnyAtThisLevel = false;
 
-                    for (int li = 0, lc = pq.Length; li < lc; li++) {
-                        var index = (li + nqi) % lc;
-                        var queue = pq[index];
-                        if (queue == null)
-                            continue;
+                for (int li = 0, lc = pq.Length; li < lc; li++) {
+                    var index = (li + Index) % lc;
+                    var queue = pq[index];
+                    if (queue == null)
+                        continue;
 
-                        int processedItemCount = queue.Step(out bool exhausted);
-                        if (processedItemCount > 0) {
-                            moreWorkRemains |= !exhausted;
-                            processedAnyAtThisLevel = true;
-                        }
+                    int processedItemCount = queue.Step(out bool exhausted);
+                    if (processedItemCount > 0) {
+                        moreWorkRemains |= !exhausted;
+                        processedAnyAtThisLevel = true;
                     }
-
-                    // If we processed any work items at this priority level,
-                    //  bail out instead of continuing to a lower priority level.
-                    // This is intended to ensure that high-priority items complete
-                    //  first, while allowing lower priority items to run if the
-                    //  high priority queue(s) are at their max concurrency level.
-                    if (processedAnyAtThisLevel)
-                        break;
                 }
-            } finally {
-                if (gsc != null)
-                    SynchronizationContext.SetSynchronizationContext(sc);
+
+                // If we processed any work items at this priority level,
+                //  bail out instead of continuing to a lower priority level.
+                // This is intended to ensure that high-priority items complete
+                //  first, while allowing lower priority items to run if the
+                //  high priority queue(s) are at their max concurrency level.
+                if (processedAnyAtThisLevel)
+                    break;
             }
 
             return !moreWorkRemains;

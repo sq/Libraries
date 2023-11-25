@@ -117,7 +117,20 @@ namespace Squared.Threading {
 
         public readonly GroupThread[] Threads;
 
-        public SynchronizationContext SynchronizationContext;
+        internal volatile int SynchronizationContextVersion;
+        private SynchronizationContext _SynchronizationContext;
+        public SynchronizationContext SynchronizationContext {
+            get {
+                return _SynchronizationContext;
+            }
+            set {
+                if (_SynchronizationContext == value)
+                    return;
+
+                _SynchronizationContext = value;
+                Interlocked.Increment(ref SynchronizationContextVersion);
+            }
+        }
 
         public string Name;
 
@@ -159,8 +172,8 @@ namespace Squared.Threading {
 
         private void TimeThreadProc () {
             while (!IsDisposed) {
-                Volatile.Write(ref CoarseTime, Time.Ticks);
-                Thread.Yield();
+                Volatile.Write(ref CoarseTime, TimeProvider.Ticks);
+                Thread.Sleep(0);
             }
         }
 
@@ -176,7 +189,7 @@ namespace Squared.Threading {
                 //  with a shorter one
                 if (Interlocked.CompareExchange(ref QueuesForWorkers, result, prev) != prev) {
                     if (waitLonger)
-                        Thread.Sleep(1);
+                        Thread.Sleep(0);
                     else {
                         Thread.Yield();
                         waitLonger = true;
@@ -192,7 +205,7 @@ namespace Squared.Threading {
             if (TimeThread != null)
                 return CoarseTime;
             else
-                return Time.Ticks;
+                return TimeProvider.Ticks;
         }
 
         /// <summary>
@@ -204,6 +217,7 @@ namespace Squared.Threading {
             bool allExhausted = true;
             int totalSteps = 0;
             float stepLengthLimitMs = (MainThreadStepLengthLimitMs ?? 999999) - (currentElapsedMs ?? 0);
+            long stepLengthLimitTicks = (long)(stepLengthLimitMs * Time.MillisecondInTicks);
 
             var sc = SynchronizationContext.Current;
             var msc = SynchronizationContext;
@@ -220,10 +234,8 @@ namespace Squared.Threading {
                     if (!exhausted)
                         allExhausted = false;
 
-                    var elapsedMs = (GetTime() - started) / Time.MillisecondInTicks;
-                    if (
-                        elapsedMs > stepLengthLimitMs
-                    )
+                    var elapsedTicks = (GetTime() - started);
+                    if (elapsedTicks > stepLengthLimitTicks)
                         return false;
                 }
             } finally {

@@ -270,15 +270,18 @@ namespace Squared.PRGUI.NewEngine {
                     float p = 0;
                     foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
                         ref var child = ref this[ckey];
-                        ref var childResult = ref Result(ckey);
-                        child.ConvertProportionsToMaximums(cw, ch, out var childWidth, out var childHeight);
                         // HACK: The floating run and non-floating run potentially walk us through the same controls,
                         //  so skip anything we shouldn't be processing in this run. Yuck.
                         if (child.Config.IsStackedOrFloating != run.IsFloating)
                             continue;
 
+                        ref var childResult = ref Result(ckey);
+                        child.ConvertProportionsToMaximums(cw, ch, out var childWidth, out var childHeight);
+#if DEBUG
                         if (childResult.ParentRunIndex != runIndex)
                             throw new Exception();
+#endif
+
                         var margins = child.Margins;
                         ref readonly var childConfig = ref child.Config;
                         bool expandChildX = childConfig.FillRow && !childWidth.HasFixed,

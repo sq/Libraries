@@ -153,6 +153,9 @@ namespace Squared.Render {
         private readonly Stack<RenderTargetStackEntry> RenderTargetStack = new Stack<RenderTargetStackEntry>(256);
         private readonly Stack<Viewport>               ViewportStack = new Stack<Viewport>(256);
 
+        // When issuing batches we add them to this, then at the end of issue we release their resources
+        internal readonly UnorderedList<Batch>         ReleaseQueue = new UnorderedList<Batch>(2048);
+
         internal readonly Stack<BatchGroup> BatchGroupStack = new Stack<BatchGroup>(256);
 
         public readonly GraphicsDevice Device;
@@ -415,6 +418,12 @@ namespace Squared.Render {
             BlendStateStack.Clear();
             RasterizerStateStack.Clear();
             DepthStencilStateStack.Clear();
+
+            using (var e = ReleaseQueue.GetEnumerator())
+            while (e.GetNext(out var batch))
+                batch.ReleaseResources();
+
+            ReleaseQueue.Clear();
         }
 
         public void DisposeResource (IDisposable resource) {
@@ -1040,7 +1049,7 @@ namespace Squared.Render {
                     IssueDepth++;
                 }
 
-                try {
+                try {                
                     batch.Issue(manager);
                 } catch (Exception exc) {                
                     throw new BatchIssueFailedException(batch, exc);

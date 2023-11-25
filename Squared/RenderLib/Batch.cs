@@ -350,10 +350,12 @@ namespace Squared.Render {
         /// <summary>
         /// Use this if you have to skip issuing the batch for some reason.
         /// </summary>
-        protected virtual void MarkAsIssued () {
+        protected virtual void MarkAsIssued (DeviceManager manager) {
             WaitForSuspend();
 
             State.IsIssued = true;
+            lock (manager.ReleaseQueue)
+                manager.ReleaseQueue.Add(this);
         }
 
         // This is where you send commands to the video card to render your batch.
@@ -361,6 +363,7 @@ namespace Squared.Render {
             WaitForSuspend();
 
             State.IsIssued = true;
+            manager.ReleaseQueue.Add(this);
         }
 
         protected virtual void OnReleaseResources () {
@@ -373,19 +376,16 @@ namespace Squared.Render {
             if (Released)
                 throw new ObjectDisposedException("Batch");
 
-            Thread.MemoryBarrier();
             if (State.IsPrepareQueued)
                 throw new Exception("Batch currently queued for prepare");
             else if (!State.IsInitialized)
                 throw new Exception("Batch uninitialized");
             Released = true;
-            Thread.MemoryBarrier();
 
             State.IsPrepared = false;
             State.IsInitialized = false;
             Container = null;
             Material = null;
-            Thread.MemoryBarrier();
 
             OnReleaseResources();
 
