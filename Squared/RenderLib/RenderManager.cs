@@ -455,6 +455,7 @@ namespace Squared.Render {
 
         internal long TotalVertexBytes, TotalIndexBytes;
 
+        private readonly ReaderWriterLockSlim BufferGeneratorLock = new ReaderWriterLockSlim();
         private readonly Dictionary<Type, IBufferGenerator> _AllBufferGenerators =
             new Dictionary<Type, IBufferGenerator>(new ReferenceComparer<Type>());
 
@@ -523,15 +524,18 @@ namespace Squared.Render {
         }
 
         internal void CreateNewBufferGenerators () {
-            lock (_AllBufferGenerators) {
-                foreach (var kvp in _AllBufferGenerators) {
+            BufferGeneratorLock.EnterWriteLock();
+            try {
+                foreach (var v in _AllBufferGenerators.Values) {
                     try {
-                        kvp.Value.Dispose();
+                        v.Dispose();
                     } catch (Exception) {
                     }
                 }
 
                 _AllBufferGenerators.Clear();
+            } finally {
+                BufferGeneratorLock.ExitWriteLock();
             }
         }
 
@@ -619,11 +623,14 @@ namespace Squared.Render {
                 ManagedIndexBytes = 0
             };
 
-            lock (_AllBufferGenerators) {
+            BufferGeneratorLock.EnterReadLock();
+            try {
                 foreach (var kvp in _AllBufferGenerators) {
                     var generator = kvp.Value;
                     result.ManagedVertexBytes += generator.BytesAllocated;
                 }
+            } finally {
+                BufferGeneratorLock.ExitReadLock();
             }
 
             return result;
@@ -706,28 +713,33 @@ namespace Squared.Render {
             where T : IBufferGenerator {
             var t = typeof(T);
 
-            IBufferGenerator result = null;
-            lock (_AllBufferGenerators) {
+            IBufferGenerator result;
+            BufferGeneratorLock.EnterReadLock();
+            try {
                 if (_AllBufferGenerators.TryGetValue(t, out result))
                     return (T)result;
+            } finally {
+                BufferGeneratorLock.ExitReadLock();
             }
 
             if (_AllowCreatingNewGenerators != 1)
                 throw new InvalidOperationException("Cannot create a buffer generator after the flush operation has occurred");
 
-            result = (IBufferGenerator)Activator.CreateInstance(
-                t, this
-            );
+            BufferGeneratorLock.EnterWriteLock();
+            try {
+                // We may have lost a race
+                if (_AllBufferGenerators.TryGetValue(t, out result))
+                    return (T)result;
 
-            lock (_AllBufferGenerators) {
-                if (_AllBufferGenerators.TryGetValue(t, out IBufferGenerator lostRace)) {
-                    result.Dispose();
-                    return (T)lostRace;
-                } else
-                    _AllBufferGenerators.Add(t, result);
+                result = (IBufferGenerator)Activator.CreateInstance(
+                    t, this
+                );
+
+                _AllBufferGenerators.Add(t, result);
+                return (T)result;
+            } finally {
+                BufferGeneratorLock.ExitWriteLock();
             }
-
-            return (T)result;
         }
 
         public ArrayPoolAllocator<T> GetArrayAllocator<T> () {
@@ -784,9 +796,13 @@ namespace Squared.Render {
         internal void ResetBufferGenerators (int frameIndex) {
             _AllowCreatingNewGenerators = 1;
 
-            lock (_AllBufferGenerators)
-            foreach (var kvp in _AllBufferGenerators)
-                kvp.Value.Reset(frameIndex);
+            BufferGeneratorLock.EnterReadLock();
+            try {
+                foreach (var kvp in _AllBufferGenerators)
+                    kvp.Value.Reset(frameIndex);
+            } finally {
+                BufferGeneratorLock.ExitReadLock();
+            }
         }
 
         internal void FlushBufferGenerators (int frameIndex) {
@@ -794,9 +810,13 @@ namespace Squared.Render {
 
             _AllowCreatingNewGenerators = 0;
 
-            lock (_AllBufferGenerators)
-            foreach (var kvp in _AllBufferGenerators)
-                kvp.Value.Flush();
+            BufferGeneratorLock.EnterReadLock();
+            try {
+                foreach (var kvp in _AllBufferGenerators)
+                    kvp.Value.Flush();
+            } finally {
+                BufferGeneratorLock.ExitReadLock();
+            }
         }
 
         public void DisposeResource (IDisposable resource) {
@@ -868,12 +888,7 @@ namespace Squared.Render {
             }
 
             internal static void Execute (Batch batch, ref Batch.PrepareContext context) {
-                var isCombined = false;
-                batch.GetState(out bool temp, out isCombined, out bool temp2, out bool temp3, out bool temp4);
-
-                if (!isCombined)
-                    batch.Prepare(context);
-
+                batch.Prepare(context);
                 batch.SetPrepareQueued(false);
             }
 

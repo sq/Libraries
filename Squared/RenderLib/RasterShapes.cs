@@ -505,16 +505,21 @@ namespace Squared.Render.RasterShape {
             }
         }
 
+        private int ColorHash;
+        private pSRGBColor _Color;
+        internal Vector4 ColorPLinear, ColorVector4;
+
         /// <summary>
         /// The shadow color (premultiplied sRGB).
         /// </summary>
-        internal pSRGBColor _Color;
-
         public pSRGBColor Color {
             get {
                 return _Color;
             }
             set {
+                ColorVector4 = value.ToVector4();
+                ColorPLinear = value.ToPLinear();
+                ColorHash = ColorVector4.GetHashCode();
                 _Color = value;
                 IsEnabled = !_Color.IsTransparent ? 1 : 0;
             }
@@ -535,7 +540,7 @@ namespace Squared.Render.RasterShape {
                 (Softness == rhs.Softness) &&
                 (Expansion == rhs.Expansion) &&
                 (FillSuppressionMinusOne == rhs.FillSuppressionMinusOne) &&
-                (_Color == rhs._Color) &&
+                (ColorVector4 == rhs.ColorVector4) &&
                 (Inside == rhs.Inside);
         }
 
@@ -548,7 +553,7 @@ namespace Squared.Render.RasterShape {
 
         // FIXME
         public override int GetHashCode () {
-            return IsEnabled.GetHashCode() ^ Color.GetHashCode();
+            return IsEnabled.GetHashCode() ^ ColorHash;
         }
     }
 
@@ -717,7 +722,7 @@ namespace Squared.Render.RasterShape {
         }
 
         private static bool ShouldBeShadowed (in RasterShadowSettings shadow) {
-            return !shadow.Color.IsTransparent && (
+            return (shadow.ColorVector4.W > 0) && (
                 (shadow.Softness >= 0.1) || 
                 (shadow.Expansion >= 0.1) ||
                 (shadow.Offset.Length() > 0.1)
@@ -747,10 +752,8 @@ namespace Squared.Render.RasterShape {
                     ref var dc = ref _DrawCalls.Item(i);
                     BatchManager.Instance.Step(this, ref dc, ref state, i);
 
-                    var fill = dc.Fill;
-                    var gpower = fill.GradientPowerMinusOne + 1f;
-                    if (fill.Repeat)
-                        gpower = -gpower;
+                    ref var fill = ref dc.Fill;
+                    var gpower = (fill.GradientPowerMinusOne + 1f) * (fill.Repeat ? -1f : 1f);
                     vw.NextVertex = new RasterShapeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         // FIXME: Fill this last space with a separate value?
@@ -863,7 +866,7 @@ namespace Squared.Render.RasterShape {
 
                 // HACK: If the shadow color is fully transparent, suppress the offset and softness.
                 // If we don't do this, the bounding box of the shapes will be pointlessly expanded.
-                var shadowColor = sb.BlendInLinearSpace ? sb.Shadow.Color.ToPLinear() : sb.Shadow.Color.ToVector4();
+                var shadowColor = sb.BlendInLinearSpace ? sb.Shadow.ColorPLinear : sb.Shadow.ColorVector4;
                 var shadowOffset = sb.Shadowed ? sb.Shadow.Offset : Vector2.Zero;
                 var shadowSoftness = sb.Shadowed ? sb.Shadow.Softness : 0;
                 var shadowExpansion = (sb.Shadowed ? sb.Shadow.Expansion : 0) * (sb.Shadow.Inside ? -1 : 1);
