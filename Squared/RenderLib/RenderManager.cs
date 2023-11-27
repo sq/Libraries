@@ -55,6 +55,7 @@ namespace Squared.Render {
     public interface IBatchContainer {
         void Add (Batch batch);
         Frame Frame { get; }
+        int FrameIndex { get; }
         RenderCoordinator Coordinator { get; }
         RenderManager RenderManager { get; }
         void PrepareChildren (ref Batch.PrepareContext context);

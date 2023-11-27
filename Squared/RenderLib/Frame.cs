@@ -77,6 +77,7 @@ namespace Squared.Render {
         public FramePrepareData PrepareData { get; private set; }
 
         Frame IBatchContainer.Frame { get { return this; } }
+        int IBatchContainer.FrameIndex { get { return Index; } }
 
         internal void Initialize (RenderCoordinator coordinator, RenderManager renderManager, int index) {
             Batches.ListPool = _ListPool;

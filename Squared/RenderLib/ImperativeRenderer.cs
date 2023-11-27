@@ -159,7 +159,7 @@ namespace Squared.Render.Convenience {
             public SamplerState SamplerState, SamplerState2;
             public Material DefaultBitmapMaterial;
             public Sorter<BitmapDrawCall> DeclarativeSorter;
-            public int Layer;
+            public int Layer, FrameIndex;
             public float RasterGammaMinusOne;
             public object BlendStateOrSelector;
         }
@@ -493,6 +493,7 @@ namespace Squared.Render.Convenience {
 
             Config.Container = container;
             Config.Materials = materials;
+            Config.FrameIndex = container.FrameIndex;
             Flags = ImperativeRendererFlags.RasterBlendInLinearSpace | ImperativeRendererFlags.WorldSpace;
         }
 
@@ -528,6 +529,7 @@ namespace Squared.Render.Convenience {
             Config.DeclarativeSorter = declarativeSorter;
             Config.RasterGammaMinusOne = 0;
             Config.DefaultBitmapMaterial = null;
+            Config.FrameIndex = container.FrameIndex;
             if (worldSpace)
                 flags |= ImperativeRendererFlags.WorldSpace;
             if (autoIncrementSortKey)
@@ -1825,6 +1827,8 @@ namespace Squared.Render.Convenience {
         ) {
             if (Config.Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
+            if (Container.FrameIndex != Config.FrameIndex)
+                throw new Exception("This renderer was created for a previous frame");
 
             var actualLayer = layer.GetValueOrDefault(Config.Layer);
             var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
@@ -1894,6 +1898,8 @@ namespace Squared.Render.Convenience {
         public GeometryBatch GetGeometryBatch (int? layer, bool? worldSpace, BlendState blendState, Material customMaterial = null) {
             if (Config.Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
+            if (Container.FrameIndex != Config.FrameIndex)
+                throw new Exception("This renderer was created for a previous frame");
 
             var actualLayer = layer.GetValueOrDefault(Config.Layer);
             var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
@@ -1946,6 +1952,8 @@ namespace Squared.Render.Convenience {
         ) {
             if (Config.Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
+            if (Container.FrameIndex != Config.FrameIndex)
+                throw new Exception("This renderer was created for a previous frame");
 
             var actualLayer = layer.GetValueOrDefault(Config.Layer);
             var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);

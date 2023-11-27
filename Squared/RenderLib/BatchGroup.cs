@@ -43,6 +43,11 @@ namespace Squared.Render {
         public ViewTransformModifier ViewTransformModifier;
 
         public Frame Frame { get; private set;  }
+        int IBatchContainer.FrameIndex {
+            get {
+                return Frame.Index;
+            }
+        }
 
         /// <summary>
         /// If set, contained batches will not have their Issue method called.
