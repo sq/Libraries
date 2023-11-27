@@ -693,8 +693,12 @@ namespace Squared.Util {
         }
 
         public void ReplaceWith (ref DenseList<T> newItems, bool clearEmptySpace = true) {
+#if NOSPAN
+            // FIXME
+#else
             if (Unsafe.AreSame(ref this, ref newItems))
                 return;
+#endif
 
             int newCount = newItems.Count;
             EnsureCapacity(newCount, false);
@@ -719,12 +723,22 @@ namespace Squared.Util {
                         }
                     }
                 }
-            } else {
+            } else if (theirList == null) {
                 // FIXME: Is it worth skipping the copy for empty slots?
                 Item1 = newItems.Item1;
                 Item2 = newItems.Item2;
                 Item3 = newItems.Item3;
                 Item4 = newItems.Item4;
+                _Count = (short)newCount;
+            } else {
+                if (newCount > 0)
+                    Item1 = theirList.DangerousItem(0);
+                if (newCount > 1)
+                    Item2 = theirList.DangerousItem(1);
+                if (newCount > 2)
+                    Item3 = theirList.DangerousItem(2);
+                if (newCount > 3)
+                    Item4 = theirList.DangerousItem(3);
                 _Count = (short)newCount;
             }
         }
