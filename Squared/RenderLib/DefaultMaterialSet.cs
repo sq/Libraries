@@ -168,9 +168,11 @@ namespace Squared.Render {
         }
 
         public bool AutoApply (Material m) {
-            bool hasChanged = m.ActiveViewTransformId != Id;
+            var rtci = MaterialSet.Coordinator.Manager.DeviceManager.RenderTargetChangeIndex;
+            bool hasChanged = (m.ActiveViewTransformId != Id) || (m.RenderTargetChangeIndex != rtci);
             MaterialSet.ApplyViewTransformToMaterial(m, ref ViewTransform);
             m.ActiveViewTransformId = Id;
+            m.RenderTargetChangeIndex = rtci;
             return hasChanged;
         }
     }
@@ -1280,11 +1282,11 @@ namespace Squared.Render {
             };
             @params.DitheringSettings.FrameIndex = dm.FrameIndex;
 
-            FlushViewTransformForFrameParamsChange = true;
+            var fpChanged = !HasAppliedFrameParams || !LastAppliedFrameParams.Equals(ref @params);
+            if (fpChanged)
+                FlushViewTransformForFrameParamsChange = true;
 
-            if (!HasAppliedFrameParams ||
-                !LastAppliedFrameParams.Equals(ref @params)
-            ) {
+            if (fpChanged) {
                 HasAppliedFrameParams = true;
                 LastAppliedFrameParams = @params;
                 ForEachMaterial(_ApplyParamsDelegate, ref @params);
@@ -1439,12 +1441,14 @@ namespace Squared.Render {
                 ActiveViewTransform.Id++;
             }
             var am = ActiveViewTransform.ActiveMaterial;
-            var rtci = Coordinator.Manager.DeviceManager.RenderTargetChangeIndex;
 
-            if (force || (am == null) || FlushViewTransformForFrameParamsChange || (rtci != LastRenderTargetChangeIndex)) {
+            if (
+                force || 
+                (am == null) || 
+                FlushViewTransformForFrameParamsChange
+            ) {
                 FlushViewTransformForFrameParamsChange = false;
                 LastAppliedViewTransform = viewTransform;
-                LastRenderTargetChangeIndex = rtci;
                 ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
             } else if (am != null) {
                 ActiveViewTransform.AutoApply(am);

@@ -64,6 +64,7 @@ namespace Squared.Render {
         public readonly int MaterialID;
 
         internal uint ActiveViewTransformId;
+        internal int RenderTargetChangeIndex;
 
         internal List<EffectParameter> TextureParameters = new List<EffectParameter>();
 
