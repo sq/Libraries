@@ -151,6 +151,7 @@ namespace Squared.Render {
 
             var dm = RenderManager.DeviceManager;
             dm.FrameIndex = Index;
+            dm.RenderStartTimeSeconds = (float)Time.Seconds;
             var device = dm.Device;
 
             if (Tracing.RenderTrace.EnableTracing)

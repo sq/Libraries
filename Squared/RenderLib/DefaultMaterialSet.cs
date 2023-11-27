@@ -257,6 +257,18 @@ namespace Squared.Render {
                 StrengthUnitAndIndex.Z = 1.0f / StrengthUnitAndIndex.Y;
             }
         }
+
+        public bool Equals (ref DitheringSettings rhs) {
+            return (StrengthUnitAndIndex == rhs.StrengthUnitAndIndex) &&
+                (BandSizeAndRange == rhs.BandSizeAndRange);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is DitheringSettings ds)
+                return Equals(ref ds);
+            else
+                return false;
+        }
     }
 
     public class DefaultMaterialSet : MaterialSetBase {
@@ -373,7 +385,6 @@ namespace Squared.Render {
 
         public readonly EffectProvider BuiltInShaders;
         public readonly EffectManifest BuiltInShaderManifest;
-        public readonly ITimeProvider  TimeProvider;
 
         protected readonly MaterialDictionary<MaterialCacheKey> MaterialDictionary = new MaterialDictionary<MaterialCacheKey>(
             new MaterialCacheKeyComparer()
@@ -470,15 +481,16 @@ namespace Squared.Render {
                 return Seconds.GetHashCode();
             }
 
-            public bool Equals (FrameParams rhs) {
-                return (Seconds == rhs.Seconds) && (FrameIndex == rhs.FrameIndex);
+            public bool Equals (ref FrameParams rhs) {
+                return (Seconds == rhs.Seconds) && (FrameIndex == rhs.FrameIndex) &&
+                    DitheringSettings.Equals(ref rhs.DitheringSettings);
             }
 
             public override bool Equals (object obj) {
-                if (!(obj is FrameParams))
+                if (obj is FrameParams fp)
+                    return Equals(ref fp);
+                else
                     return false;
-
-                return Equals((FrameParams)obj);
             }
         }
 
@@ -487,7 +499,7 @@ namespace Squared.Render {
             return result;
         }
 
-        public DefaultMaterialSet (RenderCoordinator coordinator, ITimeProvider timeProvider = null) {
+        public DefaultMaterialSet (RenderCoordinator coordinator) {
             Coordinator = coordinator;
             ActiveViewTransform = new ActiveViewTransformInfo(this);
             // HACK
@@ -504,14 +516,12 @@ namespace Squared.Render {
                 FrameIndex = 0
             };
 
-            TimeProvider = timeProvider ?? new DotNetTimeProvider();
-
             BuiltInShaders = new EffectProvider(Assembly.GetExecutingAssembly(), coordinator);
             BuiltInShaderManifest = BuiltInShaders.ReadManifest();
 
             Clear = new Material(
                 null, null,
-                new Action<DeviceManager>[] { (dm) => ApplyShaderVariables(false, dm.FrameIndex) }
+                new Action<DeviceManager>[] { (dm) => ApplyShaderVariables(false, dm) }
             );
 
             SetScissor = new Material(
@@ -1243,8 +1253,9 @@ namespace Squared.Render {
                 ApplyViewTransform(ViewTransform, force || !LazyViewTransformChanges);
         }
 
-        private FrameParams? LastAppliedFrameParams;
-        private ViewTransform? LastAppliedViewTransform;
+        private bool HasAppliedFrameParams, HasAppliedViewTransform;
+        private FrameParams LastAppliedFrameParams;
+        private ViewTransform LastAppliedViewTransform;
         private bool FlushViewTransformForFrameParamsChange;
         private int LastRenderTargetChangeIndex;
         private int? LastAppliedFrameIndex;
@@ -1254,33 +1265,38 @@ namespace Squared.Render {
         /// Also sets other parameters like Time.
         /// <param name="force">Overrides the LazyViewTransformChanges configuration variable if it's set</param>
         /// </summary>
-        public void ApplyShaderVariables (bool force = true, int? frameIndex = null) {
-            if (LastAppliedFrameIndex != frameIndex) {
-                LastAppliedFrameIndex = frameIndex;
+        public void ApplyShaderVariables (bool force, DeviceManager dm) {
+            if (LastAppliedFrameIndex != dm.FrameIndex) {
+                LastAppliedFrameIndex = dm.FrameIndex;
+                // HACK: Ensure we reset at the start of each frame
+                HasAppliedFrameParams = HasAppliedViewTransform = false;
                 BuildMaterialCache();
             }
 
             var @params = new FrameParams {
-                Seconds = (float)TimeProvider.Seconds,
-                FrameIndex = frameIndex,
+                Seconds = dm.RenderStartTimeSeconds,
+                FrameIndex = dm.FrameIndex,
                 DitheringSettings = DefaultDitheringSettings
             };
-            @params.DitheringSettings.FrameIndex = frameIndex ?? 0;
+            @params.DitheringSettings.FrameIndex = dm.FrameIndex;
 
             FlushViewTransformForFrameParamsChange = true;
 
-            if (!LastAppliedFrameParams.HasValue ||
-                !LastAppliedFrameParams.Value.Equals(@params)
+            if (!HasAppliedFrameParams ||
+                !LastAppliedFrameParams.Equals(ref @params)
             ) {
+                HasAppliedFrameParams = true;
                 LastAppliedFrameParams = @params;
                 ForEachMaterial(_ApplyParamsDelegate, ref @params);
             }
 
             // HACK
             ref var vt = ref ViewTransformMutable;
-            if (!LastAppliedViewTransform.HasValue ||
-                !LastAppliedViewTransform.Value.Equals(ref vt))
+            if (!HasAppliedViewTransform ||
+                !LastAppliedViewTransform.Equals(ref vt)) {
+                HasAppliedViewTransform = true;
                 ApplyViewTransform(ref vt, force || !LazyViewTransformChanges);
+            }
         }
 
 
@@ -1386,14 +1402,17 @@ namespace Squared.Render {
         }
 
         internal void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
+            if (m.Parameters == null)
+                return;
+
             uViewport.TrySet(m, ref viewTransform);
 
-            if (m.Parameters?.InverseModelView != null) {
+            if (m.Parameters.InverseModelView != null) {
                 Matrix.Invert(ref viewTransform.ModelView, out var temp);
                 m.Parameters.InverseModelView.SetValue(temp);
             }
 
-            if (m.Parameters?.InverseProjection != null) {
+            if (m.Parameters.InverseProjection != null) {
                 // FIXME: Cache these in the viewtransform
                 Matrix.Invert(ref viewTransform.Projection, out var temp);
                 m.Parameters.InverseProjection.SetValue(temp);

@@ -468,6 +468,7 @@ namespace Squared.Render {
             if (_DrawCalls.Count >= BatchCapacityLimit)
                 nativeBatchCapacity = Math.Min(NativeBatchCapacityLimit + 2, _DrawCalls.Count / 8);
 
+            // FIXME: This nativebatch list is expensive to manage and clear, get rid of it
             _NativeBatches.Clear();
             _NativeBatches.ListPool = _NativePool;
             if (nativeBatchCapacity.HasValue)

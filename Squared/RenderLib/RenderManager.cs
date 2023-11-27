@@ -164,6 +164,7 @@ namespace Squared.Render {
         public ActiveViewTransformInfo ActiveViewTransform { get; internal set; }
         public Material CurrentMaterial { get; private set; }
         public int FrameIndex { get; internal set; }
+        public float RenderStartTimeSeconds { get; internal set; }
 
         private static volatile int NextDeviceId;
         public int DeviceId { get; private set; }
