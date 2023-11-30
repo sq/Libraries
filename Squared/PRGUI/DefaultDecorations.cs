@@ -579,7 +579,7 @@ namespace Squared.PRGUI {
             ActiveOutlineThickness = 1.3f, 
             PressedOutlineThickness = 2f,
             InertOutlineThickness = 1f,
-            EditableFocusedOutlineThickness = 2f;
+            EditableFocusedOutlineThickness = 1.2f;
         public float EdgeGleamOpacity = 0.4f,
             EdgeGleamThickness = 1.2f;
         public float ScrollbarSize = 18f, 

@@ -592,8 +592,7 @@ namespace Squared.PRGUI.Controls {
                 tempSettings.Box = settings.ContentBox;
                 tempSettings.ContentBox = gaugeBox;
                 // HACK to prevent the background from covering the gauge fill
-                if (Appearance.HasBackgroundColor)
-                    passSet.Below.Layer += 1;
+                passSet.AdjustAllLayers(1);
                 gauge.Rasterize(ref context, ref passSet, ref tempSettings);
             }
 
