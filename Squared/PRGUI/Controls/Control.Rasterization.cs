@@ -194,34 +194,28 @@ namespace Squared.PRGUI {
                         previousStackDepth, ref newStackDepth
                     );
 
-                    // HACK: Only clip the below and content layers, not above
-                    var tempPassSet = passSet;
-                    tempPassSet.Below = contentPassSet.Below;
-                    tempPassSet.Content = contentPassSet.Content;
-
                     RasterizePassesCommonBody(
-                        ref contentContext, ref settings, ref tempPassSet, decorations
+                        ref passContext, ref settings, ref passSet, decorations
                     );
 
-                    contentPassSet.Below.Layer = tempPassSet.Below.Layer;
-                    contentPassSet.Content.Layer = tempPassSet.Content.Layer;
+                    if (this is IClippedRasterizationControl icrc)
+                        icrc.RasterizeClipped(ref contentContext, ref contentPassSet, settings, decorations); 
 
                     if (HasChildren)
                         // FIXME: Save/restore layers?
-                        OnRasterizeChildren(ref context, ref contentPassSet, settings);
+                        OnRasterizeChildren(ref contentContext, ref contentPassSet, settings);
 
                     NestedContextPassTeardown(
                         ref context, ref settings, decorations, ref passSet, 
                         ref contentRenderer, ref contentContext, previousStackDepth
                     );
-
-                    passSet.Below.Layer += 1;
-                    passSet.Content.Layer += 1;
-                    passSet.Above.Layer += 1;
                 } else {
                     RasterizePassesCommonBody(
                         ref passContext, ref settings, ref passSet, decorations
                     );
+
+                    if (this is IClippedRasterizationControl icrc)
+                        icrc.RasterizeClipped(ref passContext, ref passSet, settings, decorations); 
 
                     if (HasChildren)
                         // FIXME: Save/restore layers?

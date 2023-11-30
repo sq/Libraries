@@ -19,7 +19,8 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, 
-        IValueControl<string>, IAcceleratorSource, ISelectionBearer, IHasDescription
+        IValueControl<string>, IAcceleratorSource, ISelectionBearer, IHasDescription, 
+        IClippedRasterizationControl
     {
         internal struct HistoryEntry {
             public ArraySegment<char> Text;
@@ -1299,8 +1300,7 @@ namespace Squared.PRGUI.Controls {
             renderer.Layer += 1;
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(ref context, ref passSet, settings, decorations);
+        void IClippedRasterizationControl.RasterizeClipped (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
 
             MarkSelection();
 

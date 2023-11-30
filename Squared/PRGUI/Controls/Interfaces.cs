@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
@@ -129,6 +130,10 @@ namespace Squared.PRGUI {
         Vector2? MinScrollOffset { get; }
         Vector2? MaxScrollOffset { get; }
         bool TrySetScrollOffset (Vector2 value, bool forUser);
+    }
+
+    public interface IClippedRasterizationControl {
+        void RasterizeClipped (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations);
     }
 
     public interface IPartiallyIntangibleControl {
