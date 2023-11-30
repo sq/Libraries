@@ -21,7 +21,7 @@ namespace Squared.PRGUI.Controls {
     // Copied so the callee can pass it by-ref elsewhere
     public delegate void CanvasPaintHandler (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
 
-    public class Canvas : Control, IMouseEventArgsFilter {
+    public class Canvas : Control, IMouseEventArgsFilter, IClippedRasterizationControl {
         public event CanvasPaintHandler OnPaint;
         public bool HasPaintHandler => (OnPaint != null);
 
@@ -201,11 +201,7 @@ namespace Squared.PRGUI.Controls {
             ref var renderer = ref passSet.Content;
             settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
 
-            if (!_Buffered) {
-                AutoDisposeBuffer(passSet.Coordinator);
-                var contentRenderer = renderer.MakeSubgroup(GetContentTransform());
-                Paint(ref context, ref contentRenderer, in settings);
-            } else {
+            if (_Buffered) {
                 var buffer = Buffer.Get();
                 if (buffer == null)
                     return;
@@ -214,6 +210,18 @@ namespace Squared.PRGUI.Controls {
                     scaleX: 1.0f / InternalResolution, scaleY: 1.0f / InternalResolution
                 );
             }
+        }
+
+        void IClippedRasterizationControl.RasterizeClipped (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
+            if (_Buffered)
+                return;
+
+            ref var renderer = ref passSet.Content;
+            settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
+
+            AutoDisposeBuffer(passSet.Coordinator);
+            var contentRenderer = renderer.MakeSubgroup(GetContentTransform());
+            Paint(ref context, ref contentRenderer, in settings);
         }
     }
 }

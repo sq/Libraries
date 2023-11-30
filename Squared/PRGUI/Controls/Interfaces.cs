@@ -133,6 +133,9 @@ namespace Squared.PRGUI {
     }
 
     public interface IClippedRasterizationControl {
+        /// <summary>
+        /// Like OnRasterize, but invoked with content clipping applied
+        /// </summary>
         void RasterizeClipped (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations);
     }
 

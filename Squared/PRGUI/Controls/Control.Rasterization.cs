@@ -178,7 +178,8 @@ namespace Squared.PRGUI {
                 MakeDecorationSettings(ref box, ref contentBox, state, compositing, out var settings);
 
                 context.Clone(out var passContext);
-                var hasNestedContext = (ShouldClipContent || (HasChildren && CreateNestedContextForChildren));
+                var icrc = this as IClippedRasterizationControl;
+                var hasNestedContext = (ShouldClipContent) || (HasChildren && CreateNestedContextForChildren);
 
                 int previousStackDepth = passSet.StackDepth, newStackDepth = previousStackDepth;
 
@@ -198,8 +199,7 @@ namespace Squared.PRGUI {
                         ref passContext, ref settings, ref passSet, decorations
                     );
 
-                    if (this is IClippedRasterizationControl icrc)
-                        icrc.RasterizeClipped(ref contentContext, ref contentPassSet, settings, decorations); 
+                    icrc?.RasterizeClipped(ref contentContext, ref contentPassSet, settings, decorations); 
 
                     if (HasChildren)
                         // FIXME: Save/restore layers?
@@ -214,8 +214,7 @@ namespace Squared.PRGUI {
                         ref passContext, ref settings, ref passSet, decorations
                     );
 
-                    if (this is IClippedRasterizationControl icrc)
-                        icrc.RasterizeClipped(ref passContext, ref passSet, settings, decorations); 
+                    icrc?.RasterizeClipped(ref passContext, ref passSet, settings, decorations); 
 
                     if (HasChildren)
                         // FIXME: Save/restore layers?
