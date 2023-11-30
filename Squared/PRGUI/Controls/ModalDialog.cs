@@ -319,13 +319,13 @@ namespace Squared.PRGUI.Controls {
             Close(ModalCloseReason.UserCancelled);
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
             // HACK: Normally closing the modal will cause it to lose focus, which creates a 
             //  distracting title bar flicker. We want to suppress that during the close animation
             if (IsFadingOut)
                 settings.State |= ControlStates.ContainsFocus;
 
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
         }
 
         bool IModal.OnUnhandledEvent (string name, Util.Event.IEventInfo args) {

@@ -129,14 +129,14 @@ namespace Squared.PRGUI.Controls {
         }
 
         // FIXME: Use a decorator for this.
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
             float radius = 1.66f, outlineRadius = 1.4f;
             pSRGBColor fillColor = Appearance.TextColor.Get(context.NowL) ?? Vector4.One, 
                 outlineColor = Appearance.BackgroundColor.Get(context.NowL) ?? new Vector4(0, 0, 0, 1);
 
             settings.ContentBox.SnapAndInset(out var tl, out var br, 0); // FIXME: inset by outlineRadius?
             for (int i = 0; i < 3; i++) {
-                renderer.RasterizeLineSegment(
+                passSet.Content.RasterizeLineSegment(
                     new Vector2(tl.X, br.Y), new Vector2(br.X, tl.Y), 
                     radius, radius, outlineRadius, fillColor, fillColor, outlineColor
                 );

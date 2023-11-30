@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -319,30 +320,20 @@ namespace Squared.PRGUI {
                 LastPassCount = prepassContainer.Count + 1;
 
                 if (AcceleratorOverlayVisible) {
-                    renderer.Layer += 1;
-                    RasterizeAcceleratorOverlay(ref context, ref renderer);
+                    var passSet = new RasterizePassSet(ref renderer, null, 0);
+                    passSet.AdjustAllLayers(1);
+                    RasterizeAcceleratorOverlay(ref context, ref passSet);
                 }
 
                 {
-                    renderer.MakeSubgroup(out var subRenderer);
-                    subRenderer.BlendState = BlendState.NonPremultiplied;
+                    var subPassSet = new RasterizePassSet(ref renderer, null, 0);
+                    subPassSet.AdjustAllLayers(2);
 
                     // HACK
-                    context.Pass = RasterizePasses.Below;
                     foreach (var isrc in InputSources) {
                         isrc.SetContext(this);
-                        isrc.Rasterize(ref context, ref subRenderer);
+                        isrc.Rasterize(ref context, ref subPassSet);
                     }
-
-                    subRenderer.Layer += 1;
-                    context.Pass = RasterizePasses.Content;
-                    foreach (var isrc in InputSources)
-                        isrc.Rasterize(ref context, ref subRenderer);
-
-                    subRenderer.Layer += 1;
-                    context.Pass = RasterizePasses.Above;
-                    foreach (var isrc in InputSources)
-                        isrc.Rasterize(ref context, ref subRenderer);
                 }
 
                 // Now that we have a dependency graph for the scratch targets, use it to
@@ -491,7 +482,28 @@ namespace Squared.PRGUI {
         }
     }
 
+    public static class RasterizePassSetExtensions {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref ImperativeRenderer Pass (ref this RasterizePassSet self, RasterizePasses pass) {
+            switch (pass) {
+                case RasterizePasses.Below:
+                    return ref self.Below;
+                case RasterizePasses.Content:
+                case RasterizePasses.ContentClip:
+                default:
+                    return ref self.Content;
+                case RasterizePasses.Above:
+                    return ref self.Above;
+            }
+        }
+    }
+
     public struct RasterizePassSet {
+        public RenderCoordinator Coordinator {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Below.Container?.Coordinator;
+        }
+
         public ImperativeRenderer Below, Content, Above;
         public int StackDepth;
 
@@ -519,6 +531,12 @@ namespace Squared.PRGUI {
             container.MakeSubgroup(out Above, name: "Above {userData}", layer: layer + 2, userData: control);
             StackDepth = stackDepth;
             layer = layer + 3;
+        }
+
+        internal void AdjustAllLayers (int delta) {
+            Below.Layer += delta;
+            Content.Layer += delta;
+            Above.Layer += delta;
         }
     }
 }

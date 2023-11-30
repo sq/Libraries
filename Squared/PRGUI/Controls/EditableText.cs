@@ -1299,8 +1299,8 @@ namespace Squared.PRGUI.Controls {
             renderer.Layer += 1;
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
 
             MarkSelection();
 
@@ -1333,13 +1333,8 @@ namespace Squared.PRGUI.Controls {
             var textOffset = (settings.ContentBox.Position - ScrollOffset + AlignmentOffset).Floor();
 
             // Draw in the Below pass for better batching
-            if (context.Pass == RasterizePasses.Below) {
-                if (Description != null)
-                    RasterizeDescription(ref context, ref renderer, ref settings, layout.Size.X);
-            }
-
-            if (context.Pass != RasterizePasses.Content)
-                return;
+            if (Description != null)
+                RasterizeDescription(ref context, ref passSet.Below, ref settings, layout.Size.X);
 
             if (
                 (selBounds.HasValue || Builder.Length == 0) && 
@@ -1368,9 +1363,7 @@ namespace Squared.PRGUI.Controls {
                     UniqueId = ControlIndex
                 };
 
-                var oldPass = context.Pass;
-                RasterizeSelectionDecorator(ref context, ref renderer, ref selSettings, selectionDecorator);
-                context.Pass = oldPass;
+                RasterizeSelectionDecorator(ref context, ref passSet, ref selSettings, selectionDecorator);
 
                 // HACK to ensure that we don't provide a null rect for the cursor if there's no selection
                 if (selBox.Width <= 0) {
@@ -1385,42 +1378,28 @@ namespace Squared.PRGUI.Controls {
 
             ColorizeSelection(layout.DrawCalls, selection, context, settings.State, selectionDecorator);
 
-            renderer.DrawMultiple(
+            passSet.Content.DrawMultiple(
                 layout.DrawCalls, offset: textOffset,
                 material: textMaterial, samplerState: RenderStates.Text
             );
 
             if (StaticTextBase.VisualizeLayout) {
                 settings.ContentBox.SnapAndInset(out Vector2 ca, out Vector2 cb);
-                renderer.RasterizeRectangle(ca, cb, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue, layer: 1);
+                passSet.Above.RasterizeRectangle(ca, cb, 0f, 1f, Color.Transparent, Color.Transparent, outlineColor: Color.Blue, layer: 1);
                 ca += AlignmentOffset;
                 cb.Y += AlignmentOffset.Y;
                 var h = layout.UnconstrainedSize.Y;
                 var la = new Vector2(ca.X, ca.Y + h);
                 var lb = new Vector2(cb.X, ca.Y + h);
-                renderer.RasterizeLineSegment(la, lb, 1f, Color.Green, layer: 2);
+                passSet.Above.RasterizeLineSegment(la, lb, 1f, Color.Green, layer: 2);
             }
         }
 
         private void RasterizeSelectionDecorator (
-            ref UIOperationContext context, ref ImperativeRenderer renderer, 
+            ref UIOperationContext context, ref RasterizePassSet passSet, 
             ref DecorationSettings selectionSettings, IDecorator decorator
         ) {
-            if (!decorator.IsPassDisabled(RasterizePasses.Below)) {
-                context.Pass = RasterizePasses.Below;
-                decorator.Rasterize(ref context, ref renderer, ref selectionSettings);
-            }
-
-            if (!decorator.IsPassDisabled(RasterizePasses.Content)) {
-                context.Pass = RasterizePasses.Content;
-                decorator.Rasterize(ref context, ref renderer, ref selectionSettings);
-            }
-
-            if (decorator.IsPassDisabled(RasterizePasses.Above))
-                return;
-
-            context.Pass = RasterizePasses.Above;
-            decorator.Rasterize(ref context, ref renderer, ref selectionSettings);
+            decorator.Rasterize(ref context, ref passSet, ref selectionSettings);
         }
 
         string IValueControl<string>.Value {

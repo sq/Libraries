@@ -90,7 +90,7 @@ namespace Squared.PRGUI.Input {
         void SetContext (UIContext context);
         void Update (ref InputState previous, ref InputState current);
         void SetTextInputState (bool enabled);
-        void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer);
+        void Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet);
         void TryMoveCursor (Vector2 newPosition);
     }
 
@@ -264,7 +264,7 @@ namespace Squared.PRGUI.Input {
             Context.UpdateComposition(text, cursorPosition, length);
         }
 
-        public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer) {
+        public void Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet) {
         }
 
         public void TryMoveCursor (Vector2 position) {
@@ -336,7 +336,7 @@ namespace Squared.PRGUI.Input {
         public void SetTextInputState (bool enabled) {
         }
 
-        public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer) {
+        public void Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet) {
         }
 
         public void TryMoveCursor (Vector2 position) {
@@ -794,7 +794,7 @@ namespace Squared.PRGUI.Input {
             };
         }
 
-        public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer) {
+        public void Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet) {
             if (!Context.IsPriorityInputSource(this))
                 return;
 
@@ -807,10 +807,10 @@ namespace Squared.PRGUI.Input {
 
             var unsnapped = CurrentUnsnappedPosition ?? pos;
             MakeSettingsForPosition(unsnapped, total, padding, out var settings);
-            decorator.Rasterize(ref context, ref renderer, ref settings);
+            decorator.Rasterize(ref context, ref passSet, ref settings);
 
             settings.Box = new RectF(unsnapped, pos - unsnapped);
-            context.DecorationProvider.VirtualCursorAnchor?.Rasterize(ref context, ref renderer, ref settings);
+            context.DecorationProvider.VirtualCursorAnchor?.Rasterize(ref context, ref passSet, ref settings);
 
             if (SnapToControl != null)
                 return;
@@ -819,7 +819,7 @@ namespace Squared.PRGUI.Input {
             foreach (var result in FuzzyHitTest) {
                 var box = result.Rect;
                 var alpha = (1f - Arithmetic.Saturate(result.Distance / FuzzyHitTestDistance)) * 0.8f;
-                renderer.RasterizeRectangle(
+                passSet.Above.RasterizeRectangle(
                     box.Position, box.Extent, radius: 1f, outlineRadius: 1.5f,
                     innerColor: Color.Transparent, outerColor: Color.Transparent,
                     outlineColor: Color.Red * alpha

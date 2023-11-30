@@ -170,15 +170,15 @@ namespace Squared.PRGUI.Controls {
             return changed;
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
             // HACK: We don't want collapsing to be enabled the first time a window is clicked
             if (!context.MouseButtonHeld)
                 CollapsingEnabled = settings.HasStateFlag(ControlStates.ContainsFocus);
 
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
 
-            if (AllowClose && (context.Pass == RasterizePasses.Above))
-                RasterizeCloseButton(ref context, ref renderer, settings);
+            if (AllowClose)
+                RasterizeCloseButton(ref context, ref passSet.Above, settings);
         }
 
         private RasterPolygonVertex[] ClosePolygon = new RasterPolygonVertex[4];

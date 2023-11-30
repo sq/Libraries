@@ -331,19 +331,16 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
 
             IDecorator titleDecorator;
             Color? titleColor = null;
             if (
                 (titleDecorator = UpdateTitle(ref context, settings.State, ref settings.ContentBox, out Material titleMaterial, ref titleColor)) != null
             ) {
-                if (Collapsible && (context.Pass == RasterizePasses.Above))
-                    RasterizeDisclosureArrow(ref context, ref renderer, settings);
-
-                if (context.Pass != RasterizePasses.Below)
-                    return;
+                if (Collapsible)
+                    RasterizeDisclosureArrow(ref context, ref passSet.Above, settings);
 
                 var layout = TitleLayout.Get();
                 var titleBox = settings.Box;
@@ -379,13 +376,13 @@ namespace Squared.PRGUI.Controls {
                     subSettings.State |= ControlStates.Pressed; // HACK
 
                 if (layout.DrawCalls.Count > 0) {
-                    renderer.Layer += 1;
-                    titleDecorator.Rasterize(ref context, ref renderer, ref subSettings);
+                    passSet.AdjustAllLayers(1);
+                    titleDecorator.Rasterize(ref context, ref passSet, ref subSettings);
 
                     var textPosition = new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top + (titleContentBox.Height - layout.Size.Y) * 0.3f);
 
-                    renderer.Layer += 1;
-                    renderer.DrawMultiple(
+                    passSet.Content.Layer += 1;
+                    passSet.Content.DrawMultiple(
                         layout.DrawCalls, textPosition.Floor(),
                         samplerState: RenderStates.Text, multiplyColor: titleColor,
                         material: titleMaterial

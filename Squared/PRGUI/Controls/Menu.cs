@@ -473,10 +473,10 @@ namespace Squared.PRGUI.Controls {
             TooltipSettings.ShowWhileKeyboardFocused = true;
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
             // FIXME: Also generate corner traits if we are aligned to a position/box instead of a control
             Aligner?.AddDecorationTraits(ref settings);
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
         }
 
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
@@ -491,8 +491,6 @@ namespace Squared.PRGUI.Controls {
 
                 // HACK: Selection boxes are normally rasterized on the content layer, but we want to rasterize
                 //  the selection on the Below layer beneath items' decorations and content.
-                var oldPass = context.Pass;
-                context.Pass = RasterizePasses.Content;
                 var selectionSettings = new DecorationSettings {
                     Box = selectionBox,
                     ContentBox = selectionBox,
@@ -507,9 +505,8 @@ namespace Squared.PRGUI.Controls {
                 RasterizeSelectionDecorator(
                     ref context, ref passSet, ref selectionSettings, selectionDecorator
                 );
-                context.Pass = oldPass;
 
-                passSet.Below.Layer += 1;
+                passSet.AdjustAllLayers(1);
             }
 
             base.OnRasterizeChildren(ref context, ref passSet, settings);
@@ -522,21 +519,7 @@ namespace Squared.PRGUI.Controls {
             if (decorator == null)
                 return;
 
-            if (!decorator.IsPassDisabled(RasterizePasses.Below)) {
-                context.Pass = RasterizePasses.Below;
-                decorator.Rasterize(ref context, ref passSet.Below, ref selectionSettings);
-            }
-
-            if (!decorator.IsPassDisabled(RasterizePasses.Content)) {
-                context.Pass = RasterizePasses.Content;
-                decorator.Rasterize(ref context, ref passSet.Content, ref selectionSettings);
-            }
-
-            if (decorator.IsPassDisabled(RasterizePasses.Above))
-                return;
-
-            context.Pass = RasterizePasses.Above;
-            decorator.Rasterize(ref context, ref passSet.Above, ref selectionSettings);
+            decorator.Rasterize(ref context, ref passSet, ref selectionSettings);
         }
 
         private int lastOffset1 = -1,

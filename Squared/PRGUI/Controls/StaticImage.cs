@@ -312,11 +312,6 @@ namespace Squared.PRGUI.Controls {
             */
         }
 
-        protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
-            var showSpinner = ShowLoadingSpinner && (pass == RasterizePasses.Above);
-            return decorations.IsPassDisabled(pass) && (pass != Pass) && !showSpinner && !ShouldClipContent;
-        }
-
         private Material SelectMaterialForTwoImages (DefaultMaterialSet materials) {
             switch (Image2Mode) {
                 default:
@@ -340,94 +335,93 @@ namespace Squared.PRGUI.Controls {
             return ref base.OnGenerateLayoutTree(ref context, parent, existingKey);
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
+            ref var renderer = ref passSet.Pass(Pass);
 
-            if (context.Pass == Pass) {
-                if (Image.IsDisposedOrNull && Image2.IsDisposedOrNull)
-                    return;
+            if (Image.IsDisposedOrNull && Image2.IsDisposedOrNull)
+                return;
 
-                var instance = Image.Instance;
-                var instance2 = Image2.Instance;
-                float opacity1 = !settings.IsCompositing ? context.Opacity : 1.0f,
-                    opacity2 = Image2Opacity.Get(now: context.NowL);
+            var instance = Image.Instance;
+            var instance2 = Image2.Instance;
+            float opacity1 = !settings.IsCompositing ? context.Opacity : 1.0f,
+                opacity2 = Image2Opacity.Get(now: context.NowL);
 
-                if (instance == null) {
-                    instance = instance2;
-                    instance2 = null;
-                    opacity1 = opacity2;
-                    opacity2 = 0.0f;
-                }
-
-                var scale = ComputeDisplayScaleRatio(instance ?? instance2, settings.ContentBox.Width, settings.ContentBox.Height);
-                var position = new Vector2(
-                    Arithmetic.Lerp(settings.Box.Left, settings.Box.Extent.X, Alignment.X),
-                    Arithmetic.Lerp(settings.Box.Top, settings.Box.Extent.Y, Alignment.Y)
-                );
-                // HACK: Fix images overhanging by a pixel
-                position = position.Floor();
-                var origin = Alignment;
-                Vector4 color4 = MultiplyColor.Get(context.NowL) ?? Vector4.One,
-                    addColor4 = AddColor.Get(context.NowL) ?? Vector4.Zero;
-                // FIXME: Always use context.Opacity?
-                if (!settings.IsCompositing)
-                    color4 *= opacity1;
-                pSRGBColor pColor = pSRGBColor.FromPLinear(color4),
-                    pAddColor = pSRGBColor.FromPLinear(addColor4);
-
-                // FIXME: This won't properly restore state if there is a backing list
-                var p = renderer.Parameters;
-                var defaultBlendState = Context.PickDefaultBlendState(instance);
-                var blendState = BlendState ?? (
-                    (instance2 != null) 
-                        ? RenderStates.PorterDuffOver // The composited shaders always premultiply their inputs if necessary
-                        : defaultBlendState
-                );
-                renderer.Parameters.AddRange(ref MaterialParameters);
-                // If the inputs are not premultiplied we should have the compositing shaders premultiply them
-                if ((defaultBlendState == BlendState.NonPremultiplied) || (defaultBlendState == RenderStates.PorterDuffNonPremultipliedOver))
-                    renderer.Parameters.Add("AutoPremultiplyBlockTextures", true);
-                var isPostPremultiplied = (blendState == BlendState.NonPremultiplied) || (blendState == RenderStates.PorterDuffNonPremultipliedOver);
-                if (isPostPremultiplied)
-                    pColor = pColor.Unpremultiply();
-
-                var rect = new Rectangle(-DrawExpansion, -DrawExpansion, instance.Width + (DrawExpansion * 2), instance.Height + (DrawExpansion * 2));
-                if (DrawExpansion != 0) {
-                    Vector2 expansionAlignment = (DrawExpansion * scale) * (new Vector2(0.5f) - Alignment) * 2f;
-                    // FIXME: This might be backwards
-                    position -= expansionAlignment;
-                }
-                var drawCall = new BitmapDrawCall(instance, position.Round(0)) {
-                    Origin = Alignment,
-                    ScaleF = scale,
-                    MultiplyColor = pColor.ToColor(context.UIContext.IsSRGB),
-                    AddColor = pAddColor.ToColor(context.UIContext.IsSRGB),
-                    UserData = RasterizerUserData,
-                    TextureRegion = instance.BoundsFromRectangle(rect)
-                };
-                Material material = null;
-
-                if ((instance2 != null) && (instance2 != instance)) {
-                    drawCall.Texture2 = instance2;
-                    if ((Image2Mode != StaticImageCompositeMode.CustomMaterial) && (Material == null)) {
-                        var scale2 = ComputeDisplayScaleRatio(instance2, settings.ContentBox.Width, settings.ContentBox.Height);
-                        drawCall.UserData = new Vector4(opacity2);
-                        drawCall.AlignTexture2(scale2 / scale, preserveAspectRatio: true);
-                        material = SelectMaterialForTwoImages(renderer.Materials);
-                    } else {
-                        drawCall.TextureRegion2 = drawCall.TextureRegion;
-                    }
-                }
-                // We have the compositor apply our blend state instead
-                if (settings.IsCompositing && ((Material ?? material) == null))
-                    blendState = BlendState.Opaque;
-
-                renderer.Draw(ref drawCall, material: Material ?? material, blendState: blendState);
-                renderer.Parameters = p;
+            if (instance == null) {
+                instance = instance2;
+                instance2 = null;
+                opacity1 = opacity2;
+                opacity2 = 0.0f;
             }
 
+            var scale = ComputeDisplayScaleRatio(instance ?? instance2, settings.ContentBox.Width, settings.ContentBox.Height);
+            var position = new Vector2(
+                Arithmetic.Lerp(settings.Box.Left, settings.Box.Extent.X, Alignment.X),
+                Arithmetic.Lerp(settings.Box.Top, settings.Box.Extent.Y, Alignment.Y)
+            );
+            // HACK: Fix images overhanging by a pixel
+            position = position.Floor();
+            var origin = Alignment;
+            Vector4 color4 = MultiplyColor.Get(context.NowL) ?? Vector4.One,
+                addColor4 = AddColor.Get(context.NowL) ?? Vector4.Zero;
+            // FIXME: Always use context.Opacity?
+            if (!settings.IsCompositing)
+                color4 *= opacity1;
+            pSRGBColor pColor = pSRGBColor.FromPLinear(color4),
+                pAddColor = pSRGBColor.FromPLinear(addColor4);
+
+            // FIXME: This won't properly restore state if there is a backing list
+            var p = renderer.Parameters;
+            var defaultBlendState = Context.PickDefaultBlendState(instance);
+            var blendState = BlendState ?? (
+                (instance2 != null) 
+                    ? RenderStates.PorterDuffOver // The composited shaders always premultiply their inputs if necessary
+                    : defaultBlendState
+            );
+            renderer.Parameters.AddRange(ref MaterialParameters);
+            // If the inputs are not premultiplied we should have the compositing shaders premultiply them
+            if ((defaultBlendState == BlendState.NonPremultiplied) || (defaultBlendState == RenderStates.PorterDuffNonPremultipliedOver))
+                renderer.Parameters.Add("AutoPremultiplyBlockTextures", true);
+            var isPostPremultiplied = (blendState == BlendState.NonPremultiplied) || (blendState == RenderStates.PorterDuffNonPremultipliedOver);
+            if (isPostPremultiplied)
+                pColor = pColor.Unpremultiply();
+
+            var rect = new Rectangle(-DrawExpansion, -DrawExpansion, instance.Width + (DrawExpansion * 2), instance.Height + (DrawExpansion * 2));
+            if (DrawExpansion != 0) {
+                Vector2 expansionAlignment = (DrawExpansion * scale) * (new Vector2(0.5f) - Alignment) * 2f;
+                // FIXME: This might be backwards
+                position -= expansionAlignment;
+            }
+            var drawCall = new BitmapDrawCall(instance, position.Round(0)) {
+                Origin = Alignment,
+                ScaleF = scale,
+                MultiplyColor = pColor.ToColor(context.UIContext.IsSRGB),
+                AddColor = pAddColor.ToColor(context.UIContext.IsSRGB),
+                UserData = RasterizerUserData,
+                TextureRegion = instance.BoundsFromRectangle(rect)
+            };
+            Material material = null;
+
+            if ((instance2 != null) && (instance2 != instance)) {
+                drawCall.Texture2 = instance2;
+                if ((Image2Mode != StaticImageCompositeMode.CustomMaterial) && (Material == null)) {
+                    var scale2 = ComputeDisplayScaleRatio(instance2, settings.ContentBox.Width, settings.ContentBox.Height);
+                    drawCall.UserData = new Vector4(opacity2);
+                    drawCall.AlignTexture2(scale2 / scale, preserveAspectRatio: true);
+                    material = SelectMaterialForTwoImages(renderer.Materials);
+                } else {
+                    drawCall.TextureRegion2 = drawCall.TextureRegion;
+                }
+            }
+            // We have the compositor apply our blend state instead
+            if (settings.IsCompositing && ((Material ?? material) == null))
+                blendState = BlendState.Opaque;
+
+            renderer.Draw(ref drawCall, material: Material ?? material, blendState: blendState);
+            renderer.Parameters = p;
+
             if (ShowLoadingSpinner)
-                context.DecorationProvider.LoadingSpinner?.Rasterize(ref context, ref renderer, ref settings);
+                context.DecorationProvider.LoadingSpinner?.Rasterize(ref context, ref passSet, ref settings);
         }
 
         public void CrossfadeTo (Texture2D newImage, float duration) {

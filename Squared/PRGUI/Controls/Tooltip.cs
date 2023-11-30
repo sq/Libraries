@@ -96,23 +96,14 @@ namespace Squared.PRGUI.Controls {
             Aligner.AlignmentPending = true;
         }
 
-        protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
-            // HACK
-            if (pass == RasterizePasses.Above)
-                return false;
-            else
-                return base.IsPassDisabled(pass, decorations);
-        }
-
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
             // HACK
             if (FramesWaitingForAlignmentUpdate > 0) {
-                if (context.Pass == RasterizePasses.Above)
-                    FramesWaitingForAlignmentUpdate--;
+                FramesWaitingForAlignmentUpdate--;
                 return;
             }
 
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
         }
 
         void IPostLayoutListener.OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {

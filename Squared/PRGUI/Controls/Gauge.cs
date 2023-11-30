@@ -223,10 +223,6 @@ namespace Squared.PRGUI.Controls {
             "auto", "ltr", "rtl", "ttb", "btt", "cw", "ccw"
         };
 
-        protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
-            return decorations.IsPassDisabled(pass);
-        }
-
         private GaugeDirection PickDirection (ref RectF box) {
             return Direction == GaugeDirection.Auto
                 ? (DetermineIfHorizontal(box.Width, box.Height) ? GaugeDirection.LeftToRight : GaugeDirection.BottomToTop)
@@ -307,7 +303,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
             var direction = PickDirection(ref settings.Box);
             var fill = context.DecorationProvider.Gauge;
             var originalCbox = settings.ContentBox;
@@ -318,10 +314,8 @@ namespace Squared.PRGUI.Controls {
             foreach (var mr in MarkedRanges) {
                 if (!mr.DrawBelow)
                     continue;
-                if (context.Pass != RasterizePasses.Content)
-                    continue;
 
-                if (DrawMarkedRange(ref context, ref renderer, settings, ref originalCbox, direction, fill, mr))
+                if (DrawMarkedRange(ref context, ref passSet, settings, ref originalCbox, direction, fill, mr))
                     needBumpLayer = true;
             }
 
@@ -330,26 +324,16 @@ namespace Squared.PRGUI.Controls {
                 : 1.0f;
 
             MakeContentBox(direction, 0f, value1, ref settings.ContentBox, thickness);
-            // HACK
-            if ((value1 > 0) || (context.Pass != RasterizePasses.Content)) {
-                // FIXME: Do we need to do this?
-                /*
-                if (needBumpLayer)
-                    // renderer.Layer += 1;
-                */
 
-                base.OnRasterize(ref context, ref renderer, settings, decorations);
-            }
-
-            if (context.Pass != RasterizePasses.Content)
-                return;
+            // FIXME
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
 
             if (_Limit < 1.0f) {
                 settings.ContentBox = originalCbox;
                 settings.UserData = new Vector4(_Limit, 1f, 0, 0);
                 settings.Traits.Add("limit");
                 MakeContentBox(direction, _Limit, 1f, ref settings.ContentBox, thickness);
-                fill.Rasterize(ref context, ref renderer, ref settings);
+                fill.Rasterize(ref context, ref passSet, ref settings);
             }
 
             needBumpLayer = true;
@@ -362,7 +346,7 @@ namespace Squared.PRGUI.Controls {
                     needBumpLayer = false;
                 }
 
-                DrawMarkedRange(ref context, ref renderer, settings, ref originalCbox, direction, fill, mr);
+                DrawMarkedRange(ref context, ref passSet, settings, ref originalCbox, direction, fill, mr);
             }
         }
 
@@ -372,7 +356,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private bool DrawMarkedRange (
-            ref UIOperationContext context, ref ImperativeRenderer renderer, 
+            ref UIOperationContext context, ref RasterizePassSet passSet, 
             DecorationSettings settings, ref RectF originalCbox, GaugeDirection direction,
             IDecorator fill, MarkedRange mr
         ) {
@@ -391,7 +375,7 @@ namespace Squared.PRGUI.Controls {
             if (mr.StaticColor)
                 settings.Traits.Add("static");
             MakeContentBox(direction, value1, value2, ref settings.ContentBox, thickness);
-            (mr.Decorator ?? fill).Rasterize(ref context, ref renderer, ref settings);
+            (mr.Decorator ?? fill).Rasterize(ref context, ref passSet, ref settings);
             return true;
         }
 

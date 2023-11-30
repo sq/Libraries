@@ -568,8 +568,8 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
 
             var gauge = context.DecorationProvider.ParameterGauge;
             if (
@@ -593,19 +593,15 @@ namespace Squared.PRGUI.Controls {
                 tempSettings.ContentBox = gaugeBox;
                 // HACK to prevent the background from covering the gauge fill
                 if (Appearance.HasBackgroundColor)
-                    renderer.Layer += 1;
-                gauge.Rasterize(ref context, ref renderer, ref tempSettings);
+                    passSet.Below.Layer += 1;
+                gauge.Rasterize(ref context, ref passSet, ref tempSettings);
             }
-
-            // Draw in the "Above" pass to ensure it is not clipped (better batching)
-            if (context.Pass != RasterizePasses.Above)
-                return;
 
             if (!Increment.HasValue)
                 return;
 
-            RasterizeArrow(ref renderer, ComputeArrowBox(settings.ContentBox, false), false);
-            RasterizeArrow(ref renderer, ComputeArrowBox(settings.ContentBox, true), true);
+            RasterizeArrow(ref passSet.Above, ComputeArrowBox(settings.ContentBox, false), false);
+            RasterizeArrow(ref passSet.Above, ComputeArrowBox(settings.ContentBox, true), true);
         }
 
         private bool Adjust (bool positive, bool fast) {

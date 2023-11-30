@@ -1169,7 +1169,6 @@ namespace Squared.PRGUI {
         public ref readonly Vector2 MousePosition => ref Shared.MousePosition;
         internal UnorderedList<IPostLayoutListener> PostLayoutListeners => Shared?.PostLayoutListeners;
 
-        public RasterizePasses Pass;
         public float Opacity { get; internal set; }
         public RectF VisibleRegion { get; internal set; }
         public BatchGroup Prepass;
@@ -1211,7 +1210,6 @@ namespace Squared.PRGUI {
         public void Clone (out UIOperationContext result) {
             result = new UIOperationContext {
                 Shared = Shared,
-                Pass = Pass,
                 VisibleRegion = VisibleRegion,
                 Depth = (short)(Depth + 1),
                 HiddenCount = HiddenCount,

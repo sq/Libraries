@@ -45,12 +45,12 @@ namespace Squared.PRGUI {
         private static readonly Action<DeviceManager, object> BeforeComposite = _BeforeIssueComposite,
             AfterComposite = _AfterIssueComposite;
 
-        protected virtual void OnPreRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings, IDecorator decorations) {
+        protected virtual void OnPreRasterize (ref UIOperationContext context, ref DecorationSettings settings, IDecorator decorations) {
             UpdateAnimation(context.NowL);
         }
 
-        protected virtual void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            decorations?.Rasterize(ref context, ref renderer, ref settings);
+        protected virtual void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
+            decorations?.Rasterize(ref context, ref passSet, ref settings);
         }
 
         protected virtual void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
@@ -88,86 +88,35 @@ namespace Squared.PRGUI {
             context.VisibleRegion = vr;
         }
 
-        private void RasterizePassCommonBody (
-            bool isContentPass, ref UIOperationContext context, ref ImperativeRenderer renderer,
-            ref DecorationSettings settings, ref RasterizePassSet passSet, IDecorator decorations
+        private void RasterizePassesCommonBody (
+            ref UIOperationContext context, ref DecorationSettings settings, ref RasterizePassSet passSet, IDecorator decorations
         ) {
-            if (HasPreRasterizeHandler && isContentPass)
-                OnPreRasterize(ref context, ref renderer, ref settings, decorations);
+            if (HasPreRasterizeHandler)
+                OnPreRasterize(ref context, ref settings, decorations);
 
-            OnRasterize(ref context, ref renderer, settings, decorations);
+            OnRasterize(ref context, ref passSet, settings, decorations);
 
             // HACK: Without this our background color can cover our children's below pass, because
             //  they both rasterize on the same layer
             // It may be best to just always advance the below layer
             if (
-                (context.Pass == RasterizePasses.Below) && 
                 (!Appearance.BackgroundColor.IsTransparent || Appearance.BackgroundImage != null) &&
                 HasChildren
             ) {
                 passSet.Below.Layer += 1;
             }
-
-            if (isContentPass && HasChildren)
-                // FIXME: Save/restore layers?
-                OnRasterizeChildren(ref context, ref passSet, settings);
-        }
-
-        private void RasterizePass (
-            ref UIOperationContext context, 
-            ref DecorationSettings settings, IDecorator decorations,
-            bool compositing, ref RasterizePassSet passSet, 
-            ref ImperativeRenderer renderer, RasterizePasses pass
-        ) {
-            context.Clone(out var passContext);
-            passContext.Pass = pass;
-            var hasNestedContext = (pass == RasterizePasses.Content) && 
-                (ShouldClipContent || (HasChildren && CreateNestedContextForChildren));
-
-            int previousStackDepth = passSet.StackDepth, newStackDepth = previousStackDepth;
-
-            if (hasNestedContext) {
-                UpdateVisibleRegion(ref passContext, ref settings.Box);
-
-                // For clipping we need to create a separate batch group that contains all the rasterization work
-                //  for our children. At the start of it we'll generate the stencil mask that will be used for our
-                //  rendering operation(s).
-                NestedContextPassSetup(
-                    ref context, ref passSet, ref renderer, ref passContext, 
-                    out var contentRenderer, out var childrenPassSet, out var contentContext, 
-                    previousStackDepth, ref newStackDepth
-                );
-
-                RasterizePassCommonBody(
-                    pass == RasterizePasses.Content, ref contentContext, ref contentRenderer, 
-                    ref settings, ref childrenPassSet, decorations
-                );
-
-                // GROSS OPTIMIZATION HACK: Detect that any rendering operation(s) occurred inside the
-                //  group and if so, set up the stencil mask so that they will be clipped.
-                if (ShouldClipContent && !contentRenderer.Container.IsEmpty)
-                    NestedContextPassTeardown(
-                        ref context, ref settings, decorations, ref passSet, 
-                        ref contentRenderer, ref contentContext, previousStackDepth
-                    );
-
-                renderer.Layer += 1;
-            } else {
-                RasterizePassCommonBody(
-                    pass == RasterizePasses.Content, ref passContext, ref renderer, 
-                    ref settings, ref passSet, decorations
-                );
-            }
         }
 
         private void NestedContextPassSetup (
-            ref UIOperationContext context, ref RasterizePassSet passSet, ref ImperativeRenderer renderer, ref UIOperationContext passContext, 
+            ref UIOperationContext context, ref RasterizePassSet passSet, ref UIOperationContext passContext, 
             out ImperativeRenderer contentRenderer, out RasterizePassSet childrenPassSet, out UIOperationContext contentContext, 
             int previousStackDepth, ref int newStackDepth
         ) {
-            renderer.Layer += 1;
+            passSet.Content.Layer += 1;
             passContext.Clone(out contentContext);
-            renderer.MakeSubgroup(out contentRenderer);
+            passSet.Content.MakeSubgroup(out contentRenderer);
+            passSet.Content.Layer += 1;
+
             if (ShouldClipContent) {
                 newStackDepth = previousStackDepth + 1;
                 contentRenderer.DepthStencilState = context.UIContext.GetStencilTest(newStackDepth);
@@ -179,7 +128,6 @@ namespace Squared.PRGUI {
                     : context.UIContext.GetStencilTest(previousStackDepth);
                 childrenPassSet = new RasterizePassSet(ref contentRenderer, this, newStackDepth);
             }
-            renderer.Layer += 1;
         }
 
         private void NestedContextPassTeardown (
@@ -198,9 +146,6 @@ namespace Squared.PRGUI {
 
             contentRenderer.DepthStencilState = context.UIContext.GetStencilWrite(previousStackDepth);
 
-            // FIXME: Separate context?
-            contentContext.Pass = RasterizePasses.ContentClip;
-
             // FIXME
             var temp = settings;
             ApplyClipMargins(ref contentContext, ref temp.Box);
@@ -208,9 +153,8 @@ namespace Squared.PRGUI {
             var crLayer = contentRenderer.Layer;
             contentRenderer.Layer = -999;
             settings.State = default;
-            decorations?.Rasterize(ref contentContext, ref contentRenderer, ref temp);
-
-            contentRenderer.Layer = crLayer;
+            decorations?.RasterizeClip(ref contentContext, ref contentRenderer, ref temp);
+            contentRenderer.Layer = crLayer + 1;
 
             // passSet.NextReferenceStencil = childrenPassSet.NextReferenceStencil;
         }
@@ -232,22 +176,61 @@ namespace Squared.PRGUI {
                 var contentBox = GetRect(contentRect: true);
                 var state = GetCurrentState(ref context);
                 MakeDecorationSettings(ref box, ref contentBox, state, compositing, out var settings);
-                if (!IsPassDisabled(RasterizePasses.Below, decorations))
-                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
-                if (!IsPassDisabled(RasterizePasses.Content, decorations))
-                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Content, RasterizePasses.Content);
-                if (!IsPassDisabled(RasterizePasses.Above, decorations))
-                    RasterizePass(ref context, ref settings, decorations, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
+
+                context.Clone(out var passContext);
+                var hasNestedContext = (ShouldClipContent || (HasChildren && CreateNestedContextForChildren));
+
+                int previousStackDepth = passSet.StackDepth, newStackDepth = previousStackDepth;
+
+                if (hasNestedContext) {
+                    UpdateVisibleRegion(ref passContext, ref settings.Box);
+
+                    // For clipping we need to create a separate batch group that contains all the rasterization work
+                    //  for our children. At the start of it we'll generate the stencil mask that will be used for our
+                    //  rendering operation(s).
+                    NestedContextPassSetup(
+                        ref context, ref passSet, ref passContext,
+                        out var contentRenderer, out var contentPassSet, out var contentContext, 
+                        previousStackDepth, ref newStackDepth
+                    );
+
+                    // HACK: Only clip the below and content layers, not above
+                    var tempPassSet = passSet;
+                    tempPassSet.Below = contentPassSet.Below;
+                    tempPassSet.Content = contentPassSet.Content;
+
+                    RasterizePassesCommonBody(
+                        ref contentContext, ref settings, ref tempPassSet, decorations
+                    );
+
+                    contentPassSet.Below.Layer = tempPassSet.Below.Layer;
+                    contentPassSet.Content.Layer = tempPassSet.Content.Layer;
+
+                    if (HasChildren)
+                        // FIXME: Save/restore layers?
+                        OnRasterizeChildren(ref context, ref contentPassSet, settings);
+
+                    NestedContextPassTeardown(
+                        ref context, ref settings, decorations, ref passSet, 
+                        ref contentRenderer, ref contentContext, previousStackDepth
+                    );
+
+                    passSet.Below.Layer += 1;
+                    passSet.Content.Layer += 1;
+                    passSet.Above.Layer += 1;
+                } else {
+                    RasterizePassesCommonBody(
+                        ref passContext, ref settings, ref passSet, decorations
+                    );
+
+                    if (HasChildren)
+                        // FIXME: Save/restore layers?
+                        OnRasterizeChildren(ref context, ref passSet, settings);
+                }
             } finally {
                 if (Appearance.DecorationProvider != null)
                     UIOperationContext.PopDecorationProvider(ref context);
             }
-        }
-
-        protected virtual bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
-            // Best not to default this optimization on
-            // return decorations.IsPassDisabled(pass);
-            return false;
         }
 
         protected virtual pSRGBColor GetDebugBoxColor (int depth) {
@@ -468,8 +451,7 @@ namespace Squared.PRGUI {
             var decorations = GetDecorator(context.DecorationProvider);
             var state = GetCurrentState(ref context) | ControlStates.Invisible;
             MakeDecorationSettings(ref box, ref box, state, false, out var settings);
-            var tempRenderer = default(ImperativeRenderer);
-            OnPreRasterize(ref context, ref tempRenderer, ref settings, decorations);
+            OnPreRasterize(ref context, ref settings, decorations);
         }
 
         private void RasterizeComposited (ref UIOperationContext context, ref RectF box, ref RasterizePassSet passSet, float opacity, bool enableCompositor) {

@@ -291,10 +291,10 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
 
-            context.DecorationProvider.DropdownArrow?.Rasterize(ref context, ref renderer, ref settings);
+            context.DecorationProvider.DropdownArrow?.Rasterize(ref context, ref passSet, ref settings);
 
             // FIXME: There is probably a better place to clear this flag
             MenuJustClosed = false;

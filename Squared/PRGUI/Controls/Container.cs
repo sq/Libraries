@@ -217,10 +217,10 @@ namespace Squared.PRGUI.Controls {
                 return provider?.Container;
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
             var scrollingActive = Scrollable && (settings.Box.Height > MostRecentHeaderHeight);
 
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
 
             if (scrollingActive) {
                 settings.Box.Top += MostRecentHeaderHeight;
@@ -229,9 +229,9 @@ namespace Squared.PRGUI.Controls {
                 settings.ContentBox.Height -= MostRecentHeaderHeight;
                 var scrollbar = context.DecorationProvider?.Scrollbar;
                 if (ShouldShowHorizontalScrollbar)
-                    scrollbar?.Rasterize(ref context, ref renderer, ref settings, ref HScrollbar);
+                    scrollbar?.Rasterize(ref context, ref passSet, ref settings, ref HScrollbar);
                 if (ShouldShowVerticalScrollbar)
-                    scrollbar?.Rasterize(ref context, ref renderer, ref settings, ref VScrollbar);
+                    scrollbar?.Rasterize(ref context, ref passSet, ref settings, ref VScrollbar);
             }
         }
 

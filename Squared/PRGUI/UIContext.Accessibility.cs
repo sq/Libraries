@@ -365,15 +365,12 @@ namespace Squared.PRGUI {
                 return c;
         }
 
-        private void RasterizeAcceleratorOverlay (ref UIOperationContext context, ref ImperativeRenderer renderer) {
+        private void RasterizeAcceleratorOverlay (ref UIOperationContext context, ref RasterizePassSet passSet) {
             var activeModal = ActiveModal;
             Control shiftTab = ResolveProxies(PickRotateFocusTarget(false, -1)),
                 tab = ResolveProxies(PickRotateFocusTarget(false, 1)),
                 ctrlShiftTab = (activeModal?.RetainFocus == true) ? null : ResolveProxies(PickRotateFocusTarget(true, -1)),
                 ctrlTab = (activeModal?.RetainFocus == true) ? null : ResolveProxies(PickRotateFocusTarget(true, 1));
-
-            var targetGroup = renderer.MakeSubgroup();
-            var labelGroup = renderer.MakeSubgroup();
 
             RasterizedOverlayBoxes.Clear();
             if (Focused != null)
@@ -387,29 +384,29 @@ namespace Squared.PRGUI {
 
             var topLevelSource = TopLevelFocused as IAcceleratorSource;
             if (topLevelSource != null) {
-                labelGroup = renderer.MakeSubgroup();
+                // labelGroup = renderer.MakeSubgroup();
 
                 foreach (var accel in topLevelSource.Accelerators)
-                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, accel, true);
+                    RasterizeAcceleratorOverlay(context, ref passSet, accel, true);
             }
 
-            RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, tab, FocusForward);
+            RasterizeAcceleratorOverlay(context, ref passSet, tab, FocusForward);
             if (shiftTab != tab)
-                RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, shiftTab, FocusBackward);
+                RasterizeAcceleratorOverlay(context, ref passSet, shiftTab, FocusBackward);
 
             if ((ctrlTab != TopLevelFocused) || (ctrlShiftTab != TopLevelFocused)) {
                 if (ctrlTab != tab)
-                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlTab, WindowFocusForward);
+                    RasterizeAcceleratorOverlay(context, ref passSet, ctrlTab, WindowFocusForward);
                 if (ctrlTab != ctrlShiftTab)
-                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlShiftTab, WindowFocusBackward);
+                    RasterizeAcceleratorOverlay(context, ref passSet, ctrlShiftTab, WindowFocusBackward);
             }
 
             var focusedSource = Focused as IAcceleratorSource;
             if ((focusedSource != null) && (focusedSource != topLevelSource)) {
-                labelGroup = renderer.MakeSubgroup();
+                // labelGroup = renderer.MakeSubgroup();
 
                 foreach (var accel in focusedSource.Accelerators)
-                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, accel, true);
+                    RasterizeAcceleratorOverlay(context, ref passSet, accel, true);
             }
         }
 
@@ -440,7 +437,7 @@ namespace Squared.PRGUI {
         private StringBuilder OverlayStringBuilder = new StringBuilder();
 
         private void RasterizeAcceleratorOverlay (
-            UIOperationContext context, ref ImperativeRenderer labelRenderer, ref ImperativeRenderer targetRenderer, 
+            UIOperationContext context, ref RasterizePassSet passSet, 
             Control control, InputID id, bool showFocused = false, Control forControl = null
         ) {
             if (id == null)
@@ -450,30 +447,30 @@ namespace Squared.PRGUI {
             OverlayStringBuilder.Clear();
             id.Format(OverlayStringBuilder, gamePadMode);
             RasterizeAcceleratorOverlay(
-                context, ref labelRenderer, ref targetRenderer, 
+                context, ref passSet, 
                 control, OverlayStringBuilder, showFocused
             );
         }
 
         private void RasterizeAcceleratorOverlay (
-            UIOperationContext context, ref ImperativeRenderer labelRenderer, ref ImperativeRenderer targetRenderer, 
+            UIOperationContext context, ref RasterizePassSet passSet, 
             AcceleratorInfo accel, bool showFocused = false, Control forControl = null
         ) {
             if (accel.Text != null)
                 RasterizeAcceleratorOverlay(
-                    context, ref labelRenderer, ref targetRenderer,
+                    context, ref passSet,
                     accel.Target, accel.Text, showFocused, forControl
                 );
             else
                 RasterizeAcceleratorOverlay(
-                    context, ref labelRenderer, ref targetRenderer,
+                    context, ref passSet,
                     accel.Target, GetInputID(accel.Key, accel.Modifiers), 
                     showFocused, forControl
                 );
         }
 
         private void RasterizeAcceleratorOverlay (
-            UIOperationContext context, ref ImperativeRenderer labelRenderer, ref ImperativeRenderer targetRenderer, 
+            UIOperationContext context, ref RasterizePassSet passSet, 
             Control control, AbstractString label, bool showFocused = false, Control forControl = null
         ) {
             if (control == null)
@@ -492,7 +489,7 @@ namespace Squared.PRGUI {
                 Box = box,
                 ContentBox = box
             };
-            decorator.Rasterize(ref context, ref targetRenderer, ref settings);
+            decorator.Rasterize(ref context, ref passSet, ref settings);
 
             var outlinePadding = 1f;
             decorator = Decorations.AcceleratorLabel;
@@ -544,8 +541,8 @@ namespace Squared.PRGUI {
                 ContentBox = box,
                 Traits = labelTraits
             };
-            decorator.Rasterize(ref context, ref labelRenderer, ref settings);
-            labelRenderer.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), scale: new Vector2(textScale), layer: 1);
+            decorator.Rasterize(ref context, ref passSet, ref settings);
+            passSet.Above.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), scale: new Vector2(textScale), layer: 1);
 
             RasterizedOverlayBoxes.Add(new RasterizedOverlayBox {
                 Control = forControl,

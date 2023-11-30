@@ -171,9 +171,9 @@ namespace Squared.PRGUI.Controls {
             return true;
         }
 
-        protected override void OnPreRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings _settings, IDecorator decorations) {
+        protected override void OnPreRasterize (ref UIOperationContext context, ref DecorationSettings _settings, IDecorator decorations) {
             var settings = _settings;
-            base.OnPreRasterize(ref context, ref renderer, ref settings, decorations);
+            base.OnPreRasterize(ref context, ref settings, decorations);
             if (!EnsureValidBuffer(context.RenderCoordinator, ref _settings.ContentBox))
                 return;
             settings.ContentBox.Position = settings.Box.Position = Vector2.Zero;
@@ -195,16 +195,14 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
 
-            if (context.Pass != RasterizePasses.Content)
-                return;
-
+            ref var renderer = ref passSet.Content;
             settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
 
             if (!_Buffered) {
-                AutoDisposeBuffer(renderer.Container.Coordinator);
+                AutoDisposeBuffer(passSet.Coordinator);
                 var contentRenderer = renderer.MakeSubgroup(GetContentTransform());
                 Paint(ref context, ref contentRenderer, in settings);
             } else {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -649,10 +650,6 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected override bool IsPassDisabled (RasterizePasses pass, IDecorator decorations) {
-            return decorations.IsPassDisabled(pass) && (pass != Pass) && !ShouldClipContent;
-        }
-
         protected Vector2 ApplyScaleConstraints (Vector2 scale) {
             if (MinScale.HasValue) {
                 var sizeFactor = Math.Min(scale.X / MinScale.Value, scale.Y / MinScale.Value);
@@ -663,13 +660,10 @@ namespace Squared.PRGUI.Controls {
             return scale;
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
             // FIXME: This method allocates object[] sometimes
 
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
-
-            if (context.Pass != Pass)
-                return;
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
 
             var decorationProvider = context.DecorationProvider;
             ComputeEffectiveSpacing(ref context, decorationProvider, decorations, out Margins computedPadding, out Margins computedMargins);
@@ -744,6 +738,8 @@ namespace Squared.PRGUI.Controls {
                     textOffset.X += xSpace;
                     break;
             }
+
+            ref var renderer = ref passSet.Pass(Pass);
 
             if (VisualizeLayout)
                 DoVisualizeLayout(ref renderer, ca, cb, textOffset, scaledSize);

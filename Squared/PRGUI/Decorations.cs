@@ -95,12 +95,12 @@ namespace Squared.PRGUI.Decorations {
         Vector2 MinimumSize { get; }
         bool OnMouseEvent (ref DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args);
         bool HitTest (ref DecorationSettings settings, ref TData data, Vector2 position);
-        void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings, ref TData data);
+        void Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, ref DecorationSettings settings, ref TData data);
     }
 
     public interface IDecorator : IMetricsProvider {
-        bool IsPassDisabled (RasterizePasses pass);
-        void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings);
+        void Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, ref DecorationSettings settings);
+        void RasterizeClip (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings);
         T Clone<T> () where T : class, IDecorator;
     }
 
@@ -252,40 +252,18 @@ namespace Squared.PRGUI.Decorations {
             };
         }
 
-        bool IDecorator.IsPassDisabled (RasterizePasses pass) {
-            switch (pass) {
-                case RasterizePasses.Below:
-                    return (Below == null);
-                case RasterizePasses.Content:
-                    return (Content == null);
-                case RasterizePasses.Above:
-                    return (Above == null);
-                case RasterizePasses.ContentClip:
-                    return (ContentClip == null);
-                default:
-                    return true;
-            }
+        void IDecorator.Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, ref DecorationSettings settings) {
+            if (Below != null)
+                Below(ref context, ref passSet.Below, ref settings);
+            if (Content != null)
+                Content(ref context, ref passSet.Content, ref settings);
+            if (Above != null)
+                Above(ref context, ref passSet.Above, ref settings);
         }
 
-        void IDecorator.Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            switch (context.Pass) {
-                case RasterizePasses.Below:
-                    if (Below != null)
-                        Below(ref context, ref renderer, ref settings);
-                    return;
-                case RasterizePasses.Content:
-                    if (Content != null)
-                        Content(ref context, ref renderer, ref settings);
-                    return;
-                case RasterizePasses.Above:
-                    if (Above != null)
-                        Above(ref context, ref renderer, ref settings);
-                    return;
-                case RasterizePasses.ContentClip:
-                    if (ContentClip != null)
-                        ContentClip(ref context, ref renderer, ref settings);
-                    return;
-            }
+        void IDecorator.RasterizeClip(ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
+            if (ContentClip != null)
+                ContentClip(ref context, ref renderer, ref settings);
         }
     }
 
@@ -296,29 +274,17 @@ namespace Squared.PRGUI.Decorations {
     public sealed class DelegateWidgetDecorator<TData> : DelegateBaseDecorator, IWidgetDecorator<TData> {
         public Vector2 MinimumSize { get; set; }
 
-        public WidgetDecoratorRasterizer<TData> Below, Content, Above, ContentClip;
+        public WidgetDecoratorRasterizer<TData> Below, Content, Above;
         public WidgetDecoratorHitTestHandler<TData> OnHitTest;
         public WidgetDecoratorMouseEventHandler<TData> OnMouseEvent;
 
-        public void Rasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings, ref TData data) {
-            switch (context.Pass) {
-                case RasterizePasses.Below:
-                    if (Below != null)
-                        Below(ref context, ref renderer, ref settings, ref data);
-                    return;
-                case RasterizePasses.Content:
-                    if (Content != null)
-                        Content(ref context, ref renderer, ref settings, ref data);
-                    return;
-                case RasterizePasses.Above:
-                    if (Above != null)
-                        Above(ref context, ref renderer, ref settings, ref data);
-                    return;
-                case RasterizePasses.ContentClip:
-                    if (ContentClip != null)
-                        ContentClip(ref context, ref renderer, ref settings, ref data);
-                    return;
-            }
+        public void Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, ref DecorationSettings settings, ref TData data) {
+            if (Below != null)
+                Below(ref context, ref passSet.Below, ref settings, ref data);
+            if (Content != null)
+                Content(ref context, ref passSet.Content, ref settings, ref data);
+            if (Above != null)
+                Above(ref context, ref passSet.Above, ref settings, ref data);
         }
 
         bool IWidgetDecorator<TData>.OnMouseEvent (ref DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args) {

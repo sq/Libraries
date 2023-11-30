@@ -328,24 +328,22 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(ref context, ref renderer, settings, decorations);
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref passSet, settings, decorations);
 
-            renderer.Layer += 1;
+            passSet.AdjustAllLayers(1);
 
-            if (context.Pass == RasterizePasses.Below) {
-                var rangeSize = Maximum - Minimum;
-                var interval = Arithmetic.Saturate(NotchInterval ?? 0, rangeSize);
-                var hasInterval = (interval > float.Epsilon) && (interval < rangeSize) && ((rangeSize / interval) < MaxNotchCount);
+            var rangeSize = Maximum - Minimum;
+            var interval = Arithmetic.Saturate(NotchInterval ?? 0, rangeSize);
+            var hasInterval = (interval > float.Epsilon) && (interval < rangeSize) && ((rangeSize / interval) < MaxNotchCount);
 
-                if (hasInterval)
-                    DrawNotches(ref context, ref renderer, settings, decorations, interval, rangeSize);
+            if (hasInterval)
+                DrawNotches(ref context, ref passSet.Below, settings, decorations, interval, rangeSize);
 
-                if ((Maximum > 0) && (Minimum < 0))
-                    DrawCenterMark(ref context, ref renderer, settings, decorations, rangeSize);
+            if ((Maximum > 0) && (Minimum < 0))
+                DrawCenterMark(ref context, ref passSet.Below, settings, decorations, rangeSize);
 
-                renderer.Layer += 1;
-            }
+            passSet.Below.Layer += 1;
 
             var thumb = Context.Decorations.SliderThumb;
             var thumbSettings = settings;
@@ -360,7 +358,7 @@ namespace Squared.PRGUI.Controls {
             thumbSettings.State = (thumbSettings.State & ~ControlStates.Hovering);
             if (hoveringThumb)
                 thumbSettings.State |= ControlStates.Hovering;
-            thumb.Rasterize(ref context, ref renderer, ref thumbSettings);
+            thumb.Rasterize(ref context, ref passSet, ref thumbSettings);
             // renderer.RasterizeRectangle(thumbSettings.Box.Position, thumbSettings.Box.Extent, 1f, Color.Red * 0.5f);
         }
 

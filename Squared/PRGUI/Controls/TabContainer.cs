@@ -317,7 +317,7 @@ namespace Squared.PRGUI.Controls {
                 context.HiddenCount--;
         }
 
-        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
             // HACK
             var tabPage = Appearance.Decorator ?? context.DecorationProvider?.TabPage;
             if (Appearance.Undecorated || (SelectedTab == null) || (tabPage == null))
@@ -332,7 +332,7 @@ namespace Squared.PRGUI.Controls {
                 settings.Box.Height -= stripRect.Height;
             }
             settings.ContentBox = tabContentRect;
-            tabPage.Rasterize(ref context, ref renderer, ref settings);
+            tabPage.Rasterize(ref context, ref passSet, ref settings);
         }
 
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {

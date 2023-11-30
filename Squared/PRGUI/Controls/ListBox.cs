@@ -770,9 +770,6 @@ namespace Squared.PRGUI.Controls {
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             var selectionDecorator = context.DecorationProvider.ListSelection;
             if (selectionDecorator != null) {
-                var oldPass = context.Pass;
-                context.Pass = RasterizePasses.Content;
-
                 RectF selectionBox;
                 foreach (var index in Manager._SelectedIndices) {
                     if (index >= Items.Count)
@@ -801,7 +798,6 @@ namespace Squared.PRGUI.Controls {
 
                     Menu.RasterizeSelectionDecorator(ref context, ref passSet, ref selectionSettings, selectionDecorator);
                 }
-                context.Pass = oldPass;
                 passSet.Below.Layer += 1;
             }
 

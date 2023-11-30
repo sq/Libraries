@@ -579,7 +579,7 @@ namespace Squared.PRGUI {
             ActiveOutlineThickness = 1.3f, 
             PressedOutlineThickness = 2f,
             InertOutlineThickness = 1f,
-            EditableFocusedOutlineThickness = 1.2f;
+            EditableFocusedOutlineThickness = 2f;
         public float EdgeGleamOpacity = 0.4f,
             EdgeGleamThickness = 1.2f;
         public float ScrollbarSize = 18f, 
@@ -1542,9 +1542,8 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: EditableTextCornerRadius,
                 // FIXME: Lerp this?
-                outlineRadius: Button_GetOutlineSize(isFocused
-                    ? EditableFocusedOutlineThickness 
-                    : InactiveOutlineThickness), 
+                outlineRadius: isFocused ? EditableFocusedOutlineThickness 
+                    : InactiveOutlineThickness, 
                 outlineColor: pSRGBColor.Lerp(ColorScheme.ContainerOutline, ColorScheme.Focused, focusedAlpha),
                 innerColor: (fillColor1 ?? ColorScheme.ContainerFill), 
                 outerColor: (fillColor2 ?? ColorScheme.ContainerFill),
@@ -1841,6 +1840,7 @@ namespace Squared.PRGUI {
                 textureSettings.Brightness -= 0.1f;
             }
 
+            renderer.Layer += 1;
             renderer.RasterizeRectangle(
                 a, b,
                 radius: MenuSelectionCornerRadius,
@@ -1851,6 +1851,7 @@ namespace Squared.PRGUI {
                 textureSettings: textureSettings,
                 textureRegion: textureRegion
             );
+            renderer.Layer += 1;
         }
 
         protected virtual void ListSelection_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
@@ -1873,6 +1874,7 @@ namespace Squared.PRGUI {
                 textureSettings.Brightness -= 0.1f;
             }
 
+            renderer.Layer += 1;
             renderer.RasterizeRectangle(
                 a, b,
                 radius: ListSelectionCornerRadius,
@@ -1883,6 +1885,7 @@ namespace Squared.PRGUI {
                 textureSettings: textureSettings,
                 textureRegion: textureRegion
             );
+            renderer.Layer += 1;
         }
 
         protected virtual void CompositionPreview_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
