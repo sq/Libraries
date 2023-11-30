@@ -126,7 +126,13 @@ namespace Squared.PRGUI.Controls {
                 child.GenerateLayoutTree(ref context, result, childExistingKey);
             }
 
+            ;
+
             return ref result;
+        }
+
+        protected override void OnRasterize (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(ref context, ref renderer, settings, decorations);
         }
 
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {

@@ -97,6 +97,10 @@ namespace Squared.Render {
         /// This lock is held during frame preparation.
         /// </summary>
         public readonly object PrepareLock = new object();
+        /// <summary>
+        /// Specifies an amount of artificial lag (in milliseconds) to add to GPU rendering operations
+        /// </summary>
+        public int IssueLag = 0;
 
         public readonly NativeAllocator AtlasAllocator = new NativeAllocator { Name = "Squared.Render.AtlasAllocator" };
 
@@ -970,6 +974,9 @@ namespace Squared.Render {
         protected void RenderFrameToDraw (Frame frameToDraw, bool endDraw) {
             Squared.Threading.Profiling.Superluminal.BeginEventFormat("Issue Frame", "SRFrame #{0}", frameToDraw.Index, color: 0x10CFCF);
             try {
+                if (IssueLag > 0)
+                    Thread.Sleep(IssueLag);
+
                 PresentBegunSignal.Reset();
 
                 if (frameToDraw != null) {

@@ -17,6 +17,24 @@ using Squared.Util.Text;
 
 namespace Squared.Render.Text {
     public sealed class DynamicStringLayout {
+        public struct MeasurementSettings {
+            public float DesiredWidth;
+            public float? LineBreakAtX,
+                StopAtY;
+            public int? CharacterLimit, 
+                LineLimit,
+                LineBreakLimit;
+
+            public MeasurementSettings (DynamicStringLayout copyFrom) {
+                DesiredWidth = copyFrom.DesiredWidth;
+                LineBreakAtX = copyFrom.LineBreakAtX;
+                StopAtY = copyFrom.StopAtY;
+                CharacterLimit = copyFrom.CharacterLimit;
+                LineLimit = copyFrom.LineLimit;
+                LineBreakLimit = copyFrom.LineBreakLimit;
+            }
+        }
+
         private class Satellite {
             public DenseList<AbstractTextureReference> UsedTextures;
             public DenseList<AsyncRichImage> Dependencies;
@@ -850,7 +868,7 @@ namespace Squared.Render.Text {
         /// <summary>
         /// Constructs a layout engine based on this configuration
         /// </summary>
-        public void MakeLayoutEngine (out StringLayoutEngine result) {
+        public void MakeLayoutEngine (out StringLayoutEngine result, MeasurementSettings? measureOnly = null) {
             if (_GlyphSource == null)
                 throw new ArgumentNullException("GlyphSource");
 
@@ -864,25 +882,25 @@ namespace Squared.Render.Text {
                 spacing = _Spacing,
                 additionalLineSpacing = _AdditionalLineSpacing,
                 sortKey = _SortKey,
-                desiredWidth = _DesiredWidth,
+                desiredWidth = measureOnly.HasValue ? measureOnly.Value.DesiredWidth : _DesiredWidth,
                 maxExpansionPerSpace = _MaxExpansionPerSpace,
                 characterSkipCount = _CharacterSkipCount,
-                characterLimit = _CharacterLimit,
+                characterLimit = measureOnly.HasValue ? measureOnly.Value.CharacterLimit : _CharacterLimit,
                 xOffsetOfFirstLine = _XOffsetOfFirstLine,
                 xOffsetOfWrappedLine = _WrapIndentation,
                 xOffsetOfNewLine = _XOffsetOfNewLine,
                 extraLineBreakSpacing = _ExtraLineBreakSpacing,
-                lineBreakAtX = _LineBreakAtX,
-                stopAtY = _StopAtY,
+                lineBreakAtX = measureOnly.HasValue ? measureOnly.Value.LineBreakAtX : _LineBreakAtX,
+                stopAtY =    _StopAtY,
                 alignToPixels = _AlignToPixels.Or(_GlyphSource.DefaultAlignment),
                 characterWrap = CharacterWrap,
                 wordWrap = WordWrap,
                 hideOverflow = HideOverflow,
                 alignment = (HorizontalAlignment)_Alignment,
                 reverseOrder = ReverseOrder,
-                lineLimit = _LineLimit,
-                lineBreakLimit = _LineBreakLimit,
-                measureOnly = MeasureOnly,
+                lineLimit = measureOnly.HasValue ? measureOnly.Value.LineLimit : _LineLimit,
+                lineBreakLimit = measureOnly.HasValue ? measureOnly.Value.LineBreakLimit : _LineBreakLimit,
+                measureOnly = measureOnly.HasValue || MeasureOnly,
                 disableMarkers = DisableMarkers,
                 replacementCodepoint = _ReplacementCharacter,
                 recordUsedTextures = RecordUsedTextures,
@@ -957,7 +975,7 @@ namespace Squared.Render.Text {
 
         public bool IsAwaitingDependencies => GetFlag(InternalFlags.AwaitingDependencies);
 
-        public bool Get (out StringLayout result) {
+        public bool Get (out StringLayout result, MeasurementSettings? measureOnly = null) {
             if (GetFlag(InternalFlags.HasCachedStringLayout) && (_GlyphSource != null) &&
                 ((_CachedGlyphVersion < _GlyphSource.Version) || _GlyphSource.IsDisposed)
             )
@@ -979,16 +997,25 @@ namespace Squared.Render.Text {
                 }
             }
 
-            if (!GetFlag(InternalFlags.HasCachedStringLayout)) {
+            // FIXME: Detect whether the measurement settings exactly match the cached layout,
+            //  and if they do, return the cached layout
+            if (!GetFlag(InternalFlags.HasCachedStringLayout) || measureOnly.HasValue) {
                 var glyphSource = GlyphSource;
                 if (glyphSource == null) {
-                    _CachedStringLayout = result = default;
+                    if (!measureOnly.HasValue)
+                        _CachedStringLayout = result = default;
+                    else
+                        result = default;
                     return false;
                 }
 
                 if (_Text.IsNull) {
-                    _CachedStringLayout = result = default;
-                    _CachedGlyphVersion = glyphSource.Version;
+                    if (!measureOnly.HasValue) {
+                        _CachedStringLayout = result = default;
+                        _CachedGlyphVersion = glyphSource.Version;  
+                    } else {
+                        result = default;
+                    }
                     return false;
                 }
 
@@ -996,16 +1023,20 @@ namespace Squared.Render.Text {
 
                 int capacity = length + StringLayoutEngine.DefaultBufferPadding;
 
-                if (_Buffer.Array != null) {
-                    Array.Clear(_Buffer.Array, _Buffer.Offset, _Buffer.Count);
+                if (!measureOnly.HasValue && !MeasureOnly) {
+                    if (_Buffer.Array != null) {
+                        Array.Clear(_Buffer.Array, _Buffer.Offset, _Buffer.Count);
+                    }
                 }
 
                 StringLayoutEngine le;
                 var rls = default(RichTextLayoutState);
-                MakeLayoutEngine(out le);
-                _Satellite?.RichMarkers.Clear();
-                _Satellite?.Boxes.Clear();
-                _Satellite?.Dependencies.Clear();
+                MakeLayoutEngine(out le, measureOnly);
+                if (!measureOnly.HasValue) {
+                    _Satellite?.RichMarkers.Clear();
+                    _Satellite?.Boxes.Clear();
+                    _Satellite?.Dependencies.Clear();
+                }
 
                 try {
                     le.Initialize();
@@ -1013,7 +1044,7 @@ namespace Squared.Render.Text {
                         rls = new RichTextLayoutState(ref le, glyphSource);
                         rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
                         var dependencies = _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
-                        if (dependencies.Count > 0) {
+                        if ((dependencies.Count > 0) && !measureOnly.HasValue) {
                             SetFlag(InternalFlags.AwaitingDependencies, false);
 
                             for (int i = 0, c = dependencies.Count; i < c; i++) {
@@ -1034,35 +1065,42 @@ namespace Squared.Render.Text {
                             le.AppendText(glyphSource, TruncatedIndicator, overrideSuppress: false);
                     }
 
-                    _CachedGlyphVersion = glyphSource.Version;
-                    _CachedStringLayout = le.Finish();
+                    if (!measureOnly.HasValue) {
+                        _CachedGlyphVersion = glyphSource.Version;
+                        _CachedStringLayout = le.Finish();
 
-                    // Copy the storage back in case it grew.
-                    // This ensures we don't allocate more temporary backing storage every time we layout our text.
-                    if (le.usedTextures.HasList)
-                        AutoAllocateSatellite().UsedTextures = le.usedTextures;
+                        // Copy the storage back in case it grew.
+                        // This ensures we don't allocate more temporary backing storage every time we layout our text.
+                        if (le.usedTextures.HasList)
+                            AutoAllocateSatellite().UsedTextures = le.usedTextures;
 
-                    if (!GetFlag(InternalFlags.DisableMarkers) && (le.Markers.Count > 0)) {
-                        var m = GetMarkers();
-                        foreach (var kvp in le.Markers) {
-                            if ((rls.MarkedStrings != null) && (rls.MarkedStrings.Count > 0) && (kvp.MarkedString != default)) {
-                                AutoAllocateSatellite().RichMarkers.Add(kvp);
-                            } else {
-                                m[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp;
+                        if (!GetFlag(InternalFlags.DisableMarkers) && (le.Markers.Count > 0)) {
+                            var m = GetMarkers();
+                            foreach (var kvp in le.Markers) {
+                                if ((rls.MarkedStrings != null) && (rls.MarkedStrings.Count > 0) && (kvp.MarkedString != default)) {
+                                    AutoAllocateSatellite().RichMarkers.Add(kvp);
+                                } else {
+                                    m[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp;
+                                }
                             }
                         }
-                    }
-                    if (le.HitTests.Count > 0) {
-                        var ht = GetHitTests();
-                        foreach (var kvp in le.HitTests) 
-                            ht[kvp.Position] = kvp;
-                    }
+                        if (le.HitTests.Count > 0) {
+                            var ht = GetHitTests();
+                            foreach (var kvp in le.HitTests) 
+                                ht[kvp.Position] = kvp;
+                        }
 
-                    le.GetBuffer(out _Buffer);
-                    SetFlag(InternalFlags.HasCachedStringLayout, true);
+                        le.GetBuffer(out _Buffer);
+                        SetFlag(InternalFlags.HasCachedStringLayout, true);
+                    } else {
+                        result = le.Finish();
+                        return true;
+                    }
                 } finally {
-                    if (le.Markers.HasList)
-                        AutoAllocateSatellite().LayoutEngineMarkerStorage = le.Markers.GetStorage(false);
+                    if (!measureOnly.HasValue) {
+                        if (le.Markers.HasList)
+                            AutoAllocateSatellite().LayoutEngineMarkerStorage = le.Markers.GetStorage(false);
+                    }
 
                     rls.Dispose();
                     le.Dispose();

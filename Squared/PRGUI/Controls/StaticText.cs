@@ -33,6 +33,7 @@ namespace Squared.PRGUI.Controls {
             UseTooltipForReadingValue      = 0b10000000000,
             CachedContentIsSingleLineIsSet = 0b100000000000,
             CachedContentIsSingleLineValue = 0b1000000000000,
+            ContentMeasurementIsValid      = 0b10000000000000,
         }
 
         public StaticTextBase ()
@@ -78,9 +79,10 @@ namespace Squared.PRGUI.Controls {
             ExpandHorizontallyWhenAligning = false,
             DisableMarkers = true
         };
-        private DynamicStringLayout ContentMeasurement = null;
         private float? MostRecentWidthForLineBreaking = null, 
             MostRecentWidth = null;
+
+        private Vector2 MeasurementSize, MeasurementUnconstrainedSize;
 
         protected int? CharacterLimit { get; set; }
 
@@ -114,10 +116,8 @@ namespace Squared.PRGUI.Controls {
         private StaticTextStateFlags InternalState = 
             StaticTextStateFlags.AutoSizeWidth | StaticTextStateFlags.AutoSizeHeight | StaticTextStateFlags.AutoSizeIsMaximum;
 
-        internal bool TextLayoutIsIncomplete => IsLayoutInvalid || 
-            Content.IsAwaitingDependencies || 
-            // In some cases the measurement layout will be awaiting dependencies but content isn't, because we haven't been rendered yet
-            (ContentMeasurement?.IsAwaitingDependencies ?? false);
+        internal bool TextLayoutIsIncomplete => IsLayoutInvalid ||
+            Content.IsAwaitingDependencies;
 
         private bool GetInternalFlag (StaticTextStateFlags flag) {
             return (InternalState & flag) == flag;
@@ -301,33 +301,17 @@ namespace Squared.PRGUI.Controls {
             */
         }
 
-        private void ConfigureMeasurement () {
-            if (ContentMeasurement == null)
-                ContentMeasurement = new DynamicStringLayout();
-            if (Content.GlyphSource == null)
-                throw new NullReferenceException("GlyphSource");
-            ContentMeasurement.Copy(Content);
-            ContentMeasurement.MeasureOnly = true;
-            // HACK: If we never get painted (to validate our main content layout), then
-            //  Content.IsValid will be false forever and we will recompute our measurement
-            //  layout every frame. Not great, so... whatever
-            Content.Get();
-        }
-
         protected void ResetMeasurement () {
             ResetAutoSize();
+            // FIXME: If we call ResetMeasurement during rasterization, things will break badly
             Content.DesiredWidth = 0;
             Content.LineBreakAtX = null;
             Content.Invalidate();
-            if (ContentMeasurement != null) {
-                ContentMeasurement.DesiredWidth = 0;
-                ContentMeasurement.LineBreakAtX = null;
-                ContentMeasurement.Invalidate();
-            }
             _CachedPadding = default;
             _CachedLineBreakPoint = -99999f;
             SetInternalFlag(StaticTextStateFlags.CachedContentIsSingleLineIsSet, StaticTextStateFlags.CachedContentIsSingleLineValue, null);
             SetInternalFlag(StaticTextStateFlags.NeedRelayout, true);
+            SetInternalFlag(StaticTextStateFlags.ContentMeasurementIsValid, false);
             // TODO: Clear decoration cache too?
         }
 
@@ -356,7 +340,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected void GetCurrentLayout (out StringLayout result, bool measurement, bool autoReset = true) {
+        private void GetCurrent_Prologue (bool measurement, bool autoReset) {
             if (GetInternalFlag(StaticTextStateFlags.RichTextIsSet))
                 Content.RichText = GetInternalFlag(StaticTextStateFlags.RichTextValue);
             if (Content.RichText)
@@ -366,24 +350,47 @@ namespace Squared.PRGUI.Controls {
                 AutoResetMeasurement();
 
             if (measurement) {
-                if (!Content.IsValid || (ContentMeasurement == null)) {
+                if (!Content.IsValid) {
                     ResetAutoSize();
-                    ConfigureMeasurement();
+                    SetInternalFlag(StaticTextStateFlags.ContentMeasurementIsValid, false);
                 }
-                if (!ContentMeasurement.IsValid) {
+                if (!GetInternalFlag(StaticTextStateFlags.ContentMeasurementIsValid)) {
                     ResetAutoSize();
                     SetInternalFlag(StaticTextStateFlags.NeedRelayout, true);
                 }
-                ContentMeasurement.Get(out result);
             } else {
                 if (!Content.IsValid) {
-                    if (ContentMeasurement != null)
-                        ConfigureMeasurement();
+                    SetInternalFlag(StaticTextStateFlags.ContentMeasurementIsValid, false);
                     SetInternalFlag(StaticTextStateFlags.NeedRelayout, true);
                 }
-                Content.Get(out result);
-                SetInternalFlag(StaticTextStateFlags.DidUseTextures, result.UsedTextures.Count > 0);
             }
+        }
+
+        protected void GetCurrentMeasurement (out Vector2 size, out Vector2 unconstrainedSize, bool autoReset = true) {
+            GetCurrent_Prologue(true, autoReset);
+
+            if (GetInternalFlag(StaticTextStateFlags.ContentMeasurementIsValid)) {
+                size = MeasurementSize;
+                unconstrainedSize = MeasurementUnconstrainedSize;
+            } else {
+                // HACK: Without doing this we can end up recomputing our measurement every frame,
+                //  in cases where we're not visible
+                if (!Content.IsValid)
+                    Content.Get(out _, null);
+
+                var settings = new DynamicStringLayout.MeasurementSettings(Content);
+                Content.Get(out var temp, settings);
+                size = MeasurementSize = temp.Size;
+                unconstrainedSize = MeasurementUnconstrainedSize = temp.UnconstrainedSize;
+                SetInternalFlag(StaticTextStateFlags.ContentMeasurementIsValid, true);
+            }
+        }
+
+        protected void GetCurrentLayout (out StringLayout result, bool autoReset = true) {
+            GetCurrent_Prologue(false, autoReset);
+
+            Content.Get(out result);
+            SetInternalFlag(StaticTextStateFlags.DidUseTextures, result.UsedTextures.Count > 0);
         }
 
         protected void ComputeAutoSize (ref UIOperationContext context, ref Margins computedPadding, ref Margins computedMargins) {
@@ -401,7 +408,7 @@ namespace Squared.PRGUI.Controls {
             var decorations = GetDecorator(decorationProvider);
             var fontChanged = UpdateFont(ref context, textDecorations, decorations);
 
-            var contentChanged = (ContentMeasurement?.IsValid == false) || !Content.IsValid;
+            var contentChanged = !Content.IsValid || !GetInternalFlag(StaticTextStateFlags.ContentMeasurementIsValid);
             if (contentChanged || fontChanged)
                 ResetAutoSize();
 
@@ -449,12 +456,12 @@ namespace Squared.PRGUI.Controls {
                 return;
             }
 
-            GetCurrentLayout(out var layout, true);
+            GetCurrentMeasurement(out var size, out var unconstrainedSize);
             if (AutoSizeWidth) {
                 // HACK
                 float w = Wrap
-                    ? layout.Size.X
-                    : layout.UnconstrainedSize.X;
+                    ? size.X
+                    : unconstrainedSize.X;
                 AutoSizeComputedWidth = (float)Math.Ceiling(w + computedPadding.X + AutoSizePadding);
                 // FIXME: Something is wrong here if padding scale is active
                 /* if ((sr.X > 1) || (sr.Y > 1))
@@ -462,8 +469,8 @@ namespace Squared.PRGUI.Controls {
                     */
             }
             if (AutoSizeHeight) {
-                AutoSizeComputedContentHeight = (layout.Size.Y);
-                AutoSizeComputedHeight = (float)Math.Ceiling((layout.Size.Y) + computedPadding.Y);
+                AutoSizeComputedContentHeight = (size.Y);
+                AutoSizeComputedHeight = (float)Math.Ceiling((size.Y) + computedPadding.Y);
             }
         }
 
@@ -476,7 +483,6 @@ namespace Squared.PRGUI.Controls {
             SetInternalFlag(StaticTextStateFlags.NeedRelayout, true);
             ResetAutoSize();
             Content.Invalidate();
-            ContentMeasurement?.Invalidate();
         }
 
         protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -691,7 +697,8 @@ namespace Squared.PRGUI.Controls {
 
             UpdateLineBreak(ref context, decorations, settings.ContentBox.Width, ref computedPadding, ref computedMargins);
 
-            GetCurrentLayout(out var layout, false, false);
+            // autoReset=false because it's too late to reset measurement
+            GetCurrentLayout(out var layout, false);
             textScale *= ComputeScaleToFit(layout.Size, layout.UnconstrainedSize, ref settings.Box, ref computedPadding);
             textScale = ApplyScaleConstraints(textScale);
 
