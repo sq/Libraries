@@ -509,7 +509,7 @@ namespace Squared.PRGUI.Controls {
                 );
                 context.Pass = oldPass;
 
-                passSet.BelowLayer += 1;
+                passSet.Below.Layer += 1;
             }
 
             base.OnRasterizeChildren(ref context, ref passSet, settings);
@@ -524,19 +524,19 @@ namespace Squared.PRGUI.Controls {
 
             if (!decorator.IsPassDisabled(RasterizePasses.Below)) {
                 context.Pass = RasterizePasses.Below;
-                decorator.Rasterize(ref context, ref passSet.Below(), ref selectionSettings);
+                decorator.Rasterize(ref context, ref passSet.Below, ref selectionSettings);
             }
 
             if (!decorator.IsPassDisabled(RasterizePasses.Content)) {
                 context.Pass = RasterizePasses.Content;
-                decorator.Rasterize(ref context, ref passSet.Content(), ref selectionSettings);
+                decorator.Rasterize(ref context, ref passSet.Content, ref selectionSettings);
             }
 
             if (decorator.IsPassDisabled(RasterizePasses.Above))
                 return;
 
             context.Pass = RasterizePasses.Above;
-            decorator.Rasterize(ref context, ref passSet.Above(), ref selectionSettings);
+            decorator.Rasterize(ref context, ref passSet.Above, ref selectionSettings);
         }
 
         private int lastOffset1 = -1,

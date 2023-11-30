@@ -802,7 +802,7 @@ namespace Squared.PRGUI.Controls {
                     Menu.RasterizeSelectionDecorator(ref context, ref passSet, ref selectionSettings, selectionDecorator);
                 }
                 context.Pass = oldPass;
-                passSet.BelowLayer += 1;
+                passSet.Below.Layer += 1;
             }
 
             base.OnRasterizeChildren(ref context, ref passSet, settings);

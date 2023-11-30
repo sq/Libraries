@@ -405,10 +405,10 @@ namespace Squared.PRGUI.Controls {
             if (sequence.Count <= 0)
                 return;
 
-            int firstSplitPlaneLayer = passSet.ContentLayer;
-            int layerB = passSet.BelowLayer,
-                layerC = passSet.ContentLayer,
-                layerA = passSet.AboveLayer;
+            int firstSplitPlaneLayer = passSet.Content.Layer;
+            int layerB = passSet.Below.Layer,
+                layerC = passSet.Content.Layer,
+                layerA = passSet.Above.Layer;
 
 #if !NOSPAN
             RasterizePassSet currentLayerContext;
@@ -446,7 +446,7 @@ namespace Squared.PRGUI.Controls {
                     // this would require us to find the batch containers we generated for C/D when constructing them for F and G.
                     // FIXME: Should we use the constructor that nests the new Below/Content/Above inside of the outer
                     //  Below/Content/Above?
-                    currentLayerContext = new RasterizePassSet(ref passSet.Content(), this, passSet.StackDepth, ref newBaseLayer);
+                    currentLayerContext = new RasterizePassSet(ref passSet.Content, this, passSet.StackDepth, ref newBaseLayer);
                     currentContextOrder = item.DisplayOrder;
                     hasSplitPlane = true;
                     layerB = layerC = layerA = 0;
@@ -454,9 +454,9 @@ namespace Squared.PRGUI.Controls {
 
                 ref var targetPassSet = ref PickPassSet(hasSplitPlane, ref currentLayerContext, ref passSet);
 
-                targetPassSet.BelowLayer = layerB;
-                targetPassSet.ContentLayer = layerC;
-                targetPassSet.AboveLayer = layerA;
+                targetPassSet.Below.Layer = layerB;
+                targetPassSet.Content.Layer = layerC;
+                targetPassSet.Above.Layer = layerA;
                 RasterizeChild(ref context, item, ref targetPassSet);
             }
         }
