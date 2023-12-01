@@ -38,7 +38,7 @@ namespace Squared.Render.Internal {
                 throw new Exception("Vertex buffer full");
 
             Count = newCount;
-            return new VertexWriter<T>(ptr + offset, capacity, VertexOffset);
+            return new VertexWriter<T>(ptr + offset, capacity, VertexOffset + offset);
         }
 
         public void Dispose() {
@@ -49,14 +49,14 @@ namespace Squared.Render.Internal {
     public unsafe struct VertexWriter<T>
         where T : unmanaged {
 
-        public int IndexOffset;
+        public int FirstVertexIndex;
         public int Count, Capacity;
         internal T* Storage;
 
         internal VertexWriter(T* storage, int capacity, int indexOffset) {
             Storage = storage;
             Capacity = capacity;
-            IndexOffset = indexOffset;
+            FirstVertexIndex = indexOffset;
             Count = 0;
         }
 
@@ -117,7 +117,7 @@ namespace Squared.Render.Internal {
                 throw new Exception("Index buffer full");
 
             Count = newCount;
-            return new IndexWriter(ptr + offset, capacity, vertexWriter.IndexOffset);
+            return new IndexWriter(ptr + offset, capacity, vertexWriter.FirstVertexIndex);
         }
 
         public void Dispose() {
