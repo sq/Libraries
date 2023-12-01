@@ -77,7 +77,7 @@ void __VARIANT_FS_NAME (
 
     float4 fill = lerp(centerColor, edgeColor, gradientWeight.x);
 #if VARIANT_RAMP
-    fill *= SampleFromRamp2(gradientWeight + RampUVOffset);
+    fill *= SampleFromRamp2((1 - gradientWeight) + RampUVOffset);
 #endif
 
 #if VARIANT_TEXTURED

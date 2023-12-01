@@ -246,7 +246,7 @@ void SHAPE_TYPE_NAME_RAMP (
     );
 
     float4 fill = lerp(centerColor, edgeColor, gradientWeight.x);
-    fill *= SampleFromRamp2(gradientWeight + RampUVOffset);
+    fill *= SampleFromRamp2((1 - gradientWeight) + RampUVOffset);
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, true, false, GET_VPOS);
 
@@ -269,7 +269,7 @@ void SHAPE_TYPE_NAME_RAMP_SHADOWED (
     );
 
     float4 fill = lerp(centerColor, edgeColor, gradientWeight.x);
-    fill *= SampleFromRamp2(gradientWeight + RampUVOffset);
+    fill *= SampleFromRamp2((1 - gradientWeight) + RampUVOffset);
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, true, true, GET_VPOS);
 

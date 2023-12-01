@@ -516,22 +516,24 @@ void evaluateLineSegment (
     inout int gradientType, out float2 gradientWeight
 ) {
     float t;
-    float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
+    float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t),
+        distance2 = worldPosition - closestPoint;
     float localRadius = radius.x + lerp(c.y, radius.y, t);
-    distance = length(worldPosition - closestPoint) - localRadius;
+    distance = length(distance2) - localRadius;
 
     if (VARIANT_SIMPLE) {
         gradientWeight = 0;
         return;
     }
 
-    float fakeY = 0; // FIXME
+    float distanceWeight = 1 - saturate(-distance / localRadius);
+    
     PREFER_FLATTEN
     if (gradientType == GRADIENT_TYPE_Along) {
-        gradientWeight = float2(saturate(t), fakeY);
+        gradientWeight = float2(saturate(t), distanceWeight);
         gradientType == GRADIENT_TYPE_Other;
     } else
-        gradientWeight = float2(1 - saturate(-distance / localRadius), fakeY);
+        gradientWeight = float2(distanceWeight, saturate(t));
 }
 
 void evaluateBezier (
