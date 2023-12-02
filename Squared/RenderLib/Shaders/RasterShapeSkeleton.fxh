@@ -649,11 +649,11 @@ void evaluateTriangle (
     // FIXME: Recenter non-natural gradients around our incenter instead of the
     //  center of our bounding box
 
-    float fakeY = 0; // FIXME
-
     PREFER_FLATTEN
     if (gradientType == GRADIENT_TYPE_Natural) {
-        gradientWeight = float2(1 - saturate(distance / targetDistance), fakeY);
+        float2 cdist = normalize(worldPosition - incenter);
+        float angleCw = atan2(cdist.y, cdist.x) + PI; // [0, 2 * PI]
+        gradientWeight = float2(1 - saturate(distance / targetDistance), angleCw / (2 * PI));
         gradientType = GRADIENT_TYPE_Other;
     } else {
         gradientWeight = 0;
@@ -838,12 +838,14 @@ void evaluateRasterShape (
         float2 starPosition = rotate2D(worldPosition - a, c.x);
         distance = sdStar(starPosition, radius.x, (int)b.x, b.y);
         // HACK: it doesn't evaluate properly at 0,0
-        float targetDistance = sdStar(float2(0, -0.5), radius.x, (int)b.x, b.y),
-            fakeY = 0; // FIXME
+        float targetDistance = sdStar(float2(0, -0.5), radius.x, (int)b.x, b.y);
 
         if (!simple) {
-            if (gradientType == GRADIENT_TYPE_Natural)
-                gradientWeight = float2(1 - saturate(distance / targetDistance), fakeY);
+            if (gradientType == GRADIENT_TYPE_Natural) {
+                float2 cdist = normalize(worldPosition - a);
+                float angleCw = atan2(cdist.y, cdist.x) + PI; // [0, 2 * PI]
+                gradientWeight = float2(1 - saturate(distance / targetDistance), angleCw / (2 * PI));
+            }
         }
 
         needTLBR = true;
