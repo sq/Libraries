@@ -326,11 +326,12 @@ namespace Squared.Render {
 
             var textureCache = manager.TextureCache;
 
+            var threadLocals = _ThreadLocals.Value;
             var count = _DrawCalls.Count;
             int[] indexArray = null;
 
             if (!DisableSorting) {
-                indexArray = GetIndexArray(count);
+                indexArray = GetIndexArray(count, threadLocals);
                 for (int i = 0; i < count; i++)
                     indexArray[i] = i;
             }
@@ -366,7 +367,7 @@ namespace Squared.Render {
                 return false;
             }
 
-            using (var callBuffer = _DrawCalls.GetBuffer(false, _TinyScratchBuffer)) {
+            using (var callBuffer = _DrawCalls.GetBuffer(false, threadLocals.TinyScratchBuffer)) {
                 var callSegment = new ArraySegment<BitmapDrawCall>(callBuffer.Data, callBuffer.Offset, _DrawCalls.Count);
                 int drawCallsPrepared = 0;
                 var parameters = new BatchBuilderParameters {

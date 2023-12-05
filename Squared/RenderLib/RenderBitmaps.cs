@@ -394,13 +394,16 @@ namespace Squared.Render {
         protected BufferGenerator<BitmapVertex> _BufferGenerator = null;
         protected BufferGenerator<CornerVertex>.GeometryBuffer _CornerBuffer = null;
 
-        protected static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
-            new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
-        protected static ThreadLocal<int[]> _SortIndexArray = new ThreadLocal<int[]>();
+        protected class ThreadLocals {
+            public readonly VertexBufferBinding[] ScratchBindings = new VertexBufferBinding[2];
+            public          int[] SortIndexArray = null;
+            public readonly TDrawCall[] TinyScratchBuffer = new TDrawCall[4];
+            public          DepthStencilState DepthPrePass;
+        }
 
-        protected TDrawCall[] _TinyScratchBuffer = new TDrawCall[4];
+        protected static ThreadLocal<ThreadLocals> _ThreadLocals = 
+            new ThreadLocal<ThreadLocals>(() => new ThreadLocals());
 
-        protected static ThreadLocal<DepthStencilState> _DepthPrePass = new ThreadLocal<DepthStencilState>();
         protected static BlendState PrePassBlend = new BlendState {
             ColorWriteChannels = ColorWriteChannels.None,
             ColorWriteChannels1 = ColorWriteChannels.None,
@@ -452,12 +455,12 @@ namespace Squared.Render {
             }
         }
 
-        protected int[] GetIndexArray (int minimumSize) {
+        protected int[] GetIndexArray (int minimumSize, ThreadLocals threadLocals) {
             const int rounding = 4096;
             var size = ((minimumSize + (rounding - 1)) / rounding) * rounding + 16;
-            var array = _SortIndexArray.Value;
+            var array = threadLocals.SortIndexArray;
             if ((array == null) || (array.Length < size))
-                _SortIndexArray.Value = array = new int[size];
+                threadLocals.SortIndexArray = array = new int[size];
 
             return array;
         }
@@ -786,6 +789,7 @@ namespace Squared.Render {
                 DynamicIndexBuffer ib, cornerIb;
 
                 var textureCache = manager.RenderManager.TextureCache;
+                var threadLocals = _ThreadLocals.Value;
 
                 var totalDraws = 0;
 
@@ -796,7 +800,7 @@ namespace Squared.Render {
                     if (device.Indices != cornerIb)
                         device.Indices = cornerIb;
 
-                    var scratchBindings = _ScratchBindingArray.Value;
+                    var scratchBindings = threadLocals.ScratchBindings;
 
                     var previousSS1 = device.SamplerStates[0];
                     var previousSS2 = device.SamplerStates[1];
@@ -842,7 +846,7 @@ namespace Squared.Render {
                                 var bs = device.BlendState;
                                 var dss = device.DepthStencilState;
 
-                                var dpp = GetDepthPrePass(dss);
+                                var dpp = GetDepthPrePass(dss, threadLocals);
                                 device.DepthStencilState = dpp;
                                 device.BlendState = PrePassBlend;
 
@@ -901,10 +905,10 @@ namespace Squared.Render {
             }
         }
 
-        protected static DepthStencilState GetDepthPrePass (DepthStencilState dss) {
-            var result = _DepthPrePass.Value;
+        protected static DepthStencilState GetDepthPrePass (DepthStencilState dss, ThreadLocals threadLocals) {
+            var result = threadLocals.DepthPrePass;
             if (result == null)
-                _DepthPrePass.Value = result = new DepthStencilState();
+                threadLocals.DepthPrePass = result = new DepthStencilState();
 
             result.DepthBufferEnable = true;
             result.DepthBufferWriteEnable = true;

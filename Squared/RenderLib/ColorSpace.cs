@@ -301,6 +301,9 @@ namespace Squared.Render {
             h = (float)dh;
         }
 
+        public float R => ToVector4().X;
+        public float G => ToVector4().Y;
+        public float B => ToVector4().Z;
         public float A => ToVector4().W;
 
         // end oklab

@@ -1030,7 +1030,8 @@ namespace Squared.Render.Convenience {
             var batch = GetBitmapBatch(
                 layer, worldSpace, blendState, samplerState,
                 depthStencilState ?? DepthStencilState, rasterizerState ?? RasterizerState,
-                material ?? DefaultBitmapMaterial, samplerState2: samplerState2
+                material ?? DefaultBitmapMaterial, samplerState2: samplerState2,
+                capacity: drawCalls.Count
             );
             {
                 if (LowPriorityMaterialOrdering) {
@@ -1823,7 +1824,8 @@ namespace Squared.Render.Convenience {
         public IBitmapBatch GetBitmapBatch (
             int? layer, bool? worldSpace, BlendState blendState, 
             SamplerState samplerState, DepthStencilState depthStencilState = null, 
-            RasterizerState rasterizerState = null, Material customMaterial = null, SamplerState samplerState2 = null
+            RasterizerState rasterizerState = null, Material customMaterial = null, SamplerState samplerState2 = null,
+            int? capacity = null
         ) {
             if (Config.Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
@@ -1878,7 +1880,8 @@ namespace Squared.Render.Convenience {
                         Config.Container, actualLayer, material, 
                         samplerState: desiredSamplerState1, samplerState2: desiredSamplerState2, 
                         useZBuffer: UseZBuffer, zBufferOnlySorting: ZBufferOnlySorting, 
-                        depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
+                        depthPrePass: DepthPrePass, worldSpace: actualWorldSpace,
+                        capacity: capacity
                     );
                     _bb.MaterialParameters.ReplaceWith(ref Parameters);
                     bb = _bb;

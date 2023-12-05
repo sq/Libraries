@@ -489,7 +489,7 @@ namespace Squared.Render {
         public const int BatchCapacityLimit = 512;
 
         private static ListPool<T> _ListPool = new ListPool<T>(
-            256, 4, 64, BatchCapacityLimit, 10240
+            320, 16, 64, BatchCapacityLimit, 10240
         );
 
         protected DenseList<T> _DrawCalls = new DenseList<T>();

@@ -435,6 +435,8 @@ namespace Squared.Render {
 
     // Thread-safe
     public sealed class RenderManager {
+        public static int DefaultBatchPoolCapacity = 1024;
+
         public struct MemoryStatistics {
             public long ManagedVertexBytes, ManagedIndexBytes;
             public long UnmanagedVertexBytes, UnmanagedIndexBytes;
@@ -517,7 +519,7 @@ namespace Squared.Render {
             else if (id > _BatchAllocators.Length)
                 throw new Exception("Batch type ID outside of legal range");
 
-            var pool = new BatchPool<T>(constructFn);
+            var pool = new BatchPool<T>(constructFn, DefaultBatchPoolCapacity);
             var expectedNull = Interlocked.CompareExchange(ref _BatchAllocators[id], pool, null);
             if (expectedNull != null)
                 return (BatchPool<T>)expectedNull;
