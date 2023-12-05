@@ -173,7 +173,7 @@ namespace Squared.Render {
         public static bool ThrowOnBatchLeak = false;
 
         /// <summary>
-        /// Set a name for the batch to aid debugging;
+        /// Set a name for the batch to aid debugging
         /// </summary>
         public string Name;
 
@@ -212,7 +212,7 @@ namespace Squared.Render {
             if (Released)
                 return;
 
-            var msg = "{GetType().Name} was not released. Allocated at {StackTrace}";
+            var msg = $"{GetType().Name} was not released. Allocated at {StackTrace}";
             Debug.WriteLine(msg);
             if (ThrowOnBatchLeak)
                 throw new Exception(msg);
@@ -266,6 +266,8 @@ namespace Squared.Render {
             Layer = layer;
             Material = material;
             MaterialParameters.Clear();
+
+            container.RenderManager.ReleaseQueue.Enqueue(this);
 
             State.Reset();
             Thread.MemoryBarrier();
@@ -354,8 +356,6 @@ namespace Squared.Render {
             WaitForSuspend();
 
             State.IsIssued = true;
-            lock (manager.ReleaseQueue)
-                manager.ReleaseQueue.Add(this);
         }
 
         // This is where you send commands to the video card to render your batch.
@@ -363,7 +363,6 @@ namespace Squared.Render {
             WaitForSuspend();
 
             State.IsIssued = true;
-            manager.ReleaseQueue.Add(this);
         }
 
         protected virtual void OnReleaseResources () {

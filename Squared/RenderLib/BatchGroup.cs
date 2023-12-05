@@ -104,10 +104,10 @@ namespace Squared.Render {
 
             try {
                 if (!DisableIssue)
-                    for (int i = 0; i < count; i++) {
-                        _DrawCalls.GetItem(i, out var batch);
-                        batch?.IssueAndWrapExceptions(manager);
-                    }
+                for (int i = 0; i < count; i++) {
+                    _DrawCalls.GetItem(i, out var batch);
+                    batch?.IssueAndWrapExceptions(manager);
+                }
             } finally {
                 if (_After != null)
                     _After(manager, _UserData);

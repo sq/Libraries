@@ -160,8 +160,6 @@ namespace Squared.Render {
             RenderManager.PrepareManager.UpdateTextureCache();
 
             dm.Begin(ChangeRenderTargets);
-            if (!Monitor.TryEnter(dm.ReleaseQueue, 1))
-                throw new ThreadStateException("The batch release queue lock was held for too long");
 
             try {
                 int c = Batches.Count;
@@ -173,8 +171,9 @@ namespace Squared.Render {
                 }
             } finally {
                 dm.Finish();
-                Monitor.Exit(dm.ReleaseQueue);
                 RenderManager.PrepareManager.CleanupTextureCache();
+                while (RenderManager.ReleaseQueue.TryDequeue(out var batch))
+                    batch.ReleaseResources();
             }
 
             if (Tracing.RenderTrace.EnableTracing)
