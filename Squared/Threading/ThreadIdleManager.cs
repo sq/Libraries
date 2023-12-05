@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +21,21 @@ namespace Squared.Threading {
         private volatile int RunState = RunState_Sleeping;
         private ManualResetEvent Event, WakeAll;
         private WaitHandle[] WaitHandles;
+
+        private delegate int WaitMultipleDelegate (WaitHandle[] waitHandles, int millisecondsTimeout, bool exitContext, bool WaitAll);
+        private static readonly WaitMultipleDelegate WaitMultipleIcall;
+
+        static ThreadIdleManager () {
+            // In net4x the normal implementation of WaitAny and WaitAll allocates every time you wait, so we need to invoke the icall
+            //  directly by finding it with reflection. In netcore it's fine because it wasn't written carelessly
+            // private static extern int WaitMultiple (WaitHandle[] waitHandles, int millisecondsTimeout, bool exitContext, bool WaitAll);
+            var m = typeof(WaitHandle).GetMethod(
+                "WaitMultiple", BindingFlags.Static | BindingFlags.NonPublic, null,
+                new[] { typeof(WaitHandle[]), typeof(int), typeof(bool), typeof(bool) }, null
+            );
+            if (m != null)
+                WaitMultipleIcall = (WaitMultipleDelegate)Delegate.CreateDelegate(typeof(WaitMultipleDelegate), m);
+        }
 
         public ThreadIdleManager (ManualResetEvent wakeAll) {
             WakeAll = wakeAll;
@@ -69,9 +85,16 @@ namespace Squared.Threading {
             if (Interlocked.Exchange(ref RequestState, 0) != 0)
                 return true;
 
-            var result = WaitHandle.WaitAny(WaitHandles, timeoutMs);
+            var result = WaitAny(WaitHandles, timeoutMs);
             Interlocked.CompareExchange(ref RunState, RunState_Running, RunState_Sleeping);
             return result != WaitHandle.WaitTimeout;
+        }
+
+        private static int WaitAny (WaitHandle[] waitHandles, int timeoutMs) {
+            if (WaitMultipleIcall != null)
+                return WaitMultipleIcall(waitHandles, timeoutMs, true, false);
+            else
+                return WaitHandle.WaitAny(waitHandles, timeoutMs);
         }
 
         public void Dispose () {
