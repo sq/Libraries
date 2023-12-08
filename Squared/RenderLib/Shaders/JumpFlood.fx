@@ -47,7 +47,7 @@ float2 calculateNormal(
 #define CHROMA_SCALE_FACTOR 1.0
 #define LUMA_SCALE_FACTOR 0.66
 
-float2 calculateChromaKey(float3 texLab, float4 keyLabAndWindowSize) {
+float calculateChromaKey(float3 texLab, float4 keyLabAndWindowSize) {
     if (keyLabAndWindowSize.w <= 0)
         return 1;
     float3 labDistance = (texLab.xyz - keyLabAndWindowSize.xyz) * float3(LUMA_SCALE_FACTOR, CHROMA_SCALE_FACTOR, CHROMA_SCALE_FACTOR);

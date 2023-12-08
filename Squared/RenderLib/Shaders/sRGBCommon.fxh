@@ -145,7 +145,7 @@ float4 OkLabToOkLCh(float4 oklab) {
     return float4(oklab.x, C, h, oklab.w);
 }
 
-float OkLChToOkLab(float4 oklch) {
+float4 OkLChToOkLab(float4 oklch) {
     float h = oklch.z * PI / 180;
     return float4(
         oklch.x,

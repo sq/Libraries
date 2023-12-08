@@ -279,7 +279,7 @@ namespace Squared.PRGUI.Controls {
         private int CompareTo (T lhs, T rhs) {
             if (_Compare != null)
                 return _Compare(lhs, rhs);
-            else if (Equals(lhs, rhs))
+            else if (object.Equals(lhs, rhs))
                 return 0;
             else // YUCK
                 return -1;
@@ -385,7 +385,6 @@ namespace Squared.PRGUI.Controls {
                 throw new ArgumentException("T must be a value type");
 
             ClampVirtualPositionToTextbox = false;
-            AllowScroll = false;
 
             if (t == typeof(double) || t == typeof(float))
                 DoubleOnly = true;

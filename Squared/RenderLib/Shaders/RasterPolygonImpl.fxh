@@ -136,6 +136,7 @@ void evaluatePolygonStep (
                 t = 0;
             [loop]
             do {
+                // FIXME: Implicit truncation
                 if (isBezier)
                     tcurrent = evaluateBezierAtT(prev.xy, controlPoints.xy, current, saturate(t));
 

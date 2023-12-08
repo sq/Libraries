@@ -77,6 +77,23 @@ float4 TransformPosition(float4 position, bool halfPixelOffset) {
     return mul(modelViewPos, Viewport.Projection);
 }
 
+// Quaternion multiplication
+// http://mathworld.wolfram.com/Quaternion.html
+float4 qmul(float4 q1, float4 q2)
+{
+    return float4(
+        q2.xyz * q1.w + q1.xyz * q2.w + cross(q1.xyz, q2.xyz),
+        q1.w * q2.w - dot(q1.xyz, q2.xyz)
+    );
+}
+
+// http://mathworld.wolfram.com/Quaternion.html
+float4 rotateLocalPosition(float4 localPosition, float4 rotation)
+{
+    float4 r_c = rotation * float4(-1, -1, -1, 1);
+    return float4(qmul(rotation, qmul(float4(localPosition.xyz, 0), r_c)).xyz, localPosition.w);
+}
+
 void adjustTLBR (
     inout float2 tl, inout float2 br, float4 params
 ) {
@@ -289,7 +306,8 @@ void RasterShapeVertexShader_Core (
     out float4 result,
     out float4 ab,
     out float4 cd,
-    out float4 worldPositionTypeAndInteriorFlag
+    out float4 worldPositionTypeAndInteriorFlag,
+    in  float4 orientation
 ) {
     int type = abs(typeAndWorldSpace.x);
     type = EVALUATE_TYPE ;
@@ -336,9 +354,15 @@ void RasterShapeVertexShader_Core (
         adjustedPosition -= GetViewportPosition().xy;
         adjustedPosition *= GetViewportScale().xy;
     }
+    
+    float4 centering = float4((tl + br) * 0.5, 0, 0);
+    float4 orientedPosition = float4(adjustedPosition, position.z, 1);
+    orientedPosition = rotateLocalPosition(orientedPosition - centering, orientation) + centering;
+    // HACK
+    orientedPosition.z = position.z;
 
     result = TransformPosition(
-        float4(adjustedPosition, position.z, 1), true
+        orientedPosition, true
     );
     worldPositionTypeAndInteriorFlag = float4(
         position.xy, typeAndWorldSpace.x, 
@@ -381,6 +405,7 @@ void RasterShapeVertexShader (
     inout float4 centerColor : COLOR0,
     inout float4 edgeColor : COLOR1,
     inout float4 outlineColor : COLOR2,
+    in    float4 orientation : TEXCOORD5,
     in  int2 typeAndWorldSpace : BLENDINDICES1,
     out float4 result : POSITION0,
     out float4 ab : TEXCOORD3,
@@ -402,7 +427,8 @@ void RasterShapeVertexShader (
         result,
         ab,
         cd,
-        worldPositionTypeAndInteriorFlag
+        worldPositionTypeAndInteriorFlag,
+        orientation
     );
 }
 
@@ -416,6 +442,7 @@ void RasterShapeVertexShader_Simple (
     inout float4 centerColor : COLOR0,
     inout float4 edgeColor : COLOR1,
     inout float4 outlineColor : COLOR2,
+    in    float4 orientation : TEXCOORD5,
     in  int2 typeAndWorldSpace : BLENDINDICES1,
     out float4 result : POSITION0,
     out float4 ab : TEXCOORD3,
@@ -437,7 +464,8 @@ void RasterShapeVertexShader_Simple (
         result,
         ab,
         cd,
-        worldPositionTypeAndInteriorFlag
+        worldPositionTypeAndInteriorFlag,
+        orientation
     );
 }
 
@@ -460,7 +488,7 @@ void evaluateEllipse (
     // FIXME: sdEllipse is massively broken. What is wrong with it?
     b = abs(b);
     distance = sdEllipse(worldPosition - a, b);
-    float distanceF = distance / b;
+    float distanceF = distance / ((b.x + b.y) * 0.5);
     tl = a - b;
     br = a + b;
 

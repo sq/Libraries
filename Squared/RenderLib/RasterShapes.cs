@@ -20,6 +20,7 @@ namespace Squared.Render.RasterShape {
         public Vector4 PointsAB, PointsCD;
         public Vector4 Parameters, Parameters2;
         public Vector4 TextureRegion;
+        public Quaternion Orientation;
         public Vector4 InnerColor, OuterColor, OutlineColor;
         public short   Type, WorldSpace;
 
@@ -40,6 +41,8 @@ namespace Squared.Render.RasterShape {
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "TextureRegion").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 2 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "Orientation").ToInt32(),
+                    VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 5 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "InnerColor").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.Color, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "OuterColor").ToInt32(),
@@ -393,6 +396,10 @@ namespace Squared.Render.RasterShape {
         /// The premultiplied sRGB color of the shape's outline.
         /// </summary>
         public Vector4 OutlineColor4;
+        /// <summary>
+        /// The orientation (for supported shapes) of the shape, represented as a quaternion
+        /// </summary>
+        public Quaternion Orientation;
 
         public pSRGBColor InnerColor {
             get {
@@ -622,13 +629,15 @@ namespace Squared.Render.RasterShape {
             protected override bool KeyEquals (
                 RasterShapeBatch self, ref RasterShapeDrawCall last, ref RasterShapeDrawCall dc
             ) {
-                return !(
-                    (dc.Type != last.Type) &&
-                    (!self.UseUbershader || dc.Type == RasterShapeType.Polygon || last.Type == RasterShapeType.Polygon) ||
-                    (dc.BlendInLinearSpace != last.BlendInLinearSpace) ||
-                    !dc.Shadow.Equals(ref last.Shadow) ||
-                    (dc.IsSimple != last.IsSimple) ||
-                    !dc.TextureSettings.Equals(ref last.TextureSettings)
+                return (
+                    (self.UseUbershader || (dc.Type == last.Type)) &&
+                    // HACK: Polygons can't be batched
+                    (dc.Type != RasterShapeType.Polygon) &&
+                    (last.Type != RasterShapeType.Polygon) &&
+                    (dc.BlendInLinearSpace == last.BlendInLinearSpace) &&
+                    (dc.IsSimple == last.IsSimple) &&
+                    dc.Shadow.Equals(ref last.Shadow) &&
+                    dc.TextureSettings.Equals(ref last.TextureSettings)
                 );
             }
 
@@ -642,6 +651,7 @@ namespace Squared.Render.RasterShape {
                     Shadow = drawCall.Shadow,
                     Shadowed = ShouldBeShadowed(in drawCall.Shadow),
                     Simple = drawCall.IsSimple != 0,
+                    Oriented = drawCall.Orientation != default,
                     TextureSettings = drawCall.TextureSettings
                 });
             }
@@ -650,7 +660,7 @@ namespace Squared.Render.RasterShape {
         private struct SubBatch {
             public int InstanceOffset, InstanceCount;
             public RasterShapeType Type;
-            public bool BlendInLinearSpace, BlendInOkLab, Shadowed, Simple;
+            public bool BlendInLinearSpace, BlendInOkLab, Shadowed, Simple, Oriented;
             public RasterShadowSettings Shadow;
             internal RasterTextureSettings TextureSettings;
         }
@@ -747,6 +757,7 @@ namespace Squared.Render.RasterShape {
 
                 ref var firstDc = ref _DrawCalls.Item(0);
                 BatchManager.Instance.Start(this, ref firstDc, out var state);
+                var qi = Quaternion.Identity;
 
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     ref var dc = ref _DrawCalls.Item(i);
@@ -764,6 +775,7 @@ namespace Squared.Render.RasterShape {
                         Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, fill.ModeF, dc.GammaMinusOne),
                         Parameters2 = new Vector4(gpower, fill.FillRange.X, fill.FillRange.Y, fill.Offset),
                         TextureRegion = dc.TextureBounds.ToVector4(),
+                        Orientation = dc.Orientation == default ? qi : dc.Orientation,
                         Type = (short)dc.Type,
                         WorldSpace = (short)(dc.WorldSpace ? 1 : 0)
                     };
@@ -841,7 +853,8 @@ namespace Squared.Render.RasterShape {
 
             for (int i = 0; i < _SubBatches.Count; i++) {
                 ref var sb = ref _SubBatches.Item(i);
-                var rasterShader = (UseUbershader && sb.Type != RasterShapeType.Polygon) 
+                var useUbershader = UseUbershader || sb.Oriented;
+                var rasterShader = (useUbershader && sb.Type != RasterShapeType.Polygon) 
                     ? PickMaterial(null, sb.Shadowed, sb.Simple)
                     : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
 
@@ -974,8 +987,12 @@ namespace Squared.Render.RasterShape {
                 (dc.BlendIn != RasterShapeColorSpace.OkLab)
             ) ? 1 : 0;
             dc.PackedFlags = (
-                (int)dc.Type | (dc.IsSimple << 16) | (dc.Shadow.IsEnabled << 17) | ((dc.BlendInLinearSpace ? 1 : 0) << 18) |
-                ((dc.Shadow.Inside ? 1 : 0) << 19) | ((dc.SoftOutline ? 1 : 0) << 20)
+                (int)dc.Type | (dc.IsSimple << 8) | 
+                (dc.Shadow.IsEnabled << 9) | 
+                ((dc.BlendInLinearSpace ? 1 : 0) << 10) |
+                ((dc.Shadow.Inside ? 1 : 0) << 11) | 
+                ((dc.SoftOutline ? 1 : 0) << 12) | 
+                (((dc.Orientation != default) ? 1 : 0) << 13)
             );
             _DrawCalls.Add(ref dc);
         }
