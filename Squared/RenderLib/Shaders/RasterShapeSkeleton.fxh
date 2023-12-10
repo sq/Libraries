@@ -1190,8 +1190,11 @@ float4 texturedShapeCommon (
 
     if (screenSpace) {
         float2 texSize = (texRgn.zw - texRgn.xy);
+        // HACK: Approximate the ratio between world position and vpos so we can try to align things
+        //  with the top-left corner of the bounding box
+        float screenScale = rcp((length(ddx(worldPosition)) + length(ddy(worldPosition))) * 0.5);
         if (screenSpaceLocal)
-            vpos -= tl;
+            vpos -= tl * screenScale;
         texCoord = (
             ((vpos / TextureModeAndSize.zw) - TexturePlacement.zw) * texSize
         ) + TexturePlacement.xy;
