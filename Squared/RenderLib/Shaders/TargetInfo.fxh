@@ -22,4 +22,7 @@ float2 normalize_vpos (float2 __vpos__) {
 float2 GetRenderTargetSize () {
     return __RenderTargetDimensions__;
 }
+
+#define GET_VPOS_FRAC (GET_VPOS / GetRenderTargetSize())
+#define GET_VPOS_SCALED (GET_VPOS_FRAC * GetViewportProjectionInputDomain())
 #endif

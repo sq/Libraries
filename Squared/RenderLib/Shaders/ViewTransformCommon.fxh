@@ -15,6 +15,14 @@ float4x4 GetViewportModelViewMatrix () {
     return Viewport.ModelView;
 }
 
+float2 GetViewportProjectionInputDomain () {
+    // Take a regular ortho projection matrix and figure out its w/h
+    return float2(
+        1 / Viewport.Projection._11 * 2,
+        (1 / Viewport.Projection._22) * -2
+    );
+}
+
 float2 GetViewportScale () {
     return Viewport.ScaleAndPosition.xy;
 }
