@@ -229,7 +229,11 @@ namespace Squared.PRGUI.Controls {
             return ref result;
         }
 
-        private IMenuListener Listener => FocusDonor as IMenuListener;
+        // HACK: Prefer the anchor, since the focus donor might be a modal that is currently open
+        // If a modal is open it's still possible to click a dropdown or otherwise open a menu without the
+        //  anchor having focus, so in that case whatever modal was open will be FocusDonor but Aligner.Anchor
+        //  is who should actually get menulistener events
+        private IMenuListener Listener => (Aligner.Anchor as IMenuListener) ?? (FocusDonor as IMenuListener);
 
         // HACK
         private bool _OverrideHitTestResults = true;

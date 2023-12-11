@@ -16,7 +16,7 @@ void computeTLBR_Bezier (
 }
 
 float2 closestPointOnLine2(float2 a, float2 b, float2 pt, out float t) {
-    float2  ab = b - a;
+    float2 ab = b - a;
     float d = dot(ab, ab);
     if (abs(d) < 0.001)
         d = 0.001;
@@ -25,7 +25,7 @@ float2 closestPointOnLine2(float2 a, float2 b, float2 pt, out float t) {
 }
 
 float2 closestPointOnLineSegment2(float2 a, float2 b, float2 pt, out float t) {
-    float2  ab = b - a;
+    float2 ab = b - a;
     float d = dot(ab, ab);
     if (abs(d) < 0.001)
         d = 0.001;
