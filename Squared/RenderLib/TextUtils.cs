@@ -1035,8 +1035,10 @@ namespace Squared.Render.Text {
                 if (!measureOnly.HasValue) {
                     _Satellite?.RichMarkers.Clear();
                     _Satellite?.Boxes.Clear();
-                    _Satellite?.Dependencies.Clear();
                 }
+
+                // We need this for dependency tracking to work right for prgui hypertext
+                _Satellite?.Dependencies.Clear();
 
                 try {
                     le.Initialize();
@@ -1044,7 +1046,7 @@ namespace Squared.Render.Text {
                         rls = new RichTextLayoutState(ref le, glyphSource);
                         rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
                         var dependencies = _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
-                        if ((dependencies.Count > 0) && !measureOnly.HasValue) {
+                        if (dependencies.Count > 0) {
                             SetFlag(InternalFlags.AwaitingDependencies, false);
 
                             for (int i = 0, c = dependencies.Count; i < c; i++) {
