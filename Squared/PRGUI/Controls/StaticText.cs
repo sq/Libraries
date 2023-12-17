@@ -383,7 +383,7 @@ namespace Squared.PRGUI.Controls {
                 Content.Get(out var temp, settings);
                 size = MeasurementSize = temp.Size;
                 unconstrainedSize = MeasurementUnconstrainedSize = temp.UnconstrainedSize;
-                SetInternalFlag(StaticTextStateFlags.ContentMeasurementIsValid, true);
+                SetInternalFlag(StaticTextStateFlags.ContentMeasurementIsValid, !Content.IsAwaitingDependencies);
             }
         }
 
