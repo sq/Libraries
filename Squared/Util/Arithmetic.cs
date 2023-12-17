@@ -222,8 +222,14 @@ namespace Squared.Util {
                 methodInfo = argumentTypes[1].GetMethod(name, argumentTypes);
 
             if (methodInfo != null) {
-                result = Delegate.CreateDelegate(typeof(TDelegate), methodInfo);
-            } else {
+                try {
+                    result = Delegate.CreateDelegate(typeof(TDelegate), methodInfo, false);
+                } catch {
+                    result = null;
+                }
+            }
+
+            if (result == null) {
                 DynamicMethod dm = new DynamicMethod(
                     name,
                     argumentTypes[0],
@@ -651,6 +657,15 @@ namespace Squared.Util {
                 Values[1] = b;
                 return Source;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Lerp (int a, int b, float x) {
+            if (x <= 0)
+                return a;
+            else if (x >= 1)
+                return b;
+            return a + ((b - a) * x);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
