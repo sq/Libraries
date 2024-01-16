@@ -22,7 +22,12 @@ namespace Squared.Render {
         public int Width { get; protected set; }
         public int Height { get; protected set; }
         public bool MipMap { get; protected set; }
-        public SurfaceFormat PreferredFormat { get; protected set; }
+
+        private SurfaceFormat _PreferredFormat;
+        public SurfaceFormat PreferredFormat {
+            get => _PreferredFormat;
+            protected set => _PreferredFormat = value;
+        }
         public DepthFormat PreferredDepthFormat { get; protected set; }
         public int PreferredMultiSampleCount { get; protected set; }
         private bool _WasRecreated;
@@ -129,8 +134,25 @@ namespace Squared.Render {
                 SetName(name);
         }
 
+        new public SurfaceFormat PreferredFormat {
+            get => base.PreferredFormat;
+            set {
+                if (base.PreferredFormat == value)
+                    return;
+
+                lock (Lock) {
+                    base.PreferredFormat = value;
+                    GetOrCreateInstance(true);
+                }
+            }
+        }
+
         public void SetName (string name) {
             Name = name;
+            if (CurrentInstance == null)
+                return;
+            CurrentInstance.Name = name;
+            CurrentInstance.SetName(name);
         }
 
         private bool IsInstanceValid {

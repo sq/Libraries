@@ -19,6 +19,7 @@ using System.Collections;
 using System.Runtime.CompilerServices;
 using Squared.Render.Buffers;
 using Squared.Threading.CoreCLR;
+using System.Reflection;
 
 namespace Squared.Render {
     public static class RenderExtensionMethods {
@@ -171,6 +172,9 @@ namespace Squared.Render {
 
         private bool? _NeedsYFlip;
 
+        public bool IsFNA { get; private set; }
+        public string GraphicsBackendName { get; private set; }
+
         public bool NeedsYFlip {
             get {
                 if (!_NeedsYFlip.HasValue) {
@@ -198,6 +202,13 @@ namespace Squared.Render {
             }
         }
 
+        public DeviceManager (RenderManager renderManager, GraphicsDevice device) {
+            RenderManager = renderManager;
+            Device = device;
+            DeviceId = ++NextDeviceId;
+            UpdateGraphicsBackend(device);
+        }
+
         public void Dispose () {
             if (IsDisposed)
                 return;
@@ -206,10 +217,25 @@ namespace Squared.Render {
             // FIXME: Dispose device? Probably not
         }
 
-        public DeviceManager (RenderManager renderManager, GraphicsDevice device) {
-            RenderManager = renderManager;
-            Device = device;
-            DeviceId = ++NextDeviceId;
+        private void UpdateGraphicsBackend (GraphicsDevice device) {
+            var f = device.GetType().GetField("GLDevice", BindingFlags.Instance | BindingFlags.NonPublic);
+            IsFNA = (f != null);
+
+            if (IsFNA) {
+                try {
+                    // HACK: This is necessary to disable threaded issue/present in OpenGL, since it deadlocks
+#if FNA
+                    var hDevice = (IntPtr)f.GetValue(device);
+                    Evil.FNA3D_SysRendererEXT sr;
+                    Evil.DeviceUtils.FNA3D_GetSysRendererEXT(hDevice, out sr);
+                    GraphicsBackendName = sr.rendererType.ToString();
+#endif
+                } catch {
+                    GraphicsBackendName = "OpenGL";
+                }
+            } else {
+                throw new NotSupportedException("Non-FNA graphics backends are no longer supported");
+            }
         }
 
         internal void UpdateTargetInfo (ref RenderTargetStackEntry currentTargets, bool setParams) {
@@ -231,9 +257,9 @@ namespace Squared.Render {
             if (material == null)
                 return;
 
-            var rtd = material.Parameters?.RenderTargetDimensions;
+            var rti = material.Parameters?.RenderTargetInfo;
 
-            if (rtd == null)
+            if (rti == null)
                 return;
 
             if (!setParams)
@@ -243,7 +269,10 @@ namespace Squared.Render {
                 if (target1 == null)
                     targetHeight *= -1;
 
-            rtd.SetValue(new Vector2(targetWidth, targetHeight));
+            var format = target1?.Format ?? Device.PresentationParameters.BackBufferFormat;
+            var sRGBFlag = Evil.TextureUtils.FormatIsLinearSpace(this, format);
+
+            rti.SetValue(new Vector4(targetWidth, targetHeight, sRGBFlag ? 1f : 0f, 0));
 
             // material.Flush();
         }

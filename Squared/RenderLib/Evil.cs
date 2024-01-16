@@ -858,6 +858,64 @@ namespace Squared.Render.Evil {
         ) where T : unmanaged {
             texture.GetData(level, rect, data, startIndex, elementCount);
         }
+
+        private static bool? _IsHDREnabled;
+
+        public static bool IsHDREnabled () {
+            if (_IsHDREnabled.HasValue)
+                return _IsHDREnabled.Value;
+
+            try {
+                var result = SDL2.SDL.SDL_GetHintBoolean("FNA3D_ENABLE_HDR_COLORSPACE", SDL2.SDL.SDL_bool.SDL_FALSE) 
+                    != SDL2.SDL.SDL_bool.SDL_FALSE;
+                _IsHDREnabled = result;
+                return result;
+            } catch {
+                _IsHDREnabled = false;
+                return false;
+            }
+        }
+
+        public static bool FormatIsLinearSpace (DeviceManager manager, SurfaceFormat format) {
+            switch (format) {
+                case SurfaceFormat.Color:
+                    return false;
+                case SurfaceFormat.Dxt1:
+                case SurfaceFormat.Dxt5:
+                case SurfaceFormat.Bc7EXT:
+                    return false;
+
+                case SurfaceFormat.Rgba1010102:
+                    // FIXME: This isn't actually linear space either.
+                    // What format it is depends on whether HDR is active but it's never strictly linear space,
+                    //  it's either sRGB or PQ
+                    return false;
+
+                case SurfaceFormat.HdrBlendable:
+                case SurfaceFormat.HalfVector4:
+                case SurfaceFormat.Vector4:
+                    switch (manager?.GraphicsBackendName ?? "Unknown") {
+                        // FIXME: DXGI will automatically enable HDR for a F16 swapchain, even if you haven't explicitly
+                        //  requested an HDR colorspace.
+                        case "D3D11":
+                            return true;
+                        case "Vulkan":
+                            return IsHDREnabled();
+                        default:
+                            return false;
+                    }
+
+                default:
+                    if (format == ColorSrgbEXT)
+                        return true;
+                    else if (format == Dxt5SrgbEXT)
+                        return true;
+                    else if (format == Bc7SrgbEXT)
+                        return true;
+
+                    return false;
+            }
+        }
 #endif
     }
 

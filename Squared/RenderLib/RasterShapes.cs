@@ -848,8 +848,7 @@ namespace Squared.Render.RasterShape {
 
             // if the render target/backbuffer is sRGB, we need to generate output in the correct color space
             var format = (manager.CurrentRenderTarget?.Format ?? manager.Device.PresentationParameters.BackBufferFormat);
-            var isSrgbRenderTarget = 
-                (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
+            var isSrgbRenderTarget = Evil.TextureUtils.FormatIsLinearSpace(Materials.Coordinator.Manager.DeviceManager, format);
 
             for (int i = 0; i < _SubBatches.Count; i++) {
                 ref var sb = ref _SubBatches.Item(i);

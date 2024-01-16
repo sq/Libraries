@@ -4,15 +4,15 @@
 #define ACCEPTS_VPOS in float2 __vpos__ : VPOS
 #define RAW_VPOS __vpos__.xy
 
-uniform const float2 __RenderTargetDimensions__;
+uniform const float4 __RenderTargetInfo__;
 
 #if FNA
 #define GET_VPOS normalize_vpos(__vpos__)
 
 float2 normalize_vpos (float2 __vpos__) {
     float2 result = RAW_VPOS;
-    if (__RenderTargetDimensions__.y < 0)
-        result.y = -__RenderTargetDimensions__.y - result.y;
+    if (__RenderTargetInfo__.y < 0)
+        result.y = -__RenderTargetInfo__.y - result.y;
     return floor(result);
 }
 #else
@@ -20,7 +20,11 @@ float2 normalize_vpos (float2 __vpos__) {
 #endif
 
 float2 GetRenderTargetSize () {
-    return __RenderTargetDimensions__;
+    return abs(__RenderTargetInfo__.xy);
+}
+
+bool GetRenderTargetIsLinearSpace() {
+    return __RenderTargetInfo__.z > 0;
 }
 
 #define GET_VPOS_FRAC (GET_VPOS / GetRenderTargetSize())

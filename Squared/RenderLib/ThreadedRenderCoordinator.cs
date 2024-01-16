@@ -179,13 +179,13 @@ namespace Squared.Render {
         public event EventHandler DeviceReset, DeviceChanged;
 
         public bool IsDisposed { get; private set; }
-        public bool IsFNA { get; private set; }
+        public bool IsFNA => Manager.DeviceManager.IsFNA;
 
         private long TimeOfLastResetOrDeviceChange = 0;
 
         private int IsDisposingResources = 0;
 
-        public string GraphicsBackendName { get; private set; }
+        public string GraphicsBackendName => Manager.DeviceManager.GraphicsBackendName;
 
         private readonly HashSet<Texture2D> AutoAllocatedTextureResources = 
             new HashSet<Texture2D>(ReferenceComparer<Texture2D>.Instance);
@@ -270,7 +270,6 @@ namespace Squared.Render {
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
-            UpdateGraphicsBackend(Device);
             RegisterForDeviceEvents();
             for (int i = 0; i < Stopwatches.Length; i++)
                 Stopwatches[i] = new Stopwatch();
@@ -298,7 +297,6 @@ namespace Squared.Render {
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
-            UpdateGraphicsBackend(Device);
             RegisterForDeviceEvents();
 
             deviceService.DeviceCreated += DeviceService_DeviceCreated;
@@ -333,33 +331,11 @@ namespace Squared.Render {
                         callback(tex, userData);
         }
 
-        private void UpdateGraphicsBackend (GraphicsDevice device) {
-            var f = device.GetType().GetField("GLDevice", BindingFlags.Instance | BindingFlags.NonPublic);
-            IsFNA = (f != null);
-
-            if (IsFNA) {
-                try {
-                    // HACK: This is necessary to disable threaded issue/present in OpenGL, since it deadlocks
-#if FNA
-                    var hDevice = (IntPtr)f.GetValue(device);
-                    Evil.FNA3D_SysRendererEXT sr;
-                    Evil.DeviceUtils.FNA3D_GetSysRendererEXT(hDevice, out sr);
-                    GraphicsBackendName = sr.rendererType.ToString();
-#endif
-                } catch {
-                    GraphicsBackendName = "OpenGL";
-                }
-            } else {
-                throw new NotSupportedException("Non-FNA graphics backends are no longer supported");
-            }
-        }
-
         private void SetGraphicsDevice (GraphicsDevice device) {
             TimeOfLastResetOrDeviceChange = Time.Ticks;
             if (Manager.DeviceManager.Device != device)
                 Manager.ChangeDevice(device);
 
-            UpdateGraphicsBackend(device);
             RegisterForDeviceEvents();
 
             if (DeviceChanged != null)

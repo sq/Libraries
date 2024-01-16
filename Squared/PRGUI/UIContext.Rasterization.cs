@@ -62,6 +62,7 @@ namespace Squared.PRGUI {
                 int width = (int)(Context.CanvasSize.X * Context.ScratchScaleFactor),
                     height = (int)(Context.CanvasSize.Y * Context.ScratchScaleFactor);
                 Instance.Resize(width, height);
+                Instance.PreferredFormat = Context.ScratchSurfaceFormat;
             }
 
             public void Reset () {
@@ -472,9 +473,7 @@ namespace Squared.PRGUI {
         }
 
         // HACK
-        internal bool IsSRGB => 
-            (ScratchSurfaceFormat == Squared.Render.Evil.TextureUtils.ColorSrgbEXT) &&
-                (ScratchSurfaceFormat != SurfaceFormat.Color);
+        internal bool IsSRGB => Squared.Render.Evil.TextureUtils.FormatIsLinearSpace(Materials.Coordinator.Manager.DeviceManager, ScratchSurfaceFormat);
 
         public Color ConvertColor (Color color) {
             var result = ColorSpace.ConvertColor(color, IsSRGB ? ColorConversionMode.SRGBToLinear : ColorConversionMode.None);

@@ -118,7 +118,9 @@ void ShadowedPixelShader (
         shadowColor *= multiplyColor.a;
     float4 shadowColorSRGB = pSRGBToPLinear(shadowColor);
     result = texColorSRGB + (shadowColorSRGB * (1 - texColorSRGB.a));
-    result = pLinearToPSRGB(result);
+    
+    if (!GetRenderTargetIsLinearSpace())
+        result = pLinearToPSRGB(result);
 }
 
 void OutlinedPixelShader(
@@ -165,7 +167,9 @@ void OutlinedPixelShader(
     float4 overSRGB = pSRGBToPLinear(overColor),
         shadowSRGB = pSRGBToPLinear(shadowColor);
     result = lerp(shadowSRGB, overSRGB, overColor.a);
-    result = pLinearToPSRGB(result);
+    
+    if (!GetRenderTargetIsLinearSpace())
+        result = pLinearToPSRGB(result);
 }
 
 void OutlinedPixelShaderWithDiscard(
@@ -347,9 +351,11 @@ void DistanceFieldOutlinedPixelShader(
     overSRGB.rgb = SRGBToLinear(saturate(overSRGB.rgb));
     shadowSRGB.rgb = SRGBToLinear(shadowSRGB.rgb);
     result = over(overSRGB, overSRGB.a, shadowColor, shadowAlpha * saturate(shadowColorIn.a));
+    
     // over() produces a premultiplied result, but it's in linear space so we need to depremultiply it, then
-    //  turn it into premultiplied sRGB
-    result = pLinearToPSRGB_Accurate(result);
+    //  turn it into premultiplied sRGB    
+    if (!GetRenderTargetIsLinearSpace())
+        result = pLinearToPSRGB_Accurate(result);
 
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);
