@@ -244,7 +244,7 @@ namespace Squared.PRGUI.Input {
                 TextInputEXT.TextInput += TextInputEXT_TextInput;
                 TextInputEXT.TextEditing += TextInputEXT_TextEditing;
             }
-                TextInputEXT.StartTextInput();
+            TextInputEXT.StartTextInput();
         }
 
         private void TextInputEXT_TextInput (char ch) {

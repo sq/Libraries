@@ -322,7 +322,7 @@ namespace Squared.Util {
                     if ((Index < 0) || (Index >= Count))
                         throw new InvalidOperationException("No current value");
                     else if (Items != null)
-                        return Items[Index];
+                        return Items[Offset + Index];
                     else switch (Index) {
                         case 0:
                             return Item1;
@@ -361,7 +361,7 @@ namespace Squared.Util {
                 var countMinus1 = Count - 1;
                 if (Index++ < countMinus1) {
                     if (Items != null) {
-                        result = Items[Index];
+                        result = Items[Offset + Index];
                         return false;
                     } else switch (Index) {
                         case 0:
