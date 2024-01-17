@@ -635,10 +635,11 @@ namespace Squared.PRGUI {
     public struct ControlDimension {
         [Flags]
         private enum Flag : byte {
-            Minimum      = 0b1,
-            Maximum      = 0b10,
-            Fixed        = 0b100,
-            FPercentage   = 0b1000,
+            Minimum             = 0b1,
+            Maximum             = 0b10,
+            Fixed               = 0b100,
+            FPercentage         = 0b1000,
+            PercentageIsFixed = 0b10000
         }
 
         private float _Minimum, _Maximum, _Fixed;
@@ -727,6 +728,17 @@ namespace Squared.PRGUI {
                     Flags |= Flag.FPercentage;
                     _Fixed = value.Value;
                 }
+            }
+        }
+
+        public bool PercentageIsMaximum {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (Flags & Flag.PercentageIsFixed) != Flag.PercentageIsFixed;
+            set {
+                if (!value)
+                    Flags |= Flag.PercentageIsFixed;
+                else
+                    Flags &= ~Flag.PercentageIsFixed;
             }
         }
 
@@ -895,19 +907,31 @@ namespace Squared.PRGUI {
         public override string ToString () {
             if (!HasValue)
                 return "<unconstrained>";
-            else
-                return $"Clamp({Fixed?.ToString() ?? "<null>"}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
+
+            var fop = HasFixed
+                ? _Fixed.ToString()
+                : (
+                    HasPercentage
+                        ? _Fixed.ToString() + "%"
+                        : "<null>"
+            );
+
+            return $"Clamp({fop}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
         }
 
-        public ControlDimension ConvertPercentageToMaximum (float total) {
+        public ControlDimension ConvertPercentage (float total) {
             if (!HasPercentage)
                 return this;
             var result = this;
             var value = total * _Fixed / 100;
-            if (HasMaximum)
-                result._Maximum = Math.Min(_Maximum, value);
-            else
-                result.Maximum = value;
+            if (PercentageIsMaximum) {
+                if (HasMaximum)
+                    result._Maximum = Math.Min(_Maximum, value);
+                else
+                    result.Maximum = value;
+            } else {
+                result.Fixed = Constrain(value, false);
+            }
             return result;
         }
     }

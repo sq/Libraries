@@ -67,7 +67,7 @@ namespace Squared.PRGUI.NewEngine {
             foreach (var ckey in Children(ref control)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref Result(ckey);
-                child.ConvertProportionsToMaximums(cw, ch, out var childWidth, out var childHeight);
+                child.ConvertProportions(cw, ch, out var childWidth, out var childHeight);
 
                 var margins = child.Margins;
                 ref readonly var childConfig = ref child.Config;
@@ -276,7 +276,7 @@ namespace Squared.PRGUI.NewEngine {
                             continue;
 
                         ref var childResult = ref Result(ckey);
-                        child.ConvertProportionsToMaximums(cw, ch, out var childWidth, out var childHeight);
+                        child.ConvertProportions(cw, ch, out var childWidth, out var childHeight);
 #if DEBUG
                         if (childResult.ParentRunIndex != runIndex)
                             throw new Exception();
@@ -300,10 +300,10 @@ namespace Squared.PRGUI.NewEngine {
                             // Floating = Stacked, but don't expand to fill parent
                             // Maybe I should rethink this :)
                             // if ((childConfig._BoxFlags & BoxFlag.Floating) != BoxFlag.Floating) {
-                                if (expandChildX)
-                                    childResult.Rect.Width = childWidth.Constrain(cw - child.Margins.X, true);
-                                if (expandChildY)
-                                    childResult.Rect.Height = childHeight.Constrain(ch - child.Margins.Y, true);
+                            if (expandChildX || childWidth.HasFixed)
+                                childResult.Rect.Width = childWidth.Constrain(cw - child.Margins.X, true);
+                            if (expandChildY || childHeight.HasFixed)
+                                childResult.Rect.Height = childHeight.Constrain(ch - child.Margins.Y, true);
                             // }
                         } else {
                             float childOuterW = childResult.Rect.Width + margins.X,
