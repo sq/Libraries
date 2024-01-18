@@ -294,7 +294,7 @@ namespace Squared.PRGUI {
                 pll = new UnorderedList<IPostLayoutListener>();
             else
                 pll.Clear();
-            context.Shared.PostLayoutListeners = pll;
+            context.PostLayoutListeners = pll;
 
             IsUpdating = true;
             try {
@@ -898,34 +898,34 @@ namespace Squared.PRGUI {
         /// Use at your own risk! Performs immediate layout of a control and its children.
         /// The results of this are not necessarily accurate, but can be used to infer its ideal size for positioning.
         /// </summary>
-        public void UpdateSubtreeLayout (Control subtreeRoot) {
+        /// <returns>Whether any of the controls laid out requested a relayout.</returns>
+        public bool UpdateSubtreeLayout (Control subtreeRoot) {
             MakeOperationContext(out var tempCtx);
-            UpdateSubtreeLayout(ref tempCtx, subtreeRoot);
+            return UpdateSubtreeLayout(ref tempCtx, subtreeRoot);
         }
 
-        internal void UpdateSubtreeLayout (ref UIOperationContext context, Control subtreeRoot) {
+        internal bool UpdateSubtreeLayout (ref UIOperationContext context, Control subtreeRoot) {
             var pll = Interlocked.Exchange(ref _PostLayoutListeners, null);
             if (pll == null)
                 pll = new UnorderedList<IPostLayoutListener>();
             else
                 pll.Clear();
-            context.Shared.PostLayoutListeners = pll;
+            context.PostLayoutListeners = pll;
 
             var wasUpdatingSubtreeLayout = IsUpdatingSubtreeLayout;
+            bool result = false;
             try {
                 IsUpdatingSubtreeLayout = true;
                 UpdateSubtreeLayoutPass(ref context, subtreeRoot);
 
-                if (NotifyLayoutListeners(ref context)) {
-                    DoUpdateLayoutInternal(ref context, true);
-                    UpdateSubtreeLayoutPass(ref context, subtreeRoot);
-                    NotifyLayoutListeners(ref context);
-                }
+                result = NotifyLayoutListeners(ref context);
             } finally {
-                context.Shared.PostLayoutListeners = null;
+                context.PostLayoutListeners = null;
                 IsUpdatingSubtreeLayout = wasUpdatingSubtreeLayout;
                 Interlocked.CompareExchange(ref _PostLayoutListeners, pll, null);
             }
+
+            return result;
         }
 
         private void UpdateSubtreeLayoutPass (ref UIOperationContext context, Control subtreeRoot) {
@@ -1109,7 +1109,6 @@ namespace Squared.PRGUI {
             shared.ActivateKeyHeld = _LastInput.ActivateKeyHeld;
             shared.MouseButtonHeld = (LastMouseButtons != MouseButtons.None);
             shared.MousePosition = LastMousePosition;
-            shared.PostLayoutListeners = null;
         }
 
         internal void MakeOperationContext (out UIOperationContext result) {
@@ -1148,7 +1147,6 @@ namespace Squared.PRGUI {
         public bool MouseButtonHeld;
         public Vector2 MousePosition;
         internal volatile bool InUse;
-        internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
     }
 
     public struct UIOperationContext {
@@ -1161,13 +1159,14 @@ namespace Squared.PRGUI {
         public DefaultMaterialSet Materials => Shared?.Context?.Materials;
         public NewEngine.LayoutEngine Engine => Shared?.Context?.Engine;
 
+        internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
+
         public float Now => Shared?.Now ?? 0f;
         public long NowL => Shared?.NowL ?? 0;
         public KeyboardModifiers Modifiers => Shared?.Modifiers ?? default;
         public bool ActivateKeyHeld => Shared?.ActivateKeyHeld ?? false;
         public bool MouseButtonHeld => Shared?.MouseButtonHeld ?? false;
         public ref readonly Vector2 MousePosition => ref Shared.MousePosition;
-        internal UnorderedList<IPostLayoutListener> PostLayoutListeners => Shared?.PostLayoutListeners;
 
         public float Opacity { get; internal set; }
         public RectF VisibleRegion { get; internal set; }
