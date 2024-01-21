@@ -137,6 +137,7 @@ namespace Squared.Util {
             int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop,
             float repeatDelay = 0, float repeatExtraDuration = 0
         ) {
+            // FIXME: TimeSpan.FromSeconds sucks, so don't use it here.
             return StartNow(
                 from, to,
                 ticks: TimeSpan.FromSeconds(seconds).Ticks,
