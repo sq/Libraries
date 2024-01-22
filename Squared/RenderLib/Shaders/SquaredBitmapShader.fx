@@ -44,7 +44,7 @@ void BasicPixelShader(
     addColor.a = 0;
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
-    texColor = ExtractRgba(texColor, BitmapTraits);
+    texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
     result = multiplyColor * texColor;
     result += (addColor * result.a);
 }
@@ -61,7 +61,7 @@ void BasicPixelShaderWithLUT(
     addColor.a = 0;
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
-    texColor = ExtractRgba(texColor, BitmapTraits);
+    texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
     texColor.rgb = ApplyLUT(texColor.rgb, LUT2Weight);
     texColor.rgb = ApplyDither(texColor.rgb, GET_VPOS);
 
@@ -70,6 +70,25 @@ void BasicPixelShaderWithLUT(
 
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);
+}
+
+void ToLinearPixelShader(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    ACCEPTS_VPOS,
+    out float4 result : COLOR0
+) {
+    addColor.rgb *= addColor.a;
+    addColor.a = 0;
+
+    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
+    texColor = pSRGBToPLinear_Accurate(texColor);
+    result = multiplyColor * texColor;
+    result += (addColor * result.a);
+    result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
 
 void ToSRGBPixelShader(
@@ -84,10 +103,10 @@ void ToSRGBPixelShader(
     addColor.a = 0;
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
-    texColor = ExtractRgba(texColor, BitmapTraits);
+    texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
     result = multiplyColor * texColor;
     result += (addColor * result.a);
-    result = pLinearToPSRGB(result);
+    result = pLinearToPSRGB_Accurate(result);
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
 
@@ -407,23 +426,24 @@ technique BitmapTechnique
     }
 }
 
-technique WorldSpaceBitmapToSRGBTechnique
+technique BitmapToSRGBTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 ToSRGBPixelShader();
     }
 }
 
-technique ScreenSpaceBitmapToSRGBTechnique
+technique BitmapToLinearTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 ToSRGBPixelShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 ToLinearPixelShader();
     }
 }
+
 
 technique WorldSpaceShadowedBitmapTechnique
 {

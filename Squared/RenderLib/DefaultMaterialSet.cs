@@ -393,7 +393,7 @@ namespace Squared.Render {
         );
 
         public Material Bitmap, BitmapWithDiscard;
-        public Material ScreenSpaceBitmapToSRGB, WorldSpaceBitmapToSRGB;
+        public Material BitmapToSRGB, BitmapToLinear;
         public Material ScreenSpaceBitmapWithLUT, WorldSpaceBitmapWithLUT;
         public Material ScreenSpaceShadowedBitmap, WorldSpaceShadowedBitmap;
         public Material ScreenSpacePalettedBitmap, WorldSpacePalettedBitmap;
@@ -600,14 +600,14 @@ namespace Squared.Render {
                 "WorldSpaceBitmapWithLUTTechnique"
             );
 
-            ScreenSpaceBitmapToSRGB = NewMaterial(
+            BitmapToSRGB = NewMaterial(
                 bitmapShader,
-                "ScreenSpaceBitmapToSRGBTechnique"
+                "BitmapToSRGBTechnique"
             );
 
-            WorldSpaceBitmapToSRGB = NewMaterial(
+            BitmapToLinear = NewMaterial(
                 bitmapShader,
-                "WorldSpaceBitmapToSRGBTechnique"
+                "BitmapToLinearTechnique"
             );
 
             var defaultOffset = Vector2.One;
@@ -762,8 +762,8 @@ namespace Squared.Render {
 
             var bitmapMaterials = new[] {
                 Bitmap,
-                ScreenSpaceBitmapToSRGB,
-                WorldSpaceBitmapToSRGB,
+                BitmapToSRGB,
+                BitmapToLinear,
                 ScreenSpaceShadowedBitmap,
                 WorldSpaceShadowedBitmap,
                 ScreenSpaceShadowedBitmapWithDiscard,
