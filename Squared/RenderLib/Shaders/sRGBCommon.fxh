@@ -29,17 +29,19 @@ float3 approxLinearToSRGB (float3 rgb) {
 float4 pSRGBToPLinear_Accurate (float4 psrgba) {
     if (psrgba.a <= (1 / 512))
         return 0;
-    float3 srgb = psrgba.rgb / psrgba.a;
+    float a = min(psrgba.a, 1);
+    float3 srgb = psrgba.rgb / a;
     float3 linearRgb = SRGBToLinear(srgb);
-    return float4(linearRgb * psrgba.a, psrgba.a);
+    return float4(linearRgb * a, a);
 }
 
 float4 pLinearToPSRGB_Accurate (float4 pLinear) {
     if (pLinear.a <= (1 / 512))
         return 0;
-    float3 rgb = pLinear.rgb / pLinear.a;
+    float a = min(pLinear.a, 1);
+    float3 rgb = pLinear.rgb / a;
     float3 srgb = LinearToSRGB(rgb);
-    float4 pSrgb = float4(srgb * pLinear.a, pLinear.a);
+    float4 pSrgb = float4(srgb * a, a);
     return pSrgb;
 }
 

@@ -61,8 +61,8 @@ namespace Squared.PRGUI {
             public void Update () {
                 int width = (int)(Context.CanvasSize.X * Context.ScratchScaleFactor),
                     height = (int)(Context.CanvasSize.Y * Context.ScratchScaleFactor);
-                Instance.Resize(width, height);
                 Instance.PreferredFormat = Context.ScratchSurfaceFormat;
+                Instance.Resize(width, height);
             }
 
             public void Reset () {
