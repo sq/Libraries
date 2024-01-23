@@ -268,6 +268,23 @@ namespace Squared.PRGUI.Controls {
             return true;
         }
 
+        protected bool SetText (ImmutableAbstractString value, bool onlyIfTextChanged) {
+            // Immutable strings are (obviously) not likely to change much
+            if (Content.Text.Equals(value.Value)) {
+                // Fast path: The immutable string's AbstractString is an exact match for the current one
+                ;
+            } else {
+                Content.SetText(value.Value, onlyIfTextChanged);
+                if (!onlyIfTextChanged)
+                    Content.Invalidate();
+            }
+            return true;
+        }
+
+        internal bool SetTextInternal (ImmutableAbstractString value, bool onlyIfTextChanged) {
+            return SetText(value, onlyIfTextChanged);
+        }
+
         internal bool SetTextInternal (AbstractString value, bool? onlyIfTextChanged = null) {
             return SetText(value, onlyIfTextChanged);
         }

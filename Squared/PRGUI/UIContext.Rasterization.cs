@@ -32,7 +32,6 @@ namespace Squared.PRGUI {
         /// </summary>
         public SurfaceFormat ScratchSurfaceFormat = SurfaceFormat.Color;
 
-        private bool WasBackgroundFaded = false;
         private Tween<float> BackgroundFadeTween = new Tween<float>(0f);
 
         private List<ScratchRenderTarget> TopoSortTable = new List<ScratchRenderTarget>();
@@ -232,22 +231,15 @@ namespace Squared.PRGUI {
                     var modal = ModalStack[i];
                     if (modal.BackgroundFadeLevel > 0f) {
                         maxFadeLevel = Math.Max(maxFadeLevel, modal.BackgroundFadeLevel);
-                        if (!WasBackgroundFaded) {
-                            BackgroundFadeTween = BackgroundFadeTween.ChangeDirection(
-                                1f, NowL, BackgroundFadeDuration * (Animations?.AnimationDurationMultiplier ?? 1)
-                            );
-                        }
-
                         fadeBackgroundAtIndex = seq.IndexOf((Control)modal);
-                        WasBackgroundFaded = true;
                     }
                 }
 
-                if (fadeBackgroundAtIndex < 0 && WasBackgroundFaded) {
+                if (maxFadeLevel != BackgroundFadeTween.To) {
                     BackgroundFadeTween = BackgroundFadeTween.ChangeDirection(
-                        0f, NowL, BackgroundFadeDuration * (Animations?.AnimationDurationMultiplier ?? 1) * 0.5f
+                        maxFadeLevel, NowL, BackgroundFadeDuration * (Animations?.AnimationDurationMultiplier ?? 1) * 
+                        ((maxFadeLevel < BackgroundFadeTween.To) ? 0.5f : 1f)
                     );
-                    WasBackgroundFaded = false;
                 }
 
                 var topLevelHovering = FindTopLevelAncestor(Hovering);
@@ -267,7 +259,7 @@ namespace Squared.PRGUI {
                 for (int i = 0; i < seq.Count; i++) {
                     var control = seq[i];
                     if (i == fadeBackgroundAtIndex) {
-                        var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity * maxFadeLevel;
+                        var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity;
                         // HACK: Push the post-fade controls and their its overlay plane above the previous one
                         renderer.Layer = 1000;
                         renderer.FillRectangle(
