@@ -87,7 +87,7 @@ namespace Squared.Render {
         }
 
         public static bool TryParse (AbstractString text, out Color result) {
-            if (text.IsNullOrWhiteSpace) {
+            if (text.IsNullOrEmpty) {
                 result = default;
                 return false;
             }

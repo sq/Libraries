@@ -314,6 +314,7 @@ namespace Squared.Util.Text {
         }
 
         public bool IsNull => Value.IsNull;
+        public bool IsNullOrEmpty => Value.IsNullOrEmpty;
         public bool IsNullOrWhiteSpace => Value.IsNullOrWhiteSpace;
         public int Length => Value.Length;
         public int Offset => Value.Offset;
@@ -349,6 +350,31 @@ namespace Squared.Util.Text {
                 return Equals(s);
             else
                 return false;
+        }
+
+        // FIXME: Should these be TextEquals?
+        public static bool operator == (ImmutableAbstractString lhs, AbstractString rhs) {
+            return lhs.Value.Equals(rhs);
+        }
+
+        public static bool operator != (ImmutableAbstractString lhs, AbstractString rhs) {
+            return !lhs.Value.Equals(rhs);
+        }
+
+        public static bool operator == (ImmutableAbstractString lhs, string rhs) {
+            // This is awful but it's a common mistake so we might as well support it
+            if (rhs == null)
+                return lhs.IsNull;
+
+            return lhs.Value.TextEquals(rhs);
+        }
+
+        public static bool operator != (ImmutableAbstractString lhs, string rhs) {
+            // This is awful but it's a common mistake so we might as well support it
+            if (rhs == null)
+                return !lhs.IsNull;
+
+            return !lhs.Value.TextEquals(rhs);
         }
 
         bool IEquatable<ImmutableAbstractString>.Equals (ImmutableAbstractString other) {
@@ -388,28 +414,28 @@ namespace Squared.Util.Text {
 
         public void Add (string key, TValue value) => Add((ImmutableAbstractString)key, value);
         public void Add (ImmutableAbstractString key, TValue value) {
-            key.GetHashCode();
+            key.GetHashCode(IgnoreCase);
             Dict.Add(key, value);
         }
 
         public bool Contains (string key) => Contains(new ImmutableAbstractString(key));
         public bool Contains (AbstractString key) => Contains(new ImmutableAbstractString(key, true));
         public bool Contains (ImmutableAbstractString key) {
-            key.GetHashCode();
+            key.GetHashCode(IgnoreCase);
             return Dict.ContainsKey(key);
         }
 
         public bool Remove (string key) => Remove(new ImmutableAbstractString(key));
         public bool Remove (AbstractString key) => Remove(new ImmutableAbstractString(key, true));
         public bool Remove (ImmutableAbstractString key) {
-            key.GetHashCode();
+            key.GetHashCode(IgnoreCase);
             return Dict.Remove(key);
         }
 
         public bool TryGetValue (string key, out TValue result) => TryGetValue(new ImmutableAbstractString(key), out result);
         public bool TryGetValue (AbstractString key, out TValue result) => TryGetValue(new ImmutableAbstractString(key, true), out result);
         public bool TryGetValue (ImmutableAbstractString key, out TValue result) {
-            key.GetHashCode();
+            key.GetHashCode(IgnoreCase);
             return Dict.TryGetValue(key, out result);
         }
 
@@ -440,11 +466,11 @@ namespace Squared.Util.Text {
         }
         public TValue this [ImmutableAbstractString key] {
             get {
-                key.GetHashCode();
+                key.GetHashCode(IgnoreCase);
                 return Dict[key];
             }
             set {
-                key.GetHashCode();
+                key.GetHashCode(IgnoreCase);
                 Dict[key] = value;
             }
         }
@@ -735,10 +761,18 @@ namespace Squared.Util.Text {
         }
 
         public static bool operator == (AbstractString lhs, string rhs) {
+            // This is awful but it's a common mistake so we might as well support it
+            if (rhs == null)
+                return lhs.IsNull;
+
             return lhs.TextEquals(rhs);
         }
 
         public static bool operator != (AbstractString lhs, string rhs) {
+            // This is awful but it's a common mistake so we might as well support it
+            if (rhs == null)
+                return !lhs.IsNull;
+
             return !lhs.TextEquals(rhs);
         }
 
@@ -776,6 +810,11 @@ namespace Squared.Util.Text {
         }
 
         public int Offset => SubstringOffset;
+
+        public bool IsNullOrEmpty {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => IsNull || (Length == 0);
+        }
 
         public bool IsNullOrWhiteSpace {
             get {

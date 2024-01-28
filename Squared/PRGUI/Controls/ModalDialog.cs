@@ -40,7 +40,7 @@ namespace Squared.PRGUI.Controls {
         protected Control _FocusDonor;
         public Control FocusDonor => _FocusDonor;
 
-        public bool CloseOnEnter = false, CloseOnEscape = true, ArrowKeyNavigation = true;
+        public bool CloseOnEnter = false, CloseOnEscape = true;
 
         private bool ShowNextUpdate;
         private EventSubscription AcceptHandlerRegistered, CancelHandlerRegistered;
@@ -372,20 +372,7 @@ namespace Squared.PRGUI.Controls {
             if (!ArrowKeyNavigation)
                 return false;
 
-            if (name != UIEvents.KeyPress)
-                return false;
-
-            switch (args.Key) {
-                case Keys.Left:
-                case Keys.Right:
-                case Keys.Up:
-                case Keys.Down:
-                    int x = (args.Key == Keys.Left) ? -1 : ((args.Key == Keys.Right) ? 1 : 0),
-                        y = (args.Key == Keys.Up) ? -1 : ((args.Key == Keys.Down) ? 1 : 0);
-                    return Context.TryMoveFocusDirectionally(x, y);
-            }
-
-            return false;
+            return PerformArrowKeyNavigation(Context, name, args);
         }
 
         IEnumerable<AcceleratorInfo> IAcceleratorSource.Accelerators {

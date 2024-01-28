@@ -567,7 +567,7 @@ namespace Squared.Render.Text {
         }
 
         private Color? ParseColor (AbstractString text) {
-            if (text.IsNullOrWhiteSpace)
+            if (text.IsNullOrEmpty)
                 return null;
 
             if (
@@ -694,7 +694,7 @@ namespace Squared.Render.Text {
                         commandMode ? CommandTerminators : StringTerminators, 
                         commandMode ? ']' : ')'
                     );
-                    if (commandMode && bracketed.Value.IsNullOrWhiteSpace) {
+                    if (commandMode && bracketed.Value.IsNullOrEmpty) {
                         state.Reset(ref layoutEngine);
                     } else if (
                         commandMode && (Styles != null) && 

@@ -64,7 +64,7 @@ namespace Squared.PRGUI.Controls {
         public bool AllowClose = false;
         public bool ElevateOnFocus = false;
         public bool ElevateTopmost = false;
-
+        public bool ArrowKeyNavigation = false;
         public bool ChildrenAcceptFocus { get; set; } = true;
 
         public bool AllowDrag = true;
@@ -219,10 +219,13 @@ namespace Squared.PRGUI.Controls {
             if (name == UIEvents.GotTopLevelFocus) {
                 if (ElevateOnFocus)
                     Elevate();
-            } else if ((name == UIEvents.KeyPress) && AllowClose && KeyEventArgs.From(ref args, out var ka)) {
-                if ((ka.Key == Keys.F4) && ka.Modifiers.Control) {
+            } else if ((name == UIEvents.KeyPress) && KeyEventArgs.From(ref args, out var ka)) {
+                if (AllowClose && (ka.Key == Keys.F4) && ka.Modifiers.Control) {
                     UserClose();
                     return true;
+                } else if (ArrowKeyNavigation) {
+                    if (PerformArrowKeyNavigation(Context, name, ka))
+                        return true;
                 }
             }
 
@@ -335,6 +338,23 @@ namespace Squared.PRGUI.Controls {
             } else {
                 Aligner.EnsureAligned(ref context, ref relayoutRequested);
             }
+        }
+
+        public static bool PerformArrowKeyNavigation (UIContext context, string name, KeyEventArgs args) {
+            if (name != UIEvents.KeyPress)
+                return false;
+
+            switch (args.Key) {
+                case Keys.Left:
+                case Keys.Right:
+                case Keys.Up:
+                case Keys.Down:
+                    int x = (args.Key == Keys.Left) ? -1 : ((args.Key == Keys.Right) ? 1 : 0),
+                        y = (args.Key == Keys.Up) ? -1 : ((args.Key == Keys.Down) ? 1 : 0);
+                    return context.TryMoveFocusDirectionally(x, y);
+            }
+
+            return false;
         }
     }
 }
