@@ -444,39 +444,20 @@ technique BitmapToLinearTechnique
     }
 }
 
-
-technique WorldSpaceShadowedBitmapTechnique
+technique ShadowedBitmapTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 ShadowedPixelShader();
     }
 }
 
-technique ScreenSpaceShadowedBitmapTechnique
+technique ShadowedBitmapWithDiscardTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 ShadowedPixelShader();
-    }
-}
-
-technique WorldSpaceShadowedBitmapWithDiscardTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 ShadowedPixelShaderWithDiscard();
-    }
-}
-
-technique ScreenSpaceShadowedBitmapWithDiscardTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 ShadowedPixelShaderWithDiscard();
     }
 }
@@ -490,20 +471,11 @@ technique BitmapWithDiscardTechnique
     }
 }
 
-technique WorldSpaceBitmapWithLUTTechnique
+technique BitmapWithLUTTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 BasicPixelShaderWithLUT();
-    }
-}
-
-technique ScreenSpaceBitmapWithLUTTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 BasicPixelShaderWithLUT();
     }
 }

@@ -114,74 +114,38 @@ void SepiaPixelShaderWithDiscard (
 }
 
 
-technique WorldSpaceHueBitmapTechnique
+technique HueBitmapTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 BasicPixelShader();
     }
 }
 
-technique ScreenSpaceHueBitmapTechnique
+technique HueBitmapWithDiscardTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 BasicPixelShader();
-    }
-}
-
-technique WorldSpaceHueBitmapWithDiscardTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 BasicPixelShaderWithDiscard();
     }
 }
 
-technique ScreenSpaceHueBitmapWithDiscardTechnique
+technique SepiaBitmapTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 BasicPixelShaderWithDiscard();
-    }
-}
-
-technique WorldSpaceSepiaBitmapTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 SepiaPixelShader();
     }
 }
 
-technique ScreenSpaceSepiaBitmapTechnique
+technique SepiaBitmapWithDiscardTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 SepiaPixelShader();
-    }
-}
-
-technique WorldSpaceSepiaBitmapWithDiscardTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 SepiaPixelShaderWithDiscard();
-    }
-}
-
-technique ScreenSpaceSepiaBitmapWithDiscardTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 SepiaPixelShaderWithDiscard();
     }
 }

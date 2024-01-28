@@ -37,7 +37,7 @@ float4 readPalette (float4 index4, float4 paletteSelector4) {
     return tex2Dlod(PaletteSampler, float4(selector, 0, 0));
 }
 
-void BasicPixelShader(
+void PalettedPixelShader(
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
     in float4 paletteSelector : COLOR2,
@@ -55,7 +55,7 @@ void BasicPixelShader(
     result += (addColor * result.a);
 }
 
-void BasicPixelShaderWithDiscard (
+void PalettedPixelShaderWithDiscard (
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
     in float4 paletteSelector : COLOR2,
@@ -76,38 +76,20 @@ void BasicPixelShaderWithDiscard (
     clip(result.a - discardThreshold);
 }
 
-technique WorldSpacePalettedBitmapTechnique
+technique PalettedBitmapTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 BasicPixelShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 PalettedPixelShader();
     }
 }
 
-technique ScreenSpacePalettedBitmapTechnique
+technique PalettedBitmapWithDiscardTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 BasicPixelShader();
-    }
-}
-
-technique WorldSpacePalettedBitmapWithDiscardTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 BasicPixelShaderWithDiscard();
-    }
-}
-
-technique ScreenSpacePalettedBitmapWithDiscardTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 BasicPixelShaderWithDiscard();
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 PalettedPixelShaderWithDiscard();
     }
 }

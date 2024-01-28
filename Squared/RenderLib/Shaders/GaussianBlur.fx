@@ -322,56 +322,29 @@ void GaussianOutlinedPixelShaderWithDiscard(
     clip(result.a - discardThreshold);
 }
 
-technique WorldSpaceHorizontalGaussianBlur
+technique HorizontalGaussianBlur
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 HorizontalGaussianBlurPixelShader();
     }
 }
 
-technique ScreenSpaceHorizontalGaussianBlur
+technique VerticalGaussianBlur
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 HorizontalGaussianBlurPixelShader();
-    }
-}
-
-technique WorldSpaceVerticalGaussianBlur
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 VerticalGaussianBlurPixelShader();
     }
 }
 
-technique ScreenSpaceVerticalGaussianBlur
+technique RadialGaussianBlur
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 VerticalGaussianBlurPixelShader();
-    }
-}
-
-technique WorldSpaceRadialGaussianBlur
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 RadialGaussianBlurPixelShader();
-    }
-}
-
-technique ScreenSpaceRadialGaussianBlur
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 RadialGaussianBlurPixelShader();
     }
 }

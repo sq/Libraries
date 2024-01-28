@@ -94,56 +94,29 @@ void LightmappedPixelShaderWithLUT(
     clip(result.a - discardThreshold);
 }
 
-technique ScreenSpaceLightmappedBitmap
+technique LightmappedBitmap
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 LightmappedPixelShader();
     }
 }
 
-technique WorldSpaceLightmappedBitmap
+technique LightmappedsRGBBitmap
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 LightmappedPixelShader();
-    }
-}
-
-technique ScreenSpaceLightmappedsRGBBitmap
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 sRGBLightmappedPixelShader();
     }
 }
 
-technique WorldSpaceLightmappedsRGBBitmap
+technique LightmappedBitmapWithLUT
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 sRGBLightmappedPixelShader();
-    }
-}
-
-technique ScreenSpaceLightmappedBitmapWithLUT
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 LightmappedPixelShaderWithLUT();
-    }
-}
-
-technique WorldSpaceLightmappedBitmapWithLUT
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 LightmappedPixelShaderWithLUT();
     }
 }

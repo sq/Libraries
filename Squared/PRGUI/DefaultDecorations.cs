@@ -149,7 +149,7 @@ namespace Squared.PRGUI {
         public DefaultDecorations (DefaultMaterialSet materials, float defaultMargin = 6, float defaultMarginCollapsed = 4) {
             Materials = materials;
 
-            TextMaterial = materials.Get(materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend, clone: true);
+            TextMaterial = materials.Get(materials.ShadowedBitmap, blendState: BlendState.AlphaBlend, clone: true);
             ShadedTextMaterial = materials.Get(materials.ScreenSpaceBitmap, blendState: BlendState.AlphaBlend, clone: true);
             SelectedTextMaterial = materials.Get(materials.ScreenSpaceBitmap, blendState: BlendState.AlphaBlend, clone: true);
 
@@ -614,11 +614,19 @@ namespace Squared.PRGUI {
         public float GetHoveringAlpha (ref UIOperationContext context, ControlStates state, out bool isHovering, float? fadeLength = null) {
             isHovering = state.IsFlagged(ControlStates.Hovering);
 
-            float previousAlpha = 0f, newAlpha = 0f;
-            if (state.IsFlagged(ControlStates.PreviouslyHovering))
-                previousAlpha = 1f - Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverLoss).TotalSeconds / (fadeLength ?? HoverFadeLength));
-            if (isHovering)
-                newAlpha = Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverGain).TotalSeconds / (fadeLength ?? HoverFadeLength));
+            float previousAlpha = 0f, newAlpha = 0f, length = (fadeLength ?? HoverFadeLength);
+
+            if (state.IsFlagged(ControlStates.PreviouslyHovering)) {
+                if (length > 0)
+                    previousAlpha = 1f - Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverLoss).TotalSeconds / length);
+            }
+
+            if (isHovering) {
+                if (length > 0)
+                    newAlpha = Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverGain).TotalSeconds / length);
+                else
+                    newAlpha = 1f;
+            }
 
             // It's possible to both be the previous and current hovering control (mouse moved off and then back on), so in that case
             //  we sum both alpha values to minimize any glitch and cause the edge to become bright faster

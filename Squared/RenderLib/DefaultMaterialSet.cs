@@ -394,16 +394,16 @@ namespace Squared.Render {
 
         public Material Bitmap, BitmapWithDiscard;
         public Material BitmapToSRGB, BitmapToLinear;
-        public Material ScreenSpaceBitmapWithLUT, WorldSpaceBitmapWithLUT;
-        public Material ScreenSpaceShadowedBitmap, WorldSpaceShadowedBitmap;
-        public Material ScreenSpacePalettedBitmap, WorldSpacePalettedBitmap;
-        public Material ScreenSpaceHueBitmap, WorldSpaceHueBitmap;
-        public Material ScreenSpaceSepiaBitmap, WorldSpaceSepiaBitmap;
-        public Material ScreenSpaceSepiaBitmapWithDiscard, WorldSpaceSepiaBitmapWithDiscard;
-        public Material ScreenSpaceShadowedBitmapWithDiscard, WorldSpaceShadowedBitmapWithDiscard;
-        public Material ScreenSpaceStippledBitmap, WorldSpaceStippledBitmap;
-        public Material ScreenSpacePalettedBitmapWithDiscard, WorldSpacePalettedBitmapWithDiscard;
-        public Material ScreenSpaceHueBitmapWithDiscard, WorldSpaceHueBitmapWithDiscard;
+        public Material BitmapWithLUT;
+        public Material ShadowedBitmap;
+        public Material PalettedBitmap;
+        public Material HueBitmap;
+        public Material SepiaBitmap;
+        public Material SepiaBitmapWithDiscard;
+        public Material ShadowedBitmapWithDiscard;
+        public Material StippledBitmap;
+        public Material PalettedBitmapWithDiscard;
+        public Material HueBitmapWithDiscard;
         public Material OutlinedBitmap, OutlinedBitmapWithDiscard;
         public Material DistanceFieldText, DistanceFieldOutlinedBitmap;
         public Material HighlightColorBitmap, CrossfadeBitmap;
@@ -412,7 +412,7 @@ namespace Squared.Render {
         public Material MaskedBitmap, GradientMaskedBitmap;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
-        public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
+        public Material LightmappedBitmap;
         public Material RasterShapeUbershader;
         public Material JumpFloodInit, JumpFloodJump, JumpFloodResolve;
         internal readonly Dictionary<RasterShaderKey, RasterShape.RasterShader> RasterShapeMaterials =
@@ -423,9 +423,8 @@ namespace Squared.Render {
         /// Make sure to resolve your lightmap to sRGB before using it with this, otherwise your lighting
         ///  will have really terrible banding in dark areas.
         /// </summary>
-        public Material ScreenSpaceLightmappedsRGBBitmap, WorldSpaceLightmappedsRGBBitmap;
-        public Material ScreenSpaceHorizontalGaussianBlur, ScreenSpaceVerticalGaussianBlur, ScreenSpaceRadialGaussianBlur;
-        public Material WorldSpaceHorizontalGaussianBlur, WorldSpaceVerticalGaussianBlur, WorldSpaceRadialGaussianBlur;
+        public Material LightmappedsRGBBitmap;
+        public Material HorizontalGaussianBlur, VerticalGaussianBlur, RadialGaussianBlur;
         public Material GaussianOutlined, GaussianOutlinedWithDiscard, RadialMaskSoftening;
         public Material Clear, SetScissor, SetViewport;
 
@@ -590,14 +589,9 @@ namespace Squared.Render {
                 "GradientMaskedBitmapTechnique"
             );
 
-            ScreenSpaceBitmapWithLUT = NewMaterial(
+            BitmapWithLUT = NewMaterial(
                 bitmapShader,
-                "ScreenSpaceBitmapWithLUTTechnique"
-            );
-
-            WorldSpaceBitmapWithLUT = NewMaterial(
-                bitmapShader,
-                "WorldSpaceBitmapWithLUTTechnique"
+                "BitmapWithLUTTechnique"
             );
 
             BitmapToSRGB = NewMaterial(
@@ -612,29 +606,17 @@ namespace Squared.Render {
 
             var defaultOffset = Vector2.One;
 
-            ScreenSpaceShadowedBitmap = NewMaterial(
+            ShadowedBitmap = NewMaterial(
                 bitmapShader,
-                "ScreenSpaceShadowedBitmapTechnique"
+                "ShadowedBitmapTechnique"
             );
-            ScreenSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(defaultOffset);
+            ShadowedBitmap.Parameters.ShadowOffset.SetValue(defaultOffset);
 
-            WorldSpaceShadowedBitmap = NewMaterial(
+            ShadowedBitmapWithDiscard = NewMaterial(
                 bitmapShader,
-                "WorldSpaceShadowedBitmapTechnique"
+                "ShadowedBitmapWithDiscardTechnique"
             );
-            WorldSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(defaultOffset);
-
-            ScreenSpaceShadowedBitmapWithDiscard = NewMaterial(
-                bitmapShader,
-                "ScreenSpaceShadowedBitmapWithDiscardTechnique"
-            );
-            ScreenSpaceShadowedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(defaultOffset);
-
-            WorldSpaceShadowedBitmapWithDiscard = NewMaterial(
-                bitmapShader,
-                "WorldSpaceShadowedBitmapWithDiscardTechnique"
-            );
-            WorldSpaceShadowedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(defaultOffset);
+            ShadowedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(defaultOffset);
 
             OutlinedBitmap = NewMaterial(
                 bitmapShader,
@@ -665,34 +647,19 @@ namespace Squared.Render {
                 "BitmapWithDiscardTechnique"
             );
 
-            ScreenSpaceStippledBitmap = NewMaterial(
+            StippledBitmap = NewMaterial(
                 stippledShader,
-                "ScreenSpaceStippledBitmapTechnique"
+                "StippledBitmapTechnique"
             );
 
-            WorldSpaceStippledBitmap = NewMaterial(
-                stippledShader,
-                "WorldSpaceStippledBitmapTechnique"
-            );
-
-            ScreenSpacePalettedBitmap = NewMaterial(
+            PalettedBitmap = NewMaterial(
                 palettedShader,
-                "ScreenSpacePalettedBitmapTechnique"
+                "PalettedBitmapTechnique"
             );
 
-            WorldSpacePalettedBitmap = NewMaterial(
+            PalettedBitmapWithDiscard = NewMaterial(
                 palettedShader,
-                "WorldSpacePalettedBitmapTechnique"
-            );
-
-            ScreenSpacePalettedBitmapWithDiscard = NewMaterial(
-                palettedShader,
-                "ScreenSpacePalettedBitmapWithDiscardTechnique"
-            );
-
-            WorldSpacePalettedBitmapWithDiscard = NewMaterial(
-                palettedShader,
-                "WorldSpacePalettedBitmapWithDiscardTechnique"
+                "PalettedBitmapWithDiscardTechnique"
             );
 
             LoadHSLMaterials(hslShader);
@@ -725,24 +692,14 @@ namespace Squared.Render {
 
             var lightmapShader = BuiltInShaders.Load("Lightmap");
 
-            ScreenSpaceLightmappedBitmap = NewMaterial(
+            LightmappedBitmap = NewMaterial(
                 lightmapShader,
-                "ScreenSpaceLightmappedBitmap"
+                "LightmappedBitmap"
             );
 
-            WorldSpaceLightmappedBitmap = NewMaterial(
+            LightmappedsRGBBitmap = NewMaterial(
                 lightmapShader,
-                "WorldSpaceLightmappedBitmap"
-            );
-
-            ScreenSpaceLightmappedsRGBBitmap = NewMaterial(
-                lightmapShader,
-                "ScreenSpaceLightmappedsRGBBitmap"
-            );
-
-            WorldSpaceLightmappedsRGBBitmap = NewMaterial(
-                lightmapShader,
-                "WorldSpaceLightmappedsRGBBitmap"
+                "LightmappedsRGBBitmap"
             );
 
             JumpFloodInit = NewMaterial(
@@ -764,10 +721,8 @@ namespace Squared.Render {
                 Bitmap,
                 BitmapToSRGB,
                 BitmapToLinear,
-                ScreenSpaceShadowedBitmap,
-                WorldSpaceShadowedBitmap,
-                ScreenSpaceShadowedBitmapWithDiscard,
-                WorldSpaceShadowedBitmapWithDiscard,
+                ShadowedBitmap,
+                ShadowedBitmapWithDiscard,
                 BitmapWithDiscard,
                 CrossfadeBitmap,
                 AtopBitmap,
@@ -784,31 +739,19 @@ namespace Squared.Render {
             };
 
             var filterMaterials = new[] {
-                ScreenSpaceBitmapWithLUT,
-                WorldSpaceBitmapWithLUT,
-                ScreenSpaceStippledBitmap,
-                WorldSpaceStippledBitmap,
-                ScreenSpacePalettedBitmap,
-                WorldSpacePalettedBitmap,
-                ScreenSpacePalettedBitmapWithDiscard,
-                WorldSpacePalettedBitmapWithDiscard,
-                ScreenSpaceHueBitmap,
-                WorldSpaceHueBitmap,
-                ScreenSpaceHueBitmapWithDiscard,
-                WorldSpaceHueBitmapWithDiscard,
-                ScreenSpaceSepiaBitmap,
-                WorldSpaceSepiaBitmap,
+                BitmapWithLUT,
+                StippledBitmap,
+                PalettedBitmap,
+                PalettedBitmapWithDiscard,
+                HueBitmap,
+                HueBitmapWithDiscard,
+                SepiaBitmap,
                 HighlightColorBitmap,
-                ScreenSpaceLightmappedBitmap,
-                ScreenSpaceLightmappedsRGBBitmap,
-                ScreenSpaceHorizontalGaussianBlur,
-                ScreenSpaceVerticalGaussianBlur,
-                ScreenSpaceRadialGaussianBlur,
-                WorldSpaceLightmappedBitmap,
-                WorldSpaceLightmappedsRGBBitmap,
-                WorldSpaceHorizontalGaussianBlur,
-                WorldSpaceVerticalGaussianBlur,
-                WorldSpaceRadialGaussianBlur,
+                LightmappedBitmap,
+                LightmappedsRGBBitmap,
+                HorizontalGaussianBlur,
+                VerticalGaussianBlur,
+                RadialGaussianBlur,
                 GaussianOutlined,
                 GaussianOutlinedWithDiscard,
                 RadialMaskSoftening
@@ -825,78 +768,43 @@ namespace Squared.Render {
         }
 
         private void LoadHSLMaterials (Effect hslShader) {
-            ScreenSpaceHueBitmap = NewMaterial(
-                            hslShader,
-                            "ScreenSpaceHueBitmapTechnique"
-                        );
-
-            WorldSpaceHueBitmap = NewMaterial(
+            HueBitmap = NewMaterial(
                 hslShader,
-                "WorldSpaceHueBitmapTechnique"
+                "HueBitmapTechnique"
             );
 
-            ScreenSpaceHueBitmapWithDiscard = NewMaterial(
+            HueBitmapWithDiscard = NewMaterial(
                 hslShader,
-                "ScreenSpaceHueBitmapWithDiscardTechnique"
+                "HueBitmapWithDiscardTechnique"
             );
 
-            WorldSpaceHueBitmapWithDiscard = NewMaterial(
+            SepiaBitmap = NewMaterial(
                 hslShader,
-                "WorldSpaceHueBitmapWithDiscardTechnique"
+                "SepiaBitmapTechnique"
             );
 
-            ScreenSpaceSepiaBitmap = NewMaterial(
+            SepiaBitmapWithDiscard = NewMaterial(
                 hslShader,
-                "ScreenSpaceSepiaBitmapTechnique"
-            );
-
-            WorldSpaceSepiaBitmap = NewMaterial(
-                hslShader,
-                "WorldSpaceSepiaBitmapTechnique"
-            );
-
-            ScreenSpaceSepiaBitmapWithDiscard = NewMaterial(
-                hslShader,
-                "ScreenSpaceSepiaBitmapWithDiscardTechnique"
-            );
-
-            WorldSpaceSepiaBitmapWithDiscard = NewMaterial(
-                hslShader,
-                "WorldSpaceSepiaBitmapWithDiscardTechnique"
+                "SepiaBitmapWithDiscardTechnique"
             );
         }
 
         private void LoadBlurMaterials () {
             var blurShader = BuiltInShaders.Load("GaussianBlur");
 
-            ScreenSpaceHorizontalGaussianBlur = NewMaterial(
+            HorizontalGaussianBlur = NewMaterial(
                 blurShader,
-                "ScreenSpaceHorizontalGaussianBlur"
+                "HorizontalGaussianBlur"
             );
 
-            ScreenSpaceVerticalGaussianBlur = NewMaterial(
+            VerticalGaussianBlur = NewMaterial(
                 blurShader,
-                "ScreenSpaceVerticalGaussianBlur"
+                "VerticalGaussianBlur"
             );
 
-            ScreenSpaceRadialGaussianBlur = NewMaterial(
+            RadialGaussianBlur = NewMaterial(
                 blurShader,
-                "ScreenSpaceRadialGaussianBlur"
-            );
-
-            WorldSpaceHorizontalGaussianBlur = NewMaterial(
-                blurShader,
-                "WorldSpaceHorizontalGaussianBlur"
-            );
-
-            WorldSpaceVerticalGaussianBlur = NewMaterial(
-                blurShader,
-                "WorldSpaceVerticalGaussianBlur"
-            );
-
-            WorldSpaceRadialGaussianBlur = NewMaterial(
-                blurShader,
-                "WorldSpaceRadialGaussianBlur"
+                "RadialGaussianBlur"
             );
 
             GaussianOutlined = NewMaterial(

@@ -140,7 +140,7 @@ namespace Squared.PRGUI {
                         LastHoverLoss = NowL;
                     // If the mouse moves off of a control and then back onto it, we shouldn't restart the fade-in
                     //  animation, it'll look really bad
-                    if (PreviousHovering != value)
+                    if ((PreviousHovering != value) && (value != null))
                         LastHoverGain = NowL;
                     // We want to always keep a control in PreviousHovering so that fade-outs will work
                     if (previous != null)

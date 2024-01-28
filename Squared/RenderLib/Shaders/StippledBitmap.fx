@@ -49,20 +49,11 @@ void StippledPixelShader(
     }
 }
 
-technique WorldSpaceStippledBitmapTechnique
+technique StippledBitmapTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 StippledPixelShader();
-    }
-}
-
-technique ScreenSpaceStippledBitmapTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 StippledPixelShader();
     }
 }
