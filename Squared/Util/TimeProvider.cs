@@ -13,13 +13,13 @@ namespace Squared.Util {
         /// The length of a second in ticks.
         /// </summary>
         public const long SecondInTicks = 10000000;
-
         public const double SecondInTicksD = SecondInTicks;
 
         /// <summary>
         /// The length of a millisecond in ticks.
         /// </summary>
         public const long MillisecondInTicks = SecondInTicks / 1000;
+        public const double MillisecondInTicksD = MillisecondInTicks;
 
         /// <summary>
         /// The default time provider.
@@ -40,6 +40,16 @@ namespace Squared.Util {
             }
         }
 
+        public static long TicksFromSeconds (double seconds) {
+            // FIXME: Split seconds and subseconds? Probably not important
+            return (long)(seconds * SecondInTicksD);
+        }
+
+        public static long TicksFromMsecs (double msecs) {
+            // FIXME: Split seconds and subseconds? Probably not important
+            return (long)(msecs * MillisecondInTicksD);
+        }
+
         public static double SecondsFromTicks (long ticks) {
             long seconds = ticks / SecondInTicks;
             double subsec = (ticks - (seconds * SecondInTicks)) / SecondInTicksD;
@@ -48,6 +58,20 @@ namespace Squared.Util {
 
         static Time () {
             DefaultTimeProvider = new DotNetTimeProvider();
+        }
+    }
+
+    public static class TimeExtensions {
+        public static long MsecFromNow (this ITimeProvider provider, double msecs) {
+            var now = provider.Ticks;
+            var duration = Time.TicksFromMsecs(msecs);
+            return now + duration;
+        }
+
+        public static long SecondsFromNow (this ITimeProvider provider, double seconds) {
+            var now = provider.Ticks;
+            var duration = Time.TicksFromSeconds(seconds);
+            return now + duration;
         }
     }
 
