@@ -116,7 +116,7 @@ namespace Squared.Task {
     }
 
     struct SleepItem : IComparable<SleepItem> {
-        private static readonly long WarningLatency = TimeSpan.FromMilliseconds(2).Ticks;
+        private static readonly long WarningLatency = 2 * Time.MillisecondInTicks;
 
         public long Until;
         public IFuture Future;

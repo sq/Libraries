@@ -421,15 +421,15 @@ namespace Squared.Task {
                 DefaultTimeProvider = Time.DefaultTimeProvider;
 
             _InitialNow = DefaultTimeProvider.Ticks;
-            _Duration = TimeSpan.FromSeconds(duration).Ticks;
+            _Duration = Time.TicksFromSeconds(duration);
         }
 
         public double Duration {
             set {
-                _Duration = TimeSpan.FromSeconds(value).Ticks;
+                _Duration = Time.TicksFromSeconds(value);
             }
             get {
-                return TimeSpan.FromTicks(_Duration).TotalSeconds;
+                return Time.SecondsFromTicks(_Duration);
             }
         }
 

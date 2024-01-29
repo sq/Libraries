@@ -641,7 +641,7 @@ namespace Squared.Render {
             get {
                 var now = Time.Ticks;
                 var timeSinceReset = (now - TimeOfLastResetOrDeviceChange);
-                var threshold = TimeSpan.FromMilliseconds(500).Ticks;
+                var threshold = Time.TicksFromMsecs(500);
                 if (timeSinceReset < threshold)
                     return true;
 

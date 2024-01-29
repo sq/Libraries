@@ -703,11 +703,11 @@ namespace Squared.Threading {
         }
 
         void IFuture.RegisterOnResolved (OnFutureResolved handler) {
-            RegisterHandler_Impl(handler, HandlerType.Resolved, false);
+            RegisterHandler_Impl(handler, HandlerType.Resolved);
         }
 
         void IFuture.RegisterOnResolved (Action handler) {
-            RegisterHandler_Impl(handler, HandlerType.Resolved, false);
+            RegisterHandler_Impl(handler, HandlerType.Resolved);
         }
 
         /// <summary>

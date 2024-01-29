@@ -348,6 +348,7 @@ namespace Squared.PRGUI {
                         ((Batch)item.Renderer.Container).Layer = i++;
                     }
 
+                    // FIXME: Switch to releasing extra RTs on a delay instead of immediately
                     var retainCount = Math.Max(1, ScratchRenderTargetsUsedThisFrame);
                     for (int j = ScratchRenderTargets.Count - 1; j >= retainCount; j--) {
                         var srt = ScratchRenderTargets.DangerousGetItem(j);

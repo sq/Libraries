@@ -117,7 +117,7 @@ namespace Squared.Game.Input {
                 return;
 
             long now = Time.Ticks;
-            long repeatRate = TimeSpan.FromSeconds(GetRepeatRate()).Ticks;
+            long repeatRate = Time.TicksFromSeconds(GetRepeatRate());
 
             _UpdateFlag = _UpdateFlag + 1;
 

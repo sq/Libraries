@@ -222,7 +222,7 @@ namespace Squared.Task {
                 if (timeout <= 0)
                     timeout = DefaultWaitTimeout;
 
-                int timeoutMs = (int)Math.Ceiling(TimeSpan.FromSeconds(timeout).TotalMilliseconds);
+                int timeoutMs = (int)Math.Ceiling(timeout * 1000);
 
                 try {
                     if (_Queue.Count > 0)

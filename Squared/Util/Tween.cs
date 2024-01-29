@@ -35,12 +35,12 @@ namespace Squared.Util {
             where T : struct {
             return StartNow(
                 from, to,
-                ticks: TimeSpan.FromSeconds(seconds).Ticks,
-                delay: TimeSpan.FromSeconds(delay.GetValueOrDefault(0)).Ticks,
+                ticks: Time.TicksFromSeconds(seconds),
+                delay: Time.TicksFromSeconds(delay.GetValueOrDefault(0)),
                 now: now, interpolator: interpolator, repeatCount: repeatCount,
                 repeatMode: repeatMode,
-                repeatDelay: TimeSpan.FromSeconds(repeatDelay).Ticks,
-                repeatExtraDuration: TimeSpan.FromSeconds(repeatExtraDuration).Ticks
+                repeatDelay: Time.TicksFromSeconds(repeatDelay),
+                repeatExtraDuration: Time.TicksFromSeconds(repeatExtraDuration)
             );
         }
 
@@ -140,11 +140,11 @@ namespace Squared.Util {
             // FIXME: TimeSpan.FromSeconds sucks, so don't use it here.
             return StartNow(
                 from, to,
-                ticks: TimeSpan.FromSeconds(seconds).Ticks,
-                delay: TimeSpan.FromSeconds(delay.GetValueOrDefault(0)).Ticks,
+                ticks: Time.TicksFromSeconds(seconds),
+                delay: Time.TicksFromSeconds(delay.GetValueOrDefault(0)),
                 now: now, interpolator: interpolator, repeatCount: repeatCount,
-                repeatMode: repeatMode, repeatDelay: TimeSpan.FromSeconds(repeatDelay).Ticks,
-                repeatExtraDuration: TimeSpan.FromSeconds(repeatExtraDuration).Ticks
+                repeatMode: repeatMode, repeatDelay: Time.TicksFromSeconds(repeatDelay),
+                repeatExtraDuration: Time.TicksFromSeconds(repeatExtraDuration)
             );
         }
 

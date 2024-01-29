@@ -618,12 +618,12 @@ namespace Squared.PRGUI {
 
             if (state.IsFlagged(ControlStates.PreviouslyHovering)) {
                 if (length > 0)
-                    previousAlpha = 1f - Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverLoss).TotalSeconds / length);
+                    previousAlpha = 1f - Arithmetic.Saturate((float)Time.SecondsFromTicks(context.NowL - context.UIContext.LastHoverLoss) / length);
             }
 
             if (isHovering) {
                 if (length > 0)
-                    newAlpha = Arithmetic.Saturate((float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastHoverGain).TotalSeconds / length);
+                    newAlpha = Arithmetic.Saturate((float)Time.SecondsFromTicks(context.NowL - context.UIContext.LastHoverGain) / length);
                 else
                     newAlpha = 1f;
             }
@@ -650,7 +650,7 @@ namespace Squared.PRGUI {
             if (state.IsFlagged(ControlStates.Hovering) && isFocused)
                 return 1;
 
-            var result = (float)TimeSpan.FromTicks(context.NowL - context.UIContext.LastFocusChange).TotalSeconds / (fadeLength ?? FocusFadeLength);
+            var result = (float)Time.SecondsFromTicks(context.NowL - context.UIContext.LastFocusChange) / (fadeLength ?? FocusFadeLength);
             if (!isFocused)
                 return state.IsFlagged(ControlStates.PreviouslyFocused)
                     ? 1 - Arithmetic.Saturate(result)
