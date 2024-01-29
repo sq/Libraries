@@ -166,11 +166,11 @@ namespace Squared.Util {
                 destination.Add(this[i]);
         }
 
-        public void CopyTo (T[] destination) => CopyTo(destination, 0, _Count);
+        public void CopyTo (T[] destination) => CopyTo(destination, 0, Count);
 
         public void CopyTo (T[] destination, int destinationOffset, int count) {
             var items = _Items;
-            if ((count > _Count) || (count < 0))
+            if ((count > Count) || (count < 0))
                 throw new ArgumentOutOfRangeException(nameof(count));
             if (count + destinationOffset > destination.Length)
                 throw new ArgumentOutOfRangeException(nameof(destinationOffset));
@@ -1041,13 +1041,14 @@ namespace Squared.Util {
         }
 
         private int IndexOf_Small<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
-            if ((_Count > 0) && predicate(in Item1, in userData))
+            var count = _Count;
+            if ((count > 0) && predicate(in Item1, in userData))
                 return 0;
-            if ((_Count > 1) && predicate(in Item2, in userData))
+            if ((count > 1) && predicate(in Item2, in userData))
                 return 1;
-            if ((_Count > 2) && predicate(in Item3, in userData))
+            if ((count > 2) && predicate(in Item3, in userData))
                 return 2;
-            if ((_Count > 3) && predicate(in Item4, in userData))
+            if ((count > 3) && predicate(in Item4, in userData))
                 return 3;
             return -1;
         }
@@ -1072,13 +1073,14 @@ namespace Squared.Util {
         }
 
         private int IndexOf_Small (Predicate predicate) {
-            if ((_Count > 0) && predicate(in Item1))
+            var count = _Count;
+            if ((count > 0) && predicate(in Item1))
                 return 0;
-            if ((_Count > 1) && predicate(in Item2))
+            if ((count > 1) && predicate(in Item2))
                 return 1;
-            if ((_Count > 2) && predicate(in Item3))
+            if ((count > 2) && predicate(in Item3))
                 return 2;
-            if ((_Count > 3) && predicate(in Item4))
+            if ((count > 3) && predicate(in Item4))
                 return 3;
             return -1;
         }
@@ -1103,13 +1105,14 @@ namespace Squared.Util {
         }
 
         private int IndexOf_Small (Func<T, bool> predicate) {
-            if ((_Count > 0) && predicate(Item1))
+            var count = _Count;
+            if ((count > 0) && predicate(Item1))
                 return 0;
-            if ((_Count > 1) && predicate(Item2))
+            if ((count > 1) && predicate(Item2))
                 return 1;
-            if ((_Count > 2) && predicate(Item3))
+            if ((count > 2) && predicate(Item3))
                 return 2;
-            if ((_Count > 3) && predicate(Item4))
+            if ((count > 3) && predicate(Item4))
                 return 3;
             return -1;
         }
