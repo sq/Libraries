@@ -191,7 +191,7 @@ namespace PRGUI.Demo {
 
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
-            TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
+            TextMaterial = Materials.Get(Materials.ShadowedBitmap, blendState: BlendState.AlphaBlend);
             TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.8f));
             TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.75f * DPIFactor);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1.33f);
@@ -1869,7 +1869,7 @@ namespace PRGUI.Demo {
 
         public WindowCompositor (DefaultMaterialSet materials) {
             Materials = materials;
-            Material = Materials.Get(Materials.WorldSpaceRadialGaussianBlur, blendState: RenderStates.PorterDuffOver);
+            Material = Materials.Get(Materials.RadialGaussianBlur, blendState: RenderStates.PorterDuffOver);
         }
 
         public void AfterIssueComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall) {

@@ -315,7 +315,7 @@ namespace FontTest {
             foreach (var dc in layout.DrawCalls)
                 ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
 
-            var m = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
+            var m = Materials.Get(Materials.ShadowedBitmap, blendState: BlendState.AlphaBlend);
             m.Parameters.ShadowColor.SetValue(Color.Red.ToVector4());
             m.Parameters.ShadowOffset.SetValue(new Vector2(1f, 1f));
 

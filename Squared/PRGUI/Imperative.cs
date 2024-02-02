@@ -810,6 +810,14 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> SetText (string value) {
+            var cast1 = (Control as StaticTextBase);
+            var cast2 = (Control as EditableText);
+            cast1?.SetTextInternal((ImmutableAbstractString)value, true);
+            cast2?.SetText(value, false);
+            return this;
+        }
+
         public ControlBuilder<TControl> SetText (AbstractString value) {
             var cast1 = (Control as StaticTextBase);
             var cast2 = (Control as EditableText);
