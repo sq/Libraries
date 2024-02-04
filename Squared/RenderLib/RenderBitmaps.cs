@@ -220,6 +220,9 @@ namespace Squared.Render {
         void Add (BitmapDrawCall item);
         void Add (ref BitmapDrawCall item);
         void AddRange (ArraySegment<BitmapDrawCall> items);
+
+        BitmapDrawCall FirstDrawCall { get; }
+        BitmapDrawCall LastDrawCall { get; }
     }
 
     public static class QuadUtils {

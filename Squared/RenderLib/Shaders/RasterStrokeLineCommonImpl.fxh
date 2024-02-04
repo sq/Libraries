@@ -63,11 +63,7 @@ float IMPL_NAME (
         float t = i * stepT,
             d = t * l,
             globalD = d + distanceTraveled,
-            // FIXME: Right now if tapering is enabled the taper1 value for the first splat is always 0
-            // The ideal would be for it to start at a very low value based on spacing or length
-            taper1 = abs(taperRanges.x) >= 1 ? saturate((globalD - taperRanges.z) / abs(taperRanges.x)) : 1,
-            taper2 = abs(taperRanges.y) >= 1 ? saturate((taperedL - globalD + taperRanges.z) / taperRanges.y) : 1,
-            taper = min(taper1, taper2);
+            taper = computeTaper(taperedL, globalD, taperRanges);
         float localRadius = abs(Constants1.x) * saturate(1 + lerp(localRadiuses.x, localRadiuses.y, t));
         float sizePx = evaluateDynamics2((localRadius + biases.x) * maxSize, maxSize, SizeDynamics, float4(taper, i, noise1.x, angleFactor), Constants1.x < 0, maxSize);
         if (sizePx <= 0)
@@ -174,8 +170,12 @@ float IMPL_NAME (
     }
 
     // The best we can do :( At least it looks pretty good for lines.
-    if (Ramped)
-        result = tex2Dlod(RampSampler, float4(result.r, centerT, 0, 0));
+    if (Ramped) {
+        // FIXME
+        float rampTaper = computeTaper(taperedL, centerD, taperRanges), rampNoise = 0, rampAngle = 0;
+        float rampV = evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(rampTaper, centerT, rampNoise, rampAngle), 1.0);
+        result = tex2Dlod(RampSampler, float4(result.r, rampV, 0, 0));
+    }
     
     return ceil(l / stepPx);
 }

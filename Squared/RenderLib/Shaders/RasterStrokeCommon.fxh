@@ -92,6 +92,14 @@ uniform const float4 SizeDynamics, AngleDynamics, FlowDynamics,
     ACCEPTS_VPOS, \
     out float4 result : COLOR0
 
+float computeTaper (float l, float d, float4 taperRanges) {
+    // FIXME: Right now if tapering is enabled the taper1 value for the first splat is always 0
+    // The ideal would be for it to start at a very low value based on spacing or length
+    float taper1 = abs(taperRanges.x) >= 1 ? saturate((d - taperRanges.z) / abs(taperRanges.x)) : 1,
+        taper2 = abs(taperRanges.y) >= 1 ? saturate((l - d + taperRanges.z) / taperRanges.y) : 1;
+    return min(taper1, taper2);
+}
+
 // approximate coverage of pixel-circle intersection (for a round pixel)
 // we ideally would model this as a square-circle intersection, but the math for that
 //  is MUCH more complex for a minimal quality increase. so instead, we use a circle that

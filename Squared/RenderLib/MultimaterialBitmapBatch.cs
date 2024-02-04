@@ -295,5 +295,8 @@ namespace Squared.Render {
 
             return true;
         }
+
+        BitmapDrawCall IBitmapBatch.FirstDrawCall => FirstDrawCall.DrawCall;
+        BitmapDrawCall IBitmapBatch.LastDrawCall => LastDrawCall.DrawCall;
     }
 }

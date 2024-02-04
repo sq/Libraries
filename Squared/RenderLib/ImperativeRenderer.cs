@@ -1835,8 +1835,8 @@ namespace Squared.Render.Convenience {
         }
 
         public IBitmapBatch GetBitmapBatch (
-            int? layer, bool? worldSpace, BlendState blendState, 
-            SamplerState samplerState, DepthStencilState depthStencilState = null, 
+            int? layer = null, bool? worldSpace = null, BlendState blendState = null, 
+            SamplerState samplerState = null, DepthStencilState depthStencilState = null, 
             RasterizerState rasterizerState = null, Material customMaterial = null, SamplerState samplerState2 = null,
             int? capacity = null
         ) {
@@ -1963,8 +1963,8 @@ namespace Squared.Render.Convenience {
         }
 
         public RasterShapeBatch GetRasterShapeBatch (
-            int? layer, bool? worldSpace, BlendState blendState, Texture2D texture, 
-            SamplerState samplerState, Texture2D rampTexture, Vector2? rampUVOffset
+            int? layer = null, bool? worldSpace = null, BlendState blendState = null, Texture2D texture = null, 
+            SamplerState samplerState = null, Texture2D rampTexture = null, Vector2? rampUVOffset = null
         ) {
             if (Config.Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
