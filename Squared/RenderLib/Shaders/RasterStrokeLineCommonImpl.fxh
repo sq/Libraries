@@ -135,14 +135,16 @@ float IMPL_NAME (
             //  partial coverage at circle edges, so an exact rejection is not right
             if (outOfRange || (g >= discardDistance))
                 continue;
+            
+            float r;
 
             PREFER_BRANCH
             // FIXME: radius - 1 might be too conservative
             if ((distance >= (radius - 1)) || (radius <= 2)) {
                 // HACK: Approximate pixel coverage calculation near edges / for tiny circles
-                color = approxPixelCoverage(worldPosition, center, radius);
+                r = approxPixelCoverage(worldPosition, center, radius);
             } else {
-                color = 1;
+                r = 1;
             }
 
             if (hardness < 1) {
@@ -152,21 +154,28 @@ float IMPL_NAME (
                 g /= falloff;
                 g = saturate(g + 0.05);
                 g = sin(g * PI * 0.5);
-                color *= 1 - g;
+                r *= 1 - g;
             }
+            
+            color = r;
         }
 
-        // HACK: Avoid accumulating error
-        if (color.a > 0) {
+        // FIXME: Doing ramp sampling here instead of at the end hits a bug in fxc and everything breaks.
+        if (!Ramped)
             // TODO: Interpolate based on outer edges instead of center points,
             //  so that we don't get a nasty hard edge at the end
             color = lerp(
                 colorA, colorB, colorFactor
             ) * color;
 
+        // HACK: Avoid accumulating error.
+        if (color.a > 0)
             result = over(color, flow, result, 1);
-        }
     }
 
+    // The best we can do :( At least it looks pretty good for lines.
+    if (Ramped)
+        result = tex2Dlod(RampSampler, float4(result.r, centerT, 0, 0));
+    
     return ceil(l / stepPx);
 }

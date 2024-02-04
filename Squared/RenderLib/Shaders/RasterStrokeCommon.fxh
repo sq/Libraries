@@ -12,6 +12,12 @@
 #define Textured 1
 #endif
 
+#if Ramped
+#define Shadowed 0
+#define Untextured 1
+#define Textured 0
+#endif
+
 #define PI 3.14159265358979323846
 // If we use 0.0 - 1.0 range values, denormals cause artifacts at small sizes :(
 #define PIXEL_COVERAGE_BIAS 500.0
@@ -40,6 +46,11 @@ sampler NozzleSampler : register(s0) {
 Texture2D NoiseTexture : register(t1);
 sampler NoiseSampler : register(s1) {
     Texture = (NoiseTexture);
+};
+
+Texture2D RampTexture : register(t3);
+sampler RampSampler : register(s3) {
+    Texture = (RampTexture);
 };
 
 uniform const bool BlendInLinearSpace, OutputInLinearSpace, UsesNoise;
@@ -144,8 +155,7 @@ void evaluateLineSegment(
     float localRadius = radius.x + lerp(c.y, radius.y, t);
     distance = length(worldPosition - closestPoint) - localRadius;
 
-    float fakeY = 0; // FIXME
-    gradientWeight = float2(saturate(t), fakeY);
+    gradientWeight = float2(saturate(t), distance / localRadius);
 }
 
 // porter-duff A over B

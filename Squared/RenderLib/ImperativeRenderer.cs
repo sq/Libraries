@@ -2066,7 +2066,7 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState1: brush.NozzleSamplerState,
                 samplerState2: null,
-                extraData: brush.NozzleAtlas
+                extraData: brush.NozzleAtlas ?? brush.Ramp
             ) || !((RasterStrokeBatch)cacheEntry.Batch).Brush.Equals(ref brush)
               || !((RasterStrokeBatch)cacheEntry.Batch).DitheringSettings.HasValue != DisableDithering
             ) {

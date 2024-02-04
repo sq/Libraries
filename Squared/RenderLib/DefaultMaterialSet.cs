@@ -831,20 +831,23 @@ namespace Squared.Render {
                 untexturedShadowedName = BuiltInShaderManifest.FindVariant(name, "UntexturedShadowed", "1"),
                 texturedShadowedName = BuiltInShaderManifest.FindVariant(name, "TexturedShadowed", "1"),
                 untexturedBezierName = BuiltInShaderManifest.FindVariant(name, "UntexturedBezier", "1"),
-                texturedBezierName = BuiltInShaderManifest.FindVariant(name, "TexturedBezier", "1");
+                texturedBezierName = BuiltInShaderManifest.FindVariant(name, "TexturedBezier", "1"),
+                rampedName = BuiltInShaderManifest.FindVariant(name, "Ramped", "1");
 
             Effect untextured = BuiltInShaders.Load(untexturedName),
                 textured = BuiltInShaders.Load(texturedName),
                 untexturedShadowed = untexturedShadowedName == null ? null : BuiltInShaders.Load(untexturedShadowedName, true, true),
                 texturedShadowed = texturedShadowedName == null ? null : BuiltInShaders.Load(texturedShadowedName, true, true),
                 untexturedBezier = untexturedBezierName == null ? null : BuiltInShaders.Load(untexturedBezierName, true, true),
-                texturedBezier = texturedBezierName == null ? null : BuiltInShaders.Load(texturedBezierName, true, true);
+                texturedBezier = texturedBezierName == null ? null : BuiltInShaders.Load(texturedBezierName, true, true),
+                ramped = rampedName == null ? null : BuiltInShaders.Load(rampedName, true, true);
             Material material1 = NewMaterial(untextured, untexturedName),
                 material2 = NewMaterial(textured, texturedName),
                 material3 = untexturedShadowed == null ? null : NewMaterial(untexturedShadowed, untexturedShadowedName),
                 material4 = texturedShadowed == null ? null : NewMaterial(texturedShadowed, texturedShadowedName),
                 material5 = untexturedBezier == null ? null : NewMaterial(untexturedBezier, untexturedBezierName),
-                material6 = texturedBezier == null ? null : NewMaterial(texturedBezier, texturedBezierName);
+                material6 = texturedBezier == null ? null : NewMaterial(texturedBezier, texturedBezierName),
+                material7 = ramped == null ? null : NewMaterial(ramped, rampedName);
 
             material1.Name = $"{type}_Untextured";
             material2.Name = $"{type}_Textured";
@@ -856,6 +859,8 @@ namespace Squared.Render {
                 material5.Name = $"{type}_UntexturedBezier";
             if (material6 != null)
                 material6.Name = $"{type}_TexturedBezier";
+            if (material7 != null)
+                material7.Name = $"{type}_Ramped";
 
             var strokeHint = new Material.PipelineHint {
                 HasIndices = true,
@@ -890,6 +895,8 @@ namespace Squared.Render {
                         material5.HintPipeline = strokeHint;
                     if (material6 != null)
                         material6.HintPipeline = strokeHint;
+                    if (material7 != null)
+                        material7.HintPipeline = strokeHint;
                 }
             }
 
@@ -900,6 +907,7 @@ namespace Squared.Render {
                 texturedShadowed == null ? null : new RasterStroke.StrokeShader(material4),
                 untexturedBezier == null ? null : new RasterStroke.StrokeShader(material5),
                 texturedBezier == null ? null : new RasterStroke.StrokeShader(material6),
+                ramped == null ? null : new RasterStroke.StrokeShader(material7)
             };
             Add(material1);
             Add(material2);
@@ -911,6 +919,8 @@ namespace Squared.Render {
                 Add(material5);
             if (material6 != null)
                 Add(material6);
+            if (material7 != null)
+                Add(material7);
         }
 
         private void LoadRasterStrokeMaterials () {

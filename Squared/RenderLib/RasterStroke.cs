@@ -11,6 +11,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Graphics.PackedVector;
 using Squared.Game;
 using Squared.Render.Buffers;
+using Squared.Render.Evil;
 using Squared.Render.Internal;
 using Squared.Render.RasterShape;
 using Squared.Util;
@@ -81,7 +82,8 @@ namespace Squared.Render.RasterStroke {
             HardnessDynamics,
             ColorDynamics,
             ShadowColor,
-            ShadowSettings;
+            ShadowSettings,
+            RampTexture;
 
         public StrokeShader (Material material) {
             Material = material;
@@ -100,6 +102,7 @@ namespace Squared.Render.RasterStroke {
             ColorDynamics = p["ColorDynamics"];
             ShadowColor = p["ShadowColor"];
             ShadowSettings = p["ShadowSettings"];
+            RampTexture = p["RampTexture"];
         }
     }
 
@@ -169,7 +172,7 @@ namespace Squared.Render.RasterStroke {
     }
 
     public struct RasterBrush {
-        public Texture2D NozzleAtlas;
+        public Texture2D NozzleAtlas, Ramp;
         public SamplerState NozzleSamplerState;
 
         private int _NozzleCountXMinusOne, _NozzleCountYMinusOne;
@@ -290,13 +293,14 @@ namespace Squared.Render.RasterStroke {
         }
 
         public override int GetHashCode () {
-            return NozzleAtlas.GetHashCode();
+            return (NozzleAtlas ?? Ramp).GetHashCode();
         }
 
         public bool Equals (RasterBrush rhs) => Equals(ref rhs);
 
         public bool Equals (ref RasterBrush rhs) {
             return (NozzleAtlas == rhs.NozzleAtlas) &&
+                (Ramp == rhs.Ramp) &&
                 (NozzleSamplerState == rhs.NozzleSamplerState) &&
                 (_NozzleCountXMinusOne == rhs._NozzleCountXMinusOne) &&
                 (_NozzleCountYMinusOne == rhs._NozzleCountYMinusOne) &&
@@ -627,6 +631,7 @@ namespace Squared.Render.RasterStroke {
                 (format == Evil.TextureUtils.ColorSrgbEXT) && (format != SurfaceFormat.Color);
 
             var atlas = Brush.NozzleAtlas;
+            var ramp = Brush.Ramp;
             int nozzleBaseSize = atlas == null
                 ? 1 
                 : Math.Max(atlas.Width / Brush.NozzleCountX, atlas.Height / Brush.NozzleCountY);
@@ -650,6 +655,9 @@ namespace Squared.Render.RasterStroke {
                         idx += 4;
                 } else if (!Brush.ShadowColor.IsTransparent)
                     idx += 2;
+
+                if (ramp != null)
+                    idx = 6;
 
                 var material = Materials.RasterStrokeMaterials[type][idx];
                 if (material == null) {
@@ -704,8 +712,10 @@ namespace Squared.Render.RasterStroke {
                 // HACK: Ensure something is bound
                 device.Textures[0] = atlas ?? NoiseTexture;
                 device.Textures[1] = NoiseTexture;
+                device.Textures[3] = ramp ?? NoiseTexture;
                 device.SamplerStates[0] = Brush.NozzleSamplerState ?? SamplerState.LinearWrap;
                 device.SamplerStates[1] = SamplerState.PointWrap;
+                device.SamplerStates[3] = SamplerState.LinearClamp;
 
                 // Make sure no other vertex textures are bound, it matters
                 for (int j = 0; j < 4; j++)
@@ -740,6 +750,7 @@ namespace Squared.Render.RasterStroke {
                 device.Textures[0] = null;
                 device.Textures[1] = null;
                 device.Textures[2] = null;
+                device.Textures[3] = null;
                 device.VertexTextures[2] = null;
             }
 

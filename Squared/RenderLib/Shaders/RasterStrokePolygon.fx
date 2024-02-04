@@ -1,7 +1,8 @@
 // O3 produces literally 1/3 the instructions of OD or O0 so let's just be kind to the driver
+// Ramped mode produces a broken shader without these /G options
 #pragma fxcparams(/O3 /Zi)
 
-#pragma fxcflagset(Untextured,Textured,UntexturedBezier,TexturedBezier)
+#pragma fxcflagset(Untextured,Textured,UntexturedBezier,TexturedBezier,Ramped)
 
 // uniform const bool ShadowPerSegment;
 
