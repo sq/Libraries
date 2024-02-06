@@ -338,7 +338,28 @@ namespace Squared.Render.STB {
             }
         }
 
-        public Texture2D CreateTexture (RenderCoordinator coordinator, bool padToPowerOfTwo = false, bool sRGB = false, string name = null) {
+        private Texture2D CreateTextureLocked (RenderCoordinator coordinator, bool sRGB, string name, Texture2D existingInstance, int width, int height) {
+            Texture2D result;
+            lock (coordinator.CreateResourceLock) {
+                if (
+                    (existingInstance != null) && (existingInstance.Width == width) && (existingInstance.Height == height) &&
+                    (existingInstance.Format == GetFormat(sRGB, ChannelCount)) && ((existingInstance.LevelCount > 1) == (MipChain != null))
+                ) {
+                    result = existingInstance;
+                    result.Name = name;
+                } else
+                    result = new Texture2D(coordinator.Device, width, height, MipChain != null, GetFormat(sRGB, ChannelCount)) {
+                        Tag = "STB.Image",
+                        Name = name,
+                    };
+
+                coordinator.RegisterAutoAllocatedTextureResource(result);
+            }
+
+            return result;
+        }
+
+        public Texture2D CreateTexture (RenderCoordinator coordinator, bool padToPowerOfTwo = false, bool sRGB = false, string name = null, Texture2D existingInstance = null) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image");
             // FIXME: Channel count
@@ -346,14 +367,7 @@ namespace Squared.Render.STB {
             int width = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Width) : Width;
             var height = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Height) : Height;
 
-            Texture2D result;
-            lock (coordinator.CreateResourceLock) {
-                result = new Texture2D(coordinator.Device, width, height, MipChain != null, GetFormat(sRGB, ChannelCount)) {
-                    Tag = "STB.Image",
-                    Name = name,
-                };
-                coordinator.RegisterAutoAllocatedTextureResource(result);
-            }
+            var result = CreateTextureLocked(coordinator, sRGB, name, existingInstance, width, height);
 
             if (MipChain != null)
                 UploadWithMips(coordinator, result, false);
@@ -363,7 +377,7 @@ namespace Squared.Render.STB {
             return result;
         }
 
-        public Future<Texture2D> CreateTextureAsync (RenderCoordinator coordinator, bool mainThread, bool padToPowerOfTwo, bool sRGB = false, string name = null) {
+        public Future<Texture2D> CreateTextureAsync (RenderCoordinator coordinator, bool mainThread, bool padToPowerOfTwo, bool sRGB = false, string name = null, Texture2D existingInstance = null) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image");
             // FIXME: Channel count
@@ -371,14 +385,7 @@ namespace Squared.Render.STB {
             int width = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Width) : Width;
             var height = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Height) : Height;
 
-            Texture2D tex;
-            lock (coordinator.CreateResourceLock) {
-                tex = new Texture2D(coordinator.Device, width, height, MipChain != null, GetFormat(sRGB, ChannelCount)) {
-                    Tag = "STB.Image",
-                    Name = name,
-                };
-                coordinator.RegisterAutoAllocatedTextureResource(tex);
-            }
+            var tex = CreateTextureLocked(coordinator, sRGB, name, existingInstance, width, height);
 
             Future<Texture2D> result;
             if (MipChain != null)

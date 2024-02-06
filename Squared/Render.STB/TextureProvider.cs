@@ -21,6 +21,11 @@ namespace Squared.Render {
             public int Width, Height;
         }
 
+        /// <summary>
+        /// Specifies an existing Texture2D instance to reuse. Will only be reused if it is suitable.
+        /// </summary>
+        public Texture2D ExistingInstance;
+
         public bool? Premultiply;
         public bool FloatingPoint;
         // If the source image is more than 8 bpp, enable loading it as 16bpp
@@ -115,6 +120,16 @@ namespace Squared.Render {
             OnTextureWithDistanceFieldDisposed = _OnTextureWithDistanceFieldDisposed;
         }
 
+        public IFuture ReloadAsync (string name) {
+            if (!TryGetExisting(name, out var existing, out var options))
+                return null;
+
+            // HACK: Mutate existing options...
+            ((TextureLoadOptions)options).ExistingInstance = existing;
+            return base.ReloadAsync(name, options);
+        }
+
+
         public Texture2D Load (string name, TextureLoadOptions options, bool cached = true, bool optional = false) {
             return base.LoadSync(name, options, cached, optional);
         }
@@ -149,14 +164,14 @@ namespace Squared.Render {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
             var img = (STB.Image)preloadedData;
             if (async) {
-                var f = img.CreateTextureAsync(Coordinator, !EnableThreadedCreate, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB, name: name);
+                var f = img.CreateTextureAsync(Coordinator, !EnableThreadedCreate, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB, name: name, existingInstance: options.ExistingInstance);
                 if (options.GenerateDistanceField)
                     f.RegisterOnComplete(_GenerateDistanceFieldThenDispose, new GDFTFClosure { Image = img, Options = options, Name = name });
                 else
                     f.RegisterOnComplete(_DisposeHandler, img);
                 return f;
             } else {
-                var result = new Future<Texture2D>(img.CreateTexture(Coordinator, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB, name: name));
+                var result = new Future<Texture2D>(img.CreateTexture(Coordinator, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB, name: name, existingInstance: options.ExistingInstance));
                 if (options.GenerateDistanceField)
                     GenerateDistanceFieldThenDispose(result, new GDFTFClosure { Image = img, Options = options, Name = name });
                 else

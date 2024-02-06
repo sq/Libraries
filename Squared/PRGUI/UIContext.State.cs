@@ -248,6 +248,7 @@ namespace Squared.PRGUI {
         internal ConditionalWeakTable<Texture2D, BlendState> TextureBlendStateTable = new ConditionalWeakTable<Texture2D, BlendState>();
 
         public void SetDefaultBlendState (Texture2D texture, BlendState blendState) {
+            TextureBlendStateTable.Remove(texture);
             TextureBlendStateTable.Add(texture, blendState);
         }
 

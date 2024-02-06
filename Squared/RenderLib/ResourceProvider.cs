@@ -571,6 +571,17 @@ namespace Squared.Render.Resources {
             return future;
         }
 
+        protected Future<T> ReloadAsync (AbstractString name, object data) {
+            var result = new Future<T>();
+            var workItem = new PreloadWorkItem {
+                Provider = this,
+                Future = result,
+                LoadInfo = RecordPendingLoad(name, data, false, true)
+            };
+            PreloadQueue.Enqueue(workItem);
+            return result;
+        }
+
         private ResourceLoadInfo RecordPendingLoad (AbstractString name, object data, bool optional, bool async) {
             var result = new ResourceLoadInfo(typeof(T), name.ToString(), data, Now, optional, async);
             lock (PendingLoads)
@@ -586,6 +597,24 @@ namespace Squared.Render.Resources {
                 return false;
             }
             return f.GetResult(out result, out _);
+        }
+
+        public bool TryGetExisting (AbstractString name, out T result, out object data) {
+            result = default;
+            data = default;
+
+            var slc = GetSecondLevelCache(name, false);
+            if (slc == null)
+                return false;
+
+            lock (slc) {
+                if (slc.Count != 1)
+                    return false;
+
+                var item = slc.First();
+                data = item.Key.Data;
+                return item.Value.Future.GetResult(out result);
+            }
         }
 
         public T LoadSync (AbstractString name, object data, bool cached, bool optional) {
