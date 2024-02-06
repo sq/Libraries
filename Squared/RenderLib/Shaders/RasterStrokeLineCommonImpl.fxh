@@ -84,12 +84,13 @@ float IMPL_NAME (
         bool outOfRange = (globalD < taperRanges.z) || (globalD > (totalLength - taperRanges.w));
 
         float r = i * sizePx, radius = sizePx * 0.5;
-        float2 center = CALCULATE_CENTER(t), texCoordScale = atlasScale / sizePx;
-        float distance = length(center - worldPosition);
+        float2 center = CALCULATE_CENTER(t), texCoordScale = atlasScale / sizePx,
+            shapeFactor = float2(Constants3.y, 1);
+        float distance = length((center - worldPosition));
 
         float2x2 rotationMatrix = make2DRotation(-splatAngle);
         float2 posSplatRotated = (worldPosition - center),
-            posSplatDerotated = mul(posSplatRotated, rotationMatrix),
+            posSplatDerotated = mul(posSplatRotated, rotationMatrix) * shapeFactor,
             posSplatDecentered = (posSplatDerotated + radius);
 
         float g = length(posSplatDerotated), discardDistance = (hardness < 1) ? radius + 1 : radius;
@@ -136,8 +137,7 @@ float IMPL_NAME (
             float r;
 
             PREFER_BRANCH
-            // FIXME: radius - 1 might be too conservative
-            if ((distance >= (radius - 1)) || (radius <= 2)) {
+            if ((distance >= (radius - 1.1)) || (radius <= 2.1)) {
                 // HACK: Approximate pixel coverage calculation near edges / for tiny circles
                 r = approxPixelCoverage(worldPosition, center, radius);
             } else {
@@ -184,7 +184,6 @@ float IMPL_NAME (
         stackColor *= lerp(
             colorA, colorB, rampV
         );
-        stackColor *= stack;
         result = over(stackColor, 1, result, 1);
     }
     

@@ -204,10 +204,12 @@ namespace Squared.Render.RasterStroke {
         };
 
         public const float DefaultSpacing = 0.33f;
+        public const float DefaultGamma = 1.0f;
+        public const float DefaultShapeFactor = 1.0f;
 
-        private bool _HasScale, _HasBrushIndex, _HasHardness, _HasColor, _HasFlow, _HasSpacing;
+        private bool _HasScale, _HasBrushIndex, _HasHardness, _HasColor, _HasFlow, _HasSpacing, _HasGamma, _HasShapeFactor;
         private BrushDynamics _Scale, _BrushIndex, _Hardness, _Color, _Flow;
-        private float _Spacing;
+        private float _Spacing, _Gamma, _ShapeFactor;
 
         internal Vector4 _ShadowSettings;
         public Vector2 ShadowOffset {
@@ -229,7 +231,7 @@ namespace Squared.Render.RasterStroke {
 
         public bool AngleFromDirection;
         public BrushDynamics AngleDegrees;
-        public float SizePx, Gamma;
+        public float SizePx;
 
         public BrushDynamics Scale {
             get => _HasScale ? _Scale : DefaultScale;
@@ -279,6 +281,22 @@ namespace Squared.Render.RasterStroke {
             }
         }
 
+        public float Gamma {
+            get => _HasGamma ? _Gamma : DefaultGamma;
+            set {
+                _Gamma = value;
+                _HasGamma = true;
+            }
+        }
+
+        public float ShapeFactor {
+            get => _HasShapeFactor ? _ShapeFactor : DefaultShapeFactor;
+            set {
+                _ShapeFactor = value;
+                _HasShapeFactor = true;
+            }
+        }
+
         public RasterBrush (Texture2D atlas, float sizePx, float spacing = DefaultSpacing, int countX = 1, int countY = 1) : this() {
             NozzleAtlas = atlas;
             NozzleCountX = countX;
@@ -317,7 +335,8 @@ namespace Squared.Render.RasterStroke {
                 (_ShadowSettings == rhs._ShadowSettings) &&
                 (ShadowColor == rhs.ShadowColor) &&
                 (AngleFromDirection == rhs.AngleFromDirection) &&
-                (Gamma == rhs.Gamma);
+                (Gamma == rhs.Gamma) &&
+                (ShapeFactor == rhs.ShapeFactor);
         }
     }
     
@@ -647,7 +666,7 @@ namespace Squared.Render.RasterStroke {
                     Brush.Hardness.UploadConstant, Brush.Color.UploadConstant, Brush.Spacing, Brush.SizePx
                 ),
                 constants3 = new Vector4(
-                    Brush.Gamma, 0, 0, 0
+                    Brush.Gamma, 1.0f / Arithmetic.Clamp(Brush.ShapeFactor, 0.01f, 1.0f), 0, 0
                 ),
                 nozzleParams = new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleBaseSize, Brush.AngleFromDirection ? 1 : 0);
             angle.Y /= 360f;
