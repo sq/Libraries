@@ -75,6 +75,7 @@ namespace Squared.Render.RasterStroke {
             NozzleParams,
             Constants1,
             Constants2,
+            Constants3,
             SizeDynamics,
             AngleDynamics,
             FlowDynamics,
@@ -94,6 +95,7 @@ namespace Squared.Render.RasterStroke {
             NozzleParams = p["NozzleParams"];
             Constants1 = p["Constants1"];
             Constants2 = p["Constants2"];
+            Constants3 = p["Constants3"];
             SizeDynamics = p["SizeDynamics"];
             AngleDynamics = p["AngleDynamics"];
             FlowDynamics = p["FlowDynamics"];
@@ -227,7 +229,7 @@ namespace Squared.Render.RasterStroke {
 
         public bool AngleFromDirection;
         public BrushDynamics AngleDegrees;
-        public float SizePx;
+        public float SizePx, Gamma;
 
         public BrushDynamics Scale {
             get => _HasScale ? _Scale : DefaultScale;
@@ -314,7 +316,8 @@ namespace Squared.Render.RasterStroke {
                 (Color == rhs.Color) &&
                 (_ShadowSettings == rhs._ShadowSettings) &&
                 (ShadowColor == rhs.ShadowColor) &&
-                (AngleFromDirection == rhs.AngleFromDirection);
+                (AngleFromDirection == rhs.AngleFromDirection) &&
+                (Gamma == rhs.Gamma);
         }
     }
     
@@ -643,6 +646,9 @@ namespace Squared.Render.RasterStroke {
                 constants2 = new Vector4(
                     Brush.Hardness.UploadConstant, Brush.Color.UploadConstant, Brush.Spacing, Brush.SizePx
                 ),
+                constants3 = new Vector4(
+                    Brush.Gamma, 0, 0, 0
+                ),
                 nozzleParams = new Vector4(Brush.NozzleCountX, Brush.NozzleCountY, nozzleBaseSize, Brush.AngleFromDirection ? 1 : 0);
             angle.Y /= 360f;
 
@@ -684,6 +690,7 @@ namespace Squared.Render.RasterStroke {
                 material.ColorDynamics.SetValue(Brush.Color.ToVector4());
                 material.Constants1.SetValue(constants1);
                 material.Constants2.SetValue(constants2);
+                material.Constants3.SetValue(constants3);
                 material.BlendInLinearSpace.SetValue(BlendInLinearSpace);
                 material.OutputInLinearSpace.SetValue(isSrgbRenderTarget);
                 // FIXME: BlendInLinearSpace

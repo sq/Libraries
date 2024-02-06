@@ -151,6 +151,7 @@ float IMPL_NAME (
                 g /= falloff;
                 g = saturate(g + 0.05);
                 g = sin(g * PI * 0.5);
+                g = pow(g, Constants3.x);
                 r *= 1 - g;
             }
             
@@ -163,7 +164,7 @@ float IMPL_NAME (
         } else {
             // TODO: Interpolate based on outer edges instead of center points,
             //  so that we don't get a nasty hard edge at the end
-            color = lerp(
+            color *= lerp(
                 colorA, colorB, colorFactor
             );
             
@@ -178,7 +179,8 @@ float IMPL_NAME (
         float rampTaper = computeTaper(taperedL, centerD, taperRanges), rampNoise = 0, rampAngle = 0;
         float rampV = evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(rampTaper, centerT, rampNoise, rampAngle), 1.0);
         float4 stackColor = tex2Dlod(RampSampler, float4(stack, rampV, 0, 0));
-        stackColor = pSRGBToPLinear_Accurate(stackColor);
+        if (BlendInLinearSpace)
+            stackColor = pSRGBToPLinear_Accurate(stackColor);
         stackColor *= lerp(
             colorA, colorB, rampV
         );

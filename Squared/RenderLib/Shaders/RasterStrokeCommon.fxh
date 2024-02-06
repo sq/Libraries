@@ -76,6 +76,8 @@ uniform const float4 ShadowSettings,
 uniform const float4 Constants1;
 // hardness, color, spacing, baseSize
 uniform const float4 Constants2;
+// gamma, unused, unused, unused
+uniform const float3 Constants3;
 // TaperFactor, Increment, NoiseFactor, AngleFactor
 uniform const float4 SizeDynamics, AngleDynamics, FlowDynamics, 
     BrushIndexDynamics, HardnessDynamics, ColorDynamics;
