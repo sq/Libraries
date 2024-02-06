@@ -424,7 +424,7 @@ namespace Squared.Render {
         ///  will have really terrible banding in dark areas.
         /// </summary>
         public Material LightmappedsRGBBitmap;
-        public Material HorizontalGaussianBlur, VerticalGaussianBlur, RadialGaussianBlur;
+        public Material AxialGaussianBlur, RadialGaussianBlur;
         public Material GaussianOutlined, GaussianOutlinedWithDiscard, RadialMaskSoftening;
         public Material Clear, SetScissor, SetViewport;
 
@@ -749,8 +749,7 @@ namespace Squared.Render {
                 HighlightColorBitmap,
                 LightmappedBitmap,
                 LightmappedsRGBBitmap,
-                HorizontalGaussianBlur,
-                VerticalGaussianBlur,
+                AxialGaussianBlur,
                 RadialGaussianBlur,
                 GaussianOutlined,
                 GaussianOutlinedWithDiscard,
@@ -792,14 +791,9 @@ namespace Squared.Render {
         private void LoadBlurMaterials () {
             var blurShader = BuiltInShaders.Load("GaussianBlur");
 
-            HorizontalGaussianBlur = NewMaterial(
+            AxialGaussianBlur = NewMaterial(
                 blurShader,
-                "HorizontalGaussianBlur"
-            );
-
-            VerticalGaussianBlur = NewMaterial(
-                blurShader,
-                "VerticalGaussianBlur"
+                "AxialGaussianBlur"
             );
 
             RadialGaussianBlur = NewMaterial(
@@ -1262,47 +1256,12 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="sigma">Governs the strength of the blur. Lower values are sharper.</param>
         /// <param name="tapCount">The number of samples ('taps') that will be read vertically or horizontally from the texture to compute each blurred sample.</param>
-        /// <param name="meanFactor">Biases the filter kernel towards a mean (average of all the pixels) instead of a gaussian blur</param>
-        /// <param name="gain">A factor to increase or decrease the output of the filter kernel (will brighten or darken the resulting image)</param>
-        public void SetGaussianBlurParameters (Material m, double sigma, int tapCount, float meanFactor = 0f, float gain = 1.0f) {
-            int tapsMinusOne = tapCount - 1;
-            int weightCount = 1 + (tapsMinusOne / 2);
-            if ((weightCount < 1) || (weightCount > MaxWeightCount))
-                throw new ArgumentException("Tap count out of range");
-            if (tapCount / 2 * 2 == tapCount)
-                throw new ArgumentException("Tap count must be odd");
+        public void SetGaussianBlurParameters (Material m, double sigma, int tapCount, Vector2 axis) {
+            m.Effect.Parameters["BlurConfiguration"].SetValue(BlurMaterial.MakeParameters(sigma, tapCount, axis));
+        }
 
-            const double scale = 5;
-
-            using (var scratch = BufferPool<double>.Allocate(tapCount)) {
-                Array.Clear(scratch.Data, 0, scratch.Data.Length);
-
-                double sum = 0;
-                for (int i = 0; i < tapCount; i++) {
-                    double x = i - (tapsMinusOne / 2.0);
-                    double value = IntegrateGaussian(sigma, x - 0.5, x + 0.5);
-                    scratch.Data[i] = Arithmetic.Lerp(value, 1f / tapCount, meanFactor);
-                    sum += scratch.Data[i];
-                }
-
-                for (int i = 0; i < weightCount; i++) {
-                    var unscaled = scratch.Data[weightCount - i - 1];
-                    var scaled = unscaled * scale;
-                    // We reduce error in the shader (from small values becoming denormals) 
-                    //  by scaling the range up a bit
-                    WeightBuffer[i] = (float)scaled;
-                }
-
-                var p = m.Effect.Parameters;
-                p["TapCount"]?.SetValue(weightCount);
-                p["TapWeights"]?.SetValue(WeightBuffer);
-                var divisor = (sum * scale);
-                var inverseDivisor = 1.0 / divisor;
-                var inverseDivisor2 = inverseDivisor * inverseDivisor;
-                p["InverseTapDivisorsAndSigma"]?.SetValue(new Vector3(
-                    (float)inverseDivisor * gain, (float)inverseDivisor2 * gain, (float)sigma
-                ));
-            }
+        public void SetGaussianBlurParameters (Material m, double sigma, int tapCount) {
+            m.Effect.Parameters["BlurConfiguration"].SetValue(BlurMaterial.MakeParameters(sigma, tapCount));
         }
 
         private void ApplyParamsToMaterial (Material m, ref FrameParams @params) {
@@ -1451,5 +1410,19 @@ namespace Squared.Render {
         public Vector4   ShadowColor;
         public Vector2   ShadowOffset;
         public float     ShadowMipBias;
+    }
+
+    public static class  BlurMaterial {
+        public static Vector4 MakeParameters (double sigma, int tapCount) =>
+            MakeParameters(sigma, tapCount, new Vector2(1, 0));
+
+        public static Vector4 MakeParameters (double sigma, int tapCount, Vector2 axis) =>
+            new Vector4(tapCount, (float)sigma, axis.X, axis.Y);
+
+        public static void SetGaussianBlurParameters (this ref MaterialParameterValues mpv, double sigma, int tapCount) =>
+            mpv.Add("BlurConfiguration", MakeParameters(sigma, tapCount));
+
+        public static void SetGaussianBlurParameters (this ref MaterialParameterValues mpv, double sigma, int tapCount, Vector2 axis) =>
+            mpv.Add("BlurConfiguration", MakeParameters(sigma, tapCount, axis));
     }
 }
