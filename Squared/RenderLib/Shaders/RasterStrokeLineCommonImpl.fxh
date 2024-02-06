@@ -42,9 +42,10 @@ float IMPL_NAME (
     float centerD = centerT * l,
         startD = max(0, centerD - SEARCH_DISTANCE),
         endD = min(centerD + SEARCH_DISTANCE, l),
-        firstIteration = floor(startD / stepPx), 
+        firstIteration = floor(startD / stepPx),
         lastIteration = ceil(endD / stepPx),
-        brushCount = NozzleParams.x * NozzleParams.y;
+        brushCount = NozzleParams.x * NozzleParams.y,
+        stack = 0;
 
     for (float i = firstIteration; i <= lastIteration; i += 1.0) {
         float globalI = i + stepOffset;
@@ -155,18 +156,20 @@ float IMPL_NAME (
             
             color = r;
         }
-
+        
         // FIXME: Doing ramp sampling here instead of at the end hits a bug in fxc and everything breaks.
-        if (!Ramped)
+        if (Ramped) {
+            stack += color.r * flow;
+        } else {
             // TODO: Interpolate based on outer edges instead of center points,
             //  so that we don't get a nasty hard edge at the end
-            color *= lerp(
+            color = lerp(
                 colorA, colorB, colorFactor
             );
-
-        // HACK: Avoid accumulating error.
-        if (color.a > 0)
-            result = over(color, flow, result, 1);
+            
+            if (color.a > 0)
+                result = over(color, flow, result, 1);
+        }
     }
 
     // The best we can do :( At least it looks pretty good for lines.
@@ -174,11 +177,13 @@ float IMPL_NAME (
         // FIXME
         float rampTaper = computeTaper(taperedL, centerD, taperRanges), rampNoise = 0, rampAngle = 0;
         float rampV = evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(rampTaper, centerT, rampNoise, rampAngle), 1.0);
-        result = tex2Dlod(RampSampler, float4(result.r, rampV, 0, 0));
-        result = pSRGBToPLinear_Accurate(result);
-        result *= lerp(
+        float4 stackColor = tex2Dlod(RampSampler, float4(stack, rampV, 0, 0));
+        stackColor = pSRGBToPLinear_Accurate(stackColor);
+        stackColor *= lerp(
             colorA, colorB, rampV
         );
+        stackColor *= stack;
+        result = over(stackColor, 1, result, 1);
     }
     
     return ceil(l / stepPx);
