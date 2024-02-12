@@ -1803,7 +1803,8 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            Vector2? rampUVOffset = null, int sortKey = 0, Quaternion? orientation = null
+            Vector2? rampUVOffset = null, int sortKey = 0, Quaternion? orientation = null,
+            float tapering = 0
         ) {
             m = Arithmetic.Clamp(m, 2, count);
 
@@ -1816,7 +1817,7 @@ namespace Squared.Render.Convenience {
                 WorldSpace = worldSpace ?? WorldSpace,
                 A = center, B = new Vector2(count, m),
                 C = new Vector2(0f, 0f),
-                Radius = new Vector2(radius, 0),
+                Radius = new Vector2(radius, tapering),
                 OutlineSize = outlineRadius,
                 InnerColor = innerColor,
                 OuterColor = outerColor.GetValueOrDefault(innerColor),

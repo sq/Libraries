@@ -863,8 +863,10 @@ void evaluateRasterShape (
 
 #ifdef INCLUDE_STAR
     else if (type == TYPE_Star) {
-        float2 starPosition = rotate2D(worldPosition - a, c.x);
-        distance = sdStar(starPosition, radius.x, (int)b.x, b.y);
+        float2 starPosition = rotate2D(worldPosition - a, 0);
+        float taper = radius.y * smoothstep(0, radius.x, length(starPosition));
+        float m = clamp(b.y + taper, 2, b.x);
+        distance = sdStar(starPosition, radius.x, (int)b.x, m);
         // HACK: it doesn't evaluate properly at 0,0
         float targetDistance = sdStar(float2(0, -0.5), radius.x, (int)b.x, b.y);
 
@@ -896,7 +898,6 @@ void evaluateRasterShape (
     float annularRadius = params.y;
     if (annularRadius > 0.001)
         distance = abs(distance) - annularRadius;
-
     if (needTLBR)
         computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
 }
