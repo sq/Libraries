@@ -227,15 +227,19 @@ sampler   RampTextureSampler : register(s3) {
 // FIXME: In FNA ramp textures + sphere lights creates very jagged shadows but in XNA it does not.
 float4 SampleFromRamp (float x) {
     float4 result = tex2Dlod(RampTextureSampler, float4(x, 0, 0, 0));
-    if (BlendInLinearSpace)
+    if (BlendInLinearSpace && !RampIsLinearSpace)
         result = pSRGBToPLinear(result);
+    else if (RampIsLinearSpace && !BlendInLinearSpace)
+        result = pLinearToPSRGB(result);
     return result;
 }
 
 float4 SampleFromRamp2 (float2 xy) {
     float4 result = tex2Dlod(RampTextureSampler, float4(xy, 0, 0));
-    if (BlendInLinearSpace)
+    if (BlendInLinearSpace && !RampIsLinearSpace)
         result = pSRGBToPLinear(result);
+    else if (RampIsLinearSpace && !BlendInLinearSpace)
+        result = pLinearToPSRGB(result);
     return result;
 }
 

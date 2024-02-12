@@ -53,7 +53,7 @@ sampler RampSampler : register(s3) {
     Texture = (RampTexture);
 };
 
-uniform const bool BlendInLinearSpace, OutputInLinearSpace, UsesNoise;
+uniform const bool BlendInLinearSpace, OutputInLinearSpace, UsesNoise, RampIsLinearSpace;
 
 // Count x, count y, base size for lod calculation, angle from degrees ? 1 : 0
 uniform const float4 NozzleParams;

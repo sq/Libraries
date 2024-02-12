@@ -569,6 +569,7 @@ namespace Squared.Render.RasterShape {
         public EffectParameter BlendInLinearSpace,
             BlendInOkLab,
             OutputInLinearSpace,
+            RampIsLinearSpace,
             RasterTexture,
             RampTexture,
             RampUVOffset,
@@ -587,6 +588,7 @@ namespace Squared.Render.RasterShape {
             BlendInLinearSpace = p["BlendInLinearSpace"];
             BlendInOkLab = p["BlendInOkLab"];
             OutputInLinearSpace = p["OutputInLinearSpace"];
+            RampIsLinearSpace = p["RampIsLinearSpace"];
             RasterTexture = p["RasterTexture"];
             RampTexture = p["RampTexture"];
             RampUVOffset = p["RampUVOffset"];
@@ -682,7 +684,9 @@ namespace Squared.Render.RasterShape {
         public Texture2D RampTexture;
         public Vector2 RampUVOffset;
 
-        public bool UseUbershader = false;
+        public bool UseUbershader = false,
+            // FIXME: Expose this in IR somehow
+            RampIsLinearSpace = false;
 
         private static readonly RasterShapeDrawCallSorter ShapeDrawCallSorter = new RasterShapeDrawCallSorter();
 
@@ -874,6 +878,7 @@ namespace Squared.Render.RasterShape {
                 rasterShader.RasterTexture?.SetValue(Texture);
                 rasterShader.TextureSizePx?.SetValue(new Vector2(Texture?.Width ?? 0, Texture?.Height ?? 0));
                 rasterShader.RampTexture?.SetValue(RampTexture);
+                rasterShader.RampIsLinearSpace?.SetValue(RampIsLinearSpace);
                 rasterShader.RampUVOffset?.SetValue(RampUVOffset);
 
                 // HACK: If the shadow color is fully transparent, suppress the offset and softness.

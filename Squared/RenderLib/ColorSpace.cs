@@ -143,7 +143,7 @@ namespace Squared.Render {
             IsVector4 = true;
             // FIXME: sRGB
             if (isPremultiplied)
-                _Vector4 = new Vector4(r, g, b, a);
+                _Vector4 = new Vector4(r / 255f, g / 255f, b / 255f, a);
             else
                 _Vector4 = new Vector4(r * a / 255f, g * a / 255f, b * a / 255f, a);
             _Color = default(Color);
