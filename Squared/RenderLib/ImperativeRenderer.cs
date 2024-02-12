@@ -1979,17 +1979,23 @@ namespace Squared.Render.Convenience {
 
             // HACK: Look, alright, it's complicated
             if (
-                (desiredBlendState == BlendState.AlphaBlend) || 
+                (desiredBlendState == BlendState.AlphaBlend) ||
                 (desiredBlendState == BlendState.NonPremultiplied) ||
                 (desiredBlendState == null)
             )
                 desiredBlendState = RenderStates.RasterShapeAlphaBlend;
-            else if (desiredBlendState == BlendState.Additive)
+            else if (
+                (desiredBlendState == BlendState.Additive) ||
+                (desiredBlendState == RenderStates.AdditiveBlend) ||
+                (desiredBlendState == RenderStates.AdditiveBlendNonPremultiplied)
+            )
                 desiredBlendState = RenderStates.RasterShapeAdditiveBlend;
             else if (desiredBlendState == RenderStates.SubtractiveBlend)
                 desiredBlendState = RenderStates.RasterShapeSubtractiveBlend;
             else if (desiredBlendState == RenderStates.MaxBlendValue)
                 desiredBlendState = RenderStates.RasterShapeMaxBlend;
+            else
+                ;
 
             CachedBatch cacheEntry;
             if (!TryGetCachedBatch<RasterShapeBatch>(
