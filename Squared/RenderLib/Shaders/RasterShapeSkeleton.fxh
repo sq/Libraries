@@ -863,7 +863,9 @@ void evaluateRasterShape (
 
 #ifdef INCLUDE_STAR
     else if (type == TYPE_Star) {
-        float2 starPosition = rotate2D(worldPosition - a, 0);
+        float2 starPosition = worldPosition - a;
+        float twirl = smoothstep(0, radius.x, length(starPosition));
+        starPosition = rotate2D(starPosition, twirl * c.x);
         float taper = radius.y * smoothstep(0, radius.x, length(starPosition));
         float m = clamp(b.y + taper, 2, b.x);
         distance = sdStar(starPosition, radius.x, (int)b.x, m);
