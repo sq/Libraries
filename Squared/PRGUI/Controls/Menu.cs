@@ -283,9 +283,9 @@ namespace Squared.PRGUI.Controls {
                 return true;
 
             if (child is StaticTextBase stb)
-                return stb.Text.Contains(_FilterText);
+                return stb.Text.ToString().IndexOf(FilterText, StringComparison.CurrentCultureIgnoreCase) >= 0;
             else if (child is EditableText et)
-                return et.Text.Contains(_FilterText);
+                return et.Text.IndexOf(FilterText, StringComparison.CurrentCultureIgnoreCase) >= 0;
             else // FIXME: Use description or debuglabel?
                 return false;
         }
@@ -574,14 +574,21 @@ namespace Squared.PRGUI.Controls {
         private bool OnKeyEvent (string name, KeyEventArgs args) {
             if (args.Key != null && UIContext.ModifierKeys.Contains(args.Key.Value))
                 return false;
+
             // FIXME: Why isn't this KeyPress?
             if (name == UIEvents.KeyDown) {
                 if ((args.Key >= Keys.D1) && (args.Key <= Keys.D9) && ((int)(args.Key - Keys.D1) < Count)) {
-                    SelectItemViaKeyboard(this[(int)(args.Key - Keys.D1)]);
-                    if (SelectedItem != null)
-                        return ChooseItem(SelectedItem);
-                    else
-                        return true;
+                    var index = (int)(args.Key - Keys.D1);
+                    if (FilterBox != null)
+                        index++;
+
+                    if (index < Children.Count) {
+                        SelectItemViaKeyboard(this[index]);
+                        if (SelectedItem != null)
+                            return ChooseItem(SelectedItem);
+                        else
+                            return true;
+                    }
                 }
             }
             if (name != UIEvents.KeyPress)
