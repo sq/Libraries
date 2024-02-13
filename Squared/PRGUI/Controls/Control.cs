@@ -328,6 +328,7 @@ namespace Squared.PRGUI {
         }
 
         public static bool DoesIgnoreScrolling (Control control) => control.GetInternalFlag(InternalStateFlags.IgnoresScrolling);
+        internal static void SetIgnoreScrolling (Control control, bool value) => control.SetInternalFlag(InternalStateFlags.IgnoresScrolling, value);
 
         /// <summary>
         /// If a control is being composited from a temporary surface, this method will be
@@ -821,7 +822,7 @@ namespace Squared.PRGUI {
             control.ComputeEffectiveSpacing(ref context, dp, control.GetDecorator(dp), out padding, out margins);
         }
 
-        protected static void GetSizeConstraints (Control control, ref UIOperationContext context, out ControlDimension width, out ControlDimension height) {
+        public static void GetSizeConstraints (Control control, ref UIOperationContext context, out ControlDimension width, out ControlDimension height) {
             width = control.Width.AutoComputeFixed();
             height = control.Height.AutoComputeFixed();
             var sizeScale = control.Appearance.AutoScaleMetrics ? context.DecorationProvider.SizeScaleRatio : Vector2.One;

@@ -1301,7 +1301,6 @@ namespace Squared.PRGUI.Controls {
         }
 
         void IClippedRasterizationControl.RasterizeClipped (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
-
             MarkSelection();
 
             var selectionDecorator = context.DecorationProvider.Selection;

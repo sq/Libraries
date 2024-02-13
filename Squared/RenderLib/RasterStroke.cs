@@ -88,7 +88,11 @@ namespace Squared.Render.RasterStroke {
 
         public StrokeShader (Material material) {
             Material = material;
-            var p = material.Effect.Parameters;
+            PopulateParameters();
+        }
+        
+        private void PopulateParameters () {
+            var p = Material.Effect.Parameters;
             BlendInLinearSpace = p["BlendInLinearSpace"];
             OutputInLinearSpace = p["OutputInLinearSpace"];
             UsesNoise = p["UsesNoise"];

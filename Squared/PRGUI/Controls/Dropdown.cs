@@ -22,6 +22,11 @@ namespace Squared.PRGUI.Controls {
             DeselectOnMouseLeave = false
         };
 
+        public bool EnableFiltering {
+            get => ItemsMenu.EnableFiltering;
+            set => ItemsMenu.EnableFiltering = value;
+        }
+
         public string Description { get; set; }
 
         public string Label;

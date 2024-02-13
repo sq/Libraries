@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Remoting.Contexts;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -89,6 +90,36 @@ namespace Squared.PRGUI.Controls {
         public bool BlockHitTests { get; set; } = false;
         public bool RetainFocus { get; set; } = true;
         public float BackgroundFadeLevel { get; set; } = 0f;
+        public bool EnableFiltering { get; set; }
+
+        private float FilterHeight;
+        private bool FilterInvalid;
+        public EditableText FilterBox { get; private set; }
+        private string _FilterText = "";
+        public string FilterText {
+            get => _FilterText;
+            set {
+                if (value == _FilterText)
+                    return;
+
+                _FilterText = value;
+                if (FilterBox != null)
+                    FilterBox.Text = value;
+                FilterInvalid = true;
+            }
+        }
+        private Func<Control, bool> _IsSelectedByFilter;
+        public Func<Control, bool> IsSelectedByFilter {
+            get => _IsSelectedByFilter;
+            set {
+                if (value == _IsSelectedByFilter)
+                    return;
+
+                _IsSelectedByFilter = value;
+                FilterInvalid = true;
+            }
+        }
+        private HashSet<Control> ControlsHiddenByFilter;
 
         bool IModal.CanClose (ModalCloseReason reason) {
             switch (reason) {
@@ -201,14 +232,140 @@ namespace Squared.PRGUI.Controls {
             return provider?.Menu;
         }
 
+        protected override void ComputeAppearanceSpacing (ref UIOperationContext context, IDecorator decorations, out Margins scaledMargins, out Margins scaledPadding, out Margins unscaledPadding) {
+            base.ComputeAppearanceSpacing(ref context, decorations, out scaledMargins, out scaledPadding, out unscaledPadding);
+
+            if (EnableFiltering) {
+                unscaledPadding.Top += FilterHeight;
+                // HACK
+                if (FilterBox != null)
+                    FilterBox.Margins.Top = -FilterHeight;
+            }
+        }
+
         protected override void ComputeSizeConstraints (ref UIOperationContext context, ref ControlDimension width, ref ControlDimension height, Vector2 sizeScale) {
             base.ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             width.Maximum = context.UIContext.CanvasSize.X * 0.5f;
             height.Maximum = context.UIContext.CanvasSize.Y * 0.66f;
         }
 
+        protected virtual EditableText CreateFilterBox () {
+            return new EditableText {
+                Description = "Filter",
+                Text = FilterText,
+                Layout = {
+                    Fill = {
+                        Row = true,
+                    },
+                    Anchor = {
+                        Top = true,
+                    },
+                    Stacked = true,
+                },
+                TabOrder = -1,
+                Appearance = {
+                    DecorationTraits = {
+                        "filter-box"
+                    },
+                },
+                DisplayOrder = 1,
+            };
+        }
+
+        protected virtual bool ComputeIsSelectedByFilter (Control child) {
+            if (!EnableFiltering)
+                return true;
+
+            if (_IsSelectedByFilter != null)
+                return _IsSelectedByFilter(child);
+
+            if (string.IsNullOrEmpty(FilterText))
+                return true;
+
+            if (child is StaticTextBase stb)
+                return stb.Text.Contains(_FilterText);
+            else if (child is EditableText et)
+                return et.Text.Contains(_FilterText);
+            else // FIXME: Use description or debuglabel?
+                return false;
+        }
+
+        protected void RefreshFilter (ref UIOperationContext context, bool updateSelection) {
+            FilterInvalid = false;
+
+            if (!EnableFiltering && ((ControlsHiddenByFilter?.Count ?? 0) == 0))
+                return;
+
+            // HACK
+            if (FilterBox != null) {
+                SetIgnoreScrolling(FilterBox, true);
+                GetSizeConstraints(FilterBox, ref context, out _, out var height);
+                FilterHeight = height.EffectiveMinimum;
+            } else
+                FilterHeight = 0;
+
+            // HACK: Force relayout if we don't know how tall the box is yet.
+            // This should only happen the first time we're shown after filtering is turned on.
+            if ((FilterHeight <= 0f) && (FilterBox != null))
+                FilterInvalid = true;
+
+            Control firstVisibleControl = null;
+            bool foundSelection = false;
+            foreach (var child in Children) {
+                if (child == FilterBox)
+                    continue;
+
+                var shouldBeVisible = ComputeIsSelectedByFilter(child);
+
+                if (shouldBeVisible != child.Visible) {
+                    if (ControlsHiddenByFilter == null)
+                        ControlsHiddenByFilter = new HashSet<Control>(ReferenceComparer<Control>.Instance);
+
+                    if (shouldBeVisible == false) {
+                        ControlsHiddenByFilter.Add(child);
+                        child.Visible = false;
+                    } else if (ControlsHiddenByFilter.Contains(child)) {
+                        ControlsHiddenByFilter.Remove(child);
+                        child.Visible = true;
+                    }
+                }
+
+                if (child.Visible) {
+                    if (child == SelectedItem)
+                        foundSelection = true;
+                    if (firstVisibleControl == null)
+                        firstVisibleControl = child;
+                }
+            }
+
+            if (!foundSelection && (firstVisibleControl != null))
+                SetSelectedItem(firstVisibleControl, true);
+        }        
+
+
         protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             FreezeDynamicContent = Visible;
+
+            if (EnableFiltering != (FilterBox != null)) {
+                if (!EnableFiltering) {
+                    Children.Remove(FilterBox);
+                    FilterBox = null;
+                } else {
+                    FilterBox = CreateFilterBox();
+                    Children.Insert(0, FilterBox);
+                }
+                RefreshFilter(ref context, false);
+            } else if ((FilterBox != null) && (Children.FirstOrDefault() != FilterBox)) {
+                Children.Insert(0, FilterBox);
+                RefreshFilter(ref context, false);
+            }
+
+            if (FilterInvalid || ((FilterBox != null) && (FilterBox.Text != _FilterText))) {
+                // HACK
+                var updateSelection = (FilterBox?.Text != _FilterText);
+                _FilterText = FilterBox?.Text;
+                RefreshFilter(ref context, updateSelection);
+            }
 
             if (SelectedItem?.Enabled == false)
                 SetSelectedItem(null, true);
@@ -307,6 +464,10 @@ namespace Squared.PRGUI.Controls {
 
             var options = new HitTestOptions();
             var item = ChildFromGlobalPosition(args.RelativeGlobalPosition, options);
+            var clickedFilterBox = (item != null) && (item == FilterBox);
+            if (clickedFilterBox)
+                item = null;
+
             if (_HoveringItem != item) {
                 var previous = _HoveringItem;
                 _HoveringItem = item;
@@ -319,7 +480,7 @@ namespace Squared.PRGUI.Controls {
                 // HACK: Clear the flag that causes us to ignore the next mouseup if the mouse hasn't mvoed
                 MouseInsideWhenShown = false;
 
-                if ((item != this) && !Children.Contains(item)) {
+                if ((item != this) && !Children.Contains(item) && !clickedFilterBox) {
                     if (CloseOnClickOutside)
                         ClickedOutside(args);
                     return true;
@@ -342,7 +503,7 @@ namespace Squared.PRGUI.Controls {
                     // The mouse was inside our rect when we first opened, and hasn't moved
                 } else if (item != null) {
                     return ChooseItem(item);
-                } else if (CloseOnClickOutside) {
+                } else if (CloseOnClickOutside && !clickedFilterBox) {
                     ClickedOutside(args);
                 }
             }
@@ -382,7 +543,7 @@ namespace Squared.PRGUI.Controls {
             Context.OverrideKeyboardSelection(item, true);
         }
 
-        public bool AdjustSelection (int direction) {
+        public bool AdjustSelection (int direction, bool wrap = true) {
             if (Children.Count == 0)
                 return false;
 
@@ -394,9 +555,13 @@ namespace Squared.PRGUI.Controls {
 
             int steps = Children.Count;
             while (steps-- > 0) {
-                selectedIndex = Arithmetic.Wrap(selectedIndex, 0, Children.Count - 1);
+                if (wrap)
+                    selectedIndex = Arithmetic.Wrap(selectedIndex, 0, Children.Count - 1);
+                else
+                    selectedIndex = Arithmetic.Clamp(selectedIndex, 0, Children.Count);
+
                 var item = Children[selectedIndex];
-                if (item.Enabled) {
+                if (item.Enabled && item.Visible && (item != FilterBox)) {
                     SelectItemViaKeyboard(item);
                     return true;
                 } else
@@ -433,10 +598,10 @@ namespace Squared.PRGUI.Controls {
                         return ChooseItem(SelectedItem);
                     return true;
                 case Keys.Home:
-                    SelectItemViaKeyboard(Children.FirstOrDefault());
+                    AdjustSelection(-999999, false);
                     return true;
                 case Keys.End:
-                    SelectItemViaKeyboard(Children.LastOrDefault());
+                    AdjustSelection(999999, false);
                     return true;
                 case Keys.PageUp:
                 case Keys.PageDown:
@@ -460,6 +625,9 @@ namespace Squared.PRGUI.Controls {
             }
 
             Aligner.EnsureAligned(ref context, ref relayoutRequested);
+
+            if (FilterInvalid)
+                relayoutRequested = true;
 
             if (relayoutRequested)
                 return;
@@ -549,7 +717,8 @@ namespace Squared.PRGUI.Controls {
             RasterizeChildrenFromCenter(
                 ref context, ref passSet, 
                 GetRect(), _SelectedItem,
-                ref lastOffset1, ref lastOffset2
+                ref lastOffset1, ref lastOffset2,
+                EnableFiltering ? new DenseList<Control> { FilterBox } : default
             );
         }
 
@@ -580,6 +749,7 @@ namespace Squared.PRGUI.Controls {
 
         private void ShowInternalPrologue (UIContext context) {
             Context = context;
+            FilterInvalid = true;
             // Ensure we have run a generate pass for our dynamic content before doing anything
             GenerateDynamicContent(true);
 

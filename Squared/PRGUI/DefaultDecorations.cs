@@ -1539,10 +1539,14 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void EditableText_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
+            var isFilterBox = settings.Traits.Contains("filter-box");
             ConfigureFill(
-                "EditableText", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                isFilterBox ? "MenuFilterBox" : "EditableText", ref settings, out var texture, out var textureRegion, out var textureSettings, 
                 out var fillColor1, out var fillColor2, out var fillSettings
             );
+            // HACK
+            if (isFilterBox && !fillColor1.HasValue && !fillColor2.HasValue)
+                fillColor1 = fillColor2 = ColorScheme.WindowFill;
 
             var focusedAlpha = GetFocusedAlpha(ref context, settings.State, out bool isFocused);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);

@@ -1012,6 +1012,10 @@ namespace PRGUI.Demo {
                 Text = "Fast Fades"
             };
 
+            var filterableMenu = new Checkbox {
+                Text = "Menu Filtering",
+            };
+
             var readAloud = new Checkbox {
                 Text = "Narrate",
             };
@@ -1050,6 +1054,7 @@ namespace PRGUI.Demo {
                     changePaintOrder,
                     largeText,
                     fastAnimations,
+                    filterableMenu,
                     readAloud,
                     readingSpeed,
                     new Spacer (),
@@ -1184,6 +1189,11 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(multiselectCheckbox, UIEvents.CheckedChanged, (ei) => {
                 listBox.MaxSelectedCount = multiselectCheckbox.Checked ? 10 : 1;
+            });
+
+            Context.EventBus.Subscribe(filterableMenu, UIEvents.CheckedChanged, (ei) => {
+                testMenu.EnableFiltering = filterableMenu.Checked;
+                dropdown.EnableFiltering = filterableMenu.Checked;
             });
 
             Context.EventBus.Subscribe(toggleCheckbox, UIEvents.CheckedChanged, (ei) => {
@@ -1679,7 +1689,7 @@ namespace PRGUI.Demo {
                 if (UIContext.UseNewEngine) {
                     for (int i = 0; i < 9; i++) {
                         var k = Keys.D0 + i;
-                        if (ks.IsKeyDown(k) && !pks.IsKeyDown(k))
+                        if (ks.IsKeyDown(k) && !pks.IsKeyDown(k) && ks.IsKeyDown(Keys.LeftControl))
                             SceneToLoad = i;
                     }
                 }
@@ -1878,7 +1888,7 @@ namespace PRGUI.Demo {
         public void BeforeIssueComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall) {
             var opacity = drawCall.MultiplyColor.A / 255.0f;
             var sigma = Arithmetic.Lerp(0f, 4f, 1.0f - opacity) + 1 + ((control.Context.TopLevelFocused != control) ? 1 : 0);
-            Materials.SetGaussianBlurParameters(Material, sigma, 7, 0);
+            Materials.SetGaussianBlurParameters(Material, sigma, 5);
         }
 
         public void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall, float opacity, BlendState blendState) {

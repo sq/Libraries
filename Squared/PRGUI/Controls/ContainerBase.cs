@@ -472,8 +472,10 @@ namespace Squared.PRGUI.Controls {
         public int RasterizeChildrenFromCenter (
             ref UIOperationContext context, ref RasterizePassSet passSet, 
             RectF box, Control selectedItem,
-            ref int lastOffset1, ref int lastOffset2
+            ref int lastOffset1, ref int lastOffset2,
+            DenseList<Control> extraControls = default
         ) {
+            // FIXME: This does not handle display order correctly.
             var children = Children;
             if (children.Count <= 0)
                 return 0;
@@ -512,34 +514,60 @@ namespace Squared.PRGUI.Controls {
                     itemsAttempted++;
                     // Stop searching upward once an item fails to render
                     var item1 = children[i];
-                    var ok = RasterizeChild(
-                        ref context, item1, ref passSet
-                    );
-                    if (!item1.Visible) {
-                        ;
-                    } else if (!ok && hasRenderedAny) {
-                        lastOffset1 = i;
-                        i = -1;
-                    } else if (ok) {
-                        hasRenderedAny = true;
+                    // HACK
+                    if (item1.DisplayOrder != 0) {
+                        if (!extraControls.Contains(item1))
+                            extraControls.Add(item1);
+                    } else {
+                        extraControls.Remove(item1);
+                        var ok = RasterizeChild(
+                            ref context, item1, ref passSet
+                        );
+                        if (!item1.Visible) {
+                            ;
+                        } else if (!ok && hasRenderedAny) {
+                            lastOffset1 = i;
+                            i = -1;
+                        } else if (ok) {
+                            hasRenderedAny = true;
+                        }
                     }
                 }
 
                 if ((i != j) && (j < count)) {
                     itemsAttempted++;
                     var item2 = children[j];
-                    var ok = RasterizeChild(
-                        ref context, item2, ref passSet
-                    );
-                    if (!item2.Visible) {
-                        ;
-                    } else if (!ok && hasRenderedAny) {
-                        lastOffset2 = j;
-                        j = count;
-                    } else if (ok) {
-                        hasRenderedAny = true;
+                    // HACK
+                    if (item2.DisplayOrder != 0) {
+                        if (!extraControls.Contains(item2))
+                            extraControls.Add(item2);
+                    } else {
+                        extraControls.Remove(item2);
+                        var ok = RasterizeChild(
+                            ref context, item2, ref passSet
+                        );
+                        if (!item2.Visible) {
+                            ;
+                        } else if (!ok && hasRenderedAny) {
+                            lastOffset2 = j;
+                            j = count;
+                        } else if (ok) {
+                            hasRenderedAny = true;
+                        }
                     }
                 }
+            }
+
+            extraControls.Sort(IndexPreservingPaintOrderComparer.Instance);
+            var lastOrder = 0;
+            foreach (var ctl in extraControls) {
+                // HACK: Do a clumsy plane split so paint order isn't completely broken.
+                // This ensures that menu filter boxes actually paint over menu items.
+                if (ctl.DisplayOrder != lastOrder)
+                    // HACK: stackDepth needs to == passSet.StackDepth, otherwise clipping will break when controls are filtered.
+                    // I'm not really sure why.
+                    passSet = new RasterizePassSet(ref passSet.Content, this, passSet.StackDepth);
+                RasterizeChild(ref context, ctl, ref passSet);
             }
 
             return itemsAttempted;

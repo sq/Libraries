@@ -584,7 +584,11 @@ namespace Squared.Render.RasterShape {
 
         public RasterShader (Material material) {
             Material = material;
-            var p = material.Effect.Parameters;
+            PopulateParameters();
+        }
+
+        private void PopulateParameters () {
+            var p = Material.Effect.Parameters;
             BlendInLinearSpace = p["BlendInLinearSpace"];
             BlendInOkLab = p["BlendInOkLab"];
             OutputInLinearSpace = p["OutputInLinearSpace"];
