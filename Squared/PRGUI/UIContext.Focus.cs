@@ -438,11 +438,11 @@ namespace Squared.PRGUI {
             return true;
         }
 
-        private bool IsValidContainerToSearchForFocusableControls (IControlContainer icc) {
+        private static bool IsValidContainerToSearchForFocusableControls (IControlContainer icc) {
             return IsValidContainerToSearchForFocusableControls(icc as Control);
         }
 
-        private bool IsValidContainerToSearchForFocusableControls (Control control) {
+        private static bool IsValidContainerToSearchForFocusableControls (Control control) {
             if (!(control is IControlContainer ic))
                 return false;
             else if (!ic.ChildrenAcceptFocus)

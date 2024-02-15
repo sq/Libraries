@@ -450,5 +450,33 @@ namespace Squared.Game {
 
             return lineProjectionZ.Intersects(rectProjectionZ);
         }
+
+        public static void SlerpNonNormalized (ref Vector3 start, ref Vector3 end, float t, out Vector3 result) {
+            float startLength = start.LengthSquared(), endLength = end.LengthSquared();
+            if (Math.Abs(startLength) <= float.Epsilon) {
+                Vector3.Multiply(ref end, t, out result);
+                return;
+            } else if (Math.Abs(endLength) <= float.Epsilon) {
+                Vector3.Multiply(ref start, 1f - t, out result);
+                return;
+            }
+            float newLength = (float)Math.Sqrt(Arithmetic.Lerp(startLength, endLength, t));
+            Vector3.Normalize(ref start, out var startNormalized);
+            Vector3.Normalize(ref end, out var endNormalized);
+            Slerp(ref startNormalized, ref endNormalized, t, out var resultNormalized);
+            Vector3.Multiply(ref resultNormalized, newLength, out result);
+        }
+
+        public static void Slerp (ref Vector3 start, ref Vector3 end, float t, out Vector3 result) {
+            Vector3.Dot(ref start, ref end, out float d);
+            d = Arithmetic.Clamp(d, -1f, 1f);
+            float theta = (float)Math.Acos(d) * t;
+            Vector3.Multiply(ref start, d, out var startScaled);
+            Vector3.Subtract(ref end, ref startScaled, out var relative);
+            relative.Normalize();
+            Vector3.Multiply(ref start, (float)Math.Cos(theta), out var startCosine);
+            Vector3.Multiply(ref relative, (float)Math.Sin(theta), out var relativeSine);
+            Vector3.Add(ref startCosine, ref relativeSine, out result);
+        }
     }
 }
