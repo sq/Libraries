@@ -3,7 +3,7 @@ float IMPL_NAME (
     in float4 seed, in float4 taperRanges, in float4 biases,
     in float distanceTraveled, in float totalLength, in float stepOffset,
     in float2 vpos, in float4 colorA, in float4 colorB,
-    inout float4 result
+    inout float4 result, inout float fragmentStack
 ) {
     float2 a = ab.xy, b = ab.zw, ba = b - a,
         atlasScale = float2(1.0 / NozzleParams.x, 1.0 / NozzleParams.y);
@@ -178,18 +178,19 @@ float IMPL_NAME (
     }
 
     // The best we can do :( At least it looks pretty good for lines.
-    if (Ramped) {
+    if (Ramped && (stack > fragmentStack)) {
+        fragmentStack = max(stack, fragmentStack);
         // FIXME
         float rampTaper = computeTaper(taperedL, centerD + distanceTraveled, taperRanges), rampNoise = 0, rampAngle = 0;
         float rampV = evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(rampTaper, (centerD + distanceTraveled) / totalLength, rampNoise, rampAngle), 
         1.0);
-        float4 stackColor = tex2Dlod(RampSampler, float4(stack, rampV, 0, 0));
+        float4 stackColor = tex2Dlod(RampSampler, float4(fragmentStack, rampV, 0, 0));
         if (BlendInLinearSpace)
             stackColor = pSRGBToPLinear_Accurate(stackColor);
         stackColor *= lerp(
             colorA, colorB, rampV
         );
-        result = over(stackColor, 1, result, 1);
+        result = stackColor;
     }
     
     return ceil(l / stepPx);

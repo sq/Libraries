@@ -81,7 +81,7 @@ void __VARIANT_FS_NAME (
 
     SHADOW_LOOP_HEADER
         float4 _seed = seed;
-        float y = ab.y + (firstIteration * stepPx);
+        float y = ab.y + (firstIteration * stepPx), fragmentStack = 0;
         while (iterationCount--) {
             y += stepPx;
             if ((y < ab.y) || (y > ab.w))
@@ -89,7 +89,7 @@ void __VARIANT_FS_NAME (
 
             float4 _ab = float4(ab.x, y, ab.z, y);
             rasterStrokeLineCommon(
-                localRadiuses, worldPosition, _ab, _seed, taper, localBiases, 0, 0, 0, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
+                localRadiuses, worldPosition, _ab, _seed, taper, localBiases, 0, 0, 0, GET_VPOS, colorA, colorB, SHADOW_OUTPUT, fragmentStack
             );
             _seed.x += seed.w * 1.276;
             _seed.y += seed.z * 0.912;

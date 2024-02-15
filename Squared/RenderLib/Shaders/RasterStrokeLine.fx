@@ -82,8 +82,9 @@ void __VARIANT_FS_NAME (
     float3 localRadiuses = 0;
     float4 localBiases = biases;
     SHADOW_LOOP_HEADER
+        float fragmentStack = 0;
         rasterStrokeLineCommon(
-            localRadiuses, worldPosition, ab, seed, taper, localBiases, 0, 0, 0, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
+            localRadiuses, worldPosition, ab, seed, taper, localBiases, 0, 0, 0, GET_VPOS, colorA, colorB, SHADOW_OUTPUT, fragmentStack
         );
     SHADOW_LOOP_FOOTER
     SHADOW_MERGE

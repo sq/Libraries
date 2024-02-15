@@ -150,7 +150,7 @@ void __VARIANT_FS_NAME (
     // SHADOW_LOOP_HEADER
 #define SHADOW_OUTPUT result
 
-    float distanceTraveled = 0, totalSteps = 0;
+    float distanceTraveled = 0, totalSteps = 0, fragmentStack = 0;
     offset = (int)ab.x;
     count = (int)ab.y;
     float4 prev = 0;
@@ -194,7 +194,7 @@ void __VARIANT_FS_NAME (
 #endif
                 steps = rasterStrokeBezierCommon(
                     localRadiuses2, worldPosition, float4(prev.xy, pos), controlPoints.xy, bezierLength, seed, taper, localBiases,
-                    distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
+                    distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, SHADOW_OUTPUT, fragmentStack
                 );
             }
             distanceTraveled += bezierLength;
@@ -204,7 +204,7 @@ void __VARIANT_FS_NAME (
         if (nodeType == NODE_LINE) {
             steps = rasterStrokeLineCommon(
                 localRadiuses2, worldPosition, float4(prev.xy, pos), seed, taper, localBiases,
-                distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
+                distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, SHADOW_OUTPUT, fragmentStack
             );
             distanceTraveled += length(pos - prev.xy);
             totalSteps += steps;
