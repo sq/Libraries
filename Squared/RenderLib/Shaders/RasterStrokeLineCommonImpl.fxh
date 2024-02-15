@@ -98,7 +98,7 @@ float IMPL_NAME (
             posSplatDecentered = (posSplatDerotated + radius);
 
         float g = length(posSplatDerotated), discardDistance = (hardness < 1) ? radius + 1 : radius;
-        float4 color = 0;
+        float4 color = 1;
 
         if (Textured) {
             if (
@@ -169,7 +169,7 @@ float IMPL_NAME (
         } else {
             // TODO: Interpolate based on outer edges instead of center points,
             //  so that we don't get a nasty hard edge at the end
-            color = lerp(
+            color *= lerp(
                 colorA, colorB, colorFactor
             );
             

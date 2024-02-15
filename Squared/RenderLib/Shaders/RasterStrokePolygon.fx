@@ -45,7 +45,7 @@ void computeTLBR_Polygon(
     float maxLocalRadius = 0;
     int offset = (int)vertexOffset, count = (int)vertexCount;
 
-    while (--count > 0) {
+    while (--count >= 0) {
         float4 xytr = getPolyVertex(offset);
         int nodeType = (int)xytr.z;
         float2 pos = xytr.xy;
@@ -154,7 +154,7 @@ void __VARIANT_FS_NAME (
     offset = (int)ab.x;
     count = (int)ab.y;
     float4 prev = 0;
-    while (--count > 0) {
+    while (--count >= 0) {
         float4 xytr = getPolyVertex(offset);
         int nodeType = (int)xytr.z;
         float2 pos = xytr.xy;
