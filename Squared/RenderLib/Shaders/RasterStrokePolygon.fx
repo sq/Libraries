@@ -7,9 +7,7 @@
 // uniform const bool ShadowPerSegment;
 
 // FIXME: false is preferable here
-#define COLOR_PER_SPLAT true
-// Allows more than 255 vertices but makes this shader compile much slower
-#define LONG_POLYGON 0
+#define COLOR_PER_SPLAT false
 // #define VISUALIZE_TEXCOORDS
 // #define VISUALIZE_OVERDRAW
 #include "PolygonCommon.fxh"
@@ -47,42 +45,36 @@ void computeTLBR_Polygon(
     float maxLocalRadius = 0;
     int offset = (int)vertexOffset, count = (int)vertexCount;
 
-#if LONG_POLYGON
-    while (count > 0) {
-#endif
-        while (count-- > 0) {
-            float4 xytr = getPolyVertex(offset);
-            int nodeType = (int)xytr.z;
-            float2 pos = xytr.xy;
-            maxLocalRadius = max(maxLocalRadius, xytr.w);
+    while (--count > 0) {
+        float4 xytr = getPolyVertex(offset);
+        int nodeType = (int)xytr.z;
+        float2 pos = xytr.xy;
+        maxLocalRadius = max(maxLocalRadius, xytr.w);
+        offset++;
+
+        REQUIRE_BRANCH
+#if ENABLE_BEZIER
+        if (nodeType == NODE_BEZIER) {
+            float4 controlPoints = getPolyVertex(offset);
             offset++;
-
-            REQUIRE_BRANCH
-#if ENABLE_BEZIER
-            if (nodeType == NODE_BEZIER) {
-                float4 controlPoints = getPolyVertex(offset);
-                offset++;
-                float2 btl, bbr;
-                computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
-                tl = min(btl, tl);
-                br = max(bbr, br);
-                estimatedLengthPx += controlPoints.z;
-            } else {
+            float2 btl, bbr;
+            computeTLBR_Bezier(prev, controlPoints.xy, pos, btl, bbr);
+            tl = min(btl, tl);
+            br = max(bbr, br);
+            estimatedLengthPx += controlPoints.z;
+        } else {
 #endif
-                // FIXME: Is this right? Not doing it seems to break our bounding boxes
-                tl = min(pos, tl);
-                br = max(pos, br);
-
-                if (nodeType != NODE_START)
-                    estimatedLengthPx += length(pos - prev);
+            // FIXME: Is this right? Not doing it seems to break our bounding boxes
+            tl = min(pos, tl);
+            br = max(pos, br);
+            
+            if (nodeType != NODE_START)
+                estimatedLengthPx += length(pos - prev);
 #if ENABLE_BEZIER
-            }
-#endif
-            prev = pos;
         }
-#if LONG_POLYGON
-    }
 #endif
+        prev = pos;
+    }
 
     if (br.x < tl.x)
         tl.x = br.x = -9999;
@@ -162,75 +154,69 @@ void __VARIANT_FS_NAME (
     offset = (int)ab.x;
     count = (int)ab.y;
     float4 prev = 0;
-#if LONG_POLYGON
-    while (count > 0) {
-#endif
-        while (count-- > 0) {
-            float4 xytr = getPolyVertex(offset);
-            int nodeType = (int)xytr.z;
-            float2 pos = xytr.xy;
-            float3 localRadiuses2 = float3(prev.w, xytr.w, localRadiuses.z);
-            float steps = 0;
+    while (--count > 0) {
+        float4 xytr = getPolyVertex(offset);
+        int nodeType = (int)xytr.z;
+        float2 pos = xytr.xy;
+        float3 localRadiuses2 = float3(prev.w, xytr.w, localRadiuses.z);
+        float steps = 0;
 
-            offset++;
-            REQUIRE_BRANCH
+        offset++;
+        REQUIRE_BRANCH
 #if ENABLE_BEZIER
-            if (nodeType == NODE_BEZIER) {
-                float4 controlPoints = getPolyVertex(offset);
-                offset++;
+        if (nodeType == NODE_BEZIER) {
+            float4 controlPoints = getPolyVertex(offset);
+            offset++;
 
-                // HACK: Try to locate the closest point on the bezier. If even it is far enough away
-                //  that it can't overlap the current pixel, skip processing the entire bezier.
-                float2 a = prev.xy - worldPosition, b = controlPoints.xy - worldPosition,
-                    c = pos - worldPosition;
-                // First check the middle and endpoints
-                float ct = 0, cd2 = distanceSquaredToBezierAtT(a, b, c, ct);
-                float td = distanceSquaredToBezierAtT(a, b, c, 1);
-                pickClosestT(cd2, ct, td, 1);
-                td = distanceSquaredToBezierAtT(a, b, c, 0.5);
-                pickClosestT(cd2, ct, td, 0.5);
+            // HACK: Try to locate the closest point on the bezier. If even it is far enough away
+            //  that it can't overlap the current pixel, skip processing the entire bezier.
+            float2 a = prev.xy - worldPosition, b = controlPoints.xy - worldPosition,
+                c = pos - worldPosition;
+            // First check the middle and endpoints
+            float ct = 0, cd2 = distanceSquaredToBezierAtT(a, b, c, ct);
+            float td = distanceSquaredToBezierAtT(a, b, c, 1);
+            pickClosestT(cd2, ct, td, 1);
+            td = distanceSquaredToBezierAtT(a, b, c, 0.5);
+            pickClosestT(cd2, ct, td, 0.5);
 
-                // Then do an analytical check (we can't rely entirely on this, the math breaks down at some spots)
-                pickClosestTOnBezierForAxis(a, b, c, float2(1, 0), cd2, ct);
-                pickClosestTOnBezierForAxis(a, b, c, float2(0, 1), cd2, ct);
+            // Then do an analytical check (we can't rely entirely on this, the math breaks down at some spots)
+            pickClosestTOnBezierForAxis(a, b, c, float2(1, 0), cd2, ct);
+            pickClosestTOnBezierForAxis(a, b, c, float2(0, 1), cd2, ct);
 
-                float bezierLength = controlPoints.z;
+            float bezierLength = controlPoints.z;
 
-                REQUIRE_BRANCH
-                if (cd2 > searchRadius2) {
-                    steps = bezierLength / stepPx;
-                } else {
+            REQUIRE_BRANCH
+            if (cd2 > searchRadius2) {
+                steps = bezierLength / stepPx;
+            } else {
 #ifdef VISUALIZE_OVERDRAW
-                    overdraw++;
+                overdraw++;
 #endif
-                    steps = rasterStrokeBezierCommon(
-                        localRadiuses2, worldPosition, float4(prev.xy, pos), controlPoints.xy, bezierLength, seed, taper, localBiases,
-                        distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
-                    );
-                }
-                distanceTraveled += bezierLength;
-                totalSteps += steps;
-            } else
-#endif // ENABLE_BEZIER
-            if (nodeType == NODE_LINE) {
-                steps = rasterStrokeLineCommon(
-                    localRadiuses2, worldPosition, float4(prev.xy, pos), seed, taper, localBiases,
+                steps = rasterStrokeBezierCommon(
+                    localRadiuses2, worldPosition, float4(prev.xy, pos), controlPoints.xy, bezierLength, seed, taper, localBiases,
                     distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
                 );
-                distanceTraveled += length(pos - prev.xy);
-                totalSteps += steps;
             }
-
-            /*
-            if ((nodeType != NODE_START) && ShadowPerSegment)
-                SHADOW_MERGE
-            */
-
-            prev = xytr;
+            distanceTraveled += bezierLength;
+            totalSteps += steps;
+        } else
+#endif // ENABLE_BEZIER
+        if (nodeType == NODE_LINE) {
+            steps = rasterStrokeLineCommon(
+                localRadiuses2, worldPosition, float4(prev.xy, pos), seed, taper, localBiases,
+                distanceTraveled, estimatedLengthPx, totalSteps, GET_VPOS, colorA, colorB, SHADOW_OUTPUT
+            );
+            distanceTraveled += length(pos - prev.xy);
+            totalSteps += steps;
         }
-#if LONG_POLYGON
+
+        /*
+        if ((nodeType != NODE_START) && ShadowPerSegment)
+            SHADOW_MERGE
+        */
+
+        prev = xytr;
     }
-#endif
     /*
     SHADOW_LOOP_FOOTER
     if (!ShadowPerSegment)

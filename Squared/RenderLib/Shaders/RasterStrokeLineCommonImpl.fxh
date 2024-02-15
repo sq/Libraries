@@ -19,7 +19,8 @@ float IMPL_NAME (
         // FIXME: A spacing of 1.0 still produces overlap
         stepPx = max(maxSize * Constants2.z, 0.05),
         l = max(CALCULATE_LENGTH, 0.01), centerT, splatCount = ceil(l / stepPx),
-        globalSplatCount = ceil(totalLength / stepPx);
+        globalSplatCount = ceil(totalLength / stepPx),
+        localToGlobalLength = l / totalLength;
 
     // Expand brush maximum size for shadow but only after computing step
     maxSize += localRadiuses.z;
@@ -38,6 +39,8 @@ float IMPL_NAME (
     float2 closestPoint = GET_CLOSEST_POINT(worldPosition, centerT);
     if (EARLY_REJECT)
         return ceil(l / stepPx);
+    
+    // FIXME: offset first splat by (distanceTraveled - floor(distanceTraveled / stepPx) * stepPx)
 
     float centerD = centerT * l,
         startD = max(0, centerD - SEARCH_DISTANCE),
@@ -45,6 +48,7 @@ float IMPL_NAME (
         firstIteration = floor(startD / stepPx),
         lastIteration = ceil(endD / stepPx),
         brushCount = NozzleParams.x * NozzleParams.y,
+        colorTOffset = distanceTraveled / totalLength,
         stack = 0;
 
     for (float i = firstIteration; i <= lastIteration; i += 1.0) {
@@ -78,7 +82,7 @@ float IMPL_NAME (
             hardness = evaluateDynamics(Constants2.x + biases.z, HardnessDynamics, float4(taper, globalI, noise2.x, angleFactor), 1.0),
             // HACK: Increment here is scaled by t instead of i
             // FIXME: centerT for polygons
-            colorT = COLOR_PER_SPLAT ? (globalI * globalStepT) : centerT,
+            colorT = COLOR_PER_SPLAT ? (globalI * globalStepT) : (globalD / totalLength),
             colorFactor = evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(taper, colorT, noise2.y, angleFactor), 1.0);
 
         bool outOfRange = (globalD < taperRanges.z) || (globalD > (totalLength - taperRanges.w));
@@ -94,7 +98,7 @@ float IMPL_NAME (
             posSplatDecentered = (posSplatDerotated + radius);
 
         float g = length(posSplatDerotated), discardDistance = (hardness < 1) ? radius + 1 : radius;
-        float4 color;
+        float4 color = 0;
 
         if (Textured) {
             if (
@@ -137,8 +141,9 @@ float IMPL_NAME (
             float r;
 
             PREFER_BRANCH
-            if ((distance >= (radius - 1.1)) || (radius <= 2.1)) {
+            if ((distance >= (radius - 1.1)) || (radius <= 3.1)) {
                 // HACK: Approximate pixel coverage calculation near edges / for tiny circles
+                // FIXME: Does this work for shapefactor != 1.0? Probably not
                 r = approxPixelCoverage(worldPosition, center, radius);
             } else {
                 r = 1;
@@ -155,29 +160,29 @@ float IMPL_NAME (
                 r *= 1 - g;
             }
             
-            color = r;
+            flow *= r;
         }
         
         // FIXME: Doing ramp sampling here instead of at the end hits a bug in fxc and everything breaks.
         if (Ramped) {
-            stack += color.r * flow;
+            stack += flow;
         } else {
             // TODO: Interpolate based on outer edges instead of center points,
             //  so that we don't get a nasty hard edge at the end
-            color *= lerp(
+            color = lerp(
                 colorA, colorB, colorFactor
             );
             
-            if (color.a > 0)
-                result = over(color, flow, result, 1);
+            result = over(color, flow, result, 1);
         }
     }
 
     // The best we can do :( At least it looks pretty good for lines.
     if (Ramped) {
         // FIXME
-        float rampTaper = computeTaper(taperedL, centerD, taperRanges), rampNoise = 0, rampAngle = 0;
-        float rampV = evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(rampTaper, centerT, rampNoise, rampAngle), 1.0);
+        float rampTaper = computeTaper(taperedL, centerD + distanceTraveled, taperRanges), rampNoise = 0, rampAngle = 0;
+        float rampV = evaluateDynamics(Constants2.y + biases.w, ColorDynamics, float4(rampTaper, (centerD + distanceTraveled) / totalLength, rampNoise, rampAngle), 
+        1.0);
         float4 stackColor = tex2Dlod(RampSampler, float4(stack, rampV, 0, 0));
         if (BlendInLinearSpace)
             stackColor = pSRGBToPLinear_Accurate(stackColor);
