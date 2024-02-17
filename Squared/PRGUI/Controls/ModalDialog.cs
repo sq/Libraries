@@ -212,6 +212,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         public Future<TResult> Show (UIContext context, Control focusDonor = null, Vector2? donorAlignment = null) {
+            // Undo freeze that happens in Close
+            FreezeDynamicContent = false;
+
             Context = context;
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
             InvalidateLayout();
@@ -299,6 +302,8 @@ namespace Squared.PRGUI.Controls {
             AcceptHandlerRegistered = CancelHandlerRegistered = default;
 
             IsActive = false;
+            // HACK: Because content callback may permute state
+            FreezeDynamicContent = true;
             NextResultFuture?.SetResult(result, null);
             Intangible = true;
             IsFadingOut = (Context.TopLevelFocused == this);

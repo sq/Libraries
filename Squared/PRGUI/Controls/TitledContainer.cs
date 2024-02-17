@@ -227,7 +227,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            FreezeDynamicContent = _Collapsed;
+            // FIXME: This will conflict with a collapsible modal dialog... so don't do that
+            if (Collapsible)
+                FreezeDynamicContent = _Collapsed;
+
             SuppressChildLayout = !LayoutChildrenWhenCollapsed 
                 && _Collapsed 
                 && MostRecentFullSize.HasValue
