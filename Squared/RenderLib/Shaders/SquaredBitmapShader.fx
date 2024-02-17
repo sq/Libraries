@@ -45,6 +45,7 @@ void BasicPixelShader(
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
+    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
     result = multiplyColor * texColor;
     result += (addColor * result.a);
 }
@@ -62,6 +63,7 @@ void BasicPixelShaderWithLUT(
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
+    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
     texColor.rgb = ApplyLUT(texColor.rgb, LUT2Weight);
     texColor.rgb = ApplyDither(texColor.rgb, GET_VPOS);
 
@@ -85,6 +87,7 @@ void ToLinearPixelShader(
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
+    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
     texColor = pSRGBToPLinear_Accurate(texColor);
     result = multiplyColor * texColor;
     result += (addColor * result.a);
@@ -104,6 +107,7 @@ void ToSRGBPixelShader(
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
+    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
     result = multiplyColor * texColor;
     result += (addColor * result.a);
     result = pLinearToPSRGB_Accurate(result);
@@ -392,6 +396,7 @@ void BasicPixelShaderWithDiscard (
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     texColor = ExtractRgba(texColor, BitmapTraits);
+    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
     result = multiplyColor * texColor;
     result += (addColor * result.a);
 

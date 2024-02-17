@@ -60,6 +60,8 @@ namespace Squared.Util.Ini {
             return this;
         }
 
+        static readonly char[] ImportantCharacters = new[] { '\"', ';', '#' };
+
         bool IEnumerator.MoveNext () {
             var line = Reader.ReadLine();
             if (line == null) {
@@ -108,11 +110,6 @@ namespace Squared.Util.Ini {
             }
 
             string comment = null;
-            var commentOffset = line.IndexOf(";");
-            if (commentOffset > 0) {
-                comment = line.Substring(commentOffset + 1).Trim();
-                line = line.Substring(0, commentOffset);
-            }
 
             var equalsLocation = line.IndexOf("=");
             if (equalsLocation <= 0) {
@@ -127,7 +124,76 @@ namespace Squared.Util.Ini {
             }
 
             var key = line.Substring(0, equalsLocation).Trim();
-            var value = line.Substring(equalsLocation + 1);
+            var value = line.Substring(equalsLocation + 1).TrimStart();
+            var needEndingQuote = value.StartsWith("\"");
+            while (value.EndsWith("\\")) {
+                line = Reader.ReadLine();
+                if (line == null) {
+                    _Current = new IniLine {
+                        Index = index,
+                        Type = IniLineType.Error,
+                        Value = "End of file encountered after \\ line extender",
+                        SectionName = SectionName,
+                        Comment = comment,
+                    };
+                    return true;
+                }
+                value += line;
+            }
+            value = value.TrimEnd();
+
+            int startsWhere = needEndingQuote ? 1 : 0, endsWhere = value.Length, i = startsWhere;
+            var needTrim = !needEndingQuote;
+            while ((i < value.Length) && (i >= 0)) {
+                var nextImportantCharacter = value.IndexOfAny(ImportantCharacters, i);
+                if (nextImportantCharacter < 0)
+                    break;
+
+                var ch = value[nextImportantCharacter];
+                switch (ch) {
+                    case '\"': {
+                        if (needEndingQuote) {
+                            needEndingQuote = false;
+                            endsWhere = Math.Min(endsWhere, nextImportantCharacter);
+                        }
+                        break;
+                    }
+
+                    case ';':
+                    case '#': {
+                        if (!needEndingQuote) {
+                            comment = value.Substring(nextImportantCharacter);
+                            endsWhere = Math.Min(endsWhere, nextImportantCharacter);
+                            i = -1;
+                        }
+                        break;
+                    }
+
+                    default:
+                        throw new Exception();
+                }
+
+                if (i >= 0)
+                    i = nextImportantCharacter + 1;
+                else
+                    break;
+            }
+
+            value = value.Substring(startsWhere, endsWhere - startsWhere);
+            if (needTrim)
+                value = value.TrimEnd();
+
+            if (needEndingQuote) {
+                _Current = new IniLine {
+                    Index = index,
+                    Type = IniLineType.Error,
+                    Value = "Unterminated double-quoted string",
+                    SectionName = SectionName,
+                    Comment = comment,
+                };
+                return true;
+            }
+
             _Current = new IniLine {
                 Index = index,
                 Type = IniLineType.Value,
