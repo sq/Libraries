@@ -930,6 +930,17 @@ namespace Squared.Util {
             _Items.DangerousRemoveRange(_Items.Count - count, count);
         }
 
+        public bool TryRemoveLast (out T result) {
+            int count = Count;
+            if (count <= 0) {
+                result = default;
+                return false;
+            }
+            GetItem(count - 1, out result);
+            RemoveAt(count - 1);
+            return true;
+        }
+
         public int CountWhere (Func<T, bool> predicate) {
             int result = 0;
             for (int i = 0, c = Count; i < c; i++) {

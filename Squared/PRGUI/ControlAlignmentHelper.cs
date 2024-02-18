@@ -156,14 +156,16 @@ namespace Squared.PRGUI {
         private bool Align (ref UIOperationContext context, RectF parentRect, RectF rect, bool updateDesiredPosition) {
             PRGUI.Control.ComputeEffectiveSpacing(Control, ref context, out _, out var margins);
 
+            RectF actualRect = rect, anchorRect;
+            Vector2 trialAnchorPoint = AnchorPoint, trialAlignmentPoint = ControlAlignmentPoint;
+            var allowOverlap = AllowOverlap || (Anchor == null);
+
             if (Anchor != null) {
-                var actualRect = rect;
-                var trialAnchorPoint = AnchorPoint;
-                var trialAlignmentPoint = ControlAlignmentPoint;
                 // HACK: Expand our rect so we don't rub up against the screen edges
                 rect.Size += margins.Size;
+
                 // FIXME: Should we set contentRect: UseTransformedAnchor to cancel out the effect of the anchor's margins?
-                var anchorRect = Anchor.GetRect(displayRect: UseTransformedAnchor, contentRect: UseContentRect);
+                anchorRect = Anchor.GetRect(displayRect: UseTransformedAnchor, contentRect: UseContentRect);
                 if (anchorRect == default(RectF))
                     return false;
                 
@@ -171,38 +173,29 @@ namespace Squared.PRGUI {
                 anchorRect.Left -= margins.Right;
                 anchorRect.Top -= margins.Bottom;
                 anchorRect.Size += margins.Size;
-
-                var a = AlignmentTrial(ref context, in parentRect, in rect, margins, trialAnchorPoint, trialAlignmentPoint, anchorRect, out Vector2 mrapA);
-                var isectA = GetIntersectionFactor(in anchorRect, in actualRect, a);
-                // HACK: If the specified alignment causes the control to overlap its anchor, attempt to flip the alignment vertically to find it a better spot
-                if (!AllowOverlap && (isectA > 4f)) {
-                    trialAnchorPoint.Y = 1 - trialAnchorPoint.Y;
-                    trialAlignmentPoint.Y = 1 - trialAlignmentPoint.Y;
-                    var b = AlignmentTrial(ref context, in parentRect, in rect, margins, trialAnchorPoint, trialAlignmentPoint, anchorRect, out Vector2 mrapB);
-                    var isectB = GetIntersectionFactor(in anchorRect, in actualRect, b);
-                    if (isectB < isectA) {
-                        MostRecentAlignedPosition = mrapB;
-                        return SetPosition(b, updateDesiredPosition);
-                    }
-                }
-                MostRecentAlignedPosition = mrapA;
-                return SetPosition(a, updateDesiredPosition);
             } else {
                 // HACK
                 parentRect.Left += margins.Left;
                 parentRect.Top += margins.Top;
                 parentRect.Size -= margins.Size;
-
-                var availableSpace = (parentRect.Size - rect.Size);
-                if (availableSpace.X < 0)
-                    availableSpace.X = 0;
-                if (availableSpace.Y < 0)
-                    availableSpace.Y = 0;
-                var result = availableSpace * ControlAlignmentPoint;
-                ClampToConstraintArea(ref context, ref result, in rect);
-                MostRecentAlignedPosition = result + parentRect.Position;
-                return SetPosition(result, updateDesiredPosition);
+                anchorRect = parentRect;
             }
+
+            var a = AlignmentTrial(ref context, in parentRect, in rect, margins, trialAnchorPoint, trialAlignmentPoint, anchorRect, out Vector2 mrapA);
+            var isectA = GetIntersectionFactor(in anchorRect, in actualRect, a);
+            // HACK: If the specified alignment causes the control to overlap its anchor, attempt to flip the alignment vertically to find it a better spot
+            if (!allowOverlap && (isectA > 4f)) {
+                trialAnchorPoint.Y = 1 - trialAnchorPoint.Y;
+                trialAlignmentPoint.Y = 1 - trialAlignmentPoint.Y;
+                var b = AlignmentTrial(ref context, in parentRect, in rect, margins, trialAnchorPoint, trialAlignmentPoint, anchorRect, out Vector2 mrapB);
+                var isectB = GetIntersectionFactor(in anchorRect, in actualRect, b);
+                if (isectB < isectA) {
+                    MostRecentAlignedPosition = mrapB;
+                    return SetPosition(b, updateDesiredPosition);
+                }
+            }
+            MostRecentAlignedPosition = mrapA;
+            return SetPosition(a, updateDesiredPosition);
         }
 
         private float GetIntersectionFactor (in RectF anchorRect, in RectF originalRect, Vector2 newPosition) {

@@ -19,13 +19,26 @@ namespace Squared.PRGUI.Controls {
     public class Window : TitledContainer, IPartiallyIntangibleControl, IAlignedControl, IControlContainer {
         protected ControlAlignmentHelper<Window> Aligner;
 
+        private Vector2 _Alignment = new Vector2(0.5f, 0.5f);
+        private bool _HasAlignmentPoint;
         /// <summary>
-        /// Configures what point on the screen is used as the center for this window, OR
-        ///  if an alignment anchor is set, configures what point on this control is aligned to it
+        /// Configures what point on the screen is used as the anchor for this window,
+        ///  if this control has no anchor.
         /// </summary>
         public Vector2 Alignment {
+            get => _Alignment;
+            set => _Alignment = value;
+        }
+
+        /// <summary>
+        /// Configures what point on this control [0 - 1] is aligned to the anchor
+        /// </summary>
+        public Vector2 ControlAlignmentPoint {
             get => Aligner.ControlAlignmentPoint;
-            set => Aligner.ControlAlignmentPoint = value;
+            set {
+                _HasAlignmentPoint = true;
+                Aligner.ControlAlignmentPoint = value;
+            }
         }
 
         /// <summary>
@@ -146,6 +159,7 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(ref context, ref relayoutRequested);
 
+            ConfigureAlignment();
             Aligner.EnsureAligned(ref context, ref relayoutRequested);
 
             // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
@@ -336,8 +350,19 @@ namespace Squared.PRGUI.Controls {
             if (!Aligner.AlignmentPending) {
                 return;
             } else {
+                ConfigureAlignment();
                 Aligner.EnsureAligned(ref context, ref relayoutRequested);
             }
+        }
+
+        protected virtual void ConfigureAlignment () {
+            if (Aligner.Anchor != null)
+                return;
+
+            if (!_HasAlignmentPoint)
+                Aligner.ControlAlignmentPoint = _Alignment;
+
+            Aligner.AnchorPoint = _Alignment;
         }
 
         public static bool PerformArrowKeyNavigation (UIContext context, string name, KeyEventArgs args) {
