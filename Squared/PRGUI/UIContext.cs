@@ -949,6 +949,9 @@ namespace Squared.PRGUI {
                     ? subtreeRoot.LayoutKey
                     : (ControlKey?)null
             );
+            // HACK: Workaround layout listeners not always being registered because the control has an existing key
+            if (subtreeRoot is IPostLayoutListener ipll)
+                context.PostLayoutListeners?.Add(ipll);
 
             Engine.UpdateSubtree(subtreeRoot.LayoutKey);
         }
